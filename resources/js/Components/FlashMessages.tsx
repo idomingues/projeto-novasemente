@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { usePage } from '@inertiajs/react';
+import type { PageProps } from '@/types';
 
 type FlashProps = {
     success?: string | null;
@@ -7,11 +8,11 @@ type FlashProps = {
 };
 
 export default function FlashMessages() {
-    const { props } = usePage<{ flash?: FlashProps }>();
+    const { flash } = usePage<PageProps & { flash?: FlashProps }>().props;
     const [visible, setVisible] = useState(true);
 
-    const success = props.flash?.success;
-    const error = props.flash?.error;
+    const success = flash?.success ?? null;
+    const error = flash?.error ?? null;
 
     useEffect(() => {
         if (success || error) {
@@ -52,4 +53,3 @@ export default function FlashMessages() {
         </div>
     );
 }
-
