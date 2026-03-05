@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Invitation;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
@@ -18,9 +19,24 @@ class RegisteredUserController extends Controller
     /**
      * Display the registration view.
      */
-    public function create(): Response
+    public function create(Request $request): Response
     {
-        return Inertia::render('Auth/Register');
+        $invitation = null;
+        $token = $request->query('invitation');
+        if ($token) {
+            $invitation = Invitation::where('token', $token)->first();
+            if ($invitation && !$invitation->isValid()) {
+                $invitation = null;
+            }
+        }
+
+        return Inertia::render('Auth/Register', [
+            'invitation' => $invitation ? [
+                'email' => $invitation->email,
+                'role' => $invitation->role,
+                'token' => $invitation->token,
+            ] : null,
+        ]);
     }
 
     /**
@@ -34,6 +50,7 @@ class RegisteredUserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'invitation_token' => ['nullable', 'string'],
         ]);
 
         $user = User::create([
@@ -41,6 +58,16 @@ class RegisteredUserController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
+
+        if ($request->filled('invitation_token')) {
+            $invitation = Invitation::where('token', $request->invitation_token)->first();
+            if ($invitation && $invitation->isValid() && $invitation->email === $request->email) {
+                $invitation->update(['used_at' => now()]);
+                if ($invitation->role) {
+                    $user->assignRole($invitation->role);
+                }
+            }
+        }
 
         event(new Registered($user));
 

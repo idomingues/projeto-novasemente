@@ -6,17 +6,27 @@ import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
 
-export default function Register() {
+interface InvitationProps {
+    email: string;
+    role: string | null;
+    token: string;
+}
+
+interface Props {
+    invitation: InvitationProps | null;
+}
+
+export default function Register({ invitation }: Props) {
     const { data, setData, post, processing, errors, reset } = useForm({
         name: '',
-        email: '',
+        email: invitation?.email ?? '',
         password: '',
         password_confirmation: '',
+        invitation_token: invitation?.token ?? '',
     });
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-
         post(route('register'), {
             onFinish: () => reset('password', 'password_confirmation'),
         });
@@ -24,7 +34,13 @@ export default function Register() {
 
     return (
         <GuestLayout>
-            <Head title="Register" />
+            <Head title={invitation ? 'Cadastro por convite' : 'Registro'} />
+
+            {invitation && (
+                <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+                    Você foi convidado a criar sua conta. Preencha os dados abaixo.
+                </p>
+            )}
 
             <form onSubmit={submit}>
                 <div>
@@ -56,6 +72,7 @@ export default function Register() {
                         autoComplete="username"
                         onChange={(e) => setData('email', e.target.value)}
                         required
+                        readOnly={!!invitation}
                     />
 
                     <InputError message={errors.email} className="mt-2" />
@@ -103,16 +120,18 @@ export default function Register() {
                     />
                 </div>
 
+                <input type="hidden" name="invitation_token" value={data.invitation_token} />
+
                 <div className="mt-4 flex items-center justify-end">
                     <Link
                         href={route('login')}
                         className="rounded-md text-sm text-zinc-600 dark:text-zinc-400 underline hover:text-zinc-900 dark:hover:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-500 dark:focus:ring-zinc-400 focus:ring-offset-2 dark:focus:ring-offset-zinc-800"
                     >
-                        Already registered?
+                        Já tem conta? Entrar
                     </Link>
 
                     <PrimaryButton className="ms-4" disabled={processing}>
-                        Register
+                        {invitation ? 'Criar conta' : 'Registrar'}
                     </PrimaryButton>
                 </div>
             </form>

@@ -9,12 +9,11 @@ Este projeto é um painel administrativo para gestão de igreja, construído com
 
 - Autenticação e dashboard administrativo
 - Gestão de membros (CRUD) com paginação
-- Papéis e permissões básicos (admin, secretaria, pastor, financeiro, líder de ministério)
+- Papéis e permissões básicos (admin, secretaria, pastor, líder de ministério)
 - Modelagem inicial para:
   - Ministérios e voluntários
   - Salas e cultos (`services`)
   - Escalas (`service_schedules`)
-  - Lançamentos financeiros (`financial_transactions`)
 
 ## Requisitos
 

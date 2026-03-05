@@ -3,15 +3,29 @@ import { BellIcon, MagnifyingGlassIcon, SunIcon, MoonIcon } from '@heroicons/rea
 import Dropdown from '@/Components/Dropdown';
 import { useTheme } from '@/Contexts/ThemeContext';
 
-export default function Topbar() {
+interface TopbarProps {
+    onMenuClick?: () => void;
+}
+
+export default function Topbar({ onMenuClick }: TopbarProps) {
     const user = usePage().props.auth.user;
     const { theme, toggleTheme } = useTheme();
 
     return (
-        <header className="bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 h-24 fixed top-0 right-0 left-0 md:left-72 z-40 transition-all duration-300">
-            <div className="flex items-center justify-between h-full px-8">
-                {/* Search / Title Area */}
-                <div className="flex-1 flex items-center">
+        <header className="bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 h-16 md:h-24 fixed top-0 right-0 left-0 md:left-72 z-40 transition-all duration-300">
+            <div className="flex items-center justify-between h-full px-4 md:px-8">
+                {/* Menu button (mobile) + Search / Title */}
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <button
+                        type="button"
+                        onClick={onMenuClick}
+                        className="md:hidden p-2.5 rounded-xl text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex-shrink-0"
+                        aria-label="Abrir menu"
+                    >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
                     <div className="relative w-full max-w-md hidden md:block">
                         <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400 dark:text-zinc-500" />
                         <input 
@@ -20,8 +34,8 @@ export default function Topbar() {
                             className="w-full h-12 pl-12 pr-4 bg-zinc-100 dark:bg-zinc-900 border-none rounded-2xl text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:ring-2 focus:ring-zinc-900/20 dark:focus:ring-white/20 text-sm"
                         />
                     </div>
-                    <div className="md:hidden">
-                         <span className="text-lg font-bold text-zinc-900 dark:text-white">Admin</span>
+                    <div className="md:hidden flex-1 min-w-0">
+                        <span className="text-lg font-bold text-zinc-900 dark:text-white truncate block">Admin</span>
                     </div>
                 </div>
 

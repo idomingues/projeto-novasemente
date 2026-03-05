@@ -19,10 +19,23 @@ class RolePermissionSeeder extends Seeder
             'members.manage',
             'volunteers.view',
             'volunteers.manage',
+            'departments.view',
+            'departments.manage',
             'rooms.view',
             'rooms.manage',
             'finance.view',
             'finance.manage',
+            'escalas.view',
+            'escalas.manage',
+            'inventory.view',
+            'inventory.manage',
+            'users.view',
+            'users.manage',
+            'churches.manage',
+            'news.view',
+            'news.manage',
+            'events.view',
+            'events.manage',
         ];
 
         foreach ($permissions as $permission) {
@@ -35,33 +48,70 @@ class RolePermissionSeeder extends Seeder
                 'members.manage',
                 'volunteers.view',
                 'volunteers.manage',
+                'departments.view',
+                'departments.manage',
                 'rooms.view',
                 'rooms.manage',
                 'finance.view',
                 'finance.manage',
+                'escalas.view',
+                'escalas.manage',
+                'inventory.view',
+                'inventory.manage',
+                'users.view',
+                'users.manage',
+                'news.view',
+                'news.manage',
+                'events.view',
+                'events.manage',
             ],
             'secretaria' => [
                 'members.view',
                 'members.manage',
                 'volunteers.view',
                 'volunteers.manage',
+                'departments.view',
+                'departments.manage',
                 'rooms.view',
                 'rooms.manage',
+                'escalas.view',
+                'escalas.manage',
+                'inventory.view',
+                'inventory.manage',
+                'users.view',
+                'users.manage',
+                'news.view',
+                'news.manage',
+                'events.view',
+                'events.manage',
             ],
             'pastor' => [
                 'members.view',
                 'volunteers.view',
+                'departments.view',
                 'rooms.view',
                 'finance.view',
+                'escalas.view',
+                'inventory.view',
+                'news.view',
+                'events.view',
+                'events.manage',
             ],
             'financeiro' => [
                 'finance.view',
                 'finance.manage',
+                'events.view',
             ],
             'lider_ministerio' => [
                 'members.view',
                 'volunteers.view',
+                'departments.view',
                 'rooms.view',
+                'escalas.view',
+                'escalas.manage',
+                'inventory.view',
+                'news.view',
+                'events.view',
             ],
         ];
 
@@ -70,10 +120,13 @@ class RolePermissionSeeder extends Seeder
             $role->syncPermissions($rolePermissions);
         }
 
+        $superAdmin = Role::firstOrCreate(['name' => 'super_admin']);
+        $superAdmin->syncPermissions(Permission::all());
+
         $adminUser = User::first();
 
         if ($adminUser) {
-            $adminUser->assignRole('admin');
+            $adminUser->syncRoles(['admin', 'super_admin']);
         }
     }
 }

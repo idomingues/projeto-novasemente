@@ -1,1 +1,15 @@
 @import "tailwindcss";
+
+/* Dark mode por classe (html.dark) — necessário no Tailwind v4 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Safe area for mobile (notch, home indicator) */
+.safe-area-top {
+    padding-top: env(safe-area-inset-top, 0);
+}
+.safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.safe-area-pb {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0));
+}

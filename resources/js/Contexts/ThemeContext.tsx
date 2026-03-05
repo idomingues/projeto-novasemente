@@ -12,14 +12,15 @@ const ThemeContext = createContext<ThemeContextProps | undefined>(undefined);
 export function ThemeProvider({ children }: { children: ReactNode }) {
     const [theme, setTheme] = useState<Theme>(() => {
         if (typeof window !== 'undefined') {
-            const savedTheme = localStorage.getItem('theme') as Theme;
-            if (savedTheme) {
+            const savedTheme = localStorage.getItem('theme') as Theme | null;
+            if (savedTheme === 'light' || savedTheme === 'dark') {
                 return savedTheme;
             }
-            // Default to dark as requested previously
-            return 'dark';
+            // Alinha com o script no blade que usa prefers-color-scheme quando não há theme salvo
+            const isDark = document.documentElement.classList.contains('dark');
+            return isDark ? 'dark' : 'light';
         }
-        return 'dark';
+        return 'light';
     });
 
     useEffect(() => {

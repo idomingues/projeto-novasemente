@@ -4,7 +4,8 @@
     "type": "module",
     "scripts": {
         "build": "tsc && vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "serve": "concurrently -n \"artisan,vite\" -c \"blue,green\" \"php artisan serve\" \"npm run dev\""
     },
     "devDependencies": {
         "@headlessui/react": "^2.0.0",
