@@ -20,7 +20,8 @@ class MinistryController extends Controller
     {
         $churchId = $this->currentChurchId();
         $departments = Ministry::query()
-            ->when($churchId, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
             ->orderBy('name')
             ->get();
 
@@ -31,8 +32,12 @@ class MinistryController extends Controller
 
     public function store(StoreMinistryRequest $request)
     {
+        $churchId = $this->currentChurchId();
+        if ($churchId === null) {
+            return redirect()->route('departments.index')->with('error', 'Nenhuma igreja ativa. Selecione uma igreja para trabalhar.');
+        }
         Ministry::create(array_merge($request->validated(), [
-            'church_id' => $this->currentChurchId(),
+            'church_id' => $churchId,
         ]));
         return redirect()->route('departments.index')->with('success', 'Departamento criado com sucesso!');
     }

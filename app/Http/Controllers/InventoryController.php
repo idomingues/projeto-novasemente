@@ -23,7 +23,8 @@ class InventoryController extends Controller
         $churchId = $this->currentChurchId();
         $query = InventoryItem::query()
             ->withCount('movements')
-            ->when($churchId, fn ($q) => $q->where('church_id', $churchId));
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'));
 
         $search = $request->input('search');
         if ($search && is_string($search)) {
@@ -45,8 +46,12 @@ class InventoryController extends Controller
 
     public function store(StoreInventoryItemRequest $request)
     {
+        $churchId = $this->currentChurchId();
+        if ($churchId === null) {
+            return redirect()->route('inventory.index')->with('error', 'Nenhuma igreja ativa. Selecione uma igreja para trabalhar.');
+        }
         $item = InventoryItem::create(array_merge($request->validated(), [
-            'church_id' => $this->currentChurchId(),
+            'church_id' => $churchId,
         ]));
         InventoryMovement::create([
             'inventory_item_id' => $item->id,

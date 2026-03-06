@@ -47,7 +47,8 @@ class ScheduleController extends Controller
         $churchId = Church::where('active', true)->orderBy('name')->value('id');
 
         $ministries = Ministry::query()
-            ->when($churchId, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
             ->orderBy('name')
             ->get(['id', 'name']);
         $assignments = [];

@@ -52,6 +52,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
         { name: 'Escalas', route: 'escalas.index', icon: CalendarIcon },
         { name: 'Voluntários', route: 'volunteers.index', icon: UsersIcon },
         { name: 'Usuários', route: 'users.index', icon: KeyIcon },
+        { name: 'Perfis', route: 'roles.index', icon: KeyIcon },
         { name: 'Salas', route: 'rooms.index', icon: BuildingOfficeIcon },
         { name: 'Inventário', route: 'inventory.index', icon: ArchiveBoxIcon },
         { name: 'Notícias', route: 'news.index', icon: NewspaperIcon },

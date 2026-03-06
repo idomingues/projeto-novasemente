@@ -8,7 +8,7 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import PageHeader from '@/Components/PageHeader';
 import InputError from '@/Components/InputError';
-import { useState, FormEventHandler } from 'react';
+import { useState, useEffect, FormEventHandler } from 'react';
 import axios from 'axios';
 
 interface InventoryItem {
@@ -52,6 +52,7 @@ export default function Index({ items, filters }: Props) {
     const [historyModalOpen, setHistoryModalOpen] = useState(false);
     const [historyItem, setHistoryItem] = useState<InventoryItem | null>(null);
     const [history, setHistory] = useState<Movement[]>([]);
+    const [search, setSearch] = useState(filters.search ?? '');
 
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
         barcode: '',
@@ -135,6 +136,23 @@ export default function Index({ items, filters }: Props) {
         });
     };
 
+    useEffect(() => {
+        if (search === (filters.search ?? '')) {
+            return;
+        }
+        const timeout = setTimeout(() => {
+            router.get(
+                route('inventory.index'),
+                { search },
+                {
+                    preserveState: true,
+                    replace: true,
+                },
+            );
+        }, 400);
+        return () => clearTimeout(timeout);
+    }, [search, filters.search]);
+
     return (
         <AdminLayout>
             <Head title="Inventário" />
@@ -149,23 +167,19 @@ export default function Index({ items, filters }: Props) {
                 Gerencie os objetos da igreja com código de barras. Use a busca para encontrar por código ou nome e visualize o histórico de cada item.
             </p>
 
-            <form
-                method="get"
-                action={route('inventory.index')}
-                className="mb-6"
-            >
-                <div className="relative max-w-md flex gap-2">
+            <div className="mb-6">
+                <div className="relative max-w-md flex">
                     <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400 pointer-events-none" />
                     <input
                         type="search"
                         name="search"
-                        defaultValue={filters.search ?? ''}
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
                         placeholder="Buscar por código de barras ou nome..."
                         className="flex-1 pl-10 pr-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white placeholder-zinc-400 focus:ring-2 focus:ring-zinc-500 focus:border-transparent"
                     />
-                    <PrimaryButton type="submit">Buscar</PrimaryButton>
                 </div>
-            </form>
+            </div>
 
             <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden">
                 <div className="overflow-x-auto">

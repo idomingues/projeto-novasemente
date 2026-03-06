@@ -4,7 +4,7 @@ import Topbar from '@/Components/Topbar';
 import FlashMessages from '@/Components/FlashMessages';
 
 const routeToPermissions: Record<string, string[]> = {
-    'dashboard': [],
+    dashboard: [],
     'members.index': ['members.view', 'members.manage'],
     'departments.index': ['departments.view', 'departments.manage'],
     'escalas.index': ['escalas.view', 'escalas.manage'],
@@ -12,10 +12,11 @@ const routeToPermissions: Record<string, string[]> = {
     'rooms.index': ['rooms.view', 'rooms.manage'],
     'inventory.index': ['inventory.view', 'inventory.manage'],
     'users.index': ['users.view', 'users.manage'],
+    'roles.index': ['roles.manage'],
     'news.index': ['news.view', 'news.manage'],
     'churches.index': ['churches.manage'],
     'churches.services.index': ['churches.manage'],
-    'events.index': [], // visível para todos os logados; criar/editar exige events.manage na rota
+    'events.index': ['events.view', 'events.manage'],
     'services.index': [],
     'settings.index': [],
 };

@@ -10,7 +10,7 @@ import Textarea from '@/Components/Textarea';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
-import { useState, FormEventHandler } from 'react';
+import { useState, useEffect, FormEventHandler } from 'react';
 
 interface NewsPost {
     id: number;
@@ -45,6 +45,8 @@ export default function Index({ posts, filters, canManage }: Props) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
+    const [search, setSearch] = useState(filters.search ?? '');
+    const [imageFile, setImageFile] = useState<File | null>(null);
 
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
         title: '',
@@ -54,11 +56,29 @@ export default function Index({ posts, filters, canManage }: Props) {
         published_at: '',
     });
 
+    useEffect(() => {
+        if (search === (filters.search ?? '')) {
+            return;
+        }
+        const timeout = setTimeout(() => {
+            router.get(
+                route('news.index'),
+                { search },
+                {
+                    preserveState: true,
+                    replace: true,
+                },
+            );
+        }, 400);
+        return () => clearTimeout(timeout);
+    }, [search, filters.search]);
+
     const openCreateModal = () => {
         setIsEditing(false);
         setEditingId(null);
         reset();
         clearErrors();
+        setImageFile(null);
         setIsModalOpen(true);
     };
 
@@ -73,24 +93,29 @@ export default function Index({ posts, filters, canManage }: Props) {
             published_at: p.published_at ? p.published_at.substring(0, 16) : '',
         });
         clearErrors();
+        setImageFile(null);
         setIsModalOpen(true);
     };
 
     const closeModal = () => {
         setIsModalOpen(false);
         reset();
+        setImageFile(null);
     };
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        const payload = {
+        const payload: Record<string, any> = {
             ...data,
             published_at: data.published_at || null,
         };
+        if (imageFile) {
+            payload.image_file = imageFile;
+        }
         if (isEditing && editingId) {
-            put(route('news.update', editingId), payload, { onSuccess: () => closeModal() });
+            put(route('news.update', editingId), payload, { onSuccess: () => closeModal(), forceFormData: true });
         } else {
-            post(route('news.store'), payload, { onSuccess: () => closeModal() });
+            post(route('news.store'), payload, { onSuccess: () => closeModal(), forceFormData: true });
         }
     };
 
@@ -109,16 +134,10 @@ export default function Index({ posts, filters, canManage }: Props) {
                         <TextInput
                             type="search"
                             name="search"
-                            defaultValue={filters.search ?? ''}
+                            value={search}
                             placeholder="Buscar notícias..."
                             className="w-full"
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    const target = e.target as HTMLInputElement;
-                                    router.get(route('news.index'), { search: target.value }, { preserveState: true, replace: true });
-                                }
-                            }}
+                            onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
                     {canManage && (
@@ -249,24 +268,40 @@ export default function Index({ posts, filters, canManage }: Props) {
                                 <InputError message={errors.body} className="mt-1" />
                             </div>
                             <div>
-                                <InputLabel htmlFor="image_url" value="URL da imagem (opcional)" />
-                                <div className="mt-1 flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center overflow-hidden flex-shrink-0">
-                                        {data.image_url ? (
-                                            <img src={data.image_url} alt="" className="w-full h-full object-cover" />
-                                        ) : (
-                                            <PhotoIcon className="w-5 h-5 text-zinc-500" />
-                                        )}
+                                <InputLabel htmlFor="image_url" value="Imagem da notícia" />
+                                <div className="mt-1 space-y-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                            {imageFile ? (
+                                                <img src={URL.createObjectURL(imageFile)} alt="" className="w-full h-full object-cover" />
+                                            ) : data.image_url ? (
+                                                <img src={data.image_url} alt="" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <PhotoIcon className="w-5 h-5 text-zinc-500" />
+                                            )}
+                                        </div>
+                                        <div className="flex-1 space-y-2">
+                                            <input
+                                                id="image_file"
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0] ?? null;
+                                                    setImageFile(file);
+                                                }}
+                                                className="block w-full text-sm text-zinc-900 dark:text-zinc-100 file:mr-4 file:py-2.5 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-zinc-900 file:text-white hover:file:bg-zinc-800 dark:file:bg-zinc-100 dark:file:text-zinc-900"
+                                            />
+                                            <TextInput
+                                                id="image_url"
+                                                value={data.image_url}
+                                                onChange={(e) => setData('image_url', e.target.value)}
+                                                className="block w-full"
+                                                placeholder="Ou cole uma URL https://..."
+                                            />
+                                        </div>
                                     </div>
-                                    <TextInput
-                                        id="image_url"
-                                        value={data.image_url}
-                                        onChange={(e) => setData('image_url', e.target.value)}
-                                        className="block w-full"
-                                        placeholder="https://..."
-                                    />
+                                    <InputError message={errors.image_url} className="mt-1" />
                                 </div>
-                                <InputError message={errors.image_url} className="mt-1" />
                             </div>
                             <div>
                                 <InputLabel htmlFor="published_at" value="Data de publicação (vazio = rascunho)" />
@@ -278,6 +313,38 @@ export default function Index({ posts, filters, canManage }: Props) {
                                     className="mt-1 block w-full"
                                 />
                                 <InputError message={errors.published_at} className="mt-1" />
+                            </div>
+                        </div>
+                        {/** Pré-visualização em formato próximo ao mobile */}
+                        <div className="mt-6 border-t border-zinc-200 dark:border-zinc-800 pt-4">
+                            <p className="text-xs uppercase tracking-wide text-zinc-400 dark:text-zinc-500 mb-3">
+                                Pré-visualização (mobile)
+                            </p>
+                            <div className="max-w-sm rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                                {(imageFile || data.image_url) && (
+                                    <img
+                                        src={imageFile ? URL.createObjectURL(imageFile) : data.image_url}
+                                        alt=""
+                                        className="w-full h-40 object-cover"
+                                    />
+                                )}
+                                <div className="p-4">
+                                    <h3 className="font-semibold text-zinc-900 dark:text-white text-lg">
+                                        {data.title || 'Título da notícia'}
+                                    </h3>
+                                    {data.published_at && (
+                                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                                            {new Date(data.published_at).toLocaleDateString('pt-BR', {
+                                                day: '2-digit',
+                                                month: 'long',
+                                                year: 'numeric',
+                                            })}
+                                        </p>
+                                    )}
+                                    <p className="mt-3 text-zinc-600 dark:text-zinc-300 text-sm line-clamp-4">
+                                        {data.excerpt || data.body.slice(0, 300) || 'Resumo da notícia aparecerá aqui.'}
+                                    </p>
+                                </div>
                             </div>
                         </div>
                         <div className="mt-6 flex justify-end gap-2">

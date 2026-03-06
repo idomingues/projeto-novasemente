@@ -27,7 +27,9 @@ class MemberController extends Controller
         $search = (string) $request->input('search', '');
         $churchId = $this->currentChurchId();
 
-        $query = Member::query()->when($churchId, fn ($q) => $q->where('church_id', $churchId));
+        $query = Member::query()
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'));
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
@@ -49,8 +51,12 @@ class MemberController extends Controller
      */
     public function store(StoreMemberRequest $request, CreateMember $createMember)
     {
+        $churchId = $this->currentChurchId();
+        if ($churchId === null) {
+            return redirect()->route('members.index')->with('error', 'Nenhuma igreja ativa. Selecione uma igreja para trabalhar.');
+        }
         $data = array_merge($request->validated(), [
-            'church_id' => $this->currentChurchId(),
+            'church_id' => $churchId,
         ]);
         $createMember($data);
 

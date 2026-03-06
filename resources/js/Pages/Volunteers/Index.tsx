@@ -11,7 +11,7 @@ import Card from '@/Components/Card';
 import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
 import SearchableSelect from '@/Components/SearchableSelect';
-import { useState, FormEventHandler } from 'react';
+import { useState, useEffect, FormEventHandler } from 'react';
 
 interface Member { id: number; name: string; photo_url?: string | null; }
 interface Ministry { id: number; name: string; }
@@ -44,6 +44,7 @@ export default function Index({ volunteers, members, ministries, filters }: Prop
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
+    const [search, setSearch] = useState(filters?.search ?? '');
 
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
         member_id: '' as number | '',
@@ -101,6 +102,23 @@ export default function Index({ volunteers, members, ministries, filters }: Prop
         }
     };
 
+    useEffect(() => {
+        if (search === (filters?.search ?? '')) {
+            return;
+        }
+        const timeout = setTimeout(() => {
+            router.get(
+                route('volunteers.index'),
+                { search },
+                {
+                    preserveState: true,
+                    replace: true,
+                },
+            );
+        }, 400);
+        return () => clearTimeout(timeout);
+    }, [search, filters?.search]);
+
     return (
         <AdminLayout>
             <Head title="Voluntários" />
@@ -110,16 +128,10 @@ export default function Index({ volunteers, members, ministries, filters }: Prop
                         <TextInput
                             type="search"
                             name="search"
-                            defaultValue={filters?.search ?? ''}
+                            value={search}
                             placeholder="Buscar por nome, e-mail ou telefone"
                             className="w-full"
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    const target = e.target as HTMLInputElement;
-                                    router.get(route('volunteers.index'), { search: target.value }, { preserveState: true, replace: true });
-                                }
-                            }}
+                            onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
                     <PrimaryButton type="button" onClick={openCreateModal} className="gap-2">

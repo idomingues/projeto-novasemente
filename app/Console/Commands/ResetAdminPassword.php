@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\User;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Hash;
 
 class ResetAdminPassword extends Command
 {
@@ -23,7 +24,7 @@ class ResetAdminPassword extends Command
             return self::FAILURE;
         }
 
-        $user->password = $password;
+        $user->password = Hash::make($password);
         $user->save();
 
         $this->info("Senha do usuário \"{$user->name}\" ({$email}) foi redefinida com sucesso.");

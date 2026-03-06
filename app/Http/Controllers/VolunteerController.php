@@ -24,14 +24,14 @@ class VolunteerController extends Controller
         $search = (string) $request->input('search', '');
         $churchId = $this->currentChurchId();
 
-        $volunteersQuery = Volunteer::with(['member', 'ministries']);
-        if ($churchId) {
-            // Mostra voluntários que não têm ministério OU que têm pelo menos um ministério da igreja atual
-            $volunteersQuery->where(function ($q) use ($churchId) {
-                $q->whereDoesntHave('ministries')
-                    ->orWhereHas('ministries', fn ($mq) => $mq->where('church_id', $churchId));
+        $volunteersQuery = Volunteer::with(['member', 'ministries'])
+            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
+            ->when($churchId !== null, function ($q) use ($churchId) {
+                $q->where(function ($q2) use ($churchId) {
+                    $q2->whereDoesntHave('ministries')
+                        ->orWhereHas('ministries', fn ($mq) => $mq->where('church_id', $churchId));
+                });
             });
-        }
 
         if ($search !== '') {
             $volunteersQuery->where(function ($q) use ($search) {
@@ -50,8 +50,12 @@ class VolunteerController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        $membersQuery = Member::query()->when($churchId, fn ($q) => $q->where('church_id', $churchId));
-        $ministriesQuery = Ministry::query()->when($churchId, fn ($q) => $q->where('church_id', $churchId));
+        $membersQuery = Member::query()
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'));
+        $ministriesQuery = Ministry::query()
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'));
 
         return Inertia::render('Volunteers/Index', [
             'volunteers' => $volunteers,

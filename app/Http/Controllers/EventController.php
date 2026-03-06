@@ -22,7 +22,8 @@ class EventController extends Controller
         $year = (int) $request->input('year', now()->year);
 
         $query = Event::query()
-            ->when($churchId, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
             ->orderBy('starts_at');
 
         $startOfMonth = \Carbon\Carbon::create($year, $month, 1)->startOfDay();
@@ -55,7 +56,11 @@ class EventController extends Controller
             'color' => $e->color,
         ]);
 
-        $canManage = $request->user()?->can('events.manage') ?? false;
+        $user = $request->user();
+        $canManage = $user
+            && ($user->hasRole('admin')
+                || $user->hasRole('super_admin')
+                || $user->can('events.manage'));
 
         return Inertia::render('Events/Index', [
             'events' => $allEvents,
@@ -79,8 +84,12 @@ class EventController extends Controller
             'color' => ['nullable', 'string', 'max:50'],
         ]);
 
+        $churchId = $this->currentChurchId();
+        if ($churchId === null) {
+            return redirect()->route('events.index')->with('error', 'Nenhuma igreja ativa. Selecione uma igreja para trabalhar.');
+        }
         Event::create(array_merge($data, [
-            'church_id' => $this->currentChurchId(),
+            'church_id' => $churchId,
             'created_by' => $request->user()?->id,
         ]));
 

@@ -4,6 +4,8 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use App\Models\Church;
+use App\Models\Event;
 
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\MinistryController;
@@ -13,6 +15,7 @@ use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\MobileController;
+use App\Http\Controllers\RoleController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -23,8 +26,39 @@ Route::get('/', function () {
     ]);
 });
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
+Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
+    $churchId = null;
+    if ($request->user()) {
+        $workingChurchId = $request->session()->get('working_church_id');
+        if ($workingChurchId) {
+            $churchId = Church::where('id', $workingChurchId)->where('active', true)->value('id');
+        }
+        if ($churchId === null) {
+            $churchId = Church::where('active', true)->orderBy('name')->value('id');
+        }
+    }
+
+    $upcomingEvents = collect();
+    if ($churchId !== null) {
+        $upcomingEvents = Event::query()
+            ->where('church_id', $churchId)
+            ->where('starts_at', '>=', now()->startOfDay())
+            ->orderBy('starts_at')
+            ->limit(3)
+            ->get()
+            ->map(fn (Event $e) => [
+                'id' => $e->id,
+                'title' => $e->title,
+                'starts_at' => $e->starts_at?->toIso8601String(),
+                'ends_at' => $e->ends_at?->toIso8601String(),
+                'all_day' => $e->all_day,
+                'location' => $e->location,
+            ]);
+    }
+
+    return Inertia::render('Dashboard', [
+        'upcomingEvents' => $upcomingEvents,
+    ]);
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
@@ -83,6 +117,10 @@ Route::middleware('auth')->group(function () {
     Route::delete('/users/{user}', [\App\Http\Controllers\UserController::class, 'destroy'])->name('users.destroy')->middleware('permission:users.manage');
     Route::post('/invitations', [\App\Http\Controllers\InvitationController::class, 'store'])->name('invitations.store')->middleware('permission:users.manage');
     Route::delete('/invitations/{invitation}', [\App\Http\Controllers\InvitationController::class, 'destroy'])->name('invitations.destroy')->middleware('permission:users.manage');
+
+    // Perfis (papéis) e permissões
+    Route::get('/roles', [RoleController::class, 'index'])->name('roles.index')->middleware('permission:roles.manage');
+    Route::post('/roles', [RoleController::class, 'update'])->name('roles.update')->middleware('permission:roles.manage');
 
     // Notícias
     Route::get('/news', [NewsController::class, 'index'])->name('news.index');

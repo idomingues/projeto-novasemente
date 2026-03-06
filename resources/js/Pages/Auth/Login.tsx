@@ -40,7 +40,7 @@ export default function Login({
         email: loginEmail,
         password: '',
         remember: false as boolean,
-        church_id: '',
+        church_id: null as number | null,
     });
 
     useEffect(() => {
@@ -48,8 +48,8 @@ export default function Login({
     }, [loginEmail]);
 
     useEffect(() => {
-        if (loginChurches.length > 0 && !data.church_id) {
-            setData('church_id', String(loginChurches[0].id));
+        if (loginChurches.length > 0 && data.church_id == null) {
+            setData('church_id', loginChurches[0].id);
         }
     }, [loginChurches]);
 
@@ -77,7 +77,7 @@ export default function Login({
                     setIsSuperAdmin(!!body.is_super_admin);
                     setChurches(body.churches || []);
                     if (body.churches?.length) {
-                        setData('church_id', String(body.churches[0].id));
+                        setData('church_id', body.churches[0].id);
                     }
                     setStep(2);
                 } else {
@@ -197,8 +197,8 @@ export default function Login({
                                         <select
                                             id="church_id"
                                             name="church_id"
-                                            value={data.church_id}
-                                            onChange={(e) => setData('church_id', e.target.value)}
+                                            value={data.church_id ?? ''}
+                                            onChange={(e) => setData('church_id', e.target.value === '' ? null : Number(e.target.value))}
                                             className="mt-1 block w-full rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm focus:border-primary-500 focus:ring-primary-500"
                                             required={isSuperAdmin}
                                         >

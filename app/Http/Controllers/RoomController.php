@@ -21,7 +21,8 @@ class RoomController extends Controller
         $churchId = $this->currentChurchId();
         $order = ['terreo', 'mezanino', 'primeiro', 'segundo', 'terceiro'];
         $rooms = Room::query()
-            ->when($churchId, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
             ->orderBy('name')
             ->get()
             ->sortBy(fn (Room $r) => array_search($r->floor, $order, true))
@@ -43,8 +44,12 @@ class RoomController extends Controller
 
     public function store(StoreRoomRequest $request)
     {
+        $churchId = $this->currentChurchId();
+        if ($churchId === null) {
+            return redirect()->route('rooms.index')->with('error', 'Nenhuma igreja ativa. Selecione uma igreja para trabalhar.');
+        }
         Room::create(array_merge($request->validated(), [
-            'church_id' => $this->currentChurchId(),
+            'church_id' => $churchId,
         ]));
         return redirect()->route('rooms.index')->with('success', 'Sala criada com sucesso!');
     }

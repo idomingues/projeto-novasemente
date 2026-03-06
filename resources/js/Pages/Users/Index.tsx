@@ -9,7 +9,7 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import PageHeader from '@/Components/PageHeader';
 import InputError from '@/Components/InputError';
 import SearchableSelect from '@/Components/SearchableSelect';
-import { useState, FormEventHandler } from 'react';
+import { useState, useEffect, FormEventHandler } from 'react';
 
 interface UserRow {
     id: number;
@@ -47,6 +47,7 @@ export default function Index({ users, invitations, members, roles, filters }: P
     const [userModalOpen, setUserModalOpen] = useState(false);
     const [inviteModalOpen, setInviteModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<UserRow | null>(null);
+    const [search, setSearch] = useState(filters?.search ?? '');
 
     const userForm = useForm({
         name: '',
@@ -114,6 +115,23 @@ export default function Index({ users, invitations, members, roles, filters }: P
         navigator.clipboard.writeText(whatsappMessage(link));
     };
 
+    useEffect(() => {
+        if (search === (filters?.search ?? '')) {
+            return;
+        }
+        const timeout = setTimeout(() => {
+            router.get(
+                route('users.index'),
+                { search },
+                {
+                    preserveState: true,
+                    replace: true,
+                },
+            );
+        }, 400);
+        return () => clearTimeout(timeout);
+    }, [search, filters?.search]);
+
     return (
         <AdminLayout>
             <Head title="Usuários" />
@@ -123,16 +141,10 @@ export default function Index({ users, invitations, members, roles, filters }: P
                         <TextInput
                             type="search"
                             name="search"
-                            defaultValue={filters?.search ?? ''}
+                            value={search}
                             placeholder="Buscar por nome, e-mail ou membro"
                             className="w-full"
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    const target = e.target as HTMLInputElement;
-                                    router.get(route('users.index'), { search: target.value }, { preserveState: true, replace: true });
-                                }
-                            }}
+                            onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
                     <div className="flex gap-2">

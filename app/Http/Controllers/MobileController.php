@@ -28,7 +28,8 @@ class MobileController extends Controller
         $churchId = $church?->id;
 
         $latestNews = News::query()
-            ->when($churchId, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
             ->whereNotNull('published_at')
             ->where('published_at', '<=', now())
             ->orderByDesc('published_at')
@@ -44,7 +45,8 @@ class MobileController extends Controller
             ]);
 
         $upcomingEvents = Event::query()
-            ->when($churchId, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
             ->where('starts_at', '>=', now()->startOfDay())
             ->orderBy('starts_at')
             ->limit(5)
@@ -74,7 +76,8 @@ class MobileController extends Controller
     {
         $churchId = $this->currentChurch()?->id;
         $query = News::query()
-            ->when($churchId, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
             ->whereNotNull('published_at')
             ->where('published_at', '<=', now())
             ->orderByDesc('published_at');
@@ -100,7 +103,8 @@ class MobileController extends Controller
     {
         $churchId = $this->currentChurch()?->id;
         $events = Event::query()
-            ->when($churchId, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
             ->orderBy('starts_at')
             ->get()
             ->map(fn (Event $e) => [
@@ -141,7 +145,8 @@ class MobileController extends Controller
         $churchId = Church::where('active', true)->orderBy('name')->value('id');
 
         $ministries = Ministry::query()
-            ->when($churchId, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
             ->orderBy('name')
             ->get(['id', 'name']);
         $assignments = [];

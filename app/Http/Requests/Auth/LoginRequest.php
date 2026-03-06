@@ -20,6 +20,20 @@ class LoginRequest extends FormRequest
     }
 
     /**
+     * Prepare the data for validation (ensure church_id is integer when present).
+     */
+    protected function prepareForValidation(): void
+    {
+        $churchId = $this->input('church_id');
+        if ($churchId !== null && $churchId !== '') {
+            $this->merge(['church_id' => (int) $churchId]);
+        }
+        if ($churchId === '') {
+            $this->merge(['church_id' => null]);
+        }
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>

@@ -9,7 +9,7 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import PageHeader from '@/Components/PageHeader';
 import Card from '@/Components/Card';
 import SelectInput from '@/Components/SelectInput';
-import { useState, FormEventHandler } from 'react';
+import { useState, useEffect, FormEventHandler } from 'react';
 
 interface Member {
     id: number;
@@ -40,6 +40,7 @@ export default function Index({ members, filters }: Props) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
+    const [search, setSearch] = useState(filters?.search ?? '');
 
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
         name: '',
@@ -98,6 +99,23 @@ export default function Index({ members, filters }: Props) {
         }
     };
 
+    useEffect(() => {
+        if (search === (filters?.search ?? '')) {
+            return;
+        }
+        const timeout = setTimeout(() => {
+            router.get(
+                route('members.index'),
+                { search },
+                {
+                    preserveState: true,
+                    replace: true,
+                },
+            );
+        }, 400);
+        return () => clearTimeout(timeout);
+    }, [search, filters?.search]);
+
     return (
         <AdminLayout>
             <Head title="Membros" />
@@ -108,16 +126,10 @@ export default function Index({ members, filters }: Props) {
                         <TextInput
                             type="search"
                             name="search"
-                            defaultValue={filters?.search ?? ''}
+                            value={search}
                             placeholder="Buscar por nome, e-mail ou telefone"
                             className="w-full"
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    const target = e.target as HTMLInputElement;
-                                    router.get(route('members.index'), { search: target.value }, { preserveState: true, replace: true });
-                                }
-                            }}
+                            onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
                     <PrimaryButton type="button" onClick={openCreateModal} className="gap-2">

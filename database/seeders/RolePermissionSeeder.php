@@ -36,6 +36,7 @@ class RolePermissionSeeder extends Seeder
             'news.manage',
             'events.view',
             'events.manage',
+            'roles.manage',
         ];
 
         foreach ($permissions as $permission) {
@@ -64,6 +65,7 @@ class RolePermissionSeeder extends Seeder
                 'news.manage',
                 'events.view',
                 'events.manage',
+                'roles.manage',
             ],
             'secretaria' => [
                 'members.view',

@@ -32,11 +32,12 @@ class HandleInertiaRequests extends Middleware
     {
         $currentChurch = null;
         if ($request->user()) {
+            $church = null;
             $workingChurchId = $request->session()->get('working_church_id');
             if ($workingChurchId) {
                 $church = Church::where('id', $workingChurchId)->where('active', true)->first();
             }
-            if (empty($church)) {
+            if ($church === null) {
                 $church = Church::where('active', true)->orderBy('name')->first();
             }
             if ($church) {
