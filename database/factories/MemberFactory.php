@@ -17,12 +17,12 @@ class MemberFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => \fake()->name(),
-            'email' => \fake()->unique()->safeEmail(),
-            'phone' => \fake()->phoneNumber(),
-            'birth_date' => \fake()->date(),
-            'address' => \fake()->address(),
-            'status' => \fake()->randomElement(['active', 'inactive']),
+            'name' => $this->faker->name(),
+            'email' => $this->faker->unique()->safeEmail(),
+            'phone' => $this->faker->phoneNumber(),
+            'birth_date' => $this->faker->date(),
+            'address' => $this->faker->address(),
+            'status' => $this->faker->randomElement(['active', 'inactive']),
         ];
     }
 }
