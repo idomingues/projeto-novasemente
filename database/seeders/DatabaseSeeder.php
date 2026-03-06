@@ -37,5 +37,12 @@ class DatabaseSeeder extends Seeder
         }
 
         $user->syncRoles(['admin', 'super_admin']);
+
+        // Garantir que a cache de permissões (Spatie) seja limpa para o menu refletir tudo
+        try {
+            app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+        } catch (\Throwable $e) {
+            // Spatie não registado ou versão diferente
+        }
     }
 }
