@@ -9,6 +9,7 @@ use App\Models\ScheduleAssignment;
 use App\Models\ScheduleRole;
 use App\Models\Volunteer;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Cadastra voluntários (diáconos) e escalas da IASD Paraíso - Nova Semente:
@@ -18,8 +19,16 @@ class DeaconsSeeder extends Seeder
 {
     public function run(): void
     {
-        $churchId = Church::where('active', true)->orderBy('name')->value('id')
-            ?? Church::where('slug', 'nova-semente')->value('id');
+        $churchId = null;
+        if (Schema::hasColumn('churches', 'active')) {
+            $churchId = Church::where('active', true)->orderBy('id')->value('id');
+        }
+        if (!$churchId && Schema::hasColumn('churches', 'slug')) {
+            $churchId = Church::where('slug', 'nova-semente')->value('id');
+        }
+        if (!$churchId) {
+            $churchId = Church::orderBy('id')->value('id');
+        }
 
         if (!$churchId) {
             $this->command->warn('Nenhuma igreja ativa encontrada. Crie a igreja Nova Semente antes.');
