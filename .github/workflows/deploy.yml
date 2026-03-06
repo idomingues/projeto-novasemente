@@ -19,10 +19,11 @@ jobs:
           username: root
           key_path: deploy_key
           script: |
+            set -e
             cd /var/www/projeto-novasemente
             git fetch origin main && git reset --hard origin/main
             composer install --no-dev --optimize-autoloader
-            rm -rf node_modules public/build
+            rm -rf node_modules
             npm ci
             npm run build
             php artisan migrate --force
