@@ -53,13 +53,13 @@ export default function MobileLayout({ children }: PropsWithChildren) {
                 aria-label="Menu principal"
             >
                 <div className="flex items-center justify-around h-14 max-w-lg mx-auto">
-                    {navItems.map(({ name, route, icon: Icon, iconActive: IconActive }) => {
-                        const href = route(route);
-                        const isActive = route === 'mobile.index' ? currentRoute === href : currentRoute.startsWith(href.split('?')[0]);
+                    {navItems.map(({ name, route: routeName, icon: Icon, iconActive: IconActive }) => {
+                        const href = route(routeName);
+                        const isActive = routeName === 'mobile.index' ? currentRoute === href : currentRoute.startsWith(href.split('?')[0]);
                         const IconComponent = isActive ? IconActive : Icon;
                         return (
                             <Link
-                                key={route}
+                                key={routeName}
                                 href={href}
                                 className={`flex flex-col items-center justify-center flex-1 min-w-0 py-2 gap-0.5 transition-colors ${
                                     isActive

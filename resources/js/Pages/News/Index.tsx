@@ -46,14 +46,13 @@ export default function Index({ posts, filters, canManage }: Props) {
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [search, setSearch] = useState(filters.search ?? '');
-    const [imageFile, setImageFile] = useState<File | null>(null);
-
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
         title: '',
         excerpt: '',
         body: '',
         image_url: '',
         published_at: '',
+        image_file: null as File | null,
     });
 
     useEffect(() => {
@@ -78,7 +77,7 @@ export default function Index({ posts, filters, canManage }: Props) {
         setEditingId(null);
         reset();
         clearErrors();
-        setImageFile(null);
+        setData('image_file', null);
         setIsModalOpen(true);
     };
 
@@ -93,29 +92,22 @@ export default function Index({ posts, filters, canManage }: Props) {
             published_at: p.published_at ? p.published_at.substring(0, 16) : '',
         });
         clearErrors();
-        setImageFile(null);
+        setData('image_file', null);
         setIsModalOpen(true);
     };
 
     const closeModal = () => {
         setIsModalOpen(false);
         reset();
-        setImageFile(null);
+        setData('image_file', null);
     };
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        const payload: Record<string, any> = {
-            ...data,
-            published_at: data.published_at || null,
-        };
-        if (imageFile) {
-            payload.image_file = imageFile;
-        }
         if (isEditing && editingId) {
-            put(route('news.update', editingId), payload, { onSuccess: () => closeModal(), forceFormData: true });
+            put(route('news.update', editingId), { onSuccess: () => closeModal(), forceFormData: true });
         } else {
-            post(route('news.store'), payload, { onSuccess: () => closeModal(), forceFormData: true });
+            post(route('news.store'), { onSuccess: () => closeModal(), forceFormData: true });
         }
     };
 
@@ -272,8 +264,8 @@ export default function Index({ posts, filters, canManage }: Props) {
                                 <div className="mt-1 space-y-3">
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-xl bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center overflow-hidden flex-shrink-0">
-                                            {imageFile ? (
-                                                <img src={URL.createObjectURL(imageFile)} alt="" className="w-full h-full object-cover" />
+                                            {data.image_file ? (
+                                                <img src={URL.createObjectURL(data.image_file)} alt="" className="w-full h-full object-cover" />
                                             ) : data.image_url ? (
                                                 <img src={data.image_url} alt="" className="w-full h-full object-cover" />
                                             ) : (
@@ -287,7 +279,7 @@ export default function Index({ posts, filters, canManage }: Props) {
                                                 accept="image/*"
                                                 onChange={(e) => {
                                                     const file = e.target.files?.[0] ?? null;
-                                                    setImageFile(file);
+                                                    setData('image_file', file);
                                                 }}
                                                 className="block w-full text-sm text-zinc-900 dark:text-zinc-100 file:mr-4 file:py-2.5 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-zinc-900 file:text-white hover:file:bg-zinc-800 dark:file:bg-zinc-100 dark:file:text-zinc-900"
                                             />
@@ -321,9 +313,9 @@ export default function Index({ posts, filters, canManage }: Props) {
                                 Pré-visualização (mobile)
                             </p>
                             <div className="max-w-sm rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-                                {(imageFile || data.image_url) && (
+                                {(data.image_file || data.image_url) && (
                                     <img
-                                        src={imageFile ? URL.createObjectURL(imageFile) : data.image_url}
+                                        src={data.image_file ? URL.createObjectURL(data.image_file) : data.image_url}
                                         alt=""
                                         className="w-full h-40 object-cover"
                                     />

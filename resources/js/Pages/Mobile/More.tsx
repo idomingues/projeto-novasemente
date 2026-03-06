@@ -24,10 +24,10 @@ export default function MobileMore() {
                     Acesso rápido a cultos, contato, ofertas e notificações.
                 </p>
                 <div className="space-y-2">
-                    {items.map(({ name, description, route, icon: Icon }) => (
+                    {items.map(({ name, description, route: routeName, icon: Icon }) => (
                         <Link
-                            key={route}
-                            href={route(route)}
+                            key={routeName}
+                            href={route(routeName)}
                             className="flex items-center gap-4 p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 active:bg-zinc-50 dark:active:bg-zinc-800"
                         >
                             <div className="w-12 h-12 rounded-xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0">

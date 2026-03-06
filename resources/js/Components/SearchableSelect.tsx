@@ -55,7 +55,7 @@ export default function SearchableSelect({
                 {label}
             </label>
             <Combobox
-                value={value === '' ? null : value}
+                value={value === '' || value === null || value === undefined ? null : String(value)}
                 onChange={(v) => onChange(v === null ? '' : (v as number | string))}
             >
                 <div className="relative mt-1">

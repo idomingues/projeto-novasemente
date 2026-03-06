@@ -75,11 +75,10 @@ export default function ChurchServicesIndex({ church, services }: Props) {
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        const payload = { ...data, end_time: data.end_time || null };
         if (editingId) {
-            put(route('churches.services.update', [church.id, editingId]), { data: payload, onSuccess: () => closeModal() });
+            put(route('churches.services.update', [church.id, editingId]), { onSuccess: () => closeModal() });
         } else {
-            post(route('churches.services.store', church.id), { data: payload, onSuccess: () => closeModal() });
+            post(route('churches.services.store', church.id), { onSuccess: () => closeModal() });
         }
     };
 

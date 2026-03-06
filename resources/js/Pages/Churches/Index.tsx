@@ -47,6 +47,12 @@ export default function Index({ churches }: Props) {
         country: '',
         description: '',
         active: true,
+        email: '',
+        phone: '',
+        whatsapp: '',
+        address: '',
+        pix_key: '',
+        donation_url: '',
     });
 
     const openCreateModal = () => {

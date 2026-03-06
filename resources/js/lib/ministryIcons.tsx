@@ -47,5 +47,6 @@ export function getMinistryIcon(name: string): ComponentType<SVGProps<SVGSVGElem
 }
 
 export function getMinistryIconByKey(key: string | null): ComponentType<SVGProps<SVGSVGElement>> {
-    return (key && iconByKey[key]) ?? BuildingOffice2Icon;
+    if (!key || !iconByKey[key]) return BuildingOffice2Icon;
+    return iconByKey[key];
 }
