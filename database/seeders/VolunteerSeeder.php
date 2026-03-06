@@ -22,31 +22,24 @@ class VolunteerSeeder extends Seeder
 
         foreach ($members->take(12) as $index => $member) {
             $ministry = $ministries->random();
-            Volunteer::firstOrCreate(
-                [
-                    'member_id' => $member->id,
-                    'ministry_id' => $ministry->id,
-                ],
+            $volunteer = Volunteer::firstOrCreate(
+                ['member_id' => $member->id],
                 [
                     'role' => $roles[array_rand($roles)],
                     'active' => true,
                 ]
             );
+            $volunteer->ministries()->syncWithoutDetaching([$ministry->id]);
         }
 
         // Garantir variedade: alguns membros em mais de um ministério
         foreach ($members->skip(2)->take(5) as $member) {
             $extra = $ministries->random();
-            Volunteer::firstOrCreate(
-                [
-                    'member_id' => $member->id,
-                    'ministry_id' => $extra->id,
-                ],
-                [
-                    'role' => 'Apoio',
-                    'active' => true,
-                ]
+            $volunteer = Volunteer::firstOrCreate(
+                ['member_id' => $member->id],
+                ['role' => 'Apoio', 'active' => true]
             );
+            $volunteer->ministries()->syncWithoutDetaching([$extra->id]);
         }
     }
 }
