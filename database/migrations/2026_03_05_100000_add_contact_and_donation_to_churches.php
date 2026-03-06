@@ -9,12 +9,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('churches', function (Blueprint $table) {
-            $table->string('email')->nullable()->after('description');
-            $table->string('phone')->nullable()->after('email');
-            $table->string('whatsapp')->nullable()->after('phone');
-            $table->string('address')->nullable()->after('whatsapp');
-            $table->string('pix_key')->nullable()->after('address');
-            $table->string('donation_url')->nullable()->after('pix_key');
+            $table->string('email')->nullable();
+            $table->string('phone')->nullable();
+            $table->string('whatsapp')->nullable();
+            $table->string('address')->nullable();
+            $table->string('pix_key')->nullable();
+            $table->string('donation_url')->nullable();
         });
     }
 
