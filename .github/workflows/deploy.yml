@@ -14,7 +14,6 @@ jobs:
           host: ${{ secrets.SERVER_IP }}
           username: root
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          host_key_checking: false
           script: |
             cd /var/www/projeto-novasemente
             git pull origin main
