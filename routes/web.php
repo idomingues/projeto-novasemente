@@ -125,8 +125,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/news', [NewsController::class, 'store'])->name('news.store')->middleware('permission:news.manage');
     Route::put('/news/{news}', [NewsController::class, 'update'])->name('news.update')->middleware('permission:news.manage');
     Route::delete('/news/{news}', [NewsController::class, 'destroy'])->name('news.destroy')->middleware('permission:news.manage');
-    // Eventos — qualquer usuário logado pode ver; criar/editar/excluir exige permission
-    Route::get('/events', [EventController::class, 'index'])->name('events.index');
+    // Eventos — ver exige events.view|events.manage; criar/editar/excluir exige events.manage
+    Route::get('/events', [EventController::class, 'index'])->name('events.index')->middleware('permission:events.view|events.manage');
     Route::post('/events', [EventController::class, 'store'])->name('events.store')->middleware('permission:events.manage');
     Route::put('/events/{event}', [EventController::class, 'update'])->name('events.update')->middleware('permission:events.manage');
     Route::delete('/events/{event}', [EventController::class, 'destroy'])->name('events.destroy')->middleware('permission:events.manage');

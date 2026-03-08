@@ -16,9 +16,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
             if (savedTheme === 'light' || savedTheme === 'dark') {
                 return savedTheme;
             }
-            // Alinha com o script no blade que usa prefers-color-scheme quando não há theme salvo
-            const isDark = document.documentElement.classList.contains('dark');
-            return isDark ? 'dark' : 'light';
+            return 'light';
         }
         return 'light';
     });

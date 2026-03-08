@@ -6,6 +6,7 @@ use App\Models\Church;
 use App\Models\Room;
 use App\Http\Requests\StoreRoomRequest;
 use App\Http\Requests\UpdateRoomRequest;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -16,7 +17,7 @@ class RoomController extends Controller
         return Church::where('active', true)->orderBy('name')->value('id');
     }
 
-    public function index(): Response
+    public function index(Request $request): Response
     {
         $churchId = $this->currentChurchId();
         $order = ['terreo', 'mezanino', 'primeiro', 'segundo', 'terceiro'];
@@ -39,6 +40,7 @@ class RoomController extends Controller
             'rooms' => $rooms->all(),
             'byFloor' => $byFloor,
             'floors' => Room::FLOORS,
+            'canManage' => $request->user()?->can('rooms.manage') ?? false,
         ]);
     }
 

@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Cadastra voluntários (diáconos) e escalas da IASD Paraíso - Nova Semente:
  * 1º, 2º, 3º e 4º sábados com coordenador e lista de diáconos.
+ * O 5º sábado (meses com 5 semanas) é incluído vazio (sem voluntários).
  */
 class DeaconsSeeder extends Seeder
 {
@@ -81,6 +82,7 @@ class DeaconsSeeder extends Seeder
                 ['name' => 'Matheus Ferreira', 'coordinator' => false],
                 ['name' => 'Marco Antônio Bregalante', 'coordinator' => false],
             ],
+            5 => [], // Meses com 5 semanas: 5º sábado já existe no sistema, sem voluntários
         ];
 
         $allNames = collect($bySaturday)->flatten(1)->pluck('name')->filter()->unique()->values();
@@ -137,6 +139,6 @@ class DeaconsSeeder extends Seeder
 
         $totalMembers = count($membersByName);
         $totalAssignments = collect($bySaturday)->flatten(1)->count();
-        $this->command->info("Diáconos: {$totalMembers} voluntários cadastrados e {$totalAssignments} escalas (1º a 4º sábado) criadas.");
+        $this->command->info("Diáconos: {$totalMembers} voluntários cadastrados e {$totalAssignments} escalas (1º a 4º sábado). O 5º sábado aparece nos meses com 5 semanas, vazio.");
     }
 }

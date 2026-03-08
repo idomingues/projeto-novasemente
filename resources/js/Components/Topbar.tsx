@@ -8,7 +8,9 @@ interface TopbarProps {
 }
 
 export default function Topbar({ onMenuClick }: TopbarProps) {
-    const user = usePage().props.auth.user;
+    const { auth } = usePage().props;
+    const user = auth.user;
+    const roleLabel = (auth as { roleLabel?: string }).roleLabel ?? 'Utilizador';
     const { theme, toggleTheme } = useTheme();
 
     return (
@@ -66,7 +68,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
                                 >
                                     <div className="text-right hidden sm:block">
                                         <p className="text-sm font-medium text-zinc-900 dark:text-white group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors">{user.name}</p>
-                                        <p className="text-xs text-zinc-500">Administrador</p>
+                                        <p className="text-xs text-zinc-500">{roleLabel}</p>
                                     </div>
                                     <div className="w-10 h-10 rounded-full bg-zinc-900 dark:bg-white flex items-center justify-center text-white dark:text-black font-bold text-sm ring-4 ring-zinc-100 dark:ring-zinc-900 group-hover:ring-zinc-200 dark:group-hover:ring-zinc-800 transition-all">
                                         {user.name.charAt(0).toUpperCase()}

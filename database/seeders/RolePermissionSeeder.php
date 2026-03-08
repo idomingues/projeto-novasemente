@@ -14,6 +14,8 @@ class RolePermissionSeeder extends Seeder
      */
     public function run(): void
     {
+        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+
         $permissions = [
             'members.view',
             'members.manage',
@@ -39,8 +41,11 @@ class RolePermissionSeeder extends Seeder
             'roles.manage',
         ];
 
+        $guard = config('auth.defaults.guard');
         foreach ($permissions as $permission) {
-            Permission::firstOrCreate(['name' => $permission]);
+            Permission::firstOrCreate(
+                ['name' => $permission, 'guard_name' => $guard]
+            );
         }
 
         $roles = [
@@ -119,11 +124,11 @@ class RolePermissionSeeder extends Seeder
         ];
 
         foreach ($roles as $roleName => $rolePermissions) {
-            $role = Role::firstOrCreate(['name' => $roleName]);
+            $role = Role::firstOrCreate(['name' => $roleName, 'guard_name' => $guard]);
             $role->syncPermissions($rolePermissions);
         }
 
-        $superAdmin = Role::firstOrCreate(['name' => 'super_admin']);
+        $superAdmin = Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => $guard]);
         $superAdmin->syncPermissions(Permission::all());
 
         $adminUser = User::first();

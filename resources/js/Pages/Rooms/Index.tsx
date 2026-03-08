@@ -27,9 +27,10 @@ interface Props {
     rooms: Room[];
     byFloor: Record<string, FloorData>;
     floors: Record<string, string>;
+    canManage?: boolean;
 }
 
-export default function Index({ rooms, byFloor, floors }: Props) {
+export default function Index({ rooms, byFloor, floors, canManage = false }: Props) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
@@ -97,10 +98,12 @@ export default function Index({ rooms, byFloor, floors }: Props) {
         <AdminLayout>
             <Head title="Salas" />
             <PageHeader title="Salas">
-                <PrimaryButton type="button" onClick={() => openCreateModal()} className="gap-2">
-                    <PlusIcon className="w-5 h-5" />
-                    Nova Sala
-                </PrimaryButton>
+                {canManage && (
+                    <PrimaryButton type="button" onClick={() => openCreateModal()} className="gap-2">
+                        <PlusIcon className="w-5 h-5" />
+                        Nova Sala
+                    </PrimaryButton>
+                )}
             </PageHeader>
 
             <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6">
@@ -136,17 +139,19 @@ export default function Index({ rooms, byFloor, floors }: Props) {
                                         ({floorRooms.length} {floorRooms.length === 1 ? 'sala' : 'salas'})
                                     </span>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        openCreateModal(floorKey);
-                                    }}
-                                    className="p-2 rounded-lg text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
-                                    title={`Nova sala no ${label}`}
-                                >
-                                    <PlusIcon className="w-5 h-5" />
-                                </button>
+                                {canManage && (
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            openCreateModal(floorKey);
+                                        }}
+                                        className="p-2 rounded-lg text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                                        title={`Nova sala no ${label}`}
+                                    >
+                                        <PlusIcon className="w-5 h-5" />
+                                    </button>
+                                )}
                             </button>
                             {isExpanded && (
                                 <div className="border-t border-zinc-200 dark:border-zinc-700 p-4">
@@ -171,35 +176,39 @@ export default function Index({ rooms, byFloor, floors }: Props) {
                                                             )}
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center gap-1 flex-shrink-0">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => openEditModal(r)}
-                                                            className="p-1.5 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700"
-                                                            title="Editar"
-                                                        >
-                                                            <PencilIcon className="w-4 h-4" />
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleDelete(r.id)}
-                                                            className="p-1.5 text-zinc-500 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700"
-                                                            title="Excluir"
-                                                        >
-                                                            <TrashIcon className="w-4 h-4" />
-                                                        </button>
-                                                    </div>
+                                                    {canManage && (
+                                                        <div className="flex items-center gap-1 flex-shrink-0">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => openEditModal(r)}
+                                                                className="p-1.5 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                                                                title="Editar"
+                                                            >
+                                                                <PencilIcon className="w-4 h-4" />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleDelete(r.id)}
+                                                                className="p-1.5 text-zinc-500 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                                                                title="Excluir"
+                                                            >
+                                                                <TrashIcon className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         ))}
-                                        <button
-                                            type="button"
-                                            onClick={() => openCreateModal(floorKey)}
-                                            className="rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-600 bg-transparent p-4 flex items-center justify-center gap-2 text-zinc-500 dark:text-zinc-400 hover:border-zinc-400 dark:hover:border-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 min-h-[88px]"
-                                        >
-                                            <PlusIcon className="w-5 h-5" />
-                                            <span className="text-sm">Nova sala</span>
-                                        </button>
+                                        {canManage && (
+                                            <button
+                                                type="button"
+                                                onClick={() => openCreateModal(floorKey)}
+                                                className="rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-600 bg-transparent p-4 flex items-center justify-center gap-2 text-zinc-500 dark:text-zinc-400 hover:border-zinc-400 dark:hover:border-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 min-h-[88px]"
+                                            >
+                                                <PlusIcon className="w-5 h-5" />
+                                                <span className="text-sm">Nova sala</span>
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -210,7 +219,9 @@ export default function Index({ rooms, byFloor, floors }: Props) {
 
             {rooms.length === 0 && (
                 <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 p-12 text-center text-zinc-500 dark:text-zinc-400">
-                    Nenhuma sala cadastrada. Clique em &quot;Nova Sala&quot; ou no botão + de um andar para começar.
+                    {canManage
+                        ? 'Nenhuma sala cadastrada. Clique em "Nova Sala" ou no botão + de um andar para começar.'
+                        : 'Nenhuma sala cadastrada.'}
                 </div>
             )}
 

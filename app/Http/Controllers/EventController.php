@@ -57,10 +57,11 @@ class EventController extends Controller
         ]);
 
         $user = $request->user();
-        $canManage = $user
-            && ($user->hasRole('admin')
-                || $user->hasRole('super_admin')
-                || $user->can('events.manage'));
+        $canManage = $user && (
+            $user->can('events.manage')
+            || $user->hasRole('admin')
+            || $user->hasRole('super_admin')
+        );
 
         return Inertia::render('Events/Index', [
             'events' => $allEvents,

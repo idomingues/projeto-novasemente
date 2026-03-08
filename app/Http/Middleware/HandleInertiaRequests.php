@@ -55,11 +55,27 @@ class HandleInertiaRequests extends Middleware
             $churchesForSwitch = Church::where('active', true)->orderBy('name')->get(['id', 'name'])->toArray();
         }
 
+        $roleLabel = null;
+        if ($request->user()) {
+            $names = $request->user()->getRoleNames();
+            $first = $names->first();
+            $roleLabel = match ($first) {
+                'super_admin' => 'Super Admin',
+                'admin' => 'Administrador',
+                'lider_ministerio' => 'Líder de ministério',
+                'secretaria' => 'Secretaria',
+                'pastor' => 'Pastor',
+                'financeiro' => 'Financeiro',
+                default => $first ? ucfirst(str_replace('_', ' ', $first)) : null,
+            };
+        }
+
         return [
             ...parent::share($request),
             'auth' => [
                 'user' => $request->user() ? $request->user()->load('member') : null,
                 'permissions' => $request->user() ? $request->user()->getAllPermissions()->pluck('name')->toArray() : [],
+                'roleLabel' => $roleLabel,
             ],
             'currentChurch' => $currentChurch,
             'churchesForSwitch' => $churchesForSwitch,

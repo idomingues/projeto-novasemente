@@ -11,8 +11,7 @@ import {
     Cog6ToothIcon,
     CalendarIcon,
     XMarkIcon,
-    KeyIcon,
-    DevicePhoneMobileIcon
+    KeyIcon
 } from '@heroicons/react/24/outline';
 
 interface SidebarProps {
@@ -169,16 +168,6 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
                         );
                     })}
                 </ul>
-                <div className="mt-6 pt-4 border-t border-zinc-200 dark:border-zinc-800 px-4">
-                    <Link
-                        href={route('mobile.index')}
-                        onClick={onMobileClose}
-                        className="flex items-center px-4 py-3 rounded-2xl text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-white transition-all"
-                    >
-                        <DevicePhoneMobileIcon className="w-6 h-6 mr-3 text-zinc-400" />
-                        <span className="font-medium text-sm">Versão mobile</span>
-                    </Link>
-                </div>
             </div>
         </aside>
         </>
