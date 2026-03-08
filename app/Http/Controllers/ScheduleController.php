@@ -45,12 +45,23 @@ class ScheduleController extends Controller
         $year = (int) $request->input('year', now()->year);
         $ministryId = $request->input('ministry_id') ? (int) $request->input('ministry_id') : null;
         $churchId = Church::where('active', true)->orderBy('name')->value('id');
+        $user = $request->user();
 
-        $ministries = Ministry::query()
+        $ministriesQuery = Ministry::query()
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
-            ->orderBy('name')
-            ->get(['id', 'name']);
+            ->orderBy('name');
+
+        if ($user && $user->hasRole('lider_ministerio') && !$user->hasRole('admin') && !$user->hasRole('super_admin')) {
+            $leaderMinistryIds = $user->ministries()->pluck('id')->toArray();
+            if (count($leaderMinistryIds) > 0) {
+                $ministriesQuery->whereIn('id', $leaderMinistryIds);
+            } else {
+                $ministriesQuery->whereRaw('1 = 0');
+            }
+        }
+
+        $ministries = $ministriesQuery->get(['id', 'name']);
         $assignments = [];
         $checkinDates = [];
         $volunteersForSelect = [];
@@ -154,8 +165,14 @@ class ScheduleController extends Controller
                 ->all();
         }
 
-        $user = $request->user();
-        $canEdit = $user && ($user->hasRole('admin') || $user->can('escalas.manage'));
+        $canEdit = false;
+        if ($user) {
+            if ($user->hasRole('admin') || $user->hasRole('super_admin') || $user->can('escalas.manage')) {
+                $canEdit = true;
+            } elseif ($user->hasRole('lider_ministerio') && $ministryId) {
+                $canEdit = $user->ministries()->where('ministries.id', $ministryId)->exists();
+            }
+        }
 
         return Inertia::render('Escalas/Index', [
             'assignments' => $assignments,
@@ -171,6 +188,7 @@ class ScheduleController extends Controller
 
     public function store(Request $request)
     {
+        $user = $request->user();
         $valid = $request->validate([
             'ministry_id' => 'required|exists:ministries,id',
             'member_id' => 'required|exists:members,id',
@@ -182,6 +200,12 @@ class ScheduleController extends Controller
             'assignment_year' => 'nullable|integer|min:2020|max:2100',
             'status' => 'nullable|in:pending,confirmed,refused',
         ]);
+
+        if ($user && $user->hasRole('lider_ministerio') && !$user->hasRole('admin') && !$user->hasRole('super_admin')) {
+            if (!$user->ministries()->where('ministries.id', $valid['ministry_id'])->exists()) {
+                return back()->withErrors(['ministry_id' => 'Só pode adicionar escalas nos departamentos que gere.']);
+            }
+        }
 
         $hasSaturday = !empty($valid['saturday_number']);
         $hasDate = !empty($valid['schedule_date']);
@@ -208,8 +232,14 @@ class ScheduleController extends Controller
         return back()->with('success', 'Escala adicionada.');
     }
 
-    public function destroy(ScheduleAssignment $assignment)
+    public function destroy(Request $request, ScheduleAssignment $assignment)
     {
+        $user = $request->user();
+        if ($user && $user->hasRole('lider_ministerio') && !$user->hasRole('admin') && !$user->hasRole('super_admin')) {
+            if (!$user->ministries()->where('ministries.id', $assignment->ministry_id)->exists()) {
+                return back()->with('error', 'Só pode remover escalas dos departamentos que gere.');
+            }
+        }
         $assignment->delete();
         return back()->with('success', 'Escala removida.');
     }

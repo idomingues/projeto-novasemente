@@ -18,6 +18,7 @@ interface UserRow {
     member_id: number | null;
     member: { id: number; name: string } | null;
     roles: string[];
+    ministry_ids: number[];
 }
 
 interface InvitationRow {
@@ -32,18 +33,20 @@ interface InvitationRow {
 
 interface Member { id: number; name: string; }
 interface Role { id: number; name: string; }
+interface Ministry { id: number; name: string; }
 
 interface Props {
     users: UserRow[];
     invitations: InvitationRow[];
     members: Member[];
     roles: Role[];
+    ministries: Ministry[];
     filters?: {
         search?: string;
     };
 }
 
-export default function Index({ users, invitations, members, roles, filters }: Props) {
+export default function Index({ users, invitations, members, roles, ministries, filters }: Props) {
     const [userModalOpen, setUserModalOpen] = useState(false);
     const [inviteModalOpen, setInviteModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<UserRow | null>(null);
@@ -56,6 +59,7 @@ export default function Index({ users, invitations, members, roles, filters }: P
         password_confirmation: '',
         member_id: '' as number | '',
         role: '',
+        ministry_ids: [] as number[],
     });
 
     const inviteForm = useForm({
@@ -79,6 +83,7 @@ export default function Index({ users, invitations, members, roles, filters }: P
             password_confirmation: '',
             member_id: u.member_id ?? '',
             role: u.roles[0] ?? '',
+            ministry_ids: u.ministry_ids ?? [],
         });
         userForm.clearErrors();
         setUserModalOpen(true);
@@ -320,6 +325,37 @@ export default function Index({ users, invitations, members, roles, filters }: P
                                 ))}
                             </select>
                         </div>
+                        {userForm.data.role === 'lider_ministerio' && (
+                            <div>
+                                <InputLabel value="Departamentos que este líder gerirá (escalas)" className="mb-2" />
+                                <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-2">
+                                    O líder só verá e poderá gerir escalas destes departamentos.
+                                </p>
+                                <div className="border border-zinc-200 dark:border-zinc-700 rounded-xl p-3 max-h-48 overflow-y-auto space-y-2 bg-zinc-50 dark:bg-zinc-800/50">
+                                    {ministries.length === 0 ? (
+                                        <p className="text-sm text-zinc-500 dark:text-zinc-400">Nenhum departamento cadastrado. Cadastre em Departamentos.</p>
+                                    ) : (
+                                        ministries.map((m) => (
+                                            <label key={m.id} className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={userForm.data.ministry_ids.includes(m.id)}
+                                                    onChange={(e) => {
+                                                        const ids = e.target.checked
+                                                            ? [...userForm.data.ministry_ids, m.id]
+                                                            : userForm.data.ministry_ids.filter((id) => id !== m.id);
+                                                        userForm.setData('ministry_ids', ids);
+                                                    }}
+                                                    className="rounded border-zinc-300 dark:border-zinc-600"
+                                                />
+                                                <span className="text-sm text-zinc-900 dark:text-white">{m.name}</span>
+                                            </label>
+                                        ))
+                                    )}
+                                </div>
+                                <InputError message={userForm.errors.ministry_ids} className="mt-1" />
+                            </div>
+                        )}
                     </div>
                     <div className="mt-6 flex justify-end gap-2">
                         <SecondaryButton type="button" onClick={() => setUserModalOpen(false)}>Cancelar</SecondaryButton>

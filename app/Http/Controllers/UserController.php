@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Church;
 use App\Models\Invitation;
 use App\Models\Member;
+use App\Models\Ministry;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -18,7 +20,7 @@ class UserController extends Controller
     {
         $search = (string) $request->input('search', '');
 
-        $usersQuery = User::with(['member:id,name', 'roles']);
+        $usersQuery = User::with(['member:id,name', 'roles', 'ministries:id,name']);
 
         if ($search !== '') {
             $usersQuery->where(function ($q) use ($search) {
@@ -40,6 +42,7 @@ class UserController extends Controller
                 'member_id' => $u->member_id,
                 'member' => $u->member ? ['id' => $u->member->id, 'name' => $u->member->name] : null,
                 'roles' => $u->roles->pluck('name')->toArray(),
+                'ministry_ids' => $u->ministries->pluck('id')->toArray(),
             ]);
 
         $invitations = Invitation::orderByDesc('created_at')->get()->map(fn (Invitation $i) => [
@@ -55,11 +58,19 @@ class UserController extends Controller
         $members = Member::orderBy('name')->get(['id', 'name']);
         $roles = \Spatie\Permission\Models\Role::orderBy('name')->get(['id', 'name']);
 
+        $churchId = Church::where('active', true)->orderBy('name')->value('id');
+        $ministries = Ministry::query()
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
         return Inertia::render('Users/Index', [
             'users' => $users,
             'invitations' => $invitations,
             'members' => $members,
             'roles' => $roles,
+            'ministries' => $ministries,
             'filters' => [
                 'search' => $search,
             ],
@@ -74,6 +85,8 @@ class UserController extends Controller
             'password' => ['required', 'confirmed', Password::defaults()],
             'member_id' => ['nullable', 'exists:members,id'],
             'role' => ['nullable', 'string', 'exists:roles,name'],
+            'ministry_ids' => ['nullable', 'array'],
+            'ministry_ids.*' => ['exists:ministries,id'],
         ]);
 
         $user = User::create([
@@ -87,6 +100,10 @@ class UserController extends Controller
             $user->assignRole($valid['role']);
         }
 
+        if (($valid['role'] ?? '') === 'lider_ministerio' && !empty($valid['ministry_ids'])) {
+            $user->ministries()->sync($valid['ministry_ids']);
+        }
+
         return redirect()->route('users.index')->with('success', 'Usuário criado com sucesso.');
     }
 
@@ -97,6 +114,8 @@ class UserController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'member_id' => ['nullable', 'exists:members,id'],
             'role' => ['nullable', 'string', 'exists:roles,name'],
+            'ministry_ids' => ['nullable', 'array'],
+            'ministry_ids.*' => ['exists:ministries,id'],
         ];
         if ($request->filled('password')) {
             $rules['password'] = ['required', 'confirmed', Password::defaults()];
@@ -112,6 +131,12 @@ class UserController extends Controller
         $user->save();
 
         $user->syncRoles($valid['role'] ? [$valid['role']] : []);
+
+        if (($valid['role'] ?? '') === 'lider_ministerio') {
+            $user->ministries()->sync($valid['ministry_ids'] ?? []);
+        } else {
+            $user->ministries()->detach();
+        }
 
         return redirect()->route('users.index')->with('success', 'Usuário atualizado.');
     }

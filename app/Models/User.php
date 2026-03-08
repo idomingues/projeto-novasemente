@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
@@ -29,6 +30,14 @@ class User extends Authenticatable
     public function member(): BelongsTo
     {
         return $this->belongsTo(\App\Models\Member::class);
+    }
+
+    /**
+     * Departamentos (ministérios) que o usuário lidera. Usado para o papel lider_ministerio na área de escalas.
+     */
+    public function ministries(): BelongsToMany
+    {
+        return $this->belongsToMany(\App\Models\Ministry::class, 'ministry_user')->withTimestamps();
     }
 
     /**
