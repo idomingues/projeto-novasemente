@@ -17,13 +17,11 @@ use App\Http\Controllers\EventController;
 use App\Http\Controllers\MobileController;
 use App\Http\Controllers\RoleController;
 
-Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
+Route::get('/', function (\Illuminate\Http\Request $request) {
+    if ($request->user()) {
+        return redirect()->route('dashboard');
+    }
+    return redirect()->route('login');
 });
 
 Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
