@@ -1,20 +1,30 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head } from '@inertiajs/react';
-import { PlayCircleIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
+import { FilmIcon, PlayCircleIcon } from '@heroicons/react/24/outline';
 
-interface PlaylistItem {
-    id: string;
+interface CultoItem {
+    id: number;
     title: string;
-    thumbnail: string | null;
-    url: string;
+    youtube_url: string;
+    youtube_embed_url: string | null;
+    youtube_thumb_url: string | null;
+    published_at: string | null;
 }
 
 interface Props {
-    playlistsUrl: string;
-    playlists: PlaylistItem[];
+    cultos: CultoItem[];
 }
 
-export default function MobileAcervo({ playlistsUrl, playlists }: Props) {
+function formatDate(iso: string | null): string {
+    if (!iso) return '';
+    return new Date(iso).toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+    });
+}
+
+export default function MobileAcervo({ cultos }: Props) {
     return (
         <MobileLayout>
             <Head title="Acervo" />
@@ -22,64 +32,62 @@ export default function MobileAcervo({ playlistsUrl, playlists }: Props) {
                 <div>
                     <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Acervo</h1>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
-                        Playlists do YouTube da Nova Semente.
+                        Sermões da Nova Semente.
                     </p>
                 </div>
 
-                {playlists.length > 0 ? (
-                    <ul className="space-y-3">
-                        {playlists.map((pl) => (
-                            <li key={pl.id}>
+                {cultos.length === 0 ? (
+                    <div className="py-12 text-center">
+                        <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-4">
+                            <FilmIcon className="w-8 h-8 text-zinc-400 dark:text-zinc-500" />
+                        </div>
+                        <p className="text-zinc-600 dark:text-zinc-400 font-medium">Nenhum sermão publicado</p>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-500 mt-1">Os vídeos aparecerão aqui.</p>
+                    </div>
+                ) : (
+                    <ul className="space-y-5">
+                        {cultos.map((c) => (
+                            <li
+                                key={c.id}
+                                className="rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm active:scale-[0.99] transition-transform"
+                            >
                                 <a
-                                    href={pl.url}
+                                    href={c.youtube_url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex items-center gap-4 p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 active:scale-[0.99] transition-transform"
+                                    className="block"
                                 >
-                                    {pl.thumbnail ? (
-                                        <img
-                                            src={pl.thumbnail}
-                                            alt=""
-                                            className="w-24 h-14 rounded-xl object-cover flex-shrink-0 bg-zinc-200 dark:bg-zinc-800"
-                                        />
+                                    {c.youtube_thumb_url ? (
+                                        <div className="relative aspect-video overflow-hidden bg-zinc-200 dark:bg-zinc-800">
+                                            <img
+                                                src={c.youtube_thumb_url}
+                                                alt=""
+                                                className="w-full h-full object-cover"
+                                            />
+                                            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                                <PlayCircleIcon className="w-16 h-16 text-white drop-shadow-lg" />
+                                            </div>
+                                            <span className="absolute bottom-2 left-3 px-2.5 py-1 rounded-lg bg-black/60 text-white text-xs font-medium backdrop-blur-sm">
+                                                {formatDate(c.published_at)}
+                                            </span>
+                                        </div>
                                     ) : (
-                                        <div className="w-24 h-14 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
-                                            <PlayCircleIcon className="w-8 h-8 text-red-600 dark:text-red-400" />
+                                        <div className="aspect-video bg-gradient-to-br from-zinc-200 to-zinc-300 dark:from-zinc-700 dark:to-zinc-800 flex items-center justify-center">
+                                            <FilmIcon className="w-12 h-12 text-zinc-400 dark:text-zinc-500" />
                                         </div>
                                     )}
-                                    <div className="min-w-0 flex-1">
-                                        <span className="font-semibold text-zinc-900 dark:text-white block line-clamp-2">
-                                            {pl.title}
-                                        </span>
-                                        <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                                            Abrir no YouTube
-                                        </span>
+                                    <div className="p-4">
+                                        <h2 className="font-semibold text-zinc-900 dark:text-white text-lg leading-snug line-clamp-2">
+                                            {c.title}
+                                        </h2>
+                                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1.5">
+                                            {formatDate(c.published_at)}
+                                        </p>
                                     </div>
-                                    <ArrowTopRightOnSquareIcon className="w-5 h-5 text-zinc-400 flex-shrink-0" />
                                 </a>
                             </li>
                         ))}
                     </ul>
-                ) : (
-                    <a
-                        href={playlistsUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-4 p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 active:scale-[0.99] transition-transform"
-                    >
-                        <div className="w-14 h-14 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
-                            <PlayCircleIcon className="w-8 h-8 text-red-600 dark:text-red-400" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                            <span className="font-semibold text-zinc-900 dark:text-white block">
-                                Ver playlists no YouTube
-                            </span>
-                            <span className="text-sm text-zinc-500 dark:text-zinc-400">
-                                Acesse o canal ADV Nova Semente
-                            </span>
-                        </div>
-                        <ArrowTopRightOnSquareIcon className="w-5 h-5 text-zinc-400 flex-shrink-0" />
-                    </a>
                 )}
             </div>
         </MobileLayout>
