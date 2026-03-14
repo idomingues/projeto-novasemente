@@ -83,7 +83,7 @@ export default function MobileLayout({ children }: PropsWithChildren) {
                                 }`}
                             >
                                 <IconComponent
-                                    className={`flex-shrink-0 transition-transform ${isActive ? 'w-7 h-7 drop-shadow-sm scale-105' : 'w-6 h-6'}`}
+                                    className={`flex-shrink-0 transition-transform ${isActive ? 'w-7 h-7 drop-shadow-sm scale-105 !text-zinc-900 dark:!text-white' : 'w-6 h-6 text-inherit'}`}
                                     aria-hidden
                                 />
                                 <span className={`text-[10px] truncate max-w-full px-0.5 ${isActive ? 'font-bold' : 'font-medium'}`}>

@@ -49,7 +49,7 @@ class NewsController extends Controller
         $posts = $query
             ->orderByDesc('published_at')
             ->orderByDesc('created_at')
-            ->paginate(10)
+            ->paginate(50)
             ->withQueryString();
 
         return Inertia::render('News/Index', [

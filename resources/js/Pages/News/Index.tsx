@@ -145,8 +145,20 @@ export default function Index({ posts, filters, canManage }: Props) {
                 {posts.data.map((p) => (
                     <Card key={p.id} className="flex flex-col sm:flex-row gap-4 md:gap-6 p-4 sm:p-6 md:p-8 touch-manipulation">
                         {p.image_url && (
-                            <div className="w-full sm:w-40 md:w-48 h-36 sm:h-40 rounded-2xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 flex-shrink-0">
-                                <img src={p.image_url} alt={p.title} className="w-full h-full object-cover" />
+                            <div className="relative w-full sm:w-40 md:w-48 h-36 sm:h-40 rounded-2xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 flex-shrink-0">
+                                <img
+                                    src={p.image_url}
+                                    alt=""
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                        const placeholder = e.currentTarget.nextElementSibling as HTMLElement | null;
+                                        if (placeholder) placeholder.style.display = 'flex';
+                                    }}
+                                />
+                                <div className="absolute inset-0 hidden items-center justify-center bg-zinc-200 dark:bg-zinc-700" style={{ display: 'none' }} aria-hidden>
+                                    <PhotoIcon className="w-12 h-12 text-zinc-400" />
+                                </div>
                             </div>
                         )}
                         <div className="flex-1 flex flex-col gap-2">
@@ -197,26 +209,6 @@ export default function Index({ posts, filters, canManage }: Props) {
                             Nenhuma notícia cadastrada.
                         </p>
                     </Card>
-                )}
-
-                {posts.links.length > 1 && (
-                    <div className="flex justify-center mt-4 gap-2 flex-wrap">
-                        {posts.links.map((link, i) => (
-                            <button
-                                key={i}
-                                disabled={!link.url}
-                                onClick={() => link.url && router.visit(link.url)}
-                                className={`px-3 py-1 rounded-lg text-sm border border-zinc-300 dark:border-zinc-700 ${
-                                    link.active
-                                        ? 'bg-zinc-900 text-white dark:bg-white dark:text-black'
-                                        : link.url
-                                        ? 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-default'
-                                }`}
-                                dangerouslySetInnerHTML={{ __html: link.label }}
-                            />
-                        ))}
-                    </div>
                 )}
             </div>
 
