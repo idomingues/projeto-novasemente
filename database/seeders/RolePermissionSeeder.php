@@ -38,6 +38,7 @@ class RolePermissionSeeder extends Seeder
             'news.manage',
             'events.view',
             'events.manage',
+            'culto.manage',
             'roles.manage',
         ];
 
@@ -71,6 +72,7 @@ class RolePermissionSeeder extends Seeder
                 'news.manage',
                 'events.view',
                 'events.manage',
+                'culto.manage',
                 'roles.manage',
             ],
             'secretaria' => [
@@ -92,6 +94,7 @@ class RolePermissionSeeder extends Seeder
                 'news.manage',
                 'events.view',
                 'events.manage',
+                'culto.manage',
             ],
             'pastor' => [
                 'members.view',
@@ -104,6 +107,7 @@ class RolePermissionSeeder extends Seeder
                 'news.view',
                 'events.view',
                 'events.manage',
+                'culto.manage',
             ],
             'financeiro' => [
                 'finance.view',

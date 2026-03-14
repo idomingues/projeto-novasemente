@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Church;
 use App\Models\ChurchService;
+use App\Models\Culto;
 use App\Models\Event;
 use App\Models\Ministry;
 use App\Models\News;
@@ -69,6 +70,30 @@ class MobileController extends Controller
             ] : null,
             'latestNews' => $latestNews,
             'upcomingEvents' => $upcomingEvents,
+        ]);
+    }
+
+    public function culto(Request $request): Response
+    {
+        $churchId = $this->currentChurch()?->id;
+        $cultos = Culto::query()
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
+            ->whereNotNull('published_at')
+            ->where('published_at', '<=', now())
+            ->orderByDesc('published_at')
+            ->get()
+            ->map(fn (Culto $c) => [
+                'id' => $c->id,
+                'title' => $c->title,
+                'youtube_url' => $c->youtube_url,
+                'youtube_embed_url' => $c->youtube_embed_url,
+                'youtube_thumb_url' => $c->youtube_thumb_url,
+                'published_at' => $c->published_at?->toIso8601String(),
+            ]);
+
+        return Inertia::render('Mobile/Culto', [
+            'cultos' => $cultos,
         ]);
     }
 

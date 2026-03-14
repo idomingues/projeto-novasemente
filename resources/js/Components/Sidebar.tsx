@@ -11,7 +11,8 @@ import {
     Cog6ToothIcon,
     CalendarIcon,
     XMarkIcon,
-    KeyIcon
+    KeyIcon,
+    FilmIcon
 } from '@heroicons/react/24/outline';
 
 interface SidebarProps {
@@ -55,6 +56,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
         { name: 'Salas', route: 'rooms.index', icon: BuildingOfficeIcon },
         { name: 'Inventário', route: 'inventory.index', icon: ArchiveBoxIcon },
         { name: 'Notícias', route: 'news.index', icon: NewspaperIcon },
+        { name: 'Culto', route: 'culto.index', icon: FilmIcon },
         { name: 'Igrejas', route: 'churches.index', icon: BuildingOfficeIcon },
         { name: 'Cultos', route: 'services.index', icon: CalendarDaysIcon },
         { name: 'Configurações', route: 'settings.index', icon: Cog6ToothIcon },

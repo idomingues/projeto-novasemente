@@ -5,7 +5,7 @@ export default function ApplicationLogo({ className = '', ...props }: ImgHTMLAtt
         <img
             src="/logo-ns.png"
             alt="Nova Semente"
-            className={`rounded-2xl ${className}`.trim()}
+            className={`rounded-full ${className}`.trim()}
             {...props}
         />
     );

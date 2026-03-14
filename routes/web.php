@@ -13,6 +13,7 @@ use App\Http\Controllers\VolunteerController;
 use App\Http\Controllers\ChurchController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\NewsController;
+use App\Http\Controllers\CultoController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\MobileController;
 use App\Http\Controllers\RoleController;
@@ -130,11 +131,16 @@ Route::middleware('auth')->group(function () {
     Route::post('/events', [EventController::class, 'store'])->name('events.store')->middleware('permission:events.manage');
     Route::put('/events/{event}', [EventController::class, 'update'])->name('events.update')->middleware('permission:events.manage');
     Route::delete('/events/{event}', [EventController::class, 'destroy'])->name('events.destroy')->middleware('permission:events.manage');
+    Route::get('/culto', [CultoController::class, 'index'])->name('culto.index')->middleware('permission:culto.manage');
+    Route::post('/culto', [CultoController::class, 'store'])->name('culto.store')->middleware('permission:culto.manage');
+    Route::put('/culto/{culto}', [CultoController::class, 'update'])->name('culto.update')->middleware('permission:culto.manage');
+    Route::delete('/culto/{culto}', [CultoController::class, 'destroy'])->name('culto.destroy')->middleware('permission:culto.manage');
     Route::get('/services', function () { return Inertia::render('Dashboard'); })->name('services.index');
     Route::get('/settings', function () { return Inertia::render('Settings/Index'); })->name('settings.index');
 
-    // Área mobile (menu inferior: Notícias, Eventos, Escala, Oferta, Configurações)
-    Route::redirect('/mobile', '/mobile/news')->name('mobile.index');
+    // Área mobile (menu inferior: Culto, Notícias, Eventos, Escala, Oferta, Configurações)
+    Route::redirect('/mobile', '/mobile/culto')->name('mobile.index');
+    Route::get('/mobile/culto', [MobileController::class, 'culto'])->name('mobile.culto');
     Route::get('/mobile/news', [MobileController::class, 'news'])->name('mobile.news');
     Route::get('/mobile/events', [MobileController::class, 'events'])->name('mobile.events');
     Route::get('/mobile/schedule', [MobileController::class, 'schedule'])->name('mobile.schedule');

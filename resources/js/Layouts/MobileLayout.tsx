@@ -1,25 +1,28 @@
 import { PropsWithChildren } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import {
+    FilmIcon,
     NewspaperIcon,
     CalendarDaysIcon,
     ClipboardDocumentListIcon,
     Cog6ToothIcon,
-    BanknotesIcon,
+    HandRaisedIcon,
 } from '@heroicons/react/24/outline';
 import {
+    FilmIcon as FilmIconSolid,
     NewspaperIcon as NewspaperIconSolid,
     CalendarDaysIcon as CalendarDaysIconSolid,
     ClipboardDocumentListIcon as ClipboardDocumentListIconSolid,
-    BanknotesIcon as BanknotesIconSolid,
+    HandRaisedIcon as HandRaisedIconSolid,
 } from '@heroicons/react/24/solid';
 import FlashMessages from '@/Components/FlashMessages';
 
 const navItems = [
+    { name: 'Culto', route: 'mobile.culto', icon: FilmIcon, iconActive: FilmIconSolid },
     { name: 'Notícias', route: 'mobile.news', icon: NewspaperIcon, iconActive: NewspaperIconSolid },
     { name: 'Eventos', route: 'mobile.events', icon: CalendarDaysIcon, iconActive: CalendarDaysIconSolid },
     { name: 'Escala', route: 'mobile.schedule', icon: ClipboardDocumentListIcon, iconActive: ClipboardDocumentListIconSolid },
-    { name: 'Oferta', route: 'mobile.offerings', icon: BanknotesIcon, iconActive: BanknotesIconSolid },
+    { name: 'Oferta', route: 'mobile.offerings', icon: HandRaisedIcon, iconActive: HandRaisedIconSolid },
 ] as const;
 
 export default function MobileLayout({ children }: PropsWithChildren) {
@@ -38,11 +41,11 @@ export default function MobileLayout({ children }: PropsWithChildren) {
                     <img
                         src="/logo-ns.png"
                         alt={currentChurch?.name ?? 'Nova Semente'}
-                        className="h-9 w-auto max-w-[140px] rounded-2xl object-contain object-center dark:invert"
+                        className="h-9 w-9 rounded-full object-cover object-center dark:invert"
                     />
                     <Link
                         href={route('mobile.settings')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 -m-2 rounded-full text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 p-2 -m-2 rounded-full text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                         aria-label="Configurações"
                     >
                         <Cog6ToothIcon className="w-6 h-6" />
@@ -75,7 +78,7 @@ export default function MobileLayout({ children }: PropsWithChildren) {
                                 aria-label={name}
                                 className={`relative flex flex-col items-center justify-center flex-1 min-w-0 py-2 gap-0.5 transition-all rounded-2xl mx-0.5 ${
                                     isActive
-                                        ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900'
+                                        ? 'bg-zinc-200 dark:bg-zinc-700 text-zinc-900 dark:text-white'
                                         : 'text-zinc-400 dark:text-zinc-500 active:bg-zinc-100 dark:active:bg-zinc-800'
                                 }`}
                             >
