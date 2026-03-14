@@ -13,7 +13,6 @@ use App\Models\ScheduleCheckinDate;
 use App\Models\Volunteer;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -323,42 +322,25 @@ class MobileController extends Controller
 
     public function acervo(): Response
     {
-        $playlistsUrl = 'https://www.youtube.com/@advnovasemente/playlists';
-        $playlists = [];
-
-        $apiKey = config('services.youtube.api_key');
-        if ($apiKey) {
-            $channelResponse = Http::get('https://www.googleapis.com/youtube/v3/channels', [
-                'part' => 'id',
-                'forHandle' => 'advnovasemente',
-                'key' => $apiKey,
+        $churchId = $this->currentChurch()?->id;
+        $cultos = Culto::query()
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
+            ->whereNotNull('published_at')
+            ->where('published_at', '<=', now())
+            ->orderByDesc('published_at')
+            ->get()
+            ->map(fn (Culto $c) => [
+                'id' => $c->id,
+                'title' => $c->title,
+                'youtube_url' => $c->youtube_url,
+                'youtube_embed_url' => $c->youtube_embed_url,
+                'youtube_thumb_url' => $c->youtube_thumb_url,
+                'published_at' => $c->published_at?->toIso8601String(),
             ]);
-            $channelId = $channelResponse->json('items.0.id');
-            if ($channelId) {
-                $playlistsResponse = Http::get('https://www.googleapis.com/youtube/v3/playlists', [
-                    'part' => 'snippet',
-                    'channelId' => $channelId,
-                    'maxResults' => 50,
-                    'key' => $apiKey,
-                ]);
-                $items = $playlistsResponse->json('items', []);
-                foreach ($items as $item) {
-                    $thumb = $item['snippet']['thumbnails']['medium']['url']
-                        ?? $item['snippet']['thumbnails']['default']['url']
-                        ?? null;
-                    $playlists[] = [
-                        'id' => $item['id'],
-                        'title' => $item['snippet']['title'],
-                        'thumbnail' => $thumb,
-                        'url' => 'https://www.youtube.com/playlist?list=' . $item['id'],
-                    ];
-                }
-            }
-        }
 
         return Inertia::render('Mobile/Acervo', [
-            'playlistsUrl' => $playlistsUrl,
-            'playlists' => $playlists,
+            'cultos' => $cultos,
         ]);
     }
 
