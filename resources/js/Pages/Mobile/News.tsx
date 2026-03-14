@@ -1,5 +1,5 @@
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { NewspaperIcon } from '@heroicons/react/24/outline';
 
 interface PaginationLink {
@@ -42,7 +42,7 @@ export default function MobileNews({ posts }: Props) {
             <Head title="Notícias" />
             <div className="space-y-6">
                 {posts.data.length === 0 ? (
-                    <div className="rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm p-12 text-center">
+                    <div className="py-12 text-center">
                         <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-4">
                             <NewspaperIcon className="w-8 h-8 text-zinc-400 dark:text-zinc-500" />
                         </div>
@@ -91,31 +91,6 @@ export default function MobileNews({ posts }: Props) {
                             </li>
                         ))}
                     </ul>
-                )}
-                {posts.links && posts.links.length > 1 && (
-                    <div className="flex justify-center gap-2 flex-wrap pt-2">
-                        {posts.links.map((link, i) =>
-                            link.url ? (
-                                <Link
-                                    key={i}
-                                    href={link.url}
-                                    className={`min-w-[2.5rem] py-2.5 px-3.5 rounded-xl text-sm font-medium transition-colors ${
-                                        link.active
-                                            ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25'
-                                            : 'bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/50'
-                                    }`}
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
-                                    preserveState
-                                />
-                            ) : (
-                                <span
-                                    key={i}
-                                    className="min-w-[2.5rem] py-2.5 px-3.5 rounded-xl text-sm font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-default"
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
-                                />
-                            )
-                        )}
-                    </div>
                 )}
             </div>
         </MobileLayout>

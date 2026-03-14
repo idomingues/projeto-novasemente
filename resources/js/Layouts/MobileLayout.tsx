@@ -1,25 +1,25 @@
 import { PropsWithChildren } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import {
-    HomeIcon,
     NewspaperIcon,
     CalendarDaysIcon,
     ClipboardDocumentListIcon,
     Cog6ToothIcon,
+    BanknotesIcon,
 } from '@heroicons/react/24/outline';
 import {
-    HomeIcon as HomeIconSolid,
     NewspaperIcon as NewspaperIconSolid,
     CalendarDaysIcon as CalendarDaysIconSolid,
     ClipboardDocumentListIcon as ClipboardDocumentListIconSolid,
+    BanknotesIcon as BanknotesIconSolid,
 } from '@heroicons/react/24/solid';
 import FlashMessages from '@/Components/FlashMessages';
 
 const navItems = [
-    { name: 'Início', route: 'mobile.index', icon: HomeIcon, iconActive: HomeIconSolid },
     { name: 'Notícias', route: 'mobile.news', icon: NewspaperIcon, iconActive: NewspaperIconSolid },
     { name: 'Eventos', route: 'mobile.events', icon: CalendarDaysIcon, iconActive: CalendarDaysIconSolid },
     { name: 'Escala', route: 'mobile.schedule', icon: ClipboardDocumentListIcon, iconActive: ClipboardDocumentListIconSolid },
+    { name: 'Oferta', route: 'mobile.offerings', icon: BanknotesIcon, iconActive: BanknotesIconSolid },
 ] as const;
 
 export default function MobileLayout({ children }: PropsWithChildren) {
@@ -38,7 +38,7 @@ export default function MobileLayout({ children }: PropsWithChildren) {
                     <img
                         src="/logo-ns.png"
                         alt={currentChurch?.name ?? 'Nova Semente'}
-                        className="h-9 w-auto max-w-[140px] object-contain object-center dark:invert"
+                        className="h-9 w-auto max-w-[140px] rounded-2xl object-contain object-center dark:invert"
                     />
                     <Link
                         href={route('mobile.settings')}
@@ -66,7 +66,7 @@ export default function MobileLayout({ children }: PropsWithChildren) {
                 <div className="flex items-center justify-around h-14 max-w-lg mx-auto pt-1">
                     {navItems.map(({ name, route: routeName, icon: Icon, iconActive: IconActive }) => {
                         const href = route(routeName);
-                        const isActive = routeName === 'mobile.index' ? currentRoute === href : currentRoute.startsWith(href.split('?')[0]);
+                        const isActive = currentRoute.startsWith(href.split('?')[0]);
                         const IconComponent = isActive ? IconActive : Icon;
                         return (
                             <Link

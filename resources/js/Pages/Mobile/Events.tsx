@@ -55,7 +55,7 @@ export default function MobileEvents({ events }: Props) {
             <Head title="Eventos" />
             <div className="space-y-6">
                 {events.length === 0 ? (
-                    <div className="rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm p-12 text-center">
+                    <div className="py-12 text-center">
                         <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-4">
                             <CalendarDaysIcon className="w-8 h-8 text-zinc-400 dark:text-zinc-500" />
                         </div>

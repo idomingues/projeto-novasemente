@@ -133,8 +133,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/services', function () { return Inertia::render('Dashboard'); })->name('services.index');
     Route::get('/settings', function () { return Inertia::render('Settings/Index'); })->name('settings.index');
 
-    // Área mobile (menu inferior: Início, Notícias, Eventos, Escala, Configurações)
-    Route::get('/mobile', [MobileController::class, 'index'])->name('mobile.index');
+    // Área mobile (menu inferior: Notícias, Eventos, Escala, Oferta, Configurações)
+    Route::redirect('/mobile', '/mobile/news')->name('mobile.index');
     Route::get('/mobile/news', [MobileController::class, 'news'])->name('mobile.news');
     Route::get('/mobile/events', [MobileController::class, 'events'])->name('mobile.events');
     Route::get('/mobile/schedule', [MobileController::class, 'schedule'])->name('mobile.schedule');
