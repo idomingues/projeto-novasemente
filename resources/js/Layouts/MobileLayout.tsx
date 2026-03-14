@@ -6,14 +6,12 @@ import {
     CalendarDaysIcon,
     ClipboardDocumentListIcon,
     Cog6ToothIcon,
-    Squares2X2Icon,
 } from '@heroicons/react/24/outline';
 import {
     HomeIcon as HomeIconSolid,
     NewspaperIcon as NewspaperIconSolid,
     CalendarDaysIcon as CalendarDaysIconSolid,
     ClipboardDocumentListIcon as ClipboardDocumentListIconSolid,
-    Squares2X2Icon as Squares2X2IconSolid,
 } from '@heroicons/react/24/solid';
 import FlashMessages from '@/Components/FlashMessages';
 
@@ -22,7 +20,6 @@ const navItems = [
     { name: 'Notícias', route: 'mobile.news', icon: NewspaperIcon, iconActive: NewspaperIconSolid },
     { name: 'Eventos', route: 'mobile.events', icon: CalendarDaysIcon, iconActive: CalendarDaysIconSolid },
     { name: 'Escala', route: 'mobile.schedule', icon: ClipboardDocumentListIcon, iconActive: ClipboardDocumentListIconSolid },
-    { name: 'Mais', route: 'mobile.more', icon: Squares2X2Icon, iconActive: Squares2X2IconSolid },
 ] as const;
 
 export default function MobileLayout({ children }: PropsWithChildren) {
@@ -38,9 +35,11 @@ export default function MobileLayout({ children }: PropsWithChildren) {
                 style={{ paddingTop: 'env(safe-area-inset-top, 0)' }}
             >
                 <div className="flex items-center justify-between h-14 px-4">
-                    <span className="text-lg font-semibold text-zinc-900 dark:text-white truncate">
-                        {currentChurch?.name ?? 'Nova Semente'}
-                    </span>
+                    <img
+                        src="/logo-ns.png"
+                        alt={currentChurch?.name ?? 'Nova Semente'}
+                        className="h-8 w-auto max-w-[140px] object-contain invert dark:invert-0"
+                    />
                     <Link
                         href={route('mobile.settings')}
                         className="p-2 -m-2 rounded-full text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
@@ -73,16 +72,20 @@ export default function MobileLayout({ children }: PropsWithChildren) {
                             <Link
                                 key={routeName}
                                 href={href}
-                                className={`flex flex-col items-center justify-center flex-1 min-w-0 py-2 gap-1 transition-all rounded-lg mx-0.5 ${
+                                aria-label={name}
+                                className={`relative flex flex-col items-center justify-center flex-1 min-w-0 py-2 transition-all rounded-xl mx-0.5 ${
                                     isActive
-                                        ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50'
-                                        : 'text-zinc-500 dark:text-zinc-400 active:bg-zinc-100 dark:active:bg-zinc-800'
+                                        ? 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-500/20'
+                                        : 'text-zinc-400 dark:text-zinc-500 active:bg-zinc-100 dark:active:bg-zinc-800'
                                 }`}
                             >
-                                <IconComponent className={`w-6 h-6 flex-shrink-0 ${isActive ? 'drop-shadow-sm' : ''}`} aria-hidden />
-                                <span className={`text-[10px] font-medium truncate max-w-full px-0.5 ${isActive ? 'font-semibold text-blue-600 dark:text-blue-400' : ''}`}>
-                                    {name}
-                                </span>
+                                <IconComponent
+                                    className={`flex-shrink-0 transition-transform ${isActive ? 'w-7 h-7 drop-shadow-sm' : 'w-6 h-6'}`}
+                                    aria-hidden
+                                />
+                                {isActive && (
+                                    <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400" aria-hidden />
+                                )}
                             </Link>
                         );
                     })}
