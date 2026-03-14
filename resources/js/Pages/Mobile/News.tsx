@@ -41,21 +41,6 @@ export default function MobileNews({ posts }: Props) {
         <MobileLayout>
             <Head title="Notícias" />
             <div className="space-y-6">
-                {/* Cabeçalho da seção */}
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center shadow-lg shadow-blue-500/25">
-                        <NewspaperIcon className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                        <h1 className="text-xl font-bold text-zinc-900 dark:text-white tracking-tight">
-                            Notícias
-                        </h1>
-                        <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                            Fique por dentro do que acontece
-                        </p>
-                    </div>
-                </div>
-
                 {posts.data.length === 0 ? (
                     <div className="rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm p-12 text-center">
                         <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-4">
