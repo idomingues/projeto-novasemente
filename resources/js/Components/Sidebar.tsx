@@ -58,7 +58,6 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
         { name: 'Notícias', route: 'news.index', icon: NewspaperIcon },
         { name: 'Culto', route: 'culto.index', icon: FilmIcon },
         { name: 'Igrejas', route: 'churches.index', icon: BuildingOfficeIcon },
-        { name: 'Cultos', route: 'services.index', icon: CalendarDaysIcon },
         { name: 'Configurações', route: 'settings.index', icon: Cog6ToothIcon },
     ];
 

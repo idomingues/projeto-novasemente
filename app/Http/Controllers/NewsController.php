@@ -90,6 +90,8 @@ class NewsController extends Controller
             $imageUrl = Storage::disk('public')->url($path);
         }
 
+        $publishedAt = isset($data['published_at']) && $data['published_at'] !== '' ? $data['published_at'] : now();
+
         News::create([
             'church_id' => $churchId,
             'title' => $data['title'],
@@ -97,7 +99,7 @@ class NewsController extends Controller
             'excerpt' => $data['excerpt'] ?? null,
             'body' => $data['body'],
             'image_url' => $imageUrl,
-            'published_at' => $data['published_at'] ?? null,
+            'published_at' => $publishedAt,
             'created_by' => $request->user()?->id,
         ]);
 
@@ -133,12 +135,14 @@ class NewsController extends Controller
             $imageUrl = Storage::disk('public')->url($path);
         }
 
+        $publishedAt = isset($data['published_at']) && $data['published_at'] !== '' ? $data['published_at'] : ($news->published_at ?? now());
+
         $news->fill([
             'title' => $data['title'],
             'excerpt' => $data['excerpt'] ?? null,
             'body' => $data['body'],
             'image_url' => $imageUrl,
-            'published_at' => $data['published_at'] ?? null,
+            'published_at' => $publishedAt,
         ])->save();
 
         return redirect()->route('news.index')->with('success', 'Notícia atualizada com sucesso.');

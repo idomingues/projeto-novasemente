@@ -96,11 +96,7 @@ export default function CultoIndex({ cultos }: Props) {
                 </PrimaryButton>
             </PageHeader>
 
-            <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6">
-                Layout igual ao que aparece no celular. Publique vídeos do YouTube.
-            </p>
-
-            <div className="max-w-md mx-auto space-y-5">
+            <div className="w-full space-y-5">
                 {cultos.length === 0 ? (
                     <div className="py-12 text-center rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
                         <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-4">
