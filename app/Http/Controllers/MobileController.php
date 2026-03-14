@@ -332,6 +332,13 @@ class MobileController extends Controller
         ]);
     }
 
+    public function acervo(): Response
+    {
+        return Inertia::render('Mobile/Acervo', [
+            'playlistsUrl' => 'https://www.youtube.com/@advnovasemente/playlists',
+        ]);
+    }
+
     public function notifications(): Response
     {
         return Inertia::render('Mobile/Notifications');

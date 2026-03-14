@@ -4,16 +4,16 @@ import {
     FilmIcon,
     NewspaperIcon,
     CalendarDaysIcon,
-    ClipboardDocumentListIcon,
     Cog6ToothIcon,
     HandRaisedIcon,
+    Squares2X2Icon,
 } from '@heroicons/react/24/outline';
 import {
     FilmIcon as FilmIconSolid,
     NewspaperIcon as NewspaperIconSolid,
     CalendarDaysIcon as CalendarDaysIconSolid,
-    ClipboardDocumentListIcon as ClipboardDocumentListIconSolid,
     HandRaisedIcon as HandRaisedIconSolid,
+    Squares2X2Icon as Squares2X2IconSolid,
 } from '@heroicons/react/24/solid';
 import FlashMessages from '@/Components/FlashMessages';
 
@@ -21,8 +21,8 @@ const navItems = [
     { name: 'Culto', route: 'mobile.culto', icon: FilmIcon, iconActive: FilmIconSolid },
     { name: 'Notícias', route: 'mobile.news', icon: NewspaperIcon, iconActive: NewspaperIconSolid },
     { name: 'Eventos', route: 'mobile.events', icon: CalendarDaysIcon, iconActive: CalendarDaysIconSolid },
-    { name: 'Escala', route: 'mobile.schedule', icon: ClipboardDocumentListIcon, iconActive: ClipboardDocumentListIconSolid },
     { name: 'Oferta', route: 'mobile.offerings', icon: HandRaisedIcon, iconActive: HandRaisedIconSolid },
+    { name: 'Vários', route: 'mobile.more', icon: Squares2X2Icon, iconActive: Squares2X2IconSolid },
 ] as const;
 
 export default function MobileLayout({ children }: PropsWithChildren) {
