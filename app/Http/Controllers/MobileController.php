@@ -316,21 +316,9 @@ class MobileController extends Controller
         ]);
     }
 
-    public function offerings(): Response
+    public function offerings()
     {
-        $church = $this->currentChurch();
-        $donation = null;
-        if ($church && ($church->pix_key || $church->donation_url)) {
-            $donation = [
-                'churchName' => $church->name,
-                'pix_key' => $church->pix_key,
-                'donation_url' => $church->donation_url,
-            ];
-        }
-
-        return Inertia::render('Mobile/Offerings', [
-            'donation' => $donation,
-        ]);
+        return redirect()->away('https://giving.7me.app/guest-donation/church/96ccdd6e-f537-49be-88dd-ffc112442cd9');
     }
 
     public function acervo(): Response

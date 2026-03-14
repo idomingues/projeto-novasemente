@@ -14,7 +14,7 @@ const items = [
     { name: 'Cultos e horários', description: 'Dias e horários dos cultos', route: 'mobile.services', icon: ClockIcon },
     { name: 'Acervo', description: 'Playlists do YouTube da Nova Semente', route: 'mobile.acervo', icon: PlayCircleIcon },
     { name: 'Fale conosco', description: 'E-mail e WhatsApp da igreja', route: 'mobile.contact', icon: PhoneIcon },
-    { name: 'Ofertas e doação', description: 'PIX e ofertas', route: 'mobile.offerings', icon: BanknotesIcon },
+    { name: 'Dízimos e Ofertas', description: 'Contribua pela 7me', route: 'mobile.offerings', icon: BanknotesIcon },
     { name: 'Notificações', description: 'Avisos de eventos e notícias', route: 'mobile.notifications', icon: BellAlertIcon },
 ];
 

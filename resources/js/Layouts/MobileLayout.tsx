@@ -21,7 +21,7 @@ const navItems = [
     { name: 'Culto', route: 'mobile.culto', icon: FilmIcon, iconActive: FilmIconSolid },
     { name: 'Notícias', route: 'mobile.news', icon: NewspaperIcon, iconActive: NewspaperIconSolid },
     { name: 'Eventos', route: 'mobile.events', icon: CalendarDaysIcon, iconActive: CalendarDaysIconSolid },
-    { name: 'Oferta', route: 'mobile.offerings', icon: HandRaisedIcon, iconActive: HandRaisedIconSolid },
+    { name: 'Dízimos e Ofertas', route: 'mobile.offerings', icon: HandRaisedIcon, iconActive: HandRaisedIconSolid },
     { name: 'Vários', route: 'mobile.more', icon: Squares2X2Icon, iconActive: Squares2X2IconSolid },
 ] as const;
 
