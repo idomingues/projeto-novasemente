@@ -13,7 +13,6 @@ import {
     NewspaperIcon as NewspaperIconSolid,
     CalendarDaysIcon as CalendarDaysIconSolid,
     ClipboardDocumentListIcon as ClipboardDocumentListIconSolid,
-    Cog6ToothIcon as Cog6ToothIconSolid,
     Squares2X2Icon as Squares2X2IconSolid,
 } from '@heroicons/react/24/solid';
 import FlashMessages from '@/Components/FlashMessages';
@@ -24,7 +23,6 @@ const navItems = [
     { name: 'Eventos', route: 'mobile.events', icon: CalendarDaysIcon, iconActive: CalendarDaysIconSolid },
     { name: 'Escala', route: 'mobile.schedule', icon: ClipboardDocumentListIcon, iconActive: ClipboardDocumentListIconSolid },
     { name: 'Mais', route: 'mobile.more', icon: Squares2X2Icon, iconActive: Squares2X2IconSolid },
-    { name: 'Configurações', route: 'mobile.settings', icon: Cog6ToothIcon, iconActive: Cog6ToothIconSolid },
 ] as const;
 
 export default function MobileLayout({ children }: PropsWithChildren) {
@@ -33,26 +31,40 @@ export default function MobileLayout({ children }: PropsWithChildren) {
     const currentChurch = (props as { currentChurch?: { name: string } | null }).currentChurch;
 
     return (
-        <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans pb-24 safe-area-pb">
-            {/* Top bar simples */}
-            <header className="sticky top-0 z-30 bg-white/90 dark:bg-zinc-900/90 backdrop-blur border-b border-zinc-200 dark:border-zinc-800 safe-area-top">
+        <div className="min-h-screen bg-zinc-100 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans">
+            {/* Barra superior fixa - sólida, sem flutuar */}
+            <header
+                className="fixed top-0 left-0 right-0 z-40 h-14 safe-area-top bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800"
+                style={{ paddingTop: 'env(safe-area-inset-top, 0)' }}
+            >
                 <div className="flex items-center justify-between h-14 px-4">
                     <span className="text-lg font-semibold text-zinc-900 dark:text-white truncate">
                         {currentChurch?.name ?? 'Nova Semente'}
                     </span>
+                    <Link
+                        href={route('mobile.settings')}
+                        className="p-2 -m-2 rounded-full text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                        aria-label="Configurações"
+                    >
+                        <Cog6ToothIcon className="w-6 h-6" />
+                    </Link>
                 </div>
             </header>
 
-            <main className="min-h-[calc(100vh-3.5rem-5rem)] px-4 py-4">
+            {/* Conteúdo com padding para barras fixas */}
+            <main
+                className="pt-[calc(3.5rem+env(safe-area-inset-top,0px))] pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] min-h-screen px-4 py-4"
+            >
                 {children}
             </main>
 
-            {/* Bottom navigation - safe area para iPhone (home indicator) */}
+            {/* Barra inferior fixa - sólida, sem flutuar */}
             <nav
-                className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]"
+                className="fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800"
+                style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
                 aria-label="Menu principal"
             >
-                <div className="flex items-center justify-around h-14 max-w-lg mx-auto">
+                <div className="flex items-center justify-around h-14 max-w-lg mx-auto pt-1">
                     {navItems.map(({ name, route: routeName, icon: Icon, iconActive: IconActive }) => {
                         const href = route(routeName);
                         const isActive = routeName === 'mobile.index' ? currentRoute === href : currentRoute.startsWith(href.split('?')[0]);
@@ -61,14 +73,14 @@ export default function MobileLayout({ children }: PropsWithChildren) {
                             <Link
                                 key={routeName}
                                 href={href}
-                                className={`flex flex-col items-center justify-center flex-1 min-w-0 py-2 gap-0.5 transition-colors ${
+                                className={`flex flex-col items-center justify-center flex-1 min-w-0 py-2 gap-1 transition-all rounded-lg mx-0.5 ${
                                     isActive
-                                        ? 'text-primary-600 dark:text-primary-400'
-                                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
+                                        ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50'
+                                        : 'text-zinc-500 dark:text-zinc-400 active:bg-zinc-100 dark:active:bg-zinc-800'
                                 }`}
                             >
-                                <IconComponent className="w-6 h-6 flex-shrink-0" aria-hidden />
-                                <span className="text-[10px] font-medium truncate max-w-full px-0.5">
+                                <IconComponent className={`w-6 h-6 flex-shrink-0 ${isActive ? 'drop-shadow-sm' : ''}`} aria-hidden />
+                                <span className={`text-[10px] font-medium truncate max-w-full px-0.5 ${isActive ? 'font-semibold text-blue-600 dark:text-blue-400' : ''}`}>
                                     {name}
                                 </span>
                             </Link>
