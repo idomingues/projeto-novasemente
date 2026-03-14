@@ -138,44 +138,49 @@ export default function EscalasIndex({
             <div className="space-y-6">
                 <PageHeader title="Escala" />
 
-                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6 shadow-sm">
-                    <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-4">
-                        Selecione o departamento para ver e editar a escala de voluntários
-                    </p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                        {ministries.map((m) => (
-                            <button
-                                key={m.id}
-                                type="button"
-                                onClick={() => selectDepartment(ministryId === m.id ? '' : m.id)}
-                                className={`rounded-xl border-2 p-4 flex flex-col items-center gap-2 transition-all text-left ${
-                                    ministryId === m.id
-                                        ? 'border-zinc-900 dark:border-white bg-zinc-100 dark:bg-zinc-800 shadow-inner'
-                                        : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 hover:border-zinc-400 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800'
-                                }`}
-                            >
-                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                                    ministryId === m.id ? 'bg-zinc-900 dark:bg-white text-white dark:text-black' : 'bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-400'
-                                }`}>
-                                    {(() => {
-                                        const Icon = getMinistryIcon(m.name);
-                                        return <Icon className="w-6 h-6" />;
-                                    })()}
-                                </div>
-                                <span className={`font-medium text-sm truncate w-full text-center ${
-                                    ministryId === m.id ? 'text-zinc-900 dark:text-white' : 'text-zinc-700 dark:text-zinc-300'
-                                }`}>
-                                    {m.name}
-                                </span>
-                            </button>
-                        ))}
+                {ministries.length > 1 && (
+                    <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6 shadow-sm">
+                        <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-4">
+                            Selecione o departamento para ver e editar a escala de voluntários
+                        </p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                            {ministries.map((m) => (
+                                <button
+                                    key={m.id}
+                                    type="button"
+                                    onClick={() => selectDepartment(ministryId === m.id ? '' : m.id)}
+                                    className={`rounded-xl border-2 p-4 flex flex-col items-center gap-2 transition-all text-left ${
+                                        ministryId === m.id
+                                            ? 'border-zinc-900 dark:border-white bg-zinc-100 dark:bg-zinc-800 shadow-inner'
+                                            : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 hover:border-zinc-400 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+                                    }`}
+                                >
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                                        ministryId === m.id ? 'bg-zinc-900 dark:bg-white text-white dark:text-black' : 'bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-400'
+                                    }`}>
+                                        {(() => {
+                                            const Icon = getMinistryIcon(m.name);
+                                            return <Icon className="w-6 h-6" />;
+                                        })()}
+                                    </div>
+                                    <span className={`font-medium text-sm truncate w-full text-center ${
+                                        ministryId === m.id ? 'text-zinc-900 dark:text-white' : 'text-zinc-700 dark:text-zinc-300'
+                                    }`}>
+                                        {m.name}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                    {ministries.length === 0 && (
-                        <p className="text-sm text-zinc-500 dark:text-zinc-400">Nenhum departamento cadastrado. Cadastre em Departamentos no menu.</p>
-                    )}
-                </div>
+                )}
 
-                {!ministryId && (
+                {ministries.length === 0 && (
+                    <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6 shadow-sm">
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400">Nenhum departamento cadastrado. Cadastre em Departamentos no menu.</p>
+                    </div>
+                )}
+
+                {!ministryId && ministries.length !== 1 && (
                     <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 p-8 text-center text-zinc-500 dark:text-zinc-400">
                         Nenhum departamento selecionado. Escolha um departamento acima para continuar.
                     </div>

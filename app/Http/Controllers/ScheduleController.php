@@ -53,7 +53,7 @@ class ScheduleController extends Controller
             ->orderBy('name');
 
         if ($user && $user->hasRole('lider_ministerio') && !$user->hasRole('admin') && !$user->hasRole('super_admin')) {
-            $leaderMinistryIds = $user->ministries()->pluck('id')->toArray();
+            $leaderMinistryIds = $user->ministries()->pluck('ministries.id')->toArray();
             if (count($leaderMinistryIds) > 0) {
                 $ministriesQuery->whereIn('id', $leaderMinistryIds);
             } else {
@@ -62,6 +62,11 @@ class ScheduleController extends Controller
         }
 
         $ministries = $ministriesQuery->get(['id', 'name']);
+
+        if ($user && $user->hasRole('lider_ministerio') && !$user->hasRole('admin') && !$user->hasRole('super_admin') && $ministries->count() === 1 && $ministryId === null) {
+            $ministryId = $ministries->first()->id;
+        }
+
         $assignments = [];
         $checkinDates = [];
         $volunteersForSelect = [];
