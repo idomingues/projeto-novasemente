@@ -13,6 +13,7 @@ use App\Models\ScheduleCheckinDate;
 use App\Models\Volunteer;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -334,8 +335,42 @@ class MobileController extends Controller
 
     public function acervo(): Response
     {
+        $playlistsUrl = 'https://www.youtube.com/@advnovasemente/playlists';
+        $playlists = [];
+
+        $apiKey = config('services.youtube.api_key');
+        if ($apiKey) {
+            $channelResponse = Http::get('https://www.googleapis.com/youtube/v3/channels', [
+                'part' => 'id',
+                'forHandle' => 'advnovasemente',
+                'key' => $apiKey,
+            ]);
+            $channelId = $channelResponse->json('items.0.id');
+            if ($channelId) {
+                $playlistsResponse = Http::get('https://www.googleapis.com/youtube/v3/playlists', [
+                    'part' => 'snippet',
+                    'channelId' => $channelId,
+                    'maxResults' => 50,
+                    'key' => $apiKey,
+                ]);
+                $items = $playlistsResponse->json('items', []);
+                foreach ($items as $item) {
+                    $thumb = $item['snippet']['thumbnails']['medium']['url']
+                        ?? $item['snippet']['thumbnails']['default']['url']
+                        ?? null;
+                    $playlists[] = [
+                        'id' => $item['id'],
+                        'title' => $item['snippet']['title'],
+                        'thumbnail' => $thumb,
+                        'url' => 'https://www.youtube.com/playlist?list=' . $item['id'],
+                    ];
+                }
+            }
+        }
+
         return Inertia::render('Mobile/Acervo', [
-            'playlistsUrl' => 'https://www.youtube.com/@advnovasemente/playlists',
+            'playlistsUrl' => $playlistsUrl,
+            'playlists' => $playlists,
         ]);
     }
 
