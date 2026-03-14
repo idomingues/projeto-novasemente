@@ -13,6 +13,7 @@ interface CultoItem {
 
 interface Props {
     cultos: CultoItem[];
+    youtube_playlist_url?: string | null;
 }
 
 function formatDate(iso: string | null): string {
@@ -24,7 +25,23 @@ function formatDate(iso: string | null): string {
     });
 }
 
-export default function MobileAcervo({ cultos }: Props) {
+function extractPlaylistId(url: string): string | null {
+    try {
+        const parsed = new URL(url);
+        const list = parsed.searchParams.get('list');
+        if (list) return list;
+    } catch {
+        // not a valid URL
+    }
+    return null;
+}
+
+export default function MobileAcervo({ cultos, youtube_playlist_url }: Props) {
+    const playlistId = youtube_playlist_url ? extractPlaylistId(youtube_playlist_url) : null;
+    const embedUrl = playlistId
+        ? `https://www.youtube.com/embed/videoseries?list=${playlistId}&rel=0`
+        : null;
+
     return (
         <MobileLayout>
             <Head title="Acervo" />
@@ -36,7 +53,42 @@ export default function MobileAcervo({ cultos }: Props) {
                     </p>
                 </div>
 
-                {cultos.length === 0 ? (
+                {embedUrl ? (
+                    <div className="space-y-4">
+                        <div className="rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                            <div className="aspect-video">
+                                <iframe
+                                    src={embedUrl}
+                                    title="Playlist de sermões"
+                                    className="w-full h-full"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowFullScreen
+                                />
+                            </div>
+                        </div>
+                        <a
+                            href={youtube_playlist_url ?? undefined}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-semibold text-sm transition-colors"
+                        >
+                            <PlayCircleIcon className="w-5 h-5" />
+                            Ver playlist completa no YouTube
+                        </a>
+                    </div>
+                ) : youtube_playlist_url ? (
+                    <a
+                        href={youtube_playlist_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-semibold text-sm transition-colors"
+                    >
+                        <PlayCircleIcon className="w-5 h-5" />
+                        Ver vídeos no YouTube
+                    </a>
+                ) : null}
+
+                {cultos.length === 0 && !youtube_playlist_url ? (
                     <div className="py-12 text-center">
                         <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-4">
                             <FilmIcon className="w-8 h-8 text-zinc-400 dark:text-zinc-500" />
@@ -44,7 +96,7 @@ export default function MobileAcervo({ cultos }: Props) {
                         <p className="text-zinc-600 dark:text-zinc-400 font-medium">Nenhum sermão publicado</p>
                         <p className="text-sm text-zinc-500 dark:text-zinc-500 mt-1">Os vídeos aparecerão aqui.</p>
                     </div>
-                ) : (
+                ) : cultos.length > 0 ? (
                     <ul className="space-y-5">
                         {cultos.map((c) => (
                             <li
@@ -88,7 +140,7 @@ export default function MobileAcervo({ cultos }: Props) {
                             </li>
                         ))}
                     </ul>
-                )}
+                ) : null}
             </div>
         </MobileLayout>
     );

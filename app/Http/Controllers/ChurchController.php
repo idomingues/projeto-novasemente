@@ -35,6 +35,7 @@ class ChurchController extends Controller
             'address' => ['nullable', 'string', 'max:500'],
             'pix_key' => ['nullable', 'string', 'max:255'],
             'donation_url' => ['nullable', 'string', 'max:1024'],
+            'youtube_playlist_url' => ['nullable', 'string', 'max:512'],
         ]);
 
         Church::create($data);
@@ -59,6 +60,7 @@ class ChurchController extends Controller
             'address' => ['nullable', 'string', 'max:500'],
             'pix_key' => ['nullable', 'string', 'max:255'],
             'donation_url' => ['nullable', 'string', 'max:1024'],
+            'youtube_playlist_url' => ['nullable', 'string', 'max:512'],
         ]);
 
         $church->update($data);

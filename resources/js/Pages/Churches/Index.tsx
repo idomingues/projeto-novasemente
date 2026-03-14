@@ -27,6 +27,7 @@ interface Church {
     address?: string | null;
     pix_key?: string | null;
     donation_url?: string | null;
+    youtube_playlist_url?: string | null;
 }
 
 interface Props {
@@ -53,6 +54,7 @@ export default function Index({ churches }: Props) {
         address: '',
         pix_key: '',
         donation_url: '',
+        youtube_playlist_url: '',
     });
 
     const openCreateModal = () => {
@@ -81,6 +83,7 @@ export default function Index({ churches }: Props) {
             address: church.address ?? '',
             pix_key: church.pix_key ?? '',
             donation_url: church.donation_url ?? '',
+            youtube_playlist_url: church.youtube_playlist_url ?? '',
         });
         clearErrors();
         setIsModalOpen(true);
@@ -331,6 +334,21 @@ export default function Index({ churches }: Props) {
                         <div>
                             <InputLabel htmlFor="donation_url" value="URL página de ofertas (opcional)" />
                             <TextInput id="donation_url" value={data.donation_url} onChange={(e) => setData('donation_url', e.target.value)} className="mt-1 block w-full" placeholder="https://..." />
+                        </div>
+                        <hr className="border-zinc-200 dark:border-zinc-700" />
+                        <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Acervo (mobile)</h3>
+                        <div>
+                            <InputLabel htmlFor="youtube_playlist_url" value="URL da playlist do YouTube (Acervo)" />
+                            <TextInput
+                                id="youtube_playlist_url"
+                                value={data.youtube_playlist_url}
+                                onChange={(e) => setData('youtube_playlist_url', e.target.value)}
+                                className="mt-1 block w-full"
+                                placeholder="https://www.youtube.com/playlist?list=..."
+                            />
+                            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                Cole aqui a URL da playlist ou canal do YouTube para exibir no Acervo do app.
+                            </p>
                         </div>
                     </div>
                     <div className="mt-6 flex justify-end gap-2">
