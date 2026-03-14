@@ -11,6 +11,13 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
 import { useState, useEffect, FormEventHandler } from 'react';
+import { usePage } from '@inertiajs/react';
+
+function imageSrc(url: string | null, appUrl: string): string {
+    if (!url) return '';
+    if (url.startsWith('/')) return `${appUrl}${url}`;
+    return url;
+}
 
 interface NewsPost {
     id: number;
@@ -42,6 +49,7 @@ interface Props {
 }
 
 export default function Index({ posts, filters, canManage }: Props) {
+    const appUrl = (usePage().props as { appUrl?: string }).appUrl ?? '';
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
@@ -147,7 +155,7 @@ export default function Index({ posts, filters, canManage }: Props) {
                         {p.image_url && (
                             <div className="relative w-full sm:w-40 md:w-48 h-36 sm:h-40 rounded-2xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 flex-shrink-0">
                                 <img
-                                    src={p.image_url}
+                                    src={imageSrc(p.image_url, appUrl)}
                                     alt=""
                                     className="w-full h-full object-cover"
                                     onError={(e) => {
@@ -259,7 +267,7 @@ export default function Index({ posts, filters, canManage }: Props) {
                                             {data.image_file ? (
                                                 <img src={URL.createObjectURL(data.image_file)} alt="" className="w-full h-full object-cover" />
                                             ) : data.image_url ? (
-                                                <img src={data.image_url} alt="" className="w-full h-full object-cover" />
+                                                <img src={imageSrc(data.image_url, appUrl)} alt="" className="w-full h-full object-cover" />
                                             ) : (
                                                 <PhotoIcon className="w-5 h-5 text-zinc-500" />
                                             )}
@@ -307,7 +315,7 @@ export default function Index({ posts, filters, canManage }: Props) {
                             <div className="max-w-sm rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
                                 {(data.image_file || data.image_url) && (
                                     <img
-                                        src={data.image_file ? URL.createObjectURL(data.image_file) : data.image_url}
+                                        src={data.image_file ? URL.createObjectURL(data.image_file) : imageSrc(data.image_url, appUrl)}
                                         alt=""
                                         className="w-full h-40 object-cover"
                                     />

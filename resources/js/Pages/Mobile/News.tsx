@@ -1,6 +1,12 @@
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { NewspaperIcon } from '@heroicons/react/24/outline';
+
+function imageSrc(url: string | null, appUrl: string): string {
+    if (!url) return '';
+    if (url.startsWith('/')) return `${appUrl}${url}`;
+    return url;
+}
 
 interface PaginationLink {
     url: string | null;
@@ -37,6 +43,7 @@ function formatDate(iso: string | null): string {
 }
 
 export default function MobileNews({ posts }: Props) {
+    const appUrl = (usePage().props as { appUrl?: string }).appUrl ?? '';
     return (
         <MobileLayout>
             <Head title="Notícias" />
@@ -59,7 +66,7 @@ export default function MobileNews({ posts }: Props) {
                                 {p.image_url ? (
                                     <div className="relative aspect-[16/10] overflow-hidden bg-zinc-200 dark:bg-zinc-800">
                                         <img
-                                            src={p.image_url}
+                                            src={imageSrc(p.image_url, appUrl)}
                                             alt=""
                                             className="w-full h-full object-cover"
                                         />

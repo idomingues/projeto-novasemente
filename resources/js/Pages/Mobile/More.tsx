@@ -3,18 +3,18 @@ import { Head, Link } from '@inertiajs/react';
 import {
     ClockIcon,
     PhoneIcon,
-    BanknotesIcon,
     BellAlertIcon,
     ClipboardDocumentListIcon,
     PlayCircleIcon,
+    AcademicCapIcon,
 } from '@heroicons/react/24/outline';
 
 const items = [
     { name: 'Escala', description: 'Escala de voluntários', route: 'mobile.schedule', icon: ClipboardDocumentListIcon },
     { name: 'Cultos e horários', description: 'Dias e horários dos cultos', route: 'mobile.services', icon: ClockIcon },
+    { name: 'Classe Começos', description: 'Estudo bíblico presencial ou on-line', route: 'mobile.classe-comecos', icon: AcademicCapIcon },
     { name: 'Acervo', description: 'Playlists do YouTube da Nova Semente', route: 'mobile.acervo', icon: PlayCircleIcon },
     { name: 'Fale conosco', description: 'E-mail e WhatsApp da igreja', route: 'mobile.contact', icon: PhoneIcon },
-    { name: 'Dízimos e Ofertas', description: 'Contribua pela 7me', route: 'mobile.offerings', icon: BanknotesIcon },
     { name: 'Notificações', description: 'Avisos de eventos e notícias', route: 'mobile.notifications', icon: BellAlertIcon },
 ];
 
@@ -25,7 +25,7 @@ export default function MobileMore() {
             <div className="space-y-4">
                 <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Mais</h1>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    Acesso rápido a cultos, contato, ofertas e notificações.
+                    Acesso rápido a cultos, contato e notificações.
                 </p>
                 <div className="space-y-2">
                     {items.map(({ name, description, route: routeName, icon: Icon }) => (

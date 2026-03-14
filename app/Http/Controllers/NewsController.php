@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Church;
 use App\Models\News;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -87,7 +86,7 @@ class NewsController extends Controller
         $imageUrl = $data['image_url'] ?? null;
         if ($request->hasFile('image_file')) {
             $path = $request->file('image_file')->store('news', 'public');
-            $imageUrl = Storage::disk('public')->url($path);
+            $imageUrl = '/storage/' . $path;
         }
 
         $publishedAt = isset($data['published_at']) && $data['published_at'] !== '' ? $data['published_at'] : now();
@@ -132,7 +131,7 @@ class NewsController extends Controller
         $imageUrl = $data['image_url'] ?? $news->image_url;
         if ($request->hasFile('image_file')) {
             $path = $request->file('image_file')->store('news', 'public');
-            $imageUrl = Storage::disk('public')->url($path);
+            $imageUrl = '/storage/' . $path;
         }
 
         $publishedAt = isset($data['published_at']) && $data['published_at'] !== '' ? $data['published_at'] : ($news->published_at ?? now());

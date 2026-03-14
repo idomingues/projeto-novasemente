@@ -21,6 +21,13 @@ class MobileController extends Controller
 {
     private function currentChurch(): ?Church
     {
+        $workingChurchId = request()->session()->get('working_church_id');
+        if ($workingChurchId) {
+            $church = Church::where('id', $workingChurchId)->where('active', true)->first();
+            if ($church) {
+                return $church;
+            }
+        }
         return Church::where('active', true)->orderBy('name')->first();
     }
 
@@ -319,6 +326,14 @@ class MobileController extends Controller
     public function offerings()
     {
         return redirect()->away('https://giving.7me.app/guest-donation/church/96ccdd6e-f537-49be-88dd-ffc112442cd9');
+    }
+
+    public function classeComecos(): Response
+    {
+        return Inertia::render('Mobile/ClasseComecos', [
+            'presencialUrl' => 'https://docs.google.com/forms/d/e/1FAIpQLScBw6m09liDBLBGBJ52OwGGl0wegNxK6KpChq31w81cjuESZA/viewform',
+            'onlineUrl' => 'https://docs.google.com/forms/d/e/1FAIpQLSeGNVPeTe9PYQ1w7gwN2ZPA4QN8J7LwqIJtV1iObtQqHvCdUw/viewform',
+        ]);
     }
 
     public function acervo(): Response

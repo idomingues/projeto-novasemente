@@ -145,6 +145,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/mobile/events', [MobileController::class, 'events'])->name('mobile.events');
     Route::get('/mobile/schedule', [MobileController::class, 'schedule'])->name('mobile.schedule');
     Route::get('/mobile/more', [MobileController::class, 'more'])->name('mobile.more');
+    Route::get('/mobile/classe-comecos', [MobileController::class, 'classeComecos'])->name('mobile.classe-comecos');
     Route::get('/mobile/acervo', [MobileController::class, 'acervo'])->name('mobile.acervo');
     Route::get('/mobile/services', [MobileController::class, 'services'])->name('mobile.services');
     Route::get('/mobile/contact', [MobileController::class, 'contact'])->name('mobile.contact');

@@ -55,6 +55,13 @@ class HandleInertiaRequests extends Middleware
             $churchesForSwitch = Church::where('active', true)->orderBy('name')->get(['id', 'name'])->toArray();
         }
 
+        $canAccessAdminMenu = false;
+        if ($request->user()) {
+            $roleNames = $request->user()->getRoleNames()->toArray();
+            $adminRoles = ['admin', 'super_admin', 'pastor', 'secretaria', 'lider_ministerio'];
+            $canAccessAdminMenu = !empty(array_intersect($roleNames, $adminRoles));
+        }
+
         $roleLabel = null;
         if ($request->user()) {
             $names = $request->user()->getRoleNames();
@@ -72,10 +79,12 @@ class HandleInertiaRequests extends Middleware
 
         return [
             ...parent::share($request),
+            'appUrl' => $request->getSchemeAndHttpHost(),
             'auth' => [
                 'user' => $request->user() ? $request->user()->load('member') : null,
                 'permissions' => $request->user() ? $request->user()->getAllPermissions()->pluck('name')->toArray() : [],
                 'roleLabel' => $roleLabel,
+                'canAccessAdminMenu' => $canAccessAdminMenu,
             ],
             'currentChurch' => $currentChurch,
             'churchesForSwitch' => $churchesForSwitch,
