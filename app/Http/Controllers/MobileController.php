@@ -322,7 +322,8 @@ class MobileController extends Controller
 
     public function acervo(): Response
     {
-        $churchId = $this->currentChurch()?->id;
+        $church = $this->currentChurch();
+        $churchId = $church?->id;
         $cultos = Culto::query()
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
@@ -341,6 +342,7 @@ class MobileController extends Controller
 
         return Inertia::render('Mobile/Acervo', [
             'cultos' => $cultos,
+            'youtube_playlist_url' => $church?->youtube_playlist_url,
         ]);
     }
 
