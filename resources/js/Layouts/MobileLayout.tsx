@@ -33,7 +33,7 @@ export default function MobileLayout({ children }: PropsWithChildren) {
     const currentChurch = (props as { currentChurch?: { name: string } | null }).currentChurch;
 
     return (
-        <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans pb-20 safe-area-pb">
+        <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans pb-24 safe-area-pb">
             {/* Top bar simples */}
             <header className="sticky top-0 z-30 bg-white/90 dark:bg-zinc-900/90 backdrop-blur border-b border-zinc-200 dark:border-zinc-800 safe-area-top">
                 <div className="flex items-center justify-between h-14 px-4">
@@ -47,9 +47,9 @@ export default function MobileLayout({ children }: PropsWithChildren) {
                 {children}
             </main>
 
-            {/* Bottom navigation */}
+            {/* Bottom navigation - safe area para iPhone (home indicator) */}
             <nav
-                className="fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0))]"
+                className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]"
                 aria-label="Menu principal"
             >
                 <div className="flex items-center justify-around h-14 max-w-lg mx-auto">

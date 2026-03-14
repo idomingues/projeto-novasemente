@@ -32,8 +32,9 @@ export default function Login({
         <GuestLayout>
             <Head title="Entrar" />
 
-            <div className="w-full flex flex-col lg:flex-row">
-                <div className="w-full lg:w-1/2 flex flex-col justify-between px-8 py-10 lg:px-16 bg-zinc-900 text-zinc-100">
+            <div className="w-full flex flex-col lg:flex-row min-h-screen lg:min-h-0">
+                {/* Coluna esquerda: oculta no mobile */}
+                <div className="hidden lg:flex lg:w-1/2 flex-col justify-between px-8 py-10 lg:px-16 bg-zinc-900 text-zinc-100">
                     <div className="max-w-md">
                         <ApplicationLogo className="h-10 w-10 fill-current text-zinc-100" />
                         <p className="mt-8 text-[11px] font-semibold tracking-[0.22em] uppercase text-zinc-400">
@@ -65,15 +66,19 @@ export default function Login({
                     </p>
                 </div>
 
-                <div className="w-full lg:w-1/2 bg-white dark:bg-white flex items-center justify-center px-6 py-10 lg:px-16">
+                <div className="w-full lg:w-1/2 bg-white dark:bg-white flex items-center justify-center px-5 py-8 sm:px-6 sm:py-10 lg:px-16 min-h-[100dvh] lg:min-h-0">
                     <div className="w-full max-w-md">
+                        <div className="lg:hidden flex items-center gap-3 mb-6">
+                            <ApplicationLogo className="h-9 w-9 fill-current text-zinc-900" />
+                            <span className="text-sm font-medium text-zinc-600">Sistema Igreja</span>
+                        </div>
                         {status && (
                             <div className="mb-4 text-sm font-medium text-green-600">
                                 {status}
                             </div>
                         )}
 
-                        <h2 className="text-xl font-semibold text-zinc-900">
+                        <h2 className="text-xl sm:text-2xl font-semibold text-zinc-900">
                             Bem-vindo de volta
                         </h2>
                         <p className="mt-2 text-sm text-zinc-600">

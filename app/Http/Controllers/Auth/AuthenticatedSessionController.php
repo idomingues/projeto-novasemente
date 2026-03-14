@@ -34,11 +34,17 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
 
         $user = $request->user();
-        if ($user && $user->hasRole('lider_ministerio')) {
-            return redirect()->route('escalas.index');
+        $isMobile = (bool) preg_match('/iPhone|iPad|iPod|Android|webOS|Mobile/i', $request->userAgent() ?? '');
+
+        if ($isMobile) {
+            return redirect()->intended(route('mobile.news'));
         }
 
-        return redirect()->intended(route('dashboard'));
+        if ($user && $user->hasRole('lider_ministerio')) {
+            return redirect()->intended(route('news.index'));
+        }
+
+        return redirect()->intended(route('news.index'));
     }
 
     /**
