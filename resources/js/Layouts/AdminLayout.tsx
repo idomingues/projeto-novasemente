@@ -2,6 +2,7 @@ import { PropsWithChildren, useState } from 'react';
 import Sidebar from '@/Components/Sidebar';
 import Topbar from '@/Components/Topbar';
 import FlashMessages from '@/Components/FlashMessages';
+import MobileBottomNav from '@/Components/MobileBottomNav';
 
 const routeToPermissions: Record<string, string[]> = {
     dashboard: [],
@@ -44,11 +45,16 @@ export default function AdminLayout({ children }: PropsWithChildren) {
             <div className="md:pl-72 flex flex-col min-h-screen transition-all duration-300">
                 <Topbar onMenuClick={() => setMobileMenuOpen(true)} />
 
-                <main className="flex-1 pt-20 md:pt-24 px-4 sm:px-6 md:px-8 pb-8 md:pb-12">
+                <main className="flex-1 pt-20 md:pt-24 px-4 sm:px-6 md:px-8 pb-24 lg:pb-12">
                     <div className="max-w-7xl mx-auto w-full min-w-0">
                         {children}
                     </div>
                 </main>
+
+                {/* Barra inferior no celular: sempre visível em telas &lt; 1024px */}
+                <div className="lg:hidden">
+                    <MobileBottomNav />
+                </div>
 
                 <FlashMessages />
             </div>
