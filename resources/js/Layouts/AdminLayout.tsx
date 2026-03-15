@@ -46,7 +46,7 @@ export default function AdminLayout({ children }: PropsWithChildren) {
                 <Topbar onMenuClick={() => setMobileMenuOpen(true)} />
 
                 <main className="flex-1 pt-20 md:pt-24 px-4 sm:px-6 md:px-8 pb-24 lg:pb-12">
-                    <div className="max-w-7xl mx-auto w-full min-w-0">
+                    <div className="max-w-7xl mx-auto w-full min-w-0 pt-6">
                         {children}
                     </div>
                 </main>

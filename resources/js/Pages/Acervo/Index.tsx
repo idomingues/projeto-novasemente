@@ -94,7 +94,7 @@ export default function AcervoIndex({ items, canManage }: Props) {
     return (
         <AdminLayout>
             <Head title="Acervo" />
-            <div className="space-y-6">
+            <div className="space-y-6 -mt-8">
                 <PageHeader
                     title="Acervo"
                     subtitle="Playlists do YouTube da Nova Semente."

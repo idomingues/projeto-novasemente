@@ -159,9 +159,9 @@ export default function MobileLayout({ children }: PropsWithChildren) {
                 </div>
             </header>
 
-            {/* Conteúdo com padding para barras fixas */}
+            {/* Conteúdo com padding para barras fixas e espaço abaixo do topo */}
             <main
-                className="pt-[calc(3.5rem+env(safe-area-inset-top,0px))] pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] min-h-screen px-4 py-4"
+                className="pt-[calc(3.5rem+env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] min-h-screen px-4 pb-4"
             >
                 {children}
             </main>
