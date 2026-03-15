@@ -45,14 +45,20 @@ class MobileController extends Controller
             ->orderByDesc('published_at')
             ->limit(3)
             ->get(['id', 'title', 'slug', 'excerpt', 'image_url', 'published_at'])
-            ->map(fn ($n) => [
-                'id' => $n->id,
-                'title' => $n->title,
-                'slug' => $n->slug,
-                'excerpt' => $n->excerpt,
-                'image_url' => $n->image_url,
-                'published_at' => $n->published_at?->toIso8601String(),
-            ]);
+            ->map(function ($n) {
+                $imageUrl = $n->image_url;
+                if ($imageUrl && !str_starts_with($imageUrl, 'http')) {
+                    $imageUrl = request()->getSchemeAndHttpHost() . $imageUrl;
+                }
+                return [
+                    'id' => $n->id,
+                    'title' => $n->title,
+                    'slug' => $n->slug,
+                    'excerpt' => $n->excerpt,
+                    'image_url' => $imageUrl,
+                    'published_at' => $n->published_at?->toIso8601String(),
+                ];
+            });
 
         $upcomingEvents = Event::query()
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
@@ -117,15 +123,22 @@ class MobileController extends Controller
 
         $posts = $query->paginate(10)->withQueryString();
 
-        $posts->getCollection()->transform(fn ($p) => [
-            'id' => $p->id,
-            'title' => $p->title,
-            'slug' => $p->slug,
-            'excerpt' => $p->excerpt,
-            'body' => $p->body,
-            'image_url' => $p->image_url,
-            'published_at' => $p->published_at?->toIso8601String(),
-        ]);
+        $baseUrl = request()->getSchemeAndHttpHost();
+        $posts->getCollection()->transform(function ($p) use ($baseUrl) {
+            $imageUrl = $p->image_url;
+            if ($imageUrl && !str_starts_with($imageUrl, 'http')) {
+                $imageUrl = $baseUrl . $imageUrl;
+            }
+            return [
+                'id' => $p->id,
+                'title' => $p->title,
+                'slug' => $p->slug,
+                'excerpt' => $p->excerpt,
+                'body' => $p->body,
+                'image_url' => $imageUrl,
+                'published_at' => $p->published_at?->toIso8601String(),
+            ];
+        });
 
         return Inertia::render('Mobile/News', [
             'posts' => $posts,
@@ -140,17 +153,23 @@ class MobileController extends Controller
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
             ->orderBy('starts_at')
             ->get()
-            ->map(fn (Event $e) => [
-                'id' => $e->id,
-                'title' => $e->title,
-                'description' => $e->description,
-                'starts_at' => $e->starts_at->toIso8601String(),
-                'ends_at' => $e->ends_at?->toIso8601String(),
-                'all_day' => $e->all_day,
-                'location' => $e->location,
-                'image_url' => $e->image_url,
-                'color' => $e->color,
-            ]);
+            ->map(function (Event $e) {
+                $imageUrl = $e->image_url;
+                if ($imageUrl && !str_starts_with($imageUrl, 'http')) {
+                    $imageUrl = request()->getSchemeAndHttpHost() . $imageUrl;
+                }
+                return [
+                    'id' => $e->id,
+                    'title' => $e->title,
+                    'description' => $e->description,
+                    'starts_at' => $e->starts_at->toIso8601String(),
+                    'ends_at' => $e->ends_at?->toIso8601String(),
+                    'all_day' => $e->all_day,
+                    'location' => $e->location,
+                    'image_url' => $imageUrl,
+                    'color' => $e->color,
+                ];
+            });
 
         return Inertia::render('Mobile/Events', [
             'events' => $events,

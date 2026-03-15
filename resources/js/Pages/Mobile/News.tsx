@@ -4,9 +4,9 @@ import { NewspaperIcon } from '@heroicons/react/24/outline';
 
 function imageSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
     const base = appUrl || (typeof window !== 'undefined' ? window.location.origin : '');
-    if (url.startsWith('/')) return `${base}${url}`;
-    return url;
+    return `${base}${url}`;
 }
 
 interface PaginationLink {
