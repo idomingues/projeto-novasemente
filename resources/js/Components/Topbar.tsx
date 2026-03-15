@@ -1,23 +1,45 @@
 import { Link, usePage } from '@inertiajs/react';
-import { BellIcon, SunIcon, MoonIcon, FilmIcon, NewspaperIcon, CalendarDaysIcon, HandRaisedIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
+import { BellIcon, SunIcon, MoonIcon, FilmIcon, NewspaperIcon, CalendarDaysIcon, HandRaisedIcon, Squares2X2Icon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import Dropdown from '@/Components/Dropdown';
 import { useTheme } from '@/Contexts/ThemeContext';
+
+interface NotificationItem {
+    id: number;
+    title: string;
+    body: string;
+    created_at: string;
+    author: { name: string } | null;
+}
+
+function formatTimeAgo(iso: string): string {
+    const date = new Date(iso);
+    const now = new Date();
+    const sec = Math.floor((now.getTime() - date.getTime()) / 1000);
+    if (sec < 60) return 'Agora';
+    if (sec < 3600) return `${Math.floor(sec / 60)} min`;
+    if (sec < 86400) return `${Math.floor(sec / 3600)} h`;
+    if (sec < 2592000) return `${Math.floor(sec / 86400)} dias`;
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+}
 
 const appNavItems = [
     { name: 'Culto', route: 'culto.index', icon: FilmIcon },
     { name: 'Notícias', route: 'news.index', icon: NewspaperIcon },
     { name: 'Eventos', route: 'events.index', icon: CalendarDaysIcon },
     { name: 'Dízimos e Ofertas', route: 'mobile.offerings', icon: HandRaisedIcon },
-    { name: 'Vários', route: 'more.index', icon: Squares2X2Icon },
+    { name: 'Mais', route: 'more.index', icon: Squares2X2Icon },
 ] as const;
 
 interface TopbarProps {
     onMenuClick?: () => void;
 }
 
+type PageProps = { auth: Record<string, unknown>; recentNotifications?: NotificationItem[] };
+
 export default function Topbar({ onMenuClick }: TopbarProps) {
-    const { auth } = usePage().props;
+    const { auth, recentNotifications = [] } = usePage().props as PageProps;
     const user = auth.user;
+    const notifications = Array.isArray(recentNotifications) ? recentNotifications : [];
     const roleLabel = (auth as { roleLabel?: string }).roleLabel ?? 'Utilizador';
     const { theme, toggleTheme } = useTheme();
 
@@ -64,10 +86,59 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
                         )}
                     </button>
 
-                    <button className="w-12 h-12 flex items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-colors relative">
-                        <BellIcon className="w-6 h-6" />
-                        <span className="absolute top-3 right-3 w-2.5 h-2.5 bg-red-500 border-2 border-zinc-100 dark:border-zinc-900 rounded-full"></span>
-                    </button>
+                    <Dropdown>
+                        <Dropdown.Trigger>
+                            <button
+                                type="button"
+                                className="w-12 h-12 flex items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-colors relative"
+                                aria-label="Notificações"
+                            >
+                                <BellIcon className="w-6 h-6" />
+                                {notifications.length > 0 && (
+                                    <span className="absolute top-2 right-2 min-w-[18px] h-[18px] px-1 flex items-center justify-center bg-primary-500 text-white text-xs font-semibold rounded-full border-2 border-white dark:border-zinc-900">
+                                        {notifications.length > 9 ? '9+' : notifications.length}
+                                    </span>
+                                )}
+                            </button>
+                        </Dropdown.Trigger>
+                        <Dropdown.Content align="right" width="96" contentClasses="py-0 max-h-[min(70vh,400px)] overflow-hidden flex flex-col bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300">
+                            <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+                                <span className="font-semibold text-zinc-900 dark:text-white">Notificações</span>
+                                <Link
+                                    href={route('varios.notifications')}
+                                    className="text-sm text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-0.5"
+                                >
+                                    Ver todas
+                                    <ChevronRightIcon className="w-4 h-4" />
+                                </Link>
+                            </div>
+                            <div className="overflow-y-auto flex-1">
+                                {notifications.length === 0 ? (
+                                    <div className="px-4 py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
+                                        Nenhuma notificação
+                                    </div>
+                                ) : (
+                                    notifications.map((n) => (
+                                        <Link
+                                            key={n.id}
+                                            href={route('varios.notifications')}
+                                            className="block px-4 py-3 border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
+                                        >
+                                            <p className="font-medium text-zinc-900 dark:text-white text-sm line-clamp-1">
+                                                {n.title}
+                                            </p>
+                                            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2">
+                                                {n.body}
+                                            </p>
+                                            <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
+                                                {formatTimeAgo(n.created_at)}
+                                            </p>
+                                        </Link>
+                                    ))
+                                )}
+                            </div>
+                        </Dropdown.Content>
+                    </Dropdown>
 
                     <div className="relative">
                         <Dropdown>

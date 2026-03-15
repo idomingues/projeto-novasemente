@@ -19,10 +19,10 @@ const navItems = [
     { name: 'Notícias', route: 'mobile.news' as const, icon: NewspaperIcon, iconActive: NewspaperIconSolid },
     { name: 'Eventos', route: 'mobile.events' as const, icon: CalendarDaysIcon, iconActive: CalendarDaysIconSolid },
     { name: 'Dízimos e Ofertas', route: 'mobile.offerings' as const, icon: HandRaisedIcon, iconActive: HandRaisedIconSolid },
-    { name: 'Vários', route: 'mobile.more' as const, icon: Squares2X2Icon, iconActive: Squares2X2IconSolid },
+    { name: 'Mais', route: 'mobile.more' as const, icon: Squares2X2Icon, iconActive: Squares2X2IconSolid },
 ] as const;
 
-/** Barra inferior fixa (Culto, Notícias, Eventos, Dízimos, Vários). Usada no mobile em todos os layouts. */
+/** Barra inferior fixa (Culto, Notícias, Eventos, Dízimos, Mais). Usada no mobile em todos os layouts. */
 export default function MobileBottomNav() {
     return (
         <nav

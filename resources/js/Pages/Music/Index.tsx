@@ -24,6 +24,7 @@ interface MusicaItem {
 
 interface Props {
     musicas: MusicaItem[];
+    canManage: boolean;
 }
 
 function formatDate(iso: string | null): string {
@@ -35,7 +36,7 @@ function formatDate(iso: string | null): string {
     });
 }
 
-export default function MusicIndex({ musicas }: Props) {
+export default function MusicIndex({ musicas, canManage }: Props) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
@@ -90,7 +91,7 @@ export default function MusicIndex({ musicas }: Props) {
         <AdminLayout>
             <Head title="Música" />
             <PageHeader title="Música (vídeos)">
-                <AddButton onClick={openCreateModal}>Nova música</AddButton>
+                {canManage && <AddButton onClick={openCreateModal}>Nova música</AddButton>}
             </PageHeader>
 
             <div className="w-full space-y-5">
@@ -101,7 +102,7 @@ export default function MusicIndex({ musicas }: Props) {
                         </div>
                         <p className="text-zinc-600 dark:text-zinc-400 font-medium">Nenhum vídeo de música cadastrado</p>
                         <p className="text-sm text-zinc-500 dark:text-zinc-500 mt-1">Os vídeos do YouTube aparecerão aqui.</p>
-                        <AddButton onClick={openCreateModal} className="mt-4">Nova música</AddButton>
+                        {canManage && <AddButton onClick={openCreateModal} className="mt-4">Nova música</AddButton>}
                     </div>
                 ) : (
                     musicas.map((m) => (
@@ -137,30 +138,33 @@ export default function MusicIndex({ musicas }: Props) {
                                         {m.author?.name && <span>• {m.author.name}</span>}
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-1 mt-3">
-                                    <button
-                                        type="button"
-                                        onClick={() => openEditModal(m)}
-                                        className="p-2.5 rounded-xl text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                                        title="Editar"
-                                    >
-                                        <PencilIcon className="w-5 h-5" />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleDelete(m.id)}
-                                        className="p-2.5 rounded-xl text-zinc-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                                        title="Excluir"
-                                    >
-                                        <TrashIcon className="w-5 h-5" />
-                                    </button>
-                                </div>
+                                {canManage && (
+                                    <div className="flex items-center gap-1 mt-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => openEditModal(m)}
+                                            className="p-2.5 rounded-xl text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                            title="Editar"
+                                        >
+                                            <PencilIcon className="w-5 h-5" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDelete(m.id)}
+                                            className="p-2.5 rounded-xl text-zinc-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                            title="Excluir"
+                                        >
+                                            <TrashIcon className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))
                 )}
             </div>
 
+            {canManage && (
             <Modal show={isModalOpen} onClose={closeModal}>
                 <form onSubmit={submit} className="p-6">
                     <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-6">
@@ -211,6 +215,7 @@ export default function MusicIndex({ musicas }: Props) {
                     </div>
                 </form>
             </Modal>
+            )}
         </AdminLayout>
     );
 }

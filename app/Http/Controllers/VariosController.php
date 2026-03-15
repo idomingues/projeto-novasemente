@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AppNotification;
 use App\Models\Church;
 use App\Models\ChurchService;
 use App\Models\Ministry;
@@ -202,8 +203,16 @@ class VariosController extends Controller
         ]);
     }
 
-    public function notifications(): Response
+    public function notifications(Request $request): Response
     {
-        return Inertia::render('Varios/Notifications');
+        $church = $this->currentChurch();
+        $churchId = $church?->id;
+        $notifications = AppNotification::recentForChurch($churchId);
+        $canManage = $request->user()?->can('notifications.manage') ?? false;
+
+        return Inertia::render('Varios/Notifications', [
+            'notifications' => $notifications,
+            'canManage' => $canManage,
+        ]);
     }
 }

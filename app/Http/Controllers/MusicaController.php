@@ -24,8 +24,6 @@ class MusicaController extends Controller
 
     public function index(Request $request): Response
     {
-        $this->authorize('music.manage');
-
         $churchId = $this->currentChurchId();
         $musicas = Musica::query()
             ->with('author')
@@ -45,8 +43,11 @@ class MusicaController extends Controller
                 'author' => $m->author ? ['name' => $m->author->name] : null,
             ]);
 
+        $canManage = $request->user()?->can('music.manage') ?? false;
+
         return Inertia::render('Music/Index', [
             'musicas' => $musicas,
+            'canManage' => $canManage,
         ]);
     }
 

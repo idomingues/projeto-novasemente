@@ -9,6 +9,7 @@ use App\Models\Culto;
 use App\Models\Event;
 use App\Models\Ministry;
 use App\Models\Musica;
+use App\Models\AppNotification;
 use App\Models\News;
 use App\Models\ScheduleAssignment;
 use App\Models\ScheduleCheckinDate;
@@ -411,9 +412,14 @@ class MobileController extends Controller
         ]);
     }
 
-    public function notifications(): Response
+    public function notifications(Request $request): Response
     {
-        return Inertia::render('Mobile/Notifications');
+        $churchId = $this->currentChurch()?->id;
+        $notifications = AppNotification::recentForChurch($churchId);
+
+        return Inertia::render('Mobile/Notifications', [
+            'notifications' => $notifications,
+        ]);
     }
 
     public function settings(Request $request): Response

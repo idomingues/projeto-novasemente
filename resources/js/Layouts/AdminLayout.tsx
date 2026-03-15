@@ -30,6 +30,8 @@ const routeToPermissions: Record<string, string[]> = {
     'acervo.index': [],
     'varios.contact': [],
     'varios.notifications': [],
+    'prayer.index': [],
+    'mobile.prayer': [],
 };
 
 export default function AdminLayout({ children }: PropsWithChildren) {

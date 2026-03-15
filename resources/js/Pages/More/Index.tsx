@@ -9,6 +9,7 @@ import {
     AcademicCapIcon,
     MusicalNoteIcon,
     PhotoIcon,
+    HeartIcon,
 } from '@heroicons/react/24/outline';
 
 const FOTOS_DRIVE_URL = 'https://drive.google.com/drive/folders/1dYN1Qg2JCfDU1gL5JC3Je0eVvNm8J1dp?usp=share_link';
@@ -18,6 +19,7 @@ const items = [
     { name: 'Cultos e horários', description: 'Dias e horários dos cultos', route: 'varios.services', icon: ClockIcon },
     { name: 'Classe Começos', description: 'Estudo bíblico presencial ou on-line', route: 'varios.classe-comecos', icon: AcademicCapIcon },
     { name: 'Música', description: 'Vídeos de música no YouTube', route: 'musica.index', icon: MusicalNoteIcon },
+    { name: 'Pedidos de oração', description: 'Solicite ou veja pedidos de oração', route: 'prayer.index', icon: HeartIcon },
     { name: 'Fotos', description: 'Álbum de fotos no Google Drive', externalUrl: FOTOS_DRIVE_URL, icon: PhotoIcon },
     { name: 'Acervo', description: 'Playlists do YouTube da Nova Semente', route: 'acervo.index', icon: PlayCircleIcon },
     { name: 'Fale conosco', description: 'E-mail e WhatsApp da igreja', route: 'varios.contact', icon: PhoneIcon },
@@ -27,12 +29,12 @@ const items = [
 export default function MoreIndex() {
     return (
         <AdminLayout>
-            <Head title="Vários" />
+            <Head title="Mais" />
             <div className="space-y-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Vários</h1>
+                    <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Mais</h1>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
-                        Acesso rápido a cultos, contato e notificações.
+                        Acesso rápido a cultos, contato, oração e notificações.
                     </p>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -17,9 +17,11 @@ use App\Http\Controllers\CultoController;
 use App\Http\Controllers\MusicaController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\MobileController;
+use App\Http\Controllers\PrayerRequestController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\VariosController;
 use App\Http\Controllers\AcervoController;
+use App\Http\Controllers\AppNotificationController;
 use App\Http\Controllers\FaviconController;
 
 Route::get('/favicon.svg', FaviconController::class)->name('favicon');
@@ -141,7 +143,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/culto', [CultoController::class, 'store'])->name('culto.store')->middleware('permission:culto.manage');
     Route::put('/culto/{culto}', [CultoController::class, 'update'])->name('culto.update')->middleware('permission:culto.manage');
     Route::delete('/culto/{culto}', [CultoController::class, 'destroy'])->name('culto.destroy')->middleware('permission:culto.manage');
-    Route::get('/musica', [MusicaController::class, 'index'])->name('musica.index')->middleware('permission:music.manage');
+    Route::get('/musica', [MusicaController::class, 'index'])->name('musica.index');
     Route::post('/musica', [MusicaController::class, 'store'])->name('musica.store')->middleware('permission:music.manage');
     Route::put('/musica/{musica}', [MusicaController::class, 'update'])->name('musica.update')->middleware('permission:music.manage');
     Route::delete('/musica/{musica}', [MusicaController::class, 'destroy'])->name('musica.destroy')->middleware('permission:music.manage');
@@ -160,6 +162,11 @@ Route::middleware('auth')->group(function () {
     Route::delete('/acervo/{acervo}', [AcervoController::class, 'destroy'])->name('acervo.destroy');
     Route::get('/varios/contato', [VariosController::class, 'contact'])->name('varios.contact');
     Route::get('/varios/notificacoes', [VariosController::class, 'notifications'])->name('varios.notifications');
+    Route::post('/notifications', [AppNotificationController::class, 'store'])->name('notifications.store')->middleware('permission:notifications.manage');
+
+    Route::get('/pedidos-oracao', [PrayerRequestController::class, 'index'])->name('prayer.index');
+    Route::post('/pedidos-oracao', [PrayerRequestController::class, 'store'])->name('prayer.store');
+    Route::get('/mobile/oracao', [PrayerRequestController::class, 'mobile'])->name('mobile.prayer');
 
     // Área mobile (menu inferior: Culto, Notícias, Eventos, Escala, Oferta, Configurações)
     Route::redirect('/mobile', '/mobile/culto')->name('mobile.index');

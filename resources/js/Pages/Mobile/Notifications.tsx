@@ -2,23 +2,81 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import { Head } from '@inertiajs/react';
 import { BellAlertIcon } from '@heroicons/react/24/outline';
 
-export default function MobileNotifications() {
+interface NotificationItem {
+    id: number;
+    title: string;
+    body: string;
+    created_at: string;
+    author: { name: string } | null;
+}
+
+interface Props {
+    notifications: NotificationItem[];
+}
+
+function formatTimeAgo(iso: string): string {
+    const date = new Date(iso);
+    const now = new Date();
+    const sec = Math.floor((now.getTime() - date.getTime()) / 1000);
+    if (sec < 60) return 'Agora';
+    if (sec < 3600) return `${Math.floor(sec / 60)} min`;
+    if (sec < 86400) return `${Math.floor(sec / 3600)} h`;
+    if (sec < 2592000) return `${Math.floor(sec / 86400)} dias`;
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+export default function MobileNotifications({ notifications }: Props) {
     return (
         <MobileLayout>
             <Head title="Notificações" />
             <div className="space-y-4">
-                <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Notificações</h1>
-                <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center mx-auto mb-4">
-                        <BellAlertIcon className="w-8 h-8 text-primary-600 dark:text-primary-400" />
-                    </div>
-                    <h2 className="font-semibold text-zinc-900 dark:text-white mb-2">
-                        Em breve
-                    </h2>
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400 max-w-xs mx-auto">
-                        Avisos push para eventos e notícias estão previstos para uma próxima versão (ex.: integração com OneSignal).
+                <div>
+                    <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Notificações</h1>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">
+                        Avisos e novidades da igreja
                     </p>
                 </div>
+
+                {notifications.length === 0 ? (
+                    <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-8 text-center">
+                        <div className="w-16 h-16 rounded-2xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center mx-auto mb-4">
+                            <BellAlertIcon className="w-8 h-8 text-primary-600 dark:text-primary-400" />
+                        </div>
+                        <h2 className="font-semibold text-zinc-900 dark:text-white mb-2">
+                            Nenhuma notificação
+                        </h2>
+                        <p className="text-sm text-zinc-600 dark:text-zinc-400 max-w-xs mx-auto">
+                            Quando houver avisos ou novidades, eles aparecerão aqui.
+                        </p>
+                    </div>
+                ) : (
+                    <ul className="space-y-3">
+                        {notifications.map((n) => (
+                            <li
+                                key={n.id}
+                                className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm active:scale-[0.99] transition-transform"
+                            >
+                                <div className="flex gap-3">
+                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-100 dark:bg-primary-900/30">
+                                        <BellAlertIcon className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="font-semibold text-zinc-900 dark:text-white">
+                                            {n.title}
+                                        </p>
+                                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                                            {n.body}
+                                        </p>
+                                        <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
+                                            {formatTimeAgo(n.created_at)}
+                                            {n.author?.name && ` · ${n.author.name}`}
+                                        </p>
+                                    </div>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                )}
             </div>
         </MobileLayout>
     );

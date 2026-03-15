@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\AppNotification;
 use App\Models\Church;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -99,6 +100,7 @@ class HandleInertiaRequests extends Middleware
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
             ],
+            'recentNotifications' => fn () => AppNotification::recentForChurch($currentChurch ? ($currentChurch['id'] ?? null) : null, 5),
         ];
     }
 }
