@@ -7,6 +7,7 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 
 import AppHead from './Components/AppHead';
+import ProgressIndicator from './Components/ProgressIndicator';
 import { ThemeProvider } from './Contexts/ThemeContext';
 
 const defaultAppName = import.meta.env.VITE_APP_NAME || 'Laravel';
@@ -33,11 +34,14 @@ createInertiaApp({
 
         root.render(
             <ThemeProvider>
+                <ProgressIndicator />
                 <App {...props} />
             </ThemeProvider>
         );
     },
     progress: {
         color: '#4B5563',
+        showSpinner: true,
+        delay: 0,
     },
 });

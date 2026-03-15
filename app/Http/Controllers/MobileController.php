@@ -323,9 +323,20 @@ class MobileController extends Controller
         ]);
     }
 
-    public function offerings()
+    public function offerings(): Response
     {
-        return redirect()->away('https://giving.7me.app/guest-donation/church/96ccdd6e-f537-49be-88dd-ffc112442cd9');
+        $church = $this->currentChurch();
+        $donationUrl = $church?->donation_url ?: 'https://giving.7me.app/guest-donation/church/96ccdd6e-f537-49be-88dd-ffc112442cd9';
+
+        $donation = [
+            'churchName' => $church?->name,
+            'pix_key' => $church?->pix_key,
+            'donation_url' => $donationUrl,
+        ];
+
+        return Inertia::render('Mobile/Offerings', [
+            'donation' => $donation,
+        ]);
     }
 
     public function classeComecos(): Response

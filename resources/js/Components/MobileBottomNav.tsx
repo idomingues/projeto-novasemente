@@ -40,17 +40,17 @@ export default function MobileBottomNav() {
                             key={routeName}
                             href={href}
                             aria-label={name}
-                            className={`relative flex flex-col items-center justify-center flex-1 min-w-0 py-2 gap-0.5 transition-all rounded-2xl mx-0.5 ${
+                            className={`relative flex flex-col items-center justify-center flex-1 min-w-0 py-2 gap-0.5 transition-colors rounded-xl mx-0.5 ${
                                 isActive
-                                    ? 'bg-zinc-800 dark:bg-zinc-700 text-white'
-                                    : 'text-zinc-400 dark:text-zinc-500 active:bg-zinc-100 dark:active:bg-zinc-800'
+                                    ? 'text-zinc-900 dark:text-white'
+                                    : 'text-zinc-400 dark:text-zinc-500 active:bg-zinc-100/80 dark:active:bg-zinc-800/50'
                             }`}
                         >
                             <IconComponent
-                                className={`flex-shrink-0 transition-transform ${isActive ? 'w-7 h-7 drop-shadow-sm scale-105 text-white' : 'w-6 h-6'}`}
+                                className={`flex-shrink-0 transition-all ${isActive ? 'w-7 h-7 text-zinc-900 dark:text-white' : 'w-6 h-6'}`}
                                 aria-hidden
                             />
-                            <span className={`text-[10px] truncate max-w-full px-0.5 ${isActive ? 'font-bold' : 'font-medium'}`}>
+                            <span className={`text-[10px] truncate max-w-full px-0.5 ${isActive ? 'font-semibold text-zinc-900 dark:text-white' : 'font-medium'}`}>
                                 {name}
                             </span>
                         </Link>

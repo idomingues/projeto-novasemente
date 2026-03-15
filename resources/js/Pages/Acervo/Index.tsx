@@ -1,6 +1,6 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm, router } from '@inertiajs/react';
-import { PencilIcon, TrashIcon, Bars3Icon, ArrowTopRightOnSquareIcon, PlayCircleIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, Bars3Icon, ArrowTopRightOnSquareIcon, PlayCircleIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import AddButton from '@/Components/AddButton';
 import PageHeader from '@/Components/PageHeader';
 import Modal from '@/Components/Modal';
@@ -24,12 +24,19 @@ interface Props {
     canManage: boolean;
 }
 
+const normalizeForSearch = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
+
 export default function AcervoIndex({ items, canManage }: Props) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [deleteItem, setDeleteItem] = useState<AcervoItem | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [search, setSearch] = useState('');
+
+    const filteredItems = search.trim()
+        ? items.filter((item) => normalizeForSearch(item.title).includes(normalizeForSearch(search.trim())))
+        : items;
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
         url: '',
     });
@@ -97,9 +104,41 @@ export default function AcervoIndex({ items, canManage }: Props) {
                     )}
                 </PageHeader>
 
+                {items.length > 0 && (
+                    <div className="relative">
+                        <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400 dark:text-zinc-500" aria-hidden />
+                        <input
+                            type="search"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Buscar no acervo..."
+                            className="w-full max-w-md rounded-xl border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 py-2.5 pl-10 pr-10 text-zinc-900 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 dark:focus:border-primary-400 dark:focus:ring-primary-400 transition-colors"
+                            aria-label="Buscar no acervo"
+                        />
+                        {search && (
+                            <button
+                                type="button"
+                                onClick={() => setSearch('')}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                aria-label="Limpar busca"
+                            >
+                                <XMarkIcon className="h-5 w-5" />
+                            </button>
+                        )}
+                    </div>
+                )}
+
                 {items.length > 0 ? (
-                    <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                        {items.map((item) => (
+                    <>
+                        {search.trim() && (
+                            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                                {filteredItems.length === 0
+                                    ? `Nenhum resultado para "${search.trim()}".`
+                                    : `${filteredItems.length} ${filteredItems.length === 1 ? 'resultado' : 'resultados'}.`}
+                            </p>
+                        )}
+                        <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                        {filteredItems.map((item) => (
                             <div key={item.id} className="group relative">
                                 <a
                                     href={item.url}
@@ -165,7 +204,8 @@ export default function AcervoIndex({ items, canManage }: Props) {
                                 )}
                             </div>
                         ))}
-                    </div>
+                        </div>
+                    </>
                 ) : (
                     <div className="rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-700 p-12 text-center">
                         <PlayCircleIcon className="w-16 h-16 text-zinc-400 mx-auto mb-4" />

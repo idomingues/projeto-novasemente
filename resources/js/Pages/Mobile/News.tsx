@@ -4,7 +4,8 @@ import { NewspaperIcon } from '@heroicons/react/24/outline';
 
 function imageSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
-    if (url.startsWith('/')) return `${appUrl}${url}`;
+    const base = appUrl || (typeof window !== 'undefined' ? window.location.origin : '');
+    if (url.startsWith('/')) return `${base}${url}`;
     return url;
 }
 
@@ -69,7 +70,18 @@ export default function MobileNews({ posts }: Props) {
                                             src={imageSrc(p.image_url, appUrl)}
                                             alt=""
                                             className="w-full h-full object-cover"
+                                            loading="lazy"
+                                            decoding="async"
+                                            onError={(e) => {
+                                                const el = e.currentTarget;
+                                                el.style.display = 'none';
+                                                const next = el.nextElementSibling as HTMLElement | null;
+                                                if (next) next.style.display = 'flex';
+                                            }}
                                         />
+                                        <div className="absolute inset-0 hidden items-center justify-center bg-zinc-200 dark:bg-zinc-700" style={{ display: 'none' }} aria-hidden>
+                                            <NewspaperIcon className="w-12 h-12 text-zinc-400" />
+                                        </div>
                                         <span className="absolute bottom-2 left-3 px-2.5 py-1 rounded-lg bg-black/60 text-white text-xs font-medium backdrop-blur-sm">
                                             {formatDate(p.published_at)}
                                         </span>

@@ -68,9 +68,9 @@ export default function MobileOfferings({ donation }: Props) {
                                     href={donation.donation_url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-primary-600 text-white text-sm font-medium"
+                                    className="inline-flex items-center gap-2 px-4 py-3 rounded-xl bg-primary-600 text-white text-sm font-semibold w-full justify-center hover:bg-primary-500 active:scale-[0.98] transition-all"
                                 >
-                                    Acessar página de ofertas
+                                    Acessar página de ofertas (abre em nova aba)
                                 </a>
                             </div>
                         )}
