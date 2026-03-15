@@ -8,16 +8,12 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Setup SSH key
-        run: |
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > deploy_key
-          chmod 600 deploy_key
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_IP }}
           username: root
-          key_path: deploy_key
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             set -e
             cd /var/www/projeto-novasemente
