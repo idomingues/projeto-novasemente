@@ -19,6 +19,7 @@ const routeToPermissions: Record<string, string[]> = {
     'churches.services.index': ['churches.manage'],
     'events.index': ['events.view', 'events.manage'],
     'culto.index': ['culto.manage'],
+    'musica.index': ['music.manage'],
     'services.index': [],
     'settings.index': [],
     'more.index': [],

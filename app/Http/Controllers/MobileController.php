@@ -8,6 +8,7 @@ use App\Models\ChurchService;
 use App\Models\Culto;
 use App\Models\Event;
 use App\Models\Ministry;
+use App\Models\Musica;
 use App\Models\News;
 use App\Models\ScheduleAssignment;
 use App\Models\ScheduleCheckinDate;
@@ -109,6 +110,30 @@ class MobileController extends Controller
 
         return Inertia::render('Mobile/Culto', [
             'cultos' => $cultos,
+        ]);
+    }
+
+    public function musica(Request $request): Response
+    {
+        $churchId = $this->currentChurch()?->id;
+        $musicas = Musica::query()
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
+            ->whereNotNull('published_at')
+            ->where('published_at', '<=', now())
+            ->orderByDesc('published_at')
+            ->get()
+            ->map(fn (Musica $m) => [
+                'id' => $m->id,
+                'title' => $m->title,
+                'youtube_url' => $m->youtube_url,
+                'youtube_embed_url' => $m->youtube_embed_url,
+                'youtube_thumb_url' => $m->youtube_thumb_url,
+                'published_at' => $m->published_at?->toIso8601String(),
+            ]);
+
+        return Inertia::render('Mobile/Music', [
+            'musicas' => $musicas,
         ]);
     }
 

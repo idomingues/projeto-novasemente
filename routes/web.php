@@ -14,6 +14,7 @@ use App\Http\Controllers\ChurchController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\CultoController;
+use App\Http\Controllers\MusicaController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\MobileController;
 use App\Http\Controllers\RoleController;
@@ -140,6 +141,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/culto', [CultoController::class, 'store'])->name('culto.store')->middleware('permission:culto.manage');
     Route::put('/culto/{culto}', [CultoController::class, 'update'])->name('culto.update')->middleware('permission:culto.manage');
     Route::delete('/culto/{culto}', [CultoController::class, 'destroy'])->name('culto.destroy')->middleware('permission:culto.manage');
+    Route::get('/musica', [MusicaController::class, 'index'])->name('musica.index')->middleware('permission:music.manage');
+    Route::post('/musica', [MusicaController::class, 'store'])->name('musica.store')->middleware('permission:music.manage');
+    Route::put('/musica/{musica}', [MusicaController::class, 'update'])->name('musica.update')->middleware('permission:music.manage');
+    Route::delete('/musica/{musica}', [MusicaController::class, 'destroy'])->name('musica.destroy')->middleware('permission:music.manage');
     Route::get('/services', function () { return Inertia::render('Dashboard'); })->name('services.index');
     Route::get('/settings', function () { return Inertia::render('Settings/Index'); })->name('settings.index');
     Route::get('/mais', function () { return Inertia::render('More/Index'); })->name('more.index');
@@ -165,6 +170,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/mobile/more', [MobileController::class, 'more'])->name('mobile.more');
     Route::get('/mobile/classe-comecos', [MobileController::class, 'classeComecos'])->name('mobile.classe-comecos');
     Route::get('/mobile/acervo', [MobileController::class, 'acervo'])->name('mobile.acervo');
+    Route::get('/mobile/musica', [MobileController::class, 'musica'])->name('mobile.musica');
     Route::get('/mobile/services', [MobileController::class, 'services'])->name('mobile.services');
     Route::get('/mobile/contact', [MobileController::class, 'contact'])->name('mobile.contact');
     Route::get('/mobile/offerings', [MobileController::class, 'offerings'])->name('mobile.offerings');
