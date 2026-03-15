@@ -1,6 +1,7 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, useForm, router } from '@inertiajs/react';
-import { PencilIcon, TrashIcon, Bars3Icon, ArrowTopRightOnSquareIcon, PlayCircleIcon, PlusIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, Bars3Icon, ArrowTopRightOnSquareIcon, PlayCircleIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import AddButton from '@/Components/AddButton';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
@@ -94,18 +95,13 @@ export default function MobileAcervoIndex({ items, canManage }: Props) {
         <MobileLayout>
             <Head title="Acervo" />
             <div className="space-y-6">
-                {/* Título e + na mesma linha (mobile) */}
+                {/* Título e botão Adicionar na mesma linha */}
                 <div className="flex items-center justify-between gap-3 flex-nowrap">
-                    <h1 className="text-xl font-bold text-zinc-900 dark:text-white truncate">Acervo</h1>
+                    <h1 className="text-xl font-bold text-zinc-900 dark:text-white truncate min-w-0">Acervo</h1>
                     {canManage && (
-                        <button
-                            type="button"
-                            onClick={openCreateModal}
-                            aria-label="Adicionar link"
-                            className="flex-shrink-0 w-12 h-12 rounded-full bg-zinc-900 dark:bg-zinc-900 text-white flex items-center justify-center shadow-lg hover:bg-zinc-800 dark:hover:bg-zinc-800 active:scale-95 transition-all"
-                        >
-                            <PlusIcon className="w-6 h-6" strokeWidth={2.5} />
-                        </button>
+                        <AddButton onClick={openCreateModal} className="!py-2 !text-sm whitespace-nowrap">
+                            Adicionar link
+                        </AddButton>
                     )}
                 </div>
 
@@ -218,14 +214,7 @@ export default function MobileAcervoIndex({ items, canManage }: Props) {
                             Nenhum item no acervo.
                         </p>
                         {canManage && (
-                            <button
-                                type="button"
-                                onClick={openCreateModal}
-                                className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-zinc-900 dark:bg-zinc-900 text-white shadow-lg"
-                                aria-label="Adicionar"
-                            >
-                                <PlusIcon className="w-6 h-6" strokeWidth={2.5} />
-                            </button>
+                            <AddButton onClick={openCreateModal}>Adicionar link</AddButton>
                         )}
                     </div>
                 )}
