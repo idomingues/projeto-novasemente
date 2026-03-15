@@ -43,7 +43,7 @@ class MusicaController extends Controller
                 'author' => $m->author ? ['name' => $m->author->name] : null,
             ]);
 
-        $canManage = $request->user()?->can('music.manage') ?? false;
+        $canManage = ($request->user()?->can('music.manage') ?? false) && app()->environment('local');
 
         return Inertia::render('Music/Index', [
             'musicas' => $musicas,
@@ -53,6 +53,9 @@ class MusicaController extends Controller
 
     public function store(Request $request)
     {
+        if (!app()->environment('local')) {
+            abort(403, 'Disponível apenas em ambiente local.');
+        }
         $this->authorize('music.manage');
 
         $data = $request->validate([
@@ -83,6 +86,9 @@ class MusicaController extends Controller
 
     public function update(Request $request, Musica $musica)
     {
+        if (!app()->environment('local')) {
+            abort(403, 'Disponível apenas em ambiente local.');
+        }
         $this->authorize('music.manage');
 
         $data = $request->validate([
@@ -106,6 +112,9 @@ class MusicaController extends Controller
 
     public function destroy(Musica $musica)
     {
+        if (!app()->environment('local')) {
+            abort(403, 'Disponível apenas em ambiente local.');
+        }
         $this->authorize('music.manage');
 
         $musica->delete();
