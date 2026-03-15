@@ -1,6 +1,7 @@
 import '../css/app.css';
 import './bootstrap';
 
+import type { ComponentType } from 'react';
 import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
@@ -12,12 +13,12 @@ const defaultAppName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 createInertiaApp({
     title: (title) => `${title} - ${defaultAppName}`,
-    resolve: (name) =>
+        resolve: (name) =>
         resolvePageComponent(
             `./Pages/${name}.tsx`,
             import.meta.glob('./Pages/**/*.tsx'),
-        ).then((module) => {
-            const Page = module.default;
+        ).then((module: unknown) => {
+            const { default: Page } = module as { default: ComponentType<object> };
             return function ResolvedPage(props: object) {
                 return (
                     <>

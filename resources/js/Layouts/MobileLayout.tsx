@@ -71,7 +71,7 @@ const navItems = [
 
 export default function MobileLayout({ children }: PropsWithChildren) {
     const { props } = usePage();
-    const currentChurch = (props as { currentChurch?: { name: string } | null }).currentChurch;
+    const currentChurch = (props as { currentChurch?: { name: string; logo_url?: string | null } | null }).currentChurch;
     const auth = (props as { auth?: { canAccessAdminMenu?: boolean; permissions?: string[] } }).auth;
     const canAccessAdminMenu = auth?.canAccessAdminMenu ?? false;
     const permissions: string[] = auth?.permissions ?? [];

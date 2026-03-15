@@ -55,6 +55,7 @@ export default function Index({ churches }: Props) {
         address: string;
         pix_key: string;
         donation_url: string;
+        youtube_playlist_url: string;
     }>({
         name: '',
         slug: '',

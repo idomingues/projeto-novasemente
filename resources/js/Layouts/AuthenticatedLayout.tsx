@@ -9,7 +9,7 @@ export default function Authenticated({
     header,
     children,
 }: PropsWithChildren<{ header?: ReactNode }>) {
-    const { auth, currentChurch } = usePage().props as { auth: { user: { name: string } }; currentChurch?: { logo_url?: string | null } | null };
+    const { auth, currentChurch } = usePage().props as { auth: { user: { name: string; email?: string } }; currentChurch?: { logo_url?: string | null } | null };
     const user = auth.user;
     const logoUrl = currentChurch?.logo_url ?? (usePage().props as { appLogoUrl?: string | null }).appLogoUrl;
 

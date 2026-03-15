@@ -31,4 +31,6 @@ export default function AppHead() {
         const id = setTimeout(updateTitle, 0);
         return () => clearTimeout(id);
     }, [appName]);
+
+    return null;
 }

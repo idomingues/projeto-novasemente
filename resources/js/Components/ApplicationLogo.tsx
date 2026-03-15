@@ -1,8 +1,8 @@
 import { ImgHTMLAttributes } from 'react';
 
-interface ApplicationLogoProps extends ImgHTMLAttributes<HTMLImageElement> {
+type ApplicationLogoProps = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'> & {
     src?: string | null;
-}
+};
 
 export default function ApplicationLogo({ src, className = '', ...props }: ApplicationLogoProps) {
     return (
