@@ -11,11 +11,11 @@ interface PlaylistItem {
 }
 
 interface Props {
-    playlistsUrl: string;
     playlists: PlaylistItem[];
+    playlistsUrl: string;
 }
 
-export default function MobileAcervo({ playlistsUrl, playlists }: Props) {
+export default function MobileAcervo({ playlists, playlistsUrl }: Props) {
     return (
         <MobileLayout>
             <Head title="Acervo" />
@@ -23,7 +23,7 @@ export default function MobileAcervo({ playlistsUrl, playlists }: Props) {
                 <div>
                     <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Acervo</h1>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
-                        Playlists do YouTube da Nova Semente.
+                        Sermões da Nova Semente.
                     </p>
                 </div>
 

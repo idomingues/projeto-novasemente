@@ -14,7 +14,6 @@ use App\Models\Volunteer;
 use Carbon\Carbon;
 use App\Services\YoutubePlaylistsService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -343,8 +342,8 @@ class MobileController extends Controller
         $playlists = YoutubePlaylistsService::fetch();
 
         return Inertia::render('Mobile/Acervo', [
-            'playlistsUrl' => $playlistsUrl,
             'playlists' => $playlists,
+            'playlistsUrl' => $playlistsUrl,
         ]);
     }
 

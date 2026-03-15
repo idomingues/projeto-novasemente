@@ -23,6 +23,7 @@ class Church extends Model
         'address',
         'pix_key',
         'donation_url',
+        'youtube_playlist_url',
     ];
 
     protected $casts = [
