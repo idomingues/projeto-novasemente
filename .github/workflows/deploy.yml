@@ -11,7 +11,7 @@ jobs:
       - name: Setup SSH key
         run: |
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > deploy_key
-          chmod 644 deploy_key
+          chmod 600 deploy_key
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -25,7 +25,8 @@ jobs:
             git fetch origin main && git reset --hard origin/main
             # Limpar caches/views antigas para forçar uso do código novo (header, etc.)
             php artisan optimize:clear 2>/dev/null || true
-            rm -rf storage/framework/views/*.php bootstrap/cache/*.php 2>/dev/null || true
+            find storage/framework/views -name '*.php' -delete 2>/dev/null || true
+            find bootstrap/cache -name '*.php' -delete 2>/dev/null || true
             composer install --no-dev --optimize-autoloader
             rm -rf node_modules
             npm ci
