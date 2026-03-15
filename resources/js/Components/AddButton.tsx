@@ -11,15 +11,17 @@ interface AddButtonProps {
 export default function AddButton({ onClick, children, className = '' }: AddButtonProps) {
     return (
         <>
-            {/* PC: botão completo com texto */}
-            <PrimaryButton
-                type="button"
-                onClick={onClick}
-                className={`hidden md:inline-flex gap-2 flex-shrink-0 ${className}`}
-            >
-                <PlusIcon className="w-5 h-5" />
-                {children}
-            </PrimaryButton>
+            {/* PC: botão completo (wrapper esconde no mobile para o PrimaryButton não sobrescrever hidden) */}
+            <div className="hidden md:block flex-shrink-0">
+                <PrimaryButton
+                    type="button"
+                    onClick={onClick}
+                    className={`gap-2 ${className}`}
+                >
+                    <PlusIcon className="w-5 h-5" />
+                    {children}
+                </PrimaryButton>
+            </div>
             {/* Mobile: só o + */}
             <button
                 type="button"
