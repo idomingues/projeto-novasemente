@@ -1,6 +1,7 @@
 #!/bin/bash
-# Exporta o banco local para um arquivo SQL (para depois importar em produção).
-# Suporta MySQL/MariaDB e SQLite (usa DB_CONNECTION e variáveis do .env).
+# Exporta o banco LOCAL para um arquivo SQL (para depois importar em produção).
+# IMPORTANTE: rodar na sua MÁQUINA LOCAL (onde está o XAMPP/MySQL com o banco "ns"),
+# NÃO no servidor de produção.
 
 set -e
 cd "$(dirname "$0")/.."
@@ -26,15 +27,32 @@ if [ "$DB_CONNECTION" = "sqlite" ]; then
     echo "Exportando SQLite: $DB_DATABASE"
     sqlite3 "$DB_DATABASE" .dump > "$OUTPUT"
 else
+    # Encontrar mysqldump (no Mac com XAMPP muitas vezes não está no PATH)
+    MYSQLDUMP=""
+    if command -v mysqldump &>/dev/null; then
+        MYSQLDUMP="mysqldump"
+    elif [ -x "/Applications/XAMPP/xamppfiles/bin/mysqldump" ]; then
+        MYSQLDUMP="/Applications/XAMPP/xamppfiles/bin/mysqldump"
+    elif [ -x "/opt/homebrew/opt/mysql/bin/mysqldump" ]; then
+        MYSQLDUMP="/opt/homebrew/opt/mysql/bin/mysqldump"
+    elif [ -x "/usr/local/bin/mysqldump" ]; then
+        MYSQLDUMP="/usr/local/bin/mysqldump"
+    fi
+    if [ -z "$MYSQLDUMP" ]; then
+        echo "Erro: mysqldump não encontrado. Adicione o MySQL ao PATH ou instale (XAMPP já inclui em /Applications/XAMPP/xamppfiles/bin/)."
+        exit 1
+    fi
+
     DB_HOST="${DB_HOST:-127.0.0.1}"
     DB_PORT="${DB_PORT:-3306}"
     DB_DATABASE="${DB_DATABASE:-laravel}"
     DB_USERNAME="${DB_USERNAME:-root}"
     DB_PASSWORD="${DB_PASSWORD:-}"
     echo "Exportando MySQL $DB_DATABASE..."
-    mysqldump -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USERNAME" ${DB_PASSWORD:+-p"$DB_PASSWORD"} "$DB_DATABASE" > "$OUTPUT"
+    "$MYSQLDUMP" -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USERNAME" ${DB_PASSWORD:+-p"$DB_PASSWORD"} --no-tablespaces "$DB_DATABASE" > "$OUTPUT"
 fi
 
 echo "OK: $OUTPUT"
 echo ""
-echo "Próximo: envie o arquivo para o servidor e importe (veja scripts/sync-db-to-production.md)"
+echo "Próximo: envie este ficheiro para o servidor e importe (veja scripts/sync-db-to-production.md)"
+echo "Ex.: scp $OUTPUT root@IP_DO_SERVIDOR:/var/www/projeto-novasemente/"

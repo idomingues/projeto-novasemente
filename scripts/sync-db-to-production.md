@@ -1,12 +1,69 @@
 # Sincronizar banco local → produção
 
-Este guia cobre duas formas de deixar a base de produção igual à local.
+**Ordem:** primeiro o **código** (deploy), depois o **BD** (full local → produção).
 
 ---
 
-## Opção 1: Só estrutura (migrations)
+## Full local → produção (checklist)
 
-Use quando a produção **já tem dados reais** e só precisa das novas tabelas/colunas.
+Deixa produção **igual** ao banco local (apaga os dados atuais de produção). Fazer **só depois** do deploy do código.
+
+### Fase 1: Deploy do código
+
+Garantir que o código em produção está atualizado (ex.: push na `main` e o GitHub Actions faz o deploy, ou deploy manual). Só depois passar para a Fase 2.
+
+### Fase 2: BD – 1. Na sua máquina (Mac): exportar o banco local
+
+**Tem de ser no Mac** (onde está o XAMPP e o banco `ns`), **não no servidor**. No servidor o script usaria o .env de produção e daria erro de permissão.
+
+```bash
+cd /Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente
+./scripts/export-local-db.sh
+```
+
+Ou manualmente (banco local: `ns`, user `root`):
+
+```bash
+mysqldump -h 127.0.0.1 -P 3306 -u root ns > backup_local_$(date +%Y%m%d_%H%M).sql
+```
+
+Fica um ficheiro tipo `backup_local_20260315_1234.sql` na pasta do projeto.
+
+### Fase 2: BD – 2. No servidor: backup da produção (opcional mas recomendado)
+
+```bash
+ssh root@SEU_SERVIDOR
+cd /var/www/projeto-novasemente
+mysqldump -h 127.0.0.1 -P 3306 -u laravel -p --no-tablespaces sistema_igreja > backup_producao_$(date +%Y%m%d_%H%M).sql
+```
+
+### Fase 2: BD – 3. Enviar o dump local para o servidor (no Mac)
+
+```bash
+cd /Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente
+scp backup_local_YYYYMMDD_HHMM.sql root@SEU_SERVIDOR_IP:/var/www/projeto-novasemente/
+```
+
+Substitua `backup_local_YYYYMMDD_HHMM.sql` pelo nome real do ficheiro e `SEU_SERVIDOR_IP` pelo IP/host do servidor.
+
+### Fase 2: BD – 4. No servidor: importar o dump (substituir dados de produção)
+
+```bash
+cd /var/www/projeto-novasemente
+mysql -h 127.0.0.1 -P 3306 -u laravel -p sistema_igreja < backup_local_YYYYMMDD_HHMM.sql
+php artisan optimize:clear
+php artisan config:cache
+```
+
+Substitua `backup_local_YYYYMMDD_HHMM.sql` pelo nome do ficheiro que enviou.
+
+Pronto. Produção fica com os mesmos dados do local.
+
+---
+
+## Opção A: Só estrutura (migrations)
+
+Use quando a produção **já tem dados reais** e só precisa das novas tabelas/colunas (não quer substituir dados).
 
 ### No servidor de produção
 
@@ -19,10 +76,9 @@ php artisan acervo:refresh-thumbnails   # se tiver itens de acervo
 
 ---
 
-## Opção 2: Estrutura + dados (dump/restore)
+## Opção B: Detalhe do dump/restore (referência)
 
-Use quando quer que a produção fique **exatamente** igual ao ambiente local.  
-Atenção: isso **apaga todos os dados atuais** da produção.
+O fluxo completo está no checklist “Full local → produção” no topo. Abaixo fica o detalhe.
 
 ### Passo 1: Exportar banco local (na sua máquina)
 
@@ -79,4 +135,4 @@ Confirme que `APP_KEY`, `DB_*`, `MAIL_*`, etc. estão corretos no `.env` de prod
 - `2026_03_05_000001_reverse_acervo_items_created_at` – ordem dos itens do acervo
 - Tabela `churches` já tinha `logo_url`; agora usada para arquivo em vez de URL
 
-Se a produção estiver desatualizada, a **Opção 1** costuma ser suficiente.
+Se a produção estiver desatualizada e não quiser substituir dados, use a **Opção A** (só migrations).

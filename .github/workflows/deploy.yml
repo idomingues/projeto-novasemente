@@ -21,14 +21,17 @@ jobs:
           script: |
             set -e
             cd /var/www/projeto-novasemente
+            # Full: descarta alterações locais no servidor e puxa exatamente o main
             git fetch origin main && git reset --hard origin/main
+            # Limpar caches/views antigas para forçar uso do código novo (header, etc.)
+            php artisan optimize:clear 2>/dev/null || true
+            rm -rf storage/framework/views/*.php bootstrap/cache/*.php 2>/dev/null || true
             composer install --no-dev --optimize-autoloader
             rm -rf node_modules
             npm ci
             npm run build
             php artisan migrate --force
-            # Seed só em ambiente novo ou quando quiser repopular; em produção com dados reais pode falhar
-            # php artisan db:seed --force
+            # php artisan db:seed --force  # só se quiser repopular
             php artisan optimize:clear
             php artisan config:cache
             php artisan route:cache
