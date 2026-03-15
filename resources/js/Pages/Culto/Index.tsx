@@ -1,6 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm, router } from '@inertiajs/react';
-import { PlusIcon, PencilIcon, TrashIcon, FilmIcon, CalendarDaysIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, FilmIcon, CalendarDaysIcon } from '@heroicons/react/24/outline';
+import AddButton from '@/Components/AddButton';
 import PageHeader from '@/Components/PageHeader';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
@@ -90,10 +91,7 @@ export default function CultoIndex({ cultos }: Props) {
         <AdminLayout>
             <Head title="Culto" />
             <PageHeader title="Culto (vídeos)">
-                <PrimaryButton type="button" onClick={openCreateModal} className="gap-2">
-                    <PlusIcon className="w-5 h-5" />
-                    Novo culto
-                </PrimaryButton>
+                <AddButton onClick={openCreateModal}>Novo culto</AddButton>
             </PageHeader>
 
             <div className="w-full space-y-5">
@@ -104,10 +102,7 @@ export default function CultoIndex({ cultos }: Props) {
                         </div>
                         <p className="text-zinc-600 dark:text-zinc-400 font-medium">Nenhum culto cadastrado</p>
                         <p className="text-sm text-zinc-500 dark:text-zinc-500 mt-1">Os vídeos aparecerão aqui.</p>
-                        <PrimaryButton type="button" onClick={openCreateModal} className="mt-4 gap-2">
-                            <PlusIcon className="w-5 h-5" />
-                            Novo culto
-                        </PrimaryButton>
+                        <AddButton onClick={openCreateModal} className="mt-4">Novo culto</AddButton>
                     </div>
                 ) : (
                     cultos.map((c) => (

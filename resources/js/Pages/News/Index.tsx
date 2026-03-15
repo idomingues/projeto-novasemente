@@ -1,6 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm, router } from '@inertiajs/react';
-import { PlusIcon, PencilIcon, TrashIcon, CalendarDaysIcon, PhotoIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, CalendarDaysIcon, PhotoIcon } from '@heroicons/react/24/outline';
+import AddButton from '@/Components/AddButton';
 import PageHeader from '@/Components/PageHeader';
 import Card from '@/Components/Card';
 import Modal from '@/Components/Modal';
@@ -141,10 +142,7 @@ export default function Index({ posts, filters, canManage }: Props) {
                         />
                     </div>
                     {canManage && (
-                        <PrimaryButton type="button" onClick={openCreateModal} className="gap-2">
-                            <PlusIcon className="w-5 h-5" />
-                            Nova notícia
-                        </PrimaryButton>
+                        <AddButton onClick={openCreateModal}>Nova notícia</AddButton>
                     )}
                 </div>
             </PageHeader>

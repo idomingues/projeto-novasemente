@@ -1,7 +1,6 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm, router } from '@inertiajs/react';
 import {
-    PlusIcon,
     PencilIcon,
     TrashIcon,
     CalendarDaysIcon,
@@ -11,6 +10,7 @@ import {
     MapPinIcon,
     ClockIcon,
 } from '@heroicons/react/24/outline';
+import AddButton from '@/Components/AddButton';
 import PageHeader from '@/Components/PageHeader';
 import Card from '@/Components/Card';
 import Modal from '@/Components/Modal';
@@ -234,10 +234,7 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
                         </button>
                     </div>
                     {canManage && (
-                        <PrimaryButton type="button" onClick={openCreateModal} className="gap-2">
-                            <PlusIcon className="w-5 h-5" />
-                            Novo evento
-                        </PrimaryButton>
+                        <AddButton onClick={openCreateModal}>Novo evento</AddButton>
                     )}
                 </div>
             </PageHeader>

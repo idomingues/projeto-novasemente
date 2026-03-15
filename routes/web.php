@@ -19,6 +19,9 @@ use App\Http\Controllers\MobileController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\VariosController;
 use App\Http\Controllers\AcervoController;
+use App\Http\Controllers\FaviconController;
+
+Route::get('/favicon.svg', FaviconController::class)->name('favicon');
 
 Route::get('/', function (\Illuminate\Http\Request $request) {
     if ($request->user()) {

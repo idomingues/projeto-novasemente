@@ -1,6 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm, router } from '@inertiajs/react';
-import { PlusIcon, PencilIcon, TrashIcon, KeyIcon, EnvelopeIcon, DevicePhoneMobileIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, KeyIcon, EnvelopeIcon, DevicePhoneMobileIcon } from '@heroicons/react/24/outline';
+import AddButton from '@/Components/AddButton';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
@@ -157,10 +158,7 @@ export default function Index({ users, invitations, members, roles, ministries, 
                             <EnvelopeIcon className="w-5 h-5" />
                             Convidar
                         </SecondaryButton>
-                        <PrimaryButton type="button" onClick={openNewUser} className="gap-2">
-                            <PlusIcon className="w-5 h-5" />
-                            Novo usuário
-                        </PrimaryButton>
+                        <AddButton onClick={openNewUser}>Novo usuário</AddButton>
                     </div>
                 </div>
             </PageHeader>

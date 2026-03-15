@@ -1,6 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm, router } from '@inertiajs/react';
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import AddButton from '@/Components/AddButton';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
@@ -71,10 +72,7 @@ export default function Index({ departments }: Props) {
         <AdminLayout>
             <Head title="Departamentos" />
             <PageHeader title="Departamentos">
-                <PrimaryButton type="button" onClick={openCreateModal} className="gap-2">
-                    <PlusIcon className="w-5 h-5" />
-                    Novo Departamento
-                </PrimaryButton>
+                <AddButton onClick={openCreateModal}>Novo Departamento</AddButton>
             </PageHeader>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

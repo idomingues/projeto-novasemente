@@ -26,16 +26,20 @@ Atenção: isso **apaga todos os dados atuais** da produção.
 
 ### Passo 1: Exportar banco local (na sua máquina)
 
+**Importante:** Produção costuma ser MySQL. Para fazer fill local → produção, o local também deve usar **MySQL** (dump de SQLite não importa direto em MySQL). No `.env` local use `DB_CONNECTION=mysql` e configure `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`.
+
 ```bash
 cd /Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente
 
-# Ajuste conforme seu .env: DB_DATABASE, DB_USERNAME, DB_PASSWORD
-# Para MySQL/MariaDB:
-mysqldump -u root -p nome_do_banco_local > backup_local_$(date +%Y%m%d).sql
+# Usa automaticamente .env (MySQL ou SQLite)
+./scripts/export-local-db.sh
+# Gera: backup_local_YYYYMMDD_HHMM.sql
+```
 
-# Ou usando variáveis do .env:
-source .env 2>/dev/null || true
-mysqldump -u "${DB_USERNAME:-root}" -p"${DB_PASSWORD}" "${DB_DATABASE}" > backup_local_$(date +%Y%m%d).sql
+Ou manualmente (MySQL):
+
+```bash
+mysqldump -h 127.0.0.1 -u root -p nome_do_banco_local > backup_local_$(date +%Y%m%d).sql
 ```
 
 ### Passo 2: Fazer backup da produção (antes de importar)

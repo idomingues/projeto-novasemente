@@ -1,6 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm, router } from '@inertiajs/react';
-import { PlusIcon, PencilIcon, TrashIcon, Bars3Icon, ArrowTopRightOnSquareIcon, PlayCircleIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, Bars3Icon, ArrowTopRightOnSquareIcon, PlayCircleIcon } from '@heroicons/react/24/outline';
+import AddButton from '@/Components/AddButton';
 import PageHeader from '@/Components/PageHeader';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
@@ -92,10 +93,7 @@ export default function AcervoIndex({ items, canManage }: Props) {
                     subtitle="Playlists do YouTube da Nova Semente."
                 >
                     {canManage && (
-                        <PrimaryButton onClick={openCreateModal}>
-                            <PlusIcon className="w-5 h-5 mr-2" />
-                            Adicionar link
-                        </PrimaryButton>
+                        <AddButton onClick={openCreateModal}>Adicionar link</AddButton>
                     )}
                 </PageHeader>
 
@@ -175,10 +173,7 @@ export default function AcervoIndex({ items, canManage }: Props) {
                             Nenhum item no acervo. Adicione links de playlists do YouTube.
                         </p>
                         {canManage && (
-                            <PrimaryButton onClick={openCreateModal}>
-                                <PlusIcon className="w-5 h-5 mr-2" />
-                                Adicionar primeiro item
-                            </PrimaryButton>
+                            <AddButton onClick={openCreateModal}>Adicionar primeiro item</AddButton>
                         )}
                     </div>
                 )}

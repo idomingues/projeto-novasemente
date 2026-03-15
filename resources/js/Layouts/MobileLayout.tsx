@@ -149,11 +149,13 @@ export default function MobileLayout({ children }: PropsWithChildren) {
                             <Bars3Icon className="w-6 h-6" />
                         </button>
                     )}
-                    <img
-                        src="/logo-ns.png"
-                        alt={currentChurch?.name ?? 'Nova Semente'}
-                        className="h-9 w-9 rounded-full object-cover object-center dark:invert"
-                    />
+                    <Link href={route('mobile.index')} className="flex-shrink-0">
+                        <img
+                            src={currentChurch?.logo_url ?? '/logo-ns.png'}
+                            alt={currentChurch?.name ?? 'Nova Semente'}
+                            className="h-9 w-9 rounded-full object-cover object-center dark:invert"
+                        />
+                    </Link>
                     <Link
                         href={route('mobile.settings')}
                         className="absolute right-4 top-1/2 -translate-y-1/2 p-2 -m-2 rounded-full text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"

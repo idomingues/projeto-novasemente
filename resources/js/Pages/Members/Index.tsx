@@ -1,6 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm, router, Link } from '@inertiajs/react';
-import { PlusIcon, PencilIcon, TrashIcon, EyeIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, EyeIcon } from '@heroicons/react/24/outline';
+import AddButton from '@/Components/AddButton';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
@@ -132,10 +133,7 @@ export default function Index({ members, filters }: Props) {
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
-                    <PrimaryButton type="button" onClick={openCreateModal} className="gap-2">
-                        <PlusIcon className="w-5 h-5" />
-                        Novo Membro
-                    </PrimaryButton>
+                    <AddButton onClick={openCreateModal}>Novo Membro</AddButton>
                 </div>
             </PageHeader>
 

@@ -16,7 +16,8 @@ export default function AppHead() {
                 link.rel = 'icon';
                 document.head.appendChild(link);
             }
-            link.href = faviconUrl;
+            link.type = 'image/svg+xml';
+            link.href = `/favicon.svg?img=${encodeURIComponent(faviconUrl)}`;
         }
     }, [faviconUrl]);
 

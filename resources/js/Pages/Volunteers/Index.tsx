@@ -1,6 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm, router, Link } from '@inertiajs/react';
-import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import AddButton from '@/Components/AddButton';
 import { getMinistryIcon } from '@/lib/ministryIcons';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
@@ -134,10 +135,7 @@ export default function Index({ volunteers, members, ministries, filters }: Prop
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
-                    <PrimaryButton type="button" onClick={openCreateModal} className="gap-2">
-                        <PlusIcon className="w-5 h-5" />
-                        Novo Voluntário
-                    </PrimaryButton>
+                    <AddButton onClick={openCreateModal}>Novo Voluntário</AddButton>
                 </div>
             </PageHeader>
 

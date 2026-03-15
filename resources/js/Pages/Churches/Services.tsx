@@ -1,6 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, Link, useForm, router } from '@inertiajs/react';
-import { ArrowLeftIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import AddButton from '@/Components/AddButton';
 import PageHeader from '@/Components/PageHeader';
 import Card from '@/Components/Card';
 import Modal from '@/Components/Modal';
@@ -100,10 +101,7 @@ export default function ChurchServicesIndex({ church, services }: Props) {
                         <ArrowLeftIcon className="w-4 h-4" />
                         Voltar
                     </Link>
-                    <PrimaryButton type="button" onClick={openCreate} className="gap-2">
-                        <PlusIcon className="w-5 h-5" />
-                        Adicionar horário
-                    </PrimaryButton>
+                    <AddButton onClick={openCreate}>Adicionar horário</AddButton>
                 </div>
             </PageHeader>
 
