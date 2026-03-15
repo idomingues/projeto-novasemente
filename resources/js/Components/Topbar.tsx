@@ -34,13 +34,20 @@ interface TopbarProps {
     onMenuClick?: () => void;
 }
 
-type PageProps = { auth: Record<string, unknown>; recentNotifications?: NotificationItem[] };
+interface AuthUser {
+    name: string;
+}
+
+type PageProps = {
+    auth: { user: AuthUser; roleLabel?: string };
+    recentNotifications?: NotificationItem[];
+};
 
 export default function Topbar({ onMenuClick }: TopbarProps) {
     const { auth, recentNotifications = [] } = usePage().props as PageProps;
     const user = auth.user;
     const notifications = Array.isArray(recentNotifications) ? recentNotifications : [];
-    const roleLabel = (auth as { roleLabel?: string }).roleLabel ?? 'Utilizador';
+    const roleLabel = auth.roleLabel ?? 'Utilizador';
     const { theme, toggleTheme } = useTheme();
 
     return (
