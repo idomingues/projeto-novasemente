@@ -77,9 +77,16 @@ class HandleInertiaRequests extends Middleware
             };
         }
 
+        $appLogoUrl = Church::where('active', true)->orderBy('name')->first()?->logo_url;
+        $appName = ($currentChurch ? $currentChurch['name'] : null) ?? Church::where('active', true)->orderBy('name')->value('name') ?? config('app.name');
+        $faviconUrl = ($currentChurch ? $currentChurch['logo_url'] : null) ?? $appLogoUrl;
+
         return [
             ...parent::share($request),
             'appUrl' => $request->getSchemeAndHttpHost(),
+            'appLogoUrl' => $appLogoUrl,
+            'appName' => $appName,
+            'faviconUrl' => $faviconUrl,
             'auth' => [
                 'user' => $request->user() ? $request->user()->load('member') : null,
                 'permissions' => $request->user() ? $request->user()->getAllPermissions()->pluck('name')->toArray() : [],

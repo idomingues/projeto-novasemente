@@ -1,7 +1,15 @@
 import { Link, usePage } from '@inertiajs/react';
-import { BellIcon, MagnifyingGlassIcon, SunIcon, MoonIcon } from '@heroicons/react/24/outline';
+import { BellIcon, SunIcon, MoonIcon, FilmIcon, NewspaperIcon, CalendarDaysIcon, HandRaisedIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
 import Dropdown from '@/Components/Dropdown';
 import { useTheme } from '@/Contexts/ThemeContext';
+
+const appNavItems = [
+    { name: 'Culto', route: 'culto.index', icon: FilmIcon },
+    { name: 'Notícias', route: 'news.index', icon: NewspaperIcon },
+    { name: 'Eventos', route: 'events.index', icon: CalendarDaysIcon },
+    { name: 'Dízimos e Ofertas', route: 'mobile.offerings', icon: HandRaisedIcon },
+    { name: 'Vários', route: 'more.index', icon: Squares2X2Icon },
+] as const;
 
 interface TopbarProps {
     onMenuClick?: () => void;
@@ -28,17 +36,19 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                     </button>
-                    <div className="relative w-full max-w-md hidden md:block">
-                        <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400 dark:text-zinc-500" />
-                        <input 
-                            type="text" 
-                            placeholder="Buscar..." 
-                            className="w-full h-12 pl-12 pr-4 bg-zinc-100 dark:bg-zinc-900 border-none rounded-2xl text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:ring-2 focus:ring-zinc-900/20 dark:focus:ring-white/20 text-sm"
-                        />
+                    <div className="hidden md:flex items-center gap-3">
+                        {appNavItems.map(({ name, route: routeName, icon: Icon }) => (
+                            <Link
+                                key={routeName}
+                                href={route(routeName)}
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                            >
+                                <Icon className="w-5 h-5 flex-shrink-0" />
+                                <span className="text-sm font-medium">{name}</span>
+                            </Link>
+                        ))}
                     </div>
-                    <div className="md:hidden flex-1 min-w-0">
-                        <span className="text-lg font-bold text-zinc-900 dark:text-white truncate block">Admin</span>
-                    </div>
+                    <div className="md:hidden flex-1 min-w-0" />
                 </div>
 
                 {/* Right Actions */}

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -27,6 +28,14 @@ class Church extends Model
     protected $casts = [
         'active' => 'boolean',
     ];
+
+    /** URL pública da logo (path local vira asset, URL externa mantida). */
+    protected function logoUrl(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value) => $value ? (str_starts_with($value, 'http') ? $value : asset('storage/' . $value)) : null,
+        );
+    }
 
     public function services(): HasMany
     {

@@ -17,6 +17,8 @@ use App\Http\Controllers\CultoController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\MobileController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\VariosController;
+use App\Http\Controllers\AcervoController;
 
 Route::get('/', function (\Illuminate\Http\Request $request) {
     if ($request->user()) {
@@ -137,6 +139,19 @@ Route::middleware('auth')->group(function () {
     Route::delete('/culto/{culto}', [CultoController::class, 'destroy'])->name('culto.destroy')->middleware('permission:culto.manage');
     Route::get('/services', function () { return Inertia::render('Dashboard'); })->name('services.index');
     Route::get('/settings', function () { return Inertia::render('Settings/Index'); })->name('settings.index');
+    Route::get('/mais', function () { return Inertia::render('More/Index'); })->name('more.index');
+
+    // Vários (AdminLayout - topbar e sidebar para PC e mobile)
+    Route::get('/varios/escala', [VariosController::class, 'schedule'])->name('varios.schedule');
+    Route::get('/varios/servicos', [VariosController::class, 'services'])->name('varios.services');
+    Route::get('/varios/classe-comecos', [VariosController::class, 'classeComecos'])->name('varios.classe-comecos');
+    Route::get('/varios/acervo', fn () => redirect()->route('acervo.index'))->name('varios.acervo');
+    Route::get('/acervo', [AcervoController::class, 'index'])->name('acervo.index');
+    Route::post('/acervo', [AcervoController::class, 'store'])->name('acervo.store');
+    Route::put('/acervo/{acervo}', [AcervoController::class, 'update'])->name('acervo.update');
+    Route::delete('/acervo/{acervo}', [AcervoController::class, 'destroy'])->name('acervo.destroy');
+    Route::get('/varios/contato', [VariosController::class, 'contact'])->name('varios.contact');
+    Route::get('/varios/notificacoes', [VariosController::class, 'notifications'])->name('varios.notifications');
 
     // Área mobile (menu inferior: Culto, Notícias, Eventos, Escala, Oferta, Configurações)
     Route::redirect('/mobile', '/mobile/culto')->name('mobile.index');
@@ -146,7 +161,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/mobile/schedule', [MobileController::class, 'schedule'])->name('mobile.schedule');
     Route::get('/mobile/more', [MobileController::class, 'more'])->name('mobile.more');
     Route::get('/mobile/classe-comecos', [MobileController::class, 'classeComecos'])->name('mobile.classe-comecos');
-    Route::get('/mobile/acervo', [MobileController::class, 'acervo'])->name('mobile.acervo');
+    Route::get('/mobile/acervo', fn () => redirect()->route('acervo.index'))->name('mobile.acervo');
     Route::get('/mobile/services', [MobileController::class, 'services'])->name('mobile.services');
     Route::get('/mobile/contact', [MobileController::class, 'contact'])->name('mobile.contact');
     Route::get('/mobile/offerings', [MobileController::class, 'offerings'])->name('mobile.offerings');

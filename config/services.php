@@ -37,6 +37,8 @@ return [
 
     'youtube' => [
         'api_key' => env('YOUTUBE_API_KEY'),
+        'channel_id' => env('YOUTUBE_CHANNEL_ID'), // opcional: ID do canal (ex: UCxxx) se forHandle falhar
+        'fallback_playlists' => [],
     ],
 
 ];

@@ -20,6 +20,14 @@ const routeToPermissions: Record<string, string[]> = {
     'culto.index': ['culto.manage'],
     'services.index': [],
     'settings.index': [],
+    'more.index': [],
+    'varios.schedule': [],
+    'varios.services': [],
+    'varios.classe-comecos': [],
+    'varios.acervo': [],
+    'acervo.index': [],
+    'varios.contact': [],
+    'varios.notifications': [],
 };
 
 export default function AdminLayout({ children }: PropsWithChildren) {

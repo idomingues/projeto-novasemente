@@ -1,9 +1,13 @@
 import { ImgHTMLAttributes } from 'react';
 
-export default function ApplicationLogo({ className = '', ...props }: ImgHTMLAttributes<HTMLImageElement>) {
+interface ApplicationLogoProps extends ImgHTMLAttributes<HTMLImageElement> {
+    src?: string | null;
+}
+
+export default function ApplicationLogo({ src, className = '', ...props }: ApplicationLogoProps) {
     return (
         <img
-            src="/logo-ns.png"
+            src={src || '/logo-ns.png'}
             alt="Nova Semente"
             className={`rounded-full ${className}`.trim()}
             {...props}

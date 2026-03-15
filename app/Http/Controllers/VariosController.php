@@ -4,21 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\Church;
 use App\Models\ChurchService;
-use App\Models\Culto;
-use App\Models\Event;
 use App\Models\Ministry;
-use App\Models\News;
 use App\Models\ScheduleAssignment;
 use App\Models\ScheduleCheckinDate;
-use App\Models\Volunteer;
-use Carbon\Carbon;
 use App\Services\YoutubePlaylistsService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class MobileController extends Controller
+class VariosController extends Controller
 {
     private function currentChurch(): ?Church
     {
@@ -30,132 +26,6 @@ class MobileController extends Controller
             }
         }
         return Church::where('active', true)->orderBy('name')->first();
-    }
-
-    public function index(Request $request): Response
-    {
-        $church = $this->currentChurch();
-        $churchId = $church?->id;
-
-        $latestNews = News::query()
-            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
-            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
-            ->whereNotNull('published_at')
-            ->where('published_at', '<=', now())
-            ->orderByDesc('published_at')
-            ->limit(3)
-            ->get(['id', 'title', 'slug', 'excerpt', 'image_url', 'published_at'])
-            ->map(fn ($n) => [
-                'id' => $n->id,
-                'title' => $n->title,
-                'slug' => $n->slug,
-                'excerpt' => $n->excerpt,
-                'image_url' => $n->image_url,
-                'published_at' => $n->published_at?->toIso8601String(),
-            ]);
-
-        $upcomingEvents = Event::query()
-            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
-            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
-            ->where('starts_at', '>=', now()->startOfDay())
-            ->orderBy('starts_at')
-            ->limit(5)
-            ->get()
-            ->map(fn (Event $e) => [
-                'id' => $e->id,
-                'title' => $e->title,
-                'starts_at' => $e->starts_at->toIso8601String(),
-                'ends_at' => $e->ends_at?->toIso8601String(),
-                'all_day' => $e->all_day,
-                'location' => $e->location,
-            ]);
-
-        return Inertia::render('Mobile/Index', [
-            'church' => $church ? [
-                'name' => $church->name,
-                'logo_url' => $church->logo_url,
-                'city' => $church->city,
-                'state' => $church->state,
-            ] : null,
-            'latestNews' => $latestNews,
-            'upcomingEvents' => $upcomingEvents,
-        ]);
-    }
-
-    public function culto(Request $request): Response
-    {
-        $churchId = $this->currentChurch()?->id;
-        $cultos = Culto::query()
-            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
-            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
-            ->whereNotNull('published_at')
-            ->where('published_at', '<=', now())
-            ->orderByDesc('published_at')
-            ->get()
-            ->map(fn (Culto $c) => [
-                'id' => $c->id,
-                'title' => $c->title,
-                'youtube_url' => $c->youtube_url,
-                'youtube_embed_url' => $c->youtube_embed_url,
-                'youtube_thumb_url' => $c->youtube_thumb_url,
-                'published_at' => $c->published_at?->toIso8601String(),
-            ]);
-
-        return Inertia::render('Mobile/Culto', [
-            'cultos' => $cultos,
-        ]);
-    }
-
-    public function news(Request $request): Response
-    {
-        $churchId = $this->currentChurch()?->id;
-        $query = News::query()
-            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
-            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
-            ->whereNotNull('published_at')
-            ->where('published_at', '<=', now())
-            ->orderByDesc('published_at');
-
-        $posts = $query->paginate(10)->withQueryString();
-
-        $posts->getCollection()->transform(fn ($p) => [
-            'id' => $p->id,
-            'title' => $p->title,
-            'slug' => $p->slug,
-            'excerpt' => $p->excerpt,
-            'body' => $p->body,
-            'image_url' => $p->image_url,
-            'published_at' => $p->published_at?->toIso8601String(),
-        ]);
-
-        return Inertia::render('Mobile/News', [
-            'posts' => $posts,
-        ]);
-    }
-
-    public function events(Request $request): Response
-    {
-        $churchId = $this->currentChurch()?->id;
-        $events = Event::query()
-            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
-            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
-            ->orderBy('starts_at')
-            ->get()
-            ->map(fn (Event $e) => [
-                'id' => $e->id,
-                'title' => $e->title,
-                'description' => $e->description,
-                'starts_at' => $e->starts_at->toIso8601String(),
-                'ends_at' => $e->ends_at?->toIso8601String(),
-                'all_day' => $e->all_day,
-                'location' => $e->location,
-                'image_url' => $e->image_url,
-                'color' => $e->color,
-            ]);
-
-        return Inertia::render('Mobile/Events', [
-            'events' => $events,
-        ]);
     }
 
     private function getSaturdays(int $year, int $month): array
@@ -220,10 +90,7 @@ class MobileController extends Controller
             foreach ($oneOff as $a) {
                 $assignments[] = [
                     'id' => $a->id,
-                    'memberId' => $a->member_id,
                     'memberName' => $a->member->name,
-                    'memberPhotoUrl' => null,
-                    'roleId' => $a->schedule_role_id,
                     'roleName' => $a->scheduleRole?->name,
                     'scheduleDate' => $a->schedule_date?->format('Y-m-d'),
                     'saturdayNumber' => $a->saturday_number,
@@ -240,10 +107,7 @@ class MobileController extends Controller
                 }
                 $assignments[] = [
                     'id' => $a->id,
-                    'memberId' => $a->member_id,
                     'memberName' => $a->member->name,
-                    'memberPhotoUrl' => null,
-                    'roleId' => $a->schedule_role_id,
                     'roleName' => $a->scheduleRole?->name,
                     'scheduleDate' => $computedDate->format('Y-m-d'),
                     'saturdayNumber' => $a->saturday_number,
@@ -263,7 +127,7 @@ class MobileController extends Controller
                 ->all();
         }
 
-        return Inertia::render('Mobile/Schedule', [
+        return Inertia::render('Varios/Schedule', [
             'assignments' => $assignments,
             'checkinEnabledDates' => $checkinDates,
             'month' => $month,
@@ -273,19 +137,14 @@ class MobileController extends Controller
         ]);
     }
 
-    public function more(): Response
-    {
-        return Inertia::render('Mobile/More');
-    }
-
     public function services(): Response
     {
         $church = $this->currentChurch();
         $services = [];
         if ($church) {
             $services = $church->services()->get()->map(function ($s) {
-                $start = \Carbon\Carbon::parse($s->start_time)->format('H:i');
-                $end = $s->end_time ? \Carbon\Carbon::parse($s->end_time)->format('H:i') : null;
+                $start = Carbon::parse($s->start_time)->format('H:i');
+                $end = $s->end_time ? Carbon::parse($s->end_time)->format('H:i') : null;
                 return [
                     'id' => $s->id,
                     'day_of_week' => $s->day_of_week,
@@ -297,7 +156,7 @@ class MobileController extends Controller
             })->toArray();
         }
 
-        return Inertia::render('Mobile/Services', [
+        return Inertia::render('Varios/Services', [
             'churchName' => $church?->name,
             'services' => $services,
         ]);
@@ -319,19 +178,14 @@ class MobileController extends Controller
             ];
         }
 
-        return Inertia::render('Mobile/Contact', [
+        return Inertia::render('Varios/Contact', [
             'contact' => $contact,
         ]);
     }
 
-    public function offerings()
-    {
-        return redirect()->away('https://giving.7me.app/guest-donation/church/96ccdd6e-f537-49be-88dd-ffc112442cd9');
-    }
-
     public function classeComecos(): Response
     {
-        return Inertia::render('Mobile/ClasseComecos', [
+        return Inertia::render('Varios/ClasseComecos', [
             'presencialUrl' => 'https://docs.google.com/forms/d/e/1FAIpQLScBw6m09liDBLBGBJ52OwGGl0wegNxK6KpChq31w81cjuESZA/viewform',
             'onlineUrl' => 'https://docs.google.com/forms/d/e/1FAIpQLSeGNVPeTe9PYQ1w7gwN2ZPA4QN8J7LwqIJtV1iObtQqHvCdUw/viewform',
         ]);
@@ -342,7 +196,7 @@ class MobileController extends Controller
         $playlistsUrl = 'https://www.youtube.com/@advnovasemente/playlists';
         $playlists = YoutubePlaylistsService::fetch();
 
-        return Inertia::render('Mobile/Acervo', [
+        return Inertia::render('Varios/Acervo', [
             'playlistsUrl' => $playlistsUrl,
             'playlists' => $playlists,
         ]);
@@ -350,27 +204,6 @@ class MobileController extends Controller
 
     public function notifications(): Response
     {
-        return Inertia::render('Mobile/Notifications');
-    }
-
-    public function settings(Request $request): Response
-    {
-        $church = $this->currentChurch();
-        $user = $request->user();
-
-        return Inertia::render('Mobile/Settings', [
-            'church' => $church ? [
-                'name' => $church->name,
-                'logo_url' => $church->logo_url,
-                'city' => $church->city,
-                'state' => $church->state,
-                'country' => $church->country,
-                'description' => $church->description,
-            ] : null,
-            'user' => $user ? [
-                'name' => $user->name,
-                'email' => $user->email,
-            ] : null,
-        ]);
+        return Inertia::render('Varios/Notifications');
     }
 }

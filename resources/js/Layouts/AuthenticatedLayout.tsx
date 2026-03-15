@@ -9,7 +9,9 @@ export default function Authenticated({
     header,
     children,
 }: PropsWithChildren<{ header?: ReactNode }>) {
-    const user = usePage().props.auth.user;
+    const { auth, currentChurch } = usePage().props as { auth: { user: { name: string } }; currentChurch?: { logo_url?: string | null } | null };
+    const user = auth.user;
+    const logoUrl = currentChurch?.logo_url ?? (usePage().props as { appLogoUrl?: string | null }).appLogoUrl;
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState(false);
@@ -22,7 +24,7 @@ export default function Authenticated({
                         <div className="flex">
                             <div className="flex shrink-0 items-center">
                                 <Link href="/">
-                                    <ApplicationLogo className="block h-9 w-auto max-w-[140px] object-contain dark:invert" />
+                                    <ApplicationLogo src={logoUrl} className="block h-9 w-auto max-w-[140px] object-contain dark:invert" />
                                 </Link>
                             </div>
 

@@ -38,10 +38,25 @@ export default function Index({ churches }: Props) {
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
 
-    const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
+    const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm<{
+        name: string;
+        slug: string;
+        logo: File | null;
+        city: string;
+        state: string;
+        country: string;
+        description: string;
+        active: boolean;
+        email: string;
+        phone: string;
+        whatsapp: string;
+        address: string;
+        pix_key: string;
+        donation_url: string;
+    }>({
         name: '',
         slug: '',
-        logo_url: '',
+        logo: null,
         city: '',
         state: '',
         country: '',
@@ -58,18 +73,22 @@ export default function Index({ churches }: Props) {
     const openCreateModal = () => {
         setIsEditing(false);
         setEditingId(null);
+        setLogoPreview(null);
         reset();
         clearErrors();
         setIsModalOpen(true);
     };
 
+    const [logoPreview, setLogoPreview] = useState<string | null>(null);
+
     const openEditModal = (church: Church) => {
         setIsEditing(true);
         setEditingId(church.id);
+        setLogoPreview(church.logo_url ?? null);
         setData({
             name: church.name,
             slug: church.slug,
-            logo_url: church.logo_url ?? '',
+            logo: null,
             city: church.city ?? '',
             state: church.state ?? '',
             country: church.country ?? '',
@@ -88,6 +107,7 @@ export default function Index({ churches }: Props) {
 
     const closeModal = () => {
         setIsModalOpen(false);
+        setLogoPreview(null);
         reset();
     };
 
@@ -133,9 +153,9 @@ export default function Index({ churches }: Props) {
                             {churches.map((church) => (
                                 <tr key={church.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40">
                                     <td className="px-4 md:px-6 py-3">
-                                        <div className="w-10 h-10 rounded-xl bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center overflow-hidden">
+                                        <div className="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center overflow-hidden">
                                             {church.logo_url ? (
-                                                <img src={church.logo_url} alt={church.name} className="w-full h-full object-contain" />
+                                                <img src={church.logo_url} alt={church.name} className="w-full h-full object-cover" />
                                             ) : (
                                                 <BuildingOfficeIcon className="w-5 h-5 text-zinc-500" />
                                             )}
@@ -231,24 +251,34 @@ export default function Index({ churches }: Props) {
                             <InputError message={errors.slug} className="mt-1" />
                         </div>
                         <div>
-                            <InputLabel htmlFor="logo_url" value="URL da logo (opcional)" />
+                            <InputLabel htmlFor="logo" value="Logo (opcional)" />
                             <div className="mt-1 flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center overflow-hidden flex-shrink-0">
-                                    {data.logo_url ? (
-                                        <img src={data.logo_url} alt="" className="w-full h-full object-contain" />
+                                <div className="w-16 h-16 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center overflow-hidden flex-shrink-0 ring-2 ring-zinc-300 dark:ring-zinc-600">
+                                    {data.logo ? (
+                                        <img src={URL.createObjectURL(data.logo)} alt="" className="w-full h-full object-cover" />
+                                    ) : logoPreview ? (
+                                        <img src={logoPreview} alt="" className="w-full h-full object-cover" />
                                     ) : (
-                                        <PhotoIcon className="w-5 h-5 text-zinc-500" />
+                                        <PhotoIcon className="w-8 h-8 text-zinc-500" />
                                     )}
                                 </div>
-                                <TextInput
-                                    id="logo_url"
-                                    value={data.logo_url}
-                                    onChange={(e) => setData('logo_url', e.target.value)}
-                                    className="block w-full"
-                                    placeholder="https://..."
-                                />
+                                <div className="flex-1 min-w-0">
+                                    <input
+                                        id="logo"
+                                        type="file"
+                                        accept="image/*"
+                                        className="block w-full text-sm text-zinc-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-zinc-100 file:text-zinc-700 hover:file:bg-zinc-200 dark:file:bg-zinc-800 dark:file:text-zinc-300 dark:hover:file:bg-zinc-700"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            setData('logo', file ?? null);
+                                        }}
+                                    />
+                                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                        A logo será exibida em formato circular em todo o sistema.
+                                    </p>
+                                </div>
                             </div>
-                            <InputError message={errors.logo_url} className="mt-1" />
+                            <InputError message={errors.logo} className="mt-1" />
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>

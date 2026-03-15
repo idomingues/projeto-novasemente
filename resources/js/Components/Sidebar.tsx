@@ -6,13 +6,10 @@ import {
     BuildingOfficeIcon, 
     BuildingOffice2Icon,
     ArchiveBoxIcon, 
-    NewspaperIcon, 
-    CalendarDaysIcon, 
     Cog6ToothIcon,
     CalendarIcon,
     XMarkIcon,
     KeyIcon,
-    FilmIcon
 } from '@heroicons/react/24/outline';
 
 interface SidebarProps {
@@ -46,7 +43,6 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
 
     const allMenuItems = [
         { name: 'Dashboard', route: 'dashboard', icon: HomeIcon },
-        { name: 'Eventos', route: 'events.index', icon: CalendarDaysIcon },
         { name: 'Membros', route: 'members.index', icon: UserGroupIcon },
         { name: 'Departamentos', route: 'departments.index', icon: BuildingOffice2Icon },
         { name: 'Escalas', route: 'escalas.index', icon: CalendarIcon },
@@ -55,8 +51,6 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
         { name: 'Perfis', route: 'roles.index', icon: KeyIcon },
         { name: 'Salas', route: 'rooms.index', icon: BuildingOfficeIcon },
         { name: 'Inventário', route: 'inventory.index', icon: ArchiveBoxIcon },
-        { name: 'Notícias', route: 'news.index', icon: NewspaperIcon },
-        { name: 'Culto', route: 'culto.index', icon: FilmIcon },
         { name: 'Igrejas', route: 'churches.index', icon: BuildingOfficeIcon },
         { name: 'Configurações', route: 'settings.index', icon: Cog6ToothIcon },
     ];
@@ -88,9 +82,9 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
             {/* Logo Area */}
             <div className="h-24 flex items-center justify-between px-6 md:px-8 border-b border-zinc-100 dark:border-zinc-900 flex-shrink-0">
                 <div className="flex items-center gap-3 text-zinc-900 dark:text-white min-w-0">
-                    <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-zinc-900 dark:bg-white flex items-center justify-center overflow-hidden">
+                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-zinc-900 dark:bg-white flex items-center justify-center overflow-hidden">
                         {currentChurch?.logo_url ? (
-                            <img src={currentChurch.logo_url} alt="" className="w-full h-full object-contain" />
+                            <img src={currentChurch.logo_url} alt="" className="w-full h-full object-cover" />
                         ) : (
                             <BuildingOfficeIcon className="w-6 h-6 text-white dark:text-black" />
                         )}
@@ -150,7 +144,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
                         const isActive = routeExists && isRouteActive(item.route);
                         
                         return (
-                            <li key={item.name}>
+                            <li key={item.route}>
                                 <Link
                                     href={href}
                                     onClick={onMobileClose}

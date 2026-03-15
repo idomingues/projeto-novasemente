@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Church;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -23,7 +24,7 @@ class ChurchController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['required', 'string', 'max:255', 'alpha_dash', 'unique:churches,slug'],
-            'logo_url' => ['nullable', 'string', 'max:1024'],
+            'logo' => ['nullable', 'image', 'max:2048'],
             'city' => ['nullable', 'string', 'max:255'],
             'state' => ['nullable', 'string', 'max:255'],
             'country' => ['nullable', 'string', 'max:255'],
@@ -37,7 +38,12 @@ class ChurchController extends Controller
             'donation_url' => ['nullable', 'string', 'max:1024'],
         ]);
 
-        Church::create($data);
+        $church = Church::create(collect($data)->except('logo')->toArray());
+
+        if ($request->hasFile('logo')) {
+            $path = $request->file('logo')->store('logos', 'public');
+            $church->update(['logo_url' => $path]);
+        }
 
         return redirect()->route('churches.index')->with('success', 'Igreja criada com sucesso.');
     }
@@ -47,7 +53,7 @@ class ChurchController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['required', 'string', 'max:255', 'alpha_dash', 'unique:churches,slug,' . $church->id],
-            'logo_url' => ['nullable', 'string', 'max:1024'],
+            'logo' => ['nullable', 'image', 'max:2048'],
             'city' => ['nullable', 'string', 'max:255'],
             'state' => ['nullable', 'string', 'max:255'],
             'country' => ['nullable', 'string', 'max:255'],
@@ -61,10 +67,20 @@ class ChurchController extends Controller
             'donation_url' => ['nullable', 'string', 'max:1024'],
         ]);
 
+        if ($request->hasFile('logo')) {
+            if ($church->logo_url && str_starts_with($church->logo_url, 'logos/')) {
+                Storage::disk('public')->delete($church->logo_url);
+            }
+            $path = $request->file('logo')->store('logos', 'public');
+            $data['logo_url'] = $path;
+        }
+        unset($data['logo']);
+
         $church->update($data);
 
         return redirect()->route('churches.index')->with('success', 'Igreja atualizada com sucesso.');
     }
+
 
     public function destroy(Church $church)
     {

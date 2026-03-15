@@ -77,7 +77,7 @@ function formatDateTime(iso: string, allDay: boolean): string {
 }
 
 export default function Index({ events, eventsForMonth, month, year, canManage }: Props) {
-    const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
+    const [viewMode, setViewMode] = useState<'calendar' | 'list'>('list');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
