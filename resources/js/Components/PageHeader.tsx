@@ -2,7 +2,7 @@ import { ReactNode } from 'react';
 
 export default function PageHeader({ title, subtitle, children }: { title: string; subtitle?: string; children?: ReactNode }) {
     return (
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mt-6 mb-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mt-6 mb-8 flex-nowrap md:flex-wrap">
             <div>
                 <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
                     {title}

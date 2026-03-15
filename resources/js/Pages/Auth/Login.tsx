@@ -6,7 +6,10 @@ import TextInput from '@/Components/TextInput';
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import { FormEventHandler } from 'react';
+import { FormEventHandler, useEffect } from 'react';
+
+const DEFAULT_VIEWPORT = 'width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=overlays-content';
+const FIXED_VIEWPORT = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
 
 export default function Login({
     status,
@@ -23,6 +26,16 @@ export default function Login({
         remember: false as boolean,
     });
 
+    useEffect(() => {
+        const meta = document.querySelector('meta[name="viewport"]');
+        if (!meta) return;
+        const previous = meta.getAttribute('content') ?? DEFAULT_VIEWPORT;
+        meta.setAttribute('content', FIXED_VIEWPORT);
+        return () => {
+            meta.setAttribute('content', previous);
+        };
+    }, []);
+
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         post(route('login'), {
@@ -34,7 +47,7 @@ export default function Login({
         <GuestLayout>
             <Head title="Entrar" />
 
-            <div className="w-full flex flex-col lg:flex-row min-h-screen lg:min-h-0">
+            <div className="w-full flex flex-col lg:flex-row min-h-screen lg:min-h-0 fixed inset-0 lg:relative overflow-auto lg:overflow-visible">
                 {/* Coluna esquerda: oculta no mobile */}
                 <div className="hidden lg:flex lg:w-1/2 flex-col justify-between px-8 py-10 lg:px-16 bg-zinc-900 text-zinc-100">
                     <div className="max-w-md">
@@ -70,7 +83,7 @@ export default function Login({
                     </p>
                 </div>
 
-                <div className="w-full lg:w-1/2 bg-white dark:bg-white flex items-center justify-center px-5 py-8 sm:px-6 sm:py-10 lg:px-16 min-h-[100dvh] lg:min-h-0">
+                <div className="w-full lg:w-1/2 bg-white dark:bg-white flex items-center justify-center px-5 py-8 sm:px-6 sm:py-10 lg:px-16 min-h-[100dvh] max-md:max-h-[100dvh] max-md:overflow-y-auto max-md:touch-manipulation lg:min-h-0">
                     <div className="w-full max-w-md">
                         <div className="lg:hidden flex justify-center mb-6">
                             <Link href="/">

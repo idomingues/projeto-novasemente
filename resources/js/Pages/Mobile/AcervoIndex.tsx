@@ -1,0 +1,265 @@
+import MobileLayout from '@/Layouts/MobileLayout';
+import { Head, useForm, router } from '@inertiajs/react';
+import { PencilIcon, TrashIcon, Bars3Icon, ArrowTopRightOnSquareIcon, PlayCircleIcon, PlusIcon } from '@heroicons/react/24/outline';
+import Modal from '@/Components/Modal';
+import InputLabel from '@/Components/InputLabel';
+import TextInput from '@/Components/TextInput';
+import PrimaryButton from '@/Components/PrimaryButton';
+import SecondaryButton from '@/Components/SecondaryButton';
+import InputError from '@/Components/InputError';
+import { useState, FormEventHandler } from 'react';
+
+interface AcervoItem {
+    id: number;
+    url: string;
+    title: string;
+    thumbnail: string | null;
+    videoCount: number | null;
+}
+
+interface Props {
+    items: AcervoItem[];
+    canManage: boolean;
+}
+
+export default function MobileAcervoIndex({ items, canManage }: Props) {
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editingId, setEditingId] = useState<number | null>(null);
+    const [deleteItem, setDeleteItem] = useState<AcervoItem | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
+        url: '',
+    });
+
+    const openCreateModal = () => {
+        setIsEditing(false);
+        setEditingId(null);
+        reset();
+        clearErrors();
+        setData('url', '');
+        setIsModalOpen(true);
+    };
+
+    const openEditModal = (item: AcervoItem) => {
+        setIsEditing(true);
+        setEditingId(item.id);
+        setData('url', item.url);
+        clearErrors();
+        setIsModalOpen(true);
+    };
+
+    const closeModal = () => {
+        setIsModalOpen(false);
+        reset();
+    };
+
+    const submit: FormEventHandler = (e) => {
+        e.preventDefault();
+        if (isEditing && editingId) {
+            put(route('acervo.update', editingId), { onSuccess: () => closeModal() });
+        } else {
+            post(route('acervo.store'), { onSuccess: () => closeModal() });
+        }
+    };
+
+    const openDeleteModal = (item: AcervoItem) => {
+        setDeleteItem(item);
+    };
+
+    const closeDeleteModal = () => {
+        if (!isDeleting) setDeleteItem(null);
+    };
+
+    const confirmDelete = () => {
+        if (!deleteItem) return;
+        setIsDeleting(true);
+        router.delete(route('acervo.destroy', deleteItem.id), {
+            onFinish: () => {
+                setIsDeleting(false);
+                setDeleteItem(null);
+            },
+        });
+    };
+
+    return (
+        <MobileLayout>
+            <Head title="Acervo" />
+            <div className="space-y-6">
+                {/* Título e + na mesma linha (mobile) */}
+                <div className="flex items-center justify-between gap-3 flex-nowrap">
+                    <h1 className="text-xl font-bold text-zinc-900 dark:text-white truncate">Acervo</h1>
+                    {canManage && (
+                        <button
+                            type="button"
+                            onClick={openCreateModal}
+                            aria-label="Adicionar link"
+                            className="flex-shrink-0 w-12 h-12 rounded-full bg-zinc-900 dark:bg-zinc-900 text-white flex items-center justify-center shadow-lg hover:bg-zinc-800 dark:hover:bg-zinc-800 active:scale-95 transition-all"
+                        >
+                            <PlusIcon className="w-6 h-6" strokeWidth={2.5} />
+                        </button>
+                    )}
+                </div>
+
+                {items.length > 0 ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        {items.map((item) => (
+                            <div key={item.id} className="group relative">
+                                <a
+                                    href={item.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title={`${item.title} (abre em nova aba)`}
+                                    className="block rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 overflow-hidden active:scale-[0.98] transition-transform"
+                                >
+                                    <div className="relative aspect-video bg-zinc-200 dark:bg-zinc-800">
+                                        {item.thumbnail ? (
+                                            <img
+                                                src={item.thumbnail}
+                                                alt=""
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center">
+                                                <PlayCircleIcon className="w-10 h-10 text-zinc-400" />
+                                            </div>
+                                        )}
+                                        {item.videoCount != null && item.videoCount > 0 && (
+                                            <div className="absolute bottom-0 right-0 flex items-center gap-1 px-2 py-1 bg-black/70 text-white text-[10px] font-medium rounded-tl-lg">
+                                                <Bars3Icon className="w-3 h-3" />
+                                                {item.videoCount} {item.videoCount === 1 ? 'vídeo' : 'vídeos'}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="p-2">
+                                        <h2 className="font-semibold text-zinc-900 dark:text-white text-xs line-clamp-2">
+                                            {item.title}
+                                        </h2>
+                                        <span className="inline-flex items-center gap-0.5 mt-0.5 text-[10px] text-zinc-500 dark:text-zinc-400">
+                                            Ver playlist
+                                            <ArrowTopRightOnSquareIcon className="w-3 h-3" />
+                                        </span>
+                                    </div>
+                                </a>
+                                {canManage && (
+                                    <div className="absolute top-2 right-2 flex gap-1">
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                openEditModal(item);
+                                            }}
+                                            className="p-2 rounded-lg bg-white/90 dark:bg-zinc-800/90 shadow"
+                                            title="Editar"
+                                        >
+                                            <PencilIcon className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                openDeleteModal(item);
+                                            }}
+                                            className="p-2 rounded-lg bg-white/90 dark:bg-zinc-800/90 shadow"
+                                            title="Remover"
+                                        >
+                                            <TrashIcon className="w-4 h-4 text-red-600 dark:text-red-400" />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-700 p-8 text-center">
+                        <PlayCircleIcon className="w-14 h-14 text-zinc-400 mx-auto mb-3" />
+                        <p className="text-zinc-600 dark:text-zinc-400 text-sm mb-4">
+                            Nenhum item no acervo.
+                        </p>
+                        {canManage && (
+                            <button
+                                type="button"
+                                onClick={openCreateModal}
+                                className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-zinc-900 dark:bg-zinc-900 text-white shadow-lg"
+                                aria-label="Adicionar"
+                            >
+                                <PlusIcon className="w-6 h-6" strokeWidth={2.5} />
+                            </button>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            <Modal show={!!deleteItem} onClose={closeDeleteModal} maxWidth="sm">
+                <div className="p-6">
+                    <div className="flex items-start gap-4">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+                            <TrashIcon className="h-6 w-6 text-red-600 dark:text-red-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
+                                Remover do acervo?
+                            </h3>
+                            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+                                {deleteItem && (
+                                    <>
+                                        &quot;{deleteItem.title}&quot; será removido permanentemente.
+                                    </>
+                                )}
+                            </p>
+                            <div className="mt-6 flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={confirmDelete}
+                                    disabled={isDeleting}
+                                    className="inline-flex justify-center rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-red-500 disabled:opacity-50"
+                                >
+                                    {isDeleting ? 'Removendo...' : 'Remover'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={closeDeleteModal}
+                                    disabled={isDeleting}
+                                    className="inline-flex justify-center rounded-xl border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-4 py-2.5 text-sm font-semibold text-zinc-900 dark:text-white"
+                                >
+                                    Cancelar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </Modal>
+
+            <Modal show={isModalOpen} onClose={closeModal}>
+                <form onSubmit={submit} className="p-6">
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">
+                        {isEditing ? 'Editar item' : 'Adicionar item'}
+                    </h2>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
+                        Cole o link da playlist ou vídeo do YouTube.
+                    </p>
+                    <div>
+                        <InputLabel htmlFor="url" value="Link do YouTube" />
+                        <TextInput
+                            id="url"
+                            type="url"
+                            value={data.url}
+                            onChange={(e) => setData('url', e.target.value)}
+                            placeholder="https://www.youtube.com/..."
+                            className="mt-1 block w-full"
+                        />
+                        <InputError message={errors.url} className="mt-1" />
+                    </div>
+                    <div className="flex gap-2 mt-6">
+                        <PrimaryButton type="submit" disabled={processing}>
+                            {isEditing ? 'Salvar' : 'Adicionar'}
+                        </PrimaryButton>
+                        <SecondaryButton type="button" onClick={closeModal}>
+                            Cancelar
+                        </SecondaryButton>
+                    </div>
+                </form>
+            </Modal>
+        </MobileLayout>
+    );
+}

@@ -6,6 +6,14 @@
 set -e
 cd "$(dirname "$0")/.."
 
+# Aviso: se estiver em /var/www estamos provavelmente no servidor
+if [[ "$PWD" == /var/www* ]]; then
+    echo "ERRO: Este script deve ser executado no seu MAC (XAMPP), não no servidor."
+    echo "No servidor não existem os dados locais (ex.: Acervo)."
+    echo "No Mac: cd /Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente && ./scripts/export-local-db.sh"
+    exit 1
+fi
+
 # Carregar variáveis do .env
 if [ -f .env ]; then
     set -a

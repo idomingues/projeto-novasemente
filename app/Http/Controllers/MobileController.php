@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AcervoItem;
 use App\Models\Church;
 use App\Models\ChurchService;
 use App\Models\Culto;
@@ -110,7 +111,6 @@ class MobileController extends Controller
         $churchId = $this->currentChurch()?->id;
         $query = News::query()
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
-            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
             ->whereNotNull('published_at')
             ->where('published_at', '<=', now())
             ->orderByDesc('published_at');
@@ -338,12 +338,21 @@ class MobileController extends Controller
 
     public function acervo(): Response
     {
-        $playlistsUrl = 'https://www.youtube.com/@advnovasemente/playlists';
-        $playlists = YoutubePlaylistsService::fetch();
+        $items = AcervoItem::query()
+            ->orderByDesc('created_at')
+            ->orderBy('title')
+            ->get()
+            ->map(fn (AcervoItem $item) => [
+                'id' => $item->id,
+                'url' => $item->url,
+                'title' => $item->title,
+                'thumbnail' => $item->thumbnail_url,
+                'videoCount' => $item->video_count,
+            ]);
 
-        return Inertia::render('Mobile/Acervo', [
-            'playlists' => $playlists,
-            'playlistsUrl' => $playlistsUrl,
+        return Inertia::render('Mobile/AcervoIndex', [
+            'items' => $items,
+            'canManage' => (bool) request()->user(),
         ]);
     }
 

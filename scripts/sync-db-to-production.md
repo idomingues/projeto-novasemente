@@ -12,9 +12,9 @@ Deixa produção **igual** ao banco local (apaga os dados atuais de produção).
 
 Garantir que o código em produção está atualizado (ex.: push na `main` e o GitHub Actions faz o deploy, ou deploy manual). Só depois passar para a Fase 2.
 
-### Fase 2: BD – 1. Na sua máquina (Mac): exportar o banco local
+### Fase 2: BD – 1. ⚠️ NO MAC: exportar o banco local
 
-**Tem de ser no Mac** (onde está o XAMPP e o banco `ns`), **não no servidor**. No servidor o script usaria o .env de produção e daria erro de permissão.
+**Sempre no Mac.** Se rodar no servidor, o dump será de produção (sem os teus dados locais, ex. Acervo) e não resolve. O script agora avisa e sai se detectar que está em `/var/www`.
 
 ```bash
 cd /Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente
@@ -48,14 +48,16 @@ Substitua `backup_local_YYYYMMDD_HHMM.sql` pelo nome real do ficheiro e `SEU_SER
 
 ### Fase 2: BD – 4. No servidor: importar o dump (substituir dados de produção)
 
+Use o **nome exato** do ficheiro que enviou no `scp` (ex.: se enviou `backup_local_20260315_1234.sql`, use esse nome).
+
 ```bash
 cd /var/www/projeto-novasemente
-mysql -h 127.0.0.1 -P 3306 -u laravel -p sistema_igreja < backup_local_YYYYMMDD_HHMM.sql
+ls backup_local_*.sql
+# Confirme qual ficheiro existe, depois:
+mysql -h 127.0.0.1 -P 3306 -u laravel -p sistema_igreja < backup_local_20260315_1234.sql
 php artisan optimize:clear
 php artisan config:cache
 ```
-
-Substitua `backup_local_YYYYMMDD_HHMM.sql` pelo nome do ficheiro que enviou.
 
 Pronto. Produção fica com os mesmos dados do local.
 
