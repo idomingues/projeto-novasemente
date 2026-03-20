@@ -1,6 +1,6 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm, router } from '@inertiajs/react';
-import { PencilIcon, TrashIcon, KeyIcon, EnvelopeIcon, DevicePhoneMobileIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, EnvelopeIcon, DevicePhoneMobileIcon, LinkIcon } from '@heroicons/react/24/outline';
 import AddButton from '@/Components/AddButton';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
@@ -15,7 +15,8 @@ import { useState, useEffect, FormEventHandler } from 'react';
 interface UserRow {
     id: number;
     name: string;
-    email: string;
+    email: string | null;
+    needs_registration: boolean;
     member_id: number | null;
     member: { id: number; name: string } | null;
     roles: string[];
@@ -24,7 +25,8 @@ interface UserRow {
 
 interface InvitationRow {
     id: number;
-    email: string;
+    email: string | null;
+    user_name: string | null;
     role: string | null;
     token: string;
     expires_at: string | null;
@@ -79,7 +81,7 @@ export default function Index({ users, invitations, members, roles, ministries, 
         setEditingUser(u);
         userForm.setData({
             name: u.name,
-            email: u.email,
+            email: u.email ?? '',
             password: '',
             password_confirmation: '',
             member_id: u.member_id ?? '',
@@ -184,7 +186,7 @@ export default function Index({ users, invitations, members, roles, ministries, 
                                 {users.map((u) => (
                                     <tr key={u.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
                                         <td className="px-4 md:px-6 py-3 font-medium text-zinc-900 dark:text-white">{u.name}</td>
-                                        <td className="px-4 md:px-6 py-3 text-zinc-600 dark:text-zinc-300">{u.email}</td>
+                                        <td className="px-4 md:px-6 py-3 text-zinc-600 dark:text-zinc-300">{u.email ?? '—'}</td>
                                         <td className="px-4 md:px-6 py-3 text-zinc-600 dark:text-zinc-300">{u.member?.name ?? '—'}</td>
                                         <td className="px-4 md:px-6 py-3">
                                             {u.roles.length > 0 ? (
@@ -197,6 +199,16 @@ export default function Index({ users, invitations, members, roles, ministries, 
                                             <button type="button" onClick={() => openEditUser(u)} className="p-2 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 rounded-lg" title="Editar">
                                                 <PencilIcon className="w-4 h-4" />
                                             </button>
+                                            {u.needs_registration && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => router.post(route('users.invite', u.id))}
+                                                    className="p-2 text-zinc-500 hover:text-green-600 dark:hover:text-green-400 rounded-lg"
+                                                    title="Gerar link de convite (WhatsApp) para finalizar cadastro"
+                                                >
+                                                    <LinkIcon className="w-4 h-4" />
+                                                </button>
+                                            )}
                                             <button type="button" onClick={() => confirm('Excluir este usuário?') && router.delete(route('users.destroy', u.id))} className="p-2 text-zinc-500 hover:text-red-600 dark:hover:text-red-400 rounded-lg" title="Excluir">
                                                 <TrashIcon className="w-4 h-4" />
                                             </button>
@@ -220,7 +232,7 @@ export default function Index({ users, invitations, members, roles, ministries, 
                         <table className="w-full text-sm">
                             <thead className="bg-zinc-50 dark:bg-zinc-800/50">
                                 <tr>
-                                    <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold text-zinc-500 uppercase">E-mail</th>
+                                    <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold text-zinc-500 uppercase">Convidado</th>
                                     <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold text-zinc-500 uppercase">Papel</th>
                                     <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold text-zinc-500 uppercase">Status</th>
                                     <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold text-zinc-500 uppercase">Link</th>
@@ -234,7 +246,7 @@ export default function Index({ users, invitations, members, roles, ministries, 
                                     const status = used ? 'Usado' : expired ? 'Expirado' : 'Pendente';
                                     return (
                                         <tr key={i.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
-                                            <td className="px-4 md:px-6 py-3 text-zinc-900 dark:text-white">{i.email}</td>
+                                            <td className="px-4 md:px-6 py-3 text-zinc-900 dark:text-white">{i.user_name ?? i.email ?? '—'}</td>
                                             <td className="px-4 md:px-6 py-3 text-zinc-600 dark:text-zinc-300">{i.role ?? '—'}</td>
                                             <td className="px-4 md:px-6 py-3">
                                                 <span className={`text-xs px-2 py-0.5 rounded ${used ? 'bg-zinc-200 dark:bg-zinc-700' : expired ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200' : 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'}`}>
@@ -284,18 +296,19 @@ export default function Index({ users, invitations, members, roles, ministries, 
                         </div>
                         <div>
                             <InputLabel htmlFor="user_email" value="E-mail" />
-                            <TextInput id="user_email" type="email" value={userForm.data.email} onChange={(e) => userForm.setData('email', e.target.value)} className="mt-1 block w-full" required />
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 mb-1">Opcional se o cadastro for concluído depois pelo link de convite (WhatsApp).</p>
+                            <TextInput id="user_email" type="email" value={userForm.data.email} onChange={(e) => userForm.setData('email', e.target.value)} className="mt-1 block w-full" />
                             <InputError message={userForm.errors.email} className="mt-1" />
                         </div>
                         <div>
                             <InputLabel htmlFor="user_password" value={editingUser ? 'Nova senha (deixe em branco para manter)' : 'Senha'} />
-                            <TextInput id="user_password" type="password" value={userForm.data.password} onChange={(e) => userForm.setData('password', e.target.value)} className="mt-1 block w-full" autoComplete="new-password" required={!editingUser} />
+                            <TextInput id="user_password" type="password" value={userForm.data.password} onChange={(e) => userForm.setData('password', e.target.value)} className="mt-1 block w-full" autoComplete="new-password" required={!editingUser && userForm.data.email !== ''} />
                             <InputError message={userForm.errors.password} className="mt-1" />
                         </div>
                         {!editingUser && (
                             <div>
                                 <InputLabel htmlFor="user_password_confirmation" value="Confirmar senha" />
-                                <TextInput id="user_password_confirmation" type="password" value={userForm.data.password_confirmation} onChange={(e) => userForm.setData('password_confirmation', e.target.value)} className="mt-1 block w-full" autoComplete="new-password" required={!editingUser} />
+                                <TextInput id="user_password_confirmation" type="password" value={userForm.data.password_confirmation} onChange={(e) => userForm.setData('password_confirmation', e.target.value)} className="mt-1 block w-full" autoComplete="new-password" required={userForm.data.email !== ''} />
                                 <InputError message={userForm.errors.password_confirmation} className="mt-1" />
                             </div>
                         )}

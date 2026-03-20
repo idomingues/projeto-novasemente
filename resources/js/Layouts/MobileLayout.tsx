@@ -65,7 +65,7 @@ const adminMenuItems = [
 export default function MobileLayout({ children }: PropsWithChildren) {
     const { props } = usePage();
     const currentChurch = (props as { currentChurch?: { name: string; logo_url?: string | null } | null }).currentChurch;
-    const auth = (props as { auth?: { canAccessAdminMenu?: boolean; permissions?: string[] } }).auth;
+    const auth = (props as { auth?: { user?: { name: string }; canAccessAdminMenu?: boolean; permissions?: string[] } }).auth;
     const canAccessAdminMenu = auth?.canAccessAdminMenu ?? false;
     const permissions: string[] = auth?.permissions ?? [];
     const [adminMenuOpen, setAdminMenuOpen] = useState(false);
@@ -149,21 +149,33 @@ export default function MobileLayout({ children }: PropsWithChildren) {
                             className="h-9 w-9 rounded-full object-cover object-center dark:invert"
                         />
                     </Link>
-                    <Link
-                        href={route('mobile.settings')}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 p-2 -m-2 rounded-full text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                        aria-label="Configurações"
-                    >
-                        <Cog6ToothIcon className="w-6 h-6" />
-                    </Link>
+                    {auth?.user ? (
+                        <Link
+                            href={route('mobile.settings')}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 p-2 -m-2 rounded-full text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                            aria-label="Configurações"
+                        >
+                            <Cog6ToothIcon className="w-6 h-6" />
+                        </Link>
+                    ) : (
+                        <Link
+                            href={route('login')}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-lg text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                            aria-label="Entrar"
+                        >
+                            Login
+                        </Link>
+                    )}
                 </div>
             </header>
 
             {/* Conteúdo com padding para barras fixas e espaço abaixo do topo */}
             <main
-                className="pt-[calc(3.5rem+env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] min-h-screen px-4 pb-4"
+                className="pt-[calc(3.5rem+env(safe-area-inset-top,0px)+1.5rem)] lg:pt-24 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] min-h-screen px-4 lg:px-8 pb-4"
             >
-                {children}
+                <div className="max-w-7xl lg:max-w-[90rem] mx-auto w-full">
+                    {children}
+                </div>
             </main>
 
             <MobileBottomNav />

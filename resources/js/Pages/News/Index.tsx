@@ -147,11 +147,11 @@ export default function Index({ posts, filters, canManage }: Props) {
                 </div>
             </PageHeader>
 
-            <div className="space-y-4 pb-8 md:pb-0">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-8 md:pb-0">
                 {posts.data.map((p) => (
-                    <Card key={p.id} className="flex flex-col sm:flex-row gap-4 md:gap-6 p-4 sm:p-6 md:p-8 touch-manipulation">
+                    <Card key={p.id} className="flex flex-col gap-4 md:gap-6 p-4 sm:p-6 md:p-8 touch-manipulation">
                         {p.image_url && (
-                            <div className="relative w-full sm:w-40 md:w-48 h-36 sm:h-40 rounded-2xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 flex-shrink-0">
+                            <div className="relative w-full h-40 md:h-48 rounded-2xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 flex-shrink-0">
                                 <img
                                     src={imageSrc(p.image_url, appUrl)}
                                     alt=""
@@ -210,7 +210,7 @@ export default function Index({ posts, filters, canManage }: Props) {
                 ))}
 
                 {posts.data.length === 0 && (
-                    <Card>
+                    <Card className="lg:col-span-2">
                         <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center">
                             Nenhuma notícia cadastrada.
                         </p>

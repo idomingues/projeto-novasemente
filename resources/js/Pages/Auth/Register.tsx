@@ -7,9 +7,11 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
 
 interface InvitationProps {
-    email: string;
+    email: string | null;
+    name: string | null;
     role: string | null;
     token: string;
+    completes_existing_user: boolean;
 }
 
 interface Props {
@@ -18,7 +20,7 @@ interface Props {
 
 export default function Register({ invitation }: Props) {
     const { data, setData, post, processing, errors, reset } = useForm({
-        name: '',
+        name: invitation?.name ?? '',
         email: invitation?.email ?? '',
         password: '',
         password_confirmation: '',
@@ -38,13 +40,15 @@ export default function Register({ invitation }: Props) {
 
             {invitation && (
                 <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
-                    Você foi convidado a criar sua conta. Preencha os dados abaixo.
+                    {invitation.completes_existing_user
+                        ? 'Finalize seu cadastro informando e-mail e senha de acesso.'
+                        : 'Você foi convidado a criar sua conta. Preencha os dados abaixo.'}
                 </p>
             )}
 
             <form onSubmit={submit}>
                 <div>
-                    <InputLabel htmlFor="name" value="Name" />
+                    <InputLabel htmlFor="name" value="Nome" />
 
                     <TextInput
                         id="name"
@@ -54,6 +58,7 @@ export default function Register({ invitation }: Props) {
                         autoComplete="name"
                         isFocused={true}
                         onChange={(e) => setData('name', e.target.value)}
+                        readOnly={!!invitation?.completes_existing_user}
                         required
                     />
 
@@ -61,7 +66,7 @@ export default function Register({ invitation }: Props) {
                 </div>
 
                 <div className="mt-4">
-                    <InputLabel htmlFor="email" value="Email" />
+                    <InputLabel htmlFor="email" value="E-mail" />
 
                     <TextInput
                         id="email"
@@ -72,14 +77,14 @@ export default function Register({ invitation }: Props) {
                         autoComplete="username"
                         onChange={(e) => setData('email', e.target.value)}
                         required
-                        readOnly={!!invitation}
+                        readOnly={!!invitation?.email}
                     />
 
                     <InputError message={errors.email} className="mt-2" />
                 </div>
 
                 <div className="mt-4">
-                    <InputLabel htmlFor="password" value="Password" />
+                    <InputLabel htmlFor="password" value="Senha" />
 
                     <TextInput
                         id="password"
@@ -98,7 +103,7 @@ export default function Register({ invitation }: Props) {
                 <div className="mt-4">
                     <InputLabel
                         htmlFor="password_confirmation"
-                        value="Confirm Password"
+                        value="Confirmar senha"
                     />
 
                     <TextInput

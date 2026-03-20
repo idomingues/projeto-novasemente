@@ -3,17 +3,24 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
 class Invitation extends Model
 {
     protected $fillable = [
+        'user_id',
         'email',
         'token',
         'role',
         'expires_at',
         'used_at',
     ];
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 
     protected $casts = [
         'expires_at' => 'datetime',
@@ -32,7 +39,7 @@ class Invitation extends Model
 
     public function isValid(): bool
     {
-        return !$this->isUsed() && !$this->isExpired();
+        return ! $this->isUsed() && ! $this->isExpired();
     }
 
     public static function createToken(): string

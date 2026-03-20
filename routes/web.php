@@ -1,28 +1,26 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
-use Illuminate\Foundation\Application;
-use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
-use App\Models\Church;
-use App\Models\Event;
-
-use App\Http\Controllers\MemberController;
-use App\Http\Controllers\MinistryController;
-use App\Http\Controllers\VolunteerController;
-use App\Http\Controllers\ChurchController;
-use App\Http\Controllers\InventoryController;
-use App\Http\Controllers\NewsController;
-use App\Http\Controllers\CultoController;
-use App\Http\Controllers\MusicaController;
-use App\Http\Controllers\EventController;
-use App\Http\Controllers\MobileController;
-use App\Http\Controllers\PrayerRequestController;
-use App\Http\Controllers\RoleController;
-use App\Http\Controllers\VariosController;
 use App\Http\Controllers\AcervoController;
 use App\Http\Controllers\AppNotificationController;
+use App\Http\Controllers\ChurchController;
+use App\Http\Controllers\CultoController;
+use App\Http\Controllers\EventController;
 use App\Http\Controllers\FaviconController;
+use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\MemberController;
+use App\Http\Controllers\MinistryController;
+use App\Http\Controllers\MobileController;
+use App\Http\Controllers\MusicaController;
+use App\Http\Controllers\NewsController;
+use App\Http\Controllers\PrayerRequestController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RoleController;
+use App\Http\Controllers\VariosController;
+use App\Http\Controllers\VolunteerController;
+use App\Models\Church;
+use App\Models\Event;
+use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 Route::get('/favicon.svg', FaviconController::class)->name('favicon');
 
@@ -30,7 +28,13 @@ Route::get('/', function (\Illuminate\Http\Request $request) {
     if ($request->user()) {
         return redirect()->route('dashboard');
     }
-    return redirect()->route('login');
+
+    $isMobile = (bool) preg_match(
+        '/Mobile|Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i',
+        $request->userAgent() ?? ''
+    );
+
+    return $isMobile ? redirect()->route('mobile.culto') : redirect()->route('more.index');
 });
 
 Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
@@ -67,6 +71,33 @@ Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
         'upcomingEvents' => $upcomingEvents,
     ]);
 })->middleware(['auth', 'verified'])->name('dashboard');
+
+// Rotas públicas (guests e autenticados): app com menu mobile/PC e Login no lugar da engrenagem
+Route::get('/mais', [\App\Http\Controllers\MoreController::class, 'index'])->name('more.index');
+Route::get('/varios/escala', [VariosController::class, 'schedule'])->name('varios.schedule');
+Route::get('/varios/servicos', [VariosController::class, 'services'])->name('varios.services');
+Route::get('/varios/classe-comecos', [VariosController::class, 'classeComecos'])->name('varios.classe-comecos');
+Route::get('/varios/acervo', fn () => redirect()->route('acervo.index'))->name('varios.acervo');
+Route::get('/acervo', [AcervoController::class, 'index'])->name('acervo.index');
+Route::get('/varios/contato', [VariosController::class, 'contact'])->name('varios.contact');
+Route::get('/varios/notificacoes', [VariosController::class, 'notifications'])->name('varios.notifications');
+Route::get('/pedidos-oracao', [PrayerRequestController::class, 'index'])->name('prayer.index');
+Route::post('/pedidos-oracao', [PrayerRequestController::class, 'store'])->name('prayer.store');
+Route::get('/mobile/oracao', [PrayerRequestController::class, 'mobile'])->name('mobile.prayer');
+Route::redirect('/mobile', '/mobile/culto')->name('mobile.index');
+Route::get('/mobile/culto', [MobileController::class, 'culto'])->name('mobile.culto');
+Route::get('/mobile/news', [MobileController::class, 'news'])->name('mobile.news');
+Route::get('/mobile/events', [MobileController::class, 'events'])->name('mobile.events');
+Route::get('/mobile/schedule', [MobileController::class, 'schedule'])->name('mobile.schedule');
+Route::get('/mobile/more', [MobileController::class, 'more'])->name('mobile.more');
+Route::get('/mobile/classe-comecos', [MobileController::class, 'classeComecos'])->name('mobile.classe-comecos');
+Route::get('/mobile/acervo', [MobileController::class, 'acervo'])->name('mobile.acervo');
+Route::get('/mobile/musica', [MobileController::class, 'musica'])->name('mobile.musica');
+Route::get('/mobile/services', [MobileController::class, 'services'])->name('mobile.services');
+Route::get('/mobile/contact', [MobileController::class, 'contact'])->name('mobile.contact');
+Route::get('/mobile/offerings', [MobileController::class, 'offerings'])->name('mobile.offerings');
+Route::get('/mobile/notifications', [MobileController::class, 'notifications'])->name('mobile.notifications');
+Route::get('/musica', [MusicaController::class, 'index'])->name('musica.index');
 
 Route::middleware('auth')->group(function () {
     Route::post('/working-church', [\App\Http\Controllers\SetWorkingChurchController::class, '__invoke'])->name('working-church.store');
@@ -120,6 +151,7 @@ Route::middleware('auth')->group(function () {
     // Usuários e convites
     Route::get('/users', [\App\Http\Controllers\UserController::class, 'index'])->name('users.index')->middleware('permission:users.view|users.manage');
     Route::post('/users', [\App\Http\Controllers\UserController::class, 'store'])->name('users.store')->middleware('permission:users.manage');
+    Route::post('/users/{user}/invite', [\App\Http\Controllers\UserController::class, 'invite'])->name('users.invite')->middleware('permission:users.manage');
     Route::put('/users/{user}', [\App\Http\Controllers\UserController::class, 'update'])->name('users.update')->middleware('permission:users.manage');
     Route::delete('/users/{user}', [\App\Http\Controllers\UserController::class, 'destroy'])->name('users.destroy')->middleware('permission:users.manage');
     Route::post('/invitations', [\App\Http\Controllers\InvitationController::class, 'store'])->name('invitations.store')->middleware('permission:users.manage');
@@ -143,45 +175,19 @@ Route::middleware('auth')->group(function () {
     Route::post('/culto', [CultoController::class, 'store'])->name('culto.store')->middleware('permission:culto.manage');
     Route::put('/culto/{culto}', [CultoController::class, 'update'])->name('culto.update')->middleware('permission:culto.manage');
     Route::delete('/culto/{culto}', [CultoController::class, 'destroy'])->name('culto.destroy')->middleware('permission:culto.manage');
-    Route::get('/musica', [MusicaController::class, 'index'])->name('musica.index');
     Route::post('/musica', [MusicaController::class, 'store'])->name('musica.store')->middleware('permission:music.manage');
     Route::put('/musica/{musica}', [MusicaController::class, 'update'])->name('musica.update')->middleware('permission:music.manage');
     Route::delete('/musica/{musica}', [MusicaController::class, 'destroy'])->name('musica.destroy')->middleware('permission:music.manage');
-    Route::get('/services', function () { return Inertia::render('Dashboard'); })->name('services.index');
-    Route::get('/settings', function () { return Inertia::render('Settings/Index'); })->name('settings.index');
-    Route::get('/mais', function () { return Inertia::render('More/Index'); })->name('more.index');
-
-    // Vários (AdminLayout - topbar e sidebar para PC e mobile)
-    Route::get('/varios/escala', [VariosController::class, 'schedule'])->name('varios.schedule');
-    Route::get('/varios/servicos', [VariosController::class, 'services'])->name('varios.services');
-    Route::get('/varios/classe-comecos', [VariosController::class, 'classeComecos'])->name('varios.classe-comecos');
-    Route::get('/varios/acervo', fn () => redirect()->route('acervo.index'))->name('varios.acervo');
-    Route::get('/acervo', [AcervoController::class, 'index'])->name('acervo.index');
+    Route::get('/services', function () {
+        return Inertia::render('Dashboard');
+    })->name('services.index');
+    Route::get('/settings', function () {
+        return Inertia::render('Settings/Index');
+    })->name('settings.index');
     Route::post('/acervo', [AcervoController::class, 'store'])->name('acervo.store');
     Route::put('/acervo/{acervo}', [AcervoController::class, 'update'])->name('acervo.update');
     Route::delete('/acervo/{acervo}', [AcervoController::class, 'destroy'])->name('acervo.destroy');
-    Route::get('/varios/contato', [VariosController::class, 'contact'])->name('varios.contact');
-    Route::get('/varios/notificacoes', [VariosController::class, 'notifications'])->name('varios.notifications');
     Route::post('/notifications', [AppNotificationController::class, 'store'])->name('notifications.store')->middleware('permission:notifications.manage');
-
-    Route::get('/pedidos-oracao', [PrayerRequestController::class, 'index'])->name('prayer.index');
-    Route::post('/pedidos-oracao', [PrayerRequestController::class, 'store'])->name('prayer.store');
-    Route::get('/mobile/oracao', [PrayerRequestController::class, 'mobile'])->name('mobile.prayer');
-
-    // Área mobile (menu inferior: Culto, Notícias, Eventos, Escala, Oferta, Configurações)
-    Route::redirect('/mobile', '/mobile/culto')->name('mobile.index');
-    Route::get('/mobile/culto', [MobileController::class, 'culto'])->name('mobile.culto');
-    Route::get('/mobile/news', [MobileController::class, 'news'])->name('mobile.news');
-    Route::get('/mobile/events', [MobileController::class, 'events'])->name('mobile.events');
-    Route::get('/mobile/schedule', [MobileController::class, 'schedule'])->name('mobile.schedule');
-    Route::get('/mobile/more', [MobileController::class, 'more'])->name('mobile.more');
-    Route::get('/mobile/classe-comecos', [MobileController::class, 'classeComecos'])->name('mobile.classe-comecos');
-    Route::get('/mobile/acervo', [MobileController::class, 'acervo'])->name('mobile.acervo');
-    Route::get('/mobile/musica', [MobileController::class, 'musica'])->name('mobile.musica');
-    Route::get('/mobile/services', [MobileController::class, 'services'])->name('mobile.services');
-    Route::get('/mobile/contact', [MobileController::class, 'contact'])->name('mobile.contact');
-    Route::get('/mobile/offerings', [MobileController::class, 'offerings'])->name('mobile.offerings');
-    Route::get('/mobile/notifications', [MobileController::class, 'notifications'])->name('mobile.notifications');
     Route::get('/mobile/settings', [MobileController::class, 'settings'])->name('mobile.settings');
 
     // Igrejas — apenas super admin (via permission churches.manage)

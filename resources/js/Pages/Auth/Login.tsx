@@ -21,7 +21,7 @@ export default function Login({
     const appLogoUrl = (usePage().props as { appLogoUrl?: string | null }).appLogoUrl ?? null;
 
     const { data, setData, post, processing, errors, reset } = useForm({
-        email: '',
+        login: '',
         password: '',
         remember: false as boolean,
     });
@@ -105,19 +105,20 @@ export default function Login({
 
                         <form onSubmit={submit} className="mt-6 space-y-5">
                             <div>
-                                <InputLabel htmlFor="email" value="Email" />
+                                <InputLabel htmlFor="login" value="E-mail ou nome" />
                                 <TextInput
-                                    id="email"
-                                    type="email"
-                                    name="email"
-                                    value={data.email}
+                                    id="login"
+                                    type="text"
+                                    name="login"
+                                    value={data.login}
                                     className="mt-1 block w-full !bg-zinc-50 dark:!bg-zinc-100 !border-zinc-300 dark:!border-zinc-300 !text-zinc-900 placeholder:!text-zinc-500"
                                     autoComplete="username"
                                     isFocused={true}
-                                    onChange={(e) => setData('email', e.target.value)}
+                                    placeholder="seu@email.com ou nome cadastrado"
+                                    onChange={(e) => setData('login', e.target.value)}
                                     required
                                 />
-                                <InputError message={errors.email} className="mt-2" />
+                                <InputError message={errors.login} className="mt-2" />
                             </div>
 
                             <div>

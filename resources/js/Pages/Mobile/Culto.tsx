@@ -30,7 +30,7 @@ export default function MobileCulto({ cultos }: Props) {
             <Head title="Culto" />
             <div className="space-y-6">
                 {cultos.length === 0 ? (
-                    <div className="py-12 text-center">
+                    <div className="py-12 lg:py-20 text-center">
                         <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-4">
                             <FilmIcon className="w-8 h-8 text-zinc-400 dark:text-zinc-500" />
                         </div>
@@ -38,11 +38,11 @@ export default function MobileCulto({ cultos }: Props) {
                         <p className="text-sm text-zinc-500 dark:text-zinc-500 mt-1">Os vídeos aparecerão aqui.</p>
                     </div>
                 ) : (
-                    <ul className="space-y-5">
+                    <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {cultos.map((c) => (
                             <li
                                 key={c.id}
-                                className="rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm active:scale-[0.99] transition-transform"
+                                className="rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm hover:shadow-md hover:border-zinc-300 dark:hover:border-zinc-700 active:scale-[0.99] transition-all"
                             >
                                 <a
                                     href={c.youtube_url}

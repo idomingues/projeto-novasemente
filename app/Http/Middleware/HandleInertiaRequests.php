@@ -32,23 +32,23 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $currentChurch = null;
+        $church = null;
         if ($request->user()) {
-            $church = null;
             $workingChurchId = $request->session()->get('working_church_id');
             if ($workingChurchId) {
                 $church = Church::where('id', $workingChurchId)->where('active', true)->first();
             }
-            if ($church === null) {
-                $church = Church::where('active', true)->orderBy('name')->first();
-            }
-            if ($church) {
-                $currentChurch = [
-                    'id' => $church->id,
-                    'name' => $church->name,
-                    'slug' => $church->slug,
-                    'logo_url' => $church->logo_url,
-                ];
-            }
+        }
+        if ($church === null) {
+            $church = Church::where('active', true)->orderBy('name')->first();
+        }
+        if ($church) {
+            $currentChurch = [
+                'id' => $church->id,
+                'name' => $church->name,
+                'slug' => $church->slug,
+                'logo_url' => $church->logo_url,
+            ];
         }
 
         $churchesForSwitch = [];

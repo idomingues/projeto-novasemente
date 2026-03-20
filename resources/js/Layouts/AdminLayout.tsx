@@ -1,4 +1,5 @@
 import { PropsWithChildren, useState } from 'react';
+import { usePage } from '@inertiajs/react';
 import Sidebar from '@/Components/Sidebar';
 import Topbar from '@/Components/Topbar';
 import FlashMessages from '@/Components/FlashMessages';
@@ -36,28 +37,35 @@ const routeToPermissions: Record<string, string[]> = {
 
 export default function AdminLayout({ children }: PropsWithChildren) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const isAuthenticated = !!(usePage().props as { auth?: { user?: unknown } }).auth?.user;
 
     return (
         <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-black">
-            <Sidebar
-                mobileOpen={mobileMenuOpen}
-                onMobileClose={() => setMobileMenuOpen(false)}
-                routeToPermissions={routeToPermissions}
-            />
+            {isAuthenticated && (
+                <Sidebar
+                    mobileOpen={mobileMenuOpen}
+                    onMobileClose={() => setMobileMenuOpen(false)}
+                    routeToPermissions={routeToPermissions}
+                />
+            )}
 
-            <div className="md:pl-72 flex flex-col min-h-screen transition-all duration-300">
-                <Topbar onMenuClick={() => setMobileMenuOpen(true)} />
+            <div className={`flex flex-col min-h-screen transition-all duration-300 ${isAuthenticated ? 'md:pl-72' : ''}`}>
+                <Topbar onMenuClick={() => setMobileMenuOpen(true)} hasSidebar={isAuthenticated} />
 
-                <main className="flex-1 pt-20 md:pt-24 px-4 sm:px-6 md:px-8 pb-24 lg:pb-12">
-                    <div className="max-w-7xl mx-auto w-full min-w-0 pt-6">
+                <main className={`flex-1 pt-20 md:pt-24 px-4 sm:px-6 md:px-8 ${isAuthenticated ? 'pb-24 lg:pb-12' : 'pb-24'}`}>
+                    <div className="max-w-7xl xl:max-w-[90rem] mx-auto w-full min-w-0 pt-6">
                         {children}
                     </div>
                 </main>
 
-                {/* Barra inferior no celular: sempre visível em telas &lt; 1024px */}
-                <div className="lg:hidden">
+                {/* Barra inferior: no mobile sempre; no PC quando visitante (sem sidebar) */}
+                {(isAuthenticated ? (
+                    <div className="lg:hidden">
+                        <MobileBottomNav />
+                    </div>
+                ) : (
                     <MobileBottomNav />
-                </div>
+                ))}
 
                 <FlashMessages />
             </div>

@@ -3,19 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\AcervoItem;
+use App\Models\AppNotification;
 use App\Models\Church;
 use App\Models\ChurchService;
 use App\Models\Culto;
 use App\Models\Event;
 use App\Models\Ministry;
 use App\Models\Musica;
-use App\Models\AppNotification;
 use App\Models\News;
 use App\Models\ScheduleAssignment;
 use App\Models\ScheduleCheckinDate;
-use App\Models\Volunteer;
 use Carbon\Carbon;
-use App\Services\YoutubePlaylistsService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -31,6 +29,7 @@ class MobileController extends Controller
                 return $church;
             }
         }
+
         return Church::where('active', true)->orderBy('name')->first();
     }
 
@@ -49,9 +48,10 @@ class MobileController extends Controller
             ->get(['id', 'title', 'slug', 'excerpt', 'image_url', 'published_at'])
             ->map(function ($n) {
                 $imageUrl = $n->image_url;
-                if ($imageUrl && !str_starts_with($imageUrl, 'http')) {
-                    $imageUrl = request()->getSchemeAndHttpHost() . $imageUrl;
+                if ($imageUrl && ! str_starts_with($imageUrl, 'http')) {
+                    $imageUrl = request()->getSchemeAndHttpHost().$imageUrl;
                 }
+
                 return [
                     'id' => $n->id,
                     'title' => $n->title,
@@ -152,9 +152,10 @@ class MobileController extends Controller
         $baseUrl = request()->getSchemeAndHttpHost();
         $posts->getCollection()->transform(function ($p) use ($baseUrl) {
             $imageUrl = $p->image_url;
-            if ($imageUrl && !str_starts_with($imageUrl, 'http')) {
-                $imageUrl = $baseUrl . $imageUrl;
+            if ($imageUrl && ! str_starts_with($imageUrl, 'http')) {
+                $imageUrl = $baseUrl.$imageUrl;
             }
+
             return [
                 'id' => $p->id,
                 'title' => $p->title,
@@ -181,9 +182,10 @@ class MobileController extends Controller
             ->get()
             ->map(function (Event $e) {
                 $imageUrl = $e->image_url;
-                if ($imageUrl && !str_starts_with($imageUrl, 'http')) {
-                    $imageUrl = request()->getSchemeAndHttpHost() . $imageUrl;
+                if ($imageUrl && ! str_starts_with($imageUrl, 'http')) {
+                    $imageUrl = request()->getSchemeAndHttpHost().$imageUrl;
                 }
+
                 return [
                     'id' => $e->id,
                     'title' => $e->title,
@@ -212,6 +214,7 @@ class MobileController extends Controller
             }
             $date->addDay();
         }
+
         return $saturdays;
     }
 
@@ -279,7 +282,7 @@ class MobileController extends Controller
             }
             foreach ($recurring as $a) {
                 $computedDate = $saturdayByNumber[$a->saturday_number] ?? null;
-                if (!$computedDate) {
+                if (! $computedDate) {
                     continue;
                 }
                 $assignments[] = [
@@ -319,7 +322,9 @@ class MobileController extends Controller
 
     public function more(): Response
     {
-        return Inertia::render('Mobile/More');
+        $data = app(MoreController::class)->getLatestItems();
+
+        return Inertia::render('Mobile/More', $data);
     }
 
     public function services(): Response
@@ -330,6 +335,7 @@ class MobileController extends Controller
             $services = $church->services()->get()->map(function ($s) {
                 $start = \Carbon\Carbon::parse($s->start_time)->format('H:i');
                 $end = $s->end_time ? \Carbon\Carbon::parse($s->end_time)->format('H:i') : null;
+
                 return [
                     'id' => $s->id,
                     'day_of_week' => $s->day_of_week,

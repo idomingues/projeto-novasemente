@@ -15,11 +15,11 @@ import {
 } from '@heroicons/react/24/solid';
 
 const navItems = [
-    { name: 'Culto', route: 'mobile.culto' as const, icon: FilmIcon, iconActive: FilmIconSolid },
-    { name: 'Notícias', route: 'mobile.news' as const, icon: NewspaperIcon, iconActive: NewspaperIconSolid },
-    { name: 'Eventos', route: 'mobile.events' as const, icon: CalendarDaysIcon, iconActive: CalendarDaysIconSolid },
-    { name: 'Dízimos e Ofertas', route: 'mobile.offerings' as const, icon: HandRaisedIcon, iconActive: HandRaisedIconSolid },
-    { name: 'Mais', route: 'mobile.more' as const, icon: Squares2X2Icon, iconActive: Squares2X2IconSolid },
+    { name: 'Culto', route: 'mobile.culto' as const, activeRoutes: ['mobile.culto'] as const, icon: FilmIcon, iconActive: FilmIconSolid },
+    { name: 'Notícias', route: 'mobile.news' as const, activeRoutes: ['mobile.news'] as const, icon: NewspaperIcon, iconActive: NewspaperIconSolid },
+    { name: 'Eventos', route: 'mobile.events' as const, activeRoutes: ['mobile.events'] as const, icon: CalendarDaysIcon, iconActive: CalendarDaysIconSolid },
+    { name: 'Dízimos e Ofertas', route: 'mobile.offerings' as const, activeRoutes: ['mobile.offerings'] as const, icon: HandRaisedIcon, iconActive: HandRaisedIconSolid },
+    { name: 'Mais', route: 'mobile.more' as const, activeRoutes: ['mobile.more', 'more.index'] as const, icon: Squares2X2Icon, iconActive: Squares2X2IconSolid },
 ] as const;
 
 /** Barra inferior fixa (Culto, Notícias, Eventos, Dízimos, Mais). Usada no mobile em todos os layouts. */
@@ -30,10 +30,10 @@ export default function MobileBottomNav() {
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
             aria-label="Menu principal"
         >
-            <div className="flex items-center justify-around h-14 max-w-lg mx-auto pt-1">
-                {navItems.map(({ name, route: routeName, icon: Icon, iconActive: IconActive }) => {
+            <div className="flex items-center justify-around h-14 max-w-lg lg:max-w-2xl mx-auto pt-1">
+                {navItems.map(({ name, route: routeName, activeRoutes, icon: Icon, iconActive: IconActive }) => {
                     const href = route(routeName);
-                    const isActive = route().current(routeName);
+                    const isActive = activeRoutes.some((r) => route().current(r));
                     const IconComponent = isActive ? IconActive : Icon;
                     return (
                         <Link

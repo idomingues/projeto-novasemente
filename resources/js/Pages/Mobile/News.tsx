@@ -58,11 +58,11 @@ export default function MobileNews({ posts }: Props) {
                         <p className="text-sm text-zinc-500 dark:text-zinc-500 mt-1">As novidades aparecerão aqui.</p>
                     </div>
                 ) : (
-                    <ul className="space-y-5">
+                    <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                         {posts.data.map((p) => (
                             <li
                                 key={p.id}
-                                className="rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm active:scale-[0.99] transition-transform"
+                                className="rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm hover:shadow-md hover:border-zinc-300 dark:hover:border-zinc-700 active:scale-[0.99] transition-all"
                             >
                                 {p.image_url ? (
                                     <div className="relative aspect-[16/10] overflow-hidden bg-zinc-200 dark:bg-zinc-800">

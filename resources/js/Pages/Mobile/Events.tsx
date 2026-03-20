@@ -63,14 +63,14 @@ export default function MobileEvents({ events }: Props) {
                         <p className="text-sm text-zinc-500 dark:text-zinc-500 mt-1">Os eventos aparecerão aqui.</p>
                     </div>
                 ) : (
-                    <ul className="space-y-5">
+                    <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                         {events.map((ev) => {
                             const { day, month } = getDayMonth(ev.starts_at);
                             const accent = ev.color || '#10b981';
                             return (
                                 <li
                                     key={ev.id}
-                                    className="rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm active:scale-[0.99] transition-transform"
+                                    className="rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm hover:shadow-md hover:border-zinc-300 dark:hover:border-zinc-700 active:scale-[0.99] transition-all"
                                 >
                                     <div className="flex">
                                         {/* Data em destaque */}

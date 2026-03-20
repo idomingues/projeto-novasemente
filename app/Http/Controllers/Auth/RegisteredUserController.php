@@ -9,7 +9,7 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -24,8 +24,8 @@ class RegisteredUserController extends Controller
         $invitation = null;
         $token = $request->query('invitation');
         if ($token) {
-            $invitation = Invitation::where('token', $token)->first();
-            if ($invitation && !$invitation->isValid()) {
+            $invitation = Invitation::where('token', $token)->with('user')->first();
+            if ($invitation && ! $invitation->isValid()) {
                 $invitation = null;
             }
         }
@@ -33,8 +33,10 @@ class RegisteredUserController extends Controller
         return Inertia::render('Auth/Register', [
             'invitation' => $invitation ? [
                 'email' => $invitation->email,
+                'name' => $invitation->user?->name,
                 'role' => $invitation->role,
                 'token' => $invitation->token,
+                'completes_existing_user' => $invitation->user_id !== null,
             ] : null,
         ]);
     }
@@ -46,6 +48,13 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        if ($request->filled('invitation_token')) {
+            $invitation = Invitation::where('token', $request->invitation_token)->first();
+            if ($invitation && $invitation->isValid() && $invitation->user_id) {
+                return $this->storeCompletingInvitedUser($request, $invitation);
+            }
+        }
+
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
@@ -56,7 +65,7 @@ class RegisteredUserController extends Controller
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
-            'password' => Hash::make($request->password),
+            'password' => $request->password,
         ]);
 
         if ($request->filled('invitation_token')) {
@@ -70,6 +79,35 @@ class RegisteredUserController extends Controller
         }
 
         event(new Registered($user));
+
+        Auth::login($user);
+
+        return redirect(route('dashboard', absolute: false));
+    }
+
+    private function storeCompletingInvitedUser(Request $request, Invitation $invitation): RedirectResponse
+    {
+        $user = User::query()->findOrFail($invitation->user_id);
+
+        if ($user->email !== null) {
+            return redirect()->route('login')->with('status', 'Este cadastro já foi concluído. Faça login com seu e-mail.');
+        }
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+        ]);
+
+        $user->name = $validated['name'];
+        $user->email = $validated['email'];
+        $user->password = $validated['password'];
+        $user->save();
+
+        $invitation->update(['used_at' => now()]);
+        if ($invitation->role) {
+            $user->assignRole($invitation->role);
+        }
 
         Auth::login($user);
 

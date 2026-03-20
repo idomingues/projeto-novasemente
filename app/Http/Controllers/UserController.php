@@ -7,8 +7,9 @@ use App\Models\Invitation;
 use App\Models\Member;
 use App\Models\Ministry;
 use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
@@ -39,21 +40,26 @@ class UserController extends Controller
                 'id' => $u->id,
                 'name' => $u->name,
                 'email' => $u->email,
+                'needs_registration' => $u->email === null,
                 'member_id' => $u->member_id,
                 'member' => $u->member ? ['id' => $u->member->id, 'name' => $u->member->name] : null,
                 'roles' => $u->roles->pluck('name')->toArray(),
                 'ministry_ids' => $u->ministries->pluck('id')->toArray(),
             ]);
 
-        $invitations = Invitation::orderByDesc('created_at')->get()->map(fn (Invitation $i) => [
-            'id' => $i->id,
-            'email' => $i->email,
-            'role' => $i->role,
-            'token' => $i->token,
-            'expires_at' => $i->expires_at?->toIso8601String(),
-            'used_at' => $i->used_at?->toIso8601String(),
-            'link' => route('register', ['invitation' => $i->token], true),
-        ]);
+        $invitations = Invitation::with('user:id,name')
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn (Invitation $i) => [
+                'id' => $i->id,
+                'email' => $i->email,
+                'user_name' => $i->user?->name,
+                'role' => $i->role,
+                'token' => $i->token,
+                'expires_at' => $i->expires_at?->toIso8601String(),
+                'used_at' => $i->used_at?->toIso8601String(),
+                'link' => route('register', ['invitation' => $i->token], true),
+            ]);
 
         $members = Member::orderBy('name')->get(['id', 'name']);
         $roles = \Spatie\Permission\Models\Role::orderBy('name')->get(['id', 'name']);
@@ -81,26 +87,28 @@ class UserController extends Controller
     {
         $valid = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'confirmed', Password::defaults()],
+            'email' => ['nullable', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['nullable', 'confirmed', Password::defaults(), Rule::requiredIf(fn () => $request->filled('email'))],
             'member_id' => ['nullable', 'exists:members,id'],
             'role' => ['nullable', 'string', 'exists:roles,name'],
             'ministry_ids' => ['nullable', 'array'],
             'ministry_ids.*' => ['exists:ministries,id'],
         ]);
 
+        $passwordPlain = $valid['password'] ?? null;
+
         $user = User::create([
             'name' => $valid['name'],
-            'email' => $valid['email'],
-            'password' => Hash::make($valid['password']),
+            'email' => $valid['email'] ?? null,
+            'password' => $passwordPlain ?? Str::random(64),
             'member_id' => $valid['member_id'] ?? null,
         ]);
 
-        if (!empty($valid['role'])) {
+        if (! empty($valid['role'])) {
             $user->assignRole($valid['role']);
         }
 
-        if (($valid['role'] ?? '') === 'lider_ministerio' && !empty($valid['ministry_ids'])) {
+        if (($valid['role'] ?? '') === 'lider_ministerio' && ! empty($valid['ministry_ids'])) {
             $user->ministries()->sync($valid['ministry_ids']);
         }
 
@@ -111,7 +119,7 @@ class UserController extends Controller
     {
         $rules = [
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'email' => ['nullable', 'string', 'lowercase', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'member_id' => ['nullable', 'exists:members,id'],
             'role' => ['nullable', 'string', 'exists:roles,name'],
             'ministry_ids' => ['nullable', 'array'],
@@ -123,10 +131,10 @@ class UserController extends Controller
         $valid = $request->validate($rules);
 
         $user->name = $valid['name'];
-        $user->email = $valid['email'];
+        $user->email = $valid['email'] ?? null;
         $user->member_id = $valid['member_id'] ?? null;
-        if (!empty($valid['password'])) {
-            $user->password = Hash::make($valid['password']);
+        if (! empty($valid['password'])) {
+            $user->password = $valid['password'];
         }
         $user->save();
 
@@ -147,6 +155,35 @@ class UserController extends Controller
             return back()->with('error', 'Não pode excluir o próprio usuário.');
         }
         $user->delete();
+
         return redirect()->route('users.index')->with('success', 'Usuário removido.');
+    }
+
+    public function invite(User $user): RedirectResponse
+    {
+        if ($user->email !== null) {
+            return redirect()->route('users.index')->with('error', 'Este usuário já possui e-mail. Para convidar por link, use um cadastro apenas com nome ou remova o e-mail antes.');
+        }
+
+        Invitation::query()
+            ->where('user_id', $user->id)
+            ->whereNull('used_at')
+            ->delete();
+
+        $token = Invitation::createToken();
+
+        Invitation::create([
+            'user_id' => $user->id,
+            'email' => null,
+            'token' => $token,
+            'role' => null,
+            'expires_at' => now()->addDays(7),
+        ]);
+
+        $link = route('register', ['invitation' => $token], true);
+
+        return redirect()->route('users.index')
+            ->with('success', 'Convite criado. Encaminhe o link para a pessoa finalizar o cadastro (e-mail e senha).')
+            ->with('invitation_link', $link);
     }
 }
