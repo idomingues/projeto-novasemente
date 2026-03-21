@@ -1,4 +1,5 @@
 import AdminLayout from '@/Layouts/AdminLayout';
+import ScheduleLoginGate from '@/Components/ScheduleLoginGate';
 import { Head, router } from '@inertiajs/react';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { getMinistryIcon } from '@/lib/ministryIcons';
@@ -24,6 +25,7 @@ interface Props {
     year: number;
     ministryId: number | null;
     ministries: Ministry[];
+    canViewSchedule?: boolean;
 }
 
 const MONTH_NAMES = [
@@ -41,7 +43,14 @@ function getSaturdays(year: number, month: number): Date[] {
     return out;
 }
 
-export default function VariosSchedule({ assignments, month, year, ministryId, ministries }: Props) {
+export default function VariosSchedule({
+    assignments,
+    month,
+    year,
+    ministryId,
+    ministries,
+    canViewSchedule = true,
+}: Props) {
     const saturdays = useMemo(() => getSaturdays(year, month), [year, month]);
 
     const selectMinistry = (id: number | '') => {
@@ -79,10 +88,16 @@ export default function VariosSchedule({ assignments, month, year, ministryId, m
                 <div>
                     <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white">Escala</h1>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
-                        Selecione o departamento para ver a escala do mês.
+                        {canViewSchedule
+                            ? 'Selecione o departamento para ver a escala do mês.'
+                            : 'A escala de voluntários está disponível apenas para usuários cadastrados. Faça login para consultar.'}
                     </p>
                 </div>
 
+                {!canViewSchedule && <ScheduleLoginGate />}
+
+                {canViewSchedule && (
+                <>
                 <div className="flex flex-wrap gap-2">
                     {ministries.map((m) => {
                         const Icon = getMinistryIcon(m.name);
@@ -199,6 +214,8 @@ export default function VariosSchedule({ assignments, month, year, ministryId, m
                     <p className="text-sm text-zinc-500 dark:text-zinc-400 py-6 text-center">
                         Selecione um departamento acima para ver a escala.
                     </p>
+                )}
+                </>
                 )}
             </div>
         </AdminLayout>

@@ -14,9 +14,11 @@ const FIXED_VIEWPORT = 'width=device-width, initial-scale=1, maximum-scale=1, us
 export default function Login({
     status,
     canResetPassword,
+    redirectTo,
 }: {
     status?: string;
     canResetPassword: boolean;
+    redirectTo?: string | null;
 }) {
     const appLogoUrl = (usePage().props as { appLogoUrl?: string | null }).appLogoUrl ?? null;
 
@@ -24,6 +26,7 @@ export default function Login({
         login: '',
         password: '',
         remember: false as boolean,
+        redirect: redirectTo ?? '',
     });
 
     useEffect(() => {

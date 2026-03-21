@@ -13,7 +13,7 @@ class AcervoController extends Controller
     public function index(): Response
     {
         $items = AcervoItem::query()
-            ->orderByDesc('created_at')
+            ->orderByDesc('order')
             ->orderBy('title')
             ->get()
             ->map(fn (AcervoItem $item) => [

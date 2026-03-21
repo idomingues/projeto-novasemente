@@ -22,11 +22,18 @@ const navItems = [
     { name: 'Mais', route: 'mobile.more' as const, activeRoutes: ['mobile.more', 'more.index'] as const, icon: Squares2X2Icon, iconActive: Squares2X2IconSolid },
 ] as const;
 
-/** Barra inferior fixa (Culto, Notícias, Eventos, Dízimos, Mais). Usada no mobile em todos os layouts. */
-export default function MobileBottomNav() {
+interface MobileBottomNavProps {
+    /** Com sidebar admin (md+): a barra fica só sobre a coluna de conteúdo, como pré-visualização do app. */
+    insetForSidebar?: boolean;
+}
+
+/** Barra inferior fixa (Culto, Notícias, Eventos, Dízimos, Mais). Visitantes e admins (pré-visualização). */
+export default function MobileBottomNav({ insetForSidebar = false }: MobileBottomNavProps) {
     return (
         <nav
-            className="fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800"
+            className={`fixed bottom-0 right-0 z-40 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 ${
+                insetForSidebar ? 'left-0 md:left-72' : 'left-0'
+            }`}
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
             aria-label="Menu principal"
         >

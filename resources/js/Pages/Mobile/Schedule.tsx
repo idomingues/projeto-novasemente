@@ -1,4 +1,5 @@
 import MobileLayout from '@/Layouts/MobileLayout';
+import ScheduleLoginGate from '@/Components/ScheduleLoginGate';
 import { Head, router } from '@inertiajs/react';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { getMinistryIcon } from '@/lib/ministryIcons';
@@ -24,6 +25,7 @@ interface Props {
     year: number;
     ministryId: number | null;
     ministries: Ministry[];
+    canViewSchedule?: boolean;
 }
 
 const MONTH_NAMES = [
@@ -47,6 +49,7 @@ export default function MobileSchedule({
     year,
     ministryId,
     ministries,
+    canViewSchedule = true,
 }: Props) {
     const saturdays = useMemo(() => getSaturdays(year, month), [year, month]);
 
@@ -85,9 +88,15 @@ export default function MobileSchedule({
                 <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Escala</h1>
 
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    Selecione o departamento para ver a escala do mês.
+                    {canViewSchedule
+                        ? 'Selecione o departamento para ver a escala do mês.'
+                        : 'A escala de voluntários está disponível apenas para usuários cadastrados. Faça login para consultar.'}
                 </p>
 
+                {!canViewSchedule && <ScheduleLoginGate />}
+
+                {canViewSchedule && (
+                <>
                 <div className="flex gap-2 overflow-x-auto pb-2 -mx-1">
                     {ministries.map((m) => {
                         const Icon = getMinistryIcon(m.name);
@@ -204,6 +213,8 @@ export default function MobileSchedule({
                     <p className="text-sm text-zinc-500 dark:text-zinc-400 py-6 text-center">
                         Selecione um departamento acima para ver a escala.
                     </p>
+                )}
+                </>
                 )}
             </div>
         </MobileLayout>

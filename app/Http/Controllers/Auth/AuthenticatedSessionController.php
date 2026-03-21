@@ -14,13 +14,33 @@ use Inertia\Response;
 class AuthenticatedSessionController extends Controller
 {
     /**
+     * Allow only same-origin relative paths (open redirect safe).
+     */
+    private function safeRedirectPath(?string $path): ?string
+    {
+        if ($path === null || $path === '') {
+            return null;
+        }
+        $path = trim($path);
+        if (! str_starts_with($path, '/') || str_starts_with($path, '//')) {
+            return null;
+        }
+        if (preg_match('/[\r\n\\\\]/', $path)) {
+            return null;
+        }
+
+        return $path;
+    }
+
+    /**
      * Display the login view.
      */
-    public function create(): Response
+    public function create(Request $request): Response
     {
         return Inertia::render('Auth/Login', [
             'canResetPassword' => Route::has('password.request'),
             'status' => session('status'),
+            'redirectTo' => $this->safeRedirectPath($request->query('redirect')),
         ]);
     }
 
@@ -32,6 +52,11 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
 
         $request->session()->regenerate();
+
+        $afterLogin = $this->safeRedirectPath($request->string('redirect')->toString());
+        if ($afterLogin !== null) {
+            return redirect()->to($afterLogin);
+        }
 
         $user = $request->user();
         $isMobile = (bool) preg_match('/iPhone|iPad|iPod|Android|webOS|Mobile/i', $request->userAgent() ?? '');

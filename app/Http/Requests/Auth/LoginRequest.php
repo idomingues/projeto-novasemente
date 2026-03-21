@@ -46,6 +46,7 @@ class LoginRequest extends FormRequest
             'login' => ['required', 'string', 'max:255'],
             'password' => ['required', 'string'],
             'church_id' => ['nullable', 'integer', 'exists:churches,id'],
+            'redirect' => ['nullable', 'string', 'max:500'],
         ];
     }
 

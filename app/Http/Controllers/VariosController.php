@@ -47,6 +47,19 @@ class VariosController extends Controller
         $month = (int) $request->input('month', now()->month);
         $year = (int) $request->input('year', now()->year);
         $ministryId = $request->input('ministry_id') ? (int) $request->input('ministry_id') : null;
+
+        if (! $request->user()) {
+            return Inertia::render('Varios/Schedule', [
+                'assignments' => [],
+                'checkinEnabledDates' => [],
+                'month' => $month,
+                'year' => $year,
+                'ministryId' => null,
+                'ministries' => [],
+                'canViewSchedule' => false,
+            ]);
+        }
+
         $churchId = Church::where('active', true)->orderBy('name')->value('id');
 
         $ministries = Ministry::query()
@@ -135,6 +148,7 @@ class VariosController extends Controller
             'year' => $year,
             'ministryId' => $ministryId,
             'ministries' => $ministries,
+            'canViewSchedule' => true,
         ]);
     }
 
