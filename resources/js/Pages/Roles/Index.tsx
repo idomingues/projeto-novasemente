@@ -23,6 +23,28 @@ interface Props {
     permissions: PermissionRow[];
 }
 
+const GROUP_LABELS: Record<string, string> = {
+    members: 'Membros',
+    volunteers: 'Voluntários',
+    departments: 'Departamentos',
+    inventory: 'Inventário',
+    users: 'Usuários',
+    churches: 'Igrejas',
+    news: 'Notícias',
+    events: 'Eventos',
+    escalas: 'Escalas',
+    support: 'Suporte',
+    roles: 'Perfis',
+    music: 'Acervo e músicas',
+    culto: 'Culto',
+    finance: 'Financeiro',
+    notifications: 'Notificações',
+};
+
+function groupTitle(group: string): string {
+    return GROUP_LABELS[group] ?? group;
+}
+
 export default function RolesIndex({ roles, permissions }: Props) {
     const { data, setData, post, processing } = useForm({
         roles: roles.map((r) => ({
@@ -41,36 +63,47 @@ export default function RolesIndex({ roles, permissions }: Props) {
             }
             groups[group].push(p.name);
         });
-        Object.keys(groups).forEach((g) => groups[g].sort());
+        Object.keys(groups).forEach((g) => {
+            if (g === 'rooms') {
+                const order = ['rooms.view', 'rooms.schedule', 'rooms.manage'];
+                groups[g] = order.filter((name) => groups[g].includes(name));
+            } else {
+                groups[g].sort();
+            }
+        });
         return groups;
     }, [permissions]);
 
-    const groupTitle = (group: string): string => {
-        const labels: Record<string, string> = {
-            members: 'Membros',
-            volunteers: 'Voluntários',
-            departments: 'Departamentos',
-            rooms: 'Salas',
-            inventory: 'Inventário',
-            users: 'Usuários',
-            churches: 'Igrejas',
-            news: 'Notícias',
-            events: 'Eventos',
-            escalas: 'Escalas',
-            support: 'Suporte',
-            roles: 'Perfis',
-            music: 'Acervo e músicas',
-            culto: 'Culto',
-            finance: 'Financeiro',
-            notifications: 'Notificações',
-        };
-        return labels[group] ?? group;
-    };
+    const displayPermissionGroups = useMemo(() => {
+        const rows: Array<{ key: string; title: string; perms: string[] }> = [];
+        for (const [group, perms] of Object.entries(groupedPermissions)) {
+            if (group === 'rooms') {
+                const registration = perms.filter((p) => p === 'rooms.view' || p === 'rooms.manage');
+                const schedule = perms.filter((p) => p === 'rooms.schedule');
+                if (registration.length > 0) {
+                    rows.push({ key: 'rooms-registration', title: 'Salas', perms: registration });
+                }
+                if (schedule.length > 0) {
+                    rows.push({
+                        key: 'rooms-schedule',
+                        title: 'Agendamento de salas',
+                        perms: schedule,
+                    });
+                }
+            } else {
+                rows.push({ key: group, title: groupTitle(group), perms });
+            }
+        }
+        return rows;
+    }, [groupedPermissions]);
 
     const permissionLineLabel = (perm: string): string => {
         const custom: Record<string, string> = {
             'music.manage': 'Gerenciar (acervo, músicas e playlists)',
-            'rooms.schedule': 'Agendar salas (calendário e reservas)',
+            'rooms.view': 'Ver salas (lista e cadastro no menu Salas)',
+            'rooms.manage': 'Gerir salas (criar, editar e remover salas)',
+            'rooms.schedule':
+                'Agendar salas (calendário de reservas, criar e editar os próprios agendamentos; quem gere salas pode editar todos)',
         };
         if (custom[perm]) {
             return custom[perm];
@@ -111,7 +144,10 @@ export default function RolesIndex({ roles, permissions }: Props) {
             <Head title="Perfis de acesso" />
             <PageHeader title="Perfis de acesso">
                 <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-xl">
-                    Defina quais telas e funcionalidades cada perfil (papel) pode acessar no sistema.
+                    Defina quais telas e funcionalidades cada perfil (papel) pode acessar no sistema.{' '}
+                    <strong className="font-medium text-zinc-700 dark:text-zinc-300">Salas</strong> (cadastro) e{' '}
+                    <strong className="font-medium text-zinc-700 dark:text-zinc-300">Agendamento de salas</strong> são
+                    blocos separados: o agendamento corresponde ao menu «Agendamento de salas» na barra lateral.
                 </p>
             </PageHeader>
 
@@ -135,23 +171,23 @@ export default function RolesIndex({ roles, permissions }: Props) {
                                 )}
                             </div>
 
-                            <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
-                                {Object.entries(groupedPermissions).map(([group, perms]) => (
-                                    <div key={group} className="border border-zinc-200 dark:border-zinc-800 rounded-xl p-3">
-                                        <InputLabel value={groupTitle(group)} className="!mb-2" />
+                            <div className="space-y-3">
+                                {displayPermissionGroups.map(({ key, title, perms }) => (
+                                    <div key={key} className="border border-zinc-200 dark:border-zinc-800 rounded-xl p-3">
+                                        <InputLabel value={title} className="!mb-2" />
                                         <div className="space-y-2">
                                             {perms.map((perm) => {
                                                 const checked = role.permissions.includes(perm);
                                                 return (
                                                     <label
                                                         key={perm}
-                                                        className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300 cursor-pointer"
+                                                        className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300 cursor-pointer"
                                                     >
                                                         <input
                                                             type="checkbox"
                                                             checked={checked}
                                                             onChange={() => togglePermission(index, perm)}
-                                                            className="rounded border-zinc-300 dark:border-zinc-600 text-zinc-900 focus:ring-zinc-500"
+                                                            className="mt-0.5 rounded border-zinc-300 dark:border-zinc-600 text-zinc-900 focus:ring-zinc-500"
                                                         />
                                                         <span>{permissionLineLabel(perm)}</span>
                                                     </label>
