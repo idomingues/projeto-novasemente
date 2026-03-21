@@ -16,17 +16,17 @@ export default function MobileLayout({ children }: PropsWithChildren) {
 
     if (isAuthenticated) {
         return (
-            <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-black">
+            <div className="min-h-[100dvh] bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-black">
                 <Sidebar
                     mobileOpen={mobileMenuOpen}
                     onMobileClose={() => setMobileMenuOpen(false)}
                     routeToPermissions={adminSidebarRoutePermissions}
                 />
 
-                <div className="flex flex-col min-h-screen transition-all duration-300 md:pl-72">
+                <div className="flex min-h-[100dvh] flex-col transition-all duration-300 md:pl-72">
                     <Topbar onMenuClick={() => setMobileMenuOpen(true)} hasSidebar />
 
-                    <main className="flex-1 pt-20 md:pt-24 px-4 sm:px-6 md:px-8 pb-24">
+                    <main className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pt-20 md:pt-24 px-4 sm:px-6 md:px-8 pb-24 [scrollbar-gutter:stable]">
                         <div className="max-w-7xl xl:max-w-[90rem] mx-auto w-full min-w-0 pt-6">
                             {children}
                         </div>
@@ -47,7 +47,7 @@ export default function MobileLayout({ children }: PropsWithChildren) {
     }
 
     return (
-        <div className="min-h-screen bg-zinc-100 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans">
+        <div className="flex min-h-[100dvh] flex-col bg-zinc-100 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans">
             <header
                 className="fixed top-0 left-0 right-0 z-40 h-14 safe-area-top bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800"
                 style={{ paddingTop: 'env(safe-area-inset-top, 0)' }}
@@ -71,7 +71,7 @@ export default function MobileLayout({ children }: PropsWithChildren) {
             </header>
 
             <main
-                className="pt-[calc(3.5rem+env(safe-area-inset-top,0px)+1.5rem)] lg:pt-24 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] min-h-screen px-4 lg:px-8 pb-4"
+                className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pt-[calc(3.5rem+env(safe-area-inset-top,0px)+1.5rem)] lg:pt-24 px-4 lg:px-8 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] [scrollbar-gutter:stable]"
             >
                 <div className="max-w-7xl lg:max-w-[90rem] mx-auto w-full">
                     {children}

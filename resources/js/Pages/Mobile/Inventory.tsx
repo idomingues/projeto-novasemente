@@ -5,7 +5,9 @@ import { Html5Qrcode } from 'html5-qrcode';
 import {
     ArrowLeftIcon,
     CameraIcon,
+    ChevronDownIcon,
     MagnifyingGlassIcon,
+    PlusCircleIcon,
     QrCodeIcon,
     XMarkIcon,
 } from '@heroicons/react/24/outline';
@@ -78,6 +80,11 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
     const [lookupLoading, setLookupLoading] = useState(false);
     const [lookupError, setLookupError] = useState<string | null>(null);
     const [cameraError, setCameraError] = useState<string | null>(null);
+    /** Cadastro sem passar pela consulta (só quem pode gerir inventário) */
+    const [standaloneRegister, setStandaloneRegister] = useState(false);
+    /** Acordeão nativo (details) em muitos telemóveis não abre bem; usamos botões + estado */
+    const [optionalDetailsOpen, setOptionalDetailsOpen] = useState(false);
+    const [manualBarcodeOpen, setManualBarcodeOpen] = useState(false);
     const scannerRef = useRef<Html5Qrcode | null>(null);
     const scanHandledRef = useRef(false);
     const lookupBarcodeRef = useRef<(code: string) => Promise<void>>(async () => {});
@@ -113,6 +120,9 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
             });
             setLookup(data);
             if (!data.found && canManage) {
+                setStandaloneRegister(false);
+                setOptionalDetailsOpen(false);
+                setManualBarcodeOpen(false);
                 registerForm.setData({
                     barcode: data.barcode ?? trimmed,
                     name: '',
@@ -130,6 +140,9 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
                     photo: null,
                     return_to: 'mobile',
                 });
+            }
+            if (data.found) {
+                setStandaloneRegister(false);
             }
         } catch (e) {
             if (axios.isAxiosError(e) && e.response?.status === 403) {
@@ -221,6 +234,33 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
         return () => URL.revokeObjectURL(url);
     }, [registerForm.data.photo]);
 
+    const emptyRegisterPayload = {
+        barcode: '',
+        name: '',
+        location: '',
+        category: '',
+        serial_number: '',
+        description: '',
+        brand: '',
+        item_type: '',
+        classification: '',
+        acquisition_date: '',
+        acquisition_value: '',
+        current_value: '',
+        status: 'active',
+        photo: null as File | null,
+        return_to: 'mobile' as const,
+    };
+
+    const openNewItemForm = () => {
+        setLookup(null);
+        setLookupError(null);
+        setStandaloneRegister(true);
+        setOptionalDetailsOpen(false);
+        setManualBarcodeOpen(false);
+        registerForm.setData(emptyRegisterPayload);
+    };
+
     const openLookupScanner = () => {
         setLookup(null);
         setLookupError(null);
@@ -243,6 +283,9 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
             onSuccess: () => {
                 registerForm.reset();
                 setLookup(null);
+                setStandaloneRegister(false);
+                setOptionalDetailsOpen(false);
+                setManualBarcodeOpen(false);
             },
         });
     };
@@ -269,6 +312,27 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
                     </Link>
                     <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Inventário</h1>
                 </div>
+
+                {canManage && (
+                    <div className="rounded-2xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/70 dark:bg-emerald-950/25 p-4 space-y-2">
+                        <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                            Cadastrar um item novo
+                        </p>
+                        <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                            Abre o formulário com <strong className="font-semibold">dados básicos</strong> visíveis e os
+                            restantes campos dentro de <strong className="font-semibold">«Mais opções»</strong> (toque para
+                            expandir).
+                        </p>
+                        <button
+                            type="button"
+                            onClick={openNewItemForm}
+                            className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-700 dark:bg-emerald-600 text-white px-4 py-3 font-semibold active:scale-[0.99] transition-transform"
+                        >
+                            <PlusCircleIcon className="w-6 h-6 shrink-0" />
+                            Novo item
+                        </button>
+                    </div>
+                )}
 
                 <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 shadow-sm space-y-3">
                     <p className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -421,21 +485,42 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
                     </div>
                 )}
 
-                {lookup && !lookup.found && (
-                    <div className="rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/80 dark:bg-amber-950/30 p-4 space-y-3">
-                        <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
-                            {lookup.message ?? 'Nenhum item com este código.'}
-                        </p>
-                        {canManage && (
-                            <form onSubmit={submitRegister} className="space-y-3 pt-2 border-t border-amber-200/80 dark:border-amber-800/60">
-                                <p className="text-sm text-zinc-700 dark:text-zinc-300">
-                                    Preencha primeiro o <strong className="font-semibold">código</strong> e o{' '}
-                                    <strong className="font-semibold">nome</strong>. Foto e outros dados ficam num bloco
-                                    opcional abaixo para o ecrã ficar mais curto.
+                {canManage &&
+                    !lookup?.found &&
+                    (standaloneRegister || (lookup && !lookup.found)) && (
+                    <div
+                        className={`rounded-2xl border p-4 space-y-3 ${
+                            lookup && !lookup.found
+                                ? 'border-amber-200 dark:border-amber-900/50 bg-amber-50/80 dark:bg-amber-950/30'
+                                : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-sm'
+                        }`}
+                    >
+                        {lookup && !lookup.found && (
+                            <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                                {lookup.message ?? 'Nenhum item com este código.'}
+                            </p>
+                        )}
+                        {standaloneRegister && (
+                            <div className="flex items-start gap-2">
+                                <p className="text-sm text-zinc-700 dark:text-zinc-300 flex-1 min-w-0">
+                                    <strong className="font-semibold">Passo 1:</strong> código e nome.{' '}
+                                    <strong className="font-semibold">Passo 2:</strong> toque em{' '}
+                                    <span className="whitespace-nowrap">«Mais opções»</span> para foto, local e outros
+                                    campos.
                                 </p>
+                                <button
+                                    type="button"
+                                    onClick={() => setStandaloneRegister(false)}
+                                    className="shrink-0 text-sm font-medium text-zinc-600 dark:text-zinc-400 underline py-1"
+                                >
+                                    Fechar
+                                </button>
+                            </div>
+                        )}
 
-                                <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900/80 p-3 space-y-3">
-                                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                        <form onSubmit={submitRegister} className="space-y-3 pt-1">
+                                <div className="rounded-xl border-2 border-zinc-300 dark:border-zinc-600 bg-zinc-50/90 dark:bg-zinc-900/90 p-3 space-y-3">
+                                    <p className="text-xs font-bold uppercase tracking-wide text-zinc-700 dark:text-zinc-300">
                                         Dados básicos (obrigatórios)
                                     </p>
 
@@ -459,25 +544,30 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
                                             </p>
                                         ) : (
                                             <p className="text-xs text-amber-800/90 dark:text-amber-200/90">
-                                                Leia o código ou digite manualmente na caixa em baixo.
+                                                Leia o código ou use «Digitar código» em baixo.
                                             </p>
                                         )}
-                                        <details className="rounded-lg border border-dashed border-zinc-300 dark:border-zinc-600 bg-zinc-50/80 dark:bg-zinc-950/40">
-                                            <summary className="px-2.5 py-2 cursor-pointer text-xs font-medium text-zinc-600 dark:text-zinc-400 list-none [&::-webkit-details-marker]:hidden">
-                                                Digitar código manualmente (se não conseguir ler)
-                                            </summary>
-                                            <div className="px-2.5 pb-2.5 pt-0">
-                                                <input
-                                                    type="text"
-                                                    inputMode="numeric"
-                                                    autoComplete="off"
-                                                    value={registerForm.data.barcode}
-                                                    onChange={(e) => registerForm.setData('barcode', e.target.value)}
-                                                    placeholder="Código"
-                                                    className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 font-mono text-sm"
-                                                />
-                                            </div>
-                                        </details>
+                                        <button
+                                            type="button"
+                                            onClick={() => setManualBarcodeOpen((o) => !o)}
+                                            className="flex w-full items-center justify-between gap-2 rounded-lg border border-dashed border-zinc-400 dark:border-zinc-500 bg-white dark:bg-zinc-950 px-2.5 py-2 text-left text-xs font-medium text-zinc-700 dark:text-zinc-300"
+                                        >
+                                            <span>Digitar código manualmente</span>
+                                            <ChevronDownIcon
+                                                className={`h-5 w-5 shrink-0 transition-transform ${manualBarcodeOpen ? 'rotate-180' : ''}`}
+                                            />
+                                        </button>
+                                        {manualBarcodeOpen && (
+                                            <input
+                                                type="text"
+                                                inputMode="numeric"
+                                                autoComplete="off"
+                                                value={registerForm.data.barcode}
+                                                onChange={(e) => registerForm.setData('barcode', e.target.value)}
+                                                placeholder="Código"
+                                                className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 font-mono text-sm"
+                                            />
+                                        )}
                                         {registerForm.errors.barcode && (
                                             <p className="text-sm text-red-600">{registerForm.errors.barcode}</p>
                                         )}
@@ -500,11 +590,25 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
                                     </div>
                                 </div>
 
-                                <details className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-950/30 group">
-                                    <summary className="px-3 py-2.5 cursor-pointer text-sm font-medium text-zinc-700 dark:text-zinc-300 list-none flex flex-wrap items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
-                                        <span>Detalhes opcionais</span>
-                                        <span className="text-xs font-normal text-zinc-500">foto, local, notas…</span>
-                                    </summary>
+                                <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-950/30 overflow-hidden">
+                                    <button
+                                        type="button"
+                                        onClick={() => setOptionalDetailsOpen((o) => !o)}
+                                        className="flex w-full items-center justify-between gap-2 px-3 py-3 text-left"
+                                    >
+                                        <span>
+                                            <span className="block text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+                                                Mais opções (opcional)
+                                            </span>
+                                            <span className="block text-xs font-normal text-zinc-500 mt-0.5">
+                                                Foto, local, descrição, valores, estado…
+                                            </span>
+                                        </span>
+                                        <ChevronDownIcon
+                                            className={`h-6 w-6 shrink-0 text-zinc-500 transition-transform ${optionalDetailsOpen ? 'rotate-180' : ''}`}
+                                        />
+                                    </button>
+                                    {optionalDetailsOpen && (
                                     <div className="px-3 pb-3 pt-0 space-y-3 border-t border-zinc-200/80 dark:border-zinc-800">
                                         <div className="space-y-1.5">
                                             <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
@@ -695,7 +799,8 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
                                             )}
                                         </div>
                                     </div>
-                                </details>
+                                    )}
+                                </div>
 
                                 <button
                                     type="submit"
@@ -705,13 +810,21 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
                                     {registerForm.processing ? 'A guardar…' : 'Cadastrar item'}
                                 </button>
                             </form>
-                        )}
                         <button
                             type="button"
-                            onClick={() => setLookup(null)}
-                            className="text-sm font-medium text-amber-900 dark:text-amber-200 underline"
+                            onClick={() => {
+                                setLookup(null);
+                                setStandaloneRegister(false);
+                                setOptionalDetailsOpen(false);
+                                setManualBarcodeOpen(false);
+                            }}
+                            className={`text-sm font-medium underline ${
+                                lookup && !lookup.found
+                                    ? 'text-amber-900 dark:text-amber-200'
+                                    : 'text-zinc-600 dark:text-zinc-400'
+                            }`}
                         >
-                            Fechar
+                            Fechar formulário
                         </button>
                     </div>
                 )}

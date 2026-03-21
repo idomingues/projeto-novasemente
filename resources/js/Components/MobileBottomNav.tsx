@@ -49,6 +49,7 @@ const navItems = [
             'mobile.musica',
             'varios.notifications',
             'mobile.notifications',
+            'mobile.inventory',
         ] as const,
         icon: Squares2X2Icon,
         iconActive: Squares2X2IconSolid,

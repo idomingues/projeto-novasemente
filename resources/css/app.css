@@ -18,6 +18,25 @@
 /* Dark mode por classe (html.dark) — necessário no Tailwind v4 */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Evita “saltos” / scroll a saltar ao focar inputs no telemóvel (teclado, barra fixa) */
+@layer base {
+    html {
+        -webkit-text-size-adjust: 100%;
+        overflow-x: hidden;
+        scroll-behavior: auto;
+    }
+    body {
+        overflow-x: hidden;
+        overscroll-behavior-y: none;
+    }
+    input,
+    textarea,
+    select {
+        scroll-margin-bottom: 6rem;
+        scroll-margin-top: 0.5rem;
+    }
+}
+
 /* Safe area for mobile (notch, home indicator) */
 .safe-area-top {
     padding-top: env(safe-area-inset-top, 0);

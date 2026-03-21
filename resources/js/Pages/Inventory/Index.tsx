@@ -1,6 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm, router, usePage } from '@inertiajs/react';
-import { PencilIcon, TrashIcon, ArchiveBoxIcon, MagnifyingGlassIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, ArchiveBoxIcon, MagnifyingGlassIcon, ClockIcon, CameraIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { Html5Qrcode } from 'html5-qrcode';
 import AddButton from '@/Components/AddButton';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
@@ -9,8 +10,10 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import PageHeader from '@/Components/PageHeader';
 import InputError from '@/Components/InputError';
-import { useState, useEffect, FormEventHandler } from 'react';
+import { useState, useEffect, useRef, FormEventHandler } from 'react';
 import axios from 'axios';
+
+const DESKTOP_BARCODE_SCANNER_ID = 'inventory-desktop-barcode-scanner';
 
 interface InventoryItem {
     id: number;
@@ -65,6 +68,11 @@ export default function Index({ items, filters }: Props) {
     const [search, setSearch] = useState(filters.search ?? '');
     const [existingPhotoUrl, setExistingPhotoUrl] = useState<string | null>(null);
     const [newPhotoPreview, setNewPhotoPreview] = useState<string | null>(null);
+    const [barcodeScannerOpen, setBarcodeScannerOpen] = useState(false);
+    const [barcodeCameraError, setBarcodeCameraError] = useState<string | null>(null);
+    const barcodeScannerRef = useRef<Html5Qrcode | null>(null);
+    const barcodeScanHandledRef = useRef(false);
+    const setBarcodeFromScanRef = useRef((_: string) => {});
 
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
         barcode: '',
@@ -83,10 +91,71 @@ export default function Index({ items, filters }: Props) {
         photo: null as File | null,
     });
 
+    setBarcodeFromScanRef.current = (code: string) => {
+        setData('barcode', code);
+    };
+
+    useEffect(() => {
+        if (!barcodeScannerOpen) return;
+
+        barcodeScanHandledRef.current = false;
+        setBarcodeCameraError(null);
+
+        const start = async () => {
+            try {
+                const html5QrCode = new Html5Qrcode(DESKTOP_BARCODE_SCANNER_ID);
+                barcodeScannerRef.current = html5QrCode;
+                const w = typeof window !== 'undefined' ? Math.min(360, window.innerWidth - 48) : 320;
+                await html5QrCode.start(
+                    { facingMode: 'environment' },
+                    {
+                        fps: 10,
+                        qrbox: { width: w, height: Math.round(w * 0.45) },
+                    },
+                    (decodedText) => {
+                        if (barcodeScanHandledRef.current) return;
+                        barcodeScanHandledRef.current = true;
+                        html5QrCode
+                            .stop()
+                            .then(() => html5QrCode.clear())
+                            .catch(() => {})
+                            .finally(() => {
+                                barcodeScannerRef.current = null;
+                                setBarcodeScannerOpen(false);
+                                setBarcodeFromScanRef.current(decodedText.trim());
+                            });
+                    },
+                    () => {},
+                );
+            } catch (err) {
+                const msg =
+                    err instanceof Error
+                        ? err.message
+                        : 'Não foi possível usar a câmara. Verifique as permissões ou use HTTPS.';
+                setBarcodeCameraError(msg);
+                setBarcodeScannerOpen(false);
+            }
+        };
+
+        const t = window.setTimeout(() => void start(), 0);
+
+        return () => {
+            window.clearTimeout(t);
+            const h = barcodeScannerRef.current;
+            barcodeScannerRef.current = null;
+            if (h) {
+                h.stop()
+                    .then(() => h.clear())
+                    .catch(() => {});
+            }
+        };
+    }, [barcodeScannerOpen]);
+
     const openCreateModal = () => {
         setIsEditing(false);
         setEditingId(null);
         setExistingPhotoUrl(null);
+        setBarcodeScannerOpen(false);
         reset();
         clearErrors();
         setIsModalOpen(true);
@@ -95,6 +164,7 @@ export default function Index({ items, filters }: Props) {
     const openEditModal = (item: InventoryItem) => {
         setIsEditing(true);
         setEditingId(item.id);
+        setBarcodeScannerOpen(false);
         setExistingPhotoUrl(item.photo_url ?? null);
         setData({
             barcode: item.barcode,
@@ -118,6 +188,7 @@ export default function Index({ items, filters }: Props) {
 
     const closeModal = () => {
         setIsModalOpen(false);
+        setBarcodeScannerOpen(false);
         setExistingPhotoUrl(null);
         reset();
     };
@@ -293,13 +364,43 @@ export default function Index({ items, filters }: Props) {
                     </h2>
                     <div>
                         <InputLabel htmlFor="barcode" value="Código de barras" />
-                        <TextInput
-                            id="barcode"
-                            value={data.barcode}
-                            onChange={(e) => setData('barcode', e.target.value)}
-                            className="mt-1 block w-full font-mono"
-                            placeholder="Ex: 7891234567890"
-                        />
+                        <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-start">
+                            <TextInput
+                                id="barcode"
+                                value={data.barcode}
+                                onChange={(e) => setData('barcode', e.target.value)}
+                                className="block w-full min-w-0 font-mono sm:flex-1"
+                                placeholder="Ex: 7891234567890"
+                                autoComplete="off"
+                            />
+                            {/** Leitura com câmara: pensado para telemóvel / ecrã pequeno; em PC o código costuma ser digitado */}
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setBarcodeCameraError(null);
+                                    setBarcodeScannerOpen(true);
+                                }}
+                                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-200 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white dark:hover:bg-zinc-700 sm:py-2.5 md:hidden"
+                                title="Ler código de barras com a câmara (telemóvel)"
+                            >
+                                <CameraIcon className="h-5 w-5" aria-hidden />
+                                Ler com câmara
+                            </button>
+                        </div>
+                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                            <span className="md:hidden">
+                                Toque em «Ler com câmara» para preencher pelo código de barras, ou digite no campo.
+                            </span>
+                            <span className="hidden md:inline">
+                                Digite o código de barras. A leitura com câmara aparece neste formulário em ecrã de telemóvel
+                                (ou use o inventário na app móvel).
+                            </span>
+                        </p>
+                        {barcodeCameraError && (
+                            <p className="mt-2 text-sm text-red-600 dark:text-red-400" role="alert">
+                                {barcodeCameraError}
+                            </p>
+                        )}
                         <InputError message={errors.barcode} className="mt-1" />
                     </div>
                     <div className="mt-4">
@@ -530,6 +631,36 @@ export default function Index({ items, filters }: Props) {
                     </div>
                 </div>
             </Modal>
+
+            {barcodeScannerOpen && (
+                <div
+                    className="fixed inset-0 z-[100] flex flex-col bg-black"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Leitor de código de barras"
+                >
+                    <div className="flex items-center justify-between p-4 text-white">
+                        <span className="font-semibold">Aponte a câmara para o código</span>
+                        <button
+                            type="button"
+                            onClick={() => setBarcodeScannerOpen(false)}
+                            className="rounded-xl bg-white/10 p-2 hover:bg-white/20"
+                            aria-label="Fechar leitor"
+                        >
+                            <XMarkIcon className="h-8 w-8" />
+                        </button>
+                    </div>
+                    <div className="flex flex-1 items-center justify-center px-4 pb-8">
+                        <div
+                            id={DESKTOP_BARCODE_SCANNER_ID}
+                            className="w-full max-w-md min-h-[240px] overflow-hidden rounded-2xl bg-zinc-900"
+                        />
+                    </div>
+                    <p className="px-6 pb-8 text-center text-sm text-white/80">
+                        Em telemóveis usa a câmara traseira; no computador pode pedir acesso à webcam.
+                    </p>
+                </div>
+            )}
         </AdminLayout>
     );
 }
