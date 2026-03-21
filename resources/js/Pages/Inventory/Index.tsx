@@ -1,6 +1,15 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm, router, usePage } from '@inertiajs/react';
-import { PencilIcon, TrashIcon, ArchiveBoxIcon, MagnifyingGlassIcon, ClockIcon, CameraIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import {
+    PencilIcon,
+    TrashIcon,
+    ArchiveBoxIcon,
+    MagnifyingGlassIcon,
+    ClockIcon,
+    CameraIcon,
+    XMarkIcon,
+    ChevronDownIcon,
+} from '@heroicons/react/24/outline';
 import { Html5Qrcode } from 'html5-qrcode';
 import AddButton from '@/Components/AddButton';
 import Modal from '@/Components/Modal';
@@ -69,10 +78,16 @@ export default function Index({ items, filters }: Props) {
     const [existingPhotoUrl, setExistingPhotoUrl] = useState<string | null>(null);
     const [newPhotoPreview, setNewPhotoPreview] = useState<string | null>(null);
     const [barcodeScannerOpen, setBarcodeScannerOpen] = useState(false);
+    /** `search` = filtrar a lista; `form` = preencher código no modal de item */
+    const [barcodeScanPurpose, setBarcodeScanPurpose] = useState<'form' | 'search'>('form');
     const [barcodeCameraError, setBarcodeCameraError] = useState<string | null>(null);
     const barcodeScannerRef = useRef<Html5Qrcode | null>(null);
     const barcodeScanHandledRef = useRef(false);
+    const barcodeScanPurposeRef = useRef<'form' | 'search'>('form');
+    const skipSearchDebounceRef = useRef(false);
     const setBarcodeFromScanRef = useRef((_: string) => {});
+    /** Em telemóvel fica fechado por defeito; em md+ abre ao criar (ver openCreateModal) */
+    const [inventoryOptionalOpen, setInventoryOptionalOpen] = useState(false);
 
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
         barcode: '',
@@ -92,7 +107,14 @@ export default function Index({ items, filters }: Props) {
     });
 
     setBarcodeFromScanRef.current = (code: string) => {
-        setData('barcode', code);
+        const trimmed = code.trim();
+        if (barcodeScanPurposeRef.current === 'search') {
+            skipSearchDebounceRef.current = true;
+            setSearch(trimmed);
+            router.get(route('inventory.index'), { search: trimmed }, { preserveState: true, replace: true });
+        } else {
+            setData('barcode', trimmed);
+        }
     };
 
     useEffect(() => {
@@ -158,6 +180,9 @@ export default function Index({ items, filters }: Props) {
         setBarcodeScannerOpen(false);
         reset();
         clearErrors();
+        setInventoryOptionalOpen(
+            typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches,
+        );
         setIsModalOpen(true);
     };
 
@@ -165,6 +190,7 @@ export default function Index({ items, filters }: Props) {
         setIsEditing(true);
         setEditingId(item.id);
         setBarcodeScannerOpen(false);
+        setInventoryOptionalOpen(true);
         setExistingPhotoUrl(item.photo_url ?? null);
         setData({
             barcode: item.barcode,
@@ -189,6 +215,7 @@ export default function Index({ items, filters }: Props) {
     const closeModal = () => {
         setIsModalOpen(false);
         setBarcodeScannerOpen(false);
+        setInventoryOptionalOpen(false);
         setExistingPhotoUrl(null);
         reset();
     };
@@ -245,6 +272,10 @@ export default function Index({ items, filters }: Props) {
         if (search === (filters.search ?? '')) {
             return;
         }
+        if (skipSearchDebounceRef.current) {
+            skipSearchDebounceRef.current = false;
+            return;
+        }
         const timeout = setTimeout(() => {
             router.get(
                 route('inventory.index'),
@@ -270,17 +301,38 @@ export default function Index({ items, filters }: Props) {
             </p>
 
             <div className="mb-6">
-                <div className="relative max-w-md flex">
-                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400 pointer-events-none" />
-                    <input
-                        type="search"
-                        name="search"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Buscar por código de barras ou nome..."
-                        className="flex-1 pl-10 pr-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white placeholder-zinc-400 focus:ring-2 focus:ring-zinc-500 focus:border-transparent"
-                    />
+                <div className="relative max-w-md flex items-stretch gap-2">
+                    <div className="relative flex-1 min-w-0">
+                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400 pointer-events-none z-10" />
+                        <input
+                            type="search"
+                            name="search"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Buscar por código de barras ou nome..."
+                            className="w-full pl-10 pr-12 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white placeholder-zinc-400 focus:ring-2 focus:ring-zinc-500 focus:border-transparent"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => {
+                                barcodeScanPurposeRef.current = 'search';
+                                setBarcodeScanPurpose('search');
+                                setBarcodeCameraError(null);
+                                setBarcodeScannerOpen(true);
+                            }}
+                            className="absolute right-1.5 top-1/2 z-10 -translate-y-1/2 rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                            title="Ler código de barras com a câmara e buscar"
+                            aria-label="Ler código de barras com a câmara e buscar"
+                        >
+                            <CameraIcon className="h-5 w-5" aria-hidden />
+                        </button>
+                    </div>
                 </div>
+                {barcodeScanPurpose === 'search' && barcodeCameraError && (
+                    <p className="mt-2 text-sm text-red-600 dark:text-red-400" role="alert">
+                        {barcodeCameraError}
+                    </p>
+                )}
             </div>
 
             <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden">
@@ -358,233 +410,276 @@ export default function Index({ items, filters }: Props) {
             </div>
 
             <Modal show={isModalOpen} onClose={closeModal}>
-                <form onSubmit={submit} className="p-6">
-                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-6">
-                        {isEditing ? 'Editar item' : 'Novo item'}
-                    </h2>
-                    <div>
-                        <InputLabel htmlFor="barcode" value="Código de barras" />
-                        <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-start">
-                            <TextInput
-                                id="barcode"
-                                value={data.barcode}
-                                onChange={(e) => setData('barcode', e.target.value)}
-                                className="block w-full min-w-0 font-mono sm:flex-1"
-                                placeholder="Ex: 7891234567890"
-                                autoComplete="off"
-                            />
-                            {/** Leitura com câmara: pensado para telemóvel / ecrã pequeno; em PC o código costuma ser digitado */}
+                <form
+                    onSubmit={submit}
+                    className="flex max-h-[min(92dvh,56rem)] flex-col overflow-hidden sm:max-h-[min(90dvh,900px)]"
+                >
+                    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6">
+                        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-1 md:mb-5">
+                            {isEditing ? 'Editar item' : 'Novo item'}
+                        </h2>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-5 md:hidden">
+                            Campos principais primeiro; os restantes ficam em «Outros campos».
+                        </p>
+
+                        <div className="rounded-2xl border-2 border-zinc-200 bg-zinc-50/90 p-4 dark:border-zinc-600 dark:bg-zinc-900/80">
+                            <p className="text-xs font-bold uppercase tracking-wide text-zinc-700 dark:text-zinc-300 mb-4">
+                                Campos principais
+                            </p>
+                            <div>
+                                <InputLabel htmlFor="barcode" value="Código de barras" />
+                                <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-start">
+                                    <TextInput
+                                        id="barcode"
+                                        value={data.barcode}
+                                        onChange={(e) => setData('barcode', e.target.value)}
+                                        className="block w-full min-w-0 font-mono sm:flex-1"
+                                        placeholder="Ex: 7891234567890"
+                                        autoComplete="off"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            barcodeScanPurposeRef.current = 'form';
+                                            setBarcodeScanPurpose('form');
+                                            setBarcodeCameraError(null);
+                                            setBarcodeScannerOpen(true);
+                                        }}
+                                        className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-200 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white dark:hover:bg-zinc-700 sm:py-2.5 md:hidden"
+                                        title="Ler código de barras com a câmara (telemóvel)"
+                                    >
+                                        <CameraIcon className="h-5 w-5" aria-hidden />
+                                        Ler com câmara
+                                    </button>
+                                </div>
+                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                    <span className="md:hidden">
+                                        Toque em «Ler com câmara» para preencher pelo código de barras, ou digite no campo.
+                                    </span>
+                                    <span className="hidden md:inline">
+                                        Digite o código de barras. A leitura com câmara aparece neste formulário em ecrã de telemóvel
+                                        (ou use o inventário na app móvel).
+                                    </span>
+                                </p>
+                                {barcodeCameraError && (
+                                    <p className="mt-2 text-sm text-red-600 dark:text-red-400" role="alert">
+                                        {barcodeCameraError}
+                                    </p>
+                                )}
+                                <InputError message={errors.barcode} className="mt-1" />
+                            </div>
+                            <div className="mt-4">
+                                <InputLabel htmlFor="serial_number" value="Número de série (opcional)" />
+                                <TextInput
+                                    id="serial_number"
+                                    value={data.serial_number}
+                                    onChange={(e) => setData('serial_number', e.target.value)}
+                                    className="mt-1 block w-full font-mono"
+                                    placeholder="Ex: 0A239QBW505407"
+                                />
+                                <InputError message={errors.serial_number} className="mt-1" />
+                            </div>
+                            <div className="mt-4">
+                                <InputLabel htmlFor="name" value="Nome" />
+                                <TextInput
+                                    id="name"
+                                    value={data.name}
+                                    onChange={(e) => setData('name', e.target.value)}
+                                    className="mt-1 block w-full"
+                                    placeholder="Ex: Projetor Epson"
+                                />
+                                <InputError message={errors.name} className="mt-1" />
+                            </div>
+                            <div className="mt-4 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white/80 p-3 dark:bg-zinc-950/40">
+                                <InputLabel htmlFor="photo" value="Foto do objeto (opcional)" />
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 mb-2">
+                                    Tire uma foto ou escolha um ficheiro da galeria (telemóvel: pode usar a câmara).
+                                </p>
+                                <input
+                                    id="photo"
+                                    type="file"
+                                    accept="image/*"
+                                    capture="environment"
+                                    className="block w-full text-sm text-zinc-600 dark:text-zinc-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-zinc-900 file:text-white dark:file:bg-zinc-200 dark:file:text-zinc-900"
+                                    onChange={(e) => {
+                                        const f = e.target.files?.[0];
+                                        setData('photo', f ?? null);
+                                    }}
+                                />
+                                <InputError message={errors.photo} className="mt-2" />
+                                {(newPhotoPreview || (isEditing && existingPhotoUrl && !data.photo)) && (
+                                    <div className="mt-3 rounded-lg border border-zinc-200 dark:border-zinc-600 overflow-hidden bg-white dark:bg-zinc-950 max-h-48">
+                                        <img
+                                            src={newPhotoPreview ?? photoSrc(existingPhotoUrl, appUrl)}
+                                            alt=""
+                                            className="w-full h-full max-h-48 object-contain"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="mt-4 rounded-2xl border border-zinc-200 dark:border-zinc-700 overflow-hidden">
                             <button
                                 type="button"
-                                onClick={() => {
-                                    setBarcodeCameraError(null);
-                                    setBarcodeScannerOpen(true);
-                                }}
-                                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-200 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white dark:hover:bg-zinc-700 sm:py-2.5 md:hidden"
-                                title="Ler código de barras com a câmara (telemóvel)"
+                                onClick={() => setInventoryOptionalOpen((o) => !o)}
+                                className="flex w-full items-center justify-between gap-2 px-4 py-3.5 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
                             >
-                                <CameraIcon className="h-5 w-5" aria-hidden />
-                                Ler com câmara
-                            </button>
-                        </div>
-                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                            <span className="md:hidden">
-                                Toque em «Ler com câmara» para preencher pelo código de barras, ou digite no campo.
-                            </span>
-                            <span className="hidden md:inline">
-                                Digite o código de barras. A leitura com câmara aparece neste formulário em ecrã de telemóvel
-                                (ou use o inventário na app móvel).
-                            </span>
-                        </p>
-                        {barcodeCameraError && (
-                            <p className="mt-2 text-sm text-red-600 dark:text-red-400" role="alert">
-                                {barcodeCameraError}
-                            </p>
-                        )}
-                        <InputError message={errors.barcode} className="mt-1" />
-                    </div>
-                    <div className="mt-4">
-                        <InputLabel htmlFor="serial_number" value="Número de série (opcional)" />
-                        <TextInput
-                            id="serial_number"
-                            value={data.serial_number}
-                            onChange={(e) => setData('serial_number', e.target.value)}
-                            className="mt-1 block w-full font-mono"
-                            placeholder="Ex: 0A239QBW505407"
-                        />
-                        <InputError message={errors.serial_number} className="mt-1" />
-                    </div>
-                    <div className="mt-4">
-                        <InputLabel htmlFor="name" value="Nome" />
-                        <TextInput
-                            id="name"
-                            value={data.name}
-                            onChange={(e) => setData('name', e.target.value)}
-                            className="mt-1 block w-full"
-                            placeholder="Ex: Projetor Epson"
-                        />
-                        <InputError message={errors.name} className="mt-1" />
-                    </div>
-                    <div className="mt-4 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/80 dark:bg-zinc-900/50 p-4">
-                        <InputLabel htmlFor="photo" value="Foto do objeto (opcional)" />
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 mb-2">
-                            Tire uma foto ou escolha um ficheiro da galeria (telemóvel: pode usar a câmara).
-                        </p>
-                        <input
-                            id="photo"
-                            type="file"
-                            accept="image/*"
-                            capture="environment"
-                            className="block w-full text-sm text-zinc-600 dark:text-zinc-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-zinc-900 file:text-white dark:file:bg-zinc-200 dark:file:text-zinc-900"
-                            onChange={(e) => {
-                                const f = e.target.files?.[0];
-                                setData('photo', f ?? null);
-                            }}
-                        />
-                        <InputError message={errors.photo} className="mt-2" />
-                        {(newPhotoPreview || (isEditing && existingPhotoUrl && !data.photo)) && (
-                            <div className="mt-3 rounded-lg border border-zinc-200 dark:border-zinc-600 overflow-hidden bg-white dark:bg-zinc-950 max-h-48">
-                                <img
-                                    src={newPhotoPreview ?? photoSrc(existingPhotoUrl, appUrl)}
-                                    alt=""
-                                    className="w-full h-full max-h-48 object-contain"
+                                <span>
+                                    <span className="block text-sm font-semibold text-zinc-900 dark:text-white">
+                                        Outros campos
+                                    </span>
+                                    <span className="block text-xs font-normal text-zinc-500 dark:text-zinc-400 mt-0.5">
+                                        Localização, descrição, categoria, valores, estado…
+                                    </span>
+                                </span>
+                                <ChevronDownIcon
+                                    className={`h-6 w-6 shrink-0 text-zinc-500 transition-transform ${inventoryOptionalOpen ? 'rotate-180' : ''}`}
                                 />
-                            </div>
-                        )}
-                    </div>
-                    <div className="mt-4">
-                        <InputLabel htmlFor="location" value="Localização (onde está o objeto)" />
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 mb-1">
-                            Opcional — sala, armário, corredor, etc.
-                        </p>
-                        <TextInput
-                            id="location"
-                            value={data.location}
-                            onChange={(e) => setData('location', e.target.value)}
-                            className="mt-1 block w-full"
-                            placeholder="Ex: Sala de reuniões 1, depósito"
-                        />
-                        <InputError message={errors.location} className="mt-1" />
-                    </div>
-                    <div className="mt-4">
-                        <InputLabel htmlFor="description" value="Descrição (opcional)" />
-                        <textarea
-                            id="description"
-                            value={data.description}
-                            onChange={(e) => setData('description', e.target.value)}
-                            rows={2}
-                            className="mt-1 block w-full rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white focus:ring-2 focus:ring-zinc-500 focus:border-transparent"
-                            placeholder="Detalhes do item"
-                        />
-                        <InputError message={errors.description} className="mt-1" />
-                    </div>
-                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <InputLabel htmlFor="category" value="Categoria (opcional)" />
-                            <TextInput
-                                id="category"
-                                value={data.category}
-                                onChange={(e) => setData('category', e.target.value)}
-                                className="mt-1 block w-full"
-                                placeholder="Ex: Eletrônicos"
-                            />
-                            <InputError message={errors.category} className="mt-1" />
+                            </button>
+                            {inventoryOptionalOpen && (
+                                <div className="px-4 pb-4 pt-0 space-y-4 border-t border-zinc-200 dark:border-zinc-800">
+                                    <div>
+                                        <InputLabel htmlFor="location" value="Localização (onde está o objeto)" />
+                                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 mb-1">
+                                            Opcional — sala, armário, corredor, etc.
+                                        </p>
+                                        <TextInput
+                                            id="location"
+                                            value={data.location}
+                                            onChange={(e) => setData('location', e.target.value)}
+                                            className="mt-1 block w-full"
+                                            placeholder="Ex: Sala de reuniões 1, depósito"
+                                        />
+                                        <InputError message={errors.location} className="mt-1" />
+                                    </div>
+                                    <div>
+                                        <InputLabel htmlFor="description" value="Descrição (opcional)" />
+                                        <textarea
+                                            id="description"
+                                            value={data.description}
+                                            onChange={(e) => setData('description', e.target.value)}
+                                            rows={2}
+                                            className="mt-1 block w-full rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white focus:ring-2 focus:ring-zinc-500 focus:border-transparent"
+                                            placeholder="Detalhes do item"
+                                        />
+                                        <InputError message={errors.description} className="mt-1" />
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div>
+                                            <InputLabel htmlFor="category" value="Categoria (opcional)" />
+                                            <TextInput
+                                                id="category"
+                                                value={data.category}
+                                                onChange={(e) => setData('category', e.target.value)}
+                                                className="mt-1 block w-full"
+                                                placeholder="Ex: Eletrônicos"
+                                            />
+                                            <InputError message={errors.category} className="mt-1" />
+                                        </div>
+                                        <div>
+                                            <InputLabel htmlFor="brand" value="Marca (opcional)" />
+                                            <TextInput
+                                                id="brand"
+                                                value={data.brand}
+                                                onChange={(e) => setData('brand', e.target.value)}
+                                                className="mt-1 block w-full"
+                                                placeholder="Ex: Yamaha"
+                                            />
+                                            <InputError message={errors.brand} className="mt-1" />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div>
+                                            <InputLabel htmlFor="item_type" value="Tipo (opcional)" />
+                                            <TextInput
+                                                id="item_type"
+                                                value={data.item_type}
+                                                onChange={(e) => setData('item_type', e.target.value)}
+                                                className="mt-1 block w-full"
+                                                placeholder="Ex: Mesa de som"
+                                            />
+                                            <InputError message={errors.item_type} className="mt-1" />
+                                        </div>
+                                        <div>
+                                            <InputLabel htmlFor="classification" value="Classificação (opcional)" />
+                                            <TextInput
+                                                id="classification"
+                                                value={data.classification}
+                                                onChange={(e) => setData('classification', e.target.value)}
+                                                className="mt-1 block w-full"
+                                                placeholder="Ex: Básico, Franquia"
+                                            />
+                                            <InputError message={errors.classification} className="mt-1" />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                        <div>
+                                            <InputLabel htmlFor="acquisition_date" value="Data de aquisição" />
+                                            <TextInput
+                                                id="acquisition_date"
+                                                type="date"
+                                                value={data.acquisition_date}
+                                                onChange={(e) => setData('acquisition_date', e.target.value)}
+                                                className="mt-1 block w-full"
+                                            />
+                                            <InputError message={errors.acquisition_date} className="mt-1" />
+                                        </div>
+                                        <div>
+                                            <InputLabel htmlFor="acquisition_value" value="Valor de compra (R$)" />
+                                            <TextInput
+                                                id="acquisition_value"
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                value={data.acquisition_value}
+                                                onChange={(e) => setData('acquisition_value', e.target.value)}
+                                                className="mt-1 block w-full"
+                                            />
+                                            <InputError message={errors.acquisition_value} className="mt-1" />
+                                        </div>
+                                        <div>
+                                            <InputLabel htmlFor="current_value" value="Valor atual (R$)" />
+                                            <TextInput
+                                                id="current_value"
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                value={data.current_value}
+                                                onChange={(e) => setData('current_value', e.target.value)}
+                                                className="mt-1 block w-full"
+                                            />
+                                            <InputError message={errors.current_value} className="mt-1" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <InputLabel htmlFor="status" value="Status" />
+                                        <select
+                                            id="status"
+                                            value={data.status}
+                                            onChange={(e) => setData('status', e.target.value)}
+                                            className="mt-1 block w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-zinc-100 text-sm"
+                                        >
+                                            <option value="active">Ativo</option>
+                                            <option value="inactive">Inativo</option>
+                                            <option value="maintenance">Em manutenção</option>
+                                            <option value="disposed">Baixado</option>
+                                        </select>
+                                        <InputError message={errors.status} className="mt-1" />
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                        <div>
-                            <InputLabel htmlFor="brand" value="Marca (opcional)" />
-                            <TextInput
-                                id="brand"
-                                value={data.brand}
-                                onChange={(e) => setData('brand', e.target.value)}
-                                className="mt-1 block w-full"
-                                placeholder="Ex: Yamaha"
-                            />
-                            <InputError message={errors.brand} className="mt-1" />
-                        </div>
                     </div>
-                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <InputLabel htmlFor="item_type" value="Tipo (opcional)" />
-                            <TextInput
-                                id="item_type"
-                                value={data.item_type}
-                                onChange={(e) => setData('item_type', e.target.value)}
-                                className="mt-1 block w-full"
-                                placeholder="Ex: Mesa de som"
-                            />
-                            <InputError message={errors.item_type} className="mt-1" />
+                    <div className="shrink-0 border-t border-zinc-200 bg-white px-5 py-4 dark:border-zinc-800 dark:bg-zinc-900 sm:px-6">
+                        <div className="flex justify-end gap-2">
+                            <SecondaryButton type="button" onClick={closeModal}>
+                                Cancelar
+                            </SecondaryButton>
+                            <PrimaryButton type="submit" disabled={processing}>
+                                {isEditing ? 'Salvar' : 'Cadastrar'}
+                            </PrimaryButton>
                         </div>
-                        <div>
-                            <InputLabel htmlFor="classification" value="Classificação (opcional)" />
-                            <TextInput
-                                id="classification"
-                                value={data.classification}
-                                onChange={(e) => setData('classification', e.target.value)}
-                                className="mt-1 block w-full"
-                                placeholder="Ex: Básico, Franquia"
-                            />
-                            <InputError message={errors.classification} className="mt-1" />
-                        </div>
-                    </div>
-                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div>
-                            <InputLabel htmlFor="acquisition_date" value="Data de aquisição" />
-                            <TextInput
-                                id="acquisition_date"
-                                type="date"
-                                value={data.acquisition_date}
-                                onChange={(e) => setData('acquisition_date', e.target.value)}
-                                className="mt-1 block w-full"
-                            />
-                            <InputError message={errors.acquisition_date} className="mt-1" />
-                        </div>
-                        <div>
-                            <InputLabel htmlFor="acquisition_value" value="Valor de compra (R$)" />
-                            <TextInput
-                                id="acquisition_value"
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={data.acquisition_value}
-                                onChange={(e) => setData('acquisition_value', e.target.value)}
-                                className="mt-1 block w-full"
-                            />
-                            <InputError message={errors.acquisition_value} className="mt-1" />
-                        </div>
-                        <div>
-                            <InputLabel htmlFor="current_value" value="Valor atual (R$)" />
-                            <TextInput
-                                id="current_value"
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={data.current_value}
-                                onChange={(e) => setData('current_value', e.target.value)}
-                                className="mt-1 block w-full"
-                            />
-                            <InputError message={errors.current_value} className="mt-1" />
-                        </div>
-                    </div>
-                    <div className="mt-4">
-                        <InputLabel htmlFor="status" value="Status" />
-                        <select
-                            id="status"
-                            value={data.status}
-                            onChange={(e) => setData('status', e.target.value)}
-                            className="mt-1 block w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-zinc-100 text-sm"
-                        >
-                            <option value="active">Ativo</option>
-                            <option value="inactive">Inativo</option>
-                            <option value="maintenance">Em manutenção</option>
-                            <option value="disposed">Baixado</option>
-                        </select>
-                        <InputError message={errors.status} className="mt-1" />
-                    </div>
-                    <div className="mt-6 flex justify-end gap-2">
-                        <SecondaryButton type="button" onClick={closeModal}>Cancelar</SecondaryButton>
-                        <PrimaryButton type="submit" disabled={processing}>
-                            {isEditing ? 'Salvar' : 'Cadastrar'}
-                        </PrimaryButton>
                     </div>
                 </form>
             </Modal>
@@ -640,7 +735,11 @@ export default function Index({ items, filters }: Props) {
                     aria-label="Leitor de código de barras"
                 >
                     <div className="flex items-center justify-between p-4 text-white">
-                        <span className="font-semibold">Aponte a câmara para o código</span>
+                        <span className="font-semibold">
+                            {barcodeScanPurpose === 'search'
+                                ? 'Buscar pela leitura do código'
+                                : 'Aponte a câmara para o código'}
+                        </span>
                         <button
                             type="button"
                             onClick={() => setBarcodeScannerOpen(false)}

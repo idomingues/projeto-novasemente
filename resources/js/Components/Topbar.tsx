@@ -1,6 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import { BellIcon, SunIcon, MoonIcon, FilmIcon, NewspaperIcon, CalendarDaysIcon, HandRaisedIcon, Squares2X2Icon, ChevronRightIcon, LifebuoyIcon } from '@heroicons/react/24/outline';
 import Dropdown from '@/Components/Dropdown';
+import AppVersionTrigger from '@/Components/AppVersionTrigger';
 import { useTheme } from '@/Contexts/ThemeContext';
 
 interface NotificationItem {
@@ -90,7 +91,9 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
                 </div>
 
                 {/* Right Actions */}
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 sm:gap-4">
+                    <AppVersionTrigger className="flex-shrink-0" />
+
                     <button
                         onClick={toggleTheme}
                         className="w-12 h-12 flex items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-colors"

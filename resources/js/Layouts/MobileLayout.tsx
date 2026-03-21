@@ -32,12 +32,6 @@ export default function MobileLayout({ children }: PropsWithChildren) {
                         </div>
                     </main>
 
-                    <div className="fixed bottom-16 left-0 right-0 z-20 flex justify-center pointer-events-none">
-                        <div className="pointer-events-auto">
-                            <AppVersionTrigger />
-                        </div>
-                    </div>
-
                     <MobileBottomNav insetForSidebar />
 
                     <FlashMessages />
@@ -53,6 +47,9 @@ export default function MobileLayout({ children }: PropsWithChildren) {
                 style={{ paddingTop: 'env(safe-area-inset-top, 0)' }}
             >
                 <div className="relative flex items-center justify-center h-14 px-4">
+                    <div className="absolute left-3 top-1/2 z-10 -translate-y-1/2 sm:left-4">
+                        <AppVersionTrigger />
+                    </div>
                     <Link href={route('mobile.index')} className="flex-shrink-0">
                         <img
                             src={currentChurch?.logo_url ?? '/logo-ns.png'}
@@ -77,12 +74,6 @@ export default function MobileLayout({ children }: PropsWithChildren) {
                     {children}
                 </div>
             </main>
-
-            <div className="fixed bottom-16 left-0 right-0 z-20 flex justify-center pointer-events-none">
-                <div className="pointer-events-auto">
-                    <AppVersionTrigger />
-                </div>
-            </div>
 
             <MobileBottomNav />
 

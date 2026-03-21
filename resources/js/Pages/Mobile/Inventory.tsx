@@ -74,8 +74,8 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
     const appUrl = (page.props as { appUrl?: string }).appUrl ?? '';
     const [search, setSearch] = useState(filters.search ?? '');
     const [scannerOpen, setScannerOpen] = useState(false);
-    /** `lookup` = após leitura consulta API; `register` = preenche só o código no formulário de cadastro */
-    const [scannerMode, setScannerMode] = useState<'lookup' | 'register'>('lookup');
+    /** `lookup` = após leitura consulta API; `register` = preenche só o código no formulário; `listSearch` = filtra a lista */
+    const [scannerMode, setScannerMode] = useState<'lookup' | 'register' | 'listSearch'>('lookup');
     const [lookup, setLookup] = useState<LookupState>(null);
     const [lookupLoading, setLookupLoading] = useState(false);
     const [lookupError, setLookupError] = useState<string | null>(null);
@@ -191,6 +191,13 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
                                 const trimmed = decodedText.trim();
                                 if (mode === 'register') {
                                     registerSetBarcodeRef.current(trimmed);
+                                } else if (mode === 'listSearch') {
+                                    setSearch(trimmed);
+                                    router.get(
+                                        route('mobile.inventory'),
+                                        { search: trimmed },
+                                        { preserveState: true, replace: true },
+                                    );
                                 } else {
                                     void lookupBarcodeRef.current(decodedText);
                                 }
@@ -272,6 +279,12 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
     const openRegisterScanner = () => {
         setCameraError(null);
         setScannerMode('register');
+        setScannerOpen(true);
+    };
+
+    const openListSearchScanner = () => {
+        setCameraError(null);
+        setScannerMode('listSearch');
         setScannerOpen(true);
     };
 
@@ -359,7 +372,9 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
                             <span className="font-semibold">
                                 {scannerMode === 'register'
                                     ? 'Leia o código de barras do objeto'
-                                    : 'Aponte para o código'}
+                                    : scannerMode === 'listSearch'
+                                      ? 'Buscar pela leitura do código'
+                                      : 'Aponte para o código'}
                             </span>
                             <button
                                 type="button"
@@ -383,16 +398,25 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
                 )}
 
                 <div className="flex gap-2">
-                    <div className="relative flex-1">
-                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
+                    <div className="relative flex-1 min-w-0">
+                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 z-10 -translate-y-1/2 w-5 h-5 text-zinc-400 pointer-events-none" />
                         <input
                             type="search"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && applySearch()}
                             placeholder="Pesquisar nome, código ou série…"
-                            className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white placeholder:text-zinc-400"
+                            className="w-full pl-10 pr-12 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white placeholder:text-zinc-400"
                         />
+                        <button
+                            type="button"
+                            onClick={openListSearchScanner}
+                            className="absolute right-1.5 top-1/2 z-10 -translate-y-1/2 rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                            title="Ler código de barras e pesquisar na lista"
+                            aria-label="Ler código de barras e pesquisar na lista"
+                        >
+                            <CameraIcon className="w-5 h-5" aria-hidden />
+                        </button>
                     </div>
                     <button
                         type="button"
@@ -505,8 +529,8 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
                                 <p className="text-sm text-zinc-700 dark:text-zinc-300 flex-1 min-w-0">
                                     <strong className="font-semibold">Passo 1:</strong> código e nome.{' '}
                                     <strong className="font-semibold">Passo 2:</strong> toque em{' '}
-                                    <span className="whitespace-nowrap">«Mais opções»</span> para foto, local e outros
-                                    campos.
+                                    <span className="whitespace-nowrap">«Outros campos»</span> para foto, local e
+                                    detalhes adicionais.
                                 </p>
                                 <button
                                     type="button"
@@ -521,7 +545,7 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
                         <form onSubmit={submitRegister} className="space-y-3 pt-1">
                                 <div className="rounded-xl border-2 border-zinc-300 dark:border-zinc-600 bg-zinc-50/90 dark:bg-zinc-900/90 p-3 space-y-3">
                                     <p className="text-xs font-bold uppercase tracking-wide text-zinc-700 dark:text-zinc-300">
-                                        Dados básicos (obrigatórios)
+                                        Campos principais
                                     </p>
 
                                     <div className="space-y-2">
@@ -598,7 +622,7 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
                                     >
                                         <span>
                                             <span className="block text-sm font-semibold text-zinc-800 dark:text-zinc-200">
-                                                Mais opções (opcional)
+                                                Outros campos (opcional)
                                             </span>
                                             <span className="block text-xs font-normal text-zinc-500 mt-0.5">
                                                 Foto, local, descrição, valores, estado…
