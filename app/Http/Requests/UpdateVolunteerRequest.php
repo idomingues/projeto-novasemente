@@ -34,6 +34,7 @@ class UpdateVolunteerRequest extends FormRequest
             'active' => ['boolean'],
             'photo_file' => ['nullable', 'image', 'max:4096'],
             'enable_app_access' => ['boolean'],
+            'send_invite_after' => ['boolean'],
             'app_role' => ['nullable', 'string', 'exists:roles,name'],
             'app_ministry_ids' => ['nullable', 'array'],
             'app_ministry_ids.*' => ['exists:ministries,id'],
@@ -48,6 +49,9 @@ class UpdateVolunteerRequest extends FormRequest
         }
         if ($this->has('enable_app_access') && is_string($this->enable_app_access)) {
             $this->merge(['enable_app_access' => $this->enable_app_access === 'true' || $this->enable_app_access === '1']);
+        }
+        if ($this->has('send_invite_after') && is_string($this->send_invite_after)) {
+            $this->merge(['send_invite_after' => $this->send_invite_after === 'true' || $this->send_invite_after === '1']);
         }
 
         $isMember = (int) $this->input('is_member', 1) === 1;
@@ -95,6 +99,13 @@ class UpdateVolunteerRequest extends FormRequest
                         'Este membro ainda não tem foto. Envie uma imagem.'
                     );
                 }
+            }
+
+            if ($this->boolean('send_invite_after') && $this->boolean('enable_app_access')) {
+                $validator->errors()->add(
+                    'send_invite_after',
+                    'Para usar o convite, desative "Criar ou manter acesso ao app" e defina a conta aqui só depois pelo link.'
+                );
             }
 
             if (! $this->boolean('enable_app_access')) {

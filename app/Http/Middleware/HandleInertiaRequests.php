@@ -127,6 +127,9 @@ class HandleInertiaRequests extends Middleware
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
                 'invitation_link' => fn () => $request->session()->get('invitation_link'),
+                'invitation_for_name' => fn () => $request->session()->get('invitation_for_name'),
+                'public_volunteer_signup_url' => fn () => $request->session()->get('public_volunteer_signup_url'),
+                'public_volunteer_signup_church' => fn () => $request->session()->get('public_volunteer_signup_church'),
             ],
             'recentNotifications' => fn () => NotificationFeed::mergedForUser(
                 $request,

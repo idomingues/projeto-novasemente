@@ -10,6 +10,7 @@ use App\Models\Member;
 use App\Models\Ministry;
 use App\Models\User;
 use App\Models\Volunteer;
+use App\Models\VolunteerSelfSignupToken;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -282,6 +283,9 @@ class VolunteerController extends Controller
             'members' => $membersQuery->orderBy('name')->get(['id', 'name', 'photo_url', 'email']),
             'ministries' => $ministriesQuery->orderBy('name')->get(['id', 'name']),
             'appRoles' => Role::query()->orderBy('name')->get(['id', 'name']),
+            'publicVolunteerSignupUrl' => $churchId !== null
+                ? VolunteerSelfSignupToken::ensurePublicSignupUrl($churchId)
+                : null,
             'filters' => [
                 'search' => $search,
             ],
@@ -290,7 +294,7 @@ class VolunteerController extends Controller
 
     public function store(StoreVolunteerRequest $request)
     {
-        $data = collect($request->validated())->except('photo_file', 'ministry_ids', 'enable_app_access', 'app_email', 'app_role', 'app_ministry_ids', 'app_password', 'app_password_confirmation', 'is_member', 'first_name', 'last_name')->all();
+        $data = collect($request->validated())->except('photo_file', 'ministry_ids', 'enable_app_access', 'app_email', 'app_role', 'app_ministry_ids', 'app_password', 'app_password_confirmation', 'is_member', 'first_name', 'last_name', 'send_invite_after')->all();
         $volunteer = Volunteer::create($data);
         $volunteer->ministries()->sync($request->input('ministry_ids', []));
         $this->syncMemberPhoto($request, $volunteer);
@@ -298,12 +302,14 @@ class VolunteerController extends Controller
         $volunteer->load('member');
         $this->syncVolunteerAppUser($request, $volunteer);
 
-        return redirect()->route('volunteers.index')->with('success', 'Voluntário cadastrado com sucesso!');
+        $redirect = redirect()->route('volunteers.index')->with('success', 'Voluntário cadastrado com sucesso!');
+
+        return $this->maybeAppendVolunteerInviteFlash($request, $volunteer->fresh(), $redirect);
     }
 
     public function update(UpdateVolunteerRequest $request, Volunteer $volunteer)
     {
-        $data = collect($request->validated())->except('photo_file', 'ministry_ids', 'enable_app_access', 'app_email', 'app_role', 'app_ministry_ids', 'app_password', 'app_password_confirmation', 'is_member', 'first_name', 'last_name')->all();
+        $data = collect($request->validated())->except('photo_file', 'ministry_ids', 'enable_app_access', 'app_email', 'app_role', 'app_ministry_ids', 'app_password', 'app_password_confirmation', 'is_member', 'first_name', 'last_name', 'send_invite_after')->all();
         $volunteer->update($data);
         $volunteer->ministries()->sync($request->input('ministry_ids', []));
         $this->syncMemberPhoto($request, $volunteer);
@@ -311,7 +317,9 @@ class VolunteerController extends Controller
         $volunteer->load('member');
         $this->syncVolunteerAppUser($request, $volunteer->fresh());
 
-        return redirect()->route('volunteers.index')->with('success', 'Voluntário atualizado com sucesso!');
+        $redirect = redirect()->route('volunteers.index')->with('success', 'Voluntário atualizado com sucesso!');
+
+        return $this->maybeAppendVolunteerInviteFlash($request, $volunteer->fresh(), $redirect);
     }
 
     public function destroy(Volunteer $volunteer)
@@ -323,13 +331,67 @@ class VolunteerController extends Controller
 
     public function invite(Volunteer $volunteer)
     {
+        $volunteer->loadMissing('member');
+        $result = $this->createVolunteerInviteLink($volunteer);
+
+        if (! $result['ok']) {
+            return match ($result['error']) {
+                'no_user' => redirect()->route('volunteers.index')->with('error', 'Não foi possível gerar convite. Informe um nome válido para o voluntário.'),
+                'has_email' => redirect()->route('volunteers.index')->with('error', 'Este voluntário já possui acesso (e-mail definido).'),
+            };
+        }
+
+        return redirect()->route('volunteers.index')
+            ->with('success', 'Convite criado. Encaminhe o link para o voluntário finalizar o cadastro (e-mail e senha).')
+            ->with('invitation_link', $result['link'])
+            ->with('invitation_for_name', $result['name']);
+    }
+
+    /**
+     * @param  \Illuminate\Http\RedirectResponse  $redirect
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    private function maybeAppendVolunteerInviteFlash(Request $request, Volunteer $volunteer, $redirect)
+    {
+        if (! $request->boolean('send_invite_after') || $request->boolean('enable_app_access')) {
+            return $redirect;
+        }
+
+        $volunteer->loadMissing('member');
+        $result = $this->createVolunteerInviteLink($volunteer);
+
+        if (! $result['ok']) {
+            $detail = match ($result['error']) {
+                'no_user' => 'Não foi possível gerar o convite. Verifique se o nome do voluntário está completo.',
+                'has_email' => 'Não foi possível gerar o convite: já existe e-mail de acesso definido para este voluntário.',
+            };
+
+            return redirect()->route('volunteers.index')->with(
+                'error',
+                'Registo guardado. '.$detail
+            );
+        }
+
+        return $redirect
+            ->with('success', 'Registo guardado. Convite gerado — envie o link para a pessoa concluir o cadastro (e-mail e senha).')
+            ->with('invitation_link', $result['link'])
+            ->with('invitation_for_name', $result['name']);
+    }
+
+    /**
+     * @return array{ok: true, link: string, name: string}|array{ok: false, error: 'no_user'|'has_email'}
+     */
+    private function createVolunteerInviteLink(Volunteer $volunteer): array
+    {
+        $volunteer->loadMissing('member');
         $user = $this->resolveOrCreateAppUserForInvite($volunteer);
+
         if (! $user) {
-            return redirect()->route('volunteers.index')->with('error', 'Não foi possível gerar convite. Informe um nome válido para o voluntário.');
+            return ['ok' => false, 'error' => 'no_user'];
         }
 
         if ($user->email !== null) {
-            return redirect()->route('volunteers.index')->with('error', 'Este voluntário já possui acesso (e-mail definido).');
+            return ['ok' => false, 'error' => 'has_email'];
         }
 
         Invitation::query()
@@ -347,9 +409,11 @@ class VolunteerController extends Controller
         ]);
 
         $link = route('register', ['invitation' => $token], true);
+        $name = trim((string) ($volunteer->member?->name ?? $volunteer->name ?? ''));
+        if ($name === '') {
+            $name = 'Voluntário';
+        }
 
-        return redirect()->route('volunteers.index')
-            ->with('success', 'Convite criado. Encaminhe o link para o voluntário finalizar o cadastro (e-mail e senha).')
-            ->with('invitation_link', $link);
+        return ['ok' => true, 'link' => $link, 'name' => $name];
     }
 }

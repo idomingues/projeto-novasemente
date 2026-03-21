@@ -1,6 +1,8 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm, router, Link, usePage } from '@inertiajs/react';
-import { PencilIcon, TrashIcon, LinkIcon, DevicePhoneMobileIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, ChatBubbleLeftRightIcon, UserPlusIcon } from '@heroicons/react/24/outline';
+import VolunteerInviteShareModal from '@/Components/Volunteers/VolunteerInviteShareModal';
+import PublicVolunteerSignupShareModal from '@/Components/Volunteers/PublicVolunteerSignupShareModal';
 import AddButton from '@/Components/AddButton';
 import { getMinistryIcon } from '@/lib/ministryIcons';
 import Modal from '@/Components/Modal';
@@ -44,6 +46,7 @@ interface Props {
     filters?: {
         search?: string;
     };
+    publicVolunteerSignupUrl: string | null;
 }
 
 function splitDisplayName(full: string | null | undefined): { first: string; last: string } {
@@ -54,11 +57,30 @@ function splitDisplayName(full: string | null | undefined): { first: string; las
     return { first: t.slice(0, i).trim(), last: t.slice(i + 1).trim() };
 }
 
-export default function Index({ volunteers, members, ministries, appRoles, filters }: Props) {
-    const { flash } = usePage().props as { flash?: { invitation_link?: string | null } };
-    const invitationLink = flash?.invitation_link ?? null;
+export default function Index({
+    volunteers,
+    members,
+    ministries,
+    appRoles,
+    filters,
+    publicVolunteerSignupUrl,
+}: Props) {
+    const page = usePage().props as {
+        flash?: {
+            invitation_link?: string | null;
+            invitation_for_name?: string | null;
+            public_volunteer_signup_url?: string | null;
+        };
+        currentChurch?: { name?: string } | null;
+    };
+    const { flash } = page;
+    const churchNameForPublicInvite = page.currentChurch?.name ?? 'Igreja';
 
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [inviteShareOpen, setInviteShareOpen] = useState(false);
+    const [inviteShare, setInviteShare] = useState<{ link: string; name: string } | null>(null);
+    const [invitingVolunteerId, setInvitingVolunteerId] = useState<number | null>(null);
+    const [publicInviteModalOpen, setPublicInviteModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [search, setSearch] = useState(filters?.search ?? '');
@@ -81,6 +103,7 @@ export default function Index({ volunteers, members, ministries, appRoles, filte
         app_ministry_ids: [] as number[],
         app_password: '',
         app_password_confirmation: '',
+        send_invite_after: false,
     });
 
     const openCreateModal = () => {
@@ -113,6 +136,7 @@ export default function Index({ volunteers, members, ministries, appRoles, filte
             app_ministry_ids: v.user?.ministry_ids ?? [],
             app_password: '',
             app_password_confirmation: '',
+            send_invite_after: false,
         });
         clearErrors();
         setIsModalOpen(true);
@@ -123,16 +147,23 @@ export default function Index({ volunteers, members, ministries, appRoles, filte
         reset();
     };
 
+    const inviteFormTransform = (form: typeof data) => ({
+        ...form,
+        send_invite_after: form.send_invite_after ? '1' : '0',
+    });
+
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         if (isEditing && editingId) {
             put(route('volunteers.update', editingId), {
                 forceFormData: true,
+                transform: inviteFormTransform,
                 onSuccess: () => closeModal(),
             });
         } else {
             post(route('volunteers.store'), {
                 forceFormData: true,
+                transform: inviteFormTransform,
                 onSuccess: () => closeModal(),
             });
         }
@@ -144,14 +175,20 @@ export default function Index({ volunteers, members, ministries, appRoles, filte
         }
     };
 
-    const copyInviteLink = (link: string) => {
-        navigator.clipboard.writeText(link);
-    };
+    useEffect(() => {
+        const link = flash?.invitation_link;
+        const name = flash?.invitation_for_name;
+        if (typeof link === 'string' && link.length > 0) {
+            setInviteShare({ link, name: typeof name === 'string' ? name : '' });
+            setInviteShareOpen(true);
+        }
+    }, [flash?.invitation_link, flash?.invitation_for_name]);
 
-    const copyForWhatsApp = (link: string) => {
-        const message = `Você foi convidado a acessar o app.\n\nPara criar sua conta:\n1. Acesse o link abaixo\n2. Preencha e-mail e senha\n3. O link é válido por 7 dias\n\n${link}`;
-        navigator.clipboard.writeText(message);
-    };
+    useEffect(() => {
+        if (typeof flash?.public_volunteer_signup_url === 'string' && flash.public_volunteer_signup_url.length > 0) {
+            setPublicInviteModalOpen(true);
+        }
+    }, [flash?.public_volunteer_signup_url]);
 
     useEffect(() => {
         if (search === (filters?.search ?? '')) {
@@ -202,34 +239,33 @@ export default function Index({ volunteers, members, ministries, appRoles, filte
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
-                    <AddButton onClick={openCreateModal}>Novo Voluntário</AddButton>
+                    <div className="flex flex-wrap items-center gap-2 justify-end w-full sm:w-auto">
+                        {publicVolunteerSignupUrl ? (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => setPublicInviteModalOpen(true)}
+                                    aria-label="Convidar voluntários"
+                                    className="md:hidden flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-white/90 bg-zinc-900 text-white shadow-lg ring-1 ring-inset ring-white/70 hover:bg-zinc-800 active:scale-95 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+                                >
+                                    <UserPlusIcon className="h-6 w-6" strokeWidth={2.2} />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setPublicInviteModalOpen(true)}
+                                    className="hidden md:inline-flex h-12 shrink-0 items-center gap-2 rounded-full border-2 border-white/90 bg-zinc-900 px-6 text-xs font-semibold uppercase tracking-widest text-white shadow-sm ring-1 ring-inset ring-white/70 transition hover:bg-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+                                >
+                                    <UserPlusIcon className="h-5 w-5" strokeWidth={2} />
+                                    Convidar voluntários
+                                </button>
+                            </>
+                        ) : null}
+                        <AddButton onClick={openCreateModal}>Novo Voluntário</AddButton>
+                    </div>
                 </div>
             </PageHeader>
 
             <Card className="!p-0 overflow-hidden">
-                {invitationLink && (
-                    <div className="px-4 md:px-8 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-green-50 dark:bg-green-900/20 flex flex-wrap items-center gap-3">
-                        <span className="text-sm text-green-800 dark:text-green-200">
-                            Link de convite gerado com sucesso.
-                        </span>
-                        <button
-                            type="button"
-                            onClick={() => copyInviteLink(invitationLink)}
-                            className="text-sm font-medium text-green-700 dark:text-green-300 hover:underline"
-                        >
-                            Copiar link
-                        </button>
-                        <span className="text-green-400">|</span>
-                        <button
-                            type="button"
-                            onClick={() => copyForWhatsApp(invitationLink)}
-                            className="text-sm font-medium text-green-700 dark:text-green-300 hover:underline inline-flex items-center gap-1"
-                        >
-                            <DevicePhoneMobileIcon className="w-4 h-4" />
-                            Copiar para WhatsApp
-                        </button>
-                    </div>
-                )}
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead className="bg-zinc-50 border-b border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800">
@@ -240,6 +276,9 @@ export default function Index({ volunteers, members, ministries, appRoles, filte
                                 <th className="px-4 md:px-8 py-3 md:py-4 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Status</th>
                                 <th className="px-4 md:px-8 py-3 md:py-4 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider min-w-[200px]">
                                     Conta no app
+                                </th>
+                                <th className="px-4 md:px-8 py-3 md:py-4 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider whitespace-nowrap min-w-[140px]">
+                                    Convite
                                 </th>
                                 <th className="px-4 md:px-8 py-3 md:py-4 text-right text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider whitespace-nowrap w-[1%]">
                                     Ações
@@ -316,6 +355,32 @@ export default function Index({ volunteers, members, ministries, appRoles, filte
                                             </div>
                                         )}
                                     </td>
+                                    <td className="px-4 md:px-8 py-3 md:py-4 align-middle">
+                                        {!v.user?.email ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setInvitingVolunteerId(v.id);
+                                                    router.post(
+                                                        route('volunteers.invite', v.id),
+                                                        {},
+                                                        {
+                                                            preserveScroll: true,
+                                                            onFinish: () => setInvitingVolunteerId(null),
+                                                        },
+                                                    );
+                                                }}
+                                                disabled={invitingVolunteerId === v.id}
+                                                className="inline-flex w-full min-w-[8.5rem] items-center justify-center gap-2 rounded-full border border-emerald-600/80 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900 shadow-sm transition hover:bg-emerald-100 disabled:opacity-60 dark:border-emerald-500/70 dark:bg-emerald-950/40 dark:text-emerald-100 dark:hover:bg-emerald-900/50 sm:w-auto"
+                                                title="Gera o link e abre o ecrã para copiar ou enviar pelo WhatsApp"
+                                            >
+                                                <ChatBubbleLeftRightIcon className="h-4 w-4 shrink-0" aria-hidden />
+                                                Convidar
+                                            </button>
+                                        ) : (
+                                            <span className="text-xs text-zinc-400 dark:text-zinc-500">—</span>
+                                        )}
+                                    </td>
                                     <td className="px-4 md:px-8 py-3 md:py-4 text-right align-middle w-[1%] whitespace-nowrap">
                                         <div className="inline-flex flex-nowrap items-center justify-end gap-0.5">
                                             <button
@@ -326,16 +391,6 @@ export default function Index({ volunteers, members, ministries, appRoles, filte
                                             >
                                                 <PencilIcon className="w-5 h-5" />
                                             </button>
-                                            {!v.user?.email && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => router.post(route('volunteers.invite', v.id))}
-                                                    className="shrink-0 p-2 text-zinc-500 hover:text-green-600 dark:hover:text-green-400 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-700"
-                                                    title="Gerar link de convite para auto cadastro"
-                                                >
-                                                    <LinkIcon className="w-5 h-5" />
-                                                </button>
-                                            )}
                                             <button
                                                 type="button"
                                                 onClick={() => handleDelete(v.id)}
@@ -585,7 +640,13 @@ export default function Index({ volunteers, members, ministries, appRoles, filte
                                     type="checkbox"
                                     id="enable_app_access"
                                     checked={data.enable_app_access}
-                                    onChange={(e) => setData('enable_app_access', e.target.checked)}
+                                    onChange={(e) => {
+                                        const on = e.target.checked;
+                                        setData('enable_app_access', on);
+                                        if (on) {
+                                            setData('send_invite_after', false);
+                                        }
+                                    }}
                                     className="mt-1 rounded border-zinc-300 dark:border-zinc-600 text-zinc-900 focus:ring-zinc-500"
                                 />
                                 <div>
@@ -689,6 +750,38 @@ export default function Index({ volunteers, members, ministries, appRoles, filte
                                     </p>
                                 </div>
                             )}
+
+                            {!data.enable_app_access && (
+                                <div className="rounded-xl border border-dashed border-zinc-300 bg-white/80 p-3 dark:border-zinc-600 dark:bg-zinc-900/30">
+                                    <div className="flex items-start gap-2">
+                                        <input
+                                            type="checkbox"
+                                            id="send_invite_after"
+                                            checked={data.send_invite_after}
+                                            onChange={(e) => {
+                                                const on = e.target.checked;
+                                                setData('send_invite_after', on);
+                                                if (on) {
+                                                    setData('enable_app_access', false);
+                                                }
+                                            }}
+                                            className="mt-1 rounded border-zinc-300 dark:border-zinc-600 text-zinc-900 focus:ring-zinc-500"
+                                        />
+                                        <div>
+                                            <InputLabel
+                                                htmlFor="send_invite_after"
+                                                value="Gerar convite após guardar"
+                                                className="!mb-0"
+                                            />
+                                            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                                Cria um link (válido 7 dias) para a pessoa definir e-mail e palavra-passe sozinha.
+                                                Depois pode copiar ou abrir o WhatsApp a partir do ecrã seguinte.
+                                            </p>
+                                            <InputError message={errors.send_invite_after} className="mt-1" />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                     <div className="mt-6 flex justify-end gap-2">
@@ -699,6 +792,25 @@ export default function Index({ volunteers, members, ministries, appRoles, filte
                     </div>
                 </form>
             </Modal>
+
+            <VolunteerInviteShareModal
+                show={inviteShareOpen && !!inviteShare}
+                link={inviteShare?.link ?? ''}
+                inviteeName={inviteShare?.name}
+                onClose={() => {
+                    setInviteShareOpen(false);
+                    setInviteShare(null);
+                }}
+            />
+
+            {publicVolunteerSignupUrl ? (
+                <PublicVolunteerSignupShareModal
+                    show={publicInviteModalOpen}
+                    link={publicVolunteerSignupUrl}
+                    churchName={churchNameForPublicInvite}
+                    onClose={() => setPublicInviteModalOpen(false)}
+                />
+            ) : null}
         </AdminLayout>
     );
 }

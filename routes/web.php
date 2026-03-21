@@ -21,6 +21,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SupportAdminController;
 use App\Http\Controllers\VariosController;
 use App\Http\Controllers\VolunteerController;
+use App\Http\Controllers\VolunteerPublicSignupController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -86,6 +87,11 @@ Route::patch('/mobile/suporte/ticket/{token}/close', [MobileSupportController::c
 
 Route::get('/musica', [MusicaController::class, 'index'])->name('musica.index');
 
+Route::get('/voluntario/cadastro', [VolunteerPublicSignupController::class, 'create'])->name('volunteers.self-signup');
+Route::post('/voluntario/cadastro', [VolunteerPublicSignupController::class, 'store'])
+    ->middleware('throttle:10,1')
+    ->name('volunteers.self-signup.store');
+
 Route::middleware('auth')->group(function () {
     Route::post('/working-church', [\App\Http\Controllers\SetWorkingChurchController::class, '__invoke'])->name('working-church.store');
 
@@ -131,6 +137,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/volunteers', [VolunteerController::class, 'index'])->name('volunteers.index')->middleware('permission:volunteers.view|volunteers.manage');
     Route::post('/volunteers', [VolunteerController::class, 'store'])->name('volunteers.store')->middleware('permission:volunteers.manage');
     Route::post('/volunteers/{volunteer}/invite', [VolunteerController::class, 'invite'])->name('volunteers.invite')->middleware('permission:volunteers.manage');
+    Route::post('/volunteers/public-signup-link', [VolunteerPublicSignupController::class, 'rotateToken'])
+        ->name('volunteers.self-signup.rotate')
+        ->middleware('permission:volunteers.manage');
     Route::put('/volunteers/{volunteer}', [VolunteerController::class, 'update'])->name('volunteers.update')->middleware('permission:volunteers.manage');
     Route::delete('/volunteers/{volunteer}', [VolunteerController::class, 'destroy'])->name('volunteers.destroy')->middleware('permission:volunteers.manage');
 
