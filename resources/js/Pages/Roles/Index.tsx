@@ -45,6 +45,44 @@ export default function RolesIndex({ roles, permissions }: Props) {
         return groups;
     }, [permissions]);
 
+    const groupTitle = (group: string): string => {
+        const labels: Record<string, string> = {
+            members: 'Membros',
+            volunteers: 'Voluntários',
+            departments: 'Departamentos',
+            rooms: 'Salas',
+            inventory: 'Inventário',
+            users: 'Usuários',
+            churches: 'Igrejas',
+            news: 'Notícias',
+            events: 'Eventos',
+            escalas: 'Escalas',
+            support: 'Suporte',
+            roles: 'Perfis',
+            music: 'Acervo e músicas',
+            culto: 'Culto',
+            finance: 'Financeiro',
+            notifications: 'Notificações',
+        };
+        return labels[group] ?? group;
+    };
+
+    const permissionLineLabel = (perm: string): string => {
+        const custom: Record<string, string> = {
+            'music.manage': 'Gerenciar (acervo, músicas e playlists)',
+        };
+        if (custom[perm]) {
+            return custom[perm];
+        }
+        if (perm.endsWith('.view')) {
+            return 'Visualizar';
+        }
+        if (perm.endsWith('.manage')) {
+            return 'Gerenciar';
+        }
+        return perm;
+    };
+
     const togglePermission = (roleIndex: number, perm: string) => {
         const current = data.roles[roleIndex].permissions;
         const has = current.includes(perm);
@@ -99,36 +137,7 @@ export default function RolesIndex({ roles, permissions }: Props) {
                             <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
                                 {Object.entries(groupedPermissions).map(([group, perms]) => (
                                     <div key={group} className="border border-zinc-200 dark:border-zinc-800 rounded-xl p-3">
-                                        <InputLabel
-                                            value={
-                                                group === 'members'
-                                                    ? 'Membros'
-                                                    : group === 'volunteers'
-                                                    ? 'Voluntários'
-                                                    : group === 'departments'
-                                                    ? 'Departamentos'
-                                                    : group === 'rooms'
-                                                    ? 'Salas'
-                                                    : group === 'inventory'
-                                                    ? 'Inventário'
-                                                    : group === 'users'
-                                                    ? 'Usuários'
-                                                    : group === 'churches'
-                                                    ? 'Igrejas'
-                                                    : group === 'news'
-                                                    ? 'Notícias'
-                                                    : group === 'events'
-                                                    ? 'Eventos'
-                                                    : group === 'escalas'
-                                                    ? 'Escalas'
-                                                    : group === 'support'
-                                                    ? 'Suporte'
-                                                    : group === 'roles'
-                                                    ? 'Perfis'
-                                                    : group
-                                            }
-                                            className="!mb-2"
-                                        />
+                                        <InputLabel value={groupTitle(group)} className="!mb-2" />
                                         <div className="space-y-2">
                                             {perms.map((perm) => {
                                                 const checked = role.permissions.includes(perm);
@@ -143,13 +152,7 @@ export default function RolesIndex({ roles, permissions }: Props) {
                                                             onChange={() => togglePermission(index, perm)}
                                                             className="rounded border-zinc-300 dark:border-zinc-600 text-zinc-900 focus:ring-zinc-500"
                                                         />
-                                                        <span>
-                                                            {perm.endsWith('.view')
-                                                                ? 'Visualizar'
-                                                                : perm.endsWith('.manage')
-                                                                ? 'Gerenciar'
-                                                                : perm}
-                                                        </span>
+                                                        <span>{permissionLineLabel(perm)}</span>
                                                     </label>
                                                 );
                                             })}

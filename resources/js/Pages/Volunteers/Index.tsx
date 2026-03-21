@@ -86,7 +86,7 @@ export default function Index({
     const [search, setSearch] = useState(filters?.search ?? '');
     const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
 
-    const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
+    const { data, setData, post, put, processing, errors, reset, clearErrors, transform } = useForm({
         is_member: 1 as 0 | 1,
         member_id: '' as number | '',
         first_name: '',
@@ -105,6 +105,12 @@ export default function Index({
         app_password_confirmation: '',
         send_invite_after: false,
     });
+
+    // Inertia v2: transform lives on the form, not on post()/put() options.
+    transform((form) => ({
+        ...form,
+        send_invite_after: form.send_invite_after ? '1' : '0',
+    }));
 
     const openCreateModal = () => {
         setIsEditing(false);
@@ -147,23 +153,16 @@ export default function Index({
         reset();
     };
 
-    const inviteFormTransform = (form: typeof data) => ({
-        ...form,
-        send_invite_after: form.send_invite_after ? '1' : '0',
-    });
-
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         if (isEditing && editingId) {
             put(route('volunteers.update', editingId), {
                 forceFormData: true,
-                transform: inviteFormTransform,
                 onSuccess: () => closeModal(),
             });
         } else {
             post(route('volunteers.store'), {
                 forceFormData: true,
-                transform: inviteFormTransform,
                 onSuccess: () => closeModal(),
             });
         }

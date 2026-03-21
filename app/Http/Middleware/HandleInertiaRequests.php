@@ -8,6 +8,7 @@ use App\Support\NotificationFeed;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Middleware;
+use Spatie\Permission\Models\Permission;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -106,6 +107,17 @@ class HandleInertiaRequests extends Middleware
             }
         }
 
+        $permissionNames = [];
+        if ($request->user()) {
+            // Alinha o menu (sidebar) com o Gate::before em AppServiceProvider: admin/super_admin
+            // podem aceder a rotas mesmo quando a tabela role_has_permissions está desatualizada.
+            if ($request->user()->hasRole(['super_admin', 'admin'])) {
+                $permissionNames = Permission::query()->orderBy('name')->pluck('name')->values()->all();
+            } else {
+                $permissionNames = $request->user()->getAllPermissions()->pluck('name')->toArray();
+            }
+        }
+
         return [
             ...parent::share($request),
             'appVersion' => AppVersion::latestLabel(),
@@ -116,7 +128,7 @@ class HandleInertiaRequests extends Middleware
             'faviconUrl' => $faviconUrl,
             'auth' => [
                 'user' => $request->user() ? $request->user()->load('member') : null,
-                'permissions' => $request->user() ? $request->user()->getAllPermissions()->pluck('name')->toArray() : [],
+                'permissions' => $permissionNames,
                 'roleLabel' => $roleLabel,
                 'canAccessAdminMenu' => $canAccessAdminMenu,
                 'canManageSettings' => $canManageSettings,
