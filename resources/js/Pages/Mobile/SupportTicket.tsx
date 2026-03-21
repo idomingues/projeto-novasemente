@@ -63,7 +63,6 @@ export default function MobileSupportTicket({ ticket, messages, canChat, showMes
         e.preventDefault();
         if (!data.content.trim()) return;
         post(route('mobile.support.messages.store', { token: ticket.publicToken }), {
-            data: { content: data.content },
             onSuccess: () => {
                 reset('content');
             },
@@ -73,7 +72,6 @@ export default function MobileSupportTicket({ ticket, messages, canChat, showMes
 
     const closeTicket = () => {
         patch(route('mobile.support.close', { token: ticket.publicToken }), {
-            data: { solution_text: data.solution_text },
             onSuccess: () => setShowCloseModal(false),
             ...inertiaScrollOpts,
         });
