@@ -114,7 +114,6 @@ class MobileController extends Controller
 
         return Inertia::render('Mobile/Culto', [
             'cultos' => $cultos,
-            'churchWhatsapp' => $church?->whatsapp,
         ]);
     }
 
@@ -459,9 +458,11 @@ class MobileController extends Controller
                 'videoCount' => $item->video_count,
             ]);
 
+        $user = request()->user();
+
         return Inertia::render('Mobile/AcervoIndex', [
             'items' => $items,
-            'canManage' => (bool) request()->user(),
+            'canManage' => $user !== null && $user->can('music.manage'),
         ]);
     }
 

@@ -22,6 +22,7 @@ export const adminSidebarRoutePermissions: Record<string, string[]> = {
     'varios.services': [],
     'varios.classe-comecos': [],
     'varios.acervo': [],
+    /** Mesma permissão de gestão de músicas — playlists do YouTube */
     'acervo.index': [],
     'varios.contact': [],
     'varios.notifications': [],

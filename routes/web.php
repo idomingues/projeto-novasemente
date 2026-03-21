@@ -157,9 +157,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/settings', function () {
         return Inertia::render('Settings/Index');
     })->name('settings.index');
-    Route::post('/acervo', [AcervoController::class, 'store'])->name('acervo.store');
-    Route::put('/acervo/{acervo}', [AcervoController::class, 'update'])->name('acervo.update');
-    Route::delete('/acervo/{acervo}', [AcervoController::class, 'destroy'])->name('acervo.destroy');
+    Route::post('/acervo', [AcervoController::class, 'store'])->name('acervo.store')->middleware('permission:music.manage');
+    Route::put('/acervo/{acervo}', [AcervoController::class, 'update'])->name('acervo.update')->middleware('permission:music.manage');
+    Route::delete('/acervo/{acervo}', [AcervoController::class, 'destroy'])->name('acervo.destroy')->middleware('permission:music.manage');
     Route::post('/notifications', [AppNotificationController::class, 'store'])->name('notifications.store')->middleware('permission:notifications.manage');
     Route::get('/mobile/settings', [MobileController::class, 'settings'])->name('mobile.settings');
 

@@ -53,12 +53,15 @@ export default function Login({
 
             <div className="w-full flex flex-col lg:flex-row min-h-screen lg:min-h-0 fixed inset-0 lg:relative overflow-auto lg:overflow-visible">
                 {/* Coluna esquerda: oculta no mobile */}
-                <div className="hidden lg:flex lg:w-1/2 flex-col justify-between px-8 py-10 lg:px-16 bg-zinc-900 text-zinc-100">
+                <div className="hidden lg:flex lg:w-1/2 flex-col justify-between px-8 py-12 lg:px-16 bg-zinc-900 text-zinc-100">
                     <div className="max-w-md">
-                        <Link href="/">
-                            <ApplicationLogo src={appLogoUrl} className="h-10 w-auto max-w-[180px] object-contain invert" />
+                        <Link href="/" className="inline-flex rounded-full p-1 ring-2 ring-white/10 bg-white/5">
+                            <ApplicationLogo
+                                src={appLogoUrl}
+                                className="h-28 w-28 xl:h-32 xl:w-32 shrink-0 object-contain invert"
+                            />
                         </Link>
-                        <p className="mt-8 text-[11px] font-semibold tracking-[0.22em] uppercase text-zinc-400">
+                        <p className="mt-10 text-[11px] font-semibold tracking-[0.22em] uppercase text-zinc-400">
                             Painel administrativo
                         </p>
                         <h1 className="mt-3 text-2xl font-semibold tracking-tight">
@@ -87,12 +90,21 @@ export default function Login({
                     </p>
                 </div>
 
-                <div className="w-full lg:w-1/2 bg-white dark:bg-white flex items-center justify-center px-5 py-8 sm:px-6 sm:py-10 lg:px-16 min-h-[100dvh] max-md:max-h-[100dvh] max-md:overflow-y-auto max-md:touch-manipulation lg:min-h-0">
-                    <div className="w-full max-w-md">
-                        <div className="lg:hidden flex justify-center mb-6">
-                            <Link href="/">
-                                <ApplicationLogo src={appLogoUrl} className="h-10 w-auto max-w-[160px] object-contain" />
+                <div className="w-full lg:w-1/2 bg-white dark:bg-white flex items-center justify-center px-5 pt-10 pb-12 sm:px-8 sm:pt-12 sm:pb-14 lg:px-16 lg:py-16 min-h-[100dvh] max-md:max-h-[100dvh] max-md:overflow-y-auto max-md:touch-manipulation lg:min-h-0">
+                    <div className="w-full max-w-md lg:max-w-lg">
+                        <div className="lg:hidden flex flex-col items-center mb-8 sm:mb-10">
+                            <Link
+                                href="/"
+                                className="flex h-36 w-36 sm:h-40 sm:w-40 items-center justify-center rounded-full bg-zinc-50 shadow-lg shadow-zinc-900/10 ring-2 ring-zinc-200/90 active:scale-[0.98] transition-transform"
+                            >
+                                <ApplicationLogo
+                                    src={appLogoUrl}
+                                    className="h-[78%] w-[78%] object-contain"
+                                />
                             </Link>
+                            <p className="mt-4 text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
+                                Nova Semente
+                            </p>
                         </div>
                         {status && (
                             <div className="mb-4 text-sm font-medium text-green-600">
@@ -100,10 +112,10 @@ export default function Login({
                             </div>
                         )}
 
-                        <h2 className="text-xl sm:text-2xl font-semibold text-zinc-900">
+                        <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-zinc-900">
                             {showRegisterInfo ? 'Cadastrar' : 'Bem-vindo de volta'}
                         </h2>
-                        <p className="mt-2 text-sm text-zinc-600">
+                        <p className="mt-3 text-sm sm:text-base text-zinc-600 leading-relaxed">
                             {showRegisterInfo
                                 ? 'Informações sobre como obter acesso ao sistema.'
                                 : 'Acesse sua conta para acompanhar a gestão da igreja.'}

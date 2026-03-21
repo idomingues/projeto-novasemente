@@ -1,7 +1,6 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head } from '@inertiajs/react';
 import { FilmIcon, PlayCircleIcon } from '@heroicons/react/24/outline';
-import SocialQuickLinks from '@/Components/SocialQuickLinks';
 
 interface CultoItem {
     id: number;
@@ -14,7 +13,6 @@ interface CultoItem {
 
 interface Props {
     cultos: CultoItem[];
-    churchWhatsapp?: string | null;
 }
 
 function formatDate(iso: string | null): string {
@@ -26,13 +24,11 @@ function formatDate(iso: string | null): string {
     });
 }
 
-export default function MobileCulto({ cultos, churchWhatsapp }: Props) {
+export default function MobileCulto({ cultos }: Props) {
     return (
         <MobileLayout>
             <Head title="Culto" />
             <div className="space-y-6">
-                <SocialQuickLinks churchWhatsapp={churchWhatsapp ?? null} />
-
                 {cultos.length === 0 ? (
                     <div className="py-12 lg:py-20 text-center">
                         <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-4">

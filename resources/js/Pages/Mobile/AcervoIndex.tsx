@@ -1,7 +1,6 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, useForm, router } from '@inertiajs/react';
-import { PencilIcon, TrashIcon, Bars3Icon, ArrowTopRightOnSquareIcon, PlayCircleIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import AddButton from '@/Components/AddButton';
+import { PencilIcon, TrashIcon, Bars3Icon, ArrowTopRightOnSquareIcon, PlayCircleIcon, MagnifyingGlassIcon, XMarkIcon, PlusIcon } from '@heroicons/react/24/outline';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
@@ -99,9 +98,14 @@ export default function MobileAcervoIndex({ items, canManage }: Props) {
                 <div className="flex items-center justify-between gap-3 flex-nowrap">
                     <h1 className="text-xl font-bold text-zinc-900 dark:text-white truncate min-w-0">Acervo</h1>
                     {canManage && (
-                        <AddButton onClick={openCreateModal} className="!py-2 !text-sm whitespace-nowrap">
-                            Adicionar link
-                        </AddButton>
+                        <PrimaryButton
+                            type="button"
+                            onClick={openCreateModal}
+                            className="gap-2 flex-shrink-0 !px-3 !py-2 !text-sm !normal-case !tracking-normal"
+                        >
+                            <PlusIcon className="h-5 w-5" />
+                            Adicionar
+                        </PrimaryButton>
                     )}
                 </div>
 
@@ -214,7 +218,10 @@ export default function MobileAcervoIndex({ items, canManage }: Props) {
                             Nenhum item no acervo.
                         </p>
                         {canManage && (
-                            <AddButton onClick={openCreateModal}>Adicionar link</AddButton>
+                            <PrimaryButton type="button" onClick={openCreateModal} className="gap-2 !normal-case !tracking-normal">
+                                <PlusIcon className="h-5 w-5" />
+                                Adicionar link
+                            </PrimaryButton>
                         )}
                     </div>
                 )}

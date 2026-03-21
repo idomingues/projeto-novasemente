@@ -10,7 +10,7 @@ use Inertia\Response;
 
 class AcervoController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
         $items = AcervoItem::query()
             ->orderByDesc('order')
@@ -24,9 +24,11 @@ class AcervoController extends Controller
                 'videoCount' => $item->video_count,
             ]);
 
+        $user = $request->user();
+
         return Inertia::render('Acervo/Index', [
             'items' => $items,
-            'canManage' => true,
+            'canManage' => $user !== null && $user->can('music.manage'),
         ]);
     }
 
@@ -88,6 +90,7 @@ class AcervoController extends Controller
     public function destroy(AcervoItem $acervo)
     {
         $acervo->delete();
+
         return redirect()->route('acervo.index')->with('success', 'Item removido.');
     }
 
@@ -95,12 +98,14 @@ class AcervoController extends Controller
     {
         $url = trim($url);
         if (preg_match('/list=([a-zA-Z0-9_-]+)/', $url, $m)) {
-            return 'https://www.youtube.com/playlist?list=' . $m[1];
+            return 'https://www.youtube.com/playlist?list='.$m[1];
         }
         if (preg_match('/watch\?v=([a-zA-Z0-9_-]+)/', $url, $m)) {
-            $list = preg_match('/list=([a-zA-Z0-9_-]+)/', $url, $listM) ? '&list=' . $listM[1] : '';
-            return 'https://www.youtube.com/watch?v=' . $m[1] . $list;
+            $list = preg_match('/list=([a-zA-Z0-9_-]+)/', $url, $listM) ? '&list='.$listM[1] : '';
+
+            return 'https://www.youtube.com/watch?v='.$m[1].$list;
         }
+
         return $url;
     }
 
@@ -112,8 +117,8 @@ class AcervoController extends Controller
         // YouTube oEmbed suporta vídeos e playlists (noembed não suporta playlists)
         $isYoutube = str_contains($normalized, 'youtube.com') || str_contains($url, 'youtu.be');
         $apiUrl = $isYoutube
-            ? 'https://www.youtube.com/oembed?url=' . urlencode($normalized) . '&format=json'
-            : 'https://noembed.com/embed?url=' . urlencode($normalized);
+            ? 'https://www.youtube.com/oembed?url='.urlencode($normalized).'&format=json'
+            : 'https://noembed.com/embed?url='.urlencode($normalized);
 
         $response = Http::timeout(10)->get($apiUrl);
 
@@ -146,6 +151,7 @@ class AcervoController extends Controller
         if (preg_match('/(?:v=|\/)([a-zA-Z0-9_-]{11})(?:\?|&|$)/', $url, $m)) {
             return $m[1];
         }
+
         return null;
     }
 }
