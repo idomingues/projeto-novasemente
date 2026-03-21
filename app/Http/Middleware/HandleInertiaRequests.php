@@ -2,8 +2,9 @@
 
 namespace App\Http\Middleware;
 
-use App\Support\NotificationFeed;
+use App\Models\AppVersion;
 use App\Models\Church;
+use App\Support\NotificationFeed;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -60,7 +61,7 @@ class HandleInertiaRequests extends Middleware
         if ($request->user()) {
             $roleNames = $request->user()->getRoleNames()->toArray();
             $adminRoles = ['admin', 'super_admin', 'pastor', 'secretaria', 'lider_ministerio'];
-            $canAccessAdminMenu = !empty(array_intersect($roleNames, $adminRoles));
+            $canAccessAdminMenu = ! empty(array_intersect($roleNames, $adminRoles));
         }
 
         $roleLabel = null;
@@ -84,6 +85,7 @@ class HandleInertiaRequests extends Middleware
 
         return [
             ...parent::share($request),
+            'appVersion' => AppVersion::latestLabel(),
             'appUrl' => $request->getSchemeAndHttpHost(),
             'appLogoUrl' => $appLogoUrl,
             'appName' => $appName,
@@ -99,6 +101,7 @@ class HandleInertiaRequests extends Middleware
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
+                'invitation_link' => fn () => $request->session()->get('invitation_link'),
             ],
             'recentNotifications' => fn () => NotificationFeed::mergedForUser(
                 $request,

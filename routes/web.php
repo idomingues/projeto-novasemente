@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AcervoController;
 use App\Http\Controllers\AppNotificationController;
+use App\Http\Controllers\AppVersionController;
 use App\Http\Controllers\ChurchController;
 use App\Http\Controllers\CultoController;
 use App\Http\Controllers\DashboardController;
@@ -11,11 +12,13 @@ use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\MinistryController;
 use App\Http\Controllers\MobileController;
+use App\Http\Controllers\MobileSupportController;
 use App\Http\Controllers\MusicaController;
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\PrayerRequestController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\SupportAdminController;
 use App\Http\Controllers\VariosController;
 use App\Http\Controllers\VolunteerController;
 use Illuminate\Support\Facades\Route;
@@ -28,12 +31,7 @@ Route::get('/', function (\Illuminate\Http\Request $request) {
         return redirect()->route('dashboard');
     }
 
-    $isMobile = (bool) preg_match(
-        '/Mobile|Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i',
-        $request->userAgent() ?? ''
-    );
-
-    return $isMobile ? redirect()->route('mobile.culto') : redirect()->route('more.index');
+    return redirect()->route('mobile.culto');
 });
 
 Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'verified'])->name('dashboard');
@@ -74,6 +72,19 @@ Route::get('/mobile/notifications', [MobileController::class, 'notifications'])-
 Route::get('/mobile/escala/checkin', [MobileController::class, 'scheduleCheckin'])
     ->middleware('auth')
     ->name('mobile.schedule.checkin');
+
+// Suporte (app)
+Route::get('/mobile/suporte', [MobileSupportController::class, 'index'])->name('mobile.support.index');
+Route::post('/mobile/suporte', [MobileSupportController::class, 'store'])->name('mobile.support.store');
+Route::get('/mobile/suporte/ticket/{token}', [MobileSupportController::class, 'ticket'])
+    ->name('mobile.support.ticket');
+Route::post('/mobile/suporte/ticket/{token}/messages', [MobileSupportController::class, 'sendMessage'])
+    ->middleware('auth')
+    ->name('mobile.support.messages.store');
+Route::patch('/mobile/suporte/ticket/{token}/close', [MobileSupportController::class, 'closeTicket'])
+    ->middleware('auth')
+    ->name('mobile.support.close');
+
 Route::get('/musica', [MusicaController::class, 'index'])->name('musica.index');
 
 Route::middleware('auth')->group(function () {
@@ -120,6 +131,7 @@ Route::middleware('auth')->group(function () {
     // Voluntários (CRUD) — departamento no cadastro
     Route::get('/volunteers', [VolunteerController::class, 'index'])->name('volunteers.index')->middleware('permission:volunteers.view|volunteers.manage');
     Route::post('/volunteers', [VolunteerController::class, 'store'])->name('volunteers.store')->middleware('permission:volunteers.manage');
+    Route::post('/volunteers/{volunteer}/invite', [VolunteerController::class, 'invite'])->name('volunteers.invite')->middleware('permission:volunteers.manage');
     Route::put('/volunteers/{volunteer}', [VolunteerController::class, 'update'])->name('volunteers.update')->middleware('permission:volunteers.manage');
     Route::delete('/volunteers/{volunteer}', [VolunteerController::class, 'destroy'])->name('volunteers.destroy')->middleware('permission:volunteers.manage');
 
@@ -177,6 +189,21 @@ Route::middleware('auth')->group(function () {
     Route::get('/mobile/settings', [MobileController::class, 'settings'])->name('mobile.settings');
     Route::post('/notifications/inbox/read', [MobileController::class, 'markInboxNotificationRead'])
         ->name('notifications.inbox.read');
+
+    // Suporte (Admin)
+    Route::get('/suporte', [SupportAdminController::class, 'index'])->name('support.index');
+    Route::post('/suporte', [SupportAdminController::class, 'store'])->name('support.store');
+    Route::patch('/suporte/{token}', [SupportAdminController::class, 'update'])->name('support.update');
+    Route::delete('/suporte/{token}', [SupportAdminController::class, 'destroy'])->name('support.destroy');
+    Route::get('/suporte/{token}', [SupportAdminController::class, 'show'])->name('support.show');
+    Route::post('/suporte/{token}/messages', [SupportAdminController::class, 'sendMessage'])
+        ->name('support.messages.store');
+    Route::patch('/suporte/{token}/close', [SupportAdminController::class, 'closeTicket'])
+        ->name('support.close');
+
+    // Versões do App (Admin)
+    Route::get('/app-versions', [AppVersionController::class, 'index'])->name('app-versions.index');
+    Route::post('/app-versions', [AppVersionController::class, 'store'])->name('app-versions.store');
 
     // Igrejas — apenas super admin (via permission churches.manage)
     Route::get('/churches', [ChurchController::class, 'index'])->name('churches.index')->middleware('permission:churches.manage');

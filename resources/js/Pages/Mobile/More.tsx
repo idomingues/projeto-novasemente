@@ -12,6 +12,7 @@ import {
     BookOpenIcon,
     UserGroupIcon,
     MapPinIcon,
+    ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 
@@ -38,6 +39,7 @@ const items = [
     { name: 'Acervo', description: 'Playlists do YouTube da Nova Semente', route: 'acervo.index', icon: PlayCircleIcon },
     { name: 'Fale conosco', description: 'E-mail, redes e WhatsApp', route: 'mobile.contact', icon: PhoneIcon },
     { name: 'Notificações', description: 'Avisos de eventos e notícias', route: 'varios.notifications', icon: BellAlertIcon },
+    { name: 'Suporte', description: 'Problema, sugestão ou elogio', route: 'mobile.support.index', icon: ChatBubbleLeftRightIcon },
 ];
 
 export default function MobileMore(_: Props) {

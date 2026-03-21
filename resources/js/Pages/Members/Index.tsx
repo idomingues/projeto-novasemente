@@ -203,18 +203,18 @@ export default function Index({ members, filters }: Props) {
             </Card>
 
             <div className="mt-6 flex justify-end">
-                <nav className="inline-flex rounded-full shadow-sm border border-zinc-800 bg-zinc-950/60">
+                <nav className="inline-flex rounded-full shadow-sm border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden">
                     {members.links.map((link, index) => (
                         <button
                             key={index}
                             disabled={!link.url}
                             onClick={() => link.url && router.visit(link.url)}
-                            className={`px-4 py-2 text-xs md:text-sm border-l border-zinc-800 first:border-l-0 first:rounded-l-full last:rounded-r-full ${
+                            className={`px-4 py-2 text-xs md:text-sm border-l border-zinc-300 dark:border-zinc-700 first:border-l-0 first:rounded-l-full last:rounded-r-full transition-colors ${
                                 link.active
-                                    ? 'bg-zinc-100 text-zinc-900 dark:bg-white dark:text-black'
+                                    ? 'bg-zinc-900 text-white dark:bg-white dark:text-black font-semibold'
                                     : !link.url
-                                    ? 'text-zinc-600 cursor-default'
-                                    : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
+                                    ? 'text-zinc-400 dark:text-zinc-500 cursor-default bg-zinc-100 dark:bg-zinc-800'
+                                    : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white'
                             }`}
                             dangerouslySetInnerHTML={{ __html: link.label }}
                         />

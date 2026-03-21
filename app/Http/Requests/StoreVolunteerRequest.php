@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Models\Member;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rules\Password;
 
 class StoreVolunteerRequest extends FormRequest
 {
@@ -19,16 +20,23 @@ class StoreVolunteerRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'is_member' => ['nullable', 'boolean'],
             'member_id' => ['nullable', 'exists:members,id'],
-            'name' => ['required_if:member_id,null', 'nullable', 'string', 'max:255'],
+            'first_name' => ['nullable', 'string', 'max:100'],
+            'last_name' => ['nullable', 'string', 'max:155'],
+            'name' => ['nullable', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
+            'app_email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:50'],
             'ministry_ids' => ['required', 'array', 'min:1'],
             'ministry_ids.*' => ['exists:ministries,id'],
             'role' => ['nullable', 'string', 'max:100'],
             'active' => ['boolean'],
-            'photo_url' => ['nullable', 'string', 'url', 'max:500'],
+            'photo_file' => ['nullable', 'image', 'max:4096'],
             'enable_app_access' => ['boolean'],
+            'app_role' => ['nullable', 'string', 'exists:roles,name'],
+            'app_ministry_ids' => ['nullable', 'array'],
+            'app_ministry_ids.*' => ['exists:ministries,id'],
             'app_password' => ['nullable', 'confirmed', Password::defaults()],
         ];
     }
@@ -38,29 +46,72 @@ class StoreVolunteerRequest extends FormRequest
         if ($this->has('active') && is_string($this->active)) {
             $this->merge(['active' => $this->active === 'true' || $this->active === '1']);
         }
-        if ($this->has('photo_url') && $this->input('photo_url') === '') {
-            $this->merge(['photo_url' => null]);
-        }
         if ($this->has('enable_app_access') && is_string($this->enable_app_access)) {
             $this->merge(['enable_app_access' => $this->enable_app_access === 'true' || $this->enable_app_access === '1']);
+        }
+
+        $isMember = (int) $this->input('is_member', 1) === 1;
+        $this->merge(['is_member' => $isMember]);
+
+        $memberId = $this->input('member_id');
+        if ($memberId === '' || $memberId === null) {
+            $this->merge(['member_id' => null]);
+        }
+
+        if ($isMember) {
+            $this->merge(['name' => null]);
+        } else {
+            $this->merge(['member_id' => null]);
+            $first = trim((string) $this->input('first_name', ''));
+            $last = trim((string) $this->input('last_name', ''));
+            $this->merge(['name' => trim($first.' '.$last)]);
         }
     }
 
     public function withValidator($validator): void
     {
         $validator->after(function ($validator): void {
+            if ($this->boolean('is_member')) {
+                if (! $this->filled('member_id')) {
+                    $validator->errors()->add('member_id', 'Selecione um membro na lista.');
+                }
+            } else {
+                $first = trim((string) $this->input('first_name', ''));
+                $last = trim((string) $this->input('last_name', ''));
+                if ($first === '') {
+                    $validator->errors()->add('first_name', 'Informe o nome.');
+                }
+                if ($last === '') {
+                    $validator->errors()->add('last_name', 'Informe o sobrenome.');
+                }
+            }
+
+            if ($this->boolean('is_member') && $this->filled('member_id')) {
+                $member = Member::query()->find($this->input('member_id'));
+                $hasPhoto = $member && is_string($member->photo_url) && trim($member->photo_url) !== '';
+                if (! $hasPhoto && ! $this->hasFile('photo_file')) {
+                    $validator->errors()->add(
+                        'photo_file',
+                        'Este membro ainda não tem foto. Envie uma imagem.'
+                    );
+                }
+            }
+
             if (! $this->boolean('enable_app_access')) {
                 return;
             }
 
             $memberId = $this->input('member_id');
-            $email = $memberId
-                ? (Member::query()->find($memberId)?->email)
-                : $this->input('email');
+            $preferredAppEmail = $this->input('app_email');
+            $email = is_string($preferredAppEmail) && trim($preferredAppEmail) !== ''
+                ? $preferredAppEmail
+                : ($memberId
+                    ? (Member::query()->find($memberId)?->email)
+                    : $this->input('email'));
             $email = is_string($email) ? trim($email) : '';
 
             if ($email === '') {
-                $validator->errors()->add('email', 'É necessário um e-mail para acesso ao app (cadastre no membro ou informe acima).');
+                $validator->errors()->add('app_email', 'É necessário um e-mail para acesso ao app.');
             }
 
             $existingUser = null;

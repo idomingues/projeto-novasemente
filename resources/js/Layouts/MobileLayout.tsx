@@ -11,6 +11,7 @@ export default function MobileLayout({ children }: PropsWithChildren) {
     const currentChurch = (props as { currentChurch?: { name: string; logo_url?: string | null } | null }).currentChurch;
     const auth = (props as { auth?: { user?: { name: string } } }).auth;
     const isAuthenticated = !!auth?.user;
+    const appVersion = (props as { appVersion?: string | null }).appVersion ?? null;
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     if (isAuthenticated) {
@@ -30,6 +31,12 @@ export default function MobileLayout({ children }: PropsWithChildren) {
                             {children}
                         </div>
                     </main>
+
+                    {appVersion ? (
+                        <div className="fixed bottom-16 left-0 right-0 z-20 flex justify-center pointer-events-none text-[10px] text-zinc-500 dark:text-zinc-400">
+                            v{appVersion}
+                        </div>
+                    ) : null}
 
                     <MobileBottomNav insetForSidebar />
 
@@ -70,6 +77,12 @@ export default function MobileLayout({ children }: PropsWithChildren) {
                     {children}
                 </div>
             </main>
+
+            {appVersion ? (
+                <div className="fixed bottom-16 left-0 right-0 z-20 flex justify-center pointer-events-none text-[10px] text-zinc-500 dark:text-zinc-400">
+                    v{appVersion}
+                </div>
+            ) : null}
 
             <MobileBottomNav />
 

@@ -15,6 +15,7 @@ import {
     Squares2X2Icon,
     XMarkIcon,
     KeyIcon,
+    ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
 
 interface SidebarProps {
@@ -52,17 +53,17 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
         { name: 'Eventos', route: 'events.index', icon: CalendarDaysIcon },
         { name: 'Culto', route: 'culto.index', icon: FilmIcon },
         { name: 'Acervo', route: 'acervo.index', icon: PlayCircleIcon },
-        { name: 'Mais', route: 'more.index', icon: Squares2X2Icon },
         { name: 'Membros', route: 'members.index', icon: UserGroupIcon },
         { name: 'Departamentos', route: 'departments.index', icon: BuildingOffice2Icon },
         { name: 'Escalas', route: 'escalas.index', icon: CalendarIcon },
         { name: 'Voluntários', route: 'volunteers.index', icon: UsersIcon },
-        { name: 'Usuários', route: 'users.index', icon: KeyIcon },
         { name: 'Perfis', route: 'roles.index', icon: KeyIcon },
         { name: 'Salas', route: 'rooms.index', icon: BuildingOfficeIcon },
         { name: 'Inventário', route: 'inventory.index', icon: ArchiveBoxIcon },
         { name: 'Igrejas', route: 'churches.index', icon: BuildingOfficeIcon },
         { name: 'Configurações', route: 'settings.index', icon: Cog6ToothIcon },
+        { name: 'Suporte', route: 'support.index', icon: ChatBubbleLeftRightIcon },
+        { name: 'Versão do App', route: 'app-versions.index', icon: Cog6ToothIcon },
     ];
 
     const requiredPerms = (route: string) => routeToPermissions[route] ?? [];
@@ -91,7 +92,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
             >
             {/* Logo Area */}
             <div className="h-24 flex items-center justify-between px-6 md:px-8 border-b border-zinc-100 dark:border-zinc-900 flex-shrink-0">
-                <Link href={isAuthenticated ? route('dashboard') : route('more.index')} className="flex items-center gap-3 text-zinc-900 dark:text-white min-w-0 hover:opacity-90 transition-opacity">
+                <Link href={isAuthenticated ? route('dashboard') : route('mobile.culto')} className="flex items-center gap-3 text-zinc-900 dark:text-white min-w-0 hover:opacity-90 transition-opacity">
                     <div className="flex-shrink-0 w-10 h-10 rounded-full bg-zinc-900 dark:bg-white flex items-center justify-center overflow-hidden">
                         {currentChurch?.logo_url ? (
                             <img src={currentChurch.logo_url} alt="" className="w-full h-full object-cover" />

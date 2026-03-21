@@ -2,85 +2,20 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Church;
-use App\Models\Invitation;
-use App\Models\Member;
-use App\Models\Ministry;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
-use Inertia\Inertia;
-use Inertia\Response;
 
 class UserController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request): RedirectResponse
     {
-        $search = (string) $request->input('search', '');
-
-        $usersQuery = User::with(['member:id,name', 'roles', 'ministries:id,name']);
-
-        if ($search !== '') {
-            $usersQuery->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%")
-                    ->orWhereHas('member', function ($mq) use ($search) {
-                        $mq->where('name', 'like', "%{$search}%");
-                    });
-            });
-        }
-
-        $users = $usersQuery
-            ->orderBy('name')
-            ->get()
-            ->map(fn (User $u) => [
-                'id' => $u->id,
-                'name' => $u->name,
-                'email' => $u->email,
-                'needs_registration' => $u->email === null,
-                'member_id' => $u->member_id,
-                'member' => $u->member ? ['id' => $u->member->id, 'name' => $u->member->name] : null,
-                'roles' => $u->roles->pluck('name')->toArray(),
-                'ministry_ids' => $u->ministries->pluck('id')->toArray(),
-            ]);
-
-        $invitations = Invitation::with('user:id,name')
-            ->orderByDesc('created_at')
-            ->get()
-            ->map(fn (Invitation $i) => [
-                'id' => $i->id,
-                'email' => $i->email,
-                'user_name' => $i->user?->name,
-                'role' => $i->role,
-                'token' => $i->token,
-                'expires_at' => $i->expires_at?->toIso8601String(),
-                'used_at' => $i->used_at?->toIso8601String(),
-                'link' => route('register', ['invitation' => $i->token], true),
-            ]);
-
-        $members = Member::orderBy('name')->get(['id', 'name']);
-        $roles = \Spatie\Permission\Models\Role::orderBy('name')->get(['id', 'name']);
-
-        $churchId = Church::where('active', true)->orderBy('name')->value('id');
-        $ministries = Ministry::query()
-            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
-            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
-            ->orderBy('name')
-            ->get(['id', 'name']);
-
-        return Inertia::render('Users/Index', [
-            'users' => $users,
-            'invitations' => $invitations,
-            'members' => $members,
-            'roles' => $roles,
-            'ministries' => $ministries,
-            'filters' => [
-                'search' => $search,
-            ],
-        ]);
+        return redirect()
+            ->route('volunteers.index')
+            ->with('success', 'A gestão de acesso ao app agora fica em Voluntários.');
     }
 
     public function store(Request $request)
@@ -111,6 +46,8 @@ class UserController extends Controller
         if (($valid['role'] ?? '') === 'lider_ministerio' && ! empty($valid['ministry_ids'])) {
             $user->ministries()->sync($valid['ministry_ids']);
         }
+
+        $user->ensureVolunteerProfile();
 
         return redirect()->route('users.index')->with('success', 'Usuário criado com sucesso.');
     }
@@ -145,6 +82,8 @@ class UserController extends Controller
         } else {
             $user->ministries()->detach();
         }
+
+        $user->ensureVolunteerProfile();
 
         return redirect()->route('users.index')->with('success', 'Usuário atualizado.');
     }

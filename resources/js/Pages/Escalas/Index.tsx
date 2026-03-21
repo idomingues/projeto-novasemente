@@ -296,7 +296,7 @@ export default function EscalasIndex({
                                 key={saturday.toISOString()}
                                 className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 scroll-mt-24"
                             >
-                                <div className="flex items-center justify-between gap-2 mb-3">
+                                <div className="flex items-center justify-between gap-2 mb-6">
                                     <h3 className="font-semibold text-zinc-900 dark:text-white">{saturdayNumber}º SÁBADO</h3>
                                     {canEdit && (
                                         <div className="flex items-center gap-1.5 shrink-0">
@@ -372,7 +372,7 @@ export default function EscalasIndex({
                                 key={scheduleDate}
                                 className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 scroll-mt-24"
                             >
-                                <div className="flex items-center justify-between gap-2 mb-3">
+                                <div className="flex items-center justify-between gap-2 mb-6">
                                     <h3 className="font-semibold text-zinc-900 dark:text-white">{formatted} — Escala extra</h3>
                                     {canEdit && (
                                         <div className="flex items-center gap-1.5 shrink-0">
@@ -491,9 +491,11 @@ export default function EscalasIndex({
                                                                 router.delete(route('escalas.roles.destroy', r.id), inertiaScrollOpts);
                                                             }
                                                         }}
-                                                        className="text-xs text-red-600 hover:underline dark:text-red-400"
+                                                        className="p-1.5 shrink-0 text-zinc-500 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                                        title="Remover"
+                                                        aria-label="Remover função"
                                                     >
-                                                        Remover
+                                                        <TrashIcon className="w-4 h-4" />
                                                     </button>
                                                 </li>
                                             ))}
@@ -537,64 +539,93 @@ export default function EscalasIndex({
                 )}
             </div>
 
-            <Modal show={roleModalAssignment !== null} onClose={() => setRoleModalAssignment(null)} maxWidth="md">
+            <Modal show={roleModalAssignment !== null} onClose={() => setRoleModalAssignment(null)} maxWidth="lg">
                 {roleModalAssignment && (
-                    <div className="p-1">
-                        <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Função na escala</h3>
-                        <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">{roleModalAssignment.memberName}</p>
-                        <div className="mt-4">
-                            <InputLabel htmlFor="modal_schedule_role" value="Função" />
-                            <select
-                                id="modal_schedule_role"
-                                value={roleModalRoleId}
-                                onChange={(e) => setRoleModalRoleId(e.target.value)}
-                                className="mt-1 block w-full rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-white"
-                            >
-                                <option value="">Sem função</option>
-                                {scheduleRoles.map((r) => (
-                                    <option key={r.id} value={String(r.id)}>
-                                        {r.name}
-                                        {r.ministryId == null ? ' (geral)' : ''}
-                                    </option>
-                                ))}
-                            </select>
+                    <div className="p-6 sm:p-8">
+                        <header className="pb-6 mb-6 border-b border-zinc-100 dark:border-zinc-800">
+                            <h3 className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-white">
+                                Função na escala
+                            </h3>
+                            <p className="mt-2 text-base text-zinc-600 dark:text-zinc-300 font-medium">
+                                {roleModalAssignment.memberName}
+                            </p>
+                            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                                Escolha a função e, se for recorrente, defina se a alteração vale só para este dia ou para toda a série.
+                            </p>
+                        </header>
+
+                        <div className="space-y-6">
+                            <div>
+                                <InputLabel htmlFor="modal_schedule_role" value="Função" />
+                                <select
+                                    id="modal_schedule_role"
+                                    value={roleModalRoleId}
+                                    onChange={(e) => setRoleModalRoleId(e.target.value)}
+                                    className="mt-2 block w-full h-11 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 shadow-sm focus:border-zinc-900 dark:focus:border-white focus:ring-1 focus:ring-zinc-900/20 dark:focus:ring-white/20"
+                                >
+                                    <option value="">Sem função</option>
+                                    {scheduleRoles.map((r) => (
+                                        <option key={r.id} value={String(r.id)}>
+                                            {r.name}
+                                            {r.ministryId == null ? ' (geral)' : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {roleModalAssignment.recurringSeries && (
+                                <fieldset className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/80 dark:bg-zinc-800/40 p-5 space-y-4">
+                                    <legend className="text-sm font-semibold text-zinc-800 dark:text-zinc-100 px-1">
+                                        Aplicar alteração
+                                    </legend>
+                                    <label className="flex items-start gap-3 text-sm text-zinc-700 dark:text-zinc-200 cursor-pointer rounded-xl p-3 -m-1 hover:bg-white/60 dark:hover:bg-zinc-900/40 transition-colors">
+                                        <input
+                                            type="radio"
+                                            name="role_scope"
+                                            className="mt-0.5 h-4 w-4 shrink-0 border-zinc-300 text-zinc-900 focus:ring-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:focus:ring-white"
+                                            checked={roleScope === 'occurrence'}
+                                            onChange={() => setRoleScope('occurrence')}
+                                        />
+                                        <span className="leading-snug">
+                                            <span className="font-medium text-zinc-900 dark:text-white">
+                                                Apenas esta data
+                                            </span>
+                                            <span className="block text-zinc-500 dark:text-zinc-400 mt-0.5">
+                                                {roleModalAssignment.scheduleDate
+                                                    ? new Date(
+                                                          roleModalAssignment.scheduleDate + 'T12:00:00',
+                                                      ).toLocaleDateString('pt-BR', {
+                                                          weekday: 'long',
+                                                          day: '2-digit',
+                                                          month: 'long',
+                                                          year: 'numeric',
+                                                      })
+                                                    : '—'}
+                                            </span>
+                                        </span>
+                                    </label>
+                                    <label className="flex items-start gap-3 text-sm text-zinc-700 dark:text-zinc-200 cursor-pointer rounded-xl p-3 -m-1 hover:bg-white/60 dark:hover:bg-zinc-900/40 transition-colors">
+                                        <input
+                                            type="radio"
+                                            name="role_scope"
+                                            className="mt-0.5 h-4 w-4 shrink-0 border-zinc-300 text-zinc-900 focus:ring-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:focus:ring-white"
+                                            checked={roleScope === 'series'}
+                                            onChange={() => setRoleScope('series')}
+                                        />
+                                        <span className="leading-snug">
+                                            <span className="font-medium text-zinc-900 dark:text-white">
+                                                Toda a escala (recorrente)
+                                            </span>
+                                            <span className="block text-zinc-500 dark:text-zinc-400 mt-0.5">
+                                                Altera o modelo da série para os meses seguintes.
+                                            </span>
+                                        </span>
+                                    </label>
+                                </fieldset>
+                            )}
                         </div>
-                        {roleModalAssignment.recurringSeries && (
-                            <fieldset className="mt-4 space-y-2">
-                                <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                                    Aplicar alteração
-                                </legend>
-                                <label className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300 cursor-pointer">
-                                    <input
-                                        type="radio"
-                                        name="role_scope"
-                                        className="mt-1"
-                                        checked={roleScope === 'occurrence'}
-                                        onChange={() => setRoleScope('occurrence')}
-                                    />
-                                    <span>
-                                        Apenas esta data (
-                                        {roleModalAssignment.scheduleDate
-                                            ? new Date(
-                                                  roleModalAssignment.scheduleDate + 'T12:00:00',
-                                              ).toLocaleDateString('pt-BR')
-                                            : '—'}
-                                        )
-                                    </span>
-                                </label>
-                                <label className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300 cursor-pointer">
-                                    <input
-                                        type="radio"
-                                        name="role_scope"
-                                        className="mt-1"
-                                        checked={roleScope === 'series'}
-                                        onChange={() => setRoleScope('series')}
-                                    />
-                                    <span>Toda a escala (recorrente)</span>
-                                </label>
-                            </fieldset>
-                        )}
-                        <div className="mt-6 flex justify-end gap-2">
+
+                        <footer className="mt-8 pt-6 border-t border-zinc-100 dark:border-zinc-800 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
                             <SecondaryButton type="button" onClick={() => setRoleModalAssignment(null)}>
                                 Cancelar
                             </SecondaryButton>
@@ -623,7 +654,7 @@ export default function EscalasIndex({
                             >
                                 Guardar
                             </PrimaryButton>
-                        </div>
+                        </footer>
                     </div>
                 )}
             </Modal>
@@ -756,35 +787,44 @@ function EscalaGrid({
                             <XCircleIcon className="w-3.5 h-3.5" /> Não pode
                         </span>
                     )}
-                    {checkinEnabled && (
-                        <div className="mt-1" onClick={(e) => e.stopPropagation()}>
-                            {a.checkedInAt ? (
-                                <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
-                                    <CheckCircleIcon className="w-3.5 h-3.5" /> Presente
-                                </span>
-                            ) : (
+                    {(checkinEnabled || canEdit) && (
+                        <div
+                            className={`mt-auto flex w-full flex-row items-center gap-2 pt-1 ${
+                                !checkinEnabled && canEdit ? 'justify-center' : 'justify-between'
+                            }`}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {checkinEnabled && (
+                                <div className="flex min-w-0 flex-1 items-center justify-center">
+                                    {a.checkedInAt ? (
+                                        <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                                            <CheckCircleIcon className="w-3.5 h-3.5" /> Presente
+                                        </span>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={() => onCheckin(a.id)}
+                                            className="text-xs px-2 py-1 rounded-lg bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600"
+                                        >
+                                            Check-in
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                            {canEdit && (
                                 <button
                                     type="button"
-                                    onClick={() => onCheckin(a.id)}
-                                    className="text-xs px-2 py-1 rounded-lg bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onRemove(a);
+                                    }}
+                                    className="shrink-0 rounded-md p-1 text-zinc-400 hover:bg-zinc-200/80 hover:text-red-600 dark:hover:bg-zinc-700 dark:hover:text-red-400"
+                                    aria-label="Remover"
                                 >
-                                    Check-in
+                                    <TrashIcon className="w-4 h-4" />
                                 </button>
                             )}
                         </div>
-                    )}
-                    {canEdit && (
-                        <button
-                            type="button"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onRemove(a);
-                            }}
-                            className="mt-auto text-zinc-400 hover:text-red-600 dark:hover:text-red-400"
-                            aria-label="Remover"
-                        >
-                            <TrashIcon className="w-4 h-4" />
-                        </button>
                     )}
                 </div>
             ))}

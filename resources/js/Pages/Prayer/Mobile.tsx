@@ -2,7 +2,6 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, useForm } from '@inertiajs/react';
 import { PaperAirplaneIcon } from '@heroicons/react/24/outline';
 import PrayerAmenButton from '@/Components/PrayerAmenButton';
-import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 import FlashMessages from '@/Components/FlashMessages';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
@@ -124,7 +123,6 @@ export default function PrayerMobile({ requests }: Props) {
                         </h2>
                         {groups.length === 0 ? (
                             <div className="rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-900/50 p-8 sm:p-12 text-center">
-                                <PrayingHandsIcon className="mx-auto mb-3 h-12 w-12 text-brand-300 dark:text-brand-700 sm:mb-4 sm:h-14 sm:w-14" />
                                 <p className="text-zinc-600 dark:text-zinc-400 font-medium">Nenhum pedido ainda</p>
                                 <p className="text-sm text-zinc-500 dark:text-zinc-500 mt-1">
                                     <span className="lg:hidden">Envie o primeiro pedido acima.</span>
@@ -144,10 +142,7 @@ export default function PrayerMobile({ requests }: Props) {
                                                     key={r.id}
                                                     className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm"
                                                 >
-                                                    <div className="flex gap-3">
-                                                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-100 dark:bg-brand-900/35">
-                                                            <PrayingHandsIcon className="h-5 w-5 text-brand-600 dark:text-brand-400" />
-                                                        </div>
+                                                    <div className="flex">
                                                         <div className="min-w-0 flex-1">
                                                             <p className="font-semibold text-zinc-900 dark:text-white">
                                                                 {r.name_or_nickname}

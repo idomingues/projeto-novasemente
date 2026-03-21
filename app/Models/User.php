@@ -15,7 +15,7 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasRoles;
+    use HasFactory, HasRoles, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -37,6 +37,51 @@ class User extends Authenticatable
     public function volunteerProfile(): HasOne
     {
         return $this->hasOne(\App\Models\Volunteer::class);
+    }
+
+    protected static function booted(): void
+    {
+        static::created(function (User $user) {
+            $user->ensureVolunteerProfile();
+        });
+
+        static::updated(function (User $user) {
+            if ($user->wasChanged('member_id')) {
+                $user->ensureVolunteerProfile();
+            }
+        });
+    }
+
+    /**
+     * Garante que todo usuário autenticado também exista como voluntário (perfil no app).
+     * Um voluntário pode existir sem acesso ao app; por isso mantemos `user_id` opcional na tabela.
+     */
+    public function ensureVolunteerProfile(): void
+    {
+        $this->loadMissing('member');
+
+        $volunteer = $this->volunteerProfile()->first();
+        $member = $this->member;
+
+        $payload = [
+            'member_id' => $this->member_id,
+            'user_id' => $this->id,
+            'active' => true,
+            'name' => $member?->name ?? $this->name,
+            'email' => $member?->email ?? $this->email,
+            'phone' => $member?->phone ?? null,
+            'role' => $volunteer?->role ?? ($this->getRoleNames()->first() ?: null),
+        ];
+
+        if (! $volunteer) {
+            $volunteer = \App\Models\Volunteer::create($payload);
+        } else {
+            $volunteer->fill($payload);
+            $volunteer->save();
+        }
+
+        $ministryIds = $this->ministries()->pluck('ministries.id')->toArray();
+        $volunteer->ministries()->sync($ministryIds);
     }
 
     /**

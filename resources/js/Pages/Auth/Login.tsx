@@ -129,14 +129,25 @@ export default function Login({
                                         ou líderes que trabalham em outras áreas. Procure seu líder e solicite seu
                                         acesso.
                                     </p>
+                                    <p className="mt-3 font-medium">
+                                        Você pode continuar navegando nas demais opções do sistema sem precisar se cadastrar.
+                                    </p>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowRegisterInfo(false)}
-                                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3 text-sm font-semibold text-zinc-800 transition-colors hover:bg-zinc-100"
-                                >
-                                    Voltar ao login
-                                </button>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <Link
+                                        href={route('mobile.culto')}
+                                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3 text-sm font-semibold text-zinc-800 text-center transition-colors hover:bg-zinc-100"
+                                    >
+                                        Navegar
+                                    </Link>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowRegisterInfo(false)}
+                                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3 text-sm font-semibold text-zinc-800 transition-colors hover:bg-zinc-100"
+                                    >
+                                        Login
+                                    </button>
+                                </div>
                             </div>
                         ) : null}
 

@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -29,13 +30,29 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
+        $validated = $request->validated();
+        $request->user()->fill(collect($validated)->except('photo_file')->all());
 
         if ($request->user()->isDirty('email')) {
             $request->user()->email_verified_at = null;
         }
 
         $request->user()->save();
+
+        if ($request->hasFile('photo_file') && $request->user()->member_id) {
+            $request->user()->loadMissing('member');
+            $member = $request->user()->member;
+
+            if ($member) {
+                $previousPath = is_string($member->photo_url) ? $member->photo_url : null;
+                if ($previousPath && str_starts_with($previousPath, 'member-photos/')) {
+                    Storage::disk('public')->delete($previousPath);
+                }
+
+                $path = $request->file('photo_file')->store('member-photos', 'public');
+                $member->update(['photo_url' => $path]);
+            }
+        }
 
         return Redirect::route('profile.edit');
     }

@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { BellIcon, SunIcon, MoonIcon, FilmIcon, NewspaperIcon, CalendarDaysIcon, HandRaisedIcon, Squares2X2Icon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { BellIcon, SunIcon, MoonIcon, FilmIcon, NewspaperIcon, CalendarDaysIcon, HandRaisedIcon, Squares2X2Icon, ChevronRightIcon, LifebuoyIcon } from '@heroicons/react/24/outline';
 import Dropdown from '@/Components/Dropdown';
 import { useTheme } from '@/Contexts/ThemeContext';
 
@@ -55,6 +55,7 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
     const badgeCount = unread > 0 ? unread : notifications.length > 0 ? 1 : 0;
     const roleLabel = auth?.roleLabel ?? 'Utilizador';
     const { theme, toggleTheme } = useTheme();
+    const supportRouteName = route().has('support.index') ? 'support.index' : 'mobile.support.index';
 
     return (
         <header className={`bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 h-16 md:h-24 fixed top-0 right-0 left-0 z-40 transition-all duration-300 ${hasSidebar ? 'md:left-72' : ''}`}>
@@ -103,6 +104,15 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
 
                     {user ? (
                         <>
+                            <Link
+                                href={route(supportRouteName)}
+                                className="w-12 h-12 flex items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                                aria-label="Suporte"
+                                title="Suporte"
+                            >
+                                <LifebuoyIcon className="w-6 h-6" />
+                            </Link>
+
                             <Dropdown>
                                 <Dropdown.Trigger>
                                     <button
@@ -194,9 +204,10 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
                                     </Dropdown.Trigger>
 
                                     <Dropdown.Content contentClasses="py-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300">
-                                        <Dropdown.Link href={route('profile.edit')} className="hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white">Profile</Dropdown.Link>
+                                        <Dropdown.Link href={route(supportRouteName)} className="hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white">Suporte</Dropdown.Link>
+                                        <Dropdown.Link href={route('profile.edit')} className="hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white">Perfil</Dropdown.Link>
                                         <Dropdown.Link href={route('logout')} method="post" as="button" className="hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white">
-                                            Log Out
+                                            Sair
                                         </Dropdown.Link>
                                     </Dropdown.Content>
                                 </Dropdown>
