@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Member;
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreVolunteerRequest extends FormRequest
@@ -26,6 +28,8 @@ class StoreVolunteerRequest extends FormRequest
             'role' => ['nullable', 'string', 'max:100'],
             'active' => ['boolean'],
             'photo_url' => ['nullable', 'string', 'url', 'max:500'],
+            'enable_app_access' => ['boolean'],
+            'app_password' => ['nullable', 'confirmed', Password::defaults()],
         ];
     }
 
@@ -37,5 +41,39 @@ class StoreVolunteerRequest extends FormRequest
         if ($this->has('photo_url') && $this->input('photo_url') === '') {
             $this->merge(['photo_url' => null]);
         }
+        if ($this->has('enable_app_access') && is_string($this->enable_app_access)) {
+            $this->merge(['enable_app_access' => $this->enable_app_access === 'true' || $this->enable_app_access === '1']);
+        }
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator): void {
+            if (! $this->boolean('enable_app_access')) {
+                return;
+            }
+
+            $memberId = $this->input('member_id');
+            $email = $memberId
+                ? (Member::query()->find($memberId)?->email)
+                : $this->input('email');
+            $email = is_string($email) ? trim($email) : '';
+
+            if ($email === '') {
+                $validator->errors()->add('email', 'É necessário um e-mail para acesso ao app (cadastre no membro ou informe acima).');
+            }
+
+            $existingUser = null;
+            if ($memberId) {
+                $existingUser = User::query()->where('member_id', $memberId)->first();
+            }
+            if (! $existingUser && $email !== '') {
+                $existingUser = User::query()->whereRaw('LOWER(email) = ?', [strtolower($email)])->first();
+            }
+
+            if (! $existingUser && ! $this->filled('app_password')) {
+                $validator->errors()->add('app_password', 'Defina uma senha para criar a conta de acesso (ou use um membro que já tenha usuário).');
+            }
+        });
     }
 }

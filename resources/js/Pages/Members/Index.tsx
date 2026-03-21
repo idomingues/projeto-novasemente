@@ -11,6 +11,7 @@ import PageHeader from '@/Components/PageHeader';
 import Card from '@/Components/Card';
 import SelectInput from '@/Components/SelectInput';
 import { useState, useEffect, FormEventHandler } from 'react';
+import { activeInactivePillClass } from '@/lib/statusBadges';
 
 interface Member {
     id: number;
@@ -160,11 +161,7 @@ export default function Index({ members, filters }: Props) {
                                         <div className="text-xs text-zinc-500 mt-1">{member.phone}</div>
                                     </td>
                                     <td className="px-8 py-6 whitespace-nowrap">
-                                        <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full border ${
-                                            member.status === 'active' 
-                                            ? 'bg-green-950/30 text-green-400 border-green-900/50' 
-                                            : 'bg-red-950/30 text-red-400 border-red-900/50'
-                                        }`}>
+                                        <span className={activeInactivePillClass(member.status === 'active')}>
                                             {member.status === 'active' ? 'Ativo' : 'Inativo'}
                                         </span>
                                     </td>

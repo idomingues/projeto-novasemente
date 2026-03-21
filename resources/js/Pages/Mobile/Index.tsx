@@ -133,7 +133,7 @@ export default function MobileIndex({ church, latestNews, upcomingEvents }: Prop
                             {latestNews.map((n) => (
                                 <li key={n.id}>
                                     <Link
-                                        href={route('mobile.news')}
+                                        href={route('mobile.news.show', n.slug)}
                                         className="flex gap-3 p-3 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 active:bg-zinc-50 dark:active:bg-zinc-800"
                                     >
                                         {n.image_url && (

@@ -1,11 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, Link } from '@inertiajs/react';
-import {
-    UsersIcon,
-    UserGroupIcon,
-    HeartIcon,
-    EllipsisHorizontalIcon,
-} from '@heroicons/react/24/outline';
+import { UsersIcon, UserGroupIcon, EllipsisHorizontalIcon } from '@heroicons/react/24/outline';
+import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 import Card from '@/Components/Card';
 import PageHeader from '@/Components/PageHeader';
 
@@ -81,7 +77,7 @@ export default function Dashboard({
         {
             name: 'Pedidos de oração',
             value: formatStat(stats.prayerRequests),
-            icon: HeartIcon,
+            icon: PrayingHandsIcon,
             href: route('prayer.index'),
             linkLabel: 'Ver pedidos',
         },

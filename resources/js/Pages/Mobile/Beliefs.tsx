@@ -44,8 +44,7 @@ export default function MobileBeliefs() {
                         >
                             institucional.adventistas.org
                         </a>
-                        ). Toque em um card para ler a declaração completa (com referências bíblicas) e, se quiser, abrir
-                        o vídeo no site oficial.
+                        ). Toque em um card para ler a declaração completa (com referências bíblicas).
                     </p>
                 </div>
 

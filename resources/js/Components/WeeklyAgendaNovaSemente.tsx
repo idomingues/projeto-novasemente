@@ -1,5 +1,6 @@
 /**
  * Agenda semanal institucional (conteúdo do material Nova Semente).
+ * Visual alinhado ao resto do app: superfície neutra; verde só em horários e acentos discretos.
  */
 const ROWS: {
     when: string;
@@ -37,92 +38,70 @@ const ROWS: {
     },
 ];
 
-function CitySilhouette() {
-    return (
-        <svg
-            className="pointer-events-none mt-6 w-full text-black/25"
-            viewBox="0 0 1200 64"
-            preserveAspectRatio="none"
-            aria-hidden
-        >
-            <path
-                fill="currentColor"
-                d="M0 64V44h20v6h14V38h18v26H0zm60 0V32h26v8h10V26h28v38H60zm76 0V46h18V30h22v34H136zm48 0V22h32v10h14V40h26v24H184zm88 0V36h20v-5h16v5h18v28H272zm72 0V28h36v36h-36zm48 0V18h44v46h-44zm60 0V40h16V26h28v38h-44zm54 0V32h24v32h-24zm38 0V24h30v40h-30zm42 0V38h18v-6h22v32h-40zm48 0V30h34v34h-34zm46 0V20h40v44h-40zm52 0V34h26v30h-26zm36 0V44h14V28h30v36h-44z"
-            />
-        </svg>
-    );
-}
-
 interface Props {
     churchName?: string | null;
 }
 
 export default function WeeklyAgendaNovaSemente({ churchName }: Props) {
     return (
-        <div
-            className="relative overflow-hidden rounded-3xl shadow-lg ring-1 ring-black/10"
-            style={{
-                background: 'linear-gradient(168deg, #1e4d3a 0%, #153529 45%, #0c221a 100%)',
-            }}
+        <section
+            className="rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+            aria-labelledby="weekly-agenda-heading"
         >
-            <div
-                className="pointer-events-none absolute inset-0 opacity-[0.06]"
-                aria-hidden
-                style={{
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg width='56' height='56' viewBox='0 0 56 56' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M28 0v56M0 28h56' stroke='%23fff' stroke-width='0.5' fill='none'/%3E%3C/svg%3E")`,
-                }}
-            />
-            <div className="relative px-4 pb-1 pt-7 sm:px-7 sm:pt-9">
-                <h2 className="text-center text-xs font-bold uppercase tracking-[0.35em] text-emerald-100/95">
+            <div className="border-b border-zinc-100 px-4 py-3 dark:border-zinc-800 sm:px-5">
+                <h2
+                    id="weekly-agenda-heading"
+                    className="text-center text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400"
+                >
                     Agenda semanal
                 </h2>
-                <div className="mt-8 space-y-0">
-                    {ROWS.map((row, idx) => (
-                        <div
-                            key={row.when}
-                            className={`flex gap-3 py-5 sm:gap-5 sm:py-6 ${idx > 0 ? 'border-t border-white/10' : ''}`}
-                        >
-                            <div className="w-[5.5rem] shrink-0 text-right sm:w-32">
-                                <p className="text-[0.7rem] font-bold uppercase leading-tight tracking-wide text-amber-50/95 sm:text-xs">
-                                    {row.when}
-                                </p>
-                            </div>
-                            <div className="w-px shrink-0 bg-white/25" aria-hidden />
-                            <div className="min-w-0 flex-1">
-                                {row.title && (
-                                    <p className="text-sm font-bold uppercase tracking-wide text-white">{row.title}</p>
-                                )}
-                                {row.body && (
-                                    <p
-                                        className={`text-sm leading-relaxed text-emerald-50/90 ${row.title ? 'mt-1.5' : ''}`}
-                                    >
-                                        {row.body}
-                                    </p>
-                                )}
-                                {row.lines && (
-                                    <ul className="mt-0 space-y-2">
-                                        {row.lines.map((line) => (
-                                            <li
-                                                key={line}
-                                                className="text-sm font-semibold uppercase leading-snug tracking-wide text-white/95"
-                                            >
-                                                {line}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-                <CitySilhouette />
-                {churchName && (
-                    <p className="-mt-1 pb-5 text-center text-xs font-medium tracking-wide text-emerald-200/75">
-                        {churchName}
-                    </p>
-                )}
-                {!churchName && <div className="h-4" />}
             </div>
-        </div>
+            <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                {ROWS.map((row) => (
+                    <div key={row.when} className="flex gap-3 px-4 py-4 sm:gap-4 sm:px-5 sm:py-5">
+                        <div className="flex w-[5.75rem] shrink-0 flex-col items-end sm:w-32">
+                            <p className="text-right text-[0.65rem] font-bold uppercase leading-tight tracking-wide text-brand-600 dark:text-brand-400 sm:text-xs">
+                                {row.when}
+                            </p>
+                        </div>
+                        <div
+                            className="w-0.5 shrink-0 self-stretch rounded-full bg-brand-200 dark:bg-brand-800"
+                            aria-hidden
+                        />
+                        <div className="min-w-0 flex-1">
+                            {row.title && (
+                                <p className="text-sm font-semibold uppercase tracking-wide text-zinc-900 dark:text-white">
+                                    {row.title}
+                                </p>
+                            )}
+                            {row.body && (
+                                <p
+                                    className={`text-sm leading-relaxed text-zinc-600 dark:text-zinc-400 ${row.title ? 'mt-1.5' : ''}`}
+                                >
+                                    {row.body}
+                                </p>
+                            )}
+                            {row.lines && (
+                                <ul className="mt-0 space-y-2">
+                                    {row.lines.map((line) => (
+                                        <li
+                                            key={line}
+                                            className="text-sm font-semibold uppercase leading-snug tracking-wide text-zinc-800 dark:text-zinc-200"
+                                        >
+                                            {line}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    </div>
+                ))}
+            </div>
+            {churchName && (
+                <p className="border-t border-zinc-100 px-4 py-3 text-center text-xs font-medium text-zinc-500 dark:text-zinc-400 dark:border-zinc-800">
+                    {churchName}
+                </p>
+            )}
+        </section>
     );
 }

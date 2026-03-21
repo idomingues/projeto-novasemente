@@ -2,16 +2,18 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import { Head } from '@inertiajs/react';
 import { BellAlertIcon } from '@heroicons/react/24/outline';
 
-interface NotificationItem {
-    id: number;
+interface NotificationEntry {
+    id: string;
     title: string;
     body: string;
     created_at: string;
     author: { name: string } | null;
+    href: string;
+    kind: string;
 }
 
 interface Props {
-    notifications: NotificationItem[];
+    notifications: NotificationEntry[];
 }
 
 function formatTimeAgo(iso: string): string {
@@ -32,9 +34,7 @@ export default function MobileNotifications({ notifications }: Props) {
             <div className="space-y-4">
                 <div>
                     <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Notificações</h1>
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">
-                        Avisos e novidades da igreja
-                    </p>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">Avisos da igreja e da sua conta</p>
                 </div>
 
                 {notifications.length === 0 ? (
@@ -42,39 +42,57 @@ export default function MobileNotifications({ notifications }: Props) {
                         <div className="w-16 h-16 rounded-2xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center mx-auto mb-4">
                             <BellAlertIcon className="w-8 h-8 text-primary-600 dark:text-primary-400" />
                         </div>
-                        <h2 className="font-semibold text-zinc-900 dark:text-white mb-2">
-                            Nenhuma notificação
-                        </h2>
+                        <h2 className="font-semibold text-zinc-900 dark:text-white mb-2">Nenhuma notificação</h2>
                         <p className="text-sm text-zinc-600 dark:text-zinc-400 max-w-xs mx-auto">
                             Quando houver avisos ou novidades, eles aparecerão aqui.
                         </p>
                     </div>
                 ) : (
                     <ul className="space-y-3">
-                        {notifications.map((n) => (
-                            <li
-                                key={n.id}
-                                className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm active:scale-[0.99] transition-transform"
-                            >
-                                <div className="flex gap-3">
-                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-100 dark:bg-primary-900/30">
-                                        <BellAlertIcon className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+                        {notifications.map((n) => {
+                            const inner = (
+                                <>
+                                    <div className="flex gap-3">
+                                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-100 dark:bg-primary-900/30">
+                                            <BellAlertIcon className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="font-semibold text-zinc-900 dark:text-white">{n.title}</p>
+                                            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                                                {n.body}
+                                            </p>
+                                            <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
+                                                {formatTimeAgo(n.created_at)}
+                                                {n.author?.name && ` · ${n.author.name}`}
+                                                {n.kind === 'inbox' && ' · Pessoal'}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div className="min-w-0 flex-1">
-                                        <p className="font-semibold text-zinc-900 dark:text-white">
-                                            {n.title}
-                                        </p>
-                                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                                            {n.body}
-                                        </p>
-                                        <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
-                                            {formatTimeAgo(n.created_at)}
-                                            {n.author?.name && ` · ${n.author.name}`}
-                                        </p>
-                                    </div>
-                                </div>
-                            </li>
-                        ))}
+                                </>
+                            );
+
+                            if (n.kind === 'inbox' && n.href) {
+                                return (
+                                    <li key={n.id}>
+                                        <a
+                                            href={n.href}
+                                            className="block rounded-2xl bg-white dark:bg-zinc-900 border border-primary-200 dark:border-primary-900 p-4 shadow-sm active:scale-[0.99] transition-transform"
+                                        >
+                                            {inner}
+                                        </a>
+                                    </li>
+                                );
+                            }
+
+                            return (
+                                <li
+                                    key={n.id}
+                                    className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm"
+                                >
+                                    {inner}
+                                </li>
+                            );
+                        })}
                     </ul>
                 )}
             </div>

@@ -13,6 +13,7 @@ import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
 import SearchableSelect from '@/Components/SearchableSelect';
 import { useState, useEffect, FormEventHandler } from 'react';
+import { activeInactivePillClass } from '@/lib/statusBadges';
 
 interface Member { id: number; name: string; photo_url?: string | null; }
 interface Ministry { id: number; name: string; }
@@ -185,7 +186,7 @@ export default function Index({ volunteers, members, ministries, filters }: Prop
                                     </td>
                                     <td className="px-4 md:px-8 py-3 md:py-4 text-zinc-600 dark:text-zinc-300">{v.role || '—'}</td>
                                     <td className="px-4 md:px-8 py-3 md:py-4">
-                                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${v.active ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-400'}`}>
+                                        <span className={activeInactivePillClass(v.active)}>
                                             {v.active ? 'Ativo' : 'Inativo'}
                                         </span>
                                     </td>

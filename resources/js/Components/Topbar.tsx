@@ -4,11 +4,13 @@ import Dropdown from '@/Components/Dropdown';
 import { useTheme } from '@/Contexts/ThemeContext';
 
 interface NotificationItem {
-    id: number;
+    id: string;
     title: string;
     body: string;
     created_at: string;
     author: { name: string } | null;
+    href?: string;
+    kind?: string;
 }
 
 function formatTimeAgo(iso: string): string {
@@ -42,12 +44,15 @@ interface AuthUser {
 type PageProps = {
     auth: { user?: AuthUser | null; roleLabel?: string };
     recentNotifications?: NotificationItem[];
+    unreadInboxNotificationsCount?: number;
 };
 
 export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) {
-    const { auth, recentNotifications = [] } = usePage().props as PageProps;
+    const { auth, recentNotifications = [], unreadInboxNotificationsCount = 0 } = usePage().props as PageProps;
     const user = auth?.user ?? null;
     const notifications = Array.isArray(recentNotifications) ? recentNotifications : [];
+    const unread = typeof unreadInboxNotificationsCount === 'number' ? unreadInboxNotificationsCount : 0;
+    const badgeCount = unread > 0 ? unread : notifications.length > 0 ? 1 : 0;
     const roleLabel = auth?.roleLabel ?? 'Utilizador';
     const { theme, toggleTheme } = useTheme();
 
@@ -106,9 +111,9 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
                                         aria-label="Notificações"
                                     >
                                         <BellIcon className="w-6 h-6" />
-                                        {notifications.length > 0 && (
+                                        {badgeCount > 0 && (
                                             <span className="absolute top-2 right-2 min-w-[18px] h-[18px] px-1 flex items-center justify-center bg-primary-500 text-white text-xs font-semibold rounded-full border-2 border-white dark:border-zinc-900">
-                                                {notifications.length > 9 ? '9+' : notifications.length}
+                                                {badgeCount > 9 ? '9+' : badgeCount}
                                             </span>
                                         )}
                                     </button>
@@ -130,23 +135,42 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
                                                 Nenhuma notificação
                                             </div>
                                         ) : (
-                                            notifications.map((n) => (
-                                                <Link
-                                                    key={n.id}
-                                                    href={route('varios.notifications')}
-                                                    className="block px-4 py-3 border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
-                                                >
-                                                    <p className="font-medium text-zinc-900 dark:text-white text-sm line-clamp-1">
-                                                        {n.title}
-                                                    </p>
-                                                    <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2">
-                                                        {n.body}
-                                                    </p>
-                                                    <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
-                                                        {formatTimeAgo(n.created_at)}
-                                                    </p>
-                                                </Link>
-                                            ))
+                                            notifications.map((n) => {
+                                                const href = n.href ?? route('varios.notifications');
+                                                const Row = (
+                                                    <>
+                                                        <p className="font-medium text-zinc-900 dark:text-white text-sm line-clamp-1">
+                                                            {n.title}
+                                                        </p>
+                                                        <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2">
+                                                            {n.body}
+                                                        </p>
+                                                        <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
+                                                            {formatTimeAgo(n.created_at)}
+                                                        </p>
+                                                    </>
+                                                );
+                                                if (n.kind === 'inbox' && n.href) {
+                                                    return (
+                                                        <a
+                                                            key={n.id}
+                                                            href={href}
+                                                            className="block px-4 py-3 border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
+                                                        >
+                                                            {Row}
+                                                        </a>
+                                                    );
+                                                }
+                                                return (
+                                                    <Link
+                                                        key={n.id}
+                                                        href={href}
+                                                        className="block px-4 py-3 border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
+                                                    >
+                                                        {Row}
+                                                    </Link>
+                                                );
+                                            })
                                         )}
                                     </div>
                                 </Dropdown.Content>

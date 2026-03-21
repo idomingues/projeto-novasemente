@@ -8,6 +8,7 @@ import { useMemo } from 'react';
 interface Assignment {
     id: number;
     memberName: string;
+    memberPhotoUrl: string | null;
     roleName: string | null;
     scheduleDate: string | null;
     saturdayNumber: number | null;
@@ -43,6 +44,32 @@ function getSaturdays(year: number, month: number): Date[] {
     return out;
 }
 
+function AssignmentRow({ a }: { a: Assignment }) {
+    return (
+        <li className="px-4 py-3 flex gap-4 items-center border-b border-zinc-100 dark:border-zinc-800 last:border-b-0">
+            {a.memberPhotoUrl ? (
+                <img
+                    src={a.memberPhotoUrl}
+                    alt=""
+                    className="w-16 h-16 rounded-2xl object-cover flex-shrink-0 border border-zinc-200 dark:border-zinc-700"
+                />
+            ) : (
+                <div className="w-16 h-16 rounded-2xl bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-xl font-semibold text-zinc-700 dark:text-zinc-300 flex-shrink-0">
+                    {a.memberName.charAt(0).toUpperCase()}
+                </div>
+            )}
+            <div className="min-w-0 flex-1">
+                <p className="font-medium text-zinc-900 dark:text-white leading-snug">{a.memberName}</p>
+                {a.roleName ? (
+                    <p className="text-sm text-brand-700 dark:text-brand-300 mt-0.5 font-medium">{a.roleName}</p>
+                ) : (
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">Sem função definida</p>
+                )}
+            </div>
+        </li>
+    );
+}
+
 export default function VariosSchedule({
     assignments,
     month,
@@ -52,6 +79,18 @@ export default function VariosSchedule({
     canViewSchedule = true,
 }: Props) {
     const saturdays = useMemo(() => getSaturdays(year, month), [year, month]);
+
+    const extraDateGroups = useMemo(() => {
+        const map = new Map<string, Assignment[]>();
+        for (const a of assignments) {
+            if (a.saturdayNumber != null) continue;
+            if (!a.scheduleDate) continue;
+            const list = map.get(a.scheduleDate) ?? [];
+            list.push(a);
+            map.set(a.scheduleDate, list);
+        }
+        return Array.from(map.entries()).sort(([d1], [d2]) => d1.localeCompare(d2));
+    }, [assignments]);
 
     const selectMinistry = (id: number | '') => {
         router.get(route('varios.schedule'), {
@@ -180,29 +219,35 @@ export default function VariosSchedule({
                                                 {saturdayNumber}º sábado · {dateStr}
                                             </h2>
                                         </div>
-                                        <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                                        <ul className="divide-y-0">
                                             {dayAssignments.length === 0 ? (
                                                 <li className="px-4 py-3 text-sm text-zinc-500 dark:text-zinc-400">
                                                     Nenhum voluntário escalado
                                                 </li>
                                             ) : (
-                                                dayAssignments.map((a) => (
-                                                    <li
-                                                        key={a.id}
-                                                        className="px-4 py-3 flex justify-between items-center"
-                                                    >
-                                                        <span className="font-medium text-zinc-900 dark:text-white">
-                                                            {a.memberName}
-                                                        </span>
-                                                        {a.roleName && (
-                                                            <span className="text-xs text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded">
-                                                                {a.roleName}
-                                                            </span>
-                                                        )}
-                                                    </li>
-                                                ))
+                                                dayAssignments.map((a) => <AssignmentRow key={a.id} a={a} />)
                                             )}
                                         </ul>
+                                    </section>
+                                );
+                            })}
+
+                            {extraDateGroups.map(([scheduleDate, items]) => {
+                                const label = new Date(scheduleDate + 'T12:00:00').toLocaleDateString('pt-BR', {
+                                    day: '2-digit',
+                                    month: 'long',
+                                });
+                                return (
+                                    <section
+                                        key={scheduleDate}
+                                        className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 overflow-hidden scroll-mt-20"
+                                    >
+                                        <div className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700">
+                                            <h2 className="font-semibold text-zinc-900 dark:text-white text-sm">
+                                                Escala extra · {label}
+                                            </h2>
+                                        </div>
+                                        <ul>{items.map((a) => <AssignmentRow key={a.id} a={a} />)}</ul>
                                     </section>
                                 );
                             })}

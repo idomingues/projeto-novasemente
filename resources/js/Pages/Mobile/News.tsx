@@ -1,5 +1,5 @@
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { NewspaperIcon } from '@heroicons/react/24/outline';
 
 function imageSrc(url: string | null, appUrl: string): string {
@@ -64,6 +64,10 @@ export default function MobileNews({ posts }: Props) {
                                 key={p.id}
                                 className="rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm hover:shadow-md hover:border-zinc-300 dark:hover:border-zinc-700 active:scale-[0.99] transition-all"
                             >
+                                <Link
+                                    href={route('mobile.news.show', p.slug)}
+                                    className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950 rounded-2xl"
+                                >
                                 {p.image_url ? (
                                     <div className="relative aspect-[16/10] overflow-hidden bg-zinc-200 dark:bg-zinc-800">
                                         <img
@@ -106,7 +110,11 @@ export default function MobileNews({ posts }: Props) {
                                             __html: p.excerpt || p.body.slice(0, 280) + (p.body.length > 280 ? '…' : ''),
                                         }}
                                     />
+                                    <span className="mt-3 inline-block text-sm font-semibold text-primary-600 dark:text-primary-400">
+                                        Ler notícia completa
+                                    </span>
                                 </div>
+                                </Link>
                             </li>
                         ))}
                     </ul>

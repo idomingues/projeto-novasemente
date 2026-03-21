@@ -1,7 +1,8 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm } from '@inertiajs/react';
-import { HeartIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline';
+import { PaperAirplaneIcon } from '@heroicons/react/24/outline';
 import PrayerAmenButton from '@/Components/PrayerAmenButton';
+import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 import FlashMessages from '@/Components/FlashMessages';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
@@ -69,10 +70,8 @@ export default function PrayerIndex({ requests }: Props) {
                     <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                         Solicite um pedido de oração ou veja os pedidos para orar.
                     </p>
-                    <p className="mt-3 max-w-3xl rounded-xl border border-amber-200/80 bg-amber-50/80 px-3 py-2.5 text-sm leading-relaxed text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/25 dark:text-amber-100">
-                        Depois de orar por alguém, toque em <strong className="font-semibold">Orei</strong> (ícone de
-                        mãos) no pedido — assim a pessoa sente que não está sozinha. É o nosso jeito de “curtir” com
-                        gratidão a Deus.
+                    <p className="mt-3 max-w-3xl rounded-xl border border-brand-200/90 bg-brand-50/90 px-3 py-2.5 text-sm leading-relaxed text-brand-950 dark:border-brand-900/45 dark:bg-brand-950/30 dark:text-brand-50">
+                        Depois de orar por alguém, toque em <strong className="font-semibold text-brand-800 dark:text-brand-200">Irei orar</strong> (mãos em oração) no pedido — assim a pessoa sente que não está sozinha. É o nosso jeito de “curtir” com gratidão a Deus.
                     </p>
                 </div>
 
@@ -125,7 +124,7 @@ export default function PrayerIndex({ requests }: Props) {
                         </h2>
                         {groups.length === 0 ? (
                             <div className="rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-900/50 p-8 sm:p-12 text-center">
-                                <HeartIcon className="w-12 h-12 sm:w-14 sm:h-14 text-zinc-300 dark:text-zinc-600 mx-auto mb-4" />
+                                <PrayingHandsIcon className="mx-auto mb-4 h-12 w-12 text-brand-300 dark:text-brand-700 sm:h-14 sm:w-14" />
                                 <p className="text-zinc-600 dark:text-zinc-400 font-medium">Nenhum pedido ainda</p>
                                 <p className="text-sm text-zinc-500 dark:text-zinc-500 mt-1">
                                     <span className="lg:hidden">Envie o primeiro pedido de oração usando o formulário acima.</span>
@@ -146,8 +145,8 @@ export default function PrayerIndex({ requests }: Props) {
                                                     className="rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm"
                                                 >
                                                     <div className="flex gap-3">
-                                                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-100 dark:bg-primary-900/30">
-                                                            <HeartIcon className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                                                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-100 dark:bg-brand-900/35">
+                                                            <PrayingHandsIcon className="h-5 w-5 text-brand-600 dark:text-brand-400" />
                                                         </div>
                                                         <div className="min-w-0 flex-1">
                                                             <p className="font-semibold text-zinc-900 dark:text-white">

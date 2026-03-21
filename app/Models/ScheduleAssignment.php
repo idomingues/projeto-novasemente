@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ScheduleAssignment extends Model
 {
@@ -41,5 +42,15 @@ class ScheduleAssignment extends Model
     public function ministry(): BelongsTo
     {
         return $this->belongsTo(Ministry::class);
+    }
+
+    public function occurrenceSkips(): HasMany
+    {
+        return $this->hasMany(ScheduleOccurrenceSkip::class);
+    }
+
+    public function occurrenceRoleOverrides(): HasMany
+    {
+        return $this->hasMany(ScheduleOccurrenceRoleOverride::class);
     }
 }

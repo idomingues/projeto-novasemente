@@ -16,7 +16,13 @@ import {
 
 const navItems = [
     { name: 'Culto', route: 'mobile.culto' as const, activeRoutes: ['mobile.culto'] as const, icon: FilmIcon, iconActive: FilmIconSolid },
-    { name: 'Notícias', route: 'mobile.news' as const, activeRoutes: ['mobile.news'] as const, icon: NewspaperIcon, iconActive: NewspaperIconSolid },
+    {
+        name: 'Notícias',
+        route: 'mobile.news' as const,
+        activeRoutes: ['mobile.news', 'mobile.news.show'] as const,
+        icon: NewspaperIcon,
+        iconActive: NewspaperIconSolid,
+    },
     { name: 'Eventos', route: 'mobile.events' as const, activeRoutes: ['mobile.events'] as const, icon: CalendarDaysIcon, iconActive: CalendarDaysIconSolid },
     { name: 'Dízimos e Ofertas', route: 'mobile.offerings' as const, activeRoutes: ['mobile.offerings'] as const, icon: HandRaisedIcon, iconActive: HandRaisedIconSolid },
     {

@@ -13,6 +13,7 @@ class Volunteer extends Model
 
     protected $fillable = [
         'member_id',
+        'user_id',
         'name',
         'email',
         'phone',
@@ -35,6 +36,11 @@ class Volunteer extends Model
     public function member(): BelongsTo
     {
         return $this->belongsTo(Member::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 
     public function ministries(): BelongsToMany

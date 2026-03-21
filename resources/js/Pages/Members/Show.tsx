@@ -1,5 +1,6 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, Link } from '@inertiajs/react';
+import { activeInactivePillClass } from '@/lib/statusBadges';
 import Card from '@/Components/Card';
 import PageHeader from '@/Components/PageHeader';
 
@@ -65,13 +66,7 @@ export default function Show({ member }: Props) {
 
                         <div>
                             <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Status</p>
-                            <span
-                                className={`inline-flex mt-1 px-3 py-1 text-xs font-semibold rounded-full border ${
-                                    member.status === 'active'
-                                        ? 'bg-green-950/30 text-green-400 border-green-900/50'
-                                        : 'bg-red-950/30 text-red-400 border-red-900/50'
-                                }`}
-                            >
+                            <span className={`mt-1 ${activeInactivePillClass(member.status === 'active')}`}>
                                 {member.status === 'active' ? 'Ativo' : 'Inativo'}
                             </span>
                         </div>

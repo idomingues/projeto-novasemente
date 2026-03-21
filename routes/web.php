@@ -56,6 +56,7 @@ Route::get('/mobile/oracao', [PrayerRequestController::class, 'mobile'])->name('
 Route::redirect('/mobile', '/mobile/culto')->name('mobile.index');
 Route::get('/mobile/culto', [MobileController::class, 'culto'])->name('mobile.culto');
 Route::get('/mobile/news', [MobileController::class, 'news'])->name('mobile.news');
+Route::get('/mobile/news/{news:slug}', [MobileController::class, 'newsShow'])->name('mobile.news.show');
 Route::get('/mobile/events', [MobileController::class, 'events'])->name('mobile.events');
 Route::get('/mobile/schedule', [MobileController::class, 'schedule'])->name('mobile.schedule');
 Route::get('/mobile/more', [MobileController::class, 'more'])->name('mobile.more');
@@ -70,6 +71,9 @@ Route::get('/mobile/fotos', [MobileController::class, 'fotosComingSoon'])->name(
 Route::get('/mobile/localizacao', [MobileController::class, 'location'])->name('mobile.location');
 Route::get('/mobile/offerings', [MobileController::class, 'offerings'])->name('mobile.offerings');
 Route::get('/mobile/notifications', [MobileController::class, 'notifications'])->name('mobile.notifications');
+Route::get('/mobile/escala/checkin', [MobileController::class, 'scheduleCheckin'])
+    ->middleware('auth')
+    ->name('mobile.schedule.checkin');
 Route::get('/musica', [MusicaController::class, 'index'])->name('musica.index');
 
 Route::middleware('auth')->group(function () {
@@ -88,6 +92,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/escalas', [\App\Http\Controllers\ScheduleController::class, 'index'])->name('escalas.index');
     Route::post('/escalas', [\App\Http\Controllers\ScheduleController::class, 'store'])
         ->name('escalas.store')
+        ->middleware('permission:escalas.manage');
+    Route::patch('/escalas/{assignment}', [\App\Http\Controllers\ScheduleController::class, 'update'])
+        ->name('escalas.update')
+        ->middleware('permission:escalas.manage');
+    Route::post('/escalas/roles', [\App\Http\Controllers\ScheduleController::class, 'storeRole'])
+        ->name('escalas.roles.store')
+        ->middleware('permission:escalas.manage');
+    Route::delete('/escalas/roles/{scheduleRole}', [\App\Http\Controllers\ScheduleController::class, 'destroyRole'])
+        ->name('escalas.roles.destroy')
         ->middleware('permission:escalas.manage');
     Route::delete('/escalas/{assignment}', [\App\Http\Controllers\ScheduleController::class, 'destroy'])
         ->name('escalas.destroy')
@@ -162,6 +175,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/acervo/{acervo}', [AcervoController::class, 'destroy'])->name('acervo.destroy')->middleware('permission:music.manage');
     Route::post('/notifications', [AppNotificationController::class, 'store'])->name('notifications.store')->middleware('permission:notifications.manage');
     Route::get('/mobile/settings', [MobileController::class, 'settings'])->name('mobile.settings');
+    Route::post('/notifications/inbox/read', [MobileController::class, 'markInboxNotificationRead'])
+        ->name('notifications.inbox.read');
 
     // Igrejas — apenas super admin (via permission churches.manage)
     Route::get('/churches', [ChurchController::class, 'index'])->name('churches.index')->middleware('permission:churches.manage');

@@ -3,16 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Models\AcervoItem;
-use App\Models\AppNotification;
+use App\Support\NotificationFeed;
 use App\Models\Church;
 use App\Models\ChurchService;
 use App\Models\Culto;
 use App\Models\Event;
+use App\Models\Member;
 use App\Models\Ministry;
 use App\Models\Musica;
 use App\Models\News;
-use App\Models\ScheduleAssignment;
 use App\Models\ScheduleCheckinDate;
+use App\Models\UserInboxNotification;
+use App\Services\ScheduleAssignmentPresenter;
+use App\Services\VolunteerScheduleOverview;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -175,6 +178,35 @@ class MobileController extends Controller
         ]);
     }
 
+    public function newsShow(Request $request, News $news): Response
+    {
+        $churchId = $this->currentChurch()?->id;
+        if ($churchId === null || $news->church_id !== $churchId) {
+            abort(404);
+        }
+        if ($news->published_at === null || $news->published_at->isFuture()) {
+            abort(404);
+        }
+
+        $baseUrl = request()->getSchemeAndHttpHost();
+        $imageUrl = $news->image_url;
+        if ($imageUrl && ! str_starts_with($imageUrl, 'http')) {
+            $imageUrl = $baseUrl.$imageUrl;
+        }
+
+        return Inertia::render('Mobile/NewsShow', [
+            'post' => [
+                'id' => $news->id,
+                'title' => $news->title,
+                'slug' => $news->slug,
+                'excerpt' => $news->excerpt,
+                'body' => $news->body,
+                'image_url' => $imageUrl,
+                'published_at' => $news->published_at?->toIso8601String(),
+            ],
+        ]);
+    }
+
     public function events(Request $request): Response
     {
         $churchId = $this->currentChurch()?->id;
@@ -223,120 +255,134 @@ class MobileController extends Controller
         return $saturdays;
     }
 
+    private function memberPhotoPublicUrl(?Member $member): ?string
+    {
+        if (! $member || empty($member->photo_url)) {
+            return null;
+        }
+        $u = $member->photo_url;
+        if (str_starts_with($u, 'http://') || str_starts_with($u, 'https://')) {
+            return $u;
+        }
+        $base = request()->getSchemeAndHttpHost();
+
+        return $base.(str_starts_with($u, '/') ? '' : '/').$u;
+    }
+
     public function schedule(Request $request): Response
     {
         $month = (int) $request->input('month', now()->month);
         $year = (int) $request->input('year', now()->year);
-        $ministryId = $request->input('ministry_id') ? (int) $request->input('ministry_id') : null;
 
         if (! $request->user()) {
-            return Inertia::render('Mobile/Schedule', [
-                'assignments' => [],
-                'checkinEnabledDates' => [],
+            return Inertia::render('Mobile/VolunteerSchedule', [
+                'canViewSchedule' => false,
                 'month' => $month,
                 'year' => $year,
-                'ministryId' => null,
-                'ministries' => [],
-                'canViewSchedule' => false,
+                'memberName' => null,
+                'memberPhotoUrl' => null,
+                'needsMember' => false,
+                'volunteerOverview' => null,
             ]);
         }
 
-        $churchId = Church::where('active', true)->orderBy('name')->value('id');
+        $user = $request->user();
+        $memberId = $user->member_id ? (int) $user->member_id : null;
 
-        $ministries = Ministry::query()
-            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
-            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
-            ->orderBy('name')
-            ->get(['id', 'name']);
-        $assignments = [];
-        $checkinDates = [];
-
-        if ($ministryId) {
-            $startDate = Carbon::create($year, $month, 1);
-            $endDate = $startDate->copy()->endOfMonth()->addDay();
-            $baseQuery = ScheduleAssignment::query()
-                ->with(['member', 'scheduleRole'])
-                ->where('ministry_id', $ministryId);
-            $oneOff = (clone $baseQuery)
-                ->whereNotNull('schedule_date')
-                ->where('schedule_date', '>=', $startDate)
-                ->where('schedule_date', '<', $endDate)
-                ->orderBy('schedule_date')
-                ->get();
-            $saturdays = $this->getSaturdays($year, $month);
-            $saturdayByNumber = [];
-            foreach ($saturdays as $i => $d) {
-                $saturdayByNumber[$i + 1] = $d;
-            }
-            $recurring = (clone $baseQuery)
-                ->whereNotNull('saturday_number')
-                ->whereNull('schedule_date')
-                ->whereIn('saturday_number', array_keys($saturdayByNumber))
-                ->where(function ($q) use ($month, $year) {
-                    $q->where('recurring', true)
-                        ->orWhere(function ($q2) use ($month, $year) {
-                            $q2->where('recurring', false)
-                                ->where('assignment_month', $month)
-                                ->where('assignment_year', $year);
-                        });
-                })
-                ->orderBy('saturday_number')
-                ->get();
-            foreach ($oneOff as $a) {
-                $assignments[] = [
-                    'id' => $a->id,
-                    'memberId' => $a->member_id,
-                    'memberName' => $a->member->name,
-                    'memberPhotoUrl' => null,
-                    'roleId' => $a->schedule_role_id,
-                    'roleName' => $a->scheduleRole?->name,
-                    'scheduleDate' => $a->schedule_date?->format('Y-m-d'),
-                    'saturdayNumber' => $a->saturday_number,
-                    'status' => $a->status,
-                    'startTime' => $a->start_time,
-                    'endTime' => $a->end_time,
-                    'checkedInAt' => $a->checked_in_at?->toIso8601String(),
-                ];
-            }
-            foreach ($recurring as $a) {
-                $computedDate = $saturdayByNumber[$a->saturday_number] ?? null;
-                if (! $computedDate) {
-                    continue;
-                }
-                $assignments[] = [
-                    'id' => $a->id,
-                    'memberId' => $a->member_id,
-                    'memberName' => $a->member->name,
-                    'memberPhotoUrl' => null,
-                    'roleId' => $a->schedule_role_id,
-                    'roleName' => $a->scheduleRole?->name,
-                    'scheduleDate' => $computedDate->format('Y-m-d'),
-                    'saturdayNumber' => $a->saturday_number,
-                    'status' => $a->status,
-                    'startTime' => $a->start_time,
-                    'endTime' => $a->end_time,
-                    'checkedInAt' => $a->checked_in_at?->toIso8601String(),
-                ];
-            }
-            usort($assignments, fn ($x, $y) => strcmp($x['scheduleDate'] ?? '', $y['scheduleDate'] ?? ''));
-            $checkinDates = ScheduleCheckinDate::query()
-                ->where('schedule_date', '>=', $startDate)
-                ->where('schedule_date', '<', $endDate)
-                ->pluck('schedule_date')
-                ->map(fn ($d) => Carbon::parse($d)->format('Y-m-d'))
-                ->values()
-                ->all();
+        if (! $memberId) {
+            return Inertia::render('Mobile/VolunteerSchedule', [
+                'canViewSchedule' => true,
+                'month' => $month,
+                'year' => $year,
+                'memberName' => $user->name,
+                'memberPhotoUrl' => null,
+                'needsMember' => true,
+                'volunteerOverview' => null,
+            ]);
         }
 
-        return Inertia::render('Mobile/Schedule', [
-            'assignments' => $assignments,
-            'checkinEnabledDates' => $checkinDates,
+        $member = Member::find($memberId);
+        $overview = VolunteerScheduleOverview::forMember(
+            $memberId,
+            $year,
+            $month,
+            fn ($m) => $this->memberPhotoPublicUrl($m)
+        );
+
+        return Inertia::render('Mobile/VolunteerSchedule', [
+            'canViewSchedule' => true,
             'month' => $month,
             'year' => $year,
-            'ministryId' => $ministryId,
-            'ministries' => $ministries,
-            'canViewSchedule' => true,
+            'memberName' => $member?->name ?? $user->name,
+            'memberPhotoUrl' => $this->memberPhotoPublicUrl($member),
+            'needsMember' => false,
+            'volunteerOverview' => $overview,
         ]);
+    }
+
+    public function scheduleCheckin(Request $request): Response
+    {
+        $valid = $request->validate([
+            'date' => 'required|date_format:Y-m-d',
+            'inbox' => 'nullable|integer|exists:user_inbox_notifications,id',
+        ]);
+
+        $date = Carbon::parse($valid['date'])->startOfDay();
+        $user = $request->user();
+
+        if ($user && ! empty($valid['inbox'])) {
+            $inbox = UserInboxNotification::query()
+                ->where('id', $valid['inbox'])
+                ->where('user_id', $user->id)
+                ->first();
+            if ($inbox) {
+                $inbox->update(['read_at' => now()]);
+            }
+        }
+
+        if (! $user || ! $user->member_id) {
+            return Inertia::render('Mobile/ScheduleCheckin', [
+                'date' => $valid['date'],
+                'dateLabel' => $date->translatedFormat('d/m/Y'),
+                'assignments' => [],
+                'checkinEnabled' => ScheduleCheckinDate::where('schedule_date', $date)->exists(),
+                'ministryName' => null,
+                'needsMember' => true,
+            ]);
+        }
+
+        $assignments = ScheduleAssignmentPresenter::assignmentsForMemberOnDate(
+            (int) $user->member_id,
+            $valid['date'],
+            fn ($m) => $this->memberPhotoPublicUrl($m)
+        );
+
+        $ministryName = $assignments[0]['ministryName'] ?? null;
+
+        return Inertia::render('Mobile/ScheduleCheckin', [
+            'date' => $valid['date'],
+            'dateLabel' => $date->translatedFormat('d/m/Y'),
+            'assignments' => $assignments,
+            'checkinEnabled' => ScheduleCheckinDate::where('schedule_date', $date)->exists(),
+            'ministryName' => $ministryName,
+            'needsMember' => false,
+        ]);
+    }
+
+    public function markInboxNotificationRead(Request $request)
+    {
+        $valid = $request->validate([
+            'id' => 'required|exists:user_inbox_notifications,id',
+        ]);
+
+        $n = UserInboxNotification::query()
+            ->where('id', $valid['id'])
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        $n->update(['read_at' => now()]);
+
+        return back();
     }
 
     public function more(): Response
@@ -469,7 +515,7 @@ class MobileController extends Controller
     public function notifications(Request $request): Response
     {
         $churchId = $this->currentChurch()?->id;
-        $notifications = AppNotification::recentForChurch($churchId);
+        $notifications = NotificationFeed::mergedForUser($request, $churchId, 50);
 
         return Inertia::render('Mobile/Notifications', [
             'notifications' => $notifications,

@@ -10,11 +10,13 @@ import InputError from '@/Components/InputError';
 import { FormEventHandler } from 'react';
 
 interface NotificationItem {
-    id: number;
+    id: string;
     title: string;
     body: string;
     created_at: string;
     author: { name: string } | null;
+    href?: string;
+    kind?: string;
 }
 
 interface Props {
@@ -115,11 +117,8 @@ export default function VariosNotifications({ notifications, canManage }: Props)
                         </div>
                     ) : (
                         <ul className="space-y-3">
-                            {notifications.map((n) => (
-                                <li
-                                    key={n.id}
-                                    className="rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
-                                >
+                            {notifications.map((n) => {
+                                const card = (
                                     <div className="flex gap-3">
                                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-100 dark:bg-primary-900/30">
                                             <BellAlertIcon className="w-5 h-5 text-primary-600 dark:text-primary-400" />
@@ -134,11 +133,28 @@ export default function VariosNotifications({ notifications, canManage }: Props)
                                             <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
                                                 {formatTimeAgo(n.created_at)}
                                                 {n.author?.name && ` · ${n.author.name}`}
+                                                {n.kind === 'inbox' && ' · Pessoal'}
                                             </p>
                                         </div>
                                     </div>
-                                </li>
-                            ))}
+                                );
+                                const wrapClass =
+                                    'rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors block';
+                                if (n.kind === 'inbox' && n.href) {
+                                    return (
+                                        <li key={n.id}>
+                                            <a href={n.href} className={wrapClass}>
+                                                {card}
+                                            </a>
+                                        </li>
+                                    );
+                                }
+                                return (
+                                    <li key={n.id} className={wrapClass}>
+                                        {card}
+                                    </li>
+                                );
+                            })}
                         </ul>
                     )}
                 </section>
