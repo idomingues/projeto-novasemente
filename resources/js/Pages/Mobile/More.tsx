@@ -36,7 +36,7 @@ const items = [
     },
     { name: 'Fotos', description: 'Galeria em breve', route: 'mobile.fotos', icon: PhotoIcon },
     { name: 'Localização', description: 'Endereço e mapa da igreja', route: 'mobile.location', icon: MapPinIcon },
-    { name: 'Acervo', description: 'Playlists do YouTube da Nova Semente', route: 'acervo.index', icon: PlayCircleIcon },
+    { name: 'Acervo', description: 'Playlists do YouTube da Nova Semente', route: 'mobile.acervo', icon: PlayCircleIcon },
     { name: 'Fale conosco', description: 'E-mail, redes e WhatsApp', route: 'mobile.contact', icon: PhoneIcon },
     { name: 'Notificações', description: 'Avisos de eventos e notícias', route: 'varios.notifications', icon: BellAlertIcon },
     { name: 'Suporte', description: 'Problema, sugestão ou elogio', route: 'mobile.support.index', icon: ChatBubbleLeftRightIcon },

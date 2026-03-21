@@ -121,6 +121,8 @@ export default function RolesIndex({ roles, permissions }: Props) {
                                                     ? 'Eventos'
                                                     : group === 'escalas'
                                                     ? 'Escalas'
+                                                    : group === 'support'
+                                                    ? 'Suporte'
                                                     : group === 'roles'
                                                     ? 'Perfis'
                                                     : group

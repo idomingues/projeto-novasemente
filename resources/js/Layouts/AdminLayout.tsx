@@ -5,6 +5,7 @@ import Topbar from '@/Components/Topbar';
 import FlashMessages from '@/Components/FlashMessages';
 import MobileBottomNav from '@/Components/MobileBottomNav';
 import { adminSidebarRoutePermissions } from '@/constants/adminSidebarPermissions';
+import AppVersionTrigger from '@/Components/AppVersionTrigger';
 
 export default function AdminLayout({ children }: PropsWithChildren) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -28,6 +29,12 @@ export default function AdminLayout({ children }: PropsWithChildren) {
                         {children}
                     </div>
                 </main>
+
+                <div className="fixed bottom-20 left-0 right-0 z-30 flex justify-center pointer-events-none md:justify-start md:left-72 md:right-auto md:px-4">
+                    <div className="pointer-events-auto">
+                        <AppVersionTrigger />
+                    </div>
+                </div>
 
                 {/* Barra inferior: sempre visível (visitantes + logados), para o admin pré-visualizar o app; no md+ com sidebar, só na coluna principal */}
                 <MobileBottomNav insetForSidebar={isAuthenticated} />

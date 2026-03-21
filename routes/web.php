@@ -41,8 +41,7 @@ Route::get('/mais', [\App\Http\Controllers\MoreController::class, 'index'])->nam
 Route::get('/varios/escala', [VariosController::class, 'schedule'])->name('varios.schedule');
 Route::get('/varios/servicos', [VariosController::class, 'services'])->name('varios.services');
 Route::get('/varios/classe-comecos', [VariosController::class, 'classeComecos'])->name('varios.classe-comecos');
-Route::get('/varios/acervo', fn () => redirect()->route('acervo.index'))->name('varios.acervo');
-Route::get('/acervo', [AcervoController::class, 'index'])->name('acervo.index');
+Route::get('/varios/acervo', fn () => redirect()->route('mobile.acervo'))->name('varios.acervo');
 Route::get('/varios/contato', [VariosController::class, 'contact'])->name('varios.contact');
 Route::get('/varios/notificacoes', [VariosController::class, 'notifications'])->name('varios.notifications');
 Route::get('/pedidos-oracao', [PrayerRequestController::class, 'index'])->name('prayer.index');
@@ -179,9 +178,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/services', function () {
         return Inertia::render('Dashboard');
     })->name('services.index');
+    Route::get('/acervo', [AcervoController::class, 'index'])->name('acervo.index')->middleware('permission:music.manage');
     Route::get('/settings', function () {
         return Inertia::render('Settings/Index');
-    })->name('settings.index');
+    })->name('settings.index')->middleware('role:admin|super_admin');
     Route::post('/acervo', [AcervoController::class, 'store'])->name('acervo.store')->middleware('permission:music.manage');
     Route::put('/acervo/{acervo}', [AcervoController::class, 'update'])->name('acervo.update')->middleware('permission:music.manage');
     Route::delete('/acervo/{acervo}', [AcervoController::class, 'destroy'])->name('acervo.destroy')->middleware('permission:music.manage');
@@ -190,16 +190,28 @@ Route::middleware('auth')->group(function () {
     Route::post('/notifications/inbox/read', [MobileController::class, 'markInboxNotificationRead'])
         ->name('notifications.inbox.read');
 
-    // Suporte (Admin)
-    Route::get('/suporte', [SupportAdminController::class, 'index'])->name('support.index');
-    Route::post('/suporte', [SupportAdminController::class, 'store'])->name('support.store');
-    Route::patch('/suporte/{token}', [SupportAdminController::class, 'update'])->name('support.update');
-    Route::delete('/suporte/{token}', [SupportAdminController::class, 'destroy'])->name('support.destroy');
-    Route::get('/suporte/{token}', [SupportAdminController::class, 'show'])->name('support.show');
+    // Suporte (Admin) — permissões dedicadas; item «A desenvolver» só admin/super_admin
+    Route::get('/suporte', [SupportAdminController::class, 'index'])
+        ->name('support.index')
+        ->middleware('permission:support.view|support.manage');
+    Route::post('/suporte', [SupportAdminController::class, 'store'])
+        ->name('support.store')
+        ->middleware('role:admin|super_admin');
+    Route::patch('/suporte/{token}', [SupportAdminController::class, 'update'])
+        ->name('support.update')
+        ->middleware('permission:support.manage');
+    Route::delete('/suporte/{token}', [SupportAdminController::class, 'destroy'])
+        ->name('support.destroy')
+        ->middleware('permission:support.manage');
+    Route::get('/suporte/{token}', [SupportAdminController::class, 'show'])
+        ->name('support.show')
+        ->middleware('permission:support.view|support.manage');
     Route::post('/suporte/{token}/messages', [SupportAdminController::class, 'sendMessage'])
-        ->name('support.messages.store');
+        ->name('support.messages.store')
+        ->middleware('permission:support.manage');
     Route::patch('/suporte/{token}/close', [SupportAdminController::class, 'closeTicket'])
-        ->name('support.close');
+        ->name('support.close')
+        ->middleware('permission:support.manage');
 
     // Versões do App (Admin)
     Route::get('/app-versions', [AppVersionController::class, 'index'])->name('app-versions.index');

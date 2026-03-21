@@ -18,6 +18,16 @@ class SupportAdminController extends Controller
         return $user->hasRole('admin') || $user->hasRole('super_admin');
     }
 
+    private function canViewSupport(User $user): bool
+    {
+        return $user->hasAnyPermission(['support.view', 'support.manage']);
+    }
+
+    private function canManageSupport(User $user): bool
+    {
+        return $user->hasPermissionTo('support.manage');
+    }
+
     private function typeLabel(string $type): string
     {
         return match ($type) {
@@ -54,9 +64,9 @@ class SupportAdminController extends Controller
     }
 
     /**
-     * @return array{ticket: array<string, mixed>, messages: array<int, array<string, mixed>>, supportUpdateUrl: string, supportDestroyUrl: string, supportCloseUrl: string, supportMessageStoreUrl: string}
+     * @return array{ticket: array<string, mixed>, messages: array<int, array<string, mixed>>, supportUpdateUrl: string, supportDestroyUrl: string, supportCloseUrl: string, supportMessageStoreUrl: string, canManageTickets: bool}
      */
-    private function ticketShowPayload(AppSupportTicket $ticket): array
+    private function ticketShowPayload(AppSupportTicket $ticket, User $user): array
     {
         $messages = AppSupportMessage::query()
             ->where('ticket_id', $ticket->id)
@@ -94,13 +104,14 @@ class SupportAdminController extends Controller
             'supportDestroyUrl' => route('support.destroy', ['token' => $publicToken]),
             'supportCloseUrl' => route('support.close', ['token' => $publicToken]),
             'supportMessageStoreUrl' => route('support.messages.store', ['token' => $publicToken]),
+            'canManageTickets' => $this->canManageSupport($user),
         ];
     }
 
     public function index(Request $request): Response
     {
         $user = $request->user();
-        abort_unless($user && $this->isAdmin($user), 403);
+        abort_unless($user && $this->canViewSupport($user), 403);
 
         $tickets = AppSupportTicket::query()
             ->with('user:id,name')
@@ -128,7 +139,7 @@ class SupportAdminController extends Controller
         if (is_string($modalToken) && $modalToken !== '') {
             $modalTicket = AppSupportTicket::query()->where('public_token', $modalToken)->first();
             if ($modalTicket) {
-                $modalDetail = $this->ticketShowPayload($modalTicket);
+                $modalDetail = $this->ticketShowPayload($modalTicket, $user);
             }
         }
 
@@ -137,23 +148,24 @@ class SupportAdminController extends Controller
             'devItemStoreUrl' => route('support.store'),
             'supportIndexUrl' => route('support.index'),
             'modalDetail' => $modalDetail,
+            'canCreateDevItem' => $this->isAdmin($user),
         ]);
     }
 
     public function show(Request $request, string $token): Response
     {
         $user = $request->user();
-        abort_unless($user && $this->isAdmin($user), 403);
+        abort_unless($user && $this->canViewSupport($user), 403);
 
         $ticket = AppSupportTicket::query()->where('public_token', $token)->firstOrFail();
 
-        return Inertia::render('Support/Show', $this->ticketShowPayload($ticket));
+        return Inertia::render('Support/Show', $this->ticketShowPayload($ticket, $user));
     }
 
     public function update(Request $request, string $token): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user && $this->isAdmin($user), 403);
+        abort_unless($user && $this->canManageSupport($user), 403);
 
         $ticket = AppSupportTicket::query()->where('public_token', $token)->firstOrFail();
 
@@ -180,7 +192,7 @@ class SupportAdminController extends Controller
     public function destroy(Request $request, string $token): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user && $this->isAdmin($user), 403);
+        abort_unless($user && $this->canManageSupport($user), 403);
 
         $ticket = AppSupportTicket::query()->where('public_token', $token)->firstOrFail();
         $ticket->delete();
@@ -191,7 +203,7 @@ class SupportAdminController extends Controller
     public function sendMessage(Request $request, string $token): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user && $this->isAdmin($user), 403);
+        abort_unless($user && $this->canManageSupport($user), 403);
 
         $ticket = AppSupportTicket::query()->where('public_token', $token)->firstOrFail();
         abort_unless($ticket->status === 'open', 400);
@@ -214,7 +226,7 @@ class SupportAdminController extends Controller
     public function closeTicket(Request $request, string $token): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user && $this->isAdmin($user), 403);
+        abort_unless($user && $this->canManageSupport($user), 403);
 
         $ticket = AppSupportTicket::query()->where('public_token', $token)->firstOrFail();
         abort_unless($ticket->status === 'open', 400);

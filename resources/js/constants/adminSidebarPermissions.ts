@@ -15,16 +15,17 @@ export const adminSidebarRoutePermissions: Record<string, string[]> = {
     'culto.index': ['culto.manage'],
     'musica.index': ['music.manage'],
     'services.index': [],
+    /** Visibilidade real: só admin/super_admin via auth.canManageSettings no Sidebar. */
     'settings.index': [],
-    'support.index': ['notifications.manage'],
+    'support.index': ['support.view', 'support.manage'],
     'app-versions.index': ['notifications.manage'],
     'more.index': [],
     'varios.schedule': [],
     'varios.services': [],
     'varios.classe-comecos': [],
     'varios.acervo': [],
-    /** Mesma permissão de gestão de músicas — playlists do YouTube */
-    'acervo.index': [],
+    /** Mesma permissão de gestão de músicas / inserir itens no acervo */
+    'acervo.index': ['music.manage'],
     'varios.contact': [],
     'varios.notifications': [],
     'prayer.index': [],

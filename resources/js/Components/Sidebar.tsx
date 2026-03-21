@@ -38,7 +38,11 @@ interface ChurchForSwitch {
 
 export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPermissions = {} }: SidebarProps) {
     const { props } = usePage();
-    const auth = props.auth as { user?: { name?: string; email?: string; member?: { name: string } }; permissions?: string[] };
+    const auth = props.auth as {
+        user?: { name?: string; email?: string; member?: { name: string } };
+        permissions?: string[];
+        canManageSettings?: boolean;
+    };
     const currentChurch = (props as { currentChurch?: ChurchInfo | null }).currentChurch ?? null;
     const churchesForSwitch = (props as { churchesForSwitch?: ChurchForSwitch[] }).churchesForSwitch ?? [];
     const permissions: string[] = auth?.permissions ?? [];
@@ -73,7 +77,16 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
         return perms.some((p) => permissions.includes(p));
     };
 
-    const menuItems = isAuthenticated ? allMenuItems.filter((item) => canAccess(item.route)) : [];
+    const canManageSettings = auth?.canManageSettings === true;
+
+    const menuItems = isAuthenticated
+        ? allMenuItems.filter((item) => {
+              if (item.route === 'settings.index' && !canManageSettings) {
+                  return false;
+              }
+              return canAccess(item.route);
+          })
+        : [];
 
     return (
         <>

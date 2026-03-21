@@ -44,7 +44,6 @@ const navItems = [
             'varios.schedule',
             'varios.classe-comecos',
             'mobile.classe-comecos',
-            'acervo.index',
             'mobile.acervo',
             'musica.index',
             'mobile.musica',

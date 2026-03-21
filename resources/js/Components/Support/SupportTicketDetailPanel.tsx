@@ -36,6 +36,8 @@ export type SupportTicketDetailPanelProps = {
     supportDestroyUrl: string;
     supportCloseUrl: string;
     supportMessageStoreUrl: string;
+    /** Responder, editar, excluir e encerrar (painel admin). Por omissão: true. */
+    canManageTickets?: boolean;
     variant?: 'page' | 'modal';
     /** `details` / `chat`: só uma parte (modais com abas). `full`: página completa. */
     section?: 'full' | 'details' | 'chat';
@@ -53,6 +55,7 @@ export default function SupportTicketDetailPanel({
     supportDestroyUrl,
     supportCloseUrl,
     supportMessageStoreUrl,
+    canManageTickets = true,
     variant = 'page',
     section: sectionProp = 'full',
 }: SupportTicketDetailPanelProps) {
@@ -146,32 +149,34 @@ export default function SupportTicketDetailPanel({
                         {ticket.ownerLabel}
                     </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 shrink-0">
-                    <SecondaryButton
-                        type="button"
-                        className="inline-flex items-center gap-1.5"
-                        onClick={() => {
-                            setEditMessage(ticket.message);
-                            setShowEditModal(true);
-                        }}
-                    >
-                        <PencilIcon className="w-4 h-4" />
-                        Editar
-                    </SecondaryButton>
-                    {!isOpen && (
-                        <SecondaryButton type="button" onClick={reopenTicket}>
-                            Reabrir
+                {canManageTickets && (
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        <SecondaryButton
+                            type="button"
+                            className="inline-flex items-center gap-1.5"
+                            onClick={() => {
+                                setEditMessage(ticket.message);
+                                setShowEditModal(true);
+                            }}
+                        >
+                            <PencilIcon className="w-4 h-4" />
+                            Editar
                         </SecondaryButton>
-                    )}
-                    <SecondaryButton
-                        type="button"
-                        className="inline-flex items-center gap-1.5 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-950/40"
-                        onClick={deleteTicket}
-                    >
-                        <TrashIcon className="w-4 h-4" />
-                        Excluir
-                    </SecondaryButton>
-                </div>
+                        {!isOpen && (
+                            <SecondaryButton type="button" onClick={reopenTicket}>
+                                Reabrir
+                            </SecondaryButton>
+                        )}
+                        <SecondaryButton
+                            type="button"
+                            className="inline-flex items-center gap-1.5 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-950/40"
+                            onClick={deleteTicket}
+                        >
+                            <TrashIcon className="w-4 h-4" />
+                            Excluir
+                        </SecondaryButton>
+                    </div>
+                )}
             </div>
             )}
 
@@ -273,36 +278,38 @@ export default function SupportTicketDetailPanel({
                         )}
                     </div>
 
-                    <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/60">
-                        <form onSubmit={sendMessage} className="space-y-3">
-                            <div>
-                                <div className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">Escrever resposta</div>
-                                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 mb-2">
-                                    A mensagem segue para o histórico do chamado; use &quot;Encerrar&quot; quando o assunto estiver tratado.
-                                </p>
-                                <Textarea
-                                    value={data.content}
-                                    onChange={(e) => setData('content', e.target.value)}
-                                    rows={isModal ? 3 : 4}
-                                    placeholder="Escreva a sua mensagem ao utilizador…"
-                                    className="w-full"
-                                />
-                                <InputError message={errors.content} className="mt-1" />
-                            </div>
-                            <div className="flex flex-row flex-nowrap items-center justify-end gap-2 pt-1">
-                                <SecondaryButton
-                                    type="button"
-                                    className="h-9 shrink-0 px-3 text-xs tracking-wide"
-                                    onClick={() => setShowCloseModal(true)}
-                                >
-                                    Encerrar chamado
-                                </SecondaryButton>
-                                <PrimaryButton type="submit" disabled={processing} className="h-9 shrink-0 px-4 text-xs tracking-wide">
-                                    Enviar resposta
-                                </PrimaryButton>
-                            </div>
-                        </form>
-                    </div>
+                    {canManageTickets && (
+                        <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/60">
+                            <form onSubmit={sendMessage} className="space-y-3">
+                                <div>
+                                    <div className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">Escrever resposta</div>
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 mb-2">
+                                        A mensagem segue para o histórico do chamado; use &quot;Encerrar&quot; quando o assunto estiver tratado.
+                                    </p>
+                                    <Textarea
+                                        value={data.content}
+                                        onChange={(e) => setData('content', e.target.value)}
+                                        rows={isModal ? 3 : 4}
+                                        placeholder="Escreva a sua mensagem ao utilizador…"
+                                        className="w-full"
+                                    />
+                                    <InputError message={errors.content} className="mt-1" />
+                                </div>
+                                <div className="flex flex-row flex-nowrap items-center justify-end gap-2 pt-1">
+                                    <SecondaryButton
+                                        type="button"
+                                        className="h-9 shrink-0 px-3 text-xs tracking-wide"
+                                        onClick={() => setShowCloseModal(true)}
+                                    >
+                                        Encerrar chamado
+                                    </SecondaryButton>
+                                    <PrimaryButton type="submit" disabled={processing} className="h-9 shrink-0 px-4 text-xs tracking-wide">
+                                        Enviar resposta
+                                    </PrimaryButton>
+                                </div>
+                            </form>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -312,11 +319,13 @@ export default function SupportTicketDetailPanel({
                     <div className="mt-1 text-sm text-amber-900/90 dark:text-amber-200/90">
                         O chat fica indisponível. Descreva a solução e encerre o chamado.
                     </div>
-                    <div className="mt-4 flex justify-end">
-                        <SecondaryButton type="button" onClick={() => setShowCloseModal(true)}>
-                            Encerrar
-                        </SecondaryButton>
-                    </div>
+                    {canManageTickets && (
+                        <div className="mt-4 flex justify-end">
+                            <SecondaryButton type="button" onClick={() => setShowCloseModal(true)}>
+                                Encerrar
+                            </SecondaryButton>
+                        </div>
+                    )}
                 </div>
             )}
 

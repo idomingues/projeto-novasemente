@@ -28,9 +28,10 @@ interface Props {
     devItemStoreUrl: string;
     supportIndexUrl: string;
     modalDetail: ModalPayload | null;
+    canCreateDevItem?: boolean;
 }
 
-export default function SupportIndex({ tickets, devItemStoreUrl, supportIndexUrl, modalDetail }: Props) {
+export default function SupportIndex({ tickets, devItemStoreUrl, supportIndexUrl, modalDetail, canCreateDevItem = false }: Props) {
     const inertiaScrollOpts = { preserveScroll: true };
     const [modalTab, setModalTab] = useState<'detalhes' | 'chat'>('detalhes');
     const [createOpen, setCreateOpen] = useState(false);
@@ -105,9 +106,11 @@ export default function SupportIndex({ tickets, devItemStoreUrl, supportIndexUrl
                             Chamados da app e itens internos que a equipa vai desenvolver.
                         </p>
                     </div>
-                    <PrimaryButton type="button" onClick={openCreateModal} className="shrink-0">
-                        Novo item a desenvolver
-                    </PrimaryButton>
+                    {canCreateDevItem && (
+                        <PrimaryButton type="button" onClick={openCreateModal} className="shrink-0">
+                            Novo item a desenvolver
+                        </PrimaryButton>
+                    )}
                 </div>
 
                 {tickets.length === 0 ? (

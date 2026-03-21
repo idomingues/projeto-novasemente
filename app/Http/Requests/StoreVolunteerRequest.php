@@ -5,7 +5,6 @@ namespace App\Http\Requests;
 use App\Models\Member;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rules\Password;
 
 class StoreVolunteerRequest extends FormRequest
 {
@@ -37,7 +36,7 @@ class StoreVolunteerRequest extends FormRequest
             'app_role' => ['nullable', 'string', 'exists:roles,name'],
             'app_ministry_ids' => ['nullable', 'array'],
             'app_ministry_ids.*' => ['exists:ministries,id'],
-            'app_password' => ['nullable', 'confirmed', Password::defaults()],
+            'app_password' => ['nullable', 'string', 'max:255', 'confirmed'],
         ];
     }
 

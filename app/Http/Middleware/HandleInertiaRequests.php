@@ -6,6 +6,7 @@ use App\Models\AppVersion;
 use App\Models\Church;
 use App\Support\NotificationFeed;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -83,9 +84,32 @@ class HandleInertiaRequests extends Middleware
         $appName = ($currentChurch ? $currentChurch['name'] : null) ?? Church::where('active', true)->orderBy('name')->value('name') ?? config('app.name');
         $faviconUrl = ($currentChurch ? $currentChurch['logo_url'] : null) ?? $appLogoUrl;
 
+        $canManageSettings = $request->user()?->hasAnyRole(['admin', 'super_admin']) ?? false;
+
+        $appVersionHistory = [];
+        if (Schema::hasTable('app_versions')) {
+            try {
+                $appVersionHistory = AppVersion::query()
+                    ->orderByDesc('released_at')
+                    ->orderByDesc('id')
+                    ->limit(50)
+                    ->get()
+                    ->map(fn (AppVersion $v) => [
+                        'version' => $v->version,
+                        'releasedAt' => $v->released_at?->toIso8601String(),
+                        'notes' => $v->notes,
+                    ])
+                    ->values()
+                    ->all();
+            } catch (\Throwable) {
+                $appVersionHistory = [];
+            }
+        }
+
         return [
             ...parent::share($request),
             'appVersion' => AppVersion::latestLabel(),
+            'appVersionHistory' => $appVersionHistory,
             'appUrl' => $request->getSchemeAndHttpHost(),
             'appLogoUrl' => $appLogoUrl,
             'appName' => $appName,
@@ -95,6 +119,7 @@ class HandleInertiaRequests extends Middleware
                 'permissions' => $request->user() ? $request->user()->getAllPermissions()->pluck('name')->toArray() : [],
                 'roleLabel' => $roleLabel,
                 'canAccessAdminMenu' => $canAccessAdminMenu,
+                'canManageSettings' => $canManageSettings,
             ],
             'currentChurch' => $currentChurch,
             'churchesForSwitch' => $churchesForSwitch,

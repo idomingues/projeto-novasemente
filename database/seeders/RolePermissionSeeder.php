@@ -2,10 +2,10 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\Models\Permission;
 use App\Models\User;
+use Illuminate\Database\Seeder;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class RolePermissionSeeder extends Seeder
 {
@@ -41,6 +41,8 @@ class RolePermissionSeeder extends Seeder
             'culto.manage',
             'music.manage',
             'notifications.manage',
+            'support.view',
+            'support.manage',
             'roles.manage',
         ];
 
@@ -77,6 +79,8 @@ class RolePermissionSeeder extends Seeder
                 'culto.manage',
                 'music.manage',
                 'notifications.manage',
+                'support.view',
+                'support.manage',
                 'roles.manage',
             ],
             'secretaria' => [
@@ -101,6 +105,8 @@ class RolePermissionSeeder extends Seeder
                 'culto.manage',
                 'music.manage',
                 'notifications.manage',
+                'support.view',
+                'support.manage',
             ],
             'pastor' => [
                 'members.view',
@@ -116,6 +122,8 @@ class RolePermissionSeeder extends Seeder
                 'culto.manage',
                 'music.manage',
                 'notifications.manage',
+                'support.view',
+                'support.manage',
             ],
             'financeiro' => [
                 'finance.view',
@@ -150,4 +158,3 @@ class RolePermissionSeeder extends Seeder
         }
     }
 }
-

@@ -20,6 +20,17 @@ use Spatie\Permission\Models\Role;
 
 class VolunteerController extends Controller
 {
+    /**
+     * Garante que só um registo em volunteers use este user_id (o voluntário atual).
+     */
+    private function releaseVolunteerUserIdForOtherVolunteers(int $userId, Volunteer $volunteer): void
+    {
+        Volunteer::query()
+            ->where('user_id', $userId)
+            ->where('id', '!=', $volunteer->id)
+            ->update(['user_id' => null]);
+    }
+
     private function applyAppProfile(User $user, Request $request): void
     {
         $appRole = $request->input('app_role');
@@ -130,6 +141,7 @@ class VolunteerController extends Controller
                 ->first();
         }
         if ($existingUser) {
+            $this->releaseVolunteerUserIdForOtherVolunteers((int) $existingUser->id, $volunteer);
             $volunteer->forceFill(['user_id' => $existingUser->id])->save();
             if ($resolvedEmail !== '') {
                 $existingUser->email = $resolvedEmail;
@@ -152,14 +164,17 @@ class VolunteerController extends Controller
             return;
         }
 
-        $user = User::create([
-            'name' => trim($name),
-            'email' => strtolower(trim($email)),
-            'password' => $password,
-            'member_id' => $volunteer->member_id,
-        ]);
+        // Sem evento "created": evita ensureVolunteerProfile() criar outro volunteer com o mesmo user_id.
+        $user = User::withoutEvents(function () use ($name, $email, $password, $volunteer) {
+            return User::create([
+                'name' => trim($name),
+                'email' => strtolower(trim($email)),
+                'password' => $password,
+                'member_id' => $volunteer->member_id,
+            ]);
+        });
         $this->applyAppProfile($user, $request);
-
+        $this->releaseVolunteerUserIdForOtherVolunteers((int) $user->id, $volunteer);
         $volunteer->forceFill(['user_id' => $user->id])->save();
     }
 
@@ -171,6 +186,7 @@ class VolunteerController extends Controller
 
         $existing = $this->resolveExistingUserForVolunteer($volunteer);
         if ($existing) {
+            $this->releaseVolunteerUserIdForOtherVolunteers((int) $existing->id, $volunteer);
             $volunteer->forceFill(['user_id' => $existing->id])->save();
 
             return $existing;
@@ -182,13 +198,16 @@ class VolunteerController extends Controller
             return null;
         }
 
-        $user = User::create([
-            'name' => $name,
-            'email' => null,
-            'password' => Str::random(64),
-            'member_id' => $volunteer->member_id,
-        ]);
+        $user = User::withoutEvents(function () use ($name, $volunteer) {
+            return User::create([
+                'name' => $name,
+                'email' => null,
+                'password' => Str::random(64),
+                'member_id' => $volunteer->member_id,
+            ]);
+        });
 
+        $this->releaseVolunteerUserIdForOtherVolunteers((int) $user->id, $volunteer);
         $volunteer->forceFill(['user_id' => $user->id])->save();
 
         return $user;
