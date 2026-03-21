@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class InventoryItem extends Model
 {
@@ -28,6 +30,11 @@ class InventoryItem extends Model
         'acquisition_value',
         'current_value',
         'status',
+        'photo_path',
+    ];
+
+    protected $appends = [
+        'photo_url',
     ];
 
     protected $casts = [
@@ -44,5 +51,16 @@ class InventoryItem extends Model
     public function movements(): HasMany
     {
         return $this->hasMany(InventoryMovement::class)->orderByDesc('created_at');
+    }
+
+    protected function photoUrl(): Attribute
+    {
+        return Attribute::get(function (): ?string {
+            if (! $this->photo_path) {
+                return null;
+            }
+
+            return Storage::disk('public')->url($this->photo_path);
+        });
     }
 }

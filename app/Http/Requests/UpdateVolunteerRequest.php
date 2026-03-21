@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Models\Member;
 use App\Models\User;
 use App\Models\Volunteer;
+use App\Support\VolunteerContactDuplicateChecker;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateVolunteerRequest extends FormRequest
@@ -108,12 +109,57 @@ class UpdateVolunteerRequest extends FormRequest
                 );
             }
 
+            /** @var Volunteer|null $volunteer */
+            $volunteer = $this->route('volunteer');
+            $excludeVolunteerId = $volunteer?->id;
+            $excludeUserId = $volunteer?->user_id;
+            $excludeMemberId = null;
+            if ($this->boolean('is_member') && $this->filled('member_id')) {
+                $excludeMemberId = (int) $this->input('member_id');
+            }
+
+            $emailForContact = $this->input('email');
+            if ($this->boolean('is_member') && $this->filled('member_id')) {
+                $memberRow = Member::query()->find($this->input('member_id'));
+                if (($emailForContact === null || trim((string) $emailForContact) === '') && $memberRow) {
+                    $emailForContact = $memberRow->email;
+                }
+            }
+            $emailNorm = VolunteerContactDuplicateChecker::normalizeEmail(is_string($emailForContact) ? $emailForContact : null);
+            if ($emailNorm !== null) {
+                if ($msg = VolunteerContactDuplicateChecker::emailConflicts($this, $emailNorm, $excludeVolunteerId, $excludeMemberId, $excludeUserId)) {
+                    $validator->errors()->add('email', $msg);
+                }
+            }
+
+            $phoneForContact = $this->input('phone');
+            if ($this->boolean('is_member') && $this->filled('member_id')) {
+                $memberRow = Member::query()->find($this->input('member_id'));
+                if (($phoneForContact === null || trim((string) $phoneForContact) === '') && $memberRow) {
+                    $phoneForContact = $memberRow->phone;
+                }
+            }
+            $phoneNorm = VolunteerContactDuplicateChecker::normalizePhone(is_string($phoneForContact) ? $phoneForContact : null);
+            if ($phoneNorm !== null) {
+                if ($msg = VolunteerContactDuplicateChecker::phoneConflicts($this, $phoneNorm, $excludeVolunteerId, $excludeMemberId)) {
+                    $validator->errors()->add('phone', $msg);
+                }
+            }
+
+            if ($this->boolean('enable_app_access')) {
+                $preferredAppEmail = $this->input('app_email');
+                $appNorm = VolunteerContactDuplicateChecker::normalizeEmail(is_string($preferredAppEmail) ? trim($preferredAppEmail) : null);
+                if ($appNorm !== null && $appNorm !== $emailNorm) {
+                    if ($msg = VolunteerContactDuplicateChecker::appEmailConflicts($this, $appNorm, $excludeVolunteerId, $excludeMemberId, $excludeUserId)) {
+                        $validator->errors()->add('app_email', $msg);
+                    }
+                }
+            }
+
             if (! $this->boolean('enable_app_access')) {
                 return;
             }
 
-            /** @var Volunteer|null $volunteer */
-            $volunteer = $this->route('volunteer');
             if ($volunteer?->user_id) {
                 return;
             }

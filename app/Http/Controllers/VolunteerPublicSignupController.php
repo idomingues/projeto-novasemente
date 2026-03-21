@@ -3,9 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Church;
+use App\Models\Member;
 use App\Models\Ministry;
 use App\Models\User;
+use App\Models\Volunteer;
 use App\Models\VolunteerSelfSignupToken;
+use App\Support\VolunteerContactDuplicateChecker;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,11 +17,143 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class VolunteerPublicSignupController extends Controller
 {
+    /**
+     * Cadastro Voluntário público (sem token na URL): usa a primeira igreja ativa e o token guardado na base.
+     */
+    public function createPublicPage(): RedirectResponse|Response
+    {
+        if (! Schema::hasTable('volunteer_self_signup_tokens')) {
+            return redirect()->route('login')->with('error', 'Cadastro de voluntários ainda não está disponível. Contacte a equipa.');
+        }
+
+        $church = Church::query()->where('active', true)->orderBy('name')->first();
+        if (! $church) {
+            return redirect()->route('login')->with('error', 'Nenhuma igreja ativa.');
+        }
+
+        $record = VolunteerSelfSignupToken::query()->firstOrCreate(
+            ['church_id' => $church->id],
+            ['token' => (string) Str::uuid()]
+        );
+
+        $ministries = Ministry::query()
+            ->where('church_id', $church->id)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return Inertia::render('Volunteers/PublicSignup', [
+            'token' => $record->token,
+            'churchName' => $church->name,
+            'churchLogoUrl' => $church->logo_url,
+            'ministries' => $ministries,
+        ]);
+    }
+
+    /**
+     * Verifica na saída do sobrenome se já existe nome completo semelhante cadastrado nesta igreja.
+     */
+    public function checkDuplicate(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'token' => ['required', 'string'],
+            'first_name' => ['nullable', 'string', 'max:100'],
+            'last_name' => ['nullable', 'string', 'max:155'],
+            'email' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:50'],
+        ]);
+
+        if (! Schema::hasTable('volunteer_self_signup_tokens')) {
+            return response()->json(['duplicate' => false, 'email_taken' => false, 'phone_taken' => false]);
+        }
+
+        $record = VolunteerSelfSignupToken::query()->where('token', $validated['token'])->first();
+        if (! $record) {
+            return response()->json(['duplicate' => false, 'email_taken' => false, 'phone_taken' => false, 'invalid_token' => true]);
+        }
+
+        $churchId = $record->church_id;
+
+        $nameDup = false;
+        $fn = isset($validated['first_name']) ? trim((string) $validated['first_name']) : '';
+        $ln = isset($validated['last_name']) ? trim((string) $validated['last_name']) : '';
+        if ($fn !== '' && $ln !== '') {
+            $normalized = $this->normalizedFullName($fn, $ln);
+            if (mb_strlen($normalized) >= 3) {
+                $memberDup = Member::query()
+                    ->where('church_id', $churchId)
+                    ->whereRaw('LOWER(TRIM(COALESCE(name, ""))) = ?', [$normalized])
+                    ->exists();
+
+                $userDup = User::query()
+                    ->whereRaw('LOWER(TRIM(COALESCE(name, ""))) = ?', [$normalized])
+                    ->exists();
+
+                $volunteerDup = Volunteer::query()
+                    ->where(function ($q) use ($normalized, $churchId) {
+                        $q->whereHas('member', function ($m) use ($normalized, $churchId) {
+                            $m->where('church_id', $churchId)
+                                ->whereRaw('LOWER(TRIM(COALESCE(members.name, ""))) = ?', [$normalized]);
+                        })->orWhere(function ($q) use ($normalized, $churchId) {
+                            $q->whereNull('member_id')
+                                ->whereHas('ministries', fn ($m) => $m->where('church_id', $churchId))
+                                ->whereRaw('LOWER(TRIM(COALESCE(volunteers.name, ""))) = ?', [$normalized]);
+                        });
+                    })
+                    ->exists();
+
+                $nameDup = $memberDup || $userDup || $volunteerDup;
+            }
+        }
+
+        $emailTaken = false;
+        $emailMessage = null;
+        $emailNorm = VolunteerContactDuplicateChecker::normalizeEmail(isset($validated['email']) ? (string) $validated['email'] : null);
+        if ($emailNorm !== null) {
+            if (User::query()->whereRaw('LOWER(TRIM(COALESCE(email, ""))) = ?', [$emailNorm])->exists()) {
+                $emailTaken = true;
+                $emailMessage = 'Este e-mail já está registado.';
+            } elseif ($msg = VolunteerContactDuplicateChecker::emailConflictsMemberVolunteerForChurch($churchId, $emailNorm)) {
+                $emailTaken = true;
+                $emailMessage = $msg;
+            }
+        }
+
+        $phoneTaken = false;
+        $phoneMessage = null;
+        $phoneNorm = VolunteerContactDuplicateChecker::normalizePhone(isset($validated['phone']) ? (string) $validated['phone'] : null);
+        if ($phoneNorm !== null) {
+            if ($msg = VolunteerContactDuplicateChecker::phoneConflictsForChurch($churchId, $phoneNorm)) {
+                $phoneTaken = true;
+                $phoneMessage = $msg;
+            }
+        }
+
+        $dup = $nameDup || $emailTaken || $phoneTaken;
+
+        return response()->json([
+            'duplicate' => $nameDup,
+            'email_taken' => $emailTaken,
+            'phone_taken' => $phoneTaken,
+            'message' => $nameDup ? 'Já existe um cadastro com este nome completo nesta igreja. Verifique os dados ou contacte a secretaria.' : null,
+            'email_message' => $emailMessage,
+            'phone_message' => $phoneMessage,
+            'invalid_token' => false,
+        ]);
+    }
+
+    private function normalizedFullName(string $first, string $last): string
+    {
+        $t = trim($first.' '.$last);
+
+        return mb_strtolower(preg_replace('/\s+/u', ' ', $t));
+    }
+
     public function create(Request $request): RedirectResponse|Response
     {
         if (! Schema::hasTable('volunteer_self_signup_tokens')) {
@@ -65,19 +201,41 @@ class VolunteerPublicSignupController extends Controller
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'phone' => ['nullable', 'string', 'max:50'],
             'password' => ['required', 'confirmed', Password::defaults()],
-            'ministry_id' => ['required', 'exists:ministries,id'],
+            'ministry_ids' => ['required', 'array', 'min:1'],
+            'ministry_ids.*' => ['integer'],
         ]);
 
         $record = VolunteerSelfSignupToken::query()->where('token', $validated['token'])->firstOrFail();
-        $ministry = Ministry::query()->findOrFail((int) $validated['ministry_id']);
 
-        if ($ministry->church_id !== $record->church_id) {
-            abort(403);
+        $emailNorm = VolunteerContactDuplicateChecker::normalizeEmail($validated['email']);
+        if ($emailNorm !== null) {
+            if ($msg = VolunteerContactDuplicateChecker::emailConflictsMemberVolunteerForChurch($record->church_id, $emailNorm)) {
+                throw ValidationException::withMessages(['email' => [$msg]]);
+            }
+        }
+
+        $phoneNorm = VolunteerContactDuplicateChecker::normalizePhone($validated['phone'] ?? null);
+        if ($phoneNorm !== null) {
+            if ($msg = VolunteerContactDuplicateChecker::phoneConflictsForChurch($record->church_id, $phoneNorm)) {
+                throw ValidationException::withMessages(['phone' => [$msg]]);
+            }
+        }
+
+        $ministryIds = array_values(array_unique(array_map('intval', $validated['ministry_ids'])));
+        $allowedCount = Ministry::query()
+            ->where('church_id', $record->church_id)
+            ->whereIn('id', $ministryIds)
+            ->count();
+
+        if ($allowedCount !== count($ministryIds)) {
+            throw ValidationException::withMessages([
+                'ministry_ids' => ['Selecione apenas departamentos válidos desta igreja.'],
+            ]);
         }
 
         $name = trim($validated['first_name'].' '.$validated['last_name']);
 
-        $user = DB::transaction(function () use ($validated, $name, $ministry) {
+        $user = DB::transaction(function () use ($validated, $name, $ministryIds) {
             $user = User::create([
                 'name' => $name,
                 'email' => $validated['email'],
@@ -90,7 +248,7 @@ class VolunteerPublicSignupController extends Controller
                 $volunteer->forceFill([
                     'phone' => $validated['phone'] ?? null,
                 ])->save();
-                $volunteer->ministries()->sync([$ministry->id]);
+                $volunteer->ministries()->sync($ministryIds);
             }
 
             return $user;

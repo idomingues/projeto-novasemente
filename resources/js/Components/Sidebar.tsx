@@ -16,6 +16,7 @@ import {
     XMarkIcon,
     KeyIcon,
     ChatBubbleLeftRightIcon,
+    RectangleStackIcon,
 } from '@heroicons/react/24/outline';
 
 interface SidebarProps {
@@ -63,6 +64,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
         { name: 'Voluntários', route: 'volunteers.index', icon: UsersIcon },
         { name: 'Perfis', route: 'roles.index', icon: KeyIcon },
         { name: 'Salas', route: 'rooms.index', icon: BuildingOfficeIcon },
+        { name: 'Agendamento de salas', route: 'room-bookings.index', icon: RectangleStackIcon },
         { name: 'Inventário', route: 'inventory.index', icon: ArchiveBoxIcon },
         { name: 'Igrejas', route: 'churches.index', icon: BuildingOfficeIcon },
         { name: 'Configurações', route: 'settings.index', icon: Cog6ToothIcon },

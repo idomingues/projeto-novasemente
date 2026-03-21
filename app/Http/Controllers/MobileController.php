@@ -471,9 +471,9 @@ class MobileController extends Controller
         ];
 
         $localOffer = [
-            'pixKey' => 'novasemente.ap@adventistas.org',
+            'pixKey' => filled($church?->pix_key) ? trim((string) $church->pix_key) : 'novasemente.ap@adventistas.org',
             'merchantName' => $church?->name ?? 'Nova Semente',
-            'merchantCity' => filled($church?->city) ? (string) $church->city : 'BRASIL',
+            'merchantCity' => filled($church?->city) ? (string) $church->city : 'Brasília',
         ];
 
         return Inertia::render('Mobile/Offerings', [

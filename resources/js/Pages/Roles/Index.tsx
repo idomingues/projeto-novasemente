@@ -70,6 +70,7 @@ export default function RolesIndex({ roles, permissions }: Props) {
     const permissionLineLabel = (perm: string): string => {
         const custom: Record<string, string> = {
             'music.manage': 'Gerenciar (acervo, músicas e playlists)',
+            'rooms.schedule': 'Agendar salas (calendário e reservas)',
         };
         if (custom[perm]) {
             return custom[perm];

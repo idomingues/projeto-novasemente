@@ -62,6 +62,8 @@ export default function MobileOfferings({ donation, localOffer }: Props) {
     const hasUrl = Boolean(donationUrl);
     const hasPix = Boolean(donation?.pix_key);
     const hasOtherMethods = hasPix || hasUrl;
+    /** Mesma chave do painel (ofertas) para copiar chave e gerar PIX Copia e Cola. */
+    const pixKeyForOffer = donation.pix_key?.trim() || localOffer.pixKey;
 
     const generateLocalPix = () => {
         setAmountError(null);
@@ -76,7 +78,7 @@ export default function MobileOfferings({ donation, localOffer }: Props) {
             return;
         }
         const payload = buildPixCopyPaste({
-            pixKey: localOffer.pixKey,
+            pixKey: pixKeyForOffer,
             amount,
             merchantName: localOffer.merchantName,
             merchantCity: localOffer.merchantCity,
@@ -134,7 +136,7 @@ export default function MobileOfferings({ donation, localOffer }: Props) {
                         Informe o valor da sua oferta. Geramos o código <strong className="font-medium text-zinc-800 dark:text-zinc-200">PIX Copia e Cola</strong> para você colar no app do banco.
                     </p>
                     <p className="text-xs text-zinc-500 dark:text-zinc-500 mb-3 break-all">
-                        Chave PIX: <span className="font-mono text-zinc-700 dark:text-zinc-300">{localOffer.pixKey}</span>
+                        Chave PIX: <span className="font-mono text-zinc-700 dark:text-zinc-300">{pixKeyForOffer}</span>
                     </p>
                     <div className="space-y-3">
                         <div>

@@ -18,6 +18,7 @@ use App\Http\Controllers\NewsController;
 use App\Http\Controllers\PrayerRequestController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\RoomBookingController;
 use App\Http\Controllers\SupportAdminController;
 use App\Http\Controllers\VariosController;
 use App\Http\Controllers\VolunteerController;
@@ -87,10 +88,14 @@ Route::patch('/mobile/suporte/ticket/{token}/close', [MobileSupportController::c
 
 Route::get('/musica', [MusicaController::class, 'index'])->name('musica.index');
 
+Route::get('/cadastro-voluntario', [VolunteerPublicSignupController::class, 'createPublicPage'])->name('volunteers.public-signup.page');
 Route::get('/voluntario/cadastro', [VolunteerPublicSignupController::class, 'create'])->name('volunteers.self-signup');
 Route::post('/voluntario/cadastro', [VolunteerPublicSignupController::class, 'store'])
     ->middleware('throttle:10,1')
     ->name('volunteers.self-signup.store');
+Route::post('/voluntario/cadastro/check-duplicate', [VolunteerPublicSignupController::class, 'checkDuplicate'])
+    ->middleware('throttle:30,1')
+    ->name('volunteers.self-signup.check-duplicate');
 
 Route::middleware('auth')->group(function () {
     Route::post('/working-church', [\App\Http\Controllers\SetWorkingChurchController::class, '__invoke'])->name('working-church.store');
@@ -148,12 +153,19 @@ Route::middleware('auth')->group(function () {
     Route::post('/rooms', [\App\Http\Controllers\RoomController::class, 'store'])->name('rooms.store')->middleware('permission:rooms.manage');
     Route::put('/rooms/{room}', [\App\Http\Controllers\RoomController::class, 'update'])->name('rooms.update')->middleware('permission:rooms.manage');
     Route::delete('/rooms/{room}', [\App\Http\Controllers\RoomController::class, 'destroy'])->name('rooms.destroy')->middleware('permission:rooms.manage');
+    // Agendamento de salas (calendário + reservas)
+    Route::get('/salas/agenda', [RoomBookingController::class, 'index'])->name('room-bookings.index')->middleware('permission:rooms.view|rooms.manage|rooms.schedule');
+    Route::post('/salas/agenda', [RoomBookingController::class, 'store'])->name('room-bookings.store')->middleware('permission:rooms.schedule');
+    Route::put('/salas/agenda/{roomBooking}', [RoomBookingController::class, 'update'])->name('room-bookings.update')->middleware('permission:rooms.schedule|rooms.manage');
+    Route::delete('/salas/agenda/{roomBooking}', [RoomBookingController::class, 'destroy'])->name('room-bookings.destroy')->middleware('permission:rooms.schedule|rooms.manage');
     // Inventário — itens com código de barras, busca e histórico
     Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index')->middleware('permission:inventory.view|inventory.manage');
+    Route::get('/inventory/lookup', [InventoryController::class, 'lookup'])->name('inventory.lookup')->middleware('permission:inventory.view|inventory.manage');
     Route::get('/inventory/{item}/history', [InventoryController::class, 'history'])->name('inventory.history')->middleware('permission:inventory.view|inventory.manage');
     Route::post('/inventory', [InventoryController::class, 'store'])->name('inventory.store')->middleware('permission:inventory.manage');
     Route::put('/inventory/{item}', [InventoryController::class, 'update'])->name('inventory.update')->middleware('permission:inventory.manage');
     Route::delete('/inventory/{item}', [InventoryController::class, 'destroy'])->name('inventory.destroy')->middleware('permission:inventory.manage');
+    Route::get('/mobile/inventario', [InventoryController::class, 'mobile'])->name('mobile.inventory')->middleware('permission:inventory.view|inventory.manage');
     // Usuários e convites
     Route::get('/users', [\App\Http\Controllers\UserController::class, 'index'])->name('users.index')->middleware('permission:users.view|users.manage');
     Route::post('/users', [\App\Http\Controllers\UserController::class, 'store'])->name('users.store')->middleware('permission:users.manage');

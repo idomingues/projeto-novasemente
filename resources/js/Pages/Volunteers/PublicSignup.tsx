@@ -5,7 +5,8 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { FormEventHandler } from 'react';
+import axios from 'axios';
+import { FormEventHandler, useCallback, useRef, useState } from 'react';
 
 interface Ministry {
     id: number;
@@ -28,19 +29,95 @@ export default function PublicSignup({ token, churchName, churchLogoUrl, ministr
         phone: '',
         password: '',
         password_confirmation: '',
-        ministry_id: '' as number | '',
+        ministry_ids: [] as number[],
     });
+
+    const [nameDuplicateHint, setNameDuplicateHint] = useState<string | null>(null);
+    const [emailDuplicateHint, setEmailDuplicateHint] = useState<string | null>(null);
+    const [phoneDuplicateHint, setPhoneDuplicateHint] = useState<string | null>(null);
+    const checkDuplicateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const runDuplicateCheck = useCallback(async () => {
+        const fn = data.first_name.trim();
+        const ln = data.last_name.trim();
+        try {
+            const res = await axios.post<{
+                duplicate: boolean;
+                email_taken?: boolean;
+                phone_taken?: boolean;
+                message?: string | null;
+                email_message?: string | null;
+                phone_message?: string | null;
+            }>(route('volunteers.self-signup.check-duplicate'), {
+                token: data.token,
+                first_name: fn,
+                last_name: ln,
+                email: data.email.trim(),
+                phone: data.phone.trim(),
+            });
+            if (fn.length >= 1 && ln.length >= 1 && res.data.duplicate && res.data.message) {
+                setNameDuplicateHint(res.data.message);
+            } else {
+                setNameDuplicateHint(null);
+            }
+            if (res.data.email_taken && res.data.email_message) {
+                setEmailDuplicateHint(res.data.email_message);
+            } else {
+                setEmailDuplicateHint(null);
+            }
+            if (res.data.phone_taken && res.data.phone_message) {
+                setPhoneDuplicateHint(res.data.phone_message);
+            } else {
+                setPhoneDuplicateHint(null);
+            }
+        } catch {
+            setNameDuplicateHint(null);
+            setEmailDuplicateHint(null);
+            setPhoneDuplicateHint(null);
+        }
+    }, [data.token, data.first_name, data.last_name, data.email, data.phone]);
+
+    const scheduleDuplicateCheck = () => {
+        if (checkDuplicateTimer.current) {
+            clearTimeout(checkDuplicateTimer.current);
+        }
+        checkDuplicateTimer.current = setTimeout(() => {
+            void runDuplicateCheck();
+        }, 250);
+    };
+
+    const onLastNameBlur = () => {
+        scheduleDuplicateCheck();
+    };
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
+        if (nameDuplicateHint || emailDuplicateHint || phoneDuplicateHint) {
+            return;
+        }
+        if (data.ministry_ids.length === 0) {
+            return;
+        }
         post(route('volunteers.self-signup.store'));
+    };
+
+    const toggleMinistry = (id: number) => {
+        const cur = data.ministry_ids;
+        if (cur.includes(id)) {
+            setData(
+                'ministry_ids',
+                cur.filter((x) => x !== id)
+            );
+        } else {
+            setData('ministry_ids', [...cur, id]);
+        }
     };
 
     const noMinistries = ministries.length === 0;
 
     return (
         <GuestLayout>
-            <Head title={`Voluntário — ${churchName}`} />
+            <Head title={`Cadastro Voluntário — ${churchName}`} />
 
             <div className="min-h-screen w-full flex flex-col items-center justify-center px-4 py-12 sm:py-16">
                 <div className="w-full max-w-md">
@@ -52,11 +129,11 @@ export default function PublicSignup({ token, churchName, churchLogoUrl, ministr
                             />
                         </Link>
                         <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400">
-                            Cadastro de voluntário
+                            Cadastro Voluntário
                         </p>
                         <h1 className="mt-2 text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">{churchName}</h1>
                         <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
-                            Escolha o departamento em que pretende servir e conclua os dados para aceder ao app.
+                            Escolha um ou mais departamentos em que pretende servir e conclua os dados para aceder ao app.
                         </p>
                     </div>
 
@@ -89,32 +166,42 @@ export default function PublicSignup({ token, churchName, churchLogoUrl, ministr
                                         value={data.last_name}
                                         className="mt-1 block w-full"
                                         autoComplete="family-name"
-                                        onChange={(e) => setData('last_name', e.target.value)}
+                                        onChange={(e) => {
+                                            setData('last_name', e.target.value);
+                                            setNameDuplicateHint(null);
+                                        }}
+                                        onBlur={onLastNameBlur}
                                         required
                                     />
                                     <InputError message={errors.last_name} className="mt-1" />
+                                    {nameDuplicateHint && (
+                                        <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">{nameDuplicateHint}</p>
+                                    )}
                                 </div>
                             </div>
 
                             <div className="mt-4">
-                                <InputLabel htmlFor="ministry_id" value="Departamento" />
-                                <select
-                                    id="ministry_id"
-                                    value={data.ministry_id === '' ? '' : String(data.ministry_id)}
-                                    onChange={(e) =>
-                                        setData('ministry_id', e.target.value === '' ? '' : Number(e.target.value))
-                                    }
-                                    className="mt-1 block w-full min-h-[2.75rem] rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white"
-                                    required
-                                >
-                                    <option value="">Selecione o departamento…</option>
-                                    {ministries.map((m) => (
-                                        <option key={m.id} value={m.id}>
-                                            {m.name}
-                                        </option>
-                                    ))}
-                                </select>
-                                <InputError message={errors.ministry_id} className="mt-1" />
+                                <InputLabel value="Departamentos" />
+                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Marque todos em que deseja servir.</p>
+                                <ul className="mt-3 space-y-2 rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-700 dark:bg-zinc-950/50">
+                                    {ministries.map((m) => {
+                                        const checked = data.ministry_ids.includes(m.id);
+                                        return (
+                                            <li key={m.id}>
+                                                <label className="flex cursor-pointer items-start gap-3 rounded-lg px-2 py-1.5 hover:bg-white dark:hover:bg-zinc-900">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={checked}
+                                                        onChange={() => toggleMinistry(m.id)}
+                                                        className="mt-0.5 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-900"
+                                                    />
+                                                    <span className="text-sm text-zinc-800 dark:text-zinc-100">{m.name}</span>
+                                                </label>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                                <InputError message={errors.ministry_ids} className="mt-2" />
                             </div>
 
                             <div className="mt-4">
@@ -125,10 +212,17 @@ export default function PublicSignup({ token, churchName, churchLogoUrl, ministr
                                     value={data.email}
                                     className="mt-1 block w-full"
                                     autoComplete="email"
-                                    onChange={(e) => setData('email', e.target.value)}
+                                    onChange={(e) => {
+                                        setData('email', e.target.value);
+                                        setEmailDuplicateHint(null);
+                                    }}
+                                    onBlur={scheduleDuplicateCheck}
                                     required
                                 />
                                 <InputError message={errors.email} className="mt-1" />
+                                {emailDuplicateHint && (
+                                    <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">{emailDuplicateHint}</p>
+                                )}
                             </div>
 
                             <div className="mt-4">
@@ -139,9 +233,16 @@ export default function PublicSignup({ token, churchName, churchLogoUrl, ministr
                                     value={data.phone}
                                     className="mt-1 block w-full"
                                     autoComplete="tel"
-                                    onChange={(e) => setData('phone', e.target.value)}
+                                    onChange={(e) => {
+                                        setData('phone', e.target.value);
+                                        setPhoneDuplicateHint(null);
+                                    }}
+                                    onBlur={scheduleDuplicateCheck}
                                 />
                                 <InputError message={errors.phone} className="mt-1" />
+                                {phoneDuplicateHint && (
+                                    <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">{phoneDuplicateHint}</p>
+                                )}
                             </div>
 
                             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -180,7 +281,17 @@ export default function PublicSignup({ token, churchName, churchLogoUrl, ministr
                                 >
                                     Já tem conta? Entrar
                                 </Link>
-                                <PrimaryButton type="submit" disabled={processing} className="w-full sm:w-auto">
+                                <PrimaryButton
+                                    type="submit"
+                                    disabled={
+                                        processing ||
+                                        !!nameDuplicateHint ||
+                                        !!emailDuplicateHint ||
+                                        !!phoneDuplicateHint ||
+                                        data.ministry_ids.length === 0
+                                    }
+                                    className="w-full sm:w-auto"
+                                >
                                     Criar conta
                                 </PrimaryButton>
                             </div>

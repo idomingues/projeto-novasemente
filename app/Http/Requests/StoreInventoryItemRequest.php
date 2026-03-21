@@ -27,6 +27,8 @@ class StoreInventoryItemRequest extends FormRequest
             'acquisition_value' => ['nullable', 'numeric', 'min:0'],
             'current_value' => ['nullable', 'numeric', 'min:0'],
             'status' => ['nullable', 'string', 'in:active,inactive,maintenance,disposed'],
+            'photo' => ['nullable', 'image', 'max:5120'],
+            'return_to' => ['nullable', 'string', 'in:mobile'],
         ];
     }
 }
