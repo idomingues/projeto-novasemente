@@ -12,11 +12,17 @@ export default function ProgressIndicator() {
         const unstart = router.on('start', handleStart);
         const unfinish = router.on('finish', handleFinish);
         const uncancel = router.on('cancel', handleFinish);
+        // Respostas não-Inertia (403 HTML, erro de servidor) ou exceções podem não disparar `finish`;
+        // sem isto o overlay a “A carregar…” fica preso em cima de tudo (parece que não muda de ecrã).
+        const uninvalid = router.on('invalid', handleFinish);
+        const unexception = router.on('exception', handleFinish);
 
         return () => {
             unstart();
             unfinish();
             uncancel();
+            uninvalid();
+            unexception();
         };
     }, []);
 

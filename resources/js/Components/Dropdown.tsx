@@ -1,11 +1,12 @@
 import { Transition } from '@headlessui/react';
-import { InertiaLinkProps, Link } from '@inertiajs/react';
+import { InertiaLinkProps, Link, router } from '@inertiajs/react';
 import {
     createContext,
     Dispatch,
     PropsWithChildren,
     SetStateAction,
     useContext,
+    useEffect,
     useState,
 } from 'react';
 
@@ -21,6 +22,10 @@ const DropDownContext = createContext<{
 
 const Dropdown = ({ children }: PropsWithChildren) => {
     const [open, setOpen] = useState(false);
+
+    useEffect(() => {
+        return router.on('start', () => setOpen(false));
+    }, []);
 
     const toggleOpen = () => {
         setOpen((previousState) => !previousState);
