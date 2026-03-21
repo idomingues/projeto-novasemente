@@ -5,17 +5,29 @@ import {
     DocumentDuplicateIcon,
     InformationCircleIcon,
     ArrowTopRightOnSquareIcon,
+    BoltIcon,
 } from '@heroicons/react/24/outline';
 import { useState } from 'react';
+import InputLabel from '@/Components/InputLabel';
+import TextInput from '@/Components/TextInput';
+import PrimaryButton from '@/Components/PrimaryButton';
+import { buildPixCopyPaste, parseMoneyInput } from '@/lib/pixPayload';
 
 interface DonationInfo {
-    churchName: string;
+    churchName: string | null;
     pix_key: string | null;
     donation_url: string | null;
 }
 
+interface LocalOfferInfo {
+    pixKey: string;
+    merchantName: string;
+    merchantCity: string;
+}
+
 interface Props {
-    donation: DonationInfo | null;
+    donation: DonationInfo;
+    localOffer: LocalOfferInfo;
 }
 
 const SEVENME_LOGO_SRC = '/images/7me-logo.png';
@@ -28,8 +40,14 @@ function donationLinkHost(url: string): string {
     }
 }
 
-export default function MobileOfferings({ donation }: Props) {
+const MAX_OFFER_BRL = 999_999.99;
+
+export default function MobileOfferings({ donation, localOffer }: Props) {
     const [copied, setCopied] = useState(false);
+    const [amountRaw, setAmountRaw] = useState('');
+    const [pixPayload, setPixPayload] = useState<string | null>(null);
+    const [payloadCopied, setPayloadCopied] = useState(false);
+    const [amountError, setAmountError] = useState<string | null>(null);
 
     const copyPix = () => {
         if (!donation?.pix_key) return;
@@ -43,7 +61,40 @@ export default function MobileOfferings({ donation }: Props) {
     const donationHost = donationUrl ? donationLinkHost(donationUrl) : '';
     const hasUrl = Boolean(donationUrl);
     const hasPix = Boolean(donation?.pix_key);
-    const hasContent = donation && (hasPix || hasUrl);
+    const hasOtherMethods = hasPix || hasUrl;
+
+    const generateLocalPix = () => {
+        setAmountError(null);
+        setPixPayload(null);
+        const amount = parseMoneyInput(amountRaw);
+        if (amount === null) {
+            setAmountError('Informe um valor válido (ex.: 50 ou 50,20).');
+            return;
+        }
+        if (amount > MAX_OFFER_BRL) {
+            setAmountError(`Valor máximo permitido: R$ ${MAX_OFFER_BRL.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`);
+            return;
+        }
+        const payload = buildPixCopyPaste({
+            pixKey: localOffer.pixKey,
+            amount,
+            merchantName: localOffer.merchantName,
+            merchantCity: localOffer.merchantCity,
+        });
+        if (!payload) {
+            setAmountError('Não foi possível gerar o código. Tente outro valor.');
+            return;
+        }
+        setPixPayload(payload);
+    };
+
+    const copyPayload = () => {
+        if (!pixPayload) return;
+        navigator.clipboard.writeText(pixPayload).then(() => {
+            setPayloadCopied(true);
+            setTimeout(() => setPayloadCopied(false), 2500);
+        });
+    };
 
     return (
         <MobileLayout>
@@ -52,43 +103,88 @@ export default function MobileOfferings({ donation }: Props) {
                 <div>
                     <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Dízimos e Ofertas</h1>
                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                        Contribua com a obra da igreja por PIX ou pela plataforma 7me.
+                        Faça sua doação pelo 7me ou pelo atalho PIX abaixo.
                     </p>
                 </div>
 
-                {!hasContent ? (
-                    <p className="text-zinc-500 dark:text-zinc-400 py-6 text-center">
-                        Informações de ofertas e PIX ainda não foram configuradas pela igreja.
+                <div
+                    className="rounded-2xl border border-brand-200/90 bg-gradient-to-br from-brand-50 to-white dark:from-brand-950/45 dark:to-zinc-900 dark:border-brand-900/55 p-4 sm:p-5 shadow-sm"
+                    role="note"
+                >
+                    <div className="flex gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-100 dark:bg-brand-900/50">
+                            <InformationCircleIcon className="w-5 h-5 text-brand-700 dark:text-brand-300" />
+                        </div>
+                        <div className="min-w-0 space-y-2">
+                            <p className="text-sm font-semibold text-zinc-900 dark:text-white">Igreja local</p>
+                            <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">
+                                Valores com centavos &quot;,20&quot; (ex.: R$ 50,20) indicam que sua oferta será destinada à
+                                igreja local.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 sm:p-5 shadow-sm">
+                    <h2 className="font-semibold text-zinc-900 dark:text-white mb-1 flex items-center gap-2">
+                        <BoltIcon className="w-5 h-5 text-brand-600 dark:text-brand-400" />
+                        ATALHO PIX
+                    </h2>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4 leading-relaxed">
+                        Informe o valor da sua oferta. Geramos o código <strong className="font-medium text-zinc-800 dark:text-zinc-200">PIX Copia e Cola</strong> para você colar no app do banco.
                     </p>
-                ) : (
-                    <div className="space-y-6">
-                        {hasUrl && (
-                            <div
-                                className="rounded-2xl border border-sky-200/80 bg-gradient-to-br from-sky-50 to-white dark:from-sky-950/40 dark:to-zinc-900 dark:border-sky-900/60 p-4 sm:p-5 shadow-sm"
-                                role="note"
+                    <p className="text-xs text-zinc-500 dark:text-zinc-500 mb-3 break-all">
+                        Chave PIX: <span className="font-mono text-zinc-700 dark:text-zinc-300">{localOffer.pixKey}</span>
+                    </p>
+                    <div className="space-y-3">
+                        <div>
+                            <InputLabel htmlFor="local_offer_amount" value="Valor da oferta (R$)" />
+                            <TextInput
+                                id="local_offer_amount"
+                                type="text"
+                                inputMode="decimal"
+                                placeholder="Ex.: 50 ou 50,20"
+                                value={amountRaw}
+                                onChange={(e) => {
+                                    setAmountRaw(e.target.value);
+                                    setPixPayload(null);
+                                    setAmountError(null);
+                                }}
+                                className="mt-1 block w-full max-w-xs"
+                            />
+                            {amountError && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{amountError}</p>}
+                        </div>
+                        <PrimaryButton type="button" onClick={generateLocalPix} className="w-full sm:w-auto">
+                            Gerar código PIX
+                        </PrimaryButton>
+                    </div>
+                    {pixPayload && (
+                        <div className="mt-5 pt-5 border-t border-zinc-200 dark:border-zinc-800">
+                            <p className="text-sm font-medium text-zinc-900 dark:text-white mb-2">Código para copiar</p>
+                            <p className="text-xs text-zinc-500 dark:text-zinc-500 mb-2">
+                                Abra o app do seu banco, escolha PIX Copia e Cola e cole o texto abaixo.
+                            </p>
+                            <textarea
+                                readOnly
+                                value={pixPayload}
+                                rows={4}
+                                className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-3 py-2 text-xs font-mono text-zinc-800 dark:text-zinc-200 break-all"
+                                aria-label="Código PIX Copia e Cola"
+                            />
+                            <button
+                                type="button"
+                                onClick={copyPayload}
+                                className="mt-3 inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-500 transition-colors"
                             >
-                                <div className="flex gap-3">
-                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-100 dark:bg-sky-900/50">
-                                        <InformationCircleIcon className="w-5 h-5 text-sky-700 dark:text-sky-300" />
-                                    </div>
-                                    <div className="min-w-0 space-y-2">
-                                        <p className="text-sm font-semibold text-zinc-900 dark:text-white">
-                                            Ofertas para a igreja local
-                                        </p>
-                                        <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">
-                                            Valores com centavos &quot;,20&quot; (ex.: R$ 50,20) indicam que sua oferta será
-                                            destinada à igreja local.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+                                <DocumentDuplicateIcon className="w-4 h-4" />
+                                {payloadCopied ? 'Copiado!' : 'Copiar código'}
+                            </button>
+                        </div>
+                    )}
+                </div>
 
-                        {donation.churchName && (
-                            <p className="text-sm text-zinc-600 dark:text-zinc-400">{donation.churchName}</p>
-                        )}
-
-                        {hasPix && (
+                <>
+                    {hasPix && (
                             <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 sm:p-5 shadow-sm">
                                 <h2 className="font-semibold text-zinc-900 dark:text-white mb-2 flex items-center gap-2">
                                     <BanknotesIcon className="w-5 h-5 text-zinc-500" />
@@ -100,7 +196,7 @@ export default function MobileOfferings({ donation }: Props) {
                                 <button
                                     type="button"
                                     onClick={copyPix}
-                                    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-primary-600 text-white text-sm font-medium hover:bg-primary-500 transition-colors"
+                                    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-500 transition-colors"
                                 >
                                     <DocumentDuplicateIcon className="w-4 h-4" />
                                     {copied ? 'Copiado!' : 'Copiar chave'}
@@ -108,7 +204,7 @@ export default function MobileOfferings({ donation }: Props) {
                             </div>
                         )}
 
-                        {hasUrl && donationUrl && (
+                    {hasUrl && donationUrl && (
                             <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">
                                 <div className="p-4 sm:p-5 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/80">
                                     <div className="flex flex-col sm:flex-row sm:items-center gap-4">
@@ -126,9 +222,7 @@ export default function MobileOfferings({ donation }: Props) {
                                                 Doar pelo 7me
                                             </h2>
                                             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                                                O link abaixo abre o site oficial do{' '}
-                                                <span className="font-medium text-zinc-800 dark:text-zinc-200">7me</span> em
-                                                uma nova aba, onde você pode fazer dízimos e ofertas com segurança.
+                                                O link abaixo abre o site oficial do 7me em uma nova aba.
                                             </p>
                                         </div>
                                     </div>
@@ -151,8 +245,14 @@ export default function MobileOfferings({ donation }: Props) {
                                 </div>
                             </div>
                         )}
-                    </div>
-                )}
+
+                    {!hasOtherMethods && (
+                            <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center py-2">
+                                Outras formas de doação (chave PIX da igreja ou 7me) podem ser configuradas no painel da
+                                igreja.
+                            </p>
+                        )}
+                </>
             </div>
         </MobileLayout>
     );

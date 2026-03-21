@@ -6,7 +6,7 @@ import TextInput from '@/Components/TextInput';
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import { FormEventHandler, useEffect } from 'react';
+import { FormEventHandler, useEffect, useState } from 'react';
 
 const DEFAULT_VIEWPORT = 'width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=overlays-content';
 const FIXED_VIEWPORT = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
@@ -21,6 +21,7 @@ export default function Login({
     redirectTo?: string | null;
 }) {
     const appLogoUrl = (usePage().props as { appLogoUrl?: string | null }).appLogoUrl ?? null;
+    const [showRegisterInfo, setShowRegisterInfo] = useState(false);
 
     const { data, setData, post, processing, errors, reset } = useForm({
         login: '',
@@ -100,13 +101,34 @@ export default function Login({
                         )}
 
                         <h2 className="text-xl sm:text-2xl font-semibold text-zinc-900">
-                            Bem-vindo de volta
+                            {showRegisterInfo ? 'Cadastrar' : 'Bem-vindo de volta'}
                         </h2>
                         <p className="mt-2 text-sm text-zinc-600">
-                            Acesse sua conta para acompanhar a gestão da igreja.
+                            {showRegisterInfo
+                                ? 'Informações sobre como obter acesso ao sistema.'
+                                : 'Acesse sua conta para acompanhar a gestão da igreja.'}
                         </p>
 
-                        <form onSubmit={submit} className="mt-6 space-y-5">
+                        {showRegisterInfo ? (
+                            <div className="mt-6 space-y-5">
+                                <div className="rounded-2xl border border-amber-200/90 bg-amber-50 px-4 py-4 text-sm leading-relaxed text-amber-950 sm:px-5 sm:py-5">
+                                    <p>
+                                        O acesso é apenas para voluntários que precisam efetuar check-in em sua escala
+                                        ou líderes que trabalham em outras áreas. Procure seu líder e solicite seu
+                                        acesso.
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowRegisterInfo(false)}
+                                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3 text-sm font-semibold text-zinc-800 transition-colors hover:bg-zinc-100"
+                                >
+                                    Voltar ao login
+                                </button>
+                            </div>
+                        ) : null}
+
+                        <form onSubmit={submit} className={`mt-6 space-y-5 ${showRegisterInfo ? 'hidden' : ''}`}>
                             <div>
                                 <InputLabel htmlFor="login" value="E-mail ou nome" />
                                 <TextInput
@@ -166,6 +188,18 @@ export default function Login({
                                 </PrimaryButton>
                             </div>
                         </form>
+
+                        {!showRegisterInfo && (
+                            <p className="mt-6 text-center text-sm text-zinc-600">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowRegisterInfo(true)}
+                                    className="font-semibold text-zinc-900 underline-offset-4 hover:underline"
+                                >
+                                    Cadastrar
+                                </button>
+                            </p>
+                        )}
                     </div>
                 </div>
             </div>

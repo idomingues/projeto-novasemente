@@ -40,6 +40,8 @@ class EventController extends Controller
                 'ends_at' => $e->ends_at?->toIso8601String(),
                 'all_day' => $e->all_day,
                 'location' => $e->location,
+                'price' => $e->price,
+                'purchase_url' => $e->purchase_url,
                 'image_url' => $e->image_url,
                 'color' => $e->color,
             ]);
@@ -52,6 +54,8 @@ class EventController extends Controller
             'ends_at' => $e->ends_at?->toIso8601String(),
             'all_day' => $e->all_day,
             'location' => $e->location,
+            'price' => $e->price,
+            'purchase_url' => $e->purchase_url,
             'image_url' => $e->image_url,
             'color' => $e->color,
         ]);
@@ -74,6 +78,14 @@ class EventController extends Controller
 
     public function store(Request $request)
     {
+        if ($request->input('ends_at') === '' || $request->input('ends_at') === null) {
+            $request->merge(['ends_at' => null]);
+        }
+        $rawPurchaseIn = $request->input('purchase_url');
+        if (! is_string($rawPurchaseIn) || trim($rawPurchaseIn) === '') {
+            $request->merge(['purchase_url' => null]);
+        }
+
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
@@ -81,9 +93,27 @@ class EventController extends Controller
             'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
             'all_day' => ['boolean'],
             'location' => ['nullable', 'string', 'max:255'],
+            'price' => ['nullable', 'string', 'max:2000'],
+            'purchase_url' => ['nullable', 'string', 'max:2048', 'url'],
             'image_url' => ['nullable', 'string', 'max:1024'],
+            'image_file' => ['nullable', 'image', 'max:4096'],
             'color' => ['nullable', 'string', 'max:50'],
         ]);
+
+        $data['ends_at'] = $data['ends_at'] ?? null;
+        $rawPrice = $data['price'] ?? null;
+        $data['price'] = is_string($rawPrice) && trim($rawPrice) !== '' ? trim($rawPrice) : null;
+
+        $rawPurchase = $data['purchase_url'] ?? null;
+        $data['purchase_url'] = is_string($rawPurchase) && trim($rawPurchase) !== '' ? trim($rawPurchase) : null;
+
+        $imageUrl = isset($data['image_url']) && trim((string) $data['image_url']) !== '' ? trim($data['image_url']) : null;
+        if ($request->hasFile('image_file')) {
+            $path = $request->file('image_file')->store('events', 'public');
+            $imageUrl = '/storage/'.$path;
+        }
+        $data['image_url'] = $imageUrl;
+        unset($data['image_file']);
 
         $churchId = $this->currentChurchId();
         if ($churchId === null) {
@@ -99,6 +129,14 @@ class EventController extends Controller
 
     public function update(Request $request, Event $event)
     {
+        if ($request->input('ends_at') === '' || $request->input('ends_at') === null) {
+            $request->merge(['ends_at' => null]);
+        }
+        $rawPurchaseIn = $request->input('purchase_url');
+        if (! is_string($rawPurchaseIn) || trim($rawPurchaseIn) === '') {
+            $request->merge(['purchase_url' => null]);
+        }
+
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
@@ -106,9 +144,27 @@ class EventController extends Controller
             'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
             'all_day' => ['boolean'],
             'location' => ['nullable', 'string', 'max:255'],
+            'price' => ['nullable', 'string', 'max:2000'],
+            'purchase_url' => ['nullable', 'string', 'max:2048', 'url'],
             'image_url' => ['nullable', 'string', 'max:1024'],
+            'image_file' => ['nullable', 'image', 'max:4096'],
             'color' => ['nullable', 'string', 'max:50'],
         ]);
+
+        $data['ends_at'] = $data['ends_at'] ?? null;
+        $rawPrice = $data['price'] ?? null;
+        $data['price'] = is_string($rawPrice) && trim($rawPrice) !== '' ? trim($rawPrice) : null;
+
+        $rawPurchase = $data['purchase_url'] ?? null;
+        $data['purchase_url'] = is_string($rawPurchase) && trim($rawPurchase) !== '' ? trim($rawPurchase) : null;
+
+        $imageUrl = isset($data['image_url']) && trim((string) $data['image_url']) !== '' ? trim($data['image_url']) : $event->image_url;
+        if ($request->hasFile('image_file')) {
+            $path = $request->file('image_file')->store('events', 'public');
+            $imageUrl = '/storage/'.$path;
+        }
+        $data['image_url'] = $imageUrl;
+        unset($data['image_file']);
 
         $event->update($data);
 
@@ -118,6 +174,7 @@ class EventController extends Controller
     public function destroy(Event $event)
     {
         $event->delete();
+
         return redirect()->route('events.index')->with('success', 'Evento removido com sucesso.');
     }
 }

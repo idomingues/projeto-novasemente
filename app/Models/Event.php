@@ -15,6 +15,8 @@ class Event extends Model
         'ends_at',
         'all_day',
         'location',
+        'price',
+        'purchase_url',
         'image_url',
         'color',
         'created_by',

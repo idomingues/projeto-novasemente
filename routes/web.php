@@ -4,6 +4,7 @@ use App\Http\Controllers\AcervoController;
 use App\Http\Controllers\AppNotificationController;
 use App\Http\Controllers\ChurchController;
 use App\Http\Controllers\CultoController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\FaviconController;
 use App\Http\Controllers\InventoryController;
@@ -17,8 +18,6 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\VariosController;
 use App\Http\Controllers\VolunteerController;
-use App\Models\Church;
-use App\Models\Event;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -37,40 +36,7 @@ Route::get('/', function (\Illuminate\Http\Request $request) {
     return $isMobile ? redirect()->route('mobile.culto') : redirect()->route('more.index');
 });
 
-Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
-    $churchId = null;
-    if ($request->user()) {
-        $workingChurchId = $request->session()->get('working_church_id');
-        if ($workingChurchId) {
-            $churchId = Church::where('id', $workingChurchId)->where('active', true)->value('id');
-        }
-        if ($churchId === null) {
-            $churchId = Church::where('active', true)->orderBy('name')->value('id');
-        }
-    }
-
-    $upcomingEvents = collect();
-    if ($churchId !== null) {
-        $upcomingEvents = Event::query()
-            ->where('church_id', $churchId)
-            ->where('starts_at', '>=', now()->startOfDay())
-            ->orderBy('starts_at')
-            ->limit(3)
-            ->get()
-            ->map(fn (Event $e) => [
-                'id' => $e->id,
-                'title' => $e->title,
-                'starts_at' => $e->starts_at?->toIso8601String(),
-                'ends_at' => $e->ends_at?->toIso8601String(),
-                'all_day' => $e->all_day,
-                'location' => $e->location,
-            ]);
-    }
-
-    return Inertia::render('Dashboard', [
-        'upcomingEvents' => $upcomingEvents,
-    ]);
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'verified'])->name('dashboard');
 
 // Rotas públicas (guests e autenticados): app com menu mobile/PC e Login no lugar da engrenagem
 Route::get('/mais', [\App\Http\Controllers\MoreController::class, 'index'])->name('more.index');
@@ -83,6 +49,9 @@ Route::get('/varios/contato', [VariosController::class, 'contact'])->name('vario
 Route::get('/varios/notificacoes', [VariosController::class, 'notifications'])->name('varios.notifications');
 Route::get('/pedidos-oracao', [PrayerRequestController::class, 'index'])->name('prayer.index');
 Route::post('/pedidos-oracao', [PrayerRequestController::class, 'store'])->name('prayer.store');
+Route::post('/pedidos-oracao/{prayer}/orou', [PrayerRequestController::class, 'amen'])
+    ->middleware('throttle:60,1')
+    ->name('prayer.amen');
 Route::get('/mobile/oracao', [PrayerRequestController::class, 'mobile'])->name('mobile.prayer');
 Route::redirect('/mobile', '/mobile/culto')->name('mobile.index');
 Route::get('/mobile/culto', [MobileController::class, 'culto'])->name('mobile.culto');
@@ -90,11 +59,15 @@ Route::get('/mobile/news', [MobileController::class, 'news'])->name('mobile.news
 Route::get('/mobile/events', [MobileController::class, 'events'])->name('mobile.events');
 Route::get('/mobile/schedule', [MobileController::class, 'schedule'])->name('mobile.schedule');
 Route::get('/mobile/more', [MobileController::class, 'more'])->name('mobile.more');
+Route::get('/mobile/crencas', [MobileController::class, 'beliefs'])->name('mobile.beliefs');
+Route::get('/mobile/quem-somos', [MobileController::class, 'quemSomos'])->name('mobile.quem-somos');
 Route::get('/mobile/classe-comecos', [MobileController::class, 'classeComecos'])->name('mobile.classe-comecos');
 Route::get('/mobile/acervo', [MobileController::class, 'acervo'])->name('mobile.acervo');
 Route::get('/mobile/musica', [MobileController::class, 'musica'])->name('mobile.musica');
 Route::get('/mobile/services', [MobileController::class, 'services'])->name('mobile.services');
 Route::get('/mobile/contact', [MobileController::class, 'contact'])->name('mobile.contact');
+Route::get('/mobile/fotos', [MobileController::class, 'fotosComingSoon'])->name('mobile.fotos');
+Route::get('/mobile/localizacao', [MobileController::class, 'location'])->name('mobile.location');
 Route::get('/mobile/offerings', [MobileController::class, 'offerings'])->name('mobile.offerings');
 Route::get('/mobile/notifications', [MobileController::class, 'notifications'])->name('mobile.notifications');
 Route::get('/musica', [MusicaController::class, 'index'])->name('musica.index');

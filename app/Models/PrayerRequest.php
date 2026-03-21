@@ -13,6 +13,7 @@ class PrayerRequest extends Model
         'church_id',
         'name_or_nickname',
         'request',
+        'prayer_amen_count',
     ];
 
     public function church(): BelongsTo

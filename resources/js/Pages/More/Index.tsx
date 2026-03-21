@@ -10,6 +10,9 @@ import {
     MusicalNoteIcon,
     PhotoIcon,
     HeartIcon,
+    BookOpenIcon,
+    UserGroupIcon,
+    MapPinIcon,
 } from '@heroicons/react/24/outline';
 
 interface Props {
@@ -17,17 +20,18 @@ interface Props {
     latestPrayerRequests?: unknown[];
 }
 
-const FOTOS_DRIVE_URL = 'https://drive.google.com/drive/folders/1dYN1Qg2JCfDU1gL5JC3Je0eVvNm8J1dp?usp=share_link';
-
 const items = [
+    { name: 'Quem somos', description: 'História e significado do nome', route: 'mobile.quem-somos', icon: UserGroupIcon },
+    { name: 'Nossas crenças', description: '28 princípios de fé (IASD)', route: 'mobile.beliefs', icon: BookOpenIcon },
     { name: 'Escala', description: 'Escala de voluntários', route: 'varios.schedule', icon: ClipboardDocumentListIcon },
-    { name: 'Cultos e horários', description: 'Dias e horários dos cultos', route: 'varios.services', icon: ClockIcon },
+    { name: 'Cultos e horários', description: 'Dias e horários dos cultos', route: 'mobile.services', icon: ClockIcon },
     { name: 'Classe Começos', description: 'Estudo bíblico presencial ou on-line', route: 'varios.classe-comecos', icon: AcademicCapIcon },
     { name: 'Música', description: 'Vídeos de música no YouTube', route: 'musica.index', icon: MusicalNoteIcon },
     { name: 'Pedidos de oração', description: 'Solicite ou veja pedidos de oração', route: 'prayer.index', icon: HeartIcon },
-    { name: 'Fotos', description: 'Álbum de fotos no Google Drive', externalUrl: FOTOS_DRIVE_URL, icon: PhotoIcon },
+    { name: 'Fotos', description: 'Galeria em breve', route: 'mobile.fotos', icon: PhotoIcon },
+    { name: 'Localização', description: 'Endereço e mapa da igreja', route: 'mobile.location', icon: MapPinIcon },
     { name: 'Acervo', description: 'Playlists do YouTube da Nova Semente', route: 'acervo.index', icon: PlayCircleIcon },
-    { name: 'Fale conosco', description: 'E-mail e WhatsApp da igreja', route: 'varios.contact', icon: PhoneIcon },
+    { name: 'Fale conosco', description: 'E-mail, redes e WhatsApp', route: 'mobile.contact', icon: PhoneIcon },
     { name: 'Notificações', description: 'Avisos de eventos e notícias', route: 'varios.notifications', icon: BellAlertIcon },
 ];
 
@@ -58,21 +62,8 @@ export default function MoreIndex(_: Props) {
                                 </div>
                             </>
                         );
-                        if ('externalUrl' in item && item.externalUrl) {
-                            return (
-                                <a
-                                    key={name}
-                                    href={item.externalUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className={className}
-                                >
-                                    {content}
-                                </a>
-                            );
-                        }
                         return (
-                            <Link key={name} href={route((item as { route: string }).route)} className={className}>
+                            <Link key={name} href={route(item.route)} className={className}>
                                 {content}
                             </Link>
                         );

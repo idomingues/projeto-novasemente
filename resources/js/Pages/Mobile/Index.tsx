@@ -1,12 +1,14 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, Link } from '@inertiajs/react';
 import { NewspaperIcon, CalendarDaysIcon, ClipboardDocumentListIcon } from '@heroicons/react/24/outline';
+import SocialQuickLinks from '@/Components/SocialQuickLinks';
 
 interface ChurchInfo {
     name: string;
     logo_url: string | null;
     city: string | null;
     state: string | null;
+    whatsapp: string | null;
 }
 
 interface NewsItem {
@@ -75,6 +77,8 @@ export default function MobileIndex({ church, latestNews, upcomingEvents }: Prop
                         </div>
                     </div>
                 )}
+
+                <SocialQuickLinks churchWhatsapp={church?.whatsapp ?? null} />
 
                 {upcomingEvents.length > 0 && (
                     <section>

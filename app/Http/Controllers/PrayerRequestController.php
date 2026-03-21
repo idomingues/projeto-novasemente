@@ -43,6 +43,7 @@ class PrayerRequestController extends Controller
                 'request' => $p->request,
                 'created_at' => $p->created_at->toIso8601String(),
                 'month_year' => $p->created_at->format('Y-m'),
+                'prayer_amen_count' => (int) $p->prayer_amen_count,
             ]);
     }
 
@@ -84,5 +85,26 @@ class PrayerRequestController extends Controller
         return redirect()
             ->to($isMobile ? route('mobile.prayer') : route('prayer.index'))
             ->with('success', 'Pedido de oração enviado. Obrigado!');
+    }
+
+    public function amen(Request $request, PrayerRequest $prayer)
+    {
+        $churchId = $this->currentChurchId();
+        $visible = PrayerRequest::query()
+            ->whereKey($prayer->id)
+            ->where(function ($q) use ($churchId) {
+                $q->whereNull('church_id');
+                if ($churchId !== null) {
+                    $q->orWhere('church_id', $churchId);
+                }
+            })
+            ->exists();
+        if (! $visible) {
+            abort(404);
+        }
+
+        $prayer->increment('prayer_amen_count');
+
+        return back();
     }
 }

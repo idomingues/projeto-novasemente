@@ -2,27 +2,27 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreVolunteerRequest;
+use App\Http\Requests\UpdateVolunteerRequest;
 use App\Models\Church;
 use App\Models\Member;
 use App\Models\Ministry;
 use App\Models\Volunteer;
 use Illuminate\Http\Request;
-use App\Http\Requests\StoreVolunteerRequest;
-use App\Http\Requests\UpdateVolunteerRequest;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class VolunteerController extends Controller
 {
-    private function currentChurchId(): ?int
+    private function currentChurchId(Request $request): ?int
     {
-        return Church::where('active', true)->orderBy('name')->value('id');
+        return Church::resolveWorkingId($request);
     }
 
     public function index(Request $request): Response
     {
         $search = (string) $request->input('search', '');
-        $churchId = $this->currentChurchId();
+        $churchId = $this->currentChurchId($request);
 
         $volunteersQuery = Volunteer::with(['member', 'ministries'])
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
@@ -75,6 +75,7 @@ class VolunteerController extends Controller
         if ($volunteer->member_id && $request->filled('photo_url')) {
             $volunteer->member->update(['photo_url' => $request->input('photo_url')]);
         }
+
         return redirect()->route('volunteers.index')->with('success', 'Voluntário cadastrado com sucesso!');
     }
 
@@ -86,12 +87,14 @@ class VolunteerController extends Controller
         if ($volunteer->member_id && $request->has('photo_url')) {
             $volunteer->member->update(['photo_url' => $request->input('photo_url')]);
         }
+
         return redirect()->route('volunteers.index')->with('success', 'Voluntário atualizado com sucesso!');
     }
 
     public function destroy(Volunteer $volunteer)
     {
         $volunteer->delete();
+
         return redirect()->route('volunteers.index')->with('success', 'Voluntário removido com sucesso!');
     }
 }

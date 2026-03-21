@@ -76,6 +76,7 @@ class MobileController extends Controller
                 'ends_at' => $e->ends_at?->toIso8601String(),
                 'all_day' => $e->all_day,
                 'location' => $e->location,
+                'price' => $e->price,
             ]);
 
         return Inertia::render('Mobile/Index', [
@@ -84,6 +85,7 @@ class MobileController extends Controller
                 'logo_url' => $church->logo_url,
                 'city' => $church->city,
                 'state' => $church->state,
+                'whatsapp' => $church->whatsapp,
             ] : null,
             'latestNews' => $latestNews,
             'upcomingEvents' => $upcomingEvents,
@@ -92,7 +94,8 @@ class MobileController extends Controller
 
     public function culto(Request $request): Response
     {
-        $churchId = $this->currentChurch()?->id;
+        $church = $this->currentChurch();
+        $churchId = $church?->id;
         $cultos = Culto::query()
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
@@ -111,6 +114,7 @@ class MobileController extends Controller
 
         return Inertia::render('Mobile/Culto', [
             'cultos' => $cultos,
+            'churchWhatsapp' => $church?->whatsapp,
         ]);
     }
 
@@ -194,6 +198,8 @@ class MobileController extends Controller
                     'ends_at' => $e->ends_at?->toIso8601String(),
                     'all_day' => $e->all_day,
                     'location' => $e->location,
+                    'price' => $e->price,
+                    'purchase_url' => $e->purchase_url,
                     'image_url' => $imageUrl,
                     'color' => $e->color,
                 ];
@@ -341,6 +347,26 @@ class MobileController extends Controller
         return Inertia::render('Mobile/More', $data);
     }
 
+    public function beliefs(): Response
+    {
+        return Inertia::render('Mobile/Beliefs');
+    }
+
+    public function quemSomos(): Response
+    {
+        return Inertia::render('Mobile/QuemSomos');
+    }
+
+    public function fotosComingSoon(): Response
+    {
+        return Inertia::render('Mobile/FotosComingSoon');
+    }
+
+    public function location(): Response
+    {
+        return Inertia::render('Mobile/Location');
+    }
+
     public function services(): Response
     {
         $church = $this->currentChurch();
@@ -399,8 +425,15 @@ class MobileController extends Controller
             'donation_url' => $donationUrl,
         ];
 
+        $localOffer = [
+            'pixKey' => 'novasemente.ap@adventistas.org',
+            'merchantName' => $church?->name ?? 'Nova Semente',
+            'merchantCity' => filled($church?->city) ? (string) $church->city : 'BRASIL',
+        ];
+
         return Inertia::render('Mobile/Offerings', [
             'donation' => $donation,
+            'localOffer' => $localOffer,
         ]);
     }
 

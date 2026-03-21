@@ -1,6 +1,16 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head } from '@inertiajs/react';
-import { MapPinIcon, ClockIcon, CalendarDaysIcon } from '@heroicons/react/24/outline';
+import {
+    MapPinIcon,
+    ClockIcon,
+    CalendarDaysIcon,
+    BanknotesIcon,
+    XMarkIcon,
+    TicketIcon,
+    ArrowTopRightOnSquareIcon,
+} from '@heroicons/react/24/outline';
+import Modal from '@/Components/Modal';
+import { useState, useCallback } from 'react';
 
 interface EventItem {
     id: number;
@@ -10,6 +20,8 @@ interface EventItem {
     ends_at: string | null;
     all_day: boolean;
     location: string | null;
+    price: string | null;
+    purchase_url: string | null;
     image_url: string | null;
     color: string | null;
 }
@@ -18,38 +30,85 @@ interface Props {
     events: EventItem[];
 }
 
-function formatDateTime(iso: string, allDay: boolean): string {
-    const d = new Date(iso);
-    if (allDay) {
-        return d.toLocaleDateString('pt-BR', {
-            weekday: 'short',
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-        });
-    }
-    return d.toLocaleDateString('pt-BR', {
-        weekday: 'short',
-        day: '2-digit',
-        month: 'short',
-        hour: '2-digit',
-        minute: '2-digit',
-    });
-}
+/** Fuso fixo da igreja para exibir data/hora igual ao cadastro (evita confusão com UTC). */
+const EVENT_TZ = 'America/Sao_Paulo';
 
-function formatTime(iso: string): string {
-    return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+/** Texto descritivo de valor (aceita string vinda da API ou undefined em caches antigos). */
+function priceText(value: string | null | undefined): string | null {
+    if (value == null) return null;
+    const s = String(value).trim();
+    return s.length > 0 ? s : null;
 }
 
 function getDayMonth(iso: string): { day: string; month: string } {
     const d = new Date(iso);
     return {
-        day: d.toLocaleDateString('pt-BR', { day: '2-digit' }),
-        month: d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''),
+        day: d.toLocaleDateString('pt-BR', { day: '2-digit', timeZone: EVENT_TZ }),
+        month: d
+            .toLocaleDateString('pt-BR', { month: 'short', timeZone: EVENT_TZ })
+            .replace('.', ''),
     };
 }
 
+/** Texto único para data/hora no card e no modal. */
+function formatWhenLine(ev: EventItem): string {
+    const start = new Date(ev.starts_at);
+    const tz = { timeZone: EVENT_TZ };
+    if (ev.all_day) {
+        return start.toLocaleDateString('pt-BR', {
+            weekday: 'short',
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            ...tz,
+        });
+    }
+    if (!ev.ends_at) {
+        return start.toLocaleString('pt-BR', {
+            weekday: 'short',
+            day: '2-digit',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+            ...tz,
+        });
+    }
+    const end = new Date(ev.ends_at);
+    const sameCalendarDay =
+        start.toLocaleDateString('pt-BR', { year: 'numeric', month: '2-digit', day: '2-digit', ...tz }) ===
+        end.toLocaleDateString('pt-BR', { year: 'numeric', month: '2-digit', day: '2-digit', ...tz });
+    if (sameCalendarDay) {
+        const datePart = start.toLocaleDateString('pt-BR', {
+            weekday: 'short',
+            day: '2-digit',
+            month: 'short',
+            ...tz,
+        });
+        const t0 = start.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', ...tz });
+        const t1 = end.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', ...tz });
+        return `${datePart}, ${t0} – ${t1}`;
+    }
+    return `${start.toLocaleString('pt-BR', {
+        weekday: 'short',
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+        ...tz,
+    })} → ${end.toLocaleString('pt-BR', {
+        weekday: 'short',
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+        ...tz,
+    })}`;
+}
+
 export default function MobileEvents({ events }: Props) {
+    const [selected, setSelected] = useState<EventItem | null>(null);
+    const closeModal = useCallback(() => setSelected(null), []);
+
     return (
         <MobileLayout>
             <Head title="Eventos" />
@@ -63,63 +122,165 @@ export default function MobileEvents({ events }: Props) {
                         <p className="text-sm text-zinc-500 dark:text-zinc-500 mt-1">Os eventos aparecerão aqui.</p>
                     </div>
                 ) : (
-                    <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <ul className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5 sm:gap-6">
                         {events.map((ev) => {
                             const { day, month } = getDayMonth(ev.starts_at);
-                            const accent = ev.color || '#10b981';
+                            const accent = ev.color || '#059669';
                             return (
-                                <li
-                                    key={ev.id}
-                                    className="rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm hover:shadow-md hover:border-zinc-300 dark:hover:border-zinc-700 active:scale-[0.99] transition-all"
-                                >
-                                    <div className="flex">
-                                        {/* Data em destaque */}
-                                        <div
-                                            className="w-16 flex-shrink-0 flex flex-col items-center justify-center py-4 px-2 rounded-l-2xl text-white font-bold"
-                                            style={{ backgroundColor: accent }}
-                                        >
-                                            <span className="text-2xl leading-none">{day}</span>
-                                            <span className="text-xs font-semibold uppercase mt-0.5 opacity-90">{month}</span>
-                                        </div>
-                                        <div className="flex-1 min-w-0 p-4">
-                                            <h2 className="font-semibold text-zinc-900 dark:text-white text-base leading-snug line-clamp-2">
-                                                {ev.title}
-                                            </h2>
-                                            <div className="flex items-center gap-2 mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-                                                <ClockIcon className="w-4 h-4 flex-shrink-0 text-zinc-400" />
-                                                <span>
-                                                    {formatDateTime(ev.starts_at, ev.all_day)}
-                                                    {ev.ends_at && !ev.all_day && ` – ${formatTime(ev.ends_at)}`}
+                                <li key={ev.id} className="h-full min-w-0">
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelected(ev)}
+                                        className="group flex h-full w-full min-h-0 flex-col overflow-hidden rounded-2xl border border-zinc-200/90 bg-white text-left shadow-sm ring-0 transition-all hover:border-zinc-300 hover:shadow-md active:scale-[0.99] dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"
+                                    >
+                                        <div className="flex min-h-[7.5rem] flex-1">
+                                            <div
+                                                className="flex w-[4.25rem] shrink-0 flex-col items-center justify-center px-2 py-3 text-white sm:w-[4.5rem]"
+                                                style={{ backgroundColor: accent }}
+                                            >
+                                                <span className="text-2xl font-bold leading-none tabular-nums">{day}</span>
+                                                <span className="mt-1 text-[0.65rem] font-semibold uppercase tracking-wide opacity-95">
+                                                    {month}
                                                 </span>
                                             </div>
-                                            {ev.location && (
-                                                <div className="flex items-center gap-2 mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                                    <MapPinIcon className="w-4 h-4 flex-shrink-0 text-zinc-400" />
-                                                    <span className="truncate">{ev.location}</span>
+                                            <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5 p-3 sm:p-4">
+                                                <div className="flex flex-wrap items-start gap-2">
+                                                    <h2 className="line-clamp-2 min-w-0 flex-1 text-base font-semibold leading-snug text-zinc-900 dark:text-white">
+                                                        {ev.title}
+                                                    </h2>
+                                                    {ev.purchase_url && String(ev.purchase_url).trim() !== '' && (
+                                                        <span className="shrink-0 rounded-full bg-primary-600 px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide text-white">
+                                                            Compra
+                                                        </span>
+                                                    )}
                                                 </div>
-                                            )}
-                                            {ev.description && (
-                                                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300 line-clamp-2">
-                                                    {ev.description}
-                                                </p>
-                                            )}
+                                                <div className="flex items-start gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+                                                    <ClockIcon className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400 dark:text-zinc-500" />
+                                                    <span className="leading-snug">{formatWhenLine(ev)}</span>
+                                                </div>
+                                                {ev.location && (
+                                                    <div className="flex items-start gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+                                                        <MapPinIcon className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400 dark:text-zinc-500" />
+                                                        <span className="truncate">{ev.location}</span>
+                                                    </div>
+                                                )}
+                                                {ev.description && (
+                                                    <p className="line-clamp-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+                                                        {ev.description}
+                                                    </p>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                    {ev.image_url && (
-                                        <div className="w-full h-32 overflow-hidden bg-zinc-200 dark:bg-zinc-800">
-                                            <img
-                                                src={ev.image_url}
-                                                alt=""
-                                                className="w-full h-full object-cover"
-                                            />
-                                        </div>
-                                    )}
+                                        {ev.image_url ? (
+                                            <div className="relative border-t border-zinc-100 dark:border-zinc-800">
+                                                <img
+                                                    src={ev.image_url}
+                                                    alt=""
+                                                    className="aspect-[16/10] w-full object-cover sm:aspect-[2/1]"
+                                                    loading="lazy"
+                                                />
+                                            </div>
+                                        ) : null}
+                                    </button>
                                 </li>
                             );
                         })}
                     </ul>
                 )}
             </div>
+
+            <Modal show={selected !== null} onClose={closeModal} maxWidth="lg">
+                {selected && (
+                    <>
+                        <div className="relative">
+                            {selected.image_url ? (
+                                <img
+                                    src={selected.image_url}
+                                    alt=""
+                                    className="max-h-52 w-full object-cover sm:max-h-64"
+                                />
+                            ) : null}
+                            <button
+                                type="button"
+                                onClick={closeModal}
+                                className="absolute right-3 top-3 rounded-full bg-black/50 p-2 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
+                                aria-label="Fechar"
+                            >
+                                <XMarkIcon className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="space-y-4 p-5 sm:p-6">
+                            <div>
+                                <p
+                                    className="mb-2 inline-flex rounded-lg px-2 py-0.5 text-xs font-semibold uppercase text-white"
+                                    style={{ backgroundColor: selected.color || '#059669' }}
+                                >
+                                    {getDayMonth(selected.starts_at).day}{' '}
+                                    {getDayMonth(selected.starts_at).month}
+                                </p>
+                                <h2 className="text-xl font-bold text-zinc-900 dark:text-white sm:text-2xl">
+                                    {selected.title}
+                                </h2>
+                            </div>
+                            <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+                                <span className="inline-flex items-center gap-2">
+                                    <ClockIcon className="h-5 w-5 shrink-0 text-zinc-400" />
+                                    {formatWhenLine(selected)}
+                                </span>
+                                {selected.location && (
+                                    <span className="inline-flex min-w-0 items-center gap-2">
+                                        <MapPinIcon className="h-5 w-5 shrink-0 text-zinc-400" />
+                                        <span className="break-words">{selected.location}</span>
+                                    </span>
+                                )}
+                            </div>
+                            {selected.description ? (
+                                <div className="border-t border-zinc-100 pt-4 dark:border-zinc-800">
+                                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+                                        {selected.description}
+                                    </p>
+                                </div>
+                            ) : (
+                                <p className="text-sm italic text-zinc-500 dark:text-zinc-500">Sem descrição adicional.</p>
+                            )}
+                            {selected.purchase_url && String(selected.purchase_url).trim() !== '' && (
+                                <a
+                                    href={selected.purchase_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-primary-600 to-emerald-600 px-4 py-4 text-base font-bold text-white shadow-lg shadow-primary-600/25 transition-transform active:scale-[0.98] dark:from-primary-500 dark:to-emerald-500 dark:shadow-primary-900/40"
+                                >
+                                    <TicketIcon className="h-6 w-6 shrink-0" aria-hidden />
+                                    Comprar ou inscrever-se
+                                    <ArrowTopRightOnSquareIcon className="h-5 w-5 shrink-0 opacity-90" aria-hidden />
+                                </a>
+                            )}
+                            {priceText(selected.price) && (
+                                <div className="rounded-xl border border-emerald-200/90 bg-emerald-50/90 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/40">
+                                    <div className="flex items-start gap-2">
+                                        <BanknotesIcon className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                                        <div className="min-w-0">
+                                            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-emerald-800 dark:text-emerald-300">
+                                                Valor e condições
+                                            </p>
+                                            <p className="whitespace-pre-wrap text-sm font-medium leading-relaxed text-zinc-900 dark:text-zinc-100">
+                                                {priceText(selected.price)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            <button
+                                type="button"
+                                onClick={closeModal}
+                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3 text-sm font-semibold text-zinc-800 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 sm:w-auto sm:px-8"
+                            >
+                                Fechar
+                            </button>
+                        </div>
+                    </>
+                )}
+            </Modal>
         </MobileLayout>
     );
 }

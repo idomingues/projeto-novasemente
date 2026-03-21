@@ -1,6 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm } from '@inertiajs/react';
 import { HeartIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline';
+import PrayerAmenButton from '@/Components/PrayerAmenButton';
 import FlashMessages from '@/Components/FlashMessages';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
@@ -15,6 +16,7 @@ interface PrayerItem {
     request: string;
     created_at: string;
     month_year: string;
+    prayer_amen_count: number;
 }
 
 interface Props {
@@ -66,6 +68,11 @@ export default function PrayerIndex({ requests }: Props) {
                     <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Pedidos de oração</h1>
                     <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                         Solicite um pedido de oração ou veja os pedidos para orar.
+                    </p>
+                    <p className="mt-3 max-w-3xl rounded-xl border border-amber-200/80 bg-amber-50/80 px-3 py-2.5 text-sm leading-relaxed text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/25 dark:text-amber-100">
+                        Depois de orar por alguém, toque em <strong className="font-semibold">Orei</strong> (ícone de
+                        mãos) no pedido — assim a pessoa sente que não está sozinha. É o nosso jeito de “curtir” com
+                        gratidão a Deus.
                     </p>
                 </div>
 
@@ -149,6 +156,12 @@ export default function PrayerIndex({ requests }: Props) {
                                                             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap">
                                                                 {r.request}
                                                             </p>
+                                                            <div className="mt-3">
+                                                                <PrayerAmenButton
+                                                                    prayerId={r.id}
+                                                                    count={r.prayer_amen_count ?? 0}
+                                                                />
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </li>

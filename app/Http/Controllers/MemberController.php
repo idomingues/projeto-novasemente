@@ -2,21 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Members\Actions\CreateMember;
+use App\Domain\Members\Actions\DeleteMember;
+use App\Domain\Members\Actions\UpdateMember;
+use App\Http\Requests\StoreMemberRequest;
+use App\Http\Requests\UpdateMemberRequest;
 use App\Models\Church;
 use App\Models\Member;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use App\Domain\Members\Actions\CreateMember;
-use App\Domain\Members\Actions\UpdateMember;
-use App\Domain\Members\Actions\DeleteMember;
-use App\Http\Requests\StoreMemberRequest;
-use App\Http\Requests\UpdateMemberRequest;
 
 class MemberController extends Controller
 {
-    private function currentChurchId(): ?int
+    private function currentChurchId(Request $request): ?int
     {
-        return Church::where('active', true)->orderBy('name')->value('id');
+        return Church::resolveWorkingId($request);
     }
 
     /**
@@ -25,7 +25,7 @@ class MemberController extends Controller
     public function index(Request $request)
     {
         $search = (string) $request->input('search', '');
-        $churchId = $this->currentChurchId();
+        $churchId = $this->currentChurchId($request);
 
         $query = Member::query()
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
@@ -51,7 +51,7 @@ class MemberController extends Controller
      */
     public function store(StoreMemberRequest $request, CreateMember $createMember)
     {
-        $churchId = $this->currentChurchId();
+        $churchId = $this->currentChurchId($request);
         if ($churchId === null) {
             return redirect()->route('members.index')->with('error', 'Nenhuma igreja ativa. Selecione uma igreja para trabalhar.');
         }

@@ -1,5 +1,20 @@
 @import "tailwindcss";
 
+/* Terceira cor da marca (verde logo Nova Semente ~#1A7431) — base continua branco/preto */
+@theme {
+    --color-brand-50: #f0f7f2;
+    --color-brand-100: #dceee3;
+    --color-brand-200: #b8dcc6;
+    --color-brand-300: #8ac49e;
+    --color-brand-400: #56a370;
+    --color-brand-500: #368a4e;
+    --color-brand-600: #1a7431;
+    --color-brand-700: #155e29;
+    --color-brand-800: #124b22;
+    --color-brand-900: #0f3d1d;
+    --color-brand-950: #052212;
+}
+
 /* Dark mode por classe (html.dark) — necessário no Tailwind v4 */
 @custom-variant dark (&:where(.dark, .dark *));
 

@@ -1,5 +1,5 @@
 import AdminLayout from '@/Layouts/AdminLayout';
-import { Head, useForm, router } from '@inertiajs/react';
+import { Head, useForm, router, usePage } from '@inertiajs/react';
 import {
     PencilIcon,
     TrashIcon,
@@ -9,6 +9,9 @@ import {
     ChevronRightIcon,
     MapPinIcon,
     ClockIcon,
+    BanknotesIcon,
+    PhotoIcon,
+    TicketIcon,
 } from '@heroicons/react/24/outline';
 import AddButton from '@/Components/AddButton';
 import PageHeader from '@/Components/PageHeader';
@@ -30,6 +33,8 @@ interface EventItem {
     ends_at: string | null;
     all_day: boolean;
     location: string | null;
+    price: string | null;
+    purchase_url: string | null;
     image_url: string | null;
     color: string | null;
 }
@@ -48,9 +53,29 @@ const MONTH_NAMES = [
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
 ];
 
+function imageSrc(url: string | null, appUrl: string): string {
+    if (!url) return '';
+    if (url.startsWith('/')) return `${appUrl}${url}`;
+    return url;
+}
+
+/** Valor para input datetime-local no fuso do navegador (evita toISOString em UTC). */
+function toDatetimeLocalString(d: Date): string {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function toDateInputValue(d: Date): string {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+const EVENT_TZ = 'America/Sao_Paulo';
+const tzOpts = { timeZone: EVENT_TZ };
+
 function formatTime(iso: string): string {
     const d = new Date(iso);
-    return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', ...tzOpts });
 }
 
 function formatDate(iso: string): string {
@@ -60,23 +85,26 @@ function formatDate(iso: string): string {
         day: '2-digit',
         month: 'short',
         year: 'numeric',
+        ...tzOpts,
     });
 }
 
 function formatDateTime(iso: string, allDay: boolean): string {
     const d = new Date(iso);
     if (allDay) {
-        return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+        return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric', ...tzOpts });
     }
     return d.toLocaleDateString('pt-BR', {
         day: '2-digit',
         month: 'short',
         hour: '2-digit',
         minute: '2-digit',
+        ...tzOpts,
     });
 }
 
 export default function Index({ events, eventsForMonth, month, year, canManage }: Props) {
+    const appUrl = (usePage().props as { appUrl?: string }).appUrl ?? '';
     const [viewMode, setViewMode] = useState<'calendar' | 'list'>('list');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
@@ -89,7 +117,10 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
         ends_at: '',
         all_day: false,
         location: '',
+        price: '',
+        purchase_url: '',
         image_url: '',
+        image_file: null as File | null,
         color: '',
     });
 
@@ -99,18 +130,19 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
         const now = new Date();
         const start = new Date(now);
         start.setMinutes(0, 0, 0);
-        const end = new Date(start);
-        end.setHours(end.getHours() + 1, 0, 0, 0);
         setData({
             title: '',
             description: '',
-            starts_at: start.toISOString().slice(0, 16),
-            ends_at: end.toISOString().slice(0, 16),
+            starts_at: toDatetimeLocalString(start),
+            ends_at: '',
             all_day: false,
             location: '',
+            price: '',
+            purchase_url: '',
             image_url: '',
             color: '',
         });
+        setData('image_file', null);
         clearErrors();
         setIsModalOpen(true);
     };
@@ -123,13 +155,20 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
         setData({
             title: ev.title,
             description: ev.description ?? '',
-            starts_at: start.toISOString().slice(0, 16),
-            ends_at: end ? end.toISOString().slice(0, 16) : '',
+            starts_at: ev.all_day ? toDateInputValue(start) : toDatetimeLocalString(start),
+            ends_at: end
+                ? ev.all_day
+                    ? toDateInputValue(end)
+                    : toDatetimeLocalString(end)
+                : '',
             all_day: ev.all_day,
             location: ev.location ?? '',
+            price: ev.price ?? '',
+            purchase_url: ev.purchase_url ?? '',
             image_url: ev.image_url ?? '',
             color: ev.color ?? '',
         });
+        setData('image_file', null);
         clearErrors();
         setIsModalOpen(true);
     };
@@ -137,14 +176,15 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
     const closeModal = () => {
         setIsModalOpen(false);
         reset();
+        setData('image_file', null);
     };
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         if (isEditing && editingId) {
-            put(route('events.update', editingId), { onSuccess: () => closeModal() });
+            put(route('events.update', editingId), { onSuccess: () => closeModal(), forceFormData: true });
         } else {
-            post(route('events.store'), { onSuccess: () => closeModal() });
+            post(route('events.store'), { onSuccess: () => closeModal(), forceFormData: true });
         }
     };
 
@@ -384,6 +424,18 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
                                                 {ev.location}
                                             </span>
                                         )}
+                                        {ev.price && (
+                                            <span className="flex items-center gap-1">
+                                                <BanknotesIcon className="w-4 h-4 flex-shrink-0" />
+                                                {ev.price}
+                                            </span>
+                                        )}
+                                        {ev.purchase_url && (
+                                            <span className="inline-flex items-center gap-1 rounded-full bg-primary-100 px-2 py-0.5 text-xs font-semibold text-primary-800 dark:bg-primary-900/50 dark:text-primary-200">
+                                                <TicketIcon className="h-3.5 w-3.5" />
+                                                Compra / inscrição
+                                            </span>
+                                        )}
                                     </div>
                                     {ev.description && (
                                         <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
@@ -459,14 +511,23 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
                                 <InputError message={errors.starts_at} />
                             </div>
                             <div>
-                                <InputLabel htmlFor="ends_at">Fim</InputLabel>
+                                <InputLabel htmlFor="ends_at">Fim (opcional)</InputLabel>
                                 <TextInput
                                     id="ends_at"
                                     type={data.all_day ? 'date' : 'datetime-local'}
-                                    value={data.all_day ? data.ends_at.slice(0, 10) : data.ends_at}
+                                    value={
+                                        data.ends_at
+                                            ? data.all_day
+                                                ? data.ends_at.slice(0, 10)
+                                                : data.ends_at
+                                            : ''
+                                    }
                                     onChange={(e) => setData('ends_at', e.target.value)}
                                     className="mt-1 block w-full"
                                 />
+                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    Deixe em branco se o evento não tiver horário de término.
+                                </p>
                                 <InputError message={errors.ends_at} />
                             </div>
                         </div>
@@ -491,15 +552,90 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
                             <InputError message={errors.location} />
                         </div>
                         <div>
-                            <InputLabel htmlFor="image_url">URL da imagem</InputLabel>
-                            <TextInput
-                                id="image_url"
-                                value={data.image_url}
-                                onChange={(e) => setData('image_url', e.target.value)}
+                            <InputLabel htmlFor="price">Valor e condições (texto livre, opcional)</InputLabel>
+                            <Textarea
+                                id="price"
+                                name="price"
+                                value={data.price}
+                                onChange={(e) => setData('price', e.target.value)}
                                 className="mt-1 block w-full"
+                                rows={3}
+                                placeholder="Ex.: R$ 50 + 1 kg de alimento · Meia entrada R$ 25 · Grátis"
+                            />
+                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                Aparece só no detalhe do evento no app (não no card da lista pública).
+                            </p>
+                            <InputError message={errors.price} />
+                        </div>
+                        <div className="rounded-xl border-2 border-primary-500/35 bg-primary-50/80 p-4 shadow-sm dark:border-primary-500/40 dark:bg-primary-950/30">
+                            <div className="mb-2 flex items-center gap-2 text-primary-900 dark:text-primary-100">
+                                <TicketIcon className="h-5 w-5 shrink-0" />
+                                <span className="text-sm font-bold uppercase tracking-wide">Link para compra</span>
+                            </div>
+                            <p className="mb-3 text-xs text-primary-950/80 dark:text-primary-100/80">
+                                Destaque no app: botão que leva à página de ingressos, inscrição ou pagamento (cole o URL
+                                completo, incluindo https://).
+                            </p>
+                            <InputLabel htmlFor="purchase_url" className="text-primary-950 dark:text-primary-50">
+                                URL de compra ou inscrição
+                            </InputLabel>
+                            <TextInput
+                                id="purchase_url"
+                                type="url"
+                                value={data.purchase_url}
+                                onChange={(e) => setData('purchase_url', e.target.value)}
+                                className="mt-1 block w-full border-primary-200 bg-white dark:border-primary-800/60 dark:bg-zinc-900"
                                 placeholder="https://..."
                             />
-                            <InputError message={errors.image_url} />
+                            <InputError message={errors.purchase_url} />
+                        </div>
+                        <div>
+                            <InputLabel htmlFor="image_url">Imagem de capa / fundo</InputLabel>
+                            <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                                Envie um arquivo ou cole o link da imagem (banner no app).
+                            </p>
+                            <div className="mt-2 space-y-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-zinc-200 dark:bg-zinc-800">
+                                        {data.image_file ? (
+                                            <img
+                                                src={URL.createObjectURL(data.image_file)}
+                                                alt=""
+                                                className="h-full w-full object-cover"
+                                            />
+                                        ) : data.image_url ? (
+                                            <img
+                                                src={imageSrc(data.image_url, appUrl)}
+                                                alt=""
+                                                className="h-full w-full object-cover"
+                                            />
+                                        ) : (
+                                            <PhotoIcon className="h-5 w-5 text-zinc-500" />
+                                        )}
+                                    </div>
+                                    <div className="min-w-0 flex-1 space-y-2">
+                                        <input
+                                            id="image_file"
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0] ?? null;
+                                                setData('image_file', file);
+                                            }}
+                                            className="block w-full text-sm text-zinc-900 file:mr-4 file:rounded-full file:border-0 file:bg-zinc-900 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-white hover:file:bg-zinc-800 dark:text-zinc-100 dark:file:bg-zinc-100 dark:file:text-zinc-900"
+                                        />
+                                        <TextInput
+                                            id="image_url"
+                                            value={data.image_url}
+                                            onChange={(e) => setData('image_url', e.target.value)}
+                                            className="block w-full"
+                                            placeholder="Ou URL https://..."
+                                        />
+                                    </div>
+                                </div>
+                                <InputError message={errors.image_url} />
+                                <InputError message={errors.image_file} />
+                            </div>
                         </div>
                         <div>
                             <InputLabel htmlFor="color">Cor (hex, ex: #3B82F6)</InputLabel>
