@@ -133,7 +133,7 @@ export default function PublicSignup({ token, churchName, churchLogoUrl, ministr
                         </p>
                         <h1 className="mt-2 text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">{churchName}</h1>
                         <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
-                            Escolha um ou mais departamentos em que pretende servir e conclua os dados para aceder ao app.
+                            Preencha os seus dados e, no final, escolha um ou mais departamentos em que pretende servir.
                         </p>
                     </div>
 
@@ -178,30 +178,6 @@ export default function PublicSignup({ token, churchName, churchLogoUrl, ministr
                                         <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">{nameDuplicateHint}</p>
                                     )}
                                 </div>
-                            </div>
-
-                            <div className="mt-4">
-                                <InputLabel value="Departamentos" />
-                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Marque todos em que deseja servir.</p>
-                                <ul className="mt-3 space-y-2 rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-700 dark:bg-zinc-950/50">
-                                    {ministries.map((m) => {
-                                        const checked = data.ministry_ids.includes(m.id);
-                                        return (
-                                            <li key={m.id}>
-                                                <label className="flex cursor-pointer items-start gap-3 rounded-lg px-2 py-1.5 hover:bg-white dark:hover:bg-zinc-900">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={checked}
-                                                        onChange={() => toggleMinistry(m.id)}
-                                                        className="mt-0.5 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-900"
-                                                    />
-                                                    <span className="text-sm text-zinc-800 dark:text-zinc-100">{m.name}</span>
-                                                </label>
-                                            </li>
-                                        );
-                                    })}
-                                </ul>
-                                <InputError message={errors.ministry_ids} className="mt-2" />
                             </div>
 
                             <div className="mt-4">
@@ -272,6 +248,30 @@ export default function PublicSignup({ token, churchName, churchLogoUrl, ministr
                                     />
                                     <InputError message={errors.password_confirmation} className="mt-1" />
                                 </div>
+                            </div>
+
+                            <div className="mt-4">
+                                <InputLabel value="Departamentos" />
+                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Marque todos em que deseja servir.</p>
+                                <ul className="mt-3 space-y-2 rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-700 dark:bg-zinc-950/50">
+                                    {ministries.map((m) => {
+                                        const checked = data.ministry_ids.includes(m.id);
+                                        return (
+                                            <li key={m.id}>
+                                                <label className="flex cursor-pointer items-start gap-3 rounded-lg px-2 py-1.5 hover:bg-white dark:hover:bg-zinc-900">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={checked}
+                                                        onChange={() => toggleMinistry(m.id)}
+                                                        className="mt-0.5 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-900"
+                                                    />
+                                                    <span className="text-sm text-zinc-800 dark:text-zinc-100">{m.name}</span>
+                                                </label>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                                <InputError message={errors.ministry_ids} className="mt-2" />
                             </div>
 
                             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

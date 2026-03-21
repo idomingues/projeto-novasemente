@@ -579,29 +579,6 @@ export default function Index({
                             )}
                         </div>
                         <div>
-                            <InputLabel value="Departamentos (pode escolher mais de um)" />
-                            <div className="mt-2 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 max-h-48 overflow-y-auto space-y-2">
-                                {ministries.map((m) => (
-                                    <label key={m.id} className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={data.ministry_ids.includes(m.id)}
-                                            onChange={(e) => {
-                                                if (e.target.checked) {
-                                                    setData('ministry_ids', [...data.ministry_ids, m.id]);
-                                                } else {
-                                                    setData('ministry_ids', data.ministry_ids.filter((id) => id !== m.id));
-                                                }
-                                            }}
-                                            className="rounded border-zinc-300 dark:border-zinc-600 text-zinc-900 focus:ring-zinc-500"
-                                        />
-                                        <span className="text-sm text-zinc-900 dark:text-white">{m.name}</span>
-                                    </label>
-                                ))}
-                            </div>
-                            <InputError message={errors.ministry_ids} className="mt-1" />
-                        </div>
-                        <div>
                             <InputLabel htmlFor="role" value="Cargo (opcional)" />
                             <TextInput
                                 id="role"
@@ -781,6 +758,29 @@ export default function Index({
                                     </div>
                                 </div>
                             )}
+                        </div>
+                        <div>
+                            <InputLabel value="Departamentos (pode escolher mais de um)" />
+                            <div className="mt-2 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 max-h-48 overflow-y-auto space-y-2">
+                                {ministries.map((m) => (
+                                    <label key={m.id} className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={data.ministry_ids.includes(m.id)}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setData('ministry_ids', [...data.ministry_ids, m.id]);
+                                                } else {
+                                                    setData('ministry_ids', data.ministry_ids.filter((id) => id !== m.id));
+                                                }
+                                            }}
+                                            className="rounded border-zinc-300 dark:border-zinc-600 text-zinc-900 focus:ring-zinc-500"
+                                        />
+                                        <span className="text-sm text-zinc-900 dark:text-white">{m.name}</span>
+                                    </label>
+                                ))}
+                            </div>
+                            <InputError message={errors.ministry_ids} className="mt-1" />
                         </div>
                     </div>
                     <div className="mt-6 flex justify-end gap-2">
