@@ -1,5 +1,5 @@
 import AdminLayout from '@/Layouts/AdminLayout';
-import { Head, useForm, router } from '@inertiajs/react';
+import { Head, useForm, router, usePage } from '@inertiajs/react';
 import { PencilIcon, TrashIcon, ArchiveBoxIcon, MagnifyingGlassIcon, ClockIcon } from '@heroicons/react/24/outline';
 import AddButton from '@/Components/AddButton';
 import Modal from '@/Components/Modal';
@@ -28,6 +28,7 @@ interface InventoryItem {
     current_value: string | null;
     status: string;
     movements_count: number;
+    photo_url?: string | null;
 }
 
 interface Movement {
@@ -46,7 +47,15 @@ interface Props {
     filters: { search?: string };
 }
 
+function photoSrc(url: string | null | undefined, appUrl: string): string {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    const base = appUrl || (typeof window !== 'undefined' ? window.location.origin : '');
+    return `${base}${url}`;
+}
+
 export default function Index({ items, filters }: Props) {
+    const appUrl = (usePage().props as { appUrl?: string }).appUrl ?? '';
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
@@ -54,6 +63,8 @@ export default function Index({ items, filters }: Props) {
     const [historyItem, setHistoryItem] = useState<InventoryItem | null>(null);
     const [history, setHistory] = useState<Movement[]>([]);
     const [search, setSearch] = useState(filters.search ?? '');
+    const [existingPhotoUrl, setExistingPhotoUrl] = useState<string | null>(null);
+    const [newPhotoPreview, setNewPhotoPreview] = useState<string | null>(null);
 
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
         barcode: '',
@@ -69,11 +80,13 @@ export default function Index({ items, filters }: Props) {
         acquisition_value: '',
         current_value: '',
         status: 'active',
+        photo: null as File | null,
     });
 
     const openCreateModal = () => {
         setIsEditing(false);
         setEditingId(null);
+        setExistingPhotoUrl(null);
         reset();
         clearErrors();
         setIsModalOpen(true);
@@ -82,6 +95,7 @@ export default function Index({ items, filters }: Props) {
     const openEditModal = (item: InventoryItem) => {
         setIsEditing(true);
         setEditingId(item.id);
+        setExistingPhotoUrl(item.photo_url ?? null);
         setData({
             barcode: item.barcode,
             serial_number: item.serial_number ?? '',
@@ -96,6 +110,7 @@ export default function Index({ items, filters }: Props) {
             acquisition_value: item.acquisition_value ?? '',
             current_value: item.current_value ?? '',
             status: item.status || 'active',
+            photo: null,
         });
         clearErrors();
         setIsModalOpen(true);
@@ -103,15 +118,33 @@ export default function Index({ items, filters }: Props) {
 
     const closeModal = () => {
         setIsModalOpen(false);
+        setExistingPhotoUrl(null);
         reset();
     };
+
+    useEffect(() => {
+        const f = data.photo;
+        if (!f) {
+            setNewPhotoPreview(null);
+            return;
+        }
+        const url = URL.createObjectURL(f);
+        setNewPhotoPreview(url);
+        return () => URL.revokeObjectURL(url);
+    }, [data.photo]);
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         if (isEditing && editingId) {
-            put(route('inventory.update', editingId), { onSuccess: () => closeModal() });
+            put(route('inventory.update', editingId), {
+                forceFormData: true,
+                onSuccess: () => closeModal(),
+            });
         } else {
-            post(route('inventory.store'), { onSuccess: () => closeModal() });
+            post(route('inventory.store'), {
+                forceFormData: true,
+                onSuccess: () => closeModal(),
+            });
         }
     };
 
@@ -291,6 +324,47 @@ export default function Index({ items, filters }: Props) {
                         />
                         <InputError message={errors.name} className="mt-1" />
                     </div>
+                    <div className="mt-4 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/80 dark:bg-zinc-900/50 p-4">
+                        <InputLabel htmlFor="photo" value="Foto do objeto (opcional)" />
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 mb-2">
+                            Tire uma foto ou escolha um ficheiro da galeria (telemóvel: pode usar a câmara).
+                        </p>
+                        <input
+                            id="photo"
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            className="block w-full text-sm text-zinc-600 dark:text-zinc-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-zinc-900 file:text-white dark:file:bg-zinc-200 dark:file:text-zinc-900"
+                            onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                setData('photo', f ?? null);
+                            }}
+                        />
+                        <InputError message={errors.photo} className="mt-2" />
+                        {(newPhotoPreview || (isEditing && existingPhotoUrl && !data.photo)) && (
+                            <div className="mt-3 rounded-lg border border-zinc-200 dark:border-zinc-600 overflow-hidden bg-white dark:bg-zinc-950 max-h-48">
+                                <img
+                                    src={newPhotoPreview ?? photoSrc(existingPhotoUrl, appUrl)}
+                                    alt=""
+                                    className="w-full h-full max-h-48 object-contain"
+                                />
+                            </div>
+                        )}
+                    </div>
+                    <div className="mt-4">
+                        <InputLabel htmlFor="location" value="Localização (onde está o objeto)" />
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 mb-1">
+                            Opcional — sala, armário, corredor, etc.
+                        </p>
+                        <TextInput
+                            id="location"
+                            value={data.location}
+                            onChange={(e) => setData('location', e.target.value)}
+                            className="mt-1 block w-full"
+                            placeholder="Ex: Sala de reuniões 1, depósito"
+                        />
+                        <InputError message={errors.location} className="mt-1" />
+                    </div>
                     <div className="mt-4">
                         <InputLabel htmlFor="description" value="Descrição (opcional)" />
                         <textarea
@@ -302,17 +376,6 @@ export default function Index({ items, filters }: Props) {
                             placeholder="Detalhes do item"
                         />
                         <InputError message={errors.description} className="mt-1" />
-                    </div>
-                    <div className="mt-4">
-                        <InputLabel htmlFor="location" value="Localização atual (opcional)" />
-                        <TextInput
-                            id="location"
-                            value={data.location}
-                            onChange={(e) => setData('location', e.target.value)}
-                            className="mt-1 block w-full"
-                            placeholder="Ex: Sala de reuniões 1"
-                        />
-                        <InputError message={errors.location} className="mt-1" />
                     </div>
                     <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>

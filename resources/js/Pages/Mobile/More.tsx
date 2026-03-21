@@ -1,5 +1,5 @@
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import {
     ClockIcon,
     PhoneIcon,
@@ -13,6 +13,7 @@ import {
     UserGroupIcon,
     MapPinIcon,
     ChatBubbleLeftRightIcon,
+    CubeIcon,
 } from '@heroicons/react/24/outline';
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 
@@ -21,7 +22,7 @@ interface Props {
     latestPrayerRequests?: unknown[];
 }
 
-const items = [
+const baseItems = [
     { name: 'Quem somos', description: 'História e significado do nome', route: 'mobile.quem-somos', icon: UserGroupIcon },
     { name: 'Nossas crenças', description: '28 princípios de fé (IASD)', route: 'mobile.beliefs', icon: BookOpenIcon },
     { name: 'Escala', description: 'Escala de voluntários', route: 'varios.schedule', icon: ClipboardDocumentListIcon },
@@ -43,6 +44,22 @@ const items = [
 ];
 
 export default function MobileMore(_: Props) {
+    const permissions = (usePage().props as { auth?: { permissions?: string[] } }).auth?.permissions ?? [];
+    const canInventory =
+        permissions.includes('inventory.view') || permissions.includes('inventory.manage');
+    const items = canInventory
+        ? [
+              ...baseItems.slice(0, 3),
+              {
+                  name: 'Inventário',
+                  description: 'Consultar itens e ler código de barras',
+                  route: 'mobile.inventory',
+                  icon: CubeIcon,
+              },
+              ...baseItems.slice(3),
+          ]
+        : baseItems;
+
     return (
         <MobileLayout>
             <Head title="Mais" />
