@@ -20,10 +20,10 @@ export default function AdminLayout({ children }: PropsWithChildren) {
                 />
             )}
 
-            <div className={`flex flex-col min-h-screen transition-all duration-300 ${isAuthenticated ? 'md:pl-72' : ''}`}>
+            <div className={`flex h-[100dvh] flex-col overflow-hidden transition-all duration-300 ${isAuthenticated ? 'md:pl-72' : ''}`}>
                 <Topbar onMenuClick={() => setMobileMenuOpen(true)} hasSidebar={isAuthenticated} />
 
-                <main className="flex-1 pt-20 md:pt-24 px-4 sm:px-6 md:px-8 pb-24">
+                <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain pt-20 md:pt-24 px-4 sm:px-6 md:px-8 pb-24 [scrollbar-gutter:stable]">
                     <div className="max-w-7xl xl:max-w-[90rem] mx-auto w-full min-w-0 pt-6">
                         {children}
                     </div>
