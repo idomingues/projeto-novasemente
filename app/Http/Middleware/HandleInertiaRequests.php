@@ -151,6 +151,8 @@ class HandleInertiaRequests extends Middleware
                 5
             ),
             'unreadInboxNotificationsCount' => fn () => NotificationFeed::unreadInboxCount($request),
+            /** Menu lateral: textos em config/admin_sidebar.php (não depende só do bundle JS em cache). */
+            'adminSidebarMenu' => fn () => config('admin_sidebar.items', []),
         ];
     }
 }
