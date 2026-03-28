@@ -17,6 +17,7 @@ use App\Services\ScheduleAssignmentPresenter;
 use App\Services\VolunteerScheduleOverview;
 use App\Support\NotificationFeed;
 use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -402,9 +403,11 @@ class MobileController extends Controller
         return Inertia::render('Mobile/QuemSomos');
     }
 
-    public function fotosComingSoon(): Response
+    public function fotosComingSoon(): RedirectResponse
     {
-        return Inertia::render('Mobile/FotosComingSoon');
+        return redirect()->away(
+            'https://drive.google.com/drive/folders/1AfwOOlfQhITwltHy0BUTT3TfkT-soDUQ',
+        );
     }
 
     public function location(): Response

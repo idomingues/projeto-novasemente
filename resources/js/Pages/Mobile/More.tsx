@@ -18,13 +18,21 @@ import {
     InboxIcon,
 } from '@heroicons/react/24/outline';
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
+import { PHOTOS_DRIVE_FOLDER_URL } from '@/constants/externalLinks';
+import type { ComponentType, SVGProps } from 'react';
+
+type MenuIcon = ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
+
+type MoreMenuItem =
+    | { name: string; description: string; route: string; icon: MenuIcon; externalHref?: never }
+    | { name: string; description: string; externalHref: string; icon: MenuIcon; route?: never };
 
 interface Props {
     latestMusicas?: unknown[];
     latestPrayerRequests?: unknown[];
 }
 
-const baseItems = [
+const baseItems: MoreMenuItem[] = [
     { name: 'Quem somos', description: 'História e significado do nome', route: 'mobile.quem-somos', icon: UserGroupIcon },
     { name: 'Nossas crenças', description: '28 princípios de fé (IASD)', route: 'mobile.beliefs', icon: BookOpenIcon },
     { name: 'Nossos pastores', description: 'Conheça a equipa pastoral', route: 'mobile.pastors', icon: UserCircleIcon },
@@ -38,7 +46,12 @@ const baseItems = [
         route: 'mobile.prayer',
         icon: PrayingHandsIcon,
     },
-    { name: 'Fotos', description: 'Galeria em breve', route: 'mobile.fotos', icon: PhotoIcon },
+    {
+        name: 'Fotos',
+        description: 'Álbum de fotos (Google Drive)',
+        externalHref: PHOTOS_DRIVE_FOLDER_URL,
+        icon: PhotoIcon,
+    },
     { name: 'Localização', description: 'Endereço e mapa da igreja', route: 'mobile.location', icon: MapPinIcon },
     { name: 'Acervo', description: 'Playlists do YouTube da Nova Semente', route: 'mobile.acervo', icon: PlayCircleIcon },
     { name: 'Fale conosco', description: 'E-mail, redes e WhatsApp', route: 'mobile.contact', icon: PhoneIcon },
@@ -56,7 +69,7 @@ export default function MobileMore(_: Props) {
     const permissions = (usePage().props as { auth?: { permissions?: string[] } }).auth?.permissions ?? [];
     const canInventory =
         permissions.includes('inventory.view') || permissions.includes('inventory.manage');
-    const items = canInventory
+    const items: MoreMenuItem[] = canInventory
         ? [
               ...baseItems.slice(0, 3),
               {
@@ -93,8 +106,21 @@ export default function MobileMore(_: Props) {
                                 </div>
                             </>
                         );
+                        if ('externalHref' in item && item.externalHref) {
+                            return (
+                                <a
+                                    key={name}
+                                    href={item.externalHref}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={className}
+                                >
+                                    {content}
+                                </a>
+                            );
+                        }
                         return (
-                            <Link key={name} href={route(item.route)} className={className}>
+                            <Link key={name} href={route(item.route!)} className={className}>
                                 {content}
                             </Link>
                         );
