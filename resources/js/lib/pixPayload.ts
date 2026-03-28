@@ -119,8 +119,10 @@ export interface PixPayloadOptions {
 const PIX_MCC = '6012';
 
 /**
- * Monta a linha digitável do PIX para colar no app do banco.
- * Ponto de iniciação 12 (valor fixo no payload). Campo 62 omitido (opcional no estático).
+ * Monta a linha digitável do PIX para colar no app do banco (QR estático EMV).
+ * Campo 01 = 11 (estático). O valor em R$ vai no campo 54; usar 12 seria QR dinâmico
+ * (cobrança com URL/txid) e quebra em vários bancos sem os campos 25/62 adequados.
+ * Campo 62 omitido (opcional no estático).
  */
 export function buildPixCopyPaste(options: PixPayloadOptions): string | null {
     const key = normalizePixKey(options.pixKey);
@@ -163,7 +165,8 @@ export function buildPixCopyPaste(options: PixPayloadOptions): string | null {
 
     let payload = '';
     const f00 = formatField('00', '01');
-    const f01 = formatField('01', '12');
+    /** 11 = QR estático (copia e cola com chave + valor no payload). Não usar 12 aqui. */
+    const f01 = formatField('01', '11');
     if (!f00 || !f01) {
         return null;
     }

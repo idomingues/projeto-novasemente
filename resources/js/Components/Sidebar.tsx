@@ -56,7 +56,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
 
     const allMenuItems = [
         { name: 'Dashboard', route: 'dashboard', icon: HomeIcon },
-        { name: 'Inbox (Solicitações de membros)', route: 'solicitations.index', icon: InboxIcon },
+        { name: 'Inbox (Solicitações)', route: 'solicitations.index', icon: InboxIcon },
         { name: 'Notícias', route: 'news.index', icon: NewspaperIcon },
         { name: 'Eventos', route: 'events.index', icon: CalendarDaysIcon },
         { name: 'Culto', route: 'culto.index', icon: FilmIcon },
