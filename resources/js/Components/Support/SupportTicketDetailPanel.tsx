@@ -177,14 +177,14 @@ export default function SupportTicketDetailPanel({
                             Editar
                         </SecondaryButton>
                         {!isOpen && (
-                            <SecondaryButton type="button" onClick={reopenTicket}>
+                            <SecondaryButton type="button" onClick={() => void reopenTicket()}>
                                 Reabrir
                             </SecondaryButton>
                         )}
                         <SecondaryButton
                             type="button"
                             className="inline-flex items-center gap-1.5 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-950/40"
-                            onClick={deleteTicket}
+                            onClick={() => void deleteTicket()}
                         >
                             <TrashIcon className="w-4 h-4" />
                             Excluir

@@ -501,17 +501,19 @@ export default function EscalasIndex({
                                                     <span>{r.name}</span>
                                                     <button
                                                         type="button"
-                                                        onClick={async () => {
-                                                            const ok = await confirmAction({
-                                                                title: 'Remover função?',
-                                                                text: 'Esta função deixará de estar disponível para escalas deste departamento.',
-                                                                confirmButtonText: 'Remover',
-                                                                danger: true,
-                                                                icon: 'warning',
-                                                            });
-                                                            if (ok) {
-                                                                router.delete(route('escalas.roles.destroy', r.id), inertiaScrollOpts);
-                                                            }
+                                                        onClick={() => {
+                                                            void (async () => {
+                                                                const ok = await confirmAction({
+                                                                    title: 'Remover função?',
+                                                                    text: 'Esta função deixará de estar disponível para escalas deste departamento.',
+                                                                    confirmButtonText: 'Remover',
+                                                                    danger: true,
+                                                                    icon: 'warning',
+                                                                });
+                                                                if (ok) {
+                                                                    router.delete(route('escalas.roles.destroy', r.id), inertiaScrollOpts);
+                                                                }
+                                                            })();
                                                         }}
                                                         className="p-1.5 shrink-0 text-zinc-500 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800"
                                                         title="Remover"
