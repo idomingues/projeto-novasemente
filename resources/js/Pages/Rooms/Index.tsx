@@ -10,6 +10,7 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import PageHeader from '@/Components/PageHeader';
 import InputError from '@/Components/InputError';
 import { useState, FormEventHandler } from 'react';
+import { confirmAction } from '@/utils/confirmDialog';
 
 interface Room {
     id: number;
@@ -83,8 +84,15 @@ export default function Index({ rooms, byFloor, floors, canManage = false }: Pro
         }
     };
 
-    const handleDelete = (id: number) => {
-        if (confirm('Tem certeza que deseja excluir esta sala?')) {
+    const handleDelete = async (id: number) => {
+        const ok = await confirmAction({
+            title: 'Excluir sala?',
+            text: 'Esta ação não pode ser desfeita.',
+            confirmButtonText: 'Excluir',
+            danger: true,
+            icon: 'warning',
+        });
+        if (ok) {
             router.delete(route('rooms.destroy', id));
         }
     };

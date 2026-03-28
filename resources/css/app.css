@@ -47,3 +47,32 @@
 .safe-area-pb {
     padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0));
 }
+
+/* SweetAlert2 — mesmo “look” dos modais (DialogPanel: rounded-3xl, borda, sombra) */
+.swal2-popup.swal-app-popup {
+    overflow: hidden;
+    border-radius: 1.5rem;
+    border: 1px solid rgb(228 228 231);
+    box-shadow:
+        0 25px 50px -12px rgb(0 0 0 / 0.25),
+        0 0 0 1px rgb(0 0 0 / 0.03);
+    padding: 1.5rem 1.5rem 1.25rem;
+}
+
+html.dark .swal2-popup.swal-app-popup {
+    border-color: rgb(39 39 42);
+    box-shadow:
+        0 25px 50px -12px rgb(0 0 0 / 0.45),
+        0 0 0 1px rgb(255 255 255 / 0.04);
+}
+
+.swal2-popup.swal-app-popup .swal2-styled.swal-app-btn {
+    border-radius: 9999px;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}

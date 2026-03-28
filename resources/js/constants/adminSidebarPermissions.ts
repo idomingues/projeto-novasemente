@@ -19,6 +19,8 @@ export const adminSidebarRoutePermissions: Record<string, string[]> = {
     /** Visibilidade real: só admin/super_admin via auth.canManageSettings no Sidebar. */
     'settings.index': [],
     'support.index': ['support.view', 'support.manage'],
+    'solicitations.index': ['solicitations.view', 'solicitations.manage'],
+    'pastors.index': ['pastors.view', 'pastors.manage'],
     'app-versions.index': ['notifications.manage'],
     'more.index': [],
     'varios.schedule': [],

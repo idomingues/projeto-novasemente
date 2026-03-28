@@ -10,6 +10,7 @@ import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
 import { useState, FormEventHandler } from 'react';
+import { confirmAction } from '@/utils/confirmDialog';
 
 interface CultoItem {
     id: number;
@@ -81,8 +82,15 @@ export default function CultoIndex({ cultos }: Props) {
         }
     };
 
-    const handleDelete = (id: number) => {
-        if (confirm('Remover este culto?')) {
+    const handleDelete = async (id: number) => {
+        const ok = await confirmAction({
+            title: 'Remover culto?',
+            text: 'O vídeo será removido da lista.',
+            confirmButtonText: 'Remover',
+            danger: true,
+            icon: 'warning',
+        });
+        if (ok) {
             router.delete(route('culto.destroy', id));
         }
     };

@@ -10,6 +10,7 @@ import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
 import { useState, FormEventHandler } from 'react';
+import { confirmAction } from '@/utils/confirmDialog';
 
 interface MusicaItem {
     id: number;
@@ -81,8 +82,15 @@ export default function MusicIndex({ musicas, canManage }: Props) {
         }
     };
 
-    const handleDelete = (id: number) => {
-        if (confirm('Remover este vídeo de música?')) {
+    const handleDelete = async (id: number) => {
+        const ok = await confirmAction({
+            title: 'Remover música?',
+            text: 'O vídeo será removido da lista.',
+            confirmButtonText: 'Remover',
+            danger: true,
+            icon: 'warning',
+        });
+        if (ok) {
             router.delete(route('musica.destroy', id));
         }
     };

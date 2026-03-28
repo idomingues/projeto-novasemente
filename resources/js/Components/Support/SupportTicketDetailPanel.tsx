@@ -1,5 +1,6 @@
 import { router, useForm } from '@inertiajs/react';
 import { useEffect, useState, FormEventHandler } from 'react';
+import { confirmAction } from '@/utils/confirmDialog';
 import { CheckCircleIcon, ChatBubbleLeftRightIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
@@ -100,8 +101,14 @@ export default function SupportTicketDetailPanel({
         });
     };
 
-    const reopenTicket = () => {
-        if (!confirm('Reabrir este chamado? O texto de solução será limpo.')) return;
+    const reopenTicket = async () => {
+        const ok = await confirmAction({
+            title: 'Reabrir chamado?',
+            text: 'O texto de solução será limpo.',
+            confirmButtonText: 'Reabrir',
+            icon: 'question',
+        });
+        if (!ok) return;
         router.patch(supportUpdateUrl, { status: 'open' }, inertiaScrollOpts);
     };
 
@@ -114,8 +121,15 @@ export default function SupportTicketDetailPanel({
         });
     };
 
-    const deleteTicket = () => {
-        if (!confirm('Excluir este chamado permanentemente? Esta ação não pode ser desfeita.')) return;
+    const deleteTicket = async () => {
+        const ok = await confirmAction({
+            title: 'Excluir chamado?',
+            text: 'Esta ação não pode ser desfeita.',
+            confirmButtonText: 'Excluir',
+            danger: true,
+            icon: 'warning',
+        });
+        if (!ok) return;
         router.delete(supportDestroyUrl);
     };
 
@@ -136,7 +150,7 @@ export default function SupportTicketDetailPanel({
                         <h1
                             className={`font-bold text-zinc-900 dark:text-white truncate ${isModal ? 'text-lg sm:text-xl' : 'text-2xl'}`}
                         >
-                            Suporte
+                            Suporte do app
                         </h1>
                     </div>
                     <div className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">

@@ -55,10 +55,10 @@ export default function MobileSupport({ tickets, isAuthenticated, hasMember }: P
 
     return (
         <MobileLayout>
-            <Head title="Suporte" />
+            <Head title="Suporte do app" />
             <div className="space-y-6">
                 <div>
-                    <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Suporte</h1>
+                    <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Suporte do app</h1>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
                         Envie um <span className="font-semibold">{selectedTypeLabel}</span> e acompanhe o andamento.
                     </p>
@@ -195,7 +195,7 @@ export default function MobileSupport({ tickets, isAuthenticated, hasMember }: P
                         )}
                         {!hasMember && (
                             <div className="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4 text-sm text-amber-900 dark:text-amber-200">
-                                Seu usuário não está vinculado a um membro. Isso pode limitar recursos do app, mas o envio do suporte continua disponível.
+                                Seu usuário não está vinculado a um membro. Isso pode limitar recursos do app, mas o envio do suporte do app continua disponível.
                             </div>
                         )}
                     </div>

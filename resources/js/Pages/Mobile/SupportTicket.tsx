@@ -79,7 +79,7 @@ export default function MobileSupportTicket({ ticket, messages, canChat, showMes
 
     return (
         <MobileLayout>
-            <Head title={`Suporte - ${ticket.typeLabel}`} />
+            <Head title={`Suporte do app — ${ticket.typeLabel}`} />
             <div className="space-y-4">
                 <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4">
                     <div className="flex items-center justify-between gap-3">

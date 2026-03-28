@@ -11,6 +11,7 @@ import PageHeader from '@/Components/PageHeader';
 import InputError from '@/Components/InputError';
 import Card from '@/Components/Card';
 import { useState, FormEventHandler } from 'react';
+import { confirmAction } from '@/utils/confirmDialog';
 
 interface Church {
     id: number;
@@ -125,8 +126,15 @@ export default function Index({ churches }: Props) {
         }
     };
 
-    const handleDelete = (id: number) => {
-        if (confirm('Tem certeza que deseja excluir esta igreja?')) {
+    const handleDelete = async (id: number) => {
+        const ok = await confirmAction({
+            title: 'Excluir igreja?',
+            text: 'Esta ação não pode ser desfeita.',
+            confirmButtonText: 'Excluir',
+            danger: true,
+            icon: 'warning',
+        });
+        if (ok) {
             router.delete(route('churches.destroy', id));
         }
     };

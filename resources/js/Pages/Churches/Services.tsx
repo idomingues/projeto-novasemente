@@ -11,6 +11,7 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
 import { useState, FormEventHandler } from 'react';
+import { confirmAction } from '@/utils/confirmDialog';
 
 interface ServiceItem {
     id: number;
@@ -83,8 +84,15 @@ export default function ChurchServicesIndex({ church, services }: Props) {
         }
     };
 
-    const handleDelete = (id: number) => {
-        if (confirm('Remover este horário?')) {
+    const handleDelete = async (id: number) => {
+        const ok = await confirmAction({
+            title: 'Remover horário?',
+            text: 'Este horário de culto será removido.',
+            confirmButtonText: 'Remover',
+            danger: true,
+            icon: 'warning',
+        });
+        if (ok) {
             router.delete(route('churches.services.destroy', [church.id, id]));
         }
     };

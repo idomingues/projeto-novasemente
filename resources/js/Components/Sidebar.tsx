@@ -17,6 +17,8 @@ import {
     KeyIcon,
     ChatBubbleLeftRightIcon,
     RectangleStackIcon,
+    InboxIcon,
+    UserCircleIcon,
 } from '@heroicons/react/24/outline';
 
 interface SidebarProps {
@@ -54,11 +56,13 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
 
     const allMenuItems = [
         { name: 'Dashboard', route: 'dashboard', icon: HomeIcon },
+        { name: 'Inbox (Solicitações de membros)', route: 'solicitations.index', icon: InboxIcon },
         { name: 'Notícias', route: 'news.index', icon: NewspaperIcon },
         { name: 'Eventos', route: 'events.index', icon: CalendarDaysIcon },
         { name: 'Culto', route: 'culto.index', icon: FilmIcon },
         { name: 'Acervo', route: 'acervo.index', icon: PlayCircleIcon },
         { name: 'Membros', route: 'members.index', icon: UserGroupIcon },
+        { name: 'Pastores', route: 'pastors.index', icon: UserCircleIcon },
         { name: 'Departamentos', route: 'departments.index', icon: BuildingOffice2Icon },
         { name: 'Escalas', route: 'escalas.index', icon: CalendarIcon },
         { name: 'Voluntários', route: 'volunteers.index', icon: UsersIcon },
@@ -68,7 +72,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
         { name: 'Inventário', route: 'inventory.index', icon: ArchiveBoxIcon },
         { name: 'Igrejas', route: 'churches.index', icon: BuildingOfficeIcon },
         { name: 'Configurações', route: 'settings.index', icon: Cog6ToothIcon },
-        { name: 'Suporte', route: 'support.index', icon: ChatBubbleLeftRightIcon },
+        { name: 'Suporte do app', route: 'support.index', icon: ChatBubbleLeftRightIcon },
         { name: 'Versão do App', route: 'app-versions.index', icon: Cog6ToothIcon },
     ];
 

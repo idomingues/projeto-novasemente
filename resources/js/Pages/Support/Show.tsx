@@ -5,7 +5,7 @@ import SupportTicketDetailPanel, { type SupportTicketDetailPanelProps } from '@/
 export default function SupportShow(props: SupportTicketDetailPanelProps) {
     return (
         <AdminLayout>
-            <Head title="Suporte" />
+            <Head title="Suporte do app" />
             <SupportTicketDetailPanel {...props} variant="page" />
         </AdminLayout>
     );

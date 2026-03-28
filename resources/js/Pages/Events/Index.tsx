@@ -24,6 +24,7 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
 import { useState, FormEventHandler, useMemo } from 'react';
+import { confirmAction } from '@/utils/confirmDialog';
 
 interface EventItem {
     id: number;
@@ -188,8 +189,15 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
         }
     };
 
-    const handleDelete = (id: number) => {
-        if (confirm('Remover este evento?')) {
+    const handleDelete = async (id: number) => {
+        const ok = await confirmAction({
+            title: 'Remover evento?',
+            text: 'Esta ação não pode ser desfeita.',
+            confirmButtonText: 'Remover',
+            danger: true,
+            icon: 'warning',
+        });
+        if (ok) {
             router.delete(route('events.destroy', id));
         }
     };

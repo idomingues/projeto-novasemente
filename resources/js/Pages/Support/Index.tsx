@@ -97,11 +97,11 @@ export default function SupportIndex({ tickets, devItemStoreUrl, supportIndexUrl
 
     return (
         <AdminLayout>
-            <Head title="Suporte" />
+            <Head title="Suporte do app" />
             <div className="space-y-6">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Suporte</h1>
+                        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Suporte do app</h1>
                         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                             Chamados da app e itens internos que a equipa vai desenvolver.
                         </p>

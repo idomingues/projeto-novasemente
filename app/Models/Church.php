@@ -44,6 +44,11 @@ class Church extends Model
         return $this->hasMany(ChurchService::class)->orderBy('day_of_week')->orderBy('sort_order')->orderBy('start_time');
     }
 
+    public function pastors(): HasMany
+    {
+        return $this->hasMany(Pastor::class)->orderBy('sort_order')->orderBy('name');
+    }
+
     /**
      * Igreja ativa no painel: sessão "trabalhando em" ou primeira igreja ativa por nome.
      */

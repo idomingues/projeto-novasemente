@@ -12,6 +12,7 @@ import Card from '@/Components/Card';
 import SelectInput from '@/Components/SelectInput';
 import { useState, useEffect, FormEventHandler } from 'react';
 import { activeInactivePillClass } from '@/lib/statusBadges';
+import { confirmAction } from '@/utils/confirmDialog';
 
 interface Member {
     id: number;
@@ -95,8 +96,15 @@ export default function Index({ members, filters }: Props) {
         }
     };
 
-    const handleDelete = (id: number) => {
-        if (confirm('Tem certeza que deseja excluir este membro?')) {
+    const handleDelete = async (id: number) => {
+        const ok = await confirmAction({
+            title: 'Excluir membro?',
+            text: 'Esta ação não pode ser desfeita.',
+            confirmButtonText: 'Excluir',
+            danger: true,
+            icon: 'warning',
+        });
+        if (ok) {
             router.delete(route('members.destroy', id));
         }
     };

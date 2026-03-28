@@ -11,6 +11,7 @@ import PageHeader from '@/Components/PageHeader';
 import InputError from '@/Components/InputError';
 import SearchableSelect from '@/Components/SearchableSelect';
 import { useState, useEffect, FormEventHandler } from 'react';
+import { confirmAction } from '@/utils/confirmDialog';
 
 interface UserRow {
     id: number;
@@ -123,6 +124,32 @@ export default function Index({ users, invitations, members, roles, ministries, 
         navigator.clipboard.writeText(whatsappMessage(link));
     };
 
+    const handleDeleteUser = async (id: number) => {
+        const ok = await confirmAction({
+            title: 'Excluir usuário?',
+            text: 'Esta ação não pode ser desfeita.',
+            confirmButtonText: 'Excluir',
+            danger: true,
+            icon: 'warning',
+        });
+        if (ok) {
+            router.delete(route('users.destroy', id));
+        }
+    };
+
+    const handleRemoveInvitation = async (id: number) => {
+        const ok = await confirmAction({
+            title: 'Remover convite?',
+            text: 'O link deixará de funcionar.',
+            confirmButtonText: 'Remover',
+            danger: true,
+            icon: 'warning',
+        });
+        if (ok) {
+            router.delete(route('invitations.destroy', id));
+        }
+    };
+
     useEffect(() => {
         if (search === (filters?.search ?? '')) {
             return;
@@ -209,7 +236,7 @@ export default function Index({ users, invitations, members, roles, ministries, 
                                                     <LinkIcon className="w-4 h-4" />
                                                 </button>
                                             )}
-                                            <button type="button" onClick={() => confirm('Excluir este usuário?') && router.delete(route('users.destroy', u.id))} className="p-2 text-zinc-500 hover:text-red-600 dark:hover:text-red-400 rounded-lg" title="Excluir">
+                                            <button type="button" onClick={() => void handleDeleteUser(u.id)} className="p-2 text-zinc-500 hover:text-red-600 dark:hover:text-red-400 rounded-lg" title="Excluir">
                                                 <TrashIcon className="w-4 h-4" />
                                             </button>
                                         </td>
@@ -267,7 +294,7 @@ export default function Index({ users, invitations, members, roles, ministries, 
                                                 )}
                                             </td>
                                             <td className="px-4 md:px-6 py-3 text-right">
-                                                <button type="button" onClick={() => confirm('Remover convite?') && router.delete(route('invitations.destroy', i.id))} className="p-2 text-zinc-500 hover:text-red-600 rounded-lg" title="Remover">
+                                                <button type="button" onClick={() => void handleRemoveInvitation(i.id)} className="p-2 text-zinc-500 hover:text-red-600 rounded-lg" title="Remover">
                                                     <TrashIcon className="w-4 h-4" />
                                                 </button>
                                             </td>

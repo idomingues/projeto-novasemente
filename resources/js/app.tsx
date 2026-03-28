@@ -2,7 +2,8 @@ import '../css/app.css';
 import './bootstrap';
 
 import type { ComponentType } from 'react';
-import { createInertiaApp } from '@inertiajs/react';
+import axios from 'axios';
+import { createInertiaApp, router } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 
@@ -11,6 +12,20 @@ import ProgressIndicator from './Components/ProgressIndicator';
 import { ThemeProvider } from './Contexts/ThemeContext';
 
 const defaultAppName = import.meta.env.VITE_APP_NAME || 'Laravel';
+
+type SharedPageProps = { csrf_token?: string };
+
+function syncAxiosCsrfToken(props: SharedPageProps | undefined) {
+    const token = props?.csrf_token;
+    if (!token) {
+        return;
+    }
+    axios.defaults.headers.common['X-CSRF-TOKEN'] = token;
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]');
+    if (meta) {
+        meta.content = token;
+    }
+}
 
 createInertiaApp({
     title: (title) => `${title} - ${defaultAppName}`,
@@ -30,6 +45,19 @@ createInertiaApp({
             };
         }),
     setup({ el, App, props }) {
+        const inertiaProps = props as {
+            initialPage: { props: SharedPageProps };
+            initialComponent: ComponentType<object>;
+            resolveComponent: (name: string) => Promise<ComponentType<object>>;
+            titleCallback?: (title: string) => string;
+        };
+
+        syncAxiosCsrfToken(inertiaProps.initialPage.props);
+
+        router.on('success', (event) => {
+            syncAxiosCsrfToken(event.detail.page.props as SharedPageProps);
+        });
+
         const root = createRoot(el);
 
         root.render(

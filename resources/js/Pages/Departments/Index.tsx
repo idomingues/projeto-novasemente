@@ -11,6 +11,7 @@ import PageHeader from '@/Components/PageHeader';
 import InputError from '@/Components/InputError';
 import { DEPARTMENT_ICON_OPTIONS, getMinistryIconByKey } from '@/lib/ministryIcons';
 import { useState, FormEventHandler } from 'react';
+import { confirmAction } from '@/utils/confirmDialog';
 
 interface Department {
     id: number;
@@ -82,8 +83,15 @@ export default function Index({ departments, scheduleRolesByDepartmentId, canMan
         }
     };
 
-    const handleDelete = (id: number) => {
-        if (confirm('Tem certeza que deseja excluir este departamento?')) {
+    const handleDelete = async (id: number) => {
+        const ok = await confirmAction({
+            title: 'Excluir departamento?',
+            text: 'Esta ação não pode ser desfeita.',
+            confirmButtonText: 'Excluir',
+            danger: true,
+            icon: 'warning',
+        });
+        if (ok) {
             router.delete(route('departments.destroy', id));
         }
     };
@@ -260,8 +268,15 @@ export default function Index({ departments, scheduleRolesByDepartmentId, canMan
                                             <span className="truncate">{r.name}</span>
                                             <button
                                                 type="button"
-                                                onClick={() => {
-                                                    if (confirm('Remover esta função?')) {
+                                                onClick={async () => {
+                                                    const ok = await confirmAction({
+                                                        title: 'Remover função?',
+                                                        text: 'Esta função deixará de estar disponível para escalas deste departamento.',
+                                                        confirmButtonText: 'Remover',
+                                                        danger: true,
+                                                        icon: 'warning',
+                                                    });
+                                                    if (ok) {
                                                         router.delete(route('escalas.roles.destroy', r.id), {
                                                             preserveScroll: true,
                                                             preserveState: true,

@@ -21,6 +21,7 @@ import TextInput from '@/Components/TextInput';
 import { getMinistryIcon } from '@/lib/ministryIcons';
 import { useState, useMemo, useEffect } from 'react';
 import PageHeader from '@/Components/PageHeader';
+import { confirmAction } from '@/utils/confirmDialog';
 
 const checkinActiveIconClass =
     'border-green-300 bg-green-50 text-green-700 hover:bg-green-100 dark:border-green-700 dark:bg-green-900/30 dark:text-green-200 dark:hover:bg-green-900/40';
@@ -149,9 +150,16 @@ export default function EscalasIndex({
 
     const inertiaScrollOpts = { preserveScroll: true };
 
-    const handleToggleCheckin = (date: Date, currentlyEnabled: boolean) => {
+    const handleToggleCheckin = async (date: Date, currentlyEnabled: boolean) => {
         if (currentlyEnabled) {
-            if (confirm('Desativar o check-in para este dia?')) {
+            const ok = await confirmAction({
+                title: 'Desativar check-in?',
+                text: 'O check-in deixará de estar disponível para este dia.',
+                confirmButtonText: 'Desativar',
+                danger: true,
+                icon: 'warning',
+            });
+            if (ok) {
                 router.post(
                     route('escalas.checkin-toggle'),
                     { schedule_date: formatDateKey(date), enabled: false },
@@ -179,9 +187,16 @@ export default function EscalasIndex({
         router.post(route('escalas.checkin'), { assignment_id: assignmentId }, inertiaScrollOpts);
     };
 
-    const handleRemove = (a: Assignment) => {
+    const handleRemove = async (a: Assignment) => {
         if (!a.recurringSeries) {
-            if (confirm('Remover esta escala?')) {
+            const ok = await confirmAction({
+                title: 'Remover esta escala?',
+                text: 'Esta ação não pode ser desfeita.',
+                confirmButtonText: 'Remover',
+                danger: true,
+                icon: 'warning',
+            });
+            if (ok) {
                 router.delete(route('escalas.destroy', a.id), {
                     preserveScroll: true,
                     data: { scope: 'all' },
@@ -486,8 +501,15 @@ export default function EscalasIndex({
                                                     <span>{r.name}</span>
                                                     <button
                                                         type="button"
-                                                        onClick={() => {
-                                                            if (confirm('Remover esta função?')) {
+                                                        onClick={async () => {
+                                                            const ok = await confirmAction({
+                                                                title: 'Remover função?',
+                                                                text: 'Esta função deixará de estar disponível para escalas deste departamento.',
+                                                                confirmButtonText: 'Remover',
+                                                                danger: true,
+                                                                icon: 'warning',
+                                                            });
+                                                            if (ok) {
                                                                 router.delete(route('escalas.roles.destroy', r.id), inertiaScrollOpts);
                                                             }
                                                         }}

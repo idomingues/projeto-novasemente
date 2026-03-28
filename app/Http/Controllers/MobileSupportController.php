@@ -19,7 +19,7 @@ class MobileSupportController extends Controller
             'suggestion' => 'Sugestão',
             'praise' => 'Elogio',
             'development' => 'A desenvolver',
-            default => 'Suporte',
+            default => 'Suporte do app',
         };
     }
 

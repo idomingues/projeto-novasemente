@@ -1,5 +1,5 @@
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { SunIcon, MoonIcon, UserCircleIcon, BuildingOfficeIcon } from '@heroicons/react/24/outline';
 import { useTheme } from '@/Contexts/ThemeContext';
 
@@ -22,8 +22,15 @@ interface Props {
     user: UserInfo | null;
 }
 
+function canAccessPastorsCadastro(permissions: string[] | undefined): boolean {
+    const p = permissions ?? [];
+    return p.includes('pastors.view') || p.includes('pastors.manage');
+}
+
 export default function MobileSettings({ church, user }: Props) {
     const { theme, toggleTheme } = useTheme();
+    const { auth } = usePage().props as { auth?: { permissions?: string[] } };
+    const showPastorsCadastro = canAccessPastorsCadastro(auth?.permissions);
 
     return (
         <MobileLayout>
@@ -111,6 +118,20 @@ export default function MobileSettings({ church, user }: Props) {
                                 Editar perfil
                             </Link>
                         </div>
+                    </section>
+                )}
+
+                {showPastorsCadastro && (
+                    <section className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+                        <h2 className="px-4 py-2 text-sm font-semibold text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
+                            Igreja (gestão)
+                        </h2>
+                        <Link
+                            href={route('pastors.index')}
+                            className="block px-4 py-3 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 active:bg-zinc-100 dark:active:bg-zinc-800"
+                        >
+                            Pastores
+                        </Link>
                     </section>
                 )}
 

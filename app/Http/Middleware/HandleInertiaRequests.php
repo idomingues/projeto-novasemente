@@ -120,6 +120,8 @@ class HandleInertiaRequests extends Middleware
 
         return [
             ...parent::share($request),
+            /** Token atual para o axios do Inertia (evita 419 em DELETE/PUT após navegação SPA) */
+            'csrf_token' => fn () => csrf_token(),
             'appVersion' => AppVersion::latestLabel(),
             'appVersionHistory' => $appVersionHistory,
             'appUrl' => $request->getSchemeAndHttpHost(),

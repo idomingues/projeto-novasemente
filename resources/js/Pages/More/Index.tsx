@@ -11,7 +11,9 @@ import {
     PhotoIcon,
     BookOpenIcon,
     UserGroupIcon,
+    UserCircleIcon,
     MapPinIcon,
+    InboxIcon,
 } from '@heroicons/react/24/outline';
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 
@@ -23,6 +25,7 @@ interface Props {
 const items = [
     { name: 'Quem somos', description: 'História e significado do nome', route: 'mobile.quem-somos', icon: UserGroupIcon },
     { name: 'Nossas crenças', description: '28 princípios de fé (IASD)', route: 'mobile.beliefs', icon: BookOpenIcon },
+    { name: 'Nossos pastores', description: 'Conheça a equipa pastoral', route: 'mobile.pastors', icon: UserCircleIcon },
     { name: 'Escala', description: 'Escala de voluntários', route: 'varios.schedule', icon: ClipboardDocumentListIcon },
     { name: 'Cultos e horários', description: 'Dias e horários dos cultos', route: 'mobile.services', icon: ClockIcon },
     { name: 'Classe Começos', description: 'Estudo bíblico presencial ou on-line', route: 'varios.classe-comecos', icon: AcademicCapIcon },
@@ -38,6 +41,12 @@ const items = [
     { name: 'Acervo', description: 'Playlists do YouTube da Nova Semente', route: 'mobile.acervo', icon: PlayCircleIcon },
     { name: 'Fale conosco', description: 'E-mail, redes e WhatsApp', route: 'mobile.contact', icon: PhoneIcon },
     { name: 'Notificações', description: 'Avisos de eventos e notícias', route: 'varios.notifications', icon: BellAlertIcon },
+    {
+        name: 'Solicitações',
+        description: 'Batismo, apresentação, visita, estudo, outros',
+        route: 'mobile.solicitations.hub',
+        icon: InboxIcon,
+    },
 ];
 
 export default function MoreIndex(_: Props) {

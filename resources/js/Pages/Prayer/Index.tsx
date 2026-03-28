@@ -75,7 +75,7 @@ export default function PrayerIndex({ requests }: Props) {
                 </div>
 
                 <div className="lg:grid lg:grid-cols-12 lg:gap-8 lg:items-start">
-                    <section className="lg:col-span-4 xl:col-span-3 lg:sticky lg:top-24">
+                    <section className="lg:col-span-5 xl:col-span-4 lg:sticky lg:top-24">
                         <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm">
                             <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4 flex items-center gap-2">
                                 <PaperAirplaneIcon className="w-5 h-5 text-primary-500" />
@@ -110,14 +110,18 @@ export default function PrayerIndex({ requests }: Props) {
                                     </p>
                                     <InputError message={errors.request} className="mt-1" />
                                 </div>
-                                <PrimaryButton type="submit" disabled={processing} className="w-full sm:w-auto">
+                                <PrimaryButton
+                                    type="submit"
+                                    disabled={processing}
+                                    className="w-full sm:w-auto !h-10 !min-h-0 !px-6 !py-2"
+                                >
                                     {processing ? 'A enviar...' : 'Enviar pedido'}
                                 </PrimaryButton>
                             </form>
                         </div>
                     </section>
 
-                    <section className="lg:col-span-8 xl:col-span-9">
+                    <section className="lg:col-span-7 xl:col-span-8">
                         <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">
                             Pedidos para orar
                         </h2>

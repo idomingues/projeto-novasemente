@@ -110,8 +110,8 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
                             <Link
                                 href={route(supportRouteName)}
                                 className="w-12 h-12 flex items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-colors"
-                                aria-label="Suporte"
-                                title="Suporte"
+                                aria-label="Suporte do app"
+                                title="Suporte do app"
                             >
                                 <LifebuoyIcon className="w-6 h-6" />
                             </Link>
@@ -207,7 +207,7 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
                                     </Dropdown.Trigger>
 
                                     <Dropdown.Content contentClasses="py-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300">
-                                        <Dropdown.Link href={route(supportRouteName)} className="hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white">Suporte</Dropdown.Link>
+                                        <Dropdown.Link href={route(supportRouteName)} className="hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white">Suporte do app</Dropdown.Link>
                                         <Dropdown.Link href={route('profile.edit')} className="hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white">Perfil</Dropdown.Link>
                                         <Dropdown.Link href={route('logout')} method="post" as="button" className="hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white">
                                             Sair

@@ -21,6 +21,7 @@ import PageHeader from '@/Components/PageHeader';
 import InputError from '@/Components/InputError';
 import { useState, useEffect, useRef, FormEventHandler } from 'react';
 import axios from 'axios';
+import { confirmAction } from '@/utils/confirmDialog';
 
 const DESKTOP_BARCODE_SCANNER_ID = 'inventory-desktop-barcode-scanner';
 
@@ -246,8 +247,15 @@ export default function Index({ items, filters }: Props) {
         }
     };
 
-    const handleDelete = (id: number) => {
-        if (confirm('Tem certeza que deseja excluir este item? O histórico também será removido.')) {
+    const handleDelete = async (id: number) => {
+        const ok = await confirmAction({
+            title: 'Excluir item do inventário?',
+            text: 'O histórico de movimentos também será removido. Esta ação não pode ser desfeita.',
+            confirmButtonText: 'Excluir',
+            danger: true,
+            icon: 'warning',
+        });
+        if (ok) {
             router.delete(route('inventory.destroy', id));
         }
     };

@@ -44,6 +44,10 @@ class RolePermissionSeeder extends Seeder
             'notifications.manage',
             'support.view',
             'support.manage',
+            'solicitations.view',
+            'solicitations.manage',
+            'pastors.view',
+            'pastors.manage',
             'roles.manage',
         ];
 
@@ -83,6 +87,10 @@ class RolePermissionSeeder extends Seeder
                 'notifications.manage',
                 'support.view',
                 'support.manage',
+                'solicitations.view',
+                'solicitations.manage',
+                'pastors.view',
+                'pastors.manage',
                 'roles.manage',
             ],
             'secretaria' => [
@@ -110,6 +118,10 @@ class RolePermissionSeeder extends Seeder
                 'notifications.manage',
                 'support.view',
                 'support.manage',
+                'solicitations.view',
+                'solicitations.manage',
+                'pastors.view',
+                'pastors.manage',
             ],
             'pastor' => [
                 'members.view',
@@ -128,6 +140,10 @@ class RolePermissionSeeder extends Seeder
                 'notifications.manage',
                 'support.view',
                 'support.manage',
+                'solicitations.view',
+                'solicitations.manage',
+                'pastors.view',
+                'pastors.manage',
             ],
             'financeiro' => [
                 'finance.view',

@@ -33,12 +33,13 @@ const GROUP_LABELS: Record<string, string> = {
     news: 'Notícias',
     events: 'Eventos',
     escalas: 'Escalas',
-    support: 'Suporte',
+    support: 'Suporte do app',
     roles: 'Perfis',
     music: 'Acervo e músicas',
     culto: 'Culto',
     finance: 'Financeiro',
     notifications: 'Notificações',
+    pastors: 'Pastores',
 };
 
 function groupTitle(group: string): string {

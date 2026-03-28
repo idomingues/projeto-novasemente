@@ -10,6 +10,7 @@ import TextInput from '@/Components/TextInput';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { FormEventHandler, useMemo, useState } from 'react';
+import { confirmAction } from '@/utils/confirmDialog';
 
 interface RoomOpt {
     id: number;
@@ -185,8 +186,15 @@ export default function Schedule({
         }
     };
 
-    const deleteBooking = (b: BookingRow) => {
-        if (!confirm('Remover este agendamento?')) {
+    const deleteBooking = async (b: BookingRow) => {
+        const ok = await confirmAction({
+            title: 'Remover agendamento?',
+            text: 'Esta ação não pode ser desfeita.',
+            confirmButtonText: 'Remover',
+            danger: true,
+            icon: 'warning',
+        });
+        if (!ok) {
             return;
         }
         router.delete(`${route('room-bookings.destroy', b.id)}${filterQuerySuffix()}`, { preserveScroll: true });

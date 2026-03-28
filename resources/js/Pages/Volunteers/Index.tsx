@@ -15,6 +15,7 @@ import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
 import SearchableSelect from '@/Components/SearchableSelect';
 import { useState, useEffect, FormEventHandler } from 'react';
+import { confirmAction } from '@/utils/confirmDialog';
 import { activeInactivePillClass } from '@/lib/statusBadges';
 import { appRoleLabel } from '@/lib/appRoleLabels';
 
@@ -168,8 +169,15 @@ export default function Index({
         }
     };
 
-    const handleDelete = (id: number) => {
-        if (confirm('Tem certeza que deseja excluir este voluntário?')) {
+    const handleDelete = async (id: number) => {
+        const ok = await confirmAction({
+            title: 'Excluir voluntário?',
+            text: 'Esta ação não pode ser desfeita.',
+            confirmButtonText: 'Excluir',
+            danger: true,
+            icon: 'warning',
+        });
+        if (ok) {
             router.delete(route('volunteers.destroy', id));
         }
     };

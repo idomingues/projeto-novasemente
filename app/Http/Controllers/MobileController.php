@@ -3,19 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Models\AcervoItem;
-use App\Support\NotificationFeed;
 use App\Models\Church;
 use App\Models\ChurchService;
 use App\Models\Culto;
 use App\Models\Event;
 use App\Models\Member;
-use App\Models\Ministry;
 use App\Models\Musica;
 use App\Models\News;
+use App\Models\Pastor;
 use App\Models\ScheduleCheckinDate;
 use App\Models\UserInboxNotification;
 use App\Services\ScheduleAssignmentPresenter;
 use App\Services\VolunteerScheduleOverview;
+use App\Support\NotificationFeed;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -519,6 +519,32 @@ class MobileController extends Controller
 
         return Inertia::render('Mobile/Notifications', [
             'notifications' => $notifications,
+        ]);
+    }
+
+    public function pastors(): Response
+    {
+        $church = $this->currentChurch();
+        $churchId = $church?->id;
+
+        $rows = Pastor::query()
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Pastor $p) => [
+                'id' => $p->id,
+                'name' => $p->name,
+                'bio' => $p->bio,
+                'photoUrl' => $p->photo_path,
+            ])
+            ->values()
+            ->all();
+
+        return Inertia::render('Mobile/Pastors', [
+            'pastors' => $rows,
+            'churchName' => $church?->name,
         ]);
     }
 

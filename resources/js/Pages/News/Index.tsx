@@ -13,6 +13,7 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
 import { useState, useEffect, FormEventHandler } from 'react';
 import { usePage } from '@inertiajs/react';
+import { confirmAction } from '@/utils/confirmDialog';
 
 function imageSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
@@ -120,8 +121,15 @@ export default function Index({ posts, filters, canManage }: Props) {
         }
     };
 
-    const handleDelete = (id: number) => {
-        if (confirm('Remover esta notícia?')) {
+    const handleDelete = async (id: number) => {
+        const ok = await confirmAction({
+            title: 'Remover notícia?',
+            text: 'Esta ação não pode ser desfeita.',
+            confirmButtonText: 'Remover',
+            danger: true,
+            icon: 'warning',
+        });
+        if (ok) {
             router.delete(route('news.destroy', id));
         }
     };

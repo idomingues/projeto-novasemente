@@ -11,14 +11,17 @@ use App\Http\Controllers\FaviconController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\MinistryController;
+use App\Http\Controllers\MobileChurchSolicitationController;
 use App\Http\Controllers\MobileController;
 use App\Http\Controllers\MobileSupportController;
 use App\Http\Controllers\MusicaController;
 use App\Http\Controllers\NewsController;
+use App\Http\Controllers\PastorController;
 use App\Http\Controllers\PrayerRequestController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\RoomBookingController;
+use App\Http\Controllers\SolicitationAdminController;
 use App\Http\Controllers\SupportAdminController;
 use App\Http\Controllers\VariosController;
 use App\Http\Controllers\VolunteerController;
@@ -68,6 +71,7 @@ Route::get('/mobile/services', [MobileController::class, 'services'])->name('mob
 Route::get('/mobile/contact', [MobileController::class, 'contact'])->name('mobile.contact');
 Route::get('/mobile/fotos', [MobileController::class, 'fotosComingSoon'])->name('mobile.fotos');
 Route::get('/mobile/localizacao', [MobileController::class, 'location'])->name('mobile.location');
+Route::get('/mobile/pastores', [MobileController::class, 'pastors'])->name('mobile.pastors');
 Route::get('/mobile/offerings', [MobileController::class, 'offerings'])->name('mobile.offerings');
 Route::get('/mobile/notifications', [MobileController::class, 'notifications'])->name('mobile.notifications');
 Route::get('/mobile/escala/checkin', [MobileController::class, 'scheduleCheckin'])
@@ -206,6 +210,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/acervo', [AcervoController::class, 'store'])->name('acervo.store')->middleware('permission:music.manage');
     Route::put('/acervo/{acervo}', [AcervoController::class, 'update'])->name('acervo.update')->middleware('permission:music.manage');
     Route::delete('/acervo/{acervo}', [AcervoController::class, 'destroy'])->name('acervo.destroy')->middleware('permission:music.manage');
+    // Pastores (gestão por igreja)
+    Route::get('/pastores', [PastorController::class, 'index'])->name('pastors.index')->middleware('permission:pastors.view|pastors.manage');
+    Route::post('/pastores', [PastorController::class, 'store'])->name('pastors.store')->middleware('permission:pastors.manage');
+    Route::put('/pastores/{pastor}', [PastorController::class, 'update'])->name('pastors.update')->middleware('permission:pastors.manage');
+    Route::delete('/pastores/{pastor}', [PastorController::class, 'destroy'])->name('pastors.destroy')->middleware('permission:pastors.manage');
     Route::post('/notifications', [AppNotificationController::class, 'store'])->name('notifications.store')->middleware('permission:notifications.manage');
     Route::get('/mobile/settings', [MobileController::class, 'settings'])->name('mobile.settings');
     Route::post('/notifications/inbox/read', [MobileController::class, 'markInboxNotificationRead'])
@@ -233,6 +242,25 @@ Route::middleware('auth')->group(function () {
     Route::patch('/suporte/{token}/close', [SupportAdminController::class, 'closeTicket'])
         ->name('support.close')
         ->middleware('permission:support.manage');
+
+    // Solicitações (membro — requer login)
+    Route::get('/mobile/solicitacoes', [MobileChurchSolicitationController::class, 'hub'])->name('mobile.solicitations.hub');
+    Route::get('/mobile/solicitacoes/meus-pedidos', [MobileChurchSolicitationController::class, 'mine'])->name('mobile.solicitations.mine');
+    Route::get('/mobile/solicitacoes/novo/{type}', [MobileChurchSolicitationController::class, 'create'])->name('mobile.solicitations.create');
+    Route::post('/mobile/solicitacoes', [MobileChurchSolicitationController::class, 'store'])->name('mobile.solicitations.store');
+    Route::get('/mobile/solicitacoes/{solicitation}', [MobileChurchSolicitationController::class, 'show'])->name('mobile.solicitations.show');
+    Route::post('/mobile/solicitacoes/{solicitation}/messages', [MobileChurchSolicitationController::class, 'sendMessage'])->name('mobile.solicitations.messages.store');
+
+    // Solicitações — inbox (equipa)
+    Route::get('/solicitacoes', [SolicitationAdminController::class, 'index'])
+        ->name('solicitations.index')
+        ->middleware('permission:solicitations.view|solicitations.manage');
+    Route::patch('/solicitacoes/{solicitation}', [SolicitationAdminController::class, 'update'])
+        ->name('solicitations.update')
+        ->middleware('permission:solicitations.manage');
+    Route::post('/solicitacoes/{solicitation}/messages', [SolicitationAdminController::class, 'sendMessage'])
+        ->name('solicitations.messages.store')
+        ->middleware('permission:solicitations.view|solicitations.manage');
 
     // Versões do App (Admin)
     Route::get('/app-versions', [AppVersionController::class, 'index'])->name('app-versions.index');
