@@ -18,11 +18,19 @@ class SolicitationAdminController extends Controller
 {
     private function canView(User $user): bool
     {
+        if ($user->hasAnyRole(['super_admin', 'admin'])) {
+            return true;
+        }
+
         return $user->hasAnyPermission(['solicitations.view', 'solicitations.manage']);
     }
 
     private function canManage(User $user): bool
     {
+        if ($user->hasAnyRole(['super_admin', 'admin'])) {
+            return true;
+        }
+
         return $user->hasPermissionTo('solicitations.manage');
     }
 

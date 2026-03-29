@@ -74,12 +74,12 @@ const ICON_MAP: Record<string, MenuIcon> = {
 const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'Dashboard', route: 'dashboard', icon: HomeIcon },
     { name: 'Inbox (Solicitações)', route: 'solicitations.index', icon: InboxIcon },
+    { name: 'Cadastro de pastores', route: 'pastors.index', icon: UserCircleIcon },
     { name: 'Notícias', route: 'news.index', icon: NewspaperIcon },
     { name: 'Eventos', route: 'events.index', icon: CalendarDaysIcon },
     { name: 'Culto', route: 'culto.index', icon: FilmIcon },
     { name: 'Acervo', route: 'acervo.index', icon: PlayCircleIcon },
     { name: 'Membros', route: 'members.index', icon: UserGroupIcon },
-    { name: 'Cadastro de pastores', route: 'pastors.index', icon: UserCircleIcon },
     { name: 'Departamentos', route: 'departments.index', icon: BuildingOffice2Icon },
     { name: 'Escalas', route: 'escalas.index', icon: CalendarIcon },
     { name: 'Voluntários', route: 'volunteers.index', icon: UsersIcon },

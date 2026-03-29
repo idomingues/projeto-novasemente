@@ -7,9 +7,18 @@ use App\Models\User;
 
 class ChurchSolicitationPolicy
 {
+    private function isStaff(User $user): bool
+    {
+        if ($user->hasAnyRole(['super_admin', 'admin'])) {
+            return true;
+        }
+
+        return $user->hasAnyPermission(['solicitations.view', 'solicitations.manage']);
+    }
+
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyPermission(['solicitations.view', 'solicitations.manage']);
+        return $this->isStaff($user);
     }
 
     public function view(User $user, ChurchSolicitation $solicitation): bool
@@ -18,7 +27,7 @@ class ChurchSolicitationPolicy
             return true;
         }
 
-        return $user->hasAnyPermission(['solicitations.view', 'solicitations.manage']);
+        return $this->isStaff($user);
     }
 
     public function create(User $user): bool
@@ -28,6 +37,10 @@ class ChurchSolicitationPolicy
 
     public function update(User $user, ChurchSolicitation $solicitation): bool
     {
+        if ($user->hasAnyRole(['super_admin', 'admin'])) {
+            return true;
+        }
+
         return $user->hasPermissionTo('solicitations.manage');
     }
 
@@ -42,7 +55,7 @@ class ChurchSolicitationPolicy
 
     public function sendMessageAsStaff(User $user, ChurchSolicitation $solicitation): bool
     {
-        if (! $user->hasAnyPermission(['solicitations.view', 'solicitations.manage'])) {
+        if (! $this->isStaff($user)) {
             return false;
         }
 

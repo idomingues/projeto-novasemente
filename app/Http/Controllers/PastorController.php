@@ -41,7 +41,9 @@ class PastorController extends Controller
         $this->authorize('viewAny', Pastor::class);
 
         $churchId = $this->currentChurchId();
-        $canManage = $request->user()?->can('pastors.manage') ?? false;
+        $user = $request->user();
+        $canManage = $user
+            && ($user->hasAnyRole(['super_admin', 'admin']) || $user->can('pastors.manage'));
 
         $pastors = Pastor::query()
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))

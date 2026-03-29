@@ -11,12 +11,12 @@ return [
     'items' => [
         ['name' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'home'],
         ['name' => 'Inbox (Solicitações)', 'route' => 'solicitations.index', 'icon' => 'inbox'],
+        ['name' => 'Cadastro de pastores', 'route' => 'pastors.index', 'icon' => 'user-circle'],
         ['name' => 'Notícias', 'route' => 'news.index', 'icon' => 'newspaper'],
         ['name' => 'Eventos', 'route' => 'events.index', 'icon' => 'calendar-days'],
         ['name' => 'Culto', 'route' => 'culto.index', 'icon' => 'film'],
         ['name' => 'Acervo', 'route' => 'acervo.index', 'icon' => 'play-circle'],
         ['name' => 'Membros', 'route' => 'members.index', 'icon' => 'user-group'],
-        ['name' => 'Cadastro de pastores', 'route' => 'pastors.index', 'icon' => 'user-circle'],
         ['name' => 'Departamentos', 'route' => 'departments.index', 'icon' => 'building-office-2'],
         ['name' => 'Escalas', 'route' => 'escalas.index', 'icon' => 'calendar'],
         ['name' => 'Voluntários', 'route' => 'volunteers.index', 'icon' => 'users'],

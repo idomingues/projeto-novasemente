@@ -212,10 +212,10 @@ Route::middleware('auth')->group(function () {
     Route::put('/acervo/{acervo}', [AcervoController::class, 'update'])->name('acervo.update')->middleware('permission:music.manage');
     Route::delete('/acervo/{acervo}', [AcervoController::class, 'destroy'])->name('acervo.destroy')->middleware('permission:music.manage');
     // Pastores (gestão por igreja)
-    Route::get('/pastores', [PastorController::class, 'index'])->name('pastors.index')->middleware('permission:pastors.view|pastors.manage');
-    Route::post('/pastores', [PastorController::class, 'store'])->name('pastors.store')->middleware('permission:pastors.manage');
-    Route::put('/pastores/{pastor}', [PastorController::class, 'update'])->name('pastors.update')->middleware('permission:pastors.manage');
-    Route::delete('/pastores/{pastor}', [PastorController::class, 'destroy'])->name('pastors.destroy')->middleware('permission:pastors.manage');
+    Route::get('/pastores', [PastorController::class, 'index'])->name('pastors.index')->middleware('role_or_permission:super_admin|admin|pastors.view|pastors.manage');
+    Route::post('/pastores', [PastorController::class, 'store'])->name('pastors.store')->middleware('role_or_permission:super_admin|admin|pastors.manage');
+    Route::put('/pastores/{pastor}', [PastorController::class, 'update'])->name('pastors.update')->middleware('role_or_permission:super_admin|admin|pastors.manage');
+    Route::delete('/pastores/{pastor}', [PastorController::class, 'destroy'])->name('pastors.destroy')->middleware('role_or_permission:super_admin|admin|pastors.manage');
     Route::post('/notifications', [AppNotificationController::class, 'store'])->name('notifications.store')->middleware('permission:notifications.manage');
     Route::get('/mobile/settings', [MobileController::class, 'settings'])->name('mobile.settings');
     Route::post('/notifications/inbox/read', [MobileController::class, 'markInboxNotificationRead'])
@@ -252,16 +252,16 @@ Route::middleware('auth')->group(function () {
     Route::get('/mobile/solicitacoes/{solicitation}', [MobileChurchSolicitationController::class, 'show'])->name('mobile.solicitations.show');
     Route::post('/mobile/solicitacoes/{solicitation}/messages', [MobileChurchSolicitationController::class, 'sendMessage'])->name('mobile.solicitations.messages.store');
 
-    // Solicitações — inbox (equipa)
+    // Solicitações — inbox (equipa); admin/super_admin explícitos (evita 403 como em /culto)
     Route::get('/solicitacoes', [SolicitationAdminController::class, 'index'])
         ->name('solicitations.index')
-        ->middleware('permission:solicitations.view|solicitations.manage');
+        ->middleware('role_or_permission:super_admin|admin|solicitations.view|solicitations.manage');
     Route::patch('/solicitacoes/{solicitation}', [SolicitationAdminController::class, 'update'])
         ->name('solicitations.update')
-        ->middleware('permission:solicitations.manage');
+        ->middleware('role_or_permission:super_admin|admin|solicitations.manage');
     Route::post('/solicitacoes/{solicitation}/messages', [SolicitationAdminController::class, 'sendMessage'])
         ->name('solicitations.messages.store')
-        ->middleware('permission:solicitations.view|solicitations.manage');
+        ->middleware('role_or_permission:super_admin|admin|solicitations.view|solicitations.manage');
 
     // Versões do App (Admin)
     Route::get('/app-versions', [AppVersionController::class, 'index'])->name('app-versions.index');
