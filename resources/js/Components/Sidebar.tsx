@@ -107,6 +107,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
         user?: { name?: string; email?: string; member?: { name: string } };
         permissions?: string[];
         canManageSettings?: boolean;
+        adminSidebarUnrestricted?: boolean;
     };
     const currentChurch = (props as { currentChurch?: ChurchInfo | null }).currentChurch ?? null;
     const churchesForSwitch = (props as { churchesForSwitch?: ChurchForSwitch[] }).churchesForSwitch ?? [];
@@ -127,6 +128,9 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
 
     const requiredPerms = (route: string) => routeToPermissions[route] ?? [];
     const canAccess = (route: string) => {
+        if (auth?.adminSidebarUnrestricted) {
+            return true;
+        }
         const perms = requiredPerms(route);
         if (perms.length === 0) return true;
         return perms.some((p) => permissions.includes(p));
