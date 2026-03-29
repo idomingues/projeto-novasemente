@@ -161,6 +161,8 @@ class RolePermissionSeeder extends Seeder
                 'inventory.view',
                 'news.view',
                 'events.view',
+                'pastors.view',
+                'pastors.manage',
             ],
         ];
 

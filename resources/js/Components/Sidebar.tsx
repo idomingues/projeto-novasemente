@@ -79,7 +79,7 @@ const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'Culto', route: 'culto.index', icon: FilmIcon },
     { name: 'Acervo', route: 'acervo.index', icon: PlayCircleIcon },
     { name: 'Membros', route: 'members.index', icon: UserGroupIcon },
-    { name: 'Pastores', route: 'pastors.index', icon: UserCircleIcon },
+    { name: 'Cadastro de pastores', route: 'pastors.index', icon: UserCircleIcon },
     { name: 'Departamentos', route: 'departments.index', icon: BuildingOffice2Icon },
     { name: 'Escalas', route: 'escalas.index', icon: CalendarIcon },
     { name: 'Voluntários', route: 'volunteers.index', icon: UsersIcon },
