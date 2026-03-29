@@ -193,10 +193,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/events', [EventController::class, 'store'])->name('events.store')->middleware('permission:events.manage');
     Route::put('/events/{event}', [EventController::class, 'update'])->name('events.update')->middleware('permission:events.manage');
     Route::delete('/events/{event}', [EventController::class, 'destroy'])->name('events.destroy')->middleware('permission:events.manage');
-    Route::get('/culto', [CultoController::class, 'index'])->name('culto.index')->middleware('permission:culto.manage');
-    Route::post('/culto', [CultoController::class, 'store'])->name('culto.store')->middleware('permission:culto.manage');
-    Route::put('/culto/{culto}', [CultoController::class, 'update'])->name('culto.update')->middleware('permission:culto.manage');
-    Route::delete('/culto/{culto}', [CultoController::class, 'destroy'])->name('culto.destroy')->middleware('permission:culto.manage');
+    /** admin|super_admin: hasAnyRole; resto: permissão culto.manage (evita 403 quando Gate/BD ficam desalinhados). */
+    Route::get('/culto', [CultoController::class, 'index'])->name('culto.index')->middleware('role_or_permission:super_admin|admin|culto.manage');
+    Route::post('/culto', [CultoController::class, 'store'])->name('culto.store')->middleware('role_or_permission:super_admin|admin|culto.manage');
+    Route::put('/culto/{culto}', [CultoController::class, 'update'])->name('culto.update')->middleware('role_or_permission:super_admin|admin|culto.manage');
+    Route::delete('/culto/{culto}', [CultoController::class, 'destroy'])->name('culto.destroy')->middleware('role_or_permission:super_admin|admin|culto.manage');
     Route::post('/musica', [MusicaController::class, 'store'])->name('musica.store')->middleware('permission:music.manage');
     Route::put('/musica/{musica}', [MusicaController::class, 'update'])->name('musica.update')->middleware('permission:music.manage');
     Route::delete('/musica/{musica}', [MusicaController::class, 'destroy'])->name('musica.destroy')->middleware('permission:music.manage');

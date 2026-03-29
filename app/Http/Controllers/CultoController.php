@@ -4,12 +4,27 @@ namespace App\Http\Controllers;
 
 use App\Models\Church;
 use App\Models\Culto;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class CultoController extends Controller
 {
+    private function assertCanManageCulto(?User $user): void
+    {
+        if (! $user) {
+            abort(403);
+        }
+        if ($user->hasAnyRole(['super_admin', 'admin'])) {
+            return;
+        }
+        if ($user->can('culto.manage')) {
+            return;
+        }
+        abort(403);
+    }
+
     private function currentChurchId(): ?int
     {
         $workingChurchId = request()->session()->get('working_church_id');
@@ -19,12 +34,13 @@ class CultoController extends Controller
                 return (int) $church->id;
             }
         }
+
         return Church::where('active', true)->orderBy('name')->value('id');
     }
 
     public function index(Request $request): Response
     {
-        $this->authorize('culto.manage');
+        $this->assertCanManageCulto($request->user());
 
         $churchId = $this->currentChurchId();
         $cultos = Culto::query()
@@ -53,7 +69,7 @@ class CultoController extends Controller
 
     public function store(Request $request)
     {
-        $this->authorize('culto.manage');
+        $this->assertCanManageCulto($request->user());
 
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
@@ -83,7 +99,7 @@ class CultoController extends Controller
 
     public function update(Request $request, Culto $culto)
     {
-        $this->authorize('culto.manage');
+        $this->assertCanManageCulto($request->user());
 
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
@@ -106,7 +122,7 @@ class CultoController extends Controller
 
     public function destroy(Culto $culto)
     {
-        $this->authorize('culto.manage');
+        $this->assertCanManageCulto(request()->user());
 
         $culto->delete();
 
