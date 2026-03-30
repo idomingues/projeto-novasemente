@@ -13,7 +13,7 @@ import { ThemeProvider } from './Contexts/ThemeContext';
 
 const defaultAppName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
-type SharedPageProps = { csrf_token?: string };
+type SharedPageProps = { csrf_token?: string; appName?: string };
 
 function syncAxiosCsrfToken(props: SharedPageProps | undefined) {
     const token = props?.csrf_token;
@@ -28,7 +28,11 @@ function syncAxiosCsrfToken(props: SharedPageProps | undefined) {
 }
 
 createInertiaApp({
-    title: (title) => `${title} - ${defaultAppName}`,
+    title: (title) => {
+        const page = (window as unknown as { __inertia?: { page?: { props?: SharedPageProps } } }).__inertia?.page;
+        const currentName = page?.props?.appName || defaultAppName;
+        return `${title} - ${currentName}`;
+    },
         resolve: (name) =>
         resolvePageComponent(
             `./Pages/${name}.tsx`,
