@@ -12,6 +12,41 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::getConnection()->getDriverName() === 'sqlite') {
+            // SQLite não suporta `ALTER TABLE ... MODIFY ...`.
+            // Para manter a suite de testes funcional, recriamos a tabela com o esquema esperado.
+            Schema::rename('volunteers', 'volunteers__old');
+
+            Schema::create('volunteers', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('member_id')->nullable()->constrained()->cascadeOnDelete();
+                $table->string('name')->nullable()->after('member_id');
+                $table->string('email')->nullable()->after('name');
+                $table->string('phone')->nullable()->after('email');
+                $table->foreignId('ministry_id')->constrained()->cascadeOnDelete();
+                $table->string('role')->nullable();
+                $table->boolean('active')->default(true);
+                $table->timestamps();
+            });
+
+            DB::table('volunteers')->insertUsing(
+                ['id', 'member_id', 'ministry_id', 'role', 'active', 'created_at', 'updated_at'],
+                DB::table('volunteers__old')->select([
+                    'id',
+                    'member_id',
+                    'ministry_id',
+                    'role',
+                    'active',
+                    'created_at',
+                    'updated_at',
+                ])
+            );
+
+            Schema::drop('volunteers__old');
+
+            return;
+        }
+
         Schema::table('volunteers', function (Blueprint $table) {
             $table->dropForeign(['member_id']);
         });
@@ -29,6 +64,36 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (Schema::getConnection()->getDriverName() === 'sqlite') {
+            Schema::rename('volunteers', 'volunteers__old');
+
+            Schema::create('volunteers', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('member_id')->constrained()->cascadeOnDelete();
+                $table->foreignId('ministry_id')->constrained()->cascadeOnDelete();
+                $table->string('role')->nullable();
+                $table->boolean('active')->default(true);
+                $table->timestamps();
+            });
+
+            DB::table('volunteers')->insertUsing(
+                ['id', 'member_id', 'ministry_id', 'role', 'active', 'created_at', 'updated_at'],
+                DB::table('volunteers__old')->select([
+                    'id',
+                    'member_id',
+                    'ministry_id',
+                    'role',
+                    'active',
+                    'created_at',
+                    'updated_at',
+                ])
+            );
+
+            Schema::drop('volunteers__old');
+
+            return;
+        }
+
         Schema::table('volunteers', function (Blueprint $table) {
             $table->dropForeign(['member_id']);
         });

@@ -31,7 +31,7 @@ export default function FlashMessages() {
  
     
     return (
-        <div className="fixed bottom-6 right-6 z-50">
+        <div className="fixed bottom-6 right-6 z-50 pointer-events-none">
             <div
                 className={`rounded-2xl px-4 py-3 shadow-lg border text-sm flex items-center gap-3 max-w-sm ${
                     isSuccess
@@ -42,11 +42,13 @@ export default function FlashMessages() {
                 <span className="font-medium">
                     {isSuccess ? 'Sucesso' : 'Erro'}
                 </span>
-                <span className="text-emerald-50/90">{message}</span>
+                <span className={isSuccess ? 'text-emerald-50/90' : 'text-red-50/90'}>{message}</span>
                 <button
                     type="button"
                     onClick={() => setVisible(false)}
-                    className="ml-auto text-xs text-emerald-200/80 hover:text-emerald-50"
+                    className={`ml-auto text-xs pointer-events-auto ${
+                        isSuccess ? 'text-emerald-200/80 hover:text-emerald-50' : 'text-red-200/80 hover:text-red-50'
+                    }`}
                 >
                     Fechar
                 </button>

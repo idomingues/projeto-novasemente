@@ -12,7 +12,7 @@ use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerSelfSignupToken;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -21,6 +21,26 @@ use Spatie\Permission\Models\Role;
 
 class VolunteerController extends Controller
 {
+    /**
+     * Compatibilidade: em produção antiga, o voluntário tinha `ministry_id` na tabela `volunteers`.
+     * No esquema atual, a relação é N:N via `ministry_volunteer`.
+     */
+    private function syncVolunteerMinistries(Request $request, Volunteer $volunteer): void
+    {
+        $ministryIds = $request->input('ministry_ids', []);
+
+        if (Schema::hasTable('ministry_volunteer')) {
+            $volunteer->ministries()->sync($ministryIds);
+
+            return;
+        }
+
+        if (Schema::hasColumn('volunteers', 'ministry_id')) {
+            $first = is_array($ministryIds) ? ($ministryIds[0] ?? null) : null;
+            $volunteer->forceFill(['ministry_id' => $first !== null ? (int) $first : null])->save();
+        }
+    }
+
     /**
      * Garante que só um registo em volunteers use este user_id (o voluntário atual).
      */
@@ -97,27 +117,9 @@ class VolunteerController extends Controller
 
     private function syncVolunteerAppUser(Request $request, Volunteer $volunteer): void
     {
-        if (! $request->boolean('enable_app_access')) {
-            if ($volunteer->user_id) {
-                $user = User::query()->find($volunteer->user_id);
-                if ($user) {
-                    // Desabilita login no app: remove papéis e troca a senha.
-                    $user->syncRoles([]);
-                    $user->password = Hash::make(Str::random(64));
-                    $user->save();
-                }
-                $volunteer->forceFill(['user_id' => null])->save();
-            }
-
-            return;
-        }
-
         $volunteer->loadMissing('member');
         $password = $request->input('app_password');
-        $preferredAppEmail = trim((string) $request->input('app_email', ''));
-        $resolvedEmail = $preferredAppEmail !== ''
-            ? strtolower($preferredAppEmail)
-            : strtolower((string) ($volunteer->member?->email ?? $volunteer->email ?? ''));
+        $resolvedEmail = strtolower(trim((string) $request->input('email', (string) ($volunteer->email ?? ''))));
 
         if ($volunteer->user_id) {
             $user = User::query()->find($volunteer->user_id);
@@ -294,32 +296,30 @@ class VolunteerController extends Controller
 
     public function store(StoreVolunteerRequest $request)
     {
-        $data = collect($request->validated())->except('photo_file', 'ministry_ids', 'enable_app_access', 'app_email', 'app_role', 'app_ministry_ids', 'app_password', 'app_password_confirmation', 'is_member', 'first_name', 'last_name', 'send_invite_after')->all();
+        $data = collect($request->validated())->except('ministry_ids', 'app_role', 'app_ministry_ids', 'app_password', 'app_password_confirmation')->all();
         $volunteer = Volunteer::create($data);
-        $volunteer->ministries()->sync($request->input('ministry_ids', []));
-        $this->syncMemberPhoto($request, $volunteer);
+        $this->syncVolunteerMinistries($request, $volunteer);
 
         $volunteer->load('member');
         $this->syncVolunteerAppUser($request, $volunteer);
 
         $redirect = redirect()->route('volunteers.index')->with('success', 'Voluntário cadastrado com sucesso!');
 
-        return $this->maybeAppendVolunteerInviteFlash($request, $volunteer->fresh(), $redirect);
+        return $redirect;
     }
 
     public function update(UpdateVolunteerRequest $request, Volunteer $volunteer)
     {
-        $data = collect($request->validated())->except('photo_file', 'ministry_ids', 'enable_app_access', 'app_email', 'app_role', 'app_ministry_ids', 'app_password', 'app_password_confirmation', 'is_member', 'first_name', 'last_name', 'send_invite_after')->all();
+        $data = collect($request->validated())->except('ministry_ids', 'app_role', 'app_ministry_ids', 'app_password', 'app_password_confirmation')->all();
         $volunteer->update($data);
-        $volunteer->ministries()->sync($request->input('ministry_ids', []));
-        $this->syncMemberPhoto($request, $volunteer);
+        $this->syncVolunteerMinistries($request, $volunteer);
 
         $volunteer->load('member');
         $this->syncVolunteerAppUser($request, $volunteer->fresh());
 
         $redirect = redirect()->route('volunteers.index')->with('success', 'Voluntário atualizado com sucesso!');
 
-        return $this->maybeAppendVolunteerInviteFlash($request, $volunteer->fresh(), $redirect);
+        return $redirect;
     }
 
     public function destroy(Volunteer $volunteer)

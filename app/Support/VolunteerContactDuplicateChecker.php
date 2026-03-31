@@ -92,14 +92,24 @@ class VolunteerContactDuplicateChecker
             return 'Este e-mail já está associado a outro voluntário nesta igreja.';
         }
 
+        // Voluntários sem departamento e sem membro (não dá para inferir igreja por relação).
+        // Ainda assim, bloqueamos duplicidade para evitar registos confusos.
+        $volNoScopeQ = Volunteer::query()
+            ->whereRaw('LOWER(TRIM(COALESCE(email, ""))) = ?', [$emailNorm])
+            ->whereNull('member_id')
+            ->whereDoesntHave('ministries');
+        if ($excludeVolunteerId) {
+            $volNoScopeQ->where('id', '!=', $excludeVolunteerId);
+        }
+        if ($volNoScopeQ->exists()) {
+            return 'Este e-mail já está associado a outro voluntário (sem departamento).';
+        }
+
         return null;
     }
 
     /**
      * Telefone já usado por outro membro ou voluntário (âmbito igreja atual).
-     *
-     * @param  int|null  $excludeVolunteerId
-     * @param  int|null  $excludeMemberId
      */
     public static function phoneConflicts(
         Request $request,
@@ -134,6 +144,17 @@ class VolunteerContactDuplicateChecker
         foreach ($volunteers as $v) {
             if (self::normalizePhone($v->phone) === $phoneNorm) {
                 return 'Este telefone já está associado a outro voluntário nesta igreja.';
+            }
+        }
+
+        $volNoScope = Volunteer::query()
+            ->whereNull('member_id')
+            ->whereDoesntHave('ministries')
+            ->when($excludeVolunteerId, fn ($q) => $q->where('id', '!=', $excludeVolunteerId))
+            ->get(['id', 'phone']);
+        foreach ($volNoScope as $v) {
+            if (self::normalizePhone($v->phone) === $phoneNorm) {
+                return 'Este telefone já está associado a outro voluntário (sem departamento).';
             }
         }
 

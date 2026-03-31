@@ -86,31 +86,24 @@ export default function Index({
     const [editingId, setEditingId] = useState<number | null>(null);
     const [search, setSearch] = useState(filters?.search ?? '');
     const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
+    const [submitToast, setSubmitToast] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
 
     const { data, setData, post, put, processing, errors, reset, clearErrors, transform } = useForm({
-        is_member: 1 as 0 | 1,
-        member_id: '' as number | '',
-        first_name: '',
-        last_name: '',
+        name: '',
         email: '',
         phone: '',
         ministry_ids: [] as number[],
         role: '',
         active: true,
-        photo_file: null as File | null,
-        enable_app_access: false,
-        app_email: '',
         app_role: '',
         app_ministry_ids: [] as number[],
         app_password: '',
         app_password_confirmation: '',
-        send_invite_after: false,
     });
 
     // Inertia v2: transform lives on the form, not on post()/put() options.
     transform((form) => ({
         ...form,
-        send_invite_after: form.send_invite_after ? '1' : '0',
     }));
 
     const openCreateModal = () => {
@@ -118,40 +111,34 @@ export default function Index({
         setEditingId(null);
         reset();
         clearErrors();
+        setSubmitToast(null);
         setIsModalOpen(true);
     };
 
     const openEditModal = (v: Volunteer) => {
         setIsEditing(true);
         setEditingId(v.id);
-        const isMember = !!v.member_id;
-        const { first, last } = splitDisplayName(v.name);
         setData({
-            is_member: isMember ? 1 : 0,
-            member_id: v.member_id ?? '',
-            first_name: isMember ? '' : first,
-            last_name: isMember ? '' : last,
-            email: v.email ?? '',
+            name: v.member?.name ?? v.name ?? '',
+            email: v.user?.email ?? v.email ?? '',
             phone: v.phone ?? '',
             ministry_ids: v.ministries?.map((m) => m.id) ?? [],
             role: v.role || '',
             active: v.active,
-            photo_file: null,
-            enable_app_access: !!v.user,
-            app_email: v.user?.email ?? v.email ?? '',
             app_role: v.user?.roles?.[0] ?? '',
             app_ministry_ids: v.user?.ministry_ids ?? [],
             app_password: '',
             app_password_confirmation: '',
-            send_invite_after: false,
         });
         clearErrors();
+        setSubmitToast(null);
         setIsModalOpen(true);
     };
 
     const closeModal = () => {
         setIsModalOpen(false);
         reset();
+        // Não limpar submitToast aqui: queremos mostrar feedback após fechar o modal.
     };
 
     const submit: FormEventHandler = (e) => {
@@ -159,12 +146,46 @@ export default function Index({
         if (isEditing && editingId) {
             put(route('volunteers.update', editingId), {
                 forceFormData: true,
-                onSuccess: () => closeModal(),
+                onSuccess: (page) => {
+                    const flash = (page?.props as { flash?: { error?: string | null; success?: string | null } } | undefined)?.flash;
+                    if (flash?.error) {
+                        setSubmitToast({ kind: 'error', message: flash.error });
+                        return;
+                    }
+                    setSubmitToast({ kind: 'success', message: flash?.success ?? 'Alterações guardadas com sucesso.' });
+                    if (!flash?.error) {
+                        closeModal();
+                    }
+                },
+                onError: () => {
+                    setSubmitToast({ kind: 'error', message: 'Não foi possível salvar. Verifique os campos em destaque.' });
+                },
+                onFinish: () => {
+                    // Mantém o feedback visível por alguns segundos.
+                    window.setTimeout(() => setSubmitToast(null), 4500);
+                },
             });
         } else {
             post(route('volunteers.store'), {
                 forceFormData: true,
-                onSuccess: () => closeModal(),
+                onSuccess: (page) => {
+                    const flash = (page?.props as { flash?: { error?: string | null; success?: string | null } } | undefined)?.flash;
+                    if (flash?.error) {
+                        setSubmitToast({ kind: 'error', message: flash.error });
+                        return;
+                    }
+                    setSubmitToast({ kind: 'success', message: flash?.success ?? 'Voluntário cadastrado com sucesso.' });
+                    if (!flash?.error) {
+                        closeModal();
+                    }
+                },
+                onError: () => {
+                    setSubmitToast({ kind: 'error', message: 'Não foi possível salvar. Verifique os campos em destaque.' });
+                },
+                onFinish: () => {
+                    // Mantém o feedback visível por alguns segundos.
+                    window.setTimeout(() => setSubmitToast(null), 4500);
+                },
             });
         }
     };
@@ -215,21 +236,8 @@ export default function Index({
     }, [search, filters?.search]);
 
     useEffect(() => {
-        if (!data.photo_file) {
-            setPhotoPreviewUrl(null);
-            return;
-        }
-        const url = URL.createObjectURL(data.photo_file);
-        setPhotoPreviewUrl(url);
-        return () => URL.revokeObjectURL(url);
-    }, [data.photo_file]);
-
-    const selectedMemberForPhoto =
-        data.is_member === 1 && data.member_id ? members.find((m) => m.id === data.member_id) : undefined;
-    const memberHasPhoto = Boolean(
-        selectedMemberForPhoto?.photo_url && String(selectedMemberForPhoto.photo_url).trim() !== '',
-    );
-    const displayPhotoUrl = photoPreviewUrl || selectedMemberForPhoto?.photo_url || '';
+        setPhotoPreviewUrl(null);
+    }, []);
 
     return (
         <AdminLayout>
@@ -272,12 +280,25 @@ export default function Index({
                 </div>
             </PageHeader>
 
+            {submitToast && (
+                <div
+                    className={`mb-4 rounded-2xl border px-4 py-3 text-sm ${
+                        submitToast.kind === 'success'
+                            ? 'border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-100'
+                            : 'border-red-300 bg-red-50 text-red-900 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-100'
+                    }`}
+                    role="alert"
+                >
+                    {submitToast.message}
+                </div>
+            )}
+
             <Card className="!p-0 overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead className="bg-zinc-50 border-b border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800">
                             <tr>
-                                <th className="px-4 md:px-8 py-3 md:py-4 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Membro</th>
+                                <th className="px-4 md:px-8 py-3 md:py-4 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Voluntário</th>
                                 <th className="px-4 md:px-8 py-3 md:py-4 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Departamento</th>
                                 <th className="px-4 md:px-8 py-3 md:py-4 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Cargo</th>
                                 <th className="px-4 md:px-8 py-3 md:py-4 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Status</th>
@@ -441,150 +462,53 @@ export default function Index({
                     <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-6">
                         {isEditing ? 'Editar voluntário' : 'Novo voluntário'}
                     </h2>
+                    {submitToast && (
+                        <div
+                            className={`mb-5 rounded-2xl border px-4 py-3 text-sm ${
+                                submitToast.kind === 'success'
+                                    ? 'border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-100'
+                                    : 'border-red-300 bg-red-50 text-red-900 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-100'
+                            }`}
+                            role="alert"
+                        >
+                            {submitToast.message}
+                        </div>
+                    )}
                     <div className="space-y-4">
-                        {data.is_member === 1 && data.member_id && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <InputLabel value="Foto" />
-                                <div className="mt-2 flex items-center gap-4">
-                                    <div className="w-16 h-16 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-xl font-semibold text-zinc-600 dark:text-zinc-300 overflow-hidden flex-shrink-0">
-                                        {displayPhotoUrl ? (
-                                            <img src={displayPhotoUrl} alt="" className="w-full h-full object-cover" />
-                                        ) : (
-                                            (selectedMemberForPhoto?.name ?? '').charAt(0).toUpperCase() || '?'
-                                        )}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <InputLabel
-                                            htmlFor="photo_file"
-                                            value={
-                                                memberHasPhoto
-                                                    ? 'Upload da foto (opcional — substituir)'
-                                                    : 'Upload da foto (obrigatório)'
-                                            }
-                                            className="!mb-1"
-                                        />
-                                        <input
-                                            id="photo_file"
-                                            type="file"
-                                            accept="image/*"
-                                            required={!memberHasPhoto}
-                                            onChange={(e) => setData('photo_file', e.target.files?.[0] ?? null)}
-                                            className="block w-full text-sm text-zinc-600 dark:text-zinc-300 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-100 dark:file:bg-zinc-800 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-zinc-700 dark:file:text-zinc-100 hover:file:bg-zinc-200 dark:hover:file:bg-zinc-700"
-                                        />
-                                        <InputError message={errors.photo_file} className="mt-1" />
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                        <div className="space-y-4">
-                            <div className="flex items-start gap-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/80 dark:bg-zinc-900/40 p-3">
-                                <input
-                                    type="checkbox"
-                                    id="is_member"
-                                    checked={data.is_member === 1}
-                                    onChange={(e) => {
-                                        const checked = e.target.checked;
-                                        setData('is_member', checked ? 1 : 0);
-                                        if (checked) {
-                                            setData('first_name', '');
-                                            setData('last_name', '');
-                                        } else {
-                                            setData('member_id', '');
-                                            setData('photo_file', null);
-                                            if (!isEditing) {
-                                                setData('app_email', '');
-                                            }
-                                        }
-                                    }}
-                                    className="mt-1 rounded border-zinc-300 dark:border-zinc-600 text-zinc-900 focus:ring-zinc-500"
+                                <InputLabel htmlFor="name" value="Nome" />
+                                <TextInput
+                                    id="name"
+                                    value={data.name}
+                                    onChange={(e) => setData('name', e.target.value)}
+                                    className="mt-1 block w-full"
+                                    placeholder="Nome completo"
                                 />
-                                <div>
-                                    <InputLabel htmlFor="is_member" value="Vincular a um membro cadastrado" className="!mb-0" />
-                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                                        Desmarque para cadastrar por nome e sobrenome (quem não é membro ou não está na lista).
-                                    </p>
-                                </div>
+                                <InputError message={errors.name} className="mt-1" />
                             </div>
-
-                            {data.is_member === 1 && (
-                                <SearchableSelect
-                                    id="member_id"
-                                    label="Membro"
-                                    value={data.member_id}
-                                    onChange={(id) => {
-                                        const numId = id === '' ? '' : Number(id);
-                                        setData('member_id', numId);
-                                        if (numId) {
-                                            const m = members.find((x) => x.id === numId);
-                                            setData('photo_file', null);
-                                            if (!isEditing || !data.app_email) {
-                                                setData('app_email', m?.email ?? '');
-                                            }
-                                        } else {
-                                            setData('photo_file', null);
-                                            if (!isEditing) {
-                                                setData('app_email', '');
-                                            }
-                                        }
-                                    }}
-                                    options={members.map((m) => ({ id: m.id, name: m.name }))}
-                                    placeholder="Digite para buscar membro..."
-                                    emptyOption="Selecione o membro…"
-                                    error={errors.member_id}
+                            <div>
+                                <InputLabel htmlFor="phone" value="Telefone (opcional)" />
+                                <TextInput
+                                    id="phone"
+                                    value={data.phone}
+                                    onChange={(e) => setData('phone', e.target.value)}
+                                    className="mt-1 block w-full"
                                 />
-                            )}
-
-                            {data.is_member === 0 && (
-                                <>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div>
-                                            <InputLabel htmlFor="first_name" value="Nome" />
-                                            <TextInput
-                                                id="first_name"
-                                                value={data.first_name}
-                                                onChange={(e) => setData('first_name', e.target.value)}
-                                                className="mt-1 block w-full"
-                                                placeholder="Nome"
-                                                autoComplete="given-name"
-                                            />
-                                            <InputError message={errors.first_name} className="mt-1" />
-                                        </div>
-                                        <div>
-                                            <InputLabel htmlFor="last_name" value="Sobrenome" />
-                                            <TextInput
-                                                id="last_name"
-                                                value={data.last_name}
-                                                onChange={(e) => setData('last_name', e.target.value)}
-                                                className="mt-1 block w-full"
-                                                placeholder="Sobrenome"
-                                                autoComplete="family-name"
-                                            />
-                                            <InputError message={errors.last_name} className="mt-1" />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <InputLabel htmlFor="email" value="E-mail (opcional)" />
-                                        <TextInput
-                                            id="email"
-                                            type="email"
-                                            value={data.email}
-                                            onChange={(e) => setData('email', e.target.value)}
-                                            className="mt-1 block w-full"
-                                        />
-                                        <InputError message={errors.email} className="mt-1" />
-                                    </div>
-                                    <div>
-                                        <InputLabel htmlFor="phone" value="Telefone (opcional)" />
-                                        <TextInput
-                                            id="phone"
-                                            value={data.phone}
-                                            onChange={(e) => setData('phone', e.target.value)}
-                                            className="mt-1 block w-full"
-                                        />
-                                        <InputError message={errors.phone} className="mt-1" />
-                                    </div>
-                                </>
-                            )}
+                                <InputError message={errors.phone} className="mt-1" />
+                            </div>
+                        </div>
+                        <div>
+                            <InputLabel htmlFor="email" value="E-mail (login)" />
+                            <TextInput
+                                id="email"
+                                type="email"
+                                value={data.email}
+                                onChange={(e) => setData('email', e.target.value)}
+                                className="mt-1 block w-full"
+                                placeholder="usuario@exemplo.com"
+                            />
+                            <InputError message={errors.email} className="mt-1" />
                         </div>
                         <div>
                             <InputLabel htmlFor="role" value="Cargo (opcional)" />
@@ -613,162 +537,93 @@ export default function Index({
 
                         <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/80 dark:bg-zinc-900/40 p-4 space-y-3">
                             <div>
-                                <p className="text-sm font-semibold text-zinc-900 dark:text-white">Conta no aplicativo</p>
+                                <p className="text-sm font-semibold text-zinc-900 dark:text-white">Acesso ao aplicativo</p>
                                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                                    Liga este voluntário a um utilizador com login na app (e-mail, senha e perfil). Membros já
-                                    associados a um utilizador podem reutilizar essa conta.
+                                    Por padrão, todo voluntário tem conta no app (e-mail e senha).
                                 </p>
                             </div>
-                            <div className="flex items-start gap-2">
-                                <input
-                                    type="checkbox"
-                                    id="enable_app_access"
-                                    checked={data.enable_app_access}
-                                    onChange={(e) => {
-                                        const on = e.target.checked;
-                                        setData('enable_app_access', on);
-                                        if (on) {
-                                            setData('send_invite_after', false);
-                                        }
-                                    }}
-                                    className="mt-1 rounded border-zinc-300 dark:border-zinc-600 text-zinc-900 focus:ring-zinc-500"
-                                />
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
-                                    <InputLabel htmlFor="enable_app_access" value="Criar ou manter acesso ao app" className="!mb-0" />
-                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                                        Desligar remove a ligação voluntário ↔ utilizador e invalida o acesso (conforme regras no
-                                        servidor).
-                                    </p>
+                                    <InputLabel htmlFor="app_password" value="Senha (app)" />
+                                    <TextInput
+                                        id="app_password"
+                                        type="password"
+                                        value={data.app_password}
+                                        onChange={(e) => setData('app_password', e.target.value)}
+                                        className="mt-1 block w-full"
+                                        autoComplete="new-password"
+                                        placeholder={isEditing ? 'Deixe em branco para não alterar' : ''}
+                                    />
+                                    <InputError message={errors.app_password} className="mt-1" />
+                                </div>
+                                <div>
+                                    <InputLabel htmlFor="app_password_confirmation" value="Confirmar senha" />
+                                    <TextInput
+                                        id="app_password_confirmation"
+                                        type="password"
+                                        value={data.app_password_confirmation}
+                                        onChange={(e) => setData('app_password_confirmation', e.target.value)}
+                                        className="mt-1 block w-full"
+                                        autoComplete="new-password"
+                                    />
+                                    <InputError message={errors.app_password_confirmation} className="mt-1" />
                                 </div>
                             </div>
+                            <div>
+                                <InputLabel htmlFor="app_role" value="Perfil de acesso no app" />
+                                <select
+                                    id="app_role"
+                                    value={data.app_role}
+                                    onChange={(e) => setData('app_role', e.target.value)}
+                                    className="mt-1 block w-full min-h-[2.75rem] h-11 py-2.5 px-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white text-sm"
+                                >
+                                    <option value="">Sem perfil</option>
+                                    {appRoles.map((r) => (
+                                        <option key={r.id} value={r.name}>
+                                            {appRoleLabel(r.name)}
+                                        </option>
+                                    ))}
+                                </select>
+                                <InputError message={errors.app_role} className="mt-1" />
+                            </div>
 
-                            {data.enable_app_access && (
-                                <div className="space-y-4 pt-2 border-t border-zinc-200 dark:border-zinc-700">
-                                    <div>
-                                        <InputLabel htmlFor="app_email" value="E-mail de login (app)" />
-                                        <TextInput
-                                            id="app_email"
-                                            type="email"
-                                            value={data.app_email}
-                                            onChange={(e) => setData('app_email', e.target.value)}
-                                            className="mt-1 block w-full"
-                                            placeholder="usuario@exemplo.com"
-                                        />
-                                        <InputError message={errors.app_email} className="mt-1" />
+                            {data.app_role === 'lider_ministerio' && (
+                                <div>
+                                    <InputLabel value="Departamentos geridos no app (líder de ministério)" />
+                                    <div className="mt-2 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900/50 max-h-48 overflow-y-auto space-y-2">
+                                        {ministries.map((m) => (
+                                            <label key={m.id} className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={data.app_ministry_ids.includes(m.id)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setData('app_ministry_ids', [...data.app_ministry_ids, m.id]);
+                                                        } else {
+                                                            setData(
+                                                                'app_ministry_ids',
+                                                                data.app_ministry_ids.filter((id) => id !== m.id),
+                                                            );
+                                                        }
+                                                    }}
+                                                    className="rounded border-zinc-300 dark:border-zinc-600 text-zinc-900 focus:ring-zinc-500"
+                                                />
+                                                <span className="text-sm text-zinc-900 dark:text-white">{m.name}</span>
+                                            </label>
+                                        ))}
                                     </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div>
-                                            <InputLabel htmlFor="app_password" value="Senha (app)" />
-                                            <TextInput
-                                                id="app_password"
-                                                type="password"
-                                                value={data.app_password}
-                                                onChange={(e) => setData('app_password', e.target.value)}
-                                                className="mt-1 block w-full"
-                                                autoComplete="new-password"
-                                                placeholder={isEditing ? 'Deixe em branco para não alterar' : ''}
-                                            />
-                                            <InputError message={errors.app_password} className="mt-1" />
-                                        </div>
-                                        <div>
-                                            <InputLabel htmlFor="app_password_confirmation" value="Confirmar senha" />
-                                            <TextInput
-                                                id="app_password_confirmation"
-                                                type="password"
-                                                value={data.app_password_confirmation}
-                                                onChange={(e) => setData('app_password_confirmation', e.target.value)}
-                                                className="mt-1 block w-full"
-                                                autoComplete="new-password"
-                                            />
-                                            <InputError message={errors.app_password_confirmation} className="mt-1" />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <InputLabel htmlFor="app_role" value="Perfil de acesso no app" />
-                                        <select
-                                            id="app_role"
-                                            value={data.app_role}
-                                            onChange={(e) => setData('app_role', e.target.value)}
-                                            className="mt-1 block w-full min-h-[2.75rem] h-11 py-2.5 px-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white text-sm"
-                                        >
-                                            <option value="">Sem perfil</option>
-                                            {appRoles.map((r) => (
-                                                <option key={r.id} value={r.name}>
-                                                    {appRoleLabel(r.name)}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <InputError message={errors.app_role} className="mt-1" />
-                                    </div>
-                                    {data.app_role === 'lider_ministerio' && (
-                                        <div>
-                                            <InputLabel value="Departamentos geridos no app (líder de ministério)" />
-                                            <div className="mt-2 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900/50 max-h-48 overflow-y-auto space-y-2">
-                                                {ministries.map((m) => (
-                                                    <label key={m.id} className="flex items-center gap-2 cursor-pointer">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={data.app_ministry_ids.includes(m.id)}
-                                                            onChange={(e) => {
-                                                                if (e.target.checked) {
-                                                                    setData('app_ministry_ids', [...data.app_ministry_ids, m.id]);
-                                                                } else {
-                                                                    setData(
-                                                                        'app_ministry_ids',
-                                                                        data.app_ministry_ids.filter((id) => id !== m.id),
-                                                                    );
-                                                                }
-                                                            }}
-                                                            className="rounded border-zinc-300 dark:border-zinc-600 text-zinc-900 focus:ring-zinc-500"
-                                                        />
-                                                        <span className="text-sm text-zinc-900 dark:text-white">{m.name}</span>
-                                                    </label>
-                                                ))}
-                                            </div>
-                                            <InputError message={errors.app_ministry_ids} className="mt-1" />
-                                        </div>
-                                    )}
-                                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                        Se já existir utilizador com o mesmo e-mail ou membro ligado, a conta é reutilizada; só
-                                        precisa de senha ao criar utilizador novo.
-                                    </p>
+                                    <InputError message={errors.app_ministry_ids} className="mt-1" />
                                 </div>
                             )}
 
-                            {!data.enable_app_access && (
-                                <div className="rounded-xl border border-dashed border-zinc-300 bg-white/80 p-3 dark:border-zinc-600 dark:bg-zinc-900/30">
-                                    <div className="flex items-start gap-2">
-                                        <input
-                                            type="checkbox"
-                                            id="send_invite_after"
-                                            checked={data.send_invite_after}
-                                            onChange={(e) => {
-                                                const on = e.target.checked;
-                                                setData('send_invite_after', on);
-                                                if (on) {
-                                                    setData('enable_app_access', false);
-                                                }
-                                            }}
-                                            className="mt-1 rounded border-zinc-300 dark:border-zinc-600 text-zinc-900 focus:ring-zinc-500"
-                                        />
-                                        <div>
-                                            <InputLabel
-                                                htmlFor="send_invite_after"
-                                                value="Gerar convite após guardar"
-                                                className="!mb-0"
-                                            />
-                                            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                                Cria um link (válido 7 dias) para a pessoa definir e-mail e palavra-passe sozinha.
-                                                Depois pode copiar ou abrir o WhatsApp a partir do ecrã seguinte.
-                                            </p>
-                                            <InputError message={errors.send_invite_after} className="mt-1" />
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                Se já existir utilizador com o mesmo e-mail, a conta é reutilizada; só precisa de senha ao criar
+                                utilizador novo.
+                            </p>
                         </div>
+
                         <div>
-                            <InputLabel value="Departamentos (pode escolher mais de um)" />
+                            <InputLabel value="Departamentos (opcional)" />
                             <div className="mt-2 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 max-h-48 overflow-y-auto space-y-2">
                                 {ministries.map((m) => (
                                     <label key={m.id} className="flex items-center gap-2 cursor-pointer">
