@@ -198,12 +198,57 @@ class VolunteerPublicSignupController extends Controller
             'token' => ['required', 'string'],
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:155'],
+            'birth_date' => ['required', 'date'],
+            'has_whatsapp' => ['required', 'boolean'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'phone' => ['nullable', 'string', 'max:50'],
+            'has_social_networks' => ['required', 'boolean'],
+            'attendance_duration' => ['required', 'string', 'max:50'],
+            'is_official_member' => ['required', 'boolean'],
+            'member_record_at_nova_semente' => ['nullable', 'boolean'],
+            'member_record_church' => ['nullable', 'string', 'max:255'],
+            'has_previous_ministry_volunteer_experience' => ['required', 'boolean'],
+            'previous_ministry_details' => ['nullable', 'string', 'max:2000'],
+            'ministry_involvement' => ['nullable', 'string', 'max:255'],
+            'other_ministry_interest' => ['required', 'string', 'max:255'],
+            'gifts_to_develop' => ['nullable', 'string', 'max:255'],
+            'needs_pastoral_guidance' => ['required', 'boolean'],
+            'lgpd_data_consent' => ['required', 'boolean'],
             'password' => ['required', 'confirmed', Password::defaults()],
             'ministry_ids' => ['required', 'array', 'min:1'],
             'ministry_ids.*' => ['integer'],
         ]);
+
+        if (($validated['is_official_member'] ?? false) === true) {
+            if (! array_key_exists('member_record_at_nova_semente', $validated) || $validated['member_record_at_nova_semente'] === null) {
+                throw ValidationException::withMessages([
+                    'member_record_at_nova_semente' => ['Informe se o seu registro de membro está na Nova Semente.'],
+                ]);
+            }
+            if ($validated['member_record_at_nova_semente'] === false) {
+                $church = trim((string) ($validated['member_record_church'] ?? ''));
+                if ($church === '') {
+                    throw ValidationException::withMessages([
+                        'member_record_church' => ['Informe em qual igreja está o seu registro de membro.'],
+                    ]);
+                }
+            }
+        }
+
+        if (($validated['has_previous_ministry_volunteer_experience'] ?? false) === true) {
+            $details = trim((string) ($validated['previous_ministry_details'] ?? ''));
+            if ($details === '') {
+                throw ValidationException::withMessages([
+                    'previous_ministry_details' => ['Descreva em quais ministérios você já serviu e o que mais gostava ao servir.'],
+                ]);
+            }
+        }
+
+        if (($validated['lgpd_data_consent'] ?? false) !== true) {
+            throw ValidationException::withMessages([
+                'lgpd_data_consent' => ['Para continuar, é necessário autorizar o uso dos dados conforme a LGPD.'],
+            ]);
+        }
 
         $record = VolunteerSelfSignupToken::query()->where('token', $validated['token'])->firstOrFail();
 
@@ -247,6 +292,22 @@ class VolunteerPublicSignupController extends Controller
             if ($volunteer) {
                 $volunteer->forceFill([
                     'phone' => $validated['phone'] ?? null,
+                    'birth_date' => $validated['birth_date'],
+                    'has_whatsapp' => (bool) $validated['has_whatsapp'],
+                    'has_social_networks' => (bool) $validated['has_social_networks'],
+                    'attendance_duration' => (string) $validated['attendance_duration'],
+                    'is_official_member' => (bool) $validated['is_official_member'],
+                    'member_record_at_nova_semente' => array_key_exists('member_record_at_nova_semente', $validated)
+                        ? (is_null($validated['member_record_at_nova_semente']) ? null : (bool) $validated['member_record_at_nova_semente'])
+                        : null,
+                    'member_record_church' => $validated['member_record_church'] ?? null,
+                    'has_previous_ministry_volunteer_experience' => (bool) $validated['has_previous_ministry_volunteer_experience'],
+                    'previous_ministry_details' => $validated['previous_ministry_details'] ?? null,
+                    'ministry_involvement' => $validated['ministry_involvement'] ?? null,
+                    'other_ministry_interest' => $validated['other_ministry_interest'] ?? null,
+                    'gifts_to_develop' => $validated['gifts_to_develop'] ?? null,
+                    'needs_pastoral_guidance' => (bool) $validated['needs_pastoral_guidance'],
+                    'lgpd_data_consent' => (bool) $validated['lgpd_data_consent'],
                 ])->save();
                 $volunteer->ministries()->sync($ministryIds);
             }
@@ -254,9 +315,8 @@ class VolunteerPublicSignupController extends Controller
             return $user;
         });
 
-        Auth::login($user);
-
-        return redirect()->route('dashboard')->with('success', 'Cadastro concluído! Bem-vindo como voluntário.');
+        return redirect('/login')
+            ->with('status', 'Cadastro concluído! Agora entre com seu e-mail e senha.');
     }
 
     /**

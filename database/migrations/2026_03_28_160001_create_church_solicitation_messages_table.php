@@ -10,16 +10,11 @@ return new class extends Migration
     {
         Schema::create('church_solicitation_messages', function (Blueprint $table) {
             $table->id();
-
             $table->foreignId('church_solicitation_id')->constrained('church_solicitations')->cascadeOnDelete();
-
             $table->string('sender_type', 20);
-            $table->foreignId('sender_user_id')->nullable()->constrained('users')->nullOnDelete();
-
+            $table->foreignId('sender_user_id')->constrained('users')->cascadeOnDelete();
             $table->text('content');
             $table->timestamps();
-
-            $table->index(['church_solicitation_id', 'created_at'], 'sol_msg_sol_id_created_idx');
         });
     }
 
@@ -28,3 +23,4 @@ return new class extends Migration
         Schema::dropIfExists('church_solicitation_messages');
     }
 };
+

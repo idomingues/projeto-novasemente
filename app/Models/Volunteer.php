@@ -17,6 +17,20 @@ class Volunteer extends Model
         'name',
         'email',
         'phone',
+        'birth_date',
+        'has_whatsapp',
+        'has_social_networks',
+        'attendance_duration',
+        'is_official_member',
+        'member_record_at_nova_semente',
+        'member_record_church',
+        'has_previous_ministry_volunteer_experience',
+        'previous_ministry_details',
+        'ministry_involvement',
+        'other_ministry_interest',
+        'gifts_to_develop',
+        'needs_pastoral_guidance',
+        'lgpd_data_consent',
         'role',
         'active',
     ];
@@ -31,6 +45,14 @@ class Volunteer extends Model
 
     protected $casts = [
         'active' => 'boolean',
+        'birth_date' => 'date',
+        'has_whatsapp' => 'boolean',
+        'has_social_networks' => 'boolean',
+        'is_official_member' => 'boolean',
+        'member_record_at_nova_semente' => 'boolean',
+        'has_previous_ministry_volunteer_experience' => 'boolean',
+        'needs_pastoral_guidance' => 'boolean',
+        'lgpd_data_consent' => 'boolean',
     ];
 
     public function member(): BelongsTo
