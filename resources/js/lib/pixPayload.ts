@@ -115,8 +115,12 @@ export interface PixPayloadOptions {
     merchantCity: string;
 }
 
-/** MCC usado em muitos geradores PIX (6012); 0000 costuma ser recusado por alguns apps. */
-const PIX_MCC = '6012';
+/**
+ * MCC (Merchant Category Code).
+ * Na prática, alguns bancos são mais tolerantes com `0000` em QR estático.
+ * Mantemos `0000` para máxima compatibilidade.
+ */
+const PIX_MCC = '0000';
 
 /**
  * Monta a linha digitável do PIX para colar no app do banco (QR estático EMV).
@@ -139,7 +143,8 @@ export function buildPixCopyPaste(options: PixPayloadOptions): string | null {
     const name = sanitizePixMerchantText(options.merchantName, 25);
     const city = sanitizePixMerchantText(options.merchantCity, 15, 'BRASILIA');
 
-    const gui = formatField('00', 'br.gov.bcb.pix');
+    // Alguns bancos validam de forma estrita; o valor mais “universal” observado é em maiúsculas.
+    const gui = formatField('00', 'BR.GOV.BCB.PIX');
     const keyField = formatField('01', key);
     if (!gui || !keyField) {
         return null;
@@ -192,8 +197,9 @@ export function buildPixCopyPaste(options: PixPayloadOptions): string | null {
     }
     payload += f62;
 
+    // CRC (campo 63) deve ser calculado sobre TODO o payload incluindo "6304".
     payload += '6304';
-    const crc = crc16Ccitt(payload + '0000');
+    const crc = crc16Ccitt(payload);
     return payload + crc;
 }
 
