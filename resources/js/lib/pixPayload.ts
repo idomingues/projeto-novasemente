@@ -180,6 +180,18 @@ export function buildPixCopyPaste(options: PixPayloadOptions): string | null {
     payload += f59;
     payload += f60;
 
+    // Additional Data Field Template (62): include TXID.
+    // Some bank apps reject static payloads without a TXID; the BCB guidance allows using "***" for static QR.
+    const txid = formatField('05', '***');
+    if (!txid) {
+        return null;
+    }
+    const f62 = formatField('62', txid);
+    if (!f62) {
+        return null;
+    }
+    payload += f62;
+
     payload += '6304';
     const crc = crc16Ccitt(payload + '0000');
     return payload + crc;

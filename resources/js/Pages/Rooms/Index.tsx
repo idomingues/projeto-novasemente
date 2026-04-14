@@ -152,7 +152,7 @@ export default function Index({ rooms, byFloor, floors, canManage = false }: Pro
                                             e.stopPropagation();
                                             openCreateModal(floorKey);
                                         }}
-                                        className="p-2 rounded-lg text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                                        className="p-2 rounded-full text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
                                         title={`Nova sala no ${label}`}
                                     >
                                         <PlusIcon className="w-5 h-5" />

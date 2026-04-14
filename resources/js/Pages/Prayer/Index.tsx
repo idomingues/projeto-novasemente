@@ -1,14 +1,16 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm } from '@inertiajs/react';
-import { PaperAirplaneIcon } from '@heroicons/react/24/outline';
+import { PlusIcon } from '@heroicons/react/24/outline';
 import PrayerAmenButton from '@/Components/PrayerAmenButton';
 import FlashMessages from '@/Components/FlashMessages';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import Textarea from '@/Components/Textarea';
 import PrimaryButton from '@/Components/PrimaryButton';
+import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
-import { FormEventHandler } from 'react';
+import Modal from '@/Components/Modal';
+import { FormEventHandler, useState } from 'react';
 
 interface PrayerItem {
     id: number;
@@ -48,11 +50,15 @@ export default function PrayerIndex({ requests }: Props) {
         name_or_nickname: '',
         request: '',
     });
+    const [createOpen, setCreateOpen] = useState(false);
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         post(route('prayer.store'), {
-            onSuccess: () => reset(),
+            onSuccess: () => {
+                reset();
+                setCreateOpen(false);
+            },
             preserveScroll: true,
         });
     };
@@ -65,72 +71,35 @@ export default function PrayerIndex({ requests }: Props) {
             <FlashMessages />
             <div className="space-y-6 lg:space-y-0">
                 <div className="lg:mb-6">
-                    <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Pedidos de oração</h1>
-                    <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                        Solicite um pedido de oração ou veja os pedidos para orar.
-                    </p>
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Pedidos de oração</h1>
+                            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                                Veja os pedidos e ore por alguém.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setCreateOpen(true)}
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-zinc-900 text-white shadow-sm ring-1 ring-inset ring-white/10 transition hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-100"
+                            aria-label="Novo pedido de oração"
+                            title="Novo pedido"
+                        >
+                            <PlusIcon className="h-6 w-6" strokeWidth={2.2} aria-hidden />
+                        </button>
+                    </div>
                     <p className="mt-3 max-w-3xl rounded-xl border border-brand-200/90 bg-brand-50/90 px-3 py-2.5 text-sm leading-relaxed text-brand-950 dark:border-brand-900/45 dark:bg-brand-950/30 dark:text-brand-50">
-                        Depois de orar por alguém, toque em <strong className="font-semibold text-brand-800 dark:text-brand-200">Irei orar</strong> (mãos em oração) no pedido — assim a pessoa sente que não está sozinha. É o nosso jeito de “curtir” com gratidão a Deus.
+                        Clique no ícone <strong className="font-semibold text-brand-800 dark:text-brand-200">Orar</strong> e a pessoa vai saber que tem alguém orando por ela.
                     </p>
                 </div>
 
-                <div className="lg:grid lg:grid-cols-12 lg:gap-8 lg:items-start">
-                    <section className="lg:col-span-5 xl:col-span-4 lg:sticky lg:top-24">
-                        <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm">
-                            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4 flex items-center gap-2">
-                                <PaperAirplaneIcon className="w-5 h-5 text-primary-500" />
-                                Solicitar oração
-                            </h2>
-                            <form onSubmit={submit} className="space-y-4">
-                                <div>
-                                    <InputLabel htmlFor="prayer_name" value="Nome, apelido ou codinome" />
-                                    <TextInput
-                                        id="prayer_name"
-                                        value={data.name_or_nickname}
-                                        onChange={(e) => setData('name_or_nickname', e.target.value)}
-                                        placeholder="Ex: Maria ou Irmão João"
-                                        className="mt-1 block w-full"
-                                        maxLength={255}
-                                    />
-                                    <InputError message={errors.name_or_nickname} className="mt-1" />
-                                </div>
-                                <div>
-                                    <InputLabel htmlFor="prayer_request" value="Pedido" />
-                                    <Textarea
-                                        id="prayer_request"
-                                        value={data.request}
-                                        onChange={(e) => setData('request', e.target.value)}
-                                        placeholder="Escreva o seu pedido de oração..."
-                                        rows={4}
-                                        className="mt-1 block w-full"
-                                        maxLength={2000}
-                                    />
-                                    <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
-                                        {data.request.length}/2000
-                                    </p>
-                                    <InputError message={errors.request} className="mt-1" />
-                                </div>
-                                <PrimaryButton
-                                    type="submit"
-                                    disabled={processing}
-                                    className="w-full sm:w-auto !h-10 !min-h-0 !px-6 !py-2"
-                                >
-                                    {processing ? 'A enviar...' : 'Enviar pedido'}
-                                </PrimaryButton>
-                            </form>
-                        </div>
-                    </section>
-
-                    <section className="lg:col-span-7 xl:col-span-8">
-                        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">
-                            Pedidos para orar
-                        </h2>
+                <div>
+                    <section>
                         {groups.length === 0 ? (
                             <div className="rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-900/50 p-8 sm:p-12 text-center">
                                 <p className="text-zinc-600 dark:text-zinc-400 font-medium">Nenhum pedido ainda</p>
                                 <p className="text-sm text-zinc-500 dark:text-zinc-500 mt-1">
-                                    <span className="lg:hidden">Envie o primeiro pedido de oração usando o formulário acima.</span>
-                                    <span className="hidden lg:inline">Envie o primeiro pedido de oração usando o formulário ao lado.</span>
+                                    Clique no <strong>+</strong> para enviar o primeiro pedido.
                                 </p>
                             </div>
                         ) : (
@@ -171,6 +140,52 @@ export default function PrayerIndex({ requests }: Props) {
                         )}
                     </section>
                 </div>
+
+                <Modal show={createOpen} onClose={() => setCreateOpen(false)}>
+                    <form onSubmit={submit} className="p-6">
+                        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-5">
+                            Novo pedido de oração
+                        </h2>
+                        <div className="space-y-4">
+                            <div>
+                                <InputLabel htmlFor="prayer_name" value="Nome, apelido ou codinome" />
+                                <TextInput
+                                    id="prayer_name"
+                                    value={data.name_or_nickname}
+                                    onChange={(e) => setData('name_or_nickname', e.target.value)}
+                                    placeholder="Ex: Maria ou Irmão João"
+                                    className="mt-1 block w-full"
+                                    maxLength={255}
+                                />
+                                <InputError message={errors.name_or_nickname} className="mt-1" />
+                            </div>
+                            <div>
+                                <InputLabel htmlFor="prayer_request" value="Pedido" />
+                                <Textarea
+                                    id="prayer_request"
+                                    value={data.request}
+                                    onChange={(e) => setData('request', e.target.value)}
+                                    placeholder="Escreva o seu pedido de oração..."
+                                    rows={5}
+                                    className="mt-1 block w-full"
+                                    maxLength={2000}
+                                />
+                                <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
+                                    {data.request.length}/2000
+                                </p>
+                                <InputError message={errors.request} className="mt-1" />
+                            </div>
+                        </div>
+                        <div className="mt-6 flex justify-end gap-2">
+                            <SecondaryButton type="button" onClick={() => setCreateOpen(false)}>
+                                Cancelar
+                            </SecondaryButton>
+                            <PrimaryButton type="submit" disabled={processing}>
+                                {processing ? 'A enviar...' : 'Enviar'}
+                            </PrimaryButton>
+                        </div>
+                    </form>
+                </Modal>
             </div>
         </AdminLayout>
     );
