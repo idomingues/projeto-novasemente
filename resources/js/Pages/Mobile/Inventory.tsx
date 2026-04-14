@@ -12,6 +12,7 @@ import {
     XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { FormEventHandler, useEffect, useRef, useState } from 'react';
+import ImageDownloadButton from '@/Components/ImageDownloadButton';
 
 const SCANNER_ELEMENT_ID = 'inventory-barcode-scanner';
 
@@ -471,11 +472,18 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
                             Item encontrado
                         </p>
                         {lookup.item.photo_url && (
-                            <div className="aspect-video rounded-xl overflow-hidden bg-zinc-200 dark:bg-zinc-800">
+                            <div className="relative aspect-video rounded-xl overflow-hidden bg-zinc-200 dark:bg-zinc-800">
                                 <img
                                     src={imageSrc(lookup.item.photo_url, appUrl)}
                                     alt=""
                                     className="w-full h-full object-contain"
+                                />
+                                <ImageDownloadButton
+                                    src={imageSrc(lookup.item.photo_url, appUrl)}
+                                    appUrl={appUrl}
+                                    filenameBase={`inventario-${lookup.item.barcode}`}
+                                    className="absolute bottom-2 right-2 z-10"
+                                    size="sm"
                                 />
                             </div>
                         )}
@@ -868,7 +876,7 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
                                     key={item.id}
                                     className="flex gap-3 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900"
                                 >
-                                    <div className="w-16 h-16 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex-shrink-0 overflow-hidden">
+                                    <div className="relative w-16 h-16 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex-shrink-0 overflow-hidden">
                                         {item.photo_url ? (
                                             <img
                                                 src={imageSrc(item.photo_url, appUrl)}
@@ -880,6 +888,16 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
                                                 —
                                             </div>
                                         )}
+                                        {item.photo_url ? (
+                                            <ImageDownloadButton
+                                                src={imageSrc(item.photo_url, appUrl)}
+                                                appUrl={appUrl}
+                                                filenameBase={`inventario-${item.barcode}`}
+                                                className="absolute bottom-0.5 right-0.5 z-10"
+                                                size="sm"
+                                                title="Guardar foto"
+                                            />
+                                        ) : null}
                                     </div>
                                     <div className="min-w-0 flex-1">
                                         <p className="font-medium text-zinc-900 dark:text-white truncate">{item.name}</p>

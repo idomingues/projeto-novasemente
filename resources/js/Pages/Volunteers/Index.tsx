@@ -316,7 +316,13 @@ export default function Index({
                                             <div className="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-sm font-semibold text-zinc-700 dark:text-zinc-300 flex-shrink-0 overflow-hidden">
                                                 {initial}
                                             </div>
-                                            <span className="font-medium text-zinc-900 dark:text-white">{displayName}</span>
+                                            <Link
+                                                href={route('volunteers.show', v.id)}
+                                                className="font-medium text-zinc-900 dark:text-white hover:underline focus:outline-none focus:ring-2 focus:ring-zinc-400 rounded"
+                                                title="Ver ficha completa"
+                                            >
+                                                {displayName}
+                                            </Link>
                                         </div>
                                     </td>
                                     <td className="px-4 md:px-8 py-3 md:py-4">

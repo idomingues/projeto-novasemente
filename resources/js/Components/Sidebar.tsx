@@ -123,6 +123,13 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
 
     const isRouteActive = (routeName: string) => route().current(routeName + '*');
 
+    const isMenuItemActive = (itemRoute: string) => {
+        if (itemRoute === 'volunteers.index') {
+            return route().current('volunteers.index') || route().current('volunteers.show');
+        }
+        return isRouteActive(itemRoute);
+    };
+
     const allMenuItems = useMemo((): MenuItem[] => {
         if (adminSidebarMenu && adminSidebarMenu.length > 0) {
             return menuFromServer(adminSidebarMenu);
@@ -232,7 +239,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
                         {menuItems.map((item) => {
                             const routeExists = route().has(item.route);
                             const href = routeExists ? route(item.route) : '#';
-                            const isActive = routeExists && isRouteActive(item.route);
+                            const isActive = routeExists && isMenuItemActive(item.route);
                             const Icon = item.icon;
 
                             return (

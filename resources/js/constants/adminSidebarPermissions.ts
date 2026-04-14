@@ -4,6 +4,7 @@ export const adminSidebarRoutePermissions: Record<string, string[]> = {
     'departments.index': ['departments.view', 'departments.manage'],
     'escalas.index': ['escalas.view', 'escalas.manage'],
     'volunteers.index': ['volunteers.view', 'volunteers.manage'],
+    'volunteers.show': ['volunteers.view', 'volunteers.manage'],
     'rooms.index': ['rooms.view', 'rooms.manage'],
     'room-bookings.index': ['rooms.view', 'rooms.manage', 'rooms.schedule'],
     'inventory.index': ['inventory.view', 'inventory.manage'],

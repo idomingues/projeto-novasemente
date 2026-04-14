@@ -133,7 +133,7 @@ class VolunteerController extends Controller
         }
 
         // Sem evento "created": evita ensureVolunteerProfile() criar outro volunteer com o mesmo user_id.
-        $user = User::withoutEvents(function () use ($name, $email, $password, $volunteer) {
+        $user = User::withoutEvents(function () use ($name, $email, $password) {
             return User::create([
                 'name' => trim($name),
                 'email' => strtolower(trim($email)),
@@ -164,7 +164,7 @@ class VolunteerController extends Controller
             return null;
         }
 
-        $user = User::withoutEvents(function () use ($name, $volunteer) {
+        $user = User::withoutEvents(function () use ($name) {
             return User::create([
                 'name' => $name,
                 'email' => null,
@@ -240,6 +240,86 @@ class VolunteerController extends Controller
                 'search' => $search,
             ],
         ]);
+    }
+
+    public function show(Request $request, Volunteer $volunteer): Response
+    {
+        $churchId = $this->currentChurchId($request);
+        if (! $this->volunteerVisibleInWorkingChurch($volunteer, $churchId)) {
+            abort(404);
+        }
+
+        $volunteer->load([
+            'ministries',
+            'user:id,email,name',
+            'user.roles:id,name',
+            'user.ministries:id,name',
+        ]);
+
+        return Inertia::render('Volunteers/Show', [
+            'volunteer' => $this->volunteerDetailPayload($volunteer),
+        ]);
+    }
+
+    /**
+     * Mesma regra de visibilidade que {@see index()}: igreja em contexto e ministérios compatíveis.
+     */
+    private function volunteerVisibleInWorkingChurch(Volunteer $volunteer, ?int $churchId): bool
+    {
+        if ($churchId === null) {
+            return false;
+        }
+
+        return Volunteer::query()
+            ->whereKey($volunteer->getKey())
+            ->where(function ($q2) use ($churchId) {
+                $q2->whereDoesntHave('ministries')
+                    ->orWhereHas('ministries', fn ($mq) => $mq->where('church_id', $churchId));
+            })
+            ->exists();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function volunteerDetailPayload(Volunteer $v): array
+    {
+        return [
+            'id' => $v->id,
+            'name' => $v->name,
+            'email' => $v->email,
+            'phone' => $v->phone,
+            'birth_date' => $v->birth_date?->format('Y-m-d'),
+            'has_whatsapp' => $v->has_whatsapp,
+            'has_social_networks' => $v->has_social_networks,
+            'attendance_duration' => $v->attendance_duration,
+            'is_official_member' => $v->is_official_member,
+            'member_record_at_nova_semente' => $v->member_record_at_nova_semente,
+            'member_record_church' => $v->member_record_church,
+            'has_previous_ministry_volunteer_experience' => $v->has_previous_ministry_volunteer_experience,
+            'previous_ministry_details' => $v->previous_ministry_details,
+            'ministry_involvement' => $v->ministry_involvement,
+            'other_ministry_interest' => $v->other_ministry_interest,
+            'gifts_to_develop' => $v->gifts_to_develop,
+            'professional_area' => $v->professional_area,
+            'needs_pastoral_guidance' => $v->needs_pastoral_guidance,
+            'lgpd_data_consent' => $v->lgpd_data_consent,
+            'role' => $v->role,
+            'active' => (bool) $v->active,
+            'created_at' => $v->created_at?->toIso8601String(),
+            'updated_at' => $v->updated_at?->toIso8601String(),
+            'ministries' => $v->ministries->map(fn (Ministry $m) => [
+                'id' => $m->id,
+                'name' => $m->name,
+            ])->values()->all(),
+            'user' => $v->user ? [
+                'id' => $v->user->id,
+                'email' => $v->user->email,
+                'name' => $v->user->name,
+                'roles' => $v->user->roles->pluck('name')->values()->all(),
+                'ministry_ids' => $v->user->ministries->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+            ] : null,
+        ];
     }
 
     public function store(StoreVolunteerRequest $request)

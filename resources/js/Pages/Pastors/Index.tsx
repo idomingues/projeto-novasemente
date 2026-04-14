@@ -1,5 +1,5 @@
 import AdminLayout from '@/Layouts/AdminLayout';
-import { Head, useForm, router } from '@inertiajs/react';
+import { Head, useForm, router, usePage } from '@inertiajs/react';
 import { PencilIcon, TrashIcon, UserCircleIcon } from '@heroicons/react/24/outline';
 import AddButton from '@/Components/AddButton';
 import PageHeader from '@/Components/PageHeader';
@@ -12,6 +12,7 @@ import Textarea from '@/Components/Textarea';
 import InputError from '@/Components/InputError';
 import { useState, FormEventHandler, ChangeEventHandler } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
+import ImageDownloadButton from '@/Components/ImageDownloadButton';
 
 interface PastorRow {
     id: number;
@@ -27,6 +28,7 @@ interface Props {
 }
 
 export default function PastorsIndex({ pastors, canManage }: Props) {
+    const appUrl = (usePage().props as { appUrl?: string }).appUrl ?? '';
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
@@ -140,12 +142,21 @@ export default function PastorsIndex({ pastors, canManage }: Props) {
                             className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 shadow-sm flex flex-col"
                         >
                             <div className="flex gap-4">
-                                <div className="w-20 h-20 rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 shrink-0 flex items-center justify-center">
+                                <div className="relative w-20 h-20 rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 shrink-0 flex items-center justify-center">
                                     {p.photo_path ? (
                                         <img src={p.photo_path} alt="" className="w-full h-full object-cover" />
                                     ) : (
                                         <UserCircleIcon className="w-12 h-12 text-zinc-400" />
                                     )}
+                                    {p.photo_path ? (
+                                        <ImageDownloadButton
+                                            src={p.photo_path}
+                                            appUrl={appUrl}
+                                            filenameBase={`pastor-${p.id}`}
+                                            className="absolute bottom-1 right-1 z-10"
+                                            size="sm"
+                                        />
+                                    ) : null}
                                 </div>
                                 <div className="min-w-0 flex-1">
                                     <h2 className="font-semibold text-zinc-900 dark:text-white truncate">{p.name}</h2>

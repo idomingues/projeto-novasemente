@@ -14,6 +14,7 @@ import InputError from '@/Components/InputError';
 import { useState, useEffect, FormEventHandler } from 'react';
 import { usePage } from '@inertiajs/react';
 import { confirmAction } from '@/utils/confirmDialog';
+import ImageDownloadButton from '@/Components/ImageDownloadButton';
 
 function imageSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
@@ -173,6 +174,12 @@ export default function Index({ posts, filters, canManage }: Props) {
                                 <div className="absolute inset-0 hidden items-center justify-center bg-zinc-200 dark:bg-zinc-700" style={{ display: 'none' }} aria-hidden>
                                     <PhotoIcon className="w-12 h-12 text-zinc-400" />
                                 </div>
+                                <ImageDownloadButton
+                                    src={imageSrc(p.image_url, appUrl)}
+                                    appUrl={appUrl}
+                                    filenameBase={`noticia-${p.slug}`}
+                                    className="absolute top-2 right-2 z-10"
+                                />
                             </div>
                         )}
                         <div className="flex-1 flex flex-col gap-2">
@@ -320,11 +327,21 @@ export default function Index({ posts, filters, canManage }: Props) {
                             </p>
                             <div className="max-w-sm rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
                                 {(data.image_file || data.image_url) && (
-                                    <img
-                                        src={data.image_file ? URL.createObjectURL(data.image_file) : imageSrc(data.image_url, appUrl)}
-                                        alt=""
-                                        className="w-full h-40 object-cover"
-                                    />
+                                    <div className="relative">
+                                        <img
+                                            src={data.image_file ? URL.createObjectURL(data.image_file) : imageSrc(data.image_url, appUrl)}
+                                            alt=""
+                                            className="w-full h-40 object-cover"
+                                        />
+                                        {!data.image_file && data.image_url && (
+                                            <ImageDownloadButton
+                                                src={imageSrc(data.image_url, appUrl)}
+                                                appUrl={appUrl}
+                                                filenameBase={`noticia-${editingId ?? 'preview'}`}
+                                                className="absolute top-2 right-2 z-10"
+                                            />
+                                        )}
+                                    </div>
                                 )}
                                 <div className="p-4">
                                     <h3 className="font-semibold text-zinc-900 dark:text-white text-lg">

@@ -22,6 +22,7 @@ import InputError from '@/Components/InputError';
 import { useState, useEffect, useRef, FormEventHandler } from 'react';
 import axios from 'axios';
 import { confirmAction } from '@/utils/confirmDialog';
+import ImageDownloadButton from '@/Components/ImageDownloadButton';
 
 const DESKTOP_BARCODE_SCANNER_ID = 'inventory-desktop-barcode-scanner';
 
@@ -516,12 +517,21 @@ export default function Index({ items, filters }: Props) {
                                 />
                                 <InputError message={errors.photo} className="mt-2" />
                                 {(newPhotoPreview || (isEditing && existingPhotoUrl && !data.photo)) && (
-                                    <div className="mt-3 rounded-lg border border-zinc-200 dark:border-zinc-600 overflow-hidden bg-white dark:bg-zinc-950 max-h-48">
+                                    <div className="relative mt-3 rounded-lg border border-zinc-200 dark:border-zinc-600 overflow-hidden bg-white dark:bg-zinc-950 max-h-48">
                                         <img
                                             src={newPhotoPreview ?? photoSrc(existingPhotoUrl, appUrl)}
                                             alt=""
                                             className="w-full h-full max-h-48 object-contain"
                                         />
+                                        {isEditing && existingPhotoUrl && !data.photo && !newPhotoPreview ? (
+                                            <ImageDownloadButton
+                                                src={photoSrc(existingPhotoUrl, appUrl)}
+                                                appUrl={appUrl}
+                                                filenameBase={`inventario-${data.barcode || editingId || 'item'}`}
+                                                className="absolute bottom-2 right-2 z-10"
+                                                size="sm"
+                                            />
+                                        ) : null}
                                     </div>
                                 )}
                             </div>

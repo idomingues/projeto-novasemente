@@ -53,10 +53,22 @@ class User extends Authenticatable
     {
         $volunteer = $this->volunteerProfile()->first();
 
+        $name = trim((string) ($this->name ?? ''));
+        if ($name === '' && $volunteer !== null) {
+            $existing = trim((string) ($volunteer->name ?? ''));
+            if ($existing !== '') {
+                $name = $existing;
+            }
+        }
+        if ($name === '') {
+            $email = (string) ($this->email ?? '');
+            $name = $email !== '' ? (strstr($email, '@', true) ?: 'Membro') : 'Membro';
+        }
+
         $payload = [
             'user_id' => $this->id,
             'active' => true,
-            'name' => $this->name,
+            'name' => $name,
             'email' => $this->email,
             'role' => $volunteer?->role ?? ($this->getRoleNames()->first() ?: null),
         ];

@@ -10,6 +10,7 @@ import {
     ArrowTopRightOnSquareIcon,
 } from '@heroicons/react/24/outline';
 import Modal from '@/Components/Modal';
+import ImageDownloadButton from '@/Components/ImageDownloadButton';
 import { useState, useCallback } from 'react';
 
 interface EventItem {
@@ -179,6 +180,13 @@ export default function MobileEvents({ events }: Props) {
                                                     className="aspect-[16/10] w-full object-cover sm:aspect-[2/1]"
                                                     loading="lazy"
                                                 />
+                                                <ImageDownloadButton
+                                                    src={ev.image_url}
+                                                    filenameBase={`evento-${ev.id}`}
+                                                    className="absolute bottom-2 right-2 z-10"
+                                                    stopPropagation
+                                                    size="sm"
+                                                />
                                             </div>
                                         ) : null}
                                     </button>
@@ -198,6 +206,14 @@ export default function MobileEvents({ events }: Props) {
                                     src={selected.image_url}
                                     alt=""
                                     className="max-h-52 w-full object-cover sm:max-h-64"
+                                />
+                            ) : null}
+                            {selected.image_url ? (
+                                <ImageDownloadButton
+                                    src={selected.image_url}
+                                    filenameBase={`evento-${selected.id}`}
+                                    className="absolute bottom-3 right-3 z-10"
+                                    size="sm"
                                 />
                             ) : null}
                             <button

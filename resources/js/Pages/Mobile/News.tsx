@@ -1,6 +1,7 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { NewspaperIcon } from '@heroicons/react/24/outline';
+import ImageDownloadButton from '@/Components/ImageDownloadButton';
 
 function imageSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
@@ -64,38 +65,60 @@ export default function MobileNews({ posts }: Props) {
                                 key={p.id}
                                 className="rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm hover:shadow-md hover:border-zinc-300 dark:hover:border-zinc-700 active:scale-[0.99] transition-all"
                             >
-                                <Link
-                                    href={route('mobile.news.show', p.slug)}
-                                    className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950 rounded-2xl"
-                                >
                                 {p.image_url ? (
-                                    <div className="relative aspect-[16/10] overflow-hidden bg-zinc-200 dark:bg-zinc-800">
-                                        <img
+                                    <div className="relative">
+                                        <Link
+                                            href={route('mobile.news.show', p.slug)}
+                                            className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950 rounded-t-2xl"
+                                        >
+                                            <div className="relative aspect-[16/10] overflow-hidden bg-zinc-200 dark:bg-zinc-800">
+                                                <img
+                                                    src={imageSrc(p.image_url, appUrl)}
+                                                    alt=""
+                                                    className="w-full h-full object-cover"
+                                                    loading="lazy"
+                                                    decoding="async"
+                                                    onError={(e) => {
+                                                        const el = e.currentTarget;
+                                                        el.style.display = 'none';
+                                                        const next = el.nextElementSibling as HTMLElement | null;
+                                                        if (next) next.style.display = 'flex';
+                                                    }}
+                                                />
+                                                <div
+                                                    className="absolute inset-0 hidden items-center justify-center bg-zinc-200 dark:bg-zinc-700"
+                                                    style={{ display: 'none' }}
+                                                    aria-hidden
+                                                >
+                                                    <NewspaperIcon className="w-12 h-12 text-zinc-400" />
+                                                </div>
+                                                <span className="absolute bottom-2 left-3 px-2.5 py-1 rounded-lg bg-black/60 text-white text-xs font-medium backdrop-blur-sm">
+                                                    {formatDate(p.published_at)}
+                                                </span>
+                                            </div>
+                                        </Link>
+                                        <ImageDownloadButton
                                             src={imageSrc(p.image_url, appUrl)}
-                                            alt=""
-                                            className="w-full h-full object-cover"
-                                            loading="lazy"
-                                            decoding="async"
-                                            onError={(e) => {
-                                                const el = e.currentTarget;
-                                                el.style.display = 'none';
-                                                const next = el.nextElementSibling as HTMLElement | null;
-                                                if (next) next.style.display = 'flex';
-                                            }}
+                                            appUrl={appUrl}
+                                            filenameBase={`noticia-${p.slug}`}
+                                            className="absolute top-2 right-2 z-10"
+                                            stopPropagation
                                         />
-                                        <div className="absolute inset-0 hidden items-center justify-center bg-zinc-200 dark:bg-zinc-700" style={{ display: 'none' }} aria-hidden>
-                                            <NewspaperIcon className="w-12 h-12 text-zinc-400" />
-                                        </div>
-                                        <span className="absolute bottom-2 left-3 px-2.5 py-1 rounded-lg bg-black/60 text-white text-xs font-medium backdrop-blur-sm">
-                                            {formatDate(p.published_at)}
-                                        </span>
                                     </div>
                                 ) : (
-                                    <div className="h-32 bg-gradient-to-br from-zinc-200 to-zinc-300 dark:from-zinc-700 dark:to-zinc-800 flex items-center justify-center">
-                                        <NewspaperIcon className="w-12 h-12 text-zinc-400 dark:text-zinc-500" />
-                                    </div>
+                                    <Link
+                                        href={route('mobile.news.show', p.slug)}
+                                        className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950 rounded-t-2xl"
+                                    >
+                                        <div className="h-32 bg-gradient-to-br from-zinc-200 to-zinc-300 dark:from-zinc-700 dark:to-zinc-800 flex items-center justify-center">
+                                            <NewspaperIcon className="w-12 h-12 text-zinc-400 dark:text-zinc-500" />
+                                        </div>
+                                    </Link>
                                 )}
-                                <div className="p-4">
+                                <Link
+                                    href={route('mobile.news.show', p.slug)}
+                                    className="block p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500 rounded-b-2xl"
+                                >
                                     <h2 className="font-semibold text-zinc-900 dark:text-white text-lg leading-snug line-clamp-2">
                                         {p.title}
                                     </h2>
@@ -113,7 +136,6 @@ export default function MobileNews({ posts }: Props) {
                                     <span className="mt-3 inline-block text-sm font-semibold text-primary-600 dark:text-primary-400">
                                         Ler notícia completa
                                     </span>
-                                </div>
                                 </Link>
                             </li>
                         ))}

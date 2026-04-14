@@ -1,5 +1,5 @@
 import AdminLayout from '@/Layouts/AdminLayout';
-import { Head, useForm, router, Link } from '@inertiajs/react';
+import { Head, useForm, router, Link, usePage } from '@inertiajs/react';
 import { PlusIcon, PencilIcon, TrashIcon, BuildingOfficeIcon, PhotoIcon, ClockIcon } from '@heroicons/react/24/outline';
 import AddButton from '@/Components/AddButton';
 import Modal from '@/Components/Modal';
@@ -12,6 +12,7 @@ import InputError from '@/Components/InputError';
 import Card from '@/Components/Card';
 import { useState, FormEventHandler } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
+import ImageDownloadButton from '@/Components/ImageDownloadButton';
 
 interface Church {
     id: number;
@@ -37,6 +38,7 @@ interface Props {
 }
 
 export default function Index({ churches }: Props) {
+    const appUrl = (usePage().props as { appUrl?: string }).appUrl ?? '';
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
@@ -163,12 +165,22 @@ export default function Index({ churches }: Props) {
                             {churches.map((church) => (
                                 <tr key={church.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40">
                                     <td className="px-4 md:px-6 py-3">
-                                        <div className="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center overflow-hidden">
+                                        <div className="relative w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center overflow-hidden">
                                             {church.logo_url ? (
                                                 <img src={church.logo_url} alt={church.name} className="w-full h-full object-cover" />
                                             ) : (
                                                 <BuildingOfficeIcon className="w-5 h-5 text-zinc-500" />
                                             )}
+                                            {church.logo_url ? (
+                                                <ImageDownloadButton
+                                                    src={church.logo_url}
+                                                    appUrl={appUrl}
+                                                    filenameBase={`logo-${church.slug}`}
+                                                    className="absolute -bottom-0.5 -right-0.5 z-10 scale-90"
+                                                    size="sm"
+                                                    title="Guardar logo"
+                                                />
+                                            ) : null}
                                         </div>
                                     </td>
                                     <td className="px-4 md:px-6 py-3">

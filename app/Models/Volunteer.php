@@ -28,6 +28,7 @@ class Volunteer extends Model
         'ministry_involvement',
         'other_ministry_interest',
         'gifts_to_develop',
+        'professional_area',
         'needs_pastoral_guidance',
         'lgpd_data_consent',
         'role',
@@ -69,4 +70,3 @@ class Volunteer extends Model
         return $this->belongsToMany(Ministry::class, 'ministry_volunteer')->withTimestamps();
     }
 }
-

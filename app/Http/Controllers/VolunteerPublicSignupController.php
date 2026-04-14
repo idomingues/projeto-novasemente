@@ -12,7 +12,6 @@ use App\Support\VolunteerContactDuplicateChecker;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -209,9 +208,9 @@ class VolunteerPublicSignupController extends Controller
             'member_record_church' => ['nullable', 'string', 'max:255'],
             'has_previous_ministry_volunteer_experience' => ['required', 'boolean'],
             'previous_ministry_details' => ['nullable', 'string', 'max:2000'],
-            'ministry_involvement' => ['nullable', 'string', 'max:255'],
-            'other_ministry_interest' => ['required', 'string', 'max:255'],
-            'gifts_to_develop' => ['nullable', 'string', 'max:255'],
+            'ministry_involvement' => ['nullable', 'string', 'max:5000'],
+            'other_ministry_interest' => ['required', 'string', 'max:5000'],
+            'gifts_to_develop' => ['nullable', 'string', 'max:5000'],
             'needs_pastoral_guidance' => ['required', 'boolean'],
             'lgpd_data_consent' => ['required', 'boolean'],
             'password' => ['required', 'confirmed', Password::defaults()],

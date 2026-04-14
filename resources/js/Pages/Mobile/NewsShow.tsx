@@ -1,6 +1,7 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { ArrowLeftIcon, NewspaperIcon } from '@heroicons/react/24/outline';
+import ImageDownloadButton from '@/Components/ImageDownloadButton';
 
 function imageSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
@@ -66,6 +67,12 @@ export default function MobileNewsShow({ post }: Props) {
                             <div className="absolute inset-0 hidden items-center justify-center bg-zinc-200 dark:bg-zinc-700" style={{ display: 'none' }} aria-hidden>
                                 <NewspaperIcon className="w-12 h-12 text-zinc-400" />
                             </div>
+                            <ImageDownloadButton
+                                src={imageSrc(post.image_url, appUrl)}
+                                appUrl={appUrl}
+                                filenameBase={`noticia-${post.slug}`}
+                                className="absolute top-2 right-2 z-10"
+                            />
                         </div>
                     ) : (
                         <div className="h-40 bg-gradient-to-br from-zinc-200 to-zinc-300 dark:from-zinc-700 dark:to-zinc-800 flex items-center justify-center">
