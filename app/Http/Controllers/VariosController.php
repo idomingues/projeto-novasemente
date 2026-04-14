@@ -164,11 +164,27 @@ class VariosController extends Controller
         $church = $this->currentChurch();
         $churchId = $church?->id;
         $notifications = NotificationFeed::mergedForUser($request, $churchId, 50);
+        // “Mais” é apenas visualização (mesmo para admin). Cadastro fica no menu lateral.
+        $canManage = false;
+
+        return Inertia::render('Varios/Notifications', [
+            'notifications' => $notifications,
+            'canManage' => $canManage,
+            'mode' => 'view',
+        ]);
+    }
+
+    public function manageNotifications(Request $request): Response
+    {
+        $church = $this->currentChurch();
+        $churchId = $church?->id;
+        $notifications = NotificationFeed::mergedForUser($request, $churchId, 50);
         $canManage = $request->user()?->can('notifications.manage') ?? false;
 
         return Inertia::render('Varios/Notifications', [
             'notifications' => $notifications,
             'canManage' => $canManage,
+            'mode' => 'manage',
         ]);
     }
 }

@@ -1,5 +1,6 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, Link } from '@inertiajs/react';
+import { solicitationsBackLinkClass } from '@/Pages/Mobile/Solicitations/solicitationNavClasses';
 import { ChevronRightIcon } from '@heroicons/react/24/outline';
 
 type Row = {
@@ -21,7 +22,7 @@ export default function Mine({ solicitations, hubUrl }: Props) {
         <MobileLayout>
             <Head title="Os meus pedidos" />
             <div className="space-y-4">
-                <Link href={hubUrl} className="text-sm text-brand-600 dark:text-brand-400 hover:underline">
+                <Link href={hubUrl} className={solicitationsBackLinkClass}>
                     ← Solicitações
                 </Link>
                 <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Os meus pedidos</h1>

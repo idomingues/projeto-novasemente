@@ -1,6 +1,7 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, useForm, Link, router } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
+import { solicitationsBackLinkClass } from '@/Pages/Mobile/Solicitations/solicitationNavClasses';
 import InputLabel from '@/Components/InputLabel';
 import Textarea from '@/Components/Textarea';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -37,7 +38,7 @@ export default function Create({ type, typeLabel, storeUrl, pastorOptions }: Pro
             <Head title={typeLabel} />
             <div className="space-y-6">
                 <div>
-                    <Link href={route('mobile.solicitations.hub')} className="text-sm text-brand-600 dark:text-brand-400 hover:underline">
+                    <Link href={route('mobile.solicitations.hub')} className={solicitationsBackLinkClass}>
                         ← Solicitações
                     </Link>
                     <h1 className="text-xl font-bold text-zinc-900 dark:text-white mt-2">{typeLabel}</h1>

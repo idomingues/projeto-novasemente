@@ -1,5 +1,6 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, Link } from '@inertiajs/react';
+import { solicitationsBackLinkClass } from '@/Pages/Mobile/Solicitations/solicitationNavClasses';
 import { useState } from 'react';
 import SolicitationDetailPanel, {
     type SolicitationDetailShape,
@@ -30,11 +31,11 @@ export default function Show({ solicitation, messages, canChat, messageStoreUrl,
             <Head title={solicitation.typeLabel} />
             <div className="space-y-4">
                 <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
-                    <Link href={hubUrl} className="text-brand-600 dark:text-brand-400 hover:underline">
+                    <Link href={hubUrl} className={solicitationsBackLinkClass}>
                         ← Solicitações
                     </Link>
                     <span className="text-zinc-300 dark:text-zinc-600">·</span>
-                    <Link href={mineUrl} className="text-brand-600 dark:text-brand-400 hover:underline">
+                    <Link href={mineUrl} className={solicitationsBackLinkClass}>
                         Os meus pedidos
                     </Link>
                 </div>

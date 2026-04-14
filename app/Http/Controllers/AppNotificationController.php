@@ -40,4 +40,20 @@ class AppNotificationController extends Controller
 
         return redirect()->back()->with('success', 'Notificação enviada para todos os utilizadores do app.');
     }
+
+    public function destroy(Request $request, AppNotification $notification)
+    {
+        $this->authorize('notifications.manage');
+
+        $churchId = $this->currentChurchId();
+
+        // Safety: only allow deleting notifications for the current church context (or global ones).
+        if ($notification->church_id !== null && (int) $notification->church_id !== (int) $churchId) {
+            abort(403);
+        }
+
+        $notification->delete();
+
+        return redirect()->back()->with('success', 'Notificação excluída.');
+    }
 }

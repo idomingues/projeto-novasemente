@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\User;
 
 class PrayerRequest extends Model
 {
@@ -11,6 +12,7 @@ class PrayerRequest extends Model
 
     protected $fillable = [
         'church_id',
+        'user_id',
         'name_or_nickname',
         'request',
         'prayer_amen_count',
@@ -19,5 +21,10 @@ class PrayerRequest extends Model
     public function church(): BelongsTo
     {
         return $this->belongsTo(Church::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 }

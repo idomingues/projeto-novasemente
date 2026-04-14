@@ -49,6 +49,9 @@ Route::get('/varios/classe-comecos', [VariosController::class, 'classeComecos'])
 Route::get('/varios/acervo', fn () => redirect()->route('mobile.acervo'))->name('varios.acervo');
 Route::get('/varios/contato', [VariosController::class, 'contact'])->name('varios.contact');
 Route::get('/varios/notificacoes', [VariosController::class, 'notifications'])->name('varios.notifications');
+Route::get('/notificacoes', [VariosController::class, 'manageNotifications'])
+    ->middleware(['auth', 'permission:notifications.manage'])
+    ->name('notifications.manage');
 Route::get('/pedidos-oracao', [PrayerRequestController::class, 'index'])->name('prayer.index');
 Route::post('/pedidos-oracao', [PrayerRequestController::class, 'store'])->name('prayer.store');
 Route::post('/pedidos-oracao/{prayer}/orou', [PrayerRequestController::class, 'amen'])
@@ -217,6 +220,9 @@ Route::middleware('auth')->group(function () {
     Route::put('/pastores/{pastor}', [PastorController::class, 'update'])->name('pastors.update')->middleware('role_or_permission:super_admin|admin|pastors.manage');
     Route::delete('/pastores/{pastor}', [PastorController::class, 'destroy'])->name('pastors.destroy')->middleware('role_or_permission:super_admin|admin|pastors.manage');
     Route::post('/notifications', [AppNotificationController::class, 'store'])->name('notifications.store')->middleware('permission:notifications.manage');
+    Route::delete('/notifications/{notification}', [AppNotificationController::class, 'destroy'])
+        ->name('notifications.destroy')
+        ->middleware('permission:notifications.manage');
     Route::get('/mobile/settings', [MobileController::class, 'settings'])->name('mobile.settings');
     Route::post('/notifications/inbox/read', [MobileController::class, 'markInboxNotificationRead'])
         ->name('notifications.inbox.read');

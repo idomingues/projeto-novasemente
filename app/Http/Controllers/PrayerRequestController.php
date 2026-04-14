@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Church;
 use App\Models\PrayerRequest;
+use App\Models\UserInboxNotification;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -76,6 +77,7 @@ class PrayerRequestController extends Controller
 
         PrayerRequest::create([
             'church_id' => $churchId,
+            'user_id' => $request->user()?->id,
             'name_or_nickname' => $data['name_or_nickname'],
             'request' => $data['request'],
         ]);
@@ -104,6 +106,35 @@ class PrayerRequestController extends Controller
         }
 
         $prayer->increment('prayer_amen_count');
+
+        // Notifica o autor do pedido (apenas se for usuário logado).
+        $ownerId = $prayer->user_id;
+        if ($ownerId) {
+            $actorName = $request->user()?->name;
+            $title = 'Alguém orou por você';
+            $body = $actorName
+                ? "{$actorName} marcou que está orando por você."
+                : 'Alguém marcou que está orando por você.';
+            $actionUrl = route('mobile.prayer');
+
+            // Evita spam: não criar notificações repetidas para o mesmo pedido em curto intervalo.
+            $recentExists = UserInboxNotification::query()
+                ->where('user_id', $ownerId)
+                ->where('action_url', $actionUrl)
+                ->where('title', $title)
+                ->where('body', $body)
+                ->where('created_at', '>=', now()->subMinutes(10))
+                ->exists();
+
+            if (! $recentExists && (int) $ownerId !== (int) ($request->user()?->id ?? 0)) {
+                UserInboxNotification::create([
+                    'user_id' => $ownerId,
+                    'title' => $title,
+                    'body' => $body,
+                    'action_url' => $actionUrl,
+                ]);
+            }
+        }
 
         return back();
     }

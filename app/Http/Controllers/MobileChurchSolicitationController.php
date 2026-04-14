@@ -47,6 +47,8 @@ class MobileChurchSolicitationController extends Controller
 
     public function hub(Request $request): Response
     {
+        $churchId = $this->currentChurchId($request);
+
         $types = collect(self::TYPES)->map(fn (string $t) => [
             'type' => $t,
             'label' => self::typeLabel($t),
@@ -55,9 +57,8 @@ class MobileChurchSolicitationController extends Controller
         return Inertia::render('Mobile/Solicitations/Hub', [
             'types' => $types,
             'mineUrl' => route('mobile.solicitations.mine'),
-            'createUrls' => collect(self::TYPES)->mapWithKeys(fn (string $t) => [
-                $t => route('mobile.solicitations.create', ['type' => $t]),
-            ])->all(),
+            'storeUrl' => route('mobile.solicitations.store'),
+            'pastorOptions' => SolicitationAssignees::pastorOptions($churchId),
         ]);
     }
 

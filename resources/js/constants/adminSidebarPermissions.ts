@@ -21,6 +21,7 @@ export const adminSidebarRoutePermissions: Record<string, string[]> = {
     'solicitations.index': ['solicitations.view', 'solicitations.manage'],
     'pastors.index': ['pastors.view', 'pastors.manage'],
     'app-versions.index': ['notifications.manage'],
+    'notifications.manage': ['notifications.manage'],
     'more.index': [],
     'varios.schedule': [],
     'varios.services': [],

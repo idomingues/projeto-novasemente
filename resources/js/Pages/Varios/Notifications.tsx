@@ -1,13 +1,16 @@
 import AdminLayout from '@/Layouts/AdminLayout';
-import { Head, Link, useForm } from '@inertiajs/react';
-import { BellAlertIcon, PaperAirplaneIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { Head, useForm, router } from '@inertiajs/react';
+import { BellAlertIcon, PaperAirplaneIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
 import FlashMessages from '@/Components/FlashMessages';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import Textarea from '@/Components/Textarea';
 import PrimaryButton from '@/Components/PrimaryButton';
 import InputError from '@/Components/InputError';
-import { FormEventHandler } from 'react';
+import Modal from '@/Components/Modal';
+import SecondaryButton from '@/Components/SecondaryButton';
+import { confirmAction } from '@/utils/confirmDialog';
+import { FormEventHandler, useMemo, useState } from 'react';
 
 interface NotificationItem {
     id: string;
@@ -22,6 +25,7 @@ interface NotificationItem {
 interface Props {
     notifications: NotificationItem[];
     canManage: boolean;
+    mode?: 'view' | 'manage';
 }
 
 function formatTimeAgo(iso: string): string {
@@ -35,16 +39,54 @@ function formatTimeAgo(iso: string): string {
     return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-export default function VariosNotifications({ notifications, canManage }: Props) {
+export default function VariosNotifications({ notifications, canManage, mode = 'view' }: Props) {
+    const [createOpen, setCreateOpen] = useState(false);
     const { data, setData, post, processing, errors, reset } = useForm({
         title: '',
         body: '',
     });
 
+    const canCreate = canManage && mode === 'manage';
+
+    const appNotificationIds = useMemo(() => {
+        const map = new Map<string, number>();
+        for (const n of notifications) {
+            if (n.kind !== 'app') continue;
+            const raw = (n.id || '').startsWith('app-') ? n.id.slice(4) : '';
+            const id = Number(raw);
+            if (Number.isFinite(id) && id > 0) {
+                map.set(n.id, id);
+            }
+        }
+        return map;
+    }, [notifications]);
+
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         post(route('notifications.store'), {
-            onSuccess: () => reset(),
+            onSuccess: () => {
+                reset();
+                setCreateOpen(false);
+            },
+            preserveScroll: true,
+        });
+    };
+
+    const onDelete = async (n: NotificationItem) => {
+        const appId = appNotificationIds.get(n.id);
+        if (!appId) return;
+
+        const ok = await confirmAction({
+            title: 'Excluir notificação?',
+            text: 'Esta ação não pode ser desfeita.',
+            icon: 'warning',
+            danger: true,
+            confirmButtonText: 'Excluir',
+            cancelButtonText: 'Cancelar',
+        });
+        if (!ok) return;
+
+        router.delete(route('notifications.destroy', { notification: appId }), {
             preserveScroll: true,
         });
     };
@@ -54,54 +96,26 @@ export default function VariosNotifications({ notifications, canManage }: Props)
             <Head title="Notificações" />
             <FlashMessages />
             <div className="space-y-6 sm:space-y-8">
-                <div>
-                    <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Notificações</h1>
-                    <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                        Envie avisos para todos os utilizadores do app. As notificações aparecem no sino e na página de notificações.
-                    </p>
-                </div>
+                <div className="flex items-start justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Notificações</h1>
+                        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                            Veja avisos da igreja e da sua conta.
+                        </p>
+                    </div>
 
-                {canManage && (
-                    <section className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm">
-                        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4 flex items-center gap-2">
-                            <PaperAirplaneIcon className="w-5 h-5 text-primary-500" />
-                            Enviar notificação
-                        </h2>
-                        <form onSubmit={submit} className="space-y-4">
-                            <div>
-                                <InputLabel htmlFor="notif_title" value="Título" />
-                                <TextInput
-                                    id="notif_title"
-                                    value={data.title}
-                                    onChange={(e) => setData('title', e.target.value)}
-                                    placeholder="Ex: Novo evento no sábado"
-                                    className="mt-1 block w-full"
-                                    maxLength={255}
-                                />
-                                <InputError message={errors.title} className="mt-1" />
-                            </div>
-                            <div>
-                                <InputLabel htmlFor="notif_body" value="Mensagem" />
-                                <Textarea
-                                    id="notif_body"
-                                    value={data.body}
-                                    onChange={(e) => setData('body', e.target.value)}
-                                    placeholder="Escreva a mensagem que todos verão..."
-                                    rows={4}
-                                    className="mt-1 block w-full"
-                                    maxLength={5000}
-                                />
-                                <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
-                                    {data.body.length}/5000
-                                </p>
-                                <InputError message={errors.body} className="mt-1" />
-                            </div>
-                            <PrimaryButton type="submit" disabled={processing}>
-                                {processing ? 'A enviar...' : 'Enviar para todos'}
-                            </PrimaryButton>
-                        </form>
-                    </section>
-                )}
+                    {canCreate && (
+                        <button
+                            type="button"
+                            onClick={() => setCreateOpen(true)}
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-zinc-900 text-white shadow-sm ring-1 ring-inset ring-white/10 transition hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-100"
+                            aria-label="Enviar notificação"
+                            title="Enviar notificação"
+                        >
+                            <PlusIcon className="h-6 w-6" strokeWidth={2.2} aria-hidden />
+                        </button>
+                    )}
+                </div>
 
                 <section>
                     <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">
@@ -118,15 +132,28 @@ export default function VariosNotifications({ notifications, canManage }: Props)
                     ) : (
                         <ul className="space-y-3">
                             {notifications.map((n) => {
+                                const canDelete = canCreate && n.kind === 'app' && appNotificationIds.has(n.id);
                                 const card = (
                                     <div className="flex gap-3">
                                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-100 dark:bg-primary-900/30">
                                             <BellAlertIcon className="w-5 h-5 text-primary-600 dark:text-primary-400" />
                                         </div>
                                         <div className="min-w-0 flex-1">
-                                            <p className="font-semibold text-zinc-900 dark:text-white">
-                                                {n.title}
-                                            </p>
+                                            <div className="flex items-start justify-between gap-3">
+                                                <p className="font-semibold text-zinc-900 dark:text-white">
+                                                    {n.title}
+                                                </p>
+                                                {canDelete && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => void onDelete(n)}
+                                                        className="shrink-0 inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+                                                    >
+                                                        <TrashIcon className="h-4 w-4" />
+                                                        Excluir
+                                                    </button>
+                                                )}
+                                            </div>
                                             <p className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-400 line-clamp-2">
                                                 {n.body}
                                             </p>
@@ -159,6 +186,59 @@ export default function VariosNotifications({ notifications, canManage }: Props)
                     )}
                 </section>
             </div>
+
+            <Modal show={createOpen} onClose={() => setCreateOpen(false)} maxWidth="2xl">
+                <div className="p-6 sm:p-8">
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-1 flex items-center gap-2">
+                        <PaperAirplaneIcon className="w-5 h-5 text-primary-500" />
+                        Enviar notificação
+                    </h2>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6">
+                        Envie um aviso para todos os utilizadores do app.
+                    </p>
+
+                    <form onSubmit={submit} className="space-y-4">
+                        <div>
+                            <InputLabel htmlFor="notif_title" value="Título" />
+                            <TextInput
+                                id="notif_title"
+                                value={data.title}
+                                onChange={(e) => setData('title', e.target.value)}
+                                placeholder="Ex: Novo evento no sábado"
+                                className="mt-1 block w-full"
+                                maxLength={255}
+                                autoFocus
+                            />
+                            <InputError message={errors.title} className="mt-1" />
+                        </div>
+                        <div>
+                            <InputLabel htmlFor="notif_body" value="Mensagem" />
+                            <Textarea
+                                id="notif_body"
+                                value={data.body}
+                                onChange={(e) => setData('body', e.target.value)}
+                                placeholder="Escreva a mensagem que todos verão..."
+                                rows={5}
+                                className="mt-1 block w-full"
+                                maxLength={5000}
+                            />
+                            <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
+                                {data.body.length}/5000
+                            </p>
+                            <InputError message={errors.body} className="mt-1" />
+                        </div>
+
+                        <div className="pt-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                            <SecondaryButton type="button" onClick={() => setCreateOpen(false)} disabled={processing}>
+                                Cancelar
+                            </SecondaryButton>
+                            <PrimaryButton type="submit" disabled={processing}>
+                                {processing ? 'A enviar...' : 'Enviar para todos'}
+                            </PrimaryButton>
+                        </div>
+                    </form>
+                </div>
+            </Modal>
         </AdminLayout>
     );
 }
