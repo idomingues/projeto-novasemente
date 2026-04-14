@@ -12,7 +12,6 @@ class Volunteer extends Model
     use HasFactory;
 
     protected $fillable = [
-        'member_id',
         'user_id',
         'name',
         'email',
@@ -40,7 +39,7 @@ class Volunteer extends Model
      */
     public function getDisplayNameAttribute(): string
     {
-        return $this->member_id ? ($this->member?->name ?? '') : ($this->name ?? 'Sem nome');
+        return $this->name ?? 'Sem nome';
     }
 
     protected $casts = [
@@ -55,14 +54,14 @@ class Volunteer extends Model
         'lgpd_data_consent' => 'boolean',
     ];
 
-    public function member(): BelongsTo
-    {
-        return $this->belongsTo(Member::class);
-    }
-
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function member(): BelongsTo
+    {
+        return $this->belongsTo(Member::class);
     }
 
     public function ministries(): BelongsToMany

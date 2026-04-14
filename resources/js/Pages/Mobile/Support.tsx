@@ -20,10 +20,9 @@ type SupportTicketListItem = {
 interface Props {
     tickets: SupportTicketListItem[];
     isAuthenticated: boolean;
-    hasMember: boolean;
 }
 
-export default function MobileSupport({ tickets, isAuthenticated, hasMember }: Props) {
+export default function MobileSupport({ tickets, isAuthenticated }: Props) {
     const { data, setData, post, processing, errors, reset } = useForm({
         type: 'problem' as 'problem' | 'suggestion' | 'praise',
         message: '',
@@ -192,11 +191,6 @@ export default function MobileSupport({ tickets, isAuthenticated, hasMember }: P
                                     </li>
                                 ))}
                             </ul>
-                        )}
-                        {!hasMember && (
-                            <div className="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4 text-sm text-amber-900 dark:text-amber-200">
-                                Seu usuário não está vinculado a um membro. Isso pode limitar recursos do app, mas o envio do suporte do app continua disponível.
-                            </div>
                         )}
                     </div>
                 )}

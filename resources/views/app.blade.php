@@ -32,6 +32,62 @@
         @inertiaHead
     </head>
     <body>
+        <style>
+            /* Minimal splash styles (no dependency on bundled CSS) */
+            #ns-splash {
+                position: fixed;
+                inset: 0;
+                z-index: 9999;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: #f4f4f5; /* zinc-100 */
+                transition: opacity 260ms ease;
+            }
+            html.dark #ns-splash {
+                background: #09090b; /* zinc-950 */
+            }
+            #ns-splash-inner {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 14px;
+            }
+            #ns-splash-logo {
+                width: 92px;
+                height: 92px;
+                border-radius: 9999px;
+                object-fit: cover;
+                box-shadow: 0 16px 40px rgba(0,0,0,.12);
+            }
+            html.dark #ns-splash-logo {
+                filter: invert(1);
+                box-shadow: 0 16px 40px rgba(255,255,255,.08);
+            }
+            #ns-splash-title {
+                font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+                font-size: 14px;
+                font-weight: 600;
+                letter-spacing: .06em;
+                text-transform: uppercase;
+                color: rgba(24, 24, 27, .75); /* zinc-900 */
+            }
+            html.dark #ns-splash-title {
+                color: rgba(244, 244, 245, .78); /* zinc-100 */
+            }
+            #ns-splash-fadeout {
+                opacity: 0;
+                pointer-events: none;
+            }
+        </style>
+
+        <div id="ns-splash" aria-hidden="true">
+            <div id="ns-splash-inner">
+                <img id="ns-splash-logo" src="{{ asset('logo-ns.png') }}" alt="Nova Semente" />
+                <div id="ns-splash-title">Nova Semente</div>
+            </div>
+        </div>
+
         @inertia
     </body>
 </html>

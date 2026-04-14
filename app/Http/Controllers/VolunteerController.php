@@ -6,14 +6,12 @@ use App\Http\Requests\StoreVolunteerRequest;
 use App\Http\Requests\UpdateVolunteerRequest;
 use App\Models\Church;
 use App\Models\Invitation;
-use App\Models\Member;
 use App\Models\Ministry;
 use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerSelfSignupToken;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -68,29 +66,6 @@ class VolunteerController extends Controller
         }
     }
 
-    private function syncMemberPhoto(Request $request, Volunteer $volunteer): void
-    {
-        if (! $volunteer->member_id) {
-            return;
-        }
-
-        $volunteer->loadMissing('member');
-        $member = $volunteer->member;
-        if (! $member) {
-            return;
-        }
-
-        if ($request->hasFile('photo_file')) {
-            $previousPath = is_string($member->photo_url) ? $member->photo_url : null;
-            if ($previousPath && str_starts_with($previousPath, 'member-photos/')) {
-                Storage::disk('public')->delete($previousPath);
-            }
-
-            $path = $request->file('photo_file')->store('member-photos', 'public');
-            $member->update(['photo_url' => $path]);
-        }
-    }
-
     private function currentChurchId(Request $request): ?int
     {
         return Church::resolveWorkingId($request);
@@ -98,16 +73,7 @@ class VolunteerController extends Controller
 
     private function resolveExistingUserForVolunteer(Volunteer $volunteer): ?User
     {
-        $volunteer->loadMissing('member');
-
-        if ($volunteer->member_id) {
-            $byMember = User::query()->where('member_id', $volunteer->member_id)->first();
-            if ($byMember) {
-                return $byMember;
-            }
-        }
-
-        $email = $volunteer->member?->email ?? $volunteer->email;
+        $email = $volunteer->email;
         if (! is_string($email) || trim($email) === '') {
             return null;
         }
@@ -117,7 +83,6 @@ class VolunteerController extends Controller
 
     private function syncVolunteerAppUser(Request $request, Volunteer $volunteer): void
     {
-        $volunteer->loadMissing('member');
         $password = $request->input('app_password');
         $resolvedEmail = strtolower(trim((string) $request->input('email', (string) ($volunteer->email ?? ''))));
 
@@ -158,8 +123,8 @@ class VolunteerController extends Controller
             return;
         }
 
-        $name = $volunteer->member?->name ?? $volunteer->name;
-        $email = $resolvedEmail !== '' ? $resolvedEmail : ($volunteer->member?->email ?? $volunteer->email);
+        $name = $volunteer->name;
+        $email = $resolvedEmail !== '' ? $resolvedEmail : $volunteer->email;
         if (! is_string($email) || trim($email) === '' || ! is_string($name) || trim($name) === '') {
             return;
         }
@@ -173,7 +138,6 @@ class VolunteerController extends Controller
                 'name' => trim($name),
                 'email' => strtolower(trim($email)),
                 'password' => $password,
-                'member_id' => $volunteer->member_id,
             ]);
         });
         $this->applyAppProfile($user, $request);
@@ -195,8 +159,7 @@ class VolunteerController extends Controller
             return $existing;
         }
 
-        $volunteer->loadMissing('member');
-        $name = trim((string) ($volunteer->member?->name ?? $volunteer->name ?? ''));
+        $name = trim((string) ($volunteer->name ?? ''));
         if ($name === '') {
             return null;
         }
@@ -206,7 +169,6 @@ class VolunteerController extends Controller
                 'name' => $name,
                 'email' => null,
                 'password' => Str::random(64),
-                'member_id' => $volunteer->member_id,
             ]);
         });
 
@@ -221,7 +183,7 @@ class VolunteerController extends Controller
         $search = (string) $request->input('search', '');
         $churchId = $this->currentChurchId($request);
 
-        $volunteersQuery = Volunteer::with(['member', 'ministries', 'user:id,email', 'user.roles:id,name', 'user.ministries:id,name'])
+        $volunteersQuery = Volunteer::with(['ministries', 'user:id,email', 'user.roles:id,name', 'user.ministries:id,name'])
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
             ->when($churchId !== null, function ($q) use ($churchId) {
                 $q->where(function ($q2) use ($churchId) {
@@ -232,11 +194,7 @@ class VolunteerController extends Controller
 
         if ($search !== '') {
             $volunteersQuery->where(function ($q) use ($search) {
-                $q->whereHas('member', function ($mq) use ($search) {
-                    $mq->where('name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%")
-                        ->orWhere('phone', 'like', "%{$search}%");
-                })->orWhere('name', 'like', "%{$search}%")
+                $q->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%")
                     ->orWhere('phone', 'like', "%{$search}%");
             });
@@ -249,17 +207,11 @@ class VolunteerController extends Controller
             ->through(function (Volunteer $v) {
                 return [
                     'id' => $v->id,
-                    'member_id' => $v->member_id,
                     'name' => $v->name,
                     'email' => $v->email,
                     'phone' => $v->phone,
                     'role' => $v->role,
                     'active' => (bool) $v->active,
-                    'member' => $v->member ? [
-                        'id' => $v->member->id,
-                        'name' => $v->member->name,
-                        'photo_url' => $v->member->photo_url,
-                    ] : null,
                     'ministries' => $v->ministries->map(fn (Ministry $m) => [
                         'id' => $m->id,
                         'name' => $m->name,
@@ -273,16 +225,12 @@ class VolunteerController extends Controller
                 ];
             });
 
-        $membersQuery = Member::query()
-            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
-            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'));
         $ministriesQuery = Ministry::query()
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'));
 
         return Inertia::render('Volunteers/Index', [
             'volunteers' => $volunteers,
-            'members' => $membersQuery->orderBy('name')->get(['id', 'name', 'photo_url', 'email']),
             'ministries' => $ministriesQuery->orderBy('name')->get(['id', 'name']),
             'appRoles' => Role::query()->orderBy('name')->get(['id', 'name']),
             'publicVolunteerSignupUrl' => $churchId !== null
@@ -300,7 +248,6 @@ class VolunteerController extends Controller
         $volunteer = Volunteer::create($data);
         $this->syncVolunteerMinistries($request, $volunteer);
 
-        $volunteer->load('member');
         $this->syncVolunteerAppUser($request, $volunteer);
 
         $redirect = redirect()->route('volunteers.index')->with('success', 'Voluntário cadastrado com sucesso!');
@@ -314,7 +261,6 @@ class VolunteerController extends Controller
         $volunteer->update($data);
         $this->syncVolunteerMinistries($request, $volunteer);
 
-        $volunteer->load('member');
         $this->syncVolunteerAppUser($request, $volunteer->fresh());
 
         $redirect = redirect()->route('volunteers.index')->with('success', 'Voluntário atualizado com sucesso!');
@@ -331,7 +277,6 @@ class VolunteerController extends Controller
 
     public function invite(Volunteer $volunteer)
     {
-        $volunteer->loadMissing('member');
         $result = $this->createVolunteerInviteLink($volunteer);
 
         if (! $result['ok']) {
@@ -357,7 +302,6 @@ class VolunteerController extends Controller
             return $redirect;
         }
 
-        $volunteer->loadMissing('member');
         $result = $this->createVolunteerInviteLink($volunteer);
 
         if (! $result['ok']) {
@@ -383,7 +327,6 @@ class VolunteerController extends Controller
      */
     private function createVolunteerInviteLink(Volunteer $volunteer): array
     {
-        $volunteer->loadMissing('member');
         $user = $this->resolveOrCreateAppUserForInvite($volunteer);
 
         if (! $user) {
@@ -409,7 +352,7 @@ class VolunteerController extends Controller
         ]);
 
         $link = route('register', ['invitation' => $token], true);
-        $name = trim((string) ($volunteer->member?->name ?? $volunteer->name ?? ''));
+        $name = trim((string) ($volunteer->name ?? ''));
         if ($name === '') {
             $name = 'Voluntário';
         }

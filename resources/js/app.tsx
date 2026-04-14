@@ -15,6 +15,15 @@ const defaultAppName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 type SharedPageProps = { csrf_token?: string; appName?: string };
 
+function hideSplashScreen() {
+    const el = document.getElementById('ns-splash');
+    if (!el) return;
+    el.id = 'ns-splash-fadeout';
+    window.setTimeout(() => {
+        el.remove();
+    }, 320);
+}
+
 function syncAxiosCsrfToken(props: SharedPageProps | undefined) {
     const token = props?.csrf_token;
     if (!token) {
@@ -70,6 +79,10 @@ createInertiaApp({
                 <App {...props} />
             </ThemeProvider>
         );
+
+        // Remove initial HTML splash after React mounts.
+        // requestAnimationFrame ensures first paint happens before fadeout.
+        requestAnimationFrame(() => hideSplashScreen());
     },
     progress: {
         color: '#4B5563',

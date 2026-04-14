@@ -186,7 +186,7 @@ export default function MusicIndex({ musicas, canManage }: Props) {
                                 value={data.title}
                                 onChange={(e) => setData('title', e.target.value)}
                                 className="mt-1 block w-full"
-                                placeholder="Ex: Louvor - Nome da música"
+                                placeholder="Deixe vazio para puxar do YouTube"
                             />
                             <InputError message={errors.title} className="mt-1" />
                         </div>

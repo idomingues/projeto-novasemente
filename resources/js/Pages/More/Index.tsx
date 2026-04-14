@@ -14,8 +14,8 @@ import {
     UserCircleIcon,
     MapPinIcon,
     InboxIcon,
+    NewspaperIcon,
 } from '@heroicons/react/24/outline';
-import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 import { PHOTOS_DRIVE_FOLDER_URL } from '@/constants/externalLinks';
 import type { ComponentType, SVGProps } from 'react';
 
@@ -38,12 +38,7 @@ const items: MoreMenuItem[] = [
     { name: 'Cultos e horários', description: 'Dias e horários dos cultos', route: 'mobile.services', icon: ClockIcon },
     { name: 'Classe Começos', description: 'Estudo bíblico presencial ou on-line', route: 'varios.classe-comecos', icon: AcademicCapIcon },
     { name: 'Música', description: 'Vídeos de música no YouTube', route: 'musica.index', icon: MusicalNoteIcon },
-    {
-        name: 'Pedidos de oração',
-        description: 'Solicite ou veja pedidos de oração',
-        route: 'prayer.index',
-        icon: PrayingHandsIcon,
-    },
+    { name: 'Notícias', description: 'Avisos e comunicados', route: 'news.index', icon: NewspaperIcon },
     {
         name: 'Fotos',
         description: 'Álbum de fotos (Google Drive)',

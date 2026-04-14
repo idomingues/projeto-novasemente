@@ -13,25 +13,21 @@ import PageHeader from '@/Components/PageHeader';
 import Card from '@/Components/Card';
 import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
-import SearchableSelect from '@/Components/SearchableSelect';
 import { useState, useEffect, FormEventHandler } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
 import { activeInactivePillClass } from '@/lib/statusBadges';
 import { appRoleLabel } from '@/lib/appRoleLabels';
 
-interface Member { id: number; name: string; photo_url?: string | null; email?: string | null; }
 interface Ministry { id: number; name: string; }
 interface AppRole { id: number; name: string; }
 
 interface Volunteer {
     id: number;
-    member_id: number | null;
     name: string | null;
     email: string | null;
     phone: string | null;
     role: string | null;
     active: boolean;
-    member: { id: number; name: string; photo_url?: string | null } | null;
     ministries: { id: number; name: string }[];
     user?: { id: number; email: string | null; roles?: string[]; ministry_ids?: number[] } | null;
 }
@@ -41,7 +37,6 @@ interface Props {
         data: Volunteer[];
         links: { url: string | null; label: string; active: boolean }[];
     };
-    members: Member[];
     ministries: Ministry[];
     appRoles: AppRole[];
     filters?: {
@@ -60,7 +55,6 @@ function splitDisplayName(full: string | null | undefined): { first: string; las
 
 export default function Index({
     volunteers,
-    members,
     ministries,
     appRoles,
     filters,
@@ -93,7 +87,6 @@ export default function Index({
         email: '',
         phone: '',
         ministry_ids: [] as number[],
-        role: '',
         active: true,
         app_role: '',
         app_ministry_ids: [] as number[],
@@ -119,11 +112,10 @@ export default function Index({
         setIsEditing(true);
         setEditingId(v.id);
         setData({
-            name: v.member?.name ?? v.name ?? '',
+            name: v.name ?? '',
             email: v.user?.email ?? v.email ?? '',
             phone: v.phone ?? '',
             ministry_ids: v.ministries?.map((m) => m.id) ?? [],
-            role: v.role || '',
             active: v.active,
             app_role: v.user?.roles?.[0] ?? '',
             app_ministry_ids: v.user?.ministry_ids ?? [],
@@ -315,18 +307,14 @@ export default function Index({
                         </thead>
                         <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                             {volunteers.data.map((v) => {
-                                const displayName = v.member?.name ?? v.name ?? '—';
+                                const displayName = v.name ?? '—';
                                 const initial = displayName !== '—' ? displayName.charAt(0).toUpperCase() : '?';
                                 return (
                                 <tr key={v.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
                                     <td className="px-4 md:px-8 py-3 md:py-4">
                                         <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-sm font-semibold text-zinc-700 dark:text-zinc-300 flex-shrink-0 overflow-hidden">
-                                                {v.member?.photo_url ? (
-                                                    <img src={v.member.photo_url} alt="" className="w-full h-full object-cover" />
-                                                ) : (
-                                                    initial
-                                                )}
+                                                {initial}
                                             </div>
                                             <span className="font-medium text-zinc-900 dark:text-white">{displayName}</span>
                                         </div>
@@ -475,18 +463,18 @@ export default function Index({
                         </div>
                     )}
                     <div className="space-y-4">
+                        <div>
+                            <InputLabel htmlFor="name" value="Nome completo" />
+                            <TextInput
+                                id="name"
+                                value={data.name}
+                                onChange={(e) => setData('name', e.target.value)}
+                                className="mt-1 block w-full"
+                                placeholder="Nome e sobrenome"
+                            />
+                            <InputError message={errors.name} className="mt-1" />
+                        </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <InputLabel htmlFor="name" value="Nome" />
-                                <TextInput
-                                    id="name"
-                                    value={data.name}
-                                    onChange={(e) => setData('name', e.target.value)}
-                                    className="mt-1 block w-full"
-                                    placeholder="Nome completo"
-                                />
-                                <InputError message={errors.name} className="mt-1" />
-                            </div>
                             <div>
                                 <InputLabel htmlFor="phone" value="Telefone (opcional)" />
                                 <TextInput
@@ -496,6 +484,29 @@ export default function Index({
                                     className="mt-1 block w-full"
                                 />
                                 <InputError message={errors.phone} className="mt-1" />
+                            </div>
+                            <div className="flex items-end justify-between gap-3">
+                                <div className="flex-1">
+                                    <InputLabel value="Ativar voluntário" />
+                                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                        Se desativado, não aparece para seleção em escalas.
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setData('active', !data.active)}
+                                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
+                                        data.active ? 'bg-emerald-600' : 'bg-zinc-300 dark:bg-zinc-700'
+                                    }`}
+                                    role="switch"
+                                    aria-checked={data.active}
+                                >
+                                    <span
+                                        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                                            data.active ? 'translate-x-6' : 'translate-x-1'
+                                        }`}
+                                    />
+                                </button>
                             </div>
                         </div>
                         <div>
@@ -510,41 +521,14 @@ export default function Index({
                             />
                             <InputError message={errors.email} className="mt-1" />
                         </div>
-                        <div>
-                            <InputLabel htmlFor="role" value="Cargo (opcional)" />
-                            <TextInput
-                                id="role"
-                                value={data.role}
-                                onChange={(e) => setData('role', e.target.value)}
-                                className="mt-1 block w-full"
-                                placeholder="Ex: Líder, Apoio"
-                            />
-                            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                O cargo <strong>Líder</strong> pode administrar os voluntários do departamento e organizar a escala.
+                        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/80 dark:bg-zinc-900/40 p-4">
+                            <p className="text-sm font-semibold text-zinc-900 dark:text-white">Senha (app)</p>
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                                Defina a senha de acesso ao aplicativo.
                             </p>
-                            <InputError message={errors.role} className="mt-1" />
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <input
-                                type="checkbox"
-                                id="active"
-                                checked={data.active}
-                                onChange={(e) => setData('active', e.target.checked)}
-                                className="rounded border-zinc-300 dark:border-zinc-600 text-zinc-900 focus:ring-zinc-500"
-                            />
-                            <InputLabel htmlFor="active" value="Ativo" className="!mb-0" />
-                        </div>
-
-                        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/80 dark:bg-zinc-900/40 p-4 space-y-3">
-                            <div>
-                                <p className="text-sm font-semibold text-zinc-900 dark:text-white">Acesso ao aplicativo</p>
-                                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                                    Por padrão, todo voluntário tem conta no app (e-mail e senha).
-                                </p>
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
-                                    <InputLabel htmlFor="app_password" value="Senha (app)" />
+                                    <InputLabel htmlFor="app_password" value="Senha" />
                                     <TextInput
                                         id="app_password"
                                         type="password"
@@ -569,28 +553,44 @@ export default function Index({
                                     <InputError message={errors.app_password_confirmation} className="mt-1" />
                                 </div>
                             </div>
+                            <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
+                                Se já existir utilizador com o mesmo e-mail, a conta é reutilizada; só precisa de senha ao criar utilizador novo.
+                            </p>
+                        </div>
+
+                        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900/40 p-4 space-y-3">
                             <div>
-                                <InputLabel htmlFor="app_role" value="Perfil de acesso no app" />
-                                <select
-                                    id="app_role"
-                                    value={data.app_role}
-                                    onChange={(e) => setData('app_role', e.target.value)}
-                                    className="mt-1 block w-full min-h-[2.75rem] h-11 py-2.5 px-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white text-sm"
-                                >
-                                    <option value="">Sem perfil</option>
-                                    {appRoles.map((r) => (
-                                        <option key={r.id} value={r.name}>
-                                            {appRoleLabel(r.name)}
-                                        </option>
-                                    ))}
-                                </select>
-                                <InputError message={errors.app_role} className="mt-1" />
+                                <p className="text-sm font-semibold text-zinc-900 dark:text-white">Acesso e permissões</p>
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                                    Marque líder apenas quando este voluntário for gerir escalas.
+                                </p>
                             </div>
+                            <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
+                                <input
+                                    type="checkbox"
+                                    checked={data.app_role === 'lider_ministerio'}
+                                    onChange={(e) => {
+                                        const checked = e.target.checked;
+                                        if (checked) {
+                                            setData('app_role', 'lider_ministerio');
+                                        } else if (data.app_role === 'lider_ministerio') {
+                                            setData({
+                                                ...data,
+                                                app_role: '',
+                                                app_ministry_ids: [],
+                                            });
+                                        }
+                                    }}
+                                    className="rounded border-zinc-300 dark:border-zinc-600 text-zinc-900 focus:ring-zinc-500"
+                                />
+                                <span className="font-medium">É líder de ministério</span>
+                            </label>
+                            <InputError message={errors.app_role} className="mt-1" />
 
                             {data.app_role === 'lider_ministerio' && (
                                 <div>
-                                    <InputLabel value="Departamentos geridos no app (líder de ministério)" />
-                                    <div className="mt-2 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900/50 max-h-48 overflow-y-auto space-y-2">
+                                    <InputLabel value="Departamentos que este líder gerirá" />
+                                    <div className="mt-2 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 max-h-48 overflow-y-auto space-y-2">
                                         {ministries.map((m) => (
                                             <label key={m.id} className="flex items-center gap-2 cursor-pointer">
                                                 <input
@@ -616,10 +616,23 @@ export default function Index({
                                 </div>
                             )}
 
-                            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                Se já existir utilizador com o mesmo e-mail, a conta é reutilizada; só precisa de senha ao criar
-                                utilizador novo.
-                            </p>
+                            <div>
+                                <InputLabel htmlFor="app_role" value="Perfil de acesso no app (opcional)" />
+                                <select
+                                    id="app_role"
+                                    value={data.app_role}
+                                    onChange={(e) => setData('app_role', e.target.value)}
+                                    className="mt-1 block w-full min-h-[2.75rem] h-11 py-2.5 px-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white text-sm"
+                                >
+                                    <option value="">Sem perfil</option>
+                                    {appRoles.map((r) => (
+                                        <option key={r.id} value={r.name}>
+                                            {appRoleLabel(r.name)}
+                                        </option>
+                                    ))}
+                                </select>
+                                <InputError message={errors.app_role} className="mt-1" />
+                            </div>
                         </div>
 
                         <div>

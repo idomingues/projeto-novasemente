@@ -1,27 +1,26 @@
 import { Link } from '@inertiajs/react';
 import {
     FilmIcon,
-    NewspaperIcon,
     CalendarDaysIcon,
     HandRaisedIcon,
     Squares2X2Icon,
 } from '@heroicons/react/24/outline';
 import {
     FilmIcon as FilmIconSolid,
-    NewspaperIcon as NewspaperIconSolid,
     CalendarDaysIcon as CalendarDaysIconSolid,
     HandRaisedIcon as HandRaisedIconSolid,
     Squares2X2Icon as Squares2X2IconSolid,
 } from '@heroicons/react/24/solid';
+import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 
 const navItems = [
     { name: 'Culto', route: 'mobile.culto' as const, activeRoutes: ['mobile.culto'] as const, icon: FilmIcon, iconActive: FilmIconSolid },
     {
-        name: 'Notícias',
-        route: 'mobile.news' as const,
-        activeRoutes: ['mobile.news', 'mobile.news.show'] as const,
-        icon: NewspaperIcon,
-        iconActive: NewspaperIconSolid,
+        name: 'Oração',
+        route: 'mobile.prayer' as const,
+        activeRoutes: ['mobile.prayer', 'prayer.index'] as const,
+        icon: PrayingHandsIcon,
+        iconActive: PrayingHandsIcon,
     },
     { name: 'Eventos', route: 'mobile.events' as const, activeRoutes: ['mobile.events'] as const, icon: CalendarDaysIcon, iconActive: CalendarDaysIconSolid },
     { name: 'Dízimos e Ofertas', route: 'mobile.offerings' as const, activeRoutes: ['mobile.offerings'] as const, icon: HandRaisedIcon, iconActive: HandRaisedIconSolid },
@@ -31,6 +30,8 @@ const navItems = [
         activeRoutes: [
             'mobile.more',
             'more.index',
+            'mobile.news',
+            'mobile.news.show',
             'mobile.beliefs',
             'mobile.quem-somos',
             'varios.services',
@@ -39,8 +40,6 @@ const navItems = [
             'mobile.contact',
             'mobile.fotos',
             'mobile.location',
-            'mobile.prayer',
-            'prayer.index',
             'varios.schedule',
             'varios.classe-comecos',
             'mobile.classe-comecos',

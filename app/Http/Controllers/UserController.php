@@ -24,7 +24,6 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
             'password' => ['nullable', 'confirmed', Password::defaults(), Rule::requiredIf(fn () => $request->filled('email'))],
-            'member_id' => ['nullable', 'exists:members,id'],
             'role' => ['nullable', 'string', 'exists:roles,name'],
             'ministry_ids' => ['nullable', 'array'],
             'ministry_ids.*' => ['exists:ministries,id'],
@@ -36,7 +35,6 @@ class UserController extends Controller
             'name' => $valid['name'],
             'email' => $valid['email'] ?? null,
             'password' => $passwordPlain ?? Str::random(64),
-            'member_id' => $valid['member_id'] ?? null,
         ]);
 
         if (! empty($valid['role'])) {
@@ -57,7 +55,6 @@ class UserController extends Controller
         $rules = [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'string', 'lowercase', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
-            'member_id' => ['nullable', 'exists:members,id'],
             'role' => ['nullable', 'string', 'exists:roles,name'],
             'ministry_ids' => ['nullable', 'array'],
             'ministry_ids.*' => ['exists:ministries,id'],
@@ -69,7 +66,6 @@ class UserController extends Controller
 
         $user->name = $valid['name'];
         $user->email = $valid['email'] ?? null;
-        $user->member_id = $valid['member_id'] ?? null;
         if (! empty($valid['password'])) {
             $user->password = $valid['password'];
         }

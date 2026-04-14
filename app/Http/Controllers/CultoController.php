@@ -6,6 +6,7 @@ use App\Models\Church;
 use App\Models\Culto;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -72,13 +73,18 @@ class CultoController extends Controller
         $this->assertCanManageCulto($request->user());
 
         $data = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
+            'title' => ['nullable', 'string', 'max:255'],
             'youtube_url' => ['required', 'string', 'max:512'],
             'published_at' => ['nullable', 'date'],
         ]);
 
         if (Culto::youtubeVideoId($data['youtube_url']) === null) {
             return redirect()->back()->withErrors(['youtube_url' => 'URL do YouTube inválida. Use um link de vídeo do YouTube.'])->withInput();
+        }
+
+        $title = trim((string) ($data['title'] ?? ''));
+        if ($title === '') {
+            $title = $this->fetchYoutubeTitle($data['youtube_url']) ?? 'Sem título';
         }
 
         $churchId = $this->currentChurchId();
@@ -88,7 +94,7 @@ class CultoController extends Controller
 
         Culto::create([
             'church_id' => $churchId,
-            'title' => $data['title'],
+            'title' => $title,
             'youtube_url' => $data['youtube_url'],
             'published_at' => $data['published_at'] ?? null,
             'created_by' => $request->user()?->id,
@@ -102,7 +108,7 @@ class CultoController extends Controller
         $this->assertCanManageCulto($request->user());
 
         $data = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
+            'title' => ['nullable', 'string', 'max:255'],
             'youtube_url' => ['required', 'string', 'max:512'],
             'published_at' => ['nullable', 'date'],
         ]);
@@ -111,8 +117,13 @@ class CultoController extends Controller
             return redirect()->back()->withErrors(['youtube_url' => 'URL do YouTube inválida. Use um link de vídeo do YouTube.'])->withInput();
         }
 
+        $title = trim((string) ($data['title'] ?? ''));
+        if ($title === '') {
+            $title = $this->fetchYoutubeTitle($data['youtube_url']) ?? 'Sem título';
+        }
+
         $culto->update([
-            'title' => $data['title'],
+            'title' => $title,
             'youtube_url' => $data['youtube_url'],
             'published_at' => $data['published_at'] ?? null,
         ]);
@@ -127,5 +138,29 @@ class CultoController extends Controller
         $culto->delete();
 
         return redirect()->route('culto.index')->with('success', 'Culto removido com sucesso.');
+    }
+
+    private function fetchYoutubeTitle(string $youtubeUrl): ?string
+    {
+        try {
+            $normalized = trim($youtubeUrl);
+            $response = Http::timeout(10)->get('https://www.youtube.com/oembed', [
+                'url' => $normalized,
+                'format' => 'json',
+            ]);
+            if (! $response->successful()) {
+                return null;
+            }
+            $title = $response->json('title');
+            if (! is_string($title)) {
+                return null;
+            }
+            $title = trim($title);
+
+            return $title !== '' ? $title : null;
+        } catch (\Throwable $e) {
+            report($e);
+            return null;
+        }
     }
 }

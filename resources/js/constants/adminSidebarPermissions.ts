@@ -1,7 +1,6 @@
 /** Permissões por rota do menu lateral (Sidebar em AdminLayout e MobileLayout logado). */
 export const adminSidebarRoutePermissions: Record<string, string[]> = {
     dashboard: [],
-    'members.index': ['members.view', 'members.manage'],
     'departments.index': ['departments.view', 'departments.manage'],
     'escalas.index': ['escalas.view', 'escalas.manage'],
     'volunteers.index': ['volunteers.view', 'volunteers.manage'],

@@ -183,7 +183,7 @@ export default function CultoIndex({ cultos }: Props) {
                                 value={data.title}
                                 onChange={(e) => setData('title', e.target.value)}
                                 className="mt-1 block w-full"
-                                placeholder="Ex: Culto de Celebração - 01/03/2026"
+                                placeholder="Deixe vazio para puxar do YouTube"
                             />
                             <InputError message={errors.title} className="mt-1" />
                         </div>

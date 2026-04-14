@@ -19,6 +19,7 @@ import {
     InboxIcon,
     UserCircleIcon,
 } from '@heroicons/react/24/outline';
+import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 import { useMemo } from 'react';
 import type { ComponentType, SVGProps } from 'react';
 
@@ -51,6 +52,7 @@ const ICON_MAP: Record<string, MenuIcon> = {
     home: HomeIcon,
     inbox: InboxIcon,
     newspaper: NewspaperIcon,
+    'praying-hands': PrayingHandsIcon,
     'calendar-days': CalendarDaysIcon,
     film: FilmIcon,
     'play-circle': PlayCircleIcon,
@@ -75,11 +77,10 @@ const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'Dashboard', route: 'dashboard', icon: HomeIcon },
     { name: 'Inbox (Solicitações)', route: 'solicitations.index', icon: InboxIcon },
     { name: 'Pastores', route: 'pastors.index', icon: UserCircleIcon },
-    { name: 'Notícias', route: 'news.index', icon: NewspaperIcon },
+    { name: 'Pedidos de oração', route: 'prayer.index', icon: PrayingHandsIcon },
     { name: 'Eventos', route: 'events.index', icon: CalendarDaysIcon },
     { name: 'Culto', route: 'culto.index', icon: FilmIcon },
     { name: 'Acervo', route: 'acervo.index', icon: PlayCircleIcon },
-    { name: 'Membros', route: 'members.index', icon: UserGroupIcon },
     { name: 'Departamentos', route: 'departments.index', icon: BuildingOffice2Icon },
     { name: 'Escalas', route: 'escalas.index', icon: CalendarIcon },
     { name: 'Voluntários', route: 'volunteers.index', icon: UsersIcon },

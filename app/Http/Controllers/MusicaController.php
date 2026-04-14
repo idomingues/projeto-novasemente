@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Church;
 use App\Models\Musica;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -53,19 +54,21 @@ class MusicaController extends Controller
 
     public function store(Request $request)
     {
-        if (!app()->environment('local')) {
-            abort(403, 'Disponível apenas em ambiente local.');
-        }
         $this->authorize('music.manage');
 
         $data = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
+            'title' => ['nullable', 'string', 'max:255'],
             'youtube_url' => ['required', 'string', 'max:512'],
             'published_at' => ['nullable', 'date'],
         ]);
 
         if (Musica::youtubeVideoId($data['youtube_url']) === null) {
             return redirect()->back()->withErrors(['youtube_url' => 'URL do YouTube inválida. Use um link de vídeo do YouTube.'])->withInput();
+        }
+
+        $title = trim((string) ($data['title'] ?? ''));
+        if ($title === '') {
+            $title = $this->fetchYoutubeTitle($data['youtube_url']) ?? 'Sem título';
         }
 
         $churchId = $this->currentChurchId();
@@ -75,7 +78,7 @@ class MusicaController extends Controller
 
         Musica::create([
             'church_id' => $churchId,
-            'title' => $data['title'],
+            'title' => $title,
             'youtube_url' => $data['youtube_url'],
             'published_at' => $data['published_at'] ?? null,
             'created_by' => $request->user()?->id,
@@ -86,13 +89,10 @@ class MusicaController extends Controller
 
     public function update(Request $request, Musica $musica)
     {
-        if (!app()->environment('local')) {
-            abort(403, 'Disponível apenas em ambiente local.');
-        }
         $this->authorize('music.manage');
 
         $data = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
+            'title' => ['nullable', 'string', 'max:255'],
             'youtube_url' => ['required', 'string', 'max:512'],
             'published_at' => ['nullable', 'date'],
         ]);
@@ -101,8 +101,13 @@ class MusicaController extends Controller
             return redirect()->back()->withErrors(['youtube_url' => 'URL do YouTube inválida. Use um link de vídeo do YouTube.'])->withInput();
         }
 
+        $title = trim((string) ($data['title'] ?? ''));
+        if ($title === '') {
+            $title = $this->fetchYoutubeTitle($data['youtube_url']) ?? 'Sem título';
+        }
+
         $musica->update([
-            'title' => $data['title'],
+            'title' => $title,
             'youtube_url' => $data['youtube_url'],
             'published_at' => $data['published_at'] ?? null,
         ]);
@@ -112,13 +117,34 @@ class MusicaController extends Controller
 
     public function destroy(Musica $musica)
     {
-        if (!app()->environment('local')) {
-            abort(403, 'Disponível apenas em ambiente local.');
-        }
         $this->authorize('music.manage');
 
         $musica->delete();
 
         return redirect()->route('musica.index')->with('success', 'Música removida com sucesso.');
+    }
+
+    private function fetchYoutubeTitle(string $youtubeUrl): ?string
+    {
+        try {
+            $normalized = trim($youtubeUrl);
+            $response = Http::timeout(10)->get('https://www.youtube.com/oembed', [
+                'url' => $normalized,
+                'format' => 'json',
+            ]);
+            if (! $response->successful()) {
+                return null;
+            }
+            $title = $response->json('title');
+            if (! is_string($title)) {
+                return null;
+            }
+            $title = trim($title);
+
+            return $title !== '' ? $title : null;
+        } catch (\Throwable $e) {
+            report($e);
+            return null;
+        }
     }
 }

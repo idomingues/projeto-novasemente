@@ -23,7 +23,6 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
-        'member_id',
         'name',
         'email',
         'password',
@@ -44,12 +43,6 @@ class User extends Authenticatable
         static::created(function (User $user) {
             $user->ensureVolunteerProfile();
         });
-
-        static::updated(function (User $user) {
-            if ($user->wasChanged('member_id')) {
-                $user->ensureVolunteerProfile();
-            }
-        });
     }
 
     /**
@@ -58,18 +51,13 @@ class User extends Authenticatable
      */
     public function ensureVolunteerProfile(): void
     {
-        $this->loadMissing('member');
-
         $volunteer = $this->volunteerProfile()->first();
-        $member = $this->member;
 
         $payload = [
-            'member_id' => $this->member_id,
             'user_id' => $this->id,
             'active' => true,
-            'name' => $member?->name ?? $this->name,
-            'email' => $member?->email ?? $this->email,
-            'phone' => $member?->phone ?? null,
+            'name' => $this->name,
+            'email' => $this->email,
             'role' => $volunteer?->role ?? ($this->getRoleNames()->first() ?: null),
         ];
 

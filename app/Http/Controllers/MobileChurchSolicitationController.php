@@ -72,7 +72,7 @@ class MobileChurchSolicitationController extends Controller
             'typeLabel' => self::typeLabel($type),
             'storeUrl' => route('mobile.solicitations.store'),
             'pastorOptions' => SolicitationAssignees::pastorOptions($churchId),
-            'volunteerOptions' => SolicitationAssignees::volunteerOptions($churchId),
+            'volunteerOptions' => [],
         ]);
     }
 

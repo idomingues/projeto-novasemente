@@ -64,7 +64,6 @@ class MobileSupportController extends Controller
         return Inertia::render('Mobile/Support', [
             'tickets' => $tickets,
             'isAuthenticated' => (bool) $user,
-            'hasMember' => (bool) ($user && $user->member_id),
         ]);
     }
 

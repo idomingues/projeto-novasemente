@@ -9,7 +9,6 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import PageHeader from '@/Components/PageHeader';
 import InputError from '@/Components/InputError';
-import SearchableSelect from '@/Components/SearchableSelect';
 import { useState, useEffect, FormEventHandler } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
 
@@ -18,8 +17,6 @@ interface UserRow {
     name: string;
     email: string | null;
     needs_registration: boolean;
-    member_id: number | null;
-    member: { id: number; name: string } | null;
     roles: string[];
     ministry_ids: number[];
 }
@@ -35,14 +32,12 @@ interface InvitationRow {
     link: string;
 }
 
-interface Member { id: number; name: string; }
 interface Role { id: number; name: string; }
 interface Ministry { id: number; name: string; }
 
 interface Props {
     users: UserRow[];
     invitations: InvitationRow[];
-    members: Member[];
     roles: Role[];
     ministries: Ministry[];
     filters?: {
@@ -50,7 +45,7 @@ interface Props {
     };
 }
 
-export default function Index({ users, invitations, members, roles, ministries, filters }: Props) {
+export default function Index({ users, invitations, roles, ministries, filters }: Props) {
     const [userModalOpen, setUserModalOpen] = useState(false);
     const [inviteModalOpen, setInviteModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<UserRow | null>(null);
@@ -61,7 +56,6 @@ export default function Index({ users, invitations, members, roles, ministries, 
         email: '',
         password: '',
         password_confirmation: '',
-        member_id: '' as number | '',
         role: '',
         ministry_ids: [] as number[],
     });
@@ -85,7 +79,6 @@ export default function Index({ users, invitations, members, roles, ministries, 
             email: u.email ?? '',
             password: '',
             password_confirmation: '',
-            member_id: u.member_id ?? '',
             role: u.roles[0] ?? '',
             ministry_ids: u.ministry_ids ?? [],
         });
@@ -177,7 +170,7 @@ export default function Index({ users, invitations, members, roles, ministries, 
                             type="search"
                             name="search"
                             value={search}
-                            placeholder="Buscar por nome, e-mail ou membro"
+                            placeholder="Buscar por nome ou e-mail"
                             className="w-full"
                             onChange={(e) => setSearch(e.target.value)}
                         />
@@ -204,7 +197,6 @@ export default function Index({ users, invitations, members, roles, ministries, 
                                 <tr>
                                     <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold text-zinc-500 uppercase">Nome</th>
                                     <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold text-zinc-500 uppercase">E-mail</th>
-                                    <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold text-zinc-500 uppercase">Membro</th>
                                     <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold text-zinc-500 uppercase">Papel</th>
                                     <th className="px-4 md:px-6 py-3 text-right text-xs font-semibold text-zinc-500 uppercase">Ações</th>
                                 </tr>
@@ -214,7 +206,6 @@ export default function Index({ users, invitations, members, roles, ministries, 
                                     <tr key={u.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
                                         <td className="px-4 md:px-6 py-3 font-medium text-zinc-900 dark:text-white">{u.name}</td>
                                         <td className="px-4 md:px-6 py-3 text-zinc-600 dark:text-zinc-300">{u.email ?? '—'}</td>
-                                        <td className="px-4 md:px-6 py-3 text-zinc-600 dark:text-zinc-300">{u.member?.name ?? '—'}</td>
                                         <td className="px-4 md:px-6 py-3">
                                             {u.roles.length > 0 ? (
                                                 <span className="px-2 py-0.5 rounded-md bg-zinc-200 dark:bg-zinc-700 text-xs">{u.roles.join(', ')}</span>
@@ -339,17 +330,6 @@ export default function Index({ users, invitations, members, roles, ministries, 
                                 <InputError message={userForm.errors.password_confirmation} className="mt-1" />
                             </div>
                         )}
-                        <div>
-                            <SearchableSelect
-                                id="user_member"
-                                label="Vincular a membro (opcional)"
-                                value={userForm.data.member_id}
-                                onChange={(id) => userForm.setData('member_id', id === '' ? '' : Number(id))}
-                                options={members.map((m) => ({ id: m.id, name: m.name }))}
-                                placeholder="Buscar membro..."
-                                emptyOption="Nenhum"
-                            />
-                        </div>
                         <div>
                             <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Papel</label>
                             <select
