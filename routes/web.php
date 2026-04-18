@@ -37,11 +37,7 @@ use Inertia\Inertia;
 
 Route::get('/favicon.svg', FaviconController::class)->name('favicon');
 
-Route::get('/', function (\Illuminate\Http\Request $request) {
-    if ($request->user()) {
-        return redirect()->route('dashboard');
-    }
-
+Route::get('/', function () {
     return redirect()->route('mobile.culto');
 });
 

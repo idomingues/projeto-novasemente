@@ -58,18 +58,7 @@ class AuthenticatedSessionController extends Controller
             return redirect()->to($afterLogin);
         }
 
-        $user = $request->user();
-        $isMobile = (bool) preg_match('/iPhone|iPad|iPod|Android|webOS|Mobile/i', $request->userAgent() ?? '');
-
-        if ($isMobile) {
-            return redirect()->intended(route('mobile.culto'));
-        }
-
-        if ($user && $user->hasRole('lider_ministerio')) {
-            return redirect()->intended(route('news.index'));
-        }
-
-        return redirect()->intended(route('news.index'));
+        return redirect()->intended(route('mobile.culto'));
     }
 
     /**

@@ -199,7 +199,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
                 {/* Logo Area */}
                 <div className="h-24 flex items-center justify-between px-6 md:px-8 border-b border-zinc-100 dark:border-zinc-900 flex-shrink-0">
                     <Link
-                        href={isAuthenticated ? route('dashboard') : route('mobile.culto')}
+                        href={route('mobile.culto')}
                         className="flex items-center gap-3 text-zinc-900 dark:text-white min-w-0 hover:opacity-90 transition-opacity"
                     >
                         <div className="flex-shrink-0 w-10 h-10 rounded-full bg-zinc-900 dark:bg-white flex items-center justify-center overflow-hidden">
