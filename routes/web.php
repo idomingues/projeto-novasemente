@@ -367,6 +367,8 @@ Route::middleware('auth')->group(function () {
     // Versões do App (Admin)
     Route::get('/app-versions', [AppVersionController::class, 'index'])->name('app-versions.index');
     Route::post('/app-versions', [AppVersionController::class, 'store'])->name('app-versions.store');
+    Route::put('/app-versions/{appVersion}', [AppVersionController::class, 'update'])->name('app-versions.update');
+    Route::delete('/app-versions/{appVersion}', [AppVersionController::class, 'destroy'])->name('app-versions.destroy');
 
     // Igrejas — apenas super admin (via permission churches.manage)
     Route::get('/churches', [ChurchController::class, 'index'])->name('churches.index')->middleware('permission:churches.manage');

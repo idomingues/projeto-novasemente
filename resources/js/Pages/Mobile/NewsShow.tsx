@@ -1,6 +1,6 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
-import { ArrowLeftIcon, NewspaperIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, NewspaperIcon, PlayCircleIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import ImageDownloadButton from '@/Components/ImageDownloadButton';
 
 function imageSrc(url: string | null, appUrl: string): string {
@@ -10,13 +10,20 @@ function imageSrc(url: string | null, appUrl: string): string {
     return `${base}${url}`;
 }
 
+type ContentType = 'article' | 'youtube' | 'pdf' | 'image';
+
 interface Post {
     id: number;
     title: string;
     slug: string;
     excerpt: string | null;
     body: string;
+    content_type: ContentType;
+    youtube_url: string | null;
+    youtube_embed_url: string | null;
+    pdf_url: string | null;
     image_url: string | null;
+    cover_url: string | null;
     published_at: string | null;
 }
 
@@ -33,9 +40,30 @@ function formatDate(iso: string | null): string {
     });
 }
 
+function bodyLooksLikeHtml(body: string): boolean {
+    const t = body.trim();
+    if (!t) return false;
+    return /<\/?[a-z][a-z0-9]*\b/i.test(t);
+}
+
+function typeLabel(t: ContentType): string {
+    switch (t) {
+        case 'youtube':
+            return 'Vídeo';
+        case 'pdf':
+            return 'Documento';
+        case 'image':
+            return 'Imagem';
+        default:
+            return 'Notícia';
+    }
+}
+
 export default function MobileNewsShow({ post }: Props) {
     const appUrl = (usePage().props as { appUrl?: string }).appUrl ?? '';
-
+    const cover = post.cover_url;
+    const isYoutube = post.content_type === 'youtube';
+    const isPdf = post.content_type === 'pdf';
     return (
         <MobileLayout>
             <Head title={post.title} />
@@ -48,13 +76,13 @@ export default function MobileNewsShow({ post }: Props) {
                     Voltar às notícias
                 </Link>
 
-                <article className="rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm">
-                    {post.image_url ? (
+                <article className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                    {cover ? (
                         <div className="relative aspect-[16/10] overflow-hidden bg-zinc-200 dark:bg-zinc-800">
                             <img
-                                src={imageSrc(post.image_url, appUrl)}
+                                src={imageSrc(cover, appUrl)}
                                 alt=""
-                                className="w-full h-full object-cover"
+                                className="h-full w-full object-cover"
                                 loading="eager"
                                 decoding="async"
                                 onError={(e) => {
@@ -64,34 +92,101 @@ export default function MobileNewsShow({ post }: Props) {
                                     if (next) next.style.display = 'flex';
                                 }}
                             />
-                            <div className="absolute inset-0 hidden items-center justify-center bg-zinc-200 dark:bg-zinc-700" style={{ display: 'none' }} aria-hidden>
-                                <NewspaperIcon className="w-12 h-12 text-zinc-400" />
+                            <div
+                                className="absolute inset-0 hidden items-center justify-center bg-zinc-200 dark:bg-zinc-700"
+                                style={{ display: 'none' }}
+                                aria-hidden
+                            >
+                                <NewspaperIcon className="h-12 w-12 text-zinc-400" />
                             </div>
-                            <ImageDownloadButton
-                                src={imageSrc(post.image_url, appUrl)}
-                                appUrl={appUrl}
-                                filenameBase={`noticia-${post.slug}`}
-                                className="absolute top-2 right-2 z-10"
-                            />
+                            {isYoutube && (
+                                <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20">
+                                    <PlayCircleIcon className="h-16 w-16 text-white drop-shadow-lg sm:h-20 sm:w-20" aria-hidden />
+                                </div>
+                            )}
+                            {post.image_url && (
+                                <ImageDownloadButton
+                                    src={imageSrc(post.image_url, appUrl)}
+                                    appUrl={appUrl}
+                                    filenameBase={`noticia-${post.slug}`}
+                                    className="absolute right-2 top-2 z-10"
+                                />
+                            )}
+                        </div>
+                    ) : isPdf ? (
+                        <div className="flex aspect-[16/10] items-center justify-center bg-gradient-to-br from-rose-100 via-zinc-100 to-amber-50 dark:from-rose-950/40 dark:via-zinc-900 dark:to-amber-950/30">
+                            <div className="flex flex-col items-center gap-2 text-zinc-600 dark:text-zinc-400">
+                                <DocumentTextIcon className="h-16 w-16 text-rose-600/80 dark:text-rose-400/80" />
+                                <span className="text-sm font-medium">Documento PDF</span>
+                            </div>
                         </div>
                     ) : (
-                        <div className="h-40 bg-gradient-to-br from-zinc-200 to-zinc-300 dark:from-zinc-700 dark:to-zinc-800 flex items-center justify-center">
-                            <NewspaperIcon className="w-14 h-14 text-zinc-400 dark:text-zinc-500" />
+                        <div className="flex h-40 items-center justify-center bg-gradient-to-br from-zinc-200 to-zinc-300 dark:from-zinc-700 dark:to-zinc-800">
+                            <NewspaperIcon className="h-14 w-14 text-zinc-400 dark:text-zinc-500" />
                         </div>
                     )}
 
                     <div className="p-4 sm:p-6">
-                        <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-2">{formatDate(post.published_at)}</p>
-                        <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white leading-tight">{post.title}</h1>
+                        <div className="mb-2 flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                                {typeLabel(post.content_type)}
+                            </span>
+                            <p className="text-sm text-zinc-500 dark:text-zinc-400">{formatDate(post.published_at)}</p>
+                        </div>
+                        <h1 className="text-xl font-bold leading-tight text-zinc-900 dark:text-white sm:text-2xl">{post.title}</h1>
                         {post.excerpt && (
-                            <p className="mt-3 text-zinc-600 dark:text-zinc-300 text-base leading-relaxed border-l-4 border-primary-500 pl-3">
+                            <p className="mt-3 border-l-4 border-primary-500 pl-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
                                 {post.excerpt}
                             </p>
                         )}
-                        <div
-                            className="mt-5 text-zinc-700 dark:text-zinc-300 text-[15px] leading-relaxed [&_p]:mb-4 [&_p:last-child]:mb-0 [&_a]:text-primary-600 dark:[&_a]:text-primary-400 [&_a]:underline [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-4 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-4 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mt-6 [&_h2]:mb-2 [&_h3]:font-semibold [&_h3]:mt-4 [&_h3]:mb-2"
-                            dangerouslySetInnerHTML={{ __html: post.body }}
-                        />
+
+                        {isYoutube && post.youtube_embed_url && (
+                            <div className="mt-6 overflow-hidden rounded-2xl border border-zinc-200 bg-black shadow-inner dark:border-zinc-700">
+                                <div className="aspect-video w-full">
+                                    <iframe
+                                        title={post.title}
+                                        src={`${post.youtube_embed_url}?rel=0`}
+                                        className="h-full w-full"
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                        allowFullScreen
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {isPdf && post.pdf_url && (
+                            <div className="mt-6 space-y-3">
+                                <a
+                                    href={post.pdf_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+                                >
+                                    <DocumentTextIcon className="h-5 w-5 shrink-0" />
+                                    Abrir PDF
+                                </a>
+                                <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950">
+                                    <iframe
+                                        title={post.title}
+                                        src={`${post.pdf_url}#view=FitH`}
+                                        className="aspect-[4/5] min-h-[480px] w-full sm:aspect-[3/4] sm:min-h-[560px]"
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {post.body?.trim() ? (
+                            bodyLooksLikeHtml(post.body) ? (
+                                <div
+                                    className="mt-6 text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300 [&_a]:text-primary-600 dark:[&_a]:text-primary-400 [&_a]:underline [&_h2]:mb-2 [&_h2]:mt-6 [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:mb-2 [&_h3]:mt-4 [&_h3]:font-semibold [&_ol]:mb-4 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-4 [&_p:last-child]:mb-0 [&_ul]:mb-4 [&_ul]:list-disc [&_ul]:pl-5"
+                                    dangerouslySetInnerHTML={{ __html: post.body }}
+                                />
+                            ) : (
+                                <div className="mt-6 whitespace-pre-wrap break-words text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">
+                                    {post.body}
+                                </div>
+                            )
+                        ) : null}
                     </div>
                 </article>
             </div>

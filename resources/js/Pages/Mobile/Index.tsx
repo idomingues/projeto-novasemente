@@ -17,6 +17,7 @@ interface NewsItem {
     slug: string;
     excerpt: string | null;
     image_url: string | null;
+    cover_url: string | null;
     published_at: string | null;
 }
 
@@ -136,11 +137,11 @@ export default function MobileIndex({ church, latestNews, upcomingEvents }: Prop
                                         href={route('mobile.news.show', n.slug)}
                                         className="flex gap-3 p-3 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 active:bg-zinc-50 dark:active:bg-zinc-800"
                                     >
-                                        {n.image_url && (
+                                        {(n.cover_url || n.image_url) && (
                                             <img
-                                                src={n.image_url}
+                                                src={n.cover_url || n.image_url || ''}
                                                 alt=""
-                                                className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                                                className="h-16 w-16 flex-shrink-0 rounded-lg object-cover"
                                             />
                                         )}
                                         <div className="min-w-0 flex-1">

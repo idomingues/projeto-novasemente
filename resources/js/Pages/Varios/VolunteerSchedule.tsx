@@ -6,7 +6,8 @@ import { getMinistryIcon } from '@/lib/ministryIcons';
 
 type Teammate = {
     assignmentId: number;
-    memberId: number;
+    memberId: number | null;
+    volunteerId?: number | null;
     memberName: string;
     memberPhotoUrl: string | null;
     roleName: string | null;

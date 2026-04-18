@@ -49,7 +49,8 @@ export default function ScheduleCheckin({
 
                 {needsMember && (
                     <div className="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4 text-sm text-amber-900 dark:text-amber-200">
-                        O seu utilizador não está associado a um membro. Peça à secretaria para vincular o cadastro.
+                        A sua conta precisa de um membro ou de um cadastro de voluntário ligado para ver a escala e fazer
+                        check-in. Peça à secretaria para vincular o cadastro.
                     </div>
                 )}
 

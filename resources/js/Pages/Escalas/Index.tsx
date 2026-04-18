@@ -12,6 +12,7 @@ import {
 import VolunteerAddPopover, {
     scheduleIconButtonClass,
     type ScheduleRoleOption,
+    type ScheduleVolunteerOption,
 } from '@/Components/Escalas/VolunteerAddPopover';
 import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -28,7 +29,9 @@ const checkinActiveIconClass =
 
 export type Assignment = {
     id: number;
-    memberId: number;
+    memberId: number | null;
+    volunteerId: number | null;
+    participantKey: string;
     memberName: string;
     memberPhotoUrl: string | null;
     ministryName?: string | null;
@@ -44,7 +47,6 @@ export type Assignment = {
     checkedInAt: string | null;
 };
 
-interface Member { id: number; name: string; }
 interface Ministry { id: number; name: string; }
 
 interface Props {
@@ -55,7 +57,7 @@ interface Props {
     ministryId: number | null;
     ministries: Ministry[];
     canEdit: boolean;
-    members: Member[];
+    scheduleVolunteers: ScheduleVolunteerOption[];
     scheduleRoles: ScheduleRoleOption[];
 }
 
@@ -84,7 +86,7 @@ export default function EscalasIndex({
     ministryId,
     ministries,
     canEdit,
-    members,
+    scheduleVolunteers,
     scheduleRoles,
 }: Props) {
     const [localExtraDates, setLocalExtraDates] = useState<string[]>([]);
@@ -335,19 +337,19 @@ export default function EscalasIndex({
                                                 )}
                                             </button>
                                             <VolunteerAddPopover
-                                                members={members}
-                                                existingMemberIds={dayAssignments.map((a) => a.memberId)}
+                                                scheduleVolunteers={scheduleVolunteers}
+                                                existingParticipantKeys={dayAssignments.map((a) => a.participantKey)}
                                                 canEdit={canEdit}
                                                 saturdayNumber={saturdayNumber}
                                                 month={month}
                                                 year={year}
                                                 scheduleRoles={scheduleRoles}
-                                                onPick={(memberId, options) => {
+                                                onPick={(volunteerId, options) => {
                                                     router.post(
                                                         route('escalas.store'),
                                                         {
                                                             ministry_id: ministryId,
-                                                            member_id: memberId,
+                                                            volunteer_id: volunteerId,
                                                             schedule_role_id: options?.schedule_role_id ?? null,
                                                             saturday_number: saturdayNumber,
                                                             schedule_date: null,
@@ -411,16 +413,16 @@ export default function EscalasIndex({
                                                 )}
                                             </button>
                                             <VolunteerAddPopover
-                                                members={members}
-                                                existingMemberIds={dayAssignments.map((a) => a.memberId)}
+                                                scheduleVolunteers={scheduleVolunteers}
+                                                existingParticipantKeys={dayAssignments.map((a) => a.participantKey)}
                                                 canEdit={canEdit}
                                                 scheduleRoles={scheduleRoles}
-                                                onPick={(memberId, options) => {
+                                                onPick={(volunteerId, options) => {
                                                     router.post(
                                                         route('escalas.store'),
                                                         {
                                                             ministry_id: ministryId,
-                                                            member_id: memberId,
+                                                            volunteer_id: volunteerId,
                                                             schedule_role_id: options?.schedule_role_id ?? null,
                                                             saturday_number: null,
                                                             schedule_date: scheduleDate,

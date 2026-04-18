@@ -47,6 +47,7 @@ class MobileController extends Controller
         $church = $this->currentChurch();
         $churchId = $church?->id;
 
+        $baseUrl = request()->getSchemeAndHttpHost();
         $latestNews = News::query()
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
@@ -54,11 +55,11 @@ class MobileController extends Controller
             ->where('published_at', '<=', now())
             ->orderByDesc('published_at')
             ->limit(3)
-            ->get(['id', 'title', 'slug', 'excerpt', 'image_url', 'published_at'])
-            ->map(function ($n) {
+            ->get()
+            ->map(function (News $n) use ($baseUrl) {
                 $imageUrl = $n->image_url;
                 if ($imageUrl && ! str_starts_with($imageUrl, 'http')) {
-                    $imageUrl = request()->getSchemeAndHttpHost().$imageUrl;
+                    $imageUrl = $baseUrl.$imageUrl;
                 }
 
                 return [
@@ -66,7 +67,9 @@ class MobileController extends Controller
                     'title' => $n->title,
                     'slug' => $n->slug,
                     'excerpt' => $n->excerpt,
+                    'content_type' => $n->content_type ?? News::TYPE_ARTICLE,
                     'image_url' => $imageUrl,
+                    'cover_url' => $n->resolvedCoverUrl($baseUrl),
                     'published_at' => $n->published_at?->toIso8601String(),
                 ];
             });
@@ -163,7 +166,7 @@ class MobileController extends Controller
         $posts = $query->paginate(10)->withQueryString();
 
         $baseUrl = request()->getSchemeAndHttpHost();
-        $posts->getCollection()->transform(function ($p) use ($baseUrl) {
+        $posts->getCollection()->transform(function (News $p) use ($baseUrl) {
             $imageUrl = $p->image_url;
             if ($imageUrl && ! str_starts_with($imageUrl, 'http')) {
                 $imageUrl = $baseUrl.$imageUrl;
@@ -175,7 +178,12 @@ class MobileController extends Controller
                 'slug' => $p->slug,
                 'excerpt' => $p->excerpt,
                 'body' => $p->body,
+                'content_type' => $p->content_type ?? News::TYPE_ARTICLE,
+                'youtube_url' => $p->youtube_url,
+                'youtube_embed_url' => $p->youtube_embed_url,
+                'pdf_url' => $p->resolvedPdfUrl($baseUrl),
                 'image_url' => $imageUrl,
+                'cover_url' => $p->resolvedCoverUrl($baseUrl),
                 'published_at' => $p->published_at?->toIso8601String(),
             ];
         });
@@ -208,7 +216,12 @@ class MobileController extends Controller
                 'slug' => $news->slug,
                 'excerpt' => $news->excerpt,
                 'body' => $news->body,
+                'content_type' => $news->content_type ?? News::TYPE_ARTICLE,
+                'youtube_url' => $news->youtube_url,
+                'youtube_embed_url' => $news->youtube_embed_url,
+                'pdf_url' => $news->resolvedPdfUrl($baseUrl),
                 'image_url' => $imageUrl,
+                'cover_url' => $news->resolvedCoverUrl($baseUrl),
                 'published_at' => $news->published_at?->toIso8601String(),
             ],
         ]);
@@ -352,7 +365,7 @@ class MobileController extends Controller
             }
         }
 
-        if (! $user || ! $user->member_id) {
+        if (! $user || (! $user->member_id && ! $user->volunteerProfile)) {
             return Inertia::render('Mobile/ScheduleCheckin', [
                 'date' => $valid['date'],
                 'dateLabel' => $date->translatedFormat('d/m/Y'),
@@ -363,11 +376,19 @@ class MobileController extends Controller
             ]);
         }
 
-        $assignments = ScheduleAssignmentPresenter::assignmentsForMemberOnDate(
-            (int) $user->member_id,
-            $valid['date'],
-            fn ($m) => $this->memberPhotoPublicUrl($m)
-        );
+        $photo = fn ($m) => $this->memberPhotoPublicUrl($m);
+        $byAssignmentId = [];
+        if ($user->member_id) {
+            foreach (ScheduleAssignmentPresenter::assignmentsForMemberOnDate((int) $user->member_id, $valid['date'], $photo) as $row) {
+                $byAssignmentId[$row['id']] = $row;
+            }
+        }
+        if ($user->volunteerProfile) {
+            foreach (ScheduleAssignmentPresenter::assignmentsForVolunteerOnDate((int) $user->volunteerProfile->id, $valid['date'], $photo) as $row) {
+                $byAssignmentId[$row['id']] = $row;
+            }
+        }
+        $assignments = array_values($byAssignmentId);
 
         $ministryName = $assignments[0]['ministryName'] ?? null;
 

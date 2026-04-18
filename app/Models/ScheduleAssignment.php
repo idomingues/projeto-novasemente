@@ -11,6 +11,7 @@ class ScheduleAssignment extends Model
     protected $fillable = [
         'ministry_id',
         'member_id',
+        'volunteer_id',
         'schedule_role_id',
         'saturday_number',
         'schedule_date',
@@ -32,6 +33,11 @@ class ScheduleAssignment extends Model
     public function member(): BelongsTo
     {
         return $this->belongsTo(Member::class);
+    }
+
+    public function volunteer(): BelongsTo
+    {
+        return $this->belongsTo(Volunteer::class);
     }
 
     public function scheduleRole(): BelongsTo

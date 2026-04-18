@@ -67,7 +67,7 @@ class ScheduleBoardViewData
      *     ministryId: int|null,
      *     ministries: array<int, array{id: int, name: string}>,
      *     canEdit: bool,
-     *     members: array<int, array{id: int|null, name: string}>,
+     *     scheduleVolunteers: array<int, array{volunteerId: int, memberId: int|null, name: string}>,
      *     scheduleRoles: array<int, array{id: int, name: string, ministryId: int|null}>
      * }
      */
@@ -102,7 +102,7 @@ class ScheduleBoardViewData
 
         $assignments = [];
         $checkinDates = [];
-        $volunteersForSelect = [];
+        $scheduleVolunteers = [];
 
         if ($ministryId) {
             $startDate = Carbon::create($year, $month, 1);
@@ -123,14 +123,17 @@ class ScheduleBoardViewData
                 ->values()
                 ->all();
 
-            $volunteersForSelect = Volunteer::query()
+            $scheduleVolunteers = Volunteer::query()
                 ->whereHas('ministries', fn ($q) => $q->where('ministries.id', $ministryId))
                 ->where('active', true)
-                ->whereNotNull('member_id')
                 ->with('member')
+                ->orderBy('name')
                 ->get()
-                ->map(fn ($v) => ['id' => $v->member_id, 'name' => $v->member?->name ?? $v->name])
-                ->unique('id')
+                ->map(fn (Volunteer $v) => [
+                    'volunteerId' => (int) $v->id,
+                    'memberId' => $v->member_id !== null ? (int) $v->member_id : null,
+                    'name' => $v->display_name,
+                ])
                 ->values()
                 ->all();
 
@@ -156,7 +159,7 @@ class ScheduleBoardViewData
             'ministryId' => $ministryId,
             'ministries' => $ministries->map(fn (Ministry $m) => ['id' => $m->id, 'name' => $m->name])->values()->all(),
             'canEdit' => $canEdit,
-            'members' => $volunteersForSelect,
+            'scheduleVolunteers' => $scheduleVolunteers,
             'scheduleRoles' => $scheduleRoles,
         ];
     }

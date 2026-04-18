@@ -66,7 +66,13 @@ class VolunteerScheduleOverview
             }
 
             foreach ($byDate as $dateKey => $group) {
-                $mine = collect($group)->first(fn ($row) => (int) $row['memberId'] === $memberId);
+                $mine = collect($group)->first(function ($row) use ($memberId, $volunteer) {
+                    if ((int) ($row['memberId'] ?? 0) === $memberId) {
+                        return true;
+                    }
+
+                    return isset($row['volunteerId']) && (int) $row['volunteerId'] === (int) $volunteer->id;
+                });
                 if (! $mine) {
                     continue;
                 }
@@ -75,12 +81,14 @@ class VolunteerScheduleOverview
                 foreach ($group as $r) {
                     $teammates[] = [
                         'assignmentId' => $r['id'],
-                        'memberId' => $r['memberId'],
+                        'memberId' => $r['memberId'] ?? null,
+                        'volunteerId' => $r['volunteerId'] ?? null,
                         'memberName' => $r['memberName'],
                         'memberPhotoUrl' => $r['memberPhotoUrl'],
                         'roleName' => $r['roleName'],
                         'checkedInAt' => $r['checkedInAt'],
-                        'isMe' => (int) $r['memberId'] === $memberId,
+                        'isMe' => (int) ($r['memberId'] ?? 0) === $memberId
+                            || (isset($r['volunteerId']) && (int) $r['volunteerId'] === (int) $volunteer->id),
                     ];
                 }
                 usort($teammates, fn ($a, $b) => strcmp($a['memberName'], $b['memberName']));

@@ -2,16 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Support\NotificationFeed;
 use App\Models\Church;
 use App\Models\ChurchService;
 use App\Models\Member;
-use App\Models\Ministry;
 use App\Services\VolunteerScheduleOverview;
 use App\Services\YoutubePlaylistsService;
+use App\Support\NotificationFeed;
+use App\Support\ScheduleBoardViewData;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -26,6 +25,7 @@ class VariosController extends Controller
                 return $church;
             }
         }
+
         return Church::where('active', true)->orderBy('name')->first();
     }
 
@@ -61,6 +61,11 @@ class VariosController extends Controller
         }
 
         $user = $request->user();
+
+        if (ScheduleBoardViewData::userSeesMinistryScheduleBoard($user)) {
+            return Inertia::render('Escalas/Index', ScheduleBoardViewData::forIndexRequest($request));
+        }
+
         $memberId = $user->member_id ? (int) $user->member_id : null;
 
         if (! $memberId) {
@@ -102,6 +107,7 @@ class VariosController extends Controller
             $services = $church->services()->get()->map(function ($s) {
                 $start = Carbon::parse($s->start_time)->format('H:i');
                 $end = $s->end_time ? Carbon::parse($s->end_time)->format('H:i') : null;
+
                 return [
                     'id' => $s->id,
                     'day_of_week' => $s->day_of_week,

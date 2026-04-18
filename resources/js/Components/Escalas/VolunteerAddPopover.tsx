@@ -15,20 +15,31 @@ export interface ScheduleRoleOption {
     ministryId: number | null;
 }
 
-interface Member {
-    id: number;
+export type ScheduleVolunteerOption = {
+    volunteerId: number;
+    memberId: number | null;
     name: string;
-}
+};
 
 interface Props {
-    members: Member[];
-    existingMemberIds: number[];
+    scheduleVolunteers: ScheduleVolunteerOption[];
+    existingParticipantKeys: string[];
     canEdit: boolean;
-    onPick: (memberId: number, options?: VolunteerAddOptions) => void;
+    onPick: (volunteerId: number, options?: VolunteerAddOptions) => void;
     saturdayNumber?: number | null;
     month?: number | null;
     year?: number | null;
     scheduleRoles?: ScheduleRoleOption[];
+}
+
+function isVolunteerTaken(v: ScheduleVolunteerOption, taken: Set<string>): boolean {
+    if (taken.has(`v:${v.volunteerId}`)) {
+        return true;
+    }
+    if (v.memberId != null && taken.has(`m:${v.memberId}`)) {
+        return true;
+    }
+    return false;
 }
 
 /** Mesmo tamanho e base visual do botão de check-in na escala. */
@@ -37,8 +48,8 @@ export const scheduleIconButtonClass =
 
 /** Botão + com o mesmo tamanho/estilo do botão de check-in ao lado. */
 export default function VolunteerAddPopover({
-    members,
-    existingMemberIds,
+    scheduleVolunteers,
+    existingParticipantKeys,
     canEdit,
     onPick,
     saturdayNumber,
@@ -46,22 +57,24 @@ export default function VolunteerAddPopover({
     year,
     scheduleRoles = [],
 }: Props) {
-    const [memberFilter, setMemberFilter] = useState('');
+    const [nameFilter, setNameFilter] = useState('');
     const [addRecurring, setAddRecurring] = useState(true);
     const [selectedRoleId, setSelectedRoleId] = useState<string>('');
 
-    const availableMembers = useMemo(
-        () => members.filter((m) => !existingMemberIds.includes(m.id)),
-        [members, existingMemberIds],
+    const taken = useMemo(() => new Set(existingParticipantKeys), [existingParticipantKeys]);
+
+    const availableVolunteers = useMemo(
+        () => scheduleVolunteers.filter((v) => !isVolunteerTaken(v, taken)),
+        [scheduleVolunteers, taken],
     );
 
-    const filteredMembers = useMemo(() => {
-        if (!memberFilter.trim()) return availableMembers;
-        const q = memberFilter.trim().toLowerCase();
-        return availableMembers.filter((m) => m.name.toLowerCase().includes(q));
-    }, [availableMembers, memberFilter]);
+    const filteredVolunteers = useMemo(() => {
+        if (!nameFilter.trim()) return availableVolunteers;
+        const q = nameFilter.trim().toLowerCase();
+        return availableVolunteers.filter((v) => v.name.toLowerCase().includes(q));
+    }, [availableVolunteers, nameFilter]);
 
-    const pickMember = (memberId: number, close: () => void) => {
+    const pickVolunteer = (volunteerId: number, close: () => void) => {
         const parsed = selectedRoleId === '' ? null : Number.parseInt(selectedRoleId, 10);
         const schedule_role_id = parsed !== null && !Number.isNaN(parsed) ? parsed : null;
 
@@ -74,8 +87,8 @@ export default function VolunteerAddPopover({
                       schedule_role_id,
                   }
                 : { schedule_role_id };
-        onPick(memberId, options);
-        setMemberFilter('');
+        onPick(volunteerId, options);
+        setNameFilter('');
         close();
     };
 
@@ -88,7 +101,7 @@ export default function VolunteerAddPopover({
             <PopoverButton
                 type="button"
                 onClick={() => {
-                    setMemberFilter('');
+                    setNameFilter('');
                     setSelectedRoleId('');
                 }}
                 className={scheduleIconButtonClass}
@@ -150,31 +163,35 @@ export default function VolunteerAddPopover({
                                 <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
                                 <input
                                     type="text"
-                                    value={memberFilter}
-                                    onChange={(e) => setMemberFilter(e.target.value)}
+                                    value={nameFilter}
+                                    onChange={(e) => setNameFilter(e.target.value)}
                                     placeholder="Buscar por nome..."
                                     className="w-full rounded-lg border border-zinc-200 bg-zinc-50 py-2 pl-8 pr-3 text-sm text-zinc-900 placeholder-zinc-400 focus:border-transparent focus:ring-2 focus:ring-zinc-400 dark:border-zinc-600 dark:bg-zinc-900 dark:text-white dark:focus:ring-zinc-500"
                                 />
                             </div>
                         </div>
                         <div className="max-h-56 overflow-y-auto p-1">
-                            {filteredMembers.length === 0 ? (
+                            {filteredVolunteers.length === 0 ? (
                                 <p className="py-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
-                                    {availableMembers.length === 0 ? 'Todos já estão na escala' : 'Nenhum resultado'}
+                                    {scheduleVolunteers.length === 0
+                                        ? 'Não há voluntários ativos neste departamento. Inscreva voluntários em Voluntários.'
+                                        : availableVolunteers.length === 0
+                                          ? 'Todos já estão na escala'
+                                          : 'Nenhum resultado'}
                                 </p>
                             ) : (
                                 <ul className="space-y-0.5">
-                                    {filteredMembers.map((m) => (
-                                        <li key={m.id}>
+                                    {filteredVolunteers.map((v) => (
+                                        <li key={v.volunteerId}>
                                             <button
                                                 type="button"
-                                                onClick={() => pickMember(m.id, close)}
+                                                onClick={() => pickVolunteer(v.volunteerId, close)}
                                                 className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-zinc-900 hover:bg-zinc-100 dark:text-white dark:hover:bg-zinc-700/80"
                                             >
                                                 <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-zinc-200 text-xs font-semibold text-zinc-700 dark:bg-zinc-600 dark:text-zinc-300">
-                                                    {m.name.charAt(0).toUpperCase()}
+                                                    {v.name.charAt(0).toUpperCase()}
                                                 </span>
-                                                {m.name}
+                                                {v.name}
                                             </button>
                                         </li>
                                     ))}

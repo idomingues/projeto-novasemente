@@ -8,6 +8,7 @@ use App\Models\Member;
 use App\Models\Ministry;
 use App\Models\User;
 use App\Models\UserInboxNotification;
+use App\Models\Volunteer;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Mail;
 
@@ -28,25 +29,34 @@ class ScheduleCheckinNotifier
         $photo = fn () => null;
 
         $memberIds = [];
+        $volunteerIds = [];
         $ministries = Ministry::query()->where('church_id', $church->id)->get(['id']);
         foreach ($ministries as $m) {
             $rows = ScheduleAssignmentPresenter::monthAssignmentsForMinistry($m->id, $year, $month, $photo);
             foreach ($rows as $r) {
-                if (($r['scheduleDate'] ?? null) === $dateYmd) {
-                    $memberIds[] = $r['memberId'];
+                if (($r['scheduleDate'] ?? null) !== $dateYmd) {
+                    continue;
+                }
+                if (! empty($r['memberId'])) {
+                    $memberIds[] = (int) $r['memberId'];
+                } elseif (! empty($r['volunteerId'])) {
+                    $volunteerIds[] = (int) $r['volunteerId'];
                 }
             }
         }
         $memberIds = array_values(array_unique($memberIds));
+        $volunteerIds = array_values(array_unique($volunteerIds));
 
-        if ($memberIds === []) {
+        if ($memberIds === [] && $volunteerIds === []) {
             return;
         }
+
+        $checkinUrl = route('mobile.schedule.checkin', ['date' => $dateYmd], true);
 
         foreach (Member::whereIn('id', $memberIds)->get() as $member) {
             if ($member->email && filter_var($member->email, FILTER_VALIDATE_EMAIL)) {
                 Mail::to($member->email)->send(
-                    new ScheduleCheckinEnabledMail($label, route('mobile.schedule.checkin', ['date' => $dateYmd], true))
+                    new ScheduleCheckinEnabledMail($label, $checkinUrl)
                 );
             }
         }
@@ -61,6 +71,28 @@ class ScheduleCheckinNotifier
             $row->update([
                 'action_url' => route('mobile.schedule.checkin', ['date' => $dateYmd, 'inbox' => $row->id], true),
             ]);
+        }
+
+        foreach (Volunteer::query()->whereIn('id', $volunteerIds)->get() as $volunteer) {
+            if ($volunteer->email && filter_var($volunteer->email, FILTER_VALIDATE_EMAIL)) {
+                Mail::to($volunteer->email)->send(
+                    new ScheduleCheckinEnabledMail($label, $checkinUrl)
+                );
+            }
+            if ($volunteer->user_id) {
+                $user = User::query()->find($volunteer->user_id);
+                if ($user) {
+                    $row = UserInboxNotification::create([
+                        'user_id' => $user->id,
+                        'title' => 'Check-in liberado',
+                        'body' => 'O check-in para a escala do dia '.$label.' foi liberado. Toque para registar a sua presença.',
+                        'action_url' => null,
+                    ]);
+                    $row->update([
+                        'action_url' => route('mobile.schedule.checkin', ['date' => $dateYmd, 'inbox' => $row->id], true),
+                    ]);
+                }
+            }
         }
     }
 }

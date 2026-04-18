@@ -83,6 +83,7 @@ const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'Pastores', route: 'pastors.index', icon: UserCircleIcon },
     { name: 'Agenda pastoral', route: 'pastoral-agenda.index', icon: ClockIcon },
     { name: 'Eventos', route: 'events.index', icon: CalendarDaysIcon },
+    { name: 'Notícias', route: 'news.index', icon: NewspaperIcon },
     { name: 'Culto', route: 'culto.index', icon: FilmIcon },
     { name: 'Acervo', route: 'acervo.index', icon: PlayCircleIcon },
     { name: 'Departamentos', route: 'departments.index', icon: BuildingOffice2Icon },

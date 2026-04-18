@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\AppVersion;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -25,6 +27,7 @@ class AppVersionController extends Controller
             return Inertia::render('AppVersions/Index', [
                 'versions' => [],
                 'latestVersion' => null,
+                'schemaReady' => false,
             ]);
         }
 
@@ -44,6 +47,7 @@ class AppVersionController extends Controller
                 'createdAt' => $v->created_at?->toDateTimeString(),
             ])->values(),
             'latestVersion' => $latest?->version,
+            'schemaReady' => true,
         ]);
     }
 
@@ -60,10 +64,40 @@ class AppVersionController extends Controller
 
         AppVersion::create([
             'version' => $valid['version'],
-            'released_at' => ! empty($valid['released_at']) ? now()->parse($valid['released_at']) : now(),
+            'released_at' => ! empty($valid['released_at']) ? Carbon::parse($valid['released_at']) : now(),
             'notes' => $valid['notes'] ?? null,
         ]);
 
         return redirect()->route('app-versions.index')->with('success', 'Versão adicionada.');
+    }
+
+    public function update(Request $request, AppVersion $appVersion)
+    {
+        abort_unless($this->isAdmin($request), 403);
+        abort_unless(Schema::hasTable('app_versions'), 400, 'Tabela de versões ainda não foi criada.');
+
+        $valid = $request->validate([
+            'version' => ['required', 'string', 'max:50', Rule::unique('app_versions', 'version')->ignore($appVersion->id)],
+            'released_at' => ['nullable', 'date'],
+            'notes' => ['nullable', 'string', 'max:5000'],
+        ]);
+
+        $appVersion->update([
+            'version' => $valid['version'],
+            'released_at' => ! empty($valid['released_at']) ? Carbon::parse($valid['released_at']) : now(),
+            'notes' => $valid['notes'] ?? null,
+        ]);
+
+        return redirect()->route('app-versions.index')->with('success', 'Versão atualizada.');
+    }
+
+    public function destroy(Request $request, AppVersion $appVersion)
+    {
+        abort_unless($this->isAdmin($request), 403);
+        abort_unless(Schema::hasTable('app_versions'), 400, 'Tabela de versões ainda não foi criada.');
+
+        $appVersion->delete();
+
+        return redirect()->route('app-versions.index')->with('success', 'Versão removida.');
     }
 }

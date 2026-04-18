@@ -14,6 +14,7 @@ return [
         ['name' => 'Pastores', 'route' => 'pastors.index', 'icon' => 'user-circle'],
         ['name' => 'Agenda pastoral', 'route' => 'pastoral-agenda.index', 'icon' => 'clock'],
         ['name' => 'Eventos', 'route' => 'events.index', 'icon' => 'calendar-days'],
+        ['name' => 'Notícias', 'route' => 'news.index', 'icon' => 'newspaper'],
         ['name' => 'Culto', 'route' => 'culto.index', 'icon' => 'film'],
         ['name' => 'Acervo', 'route' => 'acervo.index', 'icon' => 'play-circle'],
         ['name' => 'Departamentos', 'route' => 'departments.index', 'icon' => 'building-office-2'],

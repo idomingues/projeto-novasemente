@@ -6,8 +6,46 @@ use App\Models\ScheduleAssignment;
 use App\Models\ScheduleOccurrenceRoleOverride;
 use App\Models\ScheduleOccurrenceSkip;
 use Carbon\Carbon;
+
 class ScheduleAssignmentPresenter
 {
+    public static function participantKey(ScheduleAssignment $a): string
+    {
+        if ($a->volunteer_id) {
+            return 'v:'.$a->volunteer_id;
+        }
+        if ($a->member_id) {
+            return 'm:'.$a->member_id;
+        }
+
+        return 'a:'.$a->id;
+    }
+
+    /**
+     * @param  callable(\App\Models\Member|null): ?string  $memberPhotoUrl
+     * @return array{memberId: int|null, volunteerId: int|null, memberName: string, memberPhotoUrl: ?string, participantKey: string}
+     */
+    private static function assigneeFace(ScheduleAssignment $a, callable $memberPhotoUrl): array
+    {
+        $vol = $a->volunteer;
+        $member = $a->member;
+        $displayMember = $member ?? $vol?->member;
+        $name = $member?->name ?? $vol?->display_name ?? 'Sem nome';
+
+        return [
+            'memberId' => $a->member_id !== null ? (int) $a->member_id : null,
+            'volunteerId' => $a->volunteer_id !== null ? (int) $a->volunteer_id : null,
+            'memberName' => $name,
+            'memberPhotoUrl' => $displayMember ? $memberPhotoUrl($displayMember) : null,
+            'participantKey' => self::participantKey($a),
+        ];
+    }
+
+    private static function participantOccurrenceKey(ScheduleAssignment $a, string $dateYmd): string
+    {
+        return self::participantKey($a).'|'.$a->ministry_id.'|'.$dateYmd;
+    }
+
     /**
      * @param  callable(\App\Models\Member|null): ?string  $memberPhotoUrl
      * @return array<int, array<string, mixed>>
@@ -22,7 +60,7 @@ class ScheduleAssignmentPresenter
         $endDate = $startDate->copy()->endOfMonth()->addDay();
 
         $baseQuery = ScheduleAssignment::query()
-            ->with(['member', 'scheduleRole', 'ministry'])
+            ->with(['member', 'volunteer.member', 'scheduleRole', 'ministry'])
             ->where('ministry_id', $ministryId);
 
         $oneOff = (clone $baseQuery)
@@ -74,7 +112,7 @@ class ScheduleAssignmentPresenter
         foreach ($oneOff as $a) {
             $dk = $a->schedule_date?->format('Y-m-d');
             if ($dk !== null) {
-                $oneOffKeys[$a->member_id.'|'.$a->ministry_id.'|'.$dk] = true;
+                $oneOffKeys[self::participantOccurrenceKey($a, $dk)] = true;
             }
         }
 
@@ -84,7 +122,7 @@ class ScheduleAssignmentPresenter
                 continue;
             }
             $dateKey = $computedDate->format('Y-m-d');
-            if (isset($oneOffKeys[$a->member_id.'|'.$a->ministry_id.'|'.$dateKey])) {
+            if (isset($oneOffKeys[self::participantOccurrenceKey($a, $dateKey)])) {
                 continue;
             }
             $skipDates = $skipsByAssignment->get($a->id, collect())->map(fn ($s) => $s->occurrence_date->format('Y-m-d'));
@@ -106,11 +144,10 @@ class ScheduleAssignmentPresenter
      */
     public static function rowFromOneOff(ScheduleAssignment $a, callable $memberPhotoUrl): array
     {
-        return [
+        $face = self::assigneeFace($a, $memberPhotoUrl);
+
+        return array_merge($face, [
             'id' => $a->id,
-            'memberId' => $a->member_id,
-            'memberName' => $a->member->name,
-            'memberPhotoUrl' => $memberPhotoUrl($a->member),
             'ministryName' => $a->ministry?->name,
             'roleId' => $a->schedule_role_id,
             'roleName' => $a->scheduleRole?->name,
@@ -122,7 +159,7 @@ class ScheduleAssignmentPresenter
             'startTime' => $a->start_time,
             'endTime' => $a->end_time,
             'checkedInAt' => $a->checked_in_at?->toIso8601String(),
-        ];
+        ]);
     }
 
     /**
@@ -142,11 +179,10 @@ class ScheduleAssignmentPresenter
 
         $recurringSeries = $a->recurring && $a->saturday_number !== null && $a->schedule_date === null;
 
-        return [
+        $face = self::assigneeFace($a, $memberPhotoUrl);
+
+        return array_merge($face, [
             'id' => $a->id,
-            'memberId' => $a->member_id,
-            'memberName' => $a->member->name,
-            'memberPhotoUrl' => $memberPhotoUrl($a->member),
             'ministryName' => $a->ministry?->name,
             'roleId' => $roleId,
             'roleName' => $roleName,
@@ -158,7 +194,7 @@ class ScheduleAssignmentPresenter
             'startTime' => $a->start_time,
             'endTime' => $a->end_time,
             'checkedInAt' => $a->checked_in_at?->toIso8601String(),
-        ];
+        ]);
     }
 
     /** @return array<int, Carbon> */
@@ -193,7 +229,7 @@ class ScheduleAssignmentPresenter
         $out = [];
 
         $oneOffs = ScheduleAssignment::query()
-            ->with(['member', 'scheduleRole', 'ministry'])
+            ->with(['member', 'volunteer.member', 'scheduleRole', 'ministry'])
             ->where('member_id', $memberId)
             ->whereDate('schedule_date', $date)
             ->get();
@@ -204,7 +240,7 @@ class ScheduleAssignmentPresenter
 
         $oneOffKeys = [];
         foreach ($oneOffs as $a) {
-            $oneOffKeys[$a->member_id.'|'.$a->ministry_id.'|'.$date->format('Y-m-d')] = true;
+            $oneOffKeys[self::participantOccurrenceKey($a, $date->format('Y-m-d'))] = true;
         }
 
         $saturdays = self::getSaturdays($year, $month);
@@ -233,7 +269,7 @@ class ScheduleAssignmentPresenter
         $dateKey = $computedDate->format('Y-m-d');
 
         $recurring = ScheduleAssignment::query()
-            ->with(['member', 'scheduleRole', 'ministry'])
+            ->with(['member', 'volunteer.member', 'scheduleRole', 'ministry'])
             ->where('member_id', $memberId)
             ->whereNull('schedule_date')
             ->where('saturday_number', $targetSaturday)
@@ -248,7 +284,102 @@ class ScheduleAssignmentPresenter
             ->get();
 
         foreach ($recurring as $a) {
-            if (isset($oneOffKeys[$a->member_id.'|'.$a->ministry_id.'|'.$dateKey])) {
+            if (isset($oneOffKeys[self::participantOccurrenceKey($a, $dateKey)])) {
+                continue;
+            }
+
+            if (ScheduleOccurrenceSkip::query()
+                ->where('schedule_assignment_id', $a->id)
+                ->whereDate('occurrence_date', $dateKey)
+                ->exists()) {
+                continue;
+            }
+
+            $override = ScheduleOccurrenceRoleOverride::query()
+                ->where('schedule_assignment_id', $a->id)
+                ->whereDate('occurrence_date', $dateKey)
+                ->with('scheduleRole')
+                ->first();
+
+            $out[] = self::rowFromRecurring($a, $computedDate, $memberPhotoUrl, $override);
+        }
+
+        return $out;
+    }
+
+    /**
+     * Linhas de escala ligadas ao registo de voluntário (sem depender de membro).
+     *
+     * @param  callable(\App\Models\Member|null): ?string  $memberPhotoUrl
+     * @return array<int, array<string, mixed>>
+     */
+    public static function assignmentsForVolunteerOnDate(
+        int $volunteerId,
+        string $dateYmd,
+        callable $memberPhotoUrl
+    ): array {
+        $date = Carbon::parse($dateYmd)->startOfDay();
+        $month = (int) $date->month;
+        $year = (int) $date->year;
+        $out = [];
+
+        $oneOffs = ScheduleAssignment::query()
+            ->with(['member', 'volunteer.member', 'scheduleRole', 'ministry'])
+            ->where('volunteer_id', $volunteerId)
+            ->whereDate('schedule_date', $date)
+            ->get();
+
+        foreach ($oneOffs as $a) {
+            $out[] = self::rowFromOneOff($a, $memberPhotoUrl);
+        }
+
+        $oneOffKeys = [];
+        foreach ($oneOffs as $a) {
+            $oneOffKeys[self::participantOccurrenceKey($a, $date->format('Y-m-d'))] = true;
+        }
+
+        $saturdays = self::getSaturdays($year, $month);
+        $saturdayByNumber = [];
+        foreach ($saturdays as $i => $d) {
+            $saturdayByNumber[$i + 1] = $d;
+        }
+
+        $targetSaturday = null;
+        foreach ($saturdayByNumber as $num => $d) {
+            if ($d->isSameDay($date)) {
+                $targetSaturday = $num;
+                break;
+            }
+        }
+
+        if ($targetSaturday === null) {
+            return $out;
+        }
+
+        $computedDate = $saturdayByNumber[$targetSaturday] ?? null;
+        if (! $computedDate) {
+            return $out;
+        }
+
+        $dateKey = $computedDate->format('Y-m-d');
+
+        $recurring = ScheduleAssignment::query()
+            ->with(['member', 'volunteer.member', 'scheduleRole', 'ministry'])
+            ->where('volunteer_id', $volunteerId)
+            ->whereNull('schedule_date')
+            ->where('saturday_number', $targetSaturday)
+            ->where(function ($q) use ($month, $year) {
+                $q->where('recurring', true)
+                    ->orWhere(function ($q2) use ($month, $year) {
+                        $q2->where('recurring', false)
+                            ->where('assignment_month', $month)
+                            ->where('assignment_year', $year);
+                    });
+            })
+            ->get();
+
+        foreach ($recurring as $a) {
+            if (isset($oneOffKeys[self::participantOccurrenceKey($a, $dateKey)])) {
                 continue;
             }
 

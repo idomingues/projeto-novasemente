@@ -2,6 +2,7 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import VolunteerAddPopover, {
     scheduleIconButtonClass,
     type ScheduleRoleOption,
+    type ScheduleVolunteerOption,
 } from '@/Components/Escalas/VolunteerAddPopover';
 import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -23,7 +24,9 @@ import { useEffect, useMemo, useState } from 'react';
 
 export type Assignment = {
     id: number;
-    memberId: number;
+    memberId: number | null;
+    volunteerId: number | null;
+    participantKey: string;
     memberName: string;
     memberPhotoUrl: string | null;
     ministryName?: string | null;
@@ -43,11 +46,6 @@ interface Ministry {
     name: string;
 }
 
-interface Member {
-    id: number;
-    name: string;
-}
-
 interface Props {
     assignments: Assignment[];
     checkinEnabledDates: string[];
@@ -56,7 +54,7 @@ interface Props {
     ministryId: number | null;
     ministries: Ministry[];
     canEdit: boolean;
-    members: Member[];
+    scheduleVolunteers: ScheduleVolunteerOption[];
     scheduleRoles: ScheduleRoleOption[];
 }
 
@@ -92,7 +90,7 @@ export default function MinistrySchedule({
     ministryId,
     ministries,
     canEdit,
-    members,
+    scheduleVolunteers,
     scheduleRoles,
 }: Props) {
     const page = usePage();
@@ -377,23 +375,23 @@ export default function MinistrySchedule({
                         )}
 
                         <div className="flex items-center justify-between gap-2">
-                            <h3 className="text-base font-bold text-zinc-900 dark:text-white">Membros escalados</h3>
+                            <h3 className="text-base font-bold text-zinc-900 dark:text-white">Voluntários escalados</h3>
                             {canEdit && selectedSaturdayDate ? (
                                 <div className="flex items-center gap-1.5 text-brand-700 dark:text-brand-300">
                                     <VolunteerAddPopover
-                                        members={members}
-                                        existingMemberIds={dayAssignments.map((a) => a.memberId)}
+                                        scheduleVolunteers={scheduleVolunteers}
+                                        existingParticipantKeys={dayAssignments.map((a) => a.participantKey)}
                                         canEdit={canEdit}
                                         saturdayNumber={activeSaturday}
                                         month={month}
                                         year={year}
                                         scheduleRoles={scheduleRoles}
-                                        onPick={(memberId, options) => {
+                                        onPick={(volunteerId, options) => {
                                             router.post(
                                                 route('escalas.store'),
                                                 {
                                                     ministry_id: ministryId,
-                                                    member_id: memberId,
+                                                    volunteer_id: volunteerId,
                                                     schedule_role_id: options?.schedule_role_id ?? null,
                                                     saturday_number: activeSaturday,
                                                     schedule_date: null,
