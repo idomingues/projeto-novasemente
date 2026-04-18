@@ -53,7 +53,9 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
     const user = auth?.user ?? null;
     const notifications = Array.isArray(recentNotifications) ? recentNotifications : [];
     const unread = typeof unreadInboxNotificationsCount === 'number' ? unreadInboxNotificationsCount : 0;
-    const badgeCount = unread > 0 ? unread : notifications.length > 0 ? 1 : 0;
+    /** Número no sino: notificações de caixa por ler (servidor). */
+    const badgeCount = unread > 0 ? Math.min(99, unread) : 0;
+    const showRecentDot = badgeCount === 0 && notifications.length > 0;
     const roleLabel = auth?.roleLabel ?? 'Utilizador';
     const { theme, toggleTheme } = useTheme();
     const supportRouteName = route().has('support.index') ? 'support.index' : 'mobile.support.index';
@@ -120,27 +122,56 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
                                 <Dropdown.Trigger>
                                     <button
                                         type="button"
-                                        className="w-12 h-12 flex items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-colors relative"
-                                        aria-label="Notificações"
+                                        className="relative flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-zinc-900 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+                                        aria-label={
+                                            badgeCount > 0
+                                                ? `Notificações, ${badgeCount} por ler`
+                                                : showRecentDot
+                                                  ? 'Notificações (ver recentes)'
+                                                  : 'Notificações'
+                                        }
                                     >
-                                        <BellIcon className="w-6 h-6" />
-                                        {badgeCount > 0 && (
-                                            <span className="absolute top-2 right-2 min-w-[18px] h-[18px] px-1 flex items-center justify-center bg-primary-500 text-white text-xs font-semibold rounded-full border-2 border-white dark:border-zinc-900">
-                                                {badgeCount > 9 ? '9+' : badgeCount}
+                                        <BellIcon className="h-6 w-6" />
+                                        {badgeCount > 0 ? (
+                                            <span className="absolute -right-0.5 -top-0.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-[11px] font-bold leading-none text-white shadow-sm ring-2 ring-white dark:ring-zinc-900">
+                                                {badgeCount > 99 ? '99+' : badgeCount}
                                             </span>
-                                        )}
+                                        ) : showRecentDot ? (
+                                            <span
+                                                className="absolute right-1 top-1 z-10 h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-white dark:ring-zinc-900"
+                                                aria-hidden
+                                            />
+                                        ) : null}
                                     </button>
                                 </Dropdown.Trigger>
-                                <Dropdown.Content align="right" width="96" contentClasses="py-0 max-h-[min(70vh,400px)] overflow-hidden flex flex-col bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300">
-                                    <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
-                                        <span className="font-semibold text-zinc-900 dark:text-white">Notificações</span>
+                                <Dropdown.Content
+                                    align="right"
+                                    width="96"
+                                    viewport
+                                    contentClasses="py-0 max-h-[min(70vh,400px)] overflow-hidden flex min-w-0 flex-col bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300"
+                                >
+                                    <div className="flex min-w-0 items-center gap-2 border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800 sm:gap-3 sm:px-4 sm:py-3">
+                                        <div className="min-w-0 flex-1">
+                                            <span className="flex min-w-0 items-center gap-2">
+                                                <span className="truncate font-semibold text-zinc-900 dark:text-white">
+                                                    Notificações
+                                                </span>
+                                                {unread > 0 ? (
+                                                    <span className="shrink-0 rounded-md bg-rose-600 px-2 py-0.5 text-xs font-bold tabular-nums text-white dark:bg-rose-500">
+                                                        {unread > 99 ? '99+' : unread}
+                                                    </span>
+                                                ) : null}
+                                            </span>
+                                        </div>
                                         <Link
                                             href={route('varios.notifications')}
-                                            className="text-sm text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-0.5"
+                                            className="inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded-lg px-2 py-1.5 text-xs font-medium text-primary-600 hover:bg-zinc-100 dark:text-primary-400 dark:hover:bg-zinc-800 sm:text-sm"
                                         >
-                                            Ver todas
-                                            <ChevronRightIcon className="w-4 h-4" />
+                                            <span className="hidden sm:inline">Ver todas</span>
+                                            <span className="sm:hidden">Todas</span>
+                                            <ChevronRightIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                                         </Link>
+                                        <Dropdown.CloseButton />
                                     </div>
                                     <div className="overflow-y-auto flex-1">
                                         {notifications.length === 0 ? (

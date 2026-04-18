@@ -196,11 +196,11 @@ export default function Hub({ types, storeUrl, pastorOptions, mySolicitations }:
                     <button
                         type="button"
                         onClick={openCreate}
-                        className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-zinc-900 text-white shadow-sm ring-1 ring-inset ring-white/10 transition hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-100"
+                        className="flex size-12 shrink-0 items-center justify-center rounded-full bg-zinc-900 p-0 text-white shadow-sm ring-1 ring-inset ring-white/10 transition hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-100"
                         aria-label="Nova solicitação"
                         title="Nova solicitação"
                     >
-                        <PlusIcon className="h-6 w-6" strokeWidth={2.2} aria-hidden />
+                        <PlusIcon className="h-6 w-6 shrink-0" strokeWidth={2.2} aria-hidden />
                     </button>
                 </div>
 

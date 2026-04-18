@@ -406,7 +406,7 @@ export default function SolicitationDetailPanel({
                     </div>
                     <div className="flex justify-end">
                         <PrimaryButton type="submit" disabled={adminForm.processing}>
-                            Salvar
+                            Enviar
                         </PrimaryButton>
                     </div>
                 </form>
