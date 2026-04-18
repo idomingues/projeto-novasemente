@@ -283,37 +283,70 @@ export default function EscalasIndex({
 
                 {ministryId && (
                 <>
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center justify-between gap-2 rounded-2xl border border-zinc-200 bg-white px-2 py-2 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
                     <button
                         type="button"
                         onClick={prevMonth}
-                        className="p-2 rounded-lg border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                        className="rounded-xl p-2 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
                         aria-label="Mês anterior"
                     >
                         <ChevronLeftIcon className="w-6 h-6" />
                     </button>
-                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white capitalize">{monthName}</h2>
+                    <h2 className="px-2 text-center text-base font-semibold capitalize text-zinc-900 dark:text-white sm:text-lg">
+                        {monthName}
+                    </h2>
                     <button
                         type="button"
                         onClick={nextMonth}
-                        className="p-2 rounded-lg border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                        className="rounded-xl p-2 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
                         aria-label="Próximo mês"
                     >
                         <ChevronRightIcon className="w-6 h-6" />
                     </button>
                 </div>
 
+                <div className="grid grid-cols-5 gap-2">
+                    {[1, 2, 3, 4, 5].map((n) => {
+                        const exists = n <= saturdays.length;
+                        return (
+                            <button
+                                key={n}
+                                type="button"
+                                disabled={!exists}
+                                title={exists ? `Ir ao ${n}º sábado` : 'Este mês não tem este sábado'}
+                                onClick={() => {
+                                    if (!exists) return;
+                                    document.getElementById(`escala-sabado-${n}`)?.scrollIntoView({
+                                        behavior: 'smooth',
+                                        block: 'start',
+                                    });
+                                }}
+                                className={`rounded-2xl py-3 text-sm font-bold transition ${
+                                    !exists
+                                        ? 'cursor-not-allowed border border-zinc-100 bg-zinc-50 text-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-600'
+                                        : 'border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800'
+                                }`}
+                            >
+                                {n}º
+                            </button>
+                        );
+                    })}
+                </div>
+
                 <div className="space-y-8">
                     {saturdays.map((saturday, idx) => {
                         const saturdayNumber = idx + 1;
                         const dayAssignments = assignments.filter((a) => a.saturdayNumber === saturdayNumber);
+                        const confirmedCount = dayAssignments.filter((a) => a.status === 'confirmed').length;
+                        const totalCount = dayAssignments.length;
+                        const progressPct = totalCount > 0 ? Math.round((confirmedCount / totalCount) * 100) : 0;
                         return (
                             <section
                                 id={`escala-sabado-${saturdayNumber}`}
                                 key={saturday.toISOString()}
-                                className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 scroll-mt-24"
+                                className="scroll-mt-24 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900"
                             >
-                                <div className="flex items-center justify-between gap-2 mb-6">
+                                <div className="mb-4 flex items-center justify-between gap-2">
                                     <h3 className="font-semibold text-zinc-900 dark:text-white">{saturdayNumber}º SÁBADO</h3>
                                     {canEdit && (
                                         <div className="flex items-center gap-1.5 shrink-0">
@@ -364,6 +397,35 @@ export default function EscalasIndex({
                                             />
                                         </div>
                                     )}
+                                </div>
+                                <div className="mb-4 rounded-2xl border border-zinc-100 bg-zinc-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-800/40">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-400">
+                                                Status da escala
+                                            </p>
+                                            <h4 className="mt-1 text-lg font-bold capitalize tracking-tight text-zinc-900 dark:text-white">
+                                                {saturdayNumber}º sábado
+                                            </h4>
+                                        </div>
+                                        <div className="shrink-0 text-right">
+                                            <p className="text-2xl font-bold tabular-nums leading-none text-zinc-900 dark:text-white">
+                                                {confirmedCount}
+                                                <span className="text-base font-semibold text-zinc-400 dark:text-zinc-500">
+                                                    /{totalCount}
+                                                </span>
+                                            </p>
+                                            <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                                                Confirmados
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-900">
+                                        <div
+                                            className="h-full rounded-full bg-brand-600 transition-all duration-500 ease-out dark:bg-brand-500"
+                                            style={{ width: `${progressPct}%` }}
+                                        />
+                                    </div>
                                 </div>
                                 <EscalaGrid
                                     assignments={dayAssignments}
@@ -773,9 +835,9 @@ function EscalaGrid({
                               }
                             : undefined
                     }
-                    className={`w-full sm:w-40 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 p-3 flex flex-col items-center gap-2 ${
-                        canEdit ? 'cursor-pointer hover:border-zinc-400 dark:hover:border-zinc-500 hover:bg-zinc-100/80 dark:hover:bg-zinc-800' : ''
-                    }`}
+                    className={`flex w-full flex-col items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-800/50 sm:w-40 ${
+                        a.status === 'pending' ? 'border-l-4 border-l-amber-400 pl-2.5' : ''
+                    } ${canEdit ? 'cursor-pointer hover:border-zinc-400 dark:hover:border-zinc-500 hover:bg-zinc-100/80 dark:hover:bg-zinc-800' : ''}`}
                 >
                     {a.memberPhotoUrl ? (
                         <img
