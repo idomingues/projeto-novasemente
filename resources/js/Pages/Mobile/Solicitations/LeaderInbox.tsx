@@ -30,7 +30,7 @@ export default function LeaderInbox({ conversations, moreUrl }: Props) {
                     </Link>
                     <h1 className="mt-2 text-xl font-bold text-zinc-900 dark:text-white">Conversas como líder</h1>
                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                        Responda aos membros que o escolheram em «Falar com líder». No computador, use Inbox (Solicitações) no painel web.
+                        Responda aos membros que o escolheram em «Falar com líder». No computador, use Atendimento no painel web.
                     </p>
                 </div>
 

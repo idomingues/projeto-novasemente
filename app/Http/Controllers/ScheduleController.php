@@ -2,18 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Church;
-use App\Models\Member;
-use App\Models\Ministry;
 use App\Models\ScheduleAssignment;
 use App\Models\ScheduleCheckinDate;
 use App\Models\ScheduleOccurrenceRoleOverride;
 use App\Models\ScheduleOccurrenceSkip;
 use App\Models\ScheduleRole;
 use App\Models\User;
-use App\Models\Volunteer;
 use App\Services\ScheduleAssignmentPresenter;
 use App\Services\ScheduleCheckinNotifier;
+use App\Support\ScheduleBoardViewData;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -34,6 +31,7 @@ class ScheduleController extends Controller
             }
             $date->addDay();
         }
+
         return $saturdays;
     }
 
@@ -42,36 +40,8 @@ class ScheduleController extends Controller
         if ($date instanceof Carbon) {
             return $date->format('Y-m-d');
         }
+
         return Carbon::parse($date)->format('Y-m-d');
-    }
-
-    private function memberPhotoPublicUrl(?Member $member): ?string
-    {
-        if (! $member || empty($member->photo_url)) {
-            return null;
-        }
-        $u = $member->photo_url;
-        if (str_starts_with($u, 'http://') || str_starts_with($u, 'https://')) {
-            return $u;
-        }
-        $base = request()->getSchemeAndHttpHost();
-
-        return $base.(str_starts_with($u, '/') ? '' : '/').$u;
-    }
-
-    /** Funções definidas para o departamento (não há funções “globais” na escolha). */
-    private function rolesForMinistry(int $ministryId): array
-    {
-        return ScheduleRole::query()
-            ->where('ministry_id', $ministryId)
-            ->orderBy('name')
-            ->get(['id', 'name', 'ministry_id'])
-            ->map(fn (ScheduleRole $r) => [
-                'id' => $r->id,
-                'name' => $r->name,
-                'ministryId' => $r->ministry_id,
-            ])
-            ->all();
     }
 
     private function roleMatchesMinistry(?int $roleId, int $ministryId): bool
@@ -89,91 +59,7 @@ class ScheduleController extends Controller
 
     public function index(Request $request): Response
     {
-        $month = (int) $request->input('month', now()->month);
-        $year = (int) $request->input('year', now()->year);
-        $ministryId = $request->input('ministry_id') ? (int) $request->input('ministry_id') : null;
-        $churchId = Church::where('active', true)->orderBy('name')->value('id');
-        $user = $request->user();
-
-        $ministriesQuery = Ministry::query()
-            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
-            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
-            ->orderBy('name');
-
-        if ($user && $user->hasRole('lider_ministerio') && !$user->hasRole('admin') && !$user->hasRole('super_admin')) {
-            $leaderMinistryIds = $user->ministries()->pluck('ministries.id')->toArray();
-            if (count($leaderMinistryIds) > 0) {
-                $ministriesQuery->whereIn('id', $leaderMinistryIds);
-            } else {
-                $ministriesQuery->whereRaw('1 = 0');
-            }
-        }
-
-        $ministries = $ministriesQuery->get(['id', 'name']);
-
-        if ($user && $user->hasRole('lider_ministerio') && !$user->hasRole('admin') && !$user->hasRole('super_admin') && $ministries->count() === 1 && $ministryId === null) {
-            $ministryId = $ministries->first()->id;
-        }
-
-        $assignments = [];
-        $checkinDates = [];
-        $volunteersForSelect = [];
-
-        if ($ministryId) {
-            $startDate = Carbon::create($year, $month, 1);
-            $endDate = $startDate->copy()->endOfMonth()->addDay();
-
-            $assignments = ScheduleAssignmentPresenter::monthAssignmentsForMinistry(
-                $ministryId,
-                $year,
-                $month,
-                fn ($m) => $this->memberPhotoPublicUrl($m)
-            );
-
-            $checkinDates = ScheduleCheckinDate::query()
-                ->where('schedule_date', '>=', $startDate)
-                ->where('schedule_date', '<', $endDate)
-                ->pluck('schedule_date')
-                ->map(fn ($d) => Carbon::parse($d)->format('Y-m-d'))
-                ->values()
-                ->all();
-
-            $volunteersForSelect = Volunteer::query()
-                ->whereHas('ministries', fn ($q) => $q->where('ministries.id', $ministryId))
-                ->where('active', true)
-                ->whereNotNull('member_id')
-                ->with('member')
-                ->get()
-                ->map(fn ($v) => ['id' => $v->member_id, 'name' => $v->member?->name ?? $v->name])
-                ->unique('id')
-                ->values()
-                ->all();
-
-            $scheduleRoles = $this->rolesForMinistry($ministryId);
-        } else {
-            $scheduleRoles = [];
-        }
-
-        $canEdit = false;
-        if ($user) {
-            if ($user->hasRole('admin') || $user->hasRole('super_admin') || $user->can('escalas.manage')) {
-                $canEdit = true;
-            } elseif ($user->hasRole('lider_ministerio') && $ministryId) {
-                $canEdit = $user->ministries()->where('ministries.id', $ministryId)->exists();
-            }
-        }
-
-        return Inertia::render('Escalas/Index', [
-            'assignments' => $assignments,
-            'checkinEnabledDates' => $checkinDates,
-            'month' => $month,
-            'year' => $year,
-            'ministryId' => $ministryId,
-            'ministries' => $ministries,
-            'canEdit' => $canEdit,
-            'members' => $volunteersForSelect,
-            'scheduleRoles' => $scheduleRoles,
-        ]);
+        return Inertia::render('Escalas/Index', ScheduleBoardViewData::forIndexRequest($request));
     }
 
     public function store(Request $request)
@@ -191,14 +77,14 @@ class ScheduleController extends Controller
             'status' => 'nullable|in:pending,confirmed,refused',
         ]);
 
-        if ($user && $user->hasRole('lider_ministerio') && !$user->hasRole('admin') && !$user->hasRole('super_admin')) {
-            if (!$user->ministries()->where('ministries.id', $valid['ministry_id'])->exists()) {
+        if ($user && $user->hasRole('lider_ministerio') && ! $user->hasRole('admin') && ! $user->hasRole('super_admin')) {
+            if (! $user->ministries()->where('ministries.id', $valid['ministry_id'])->exists()) {
                 return back()->withErrors(['ministry_id' => 'Só pode adicionar escalas nos departamentos que gere.']);
             }
         }
 
-        $hasSaturday = !empty($valid['saturday_number']);
-        $hasDate = !empty($valid['schedule_date']);
+        $hasSaturday = ! empty($valid['saturday_number']);
+        $hasDate = ! empty($valid['schedule_date']);
         if ($hasSaturday === $hasDate) {
             return back()->withErrors(['saturday_number' => 'Informe saturday_number (recorrente) ou schedule_date (extra), mas não ambos.']);
         }
@@ -364,8 +250,8 @@ class ScheduleController extends Controller
     public function destroy(Request $request, ScheduleAssignment $assignment)
     {
         $user = $request->user();
-        if ($user && $user->hasRole('lider_ministerio') && !$user->hasRole('admin') && !$user->hasRole('super_admin')) {
-            if (!$user->ministries()->where('ministries.id', $assignment->ministry_id)->exists()) {
+        if ($user && $user->hasRole('lider_ministerio') && ! $user->hasRole('admin') && ! $user->hasRole('super_admin')) {
+            if (! $user->ministries()->where('ministries.id', $assignment->ministry_id)->exists()) {
                 return back()->with('error', 'Só pode remover escalas dos departamentos que gere.');
             }
         }

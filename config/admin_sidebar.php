@@ -10,7 +10,7 @@
 return [
     'items' => [
         ['name' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'home'],
-        ['name' => 'Inbox (Solicitações)', 'route' => 'solicitations.index', 'icon' => 'inbox'],
+        ['name' => 'Atendimento', 'route' => 'solicitations.index', 'icon' => 'inbox'],
         ['name' => 'Pastores', 'route' => 'pastors.index', 'icon' => 'user-circle'],
         ['name' => 'Agenda pastoral', 'route' => 'pastoral-agenda.index', 'icon' => 'clock'],
         ['name' => 'Eventos', 'route' => 'events.index', 'icon' => 'calendar-days'],

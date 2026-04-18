@@ -105,13 +105,13 @@ export default function SolicitationsIndex({
 
     return (
         <AdminLayout>
-            <Head title="Solicitações" />
+            <Head title="Atendimento" />
             <div className="space-y-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Solicitações</h1>
+                    <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Atendimento</h1>
                     <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                        Inbox de pedidos formais, conversas «Falar com líder» e agendamentos pastor. Responda no separador Chat (vista tipo
-                        WhatsApp Web) quando existir conversa.
+                        Pedidos formais, conversas «Falar com líder» e agendamentos pastor. Responda no separador Chat (vista tipo WhatsApp
+                        Web) quando existir conversa.
                     </p>
                 </div>
 

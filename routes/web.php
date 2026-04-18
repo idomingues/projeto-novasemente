@@ -298,7 +298,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/pastores/{pastor}/disponibilidades/{availability}', [\App\Http\Controllers\PastoralAvailabilityController::class, 'destroy'])
         ->name('pastors.pastoral-availabilities.destroy');
 
-    /** Agendamentos pastor: gestão na Inbox (Solicitações); mantém URL antiga. */
+    /** Agendamentos pastor: gestão em Atendimento; mantém URL antiga. */
     Route::get('/pastoral-appointments', function (\Illuminate\Http\Request $request) {
         abort_unless($request->user()?->can('pastoral_appointments.manage'), 403);
 

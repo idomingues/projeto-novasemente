@@ -39,14 +39,14 @@ export default function SettingsIndex({
 
             <div className="max-w-2xl space-y-8">
                 <section className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6 shadow-sm">
-                    <h2 className="text-base font-semibold text-zinc-900 dark:text-white">Solicitações</h2>
+                    <h2 className="text-base font-semibold text-zinc-900 dark:text-white">Atendimento</h2>
                     <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                        Defina o <strong>líder de ministério</strong> que recebe notificações na inbox e por e-mail quando um
+                        Defina o <strong>líder de ministério</strong> que recebe notificações no painel e por e-mail quando um
                         membro envia um pedido formal (batismo, apresentação de bebé, visita pastoral, etc.). A pessoa
                         escolhida deve ter o papel «líder de ministério» e conta na app — aparece na lista abaixo.
                     </p>
                     <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-500">
-                        Quem já tinha acesso à inbox por permissões (admin, secretaria, pastor, outros líderes) mantém o
+                        Quem já tinha acesso ao atendimento por permissões (admin, secretaria, pastor, outros líderes) mantém o
                         acesso; este contacto é o responsável principal para alertas de novos pedidos.
                     </p>
 

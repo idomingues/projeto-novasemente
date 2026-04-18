@@ -19,6 +19,7 @@ use App\Services\ScheduleAssignmentPresenter;
 use App\Services\SolicitationChatNotifier;
 use App\Services\VolunteerScheduleOverview;
 use App\Support\NotificationFeed;
+use App\Support\ScheduleBoardViewData;
 use App\Support\SolicitationAssignees;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -293,6 +294,11 @@ class MobileController extends Controller
         }
 
         $user = $request->user();
+
+        if (ScheduleBoardViewData::userSeesMinistryScheduleBoard($user)) {
+            return Inertia::render('Mobile/MinistrySchedule', ScheduleBoardViewData::forIndexRequest($request));
+        }
+
         $memberId = $user->member_id ? (int) $user->member_id : null;
 
         if (! $memberId) {

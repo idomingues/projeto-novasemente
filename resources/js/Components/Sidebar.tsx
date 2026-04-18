@@ -79,7 +79,7 @@ const ICON_MAP: Record<string, MenuIcon> = {
  */
 const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'Dashboard', route: 'dashboard', icon: HomeIcon },
-    { name: 'Inbox (Solicitações)', route: 'solicitations.index', icon: InboxIcon },
+    { name: 'Atendimento', route: 'solicitations.index', icon: InboxIcon },
     { name: 'Pastores', route: 'pastors.index', icon: UserCircleIcon },
     { name: 'Agenda pastoral', route: 'pastoral-agenda.index', icon: ClockIcon },
     { name: 'Eventos', route: 'events.index', icon: CalendarDaysIcon },

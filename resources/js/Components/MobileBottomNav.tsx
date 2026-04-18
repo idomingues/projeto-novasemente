@@ -65,6 +65,7 @@ const navItems = [
             'pastoral-agenda.index',
             'pastors.weekly-schedule.update',
             'volunteers.public-signup.page',
+            'mobile.schedule',
         ] as const,
         icon: Squares2X2Icon,
         iconActive: Squares2X2IconSolid,
