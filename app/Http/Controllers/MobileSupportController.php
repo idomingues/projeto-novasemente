@@ -60,29 +60,31 @@ class MobileSupportController extends Controller
         $user = $request->user();
         $isAdmin = $this->isAdmin($user);
 
-        $ticketsQuery = AppSupportTicket::query()->where('status', 'open');
-        if (! $isAdmin) {
-            $ticketsQuery->where('type', '!=', 'development');
-        }
-        if (! $isAdmin && $user) {
-            $ticketsQuery->where('user_id', $user->id);
-        }
+        $tickets = [];
+        if ($user) {
+            $ticketsQuery = AppSupportTicket::query()->where('status', 'open');
+            if (! $isAdmin) {
+                $ticketsQuery->where('type', '!=', 'development')->where('user_id', $user->id);
+            } else {
+                $ticketsQuery->where('type', '!=', 'development');
+            }
 
-        $tickets = $ticketsQuery
-            ->orderByDesc('created_at')
-            ->limit(20)
-            ->get()
-            ->map(fn (AppSupportTicket $t) => [
-                'publicToken' => $t->public_token,
-                'type' => $t->type,
-                'typeLabel' => $this->typeLabel($t->type),
-                'status' => $t->status,
-                'message' => $t->message,
-                'createdAt' => $t->created_at?->toIso8601String(),
-                'solutionText' => $t->solution_text,
-            ])
-            ->values()
-            ->all();
+            $tickets = $ticketsQuery
+                ->orderByDesc('created_at')
+                ->limit(20)
+                ->get()
+                ->map(fn (AppSupportTicket $t) => [
+                    'publicToken' => $t->public_token,
+                    'type' => $t->type,
+                    'typeLabel' => $this->typeLabel($t->type),
+                    'status' => $t->status,
+                    'message' => $t->message,
+                    'createdAt' => $t->created_at?->toIso8601String(),
+                    'solutionText' => $t->solution_text,
+                ])
+                ->values()
+                ->all();
+        }
 
         return Inertia::render('Mobile/Support', [
             'tickets' => $tickets,
@@ -264,6 +266,12 @@ class MobileSupportController extends Controller
         $notifier = app(SupportTicketChatNotifier::class);
         if ($senderStaff) {
             $notifier->notifyOwnerOfStaffMessage($ticket, $user);
+            if ($ticket->user_id && (int) $ticket->user_id === (int) $user->id) {
+                $request->session()->flash(
+                    'success',
+                    'Mensagem registada. Tem uma notificação nova na caixa de entrada (ícone do sino).',
+                );
+            }
         } else {
             $notifier->notifyStaffOfUserMessage($ticket, $user);
         }

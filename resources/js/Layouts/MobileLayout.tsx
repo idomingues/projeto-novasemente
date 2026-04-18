@@ -3,6 +3,7 @@ import { Link, usePage } from '@inertiajs/react';
 import Sidebar from '@/Components/Sidebar';
 import Topbar from '@/Components/Topbar';
 import FlashMessages from '@/Components/FlashMessages';
+import InboxNotificationPoller from '@/Components/InboxNotificationPoller';
 import MobileBottomNav from '@/Components/MobileBottomNav';
 import { adminSidebarRoutePermissions } from '@/constants/adminSidebarPermissions';
 import AppVersionTrigger from '@/Components/AppVersionTrigger';
@@ -35,6 +36,7 @@ export default function MobileLayout({ children }: PropsWithChildren) {
                     <MobileBottomNav insetForSidebar />
 
                     <FlashMessages />
+                    <InboxNotificationPoller />
                 </div>
             </div>
         );

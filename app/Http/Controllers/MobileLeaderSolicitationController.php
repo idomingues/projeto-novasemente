@@ -82,6 +82,14 @@ class MobileLeaderSolicitationController extends Controller
 
         app(SolicitationChatNotifier::class)->notifyMemberOfStaffMessage($solicitation, $request->user(), $valid['content']);
 
+        $actor = $request->user();
+        if ($actor && (int) $solicitation->user_id === (int) $actor->id) {
+            $request->session()->flash(
+                'success',
+                'Mensagem registada. Tem uma notificação nova na caixa de entrada (ícone do sino).',
+            );
+        }
+
         return redirect()->route('mobile.leader-solicitations.show', $solicitation);
     }
 

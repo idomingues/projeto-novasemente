@@ -3,6 +3,7 @@ import { usePage } from '@inertiajs/react';
 import Sidebar from '@/Components/Sidebar';
 import Topbar from '@/Components/Topbar';
 import FlashMessages from '@/Components/FlashMessages';
+import InboxNotificationPoller from '@/Components/InboxNotificationPoller';
 import MobileBottomNav from '@/Components/MobileBottomNav';
 import { adminSidebarRoutePermissions } from '@/constants/adminSidebarPermissions';
 
@@ -38,6 +39,7 @@ export default function AdminLayout({
                 <MobileBottomNav insetForSidebar={isAuthenticated} />
 
                 <FlashMessages />
+                {isAuthenticated && <InboxNotificationPoller />}
             </div>
         </div>
     );

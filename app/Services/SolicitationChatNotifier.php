@@ -20,9 +20,11 @@ class SolicitationChatNotifier
     public function notifyMemberOfStaffMessage(ChurchSolicitation $solicitation, User $staff, string $messageContent): void
     {
         $owner = User::query()->find($solicitation->user_id);
-        if (! $owner || (int) $owner->id === (int) $staff->id) {
+        if (! $owner) {
             return;
         }
+
+        $selfMessage = (int) $owner->id === (int) $staff->id;
 
         $typeLabel = MobileChurchSolicitationController::typeLabel($solicitation->type);
         $isLeaderChat = $solicitation->type === 'leader_chat';
@@ -57,14 +59,16 @@ class SolicitationChatNotifier
             'action_url' => $conversationUrl,
         ]);
 
-        $email = $this->resolveMemberEmail($owner);
-        if ($email !== null) {
-            Mail::to($email)->send(new SolicitationStaffMessageMail(
-                $subjectLine,
-                $messageContent,
-                $conversationUrl,
-                $isLeaderChat,
-            ));
+        if (! $selfMessage) {
+            $email = $this->resolveMemberEmail($owner);
+            if ($email !== null) {
+                Mail::to($email)->send(new SolicitationStaffMessageMail(
+                    $subjectLine,
+                    $messageContent,
+                    $conversationUrl,
+                    $isLeaderChat,
+                ));
+            }
         }
     }
 

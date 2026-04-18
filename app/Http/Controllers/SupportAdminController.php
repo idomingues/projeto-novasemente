@@ -178,6 +178,13 @@ class SupportAdminController extends Controller
 
         app(SupportTicketChatNotifier::class)->notifyOwnerOfStaffMessage($ticket, $user);
 
+        if ($ticket->user_id && (int) $ticket->user_id === (int) $user->id) {
+            $request->session()->flash(
+                'success',
+                'Mensagem registada. Tem uma notificação nova na caixa de entrada (ícone do sino).',
+            );
+        }
+
         return redirect()->back(fallback: route('support.show', ['token' => $token]));
     }
 

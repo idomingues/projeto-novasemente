@@ -357,6 +357,13 @@ class SolicitationAdminController extends Controller
 
         app(SolicitationChatNotifier::class)->notifyMemberOfStaffMessage($solicitation, $user, $valid['content']);
 
+        if ((int) $solicitation->user_id === (int) $user->id) {
+            $request->session()->flash(
+                'success',
+                'Mensagem registada. Tem uma notificação nova na caixa de entrada (ícone do sino).',
+            );
+        }
+
         return redirect()->back(fallback: route('solicitations.index', [
             'modal_kind' => 'solicitation',
             'modal_id' => $solicitation->id,

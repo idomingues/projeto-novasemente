@@ -12,7 +12,7 @@ class SupportTicketChatNotifier
     /** Resposta da equipe (painel ou app como staff) → utilizador dono do ticket na app. */
     public function notifyOwnerOfStaffMessage(AppSupportTicket $ticket, User $staff): void
     {
-        if (! $ticket->user_id || (int) $ticket->user_id === (int) $staff->id) {
+        if (! $ticket->user_id) {
             return;
         }
 
