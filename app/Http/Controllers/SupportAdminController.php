@@ -6,7 +6,6 @@ use App\Models\AppSupportMessage;
 use App\Models\AppSupportTicket;
 use App\Models\User;
 use App\Services\SupportTicketChatNotifier;
-use App\Support\InboxNotificationResolver;
 use App\Support\SupportTicketAdminPresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -59,8 +58,6 @@ class SupportAdminController extends Controller
     {
         $user = $request->user();
         abort_unless($user && $this->canViewSupport($user), 403);
-        InboxNotificationResolver::markReadFromQuery($request);
-
         $tickets = AppSupportTicket::query()
             ->with('user:id,name')
             ->orderByDesc('updated_at')
@@ -104,8 +101,6 @@ class SupportAdminController extends Controller
     {
         $user = $request->user();
         abort_unless($user && $this->canViewSupport($user), 403);
-        InboxNotificationResolver::markReadFromQuery($request);
-
         $ticket = AppSupportTicket::query()->where('public_token', $token)->firstOrFail();
 
         return Inertia::render('Support/Show', SupportTicketAdminPresenter::adminPayload($ticket, $user));

@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\ChurchSolicitation;
 use App\Models\ChurchSolicitationMessage;
 use App\Services\SolicitationChatNotifier;
-use App\Support\InboxNotificationResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -48,8 +47,6 @@ class MobileLeaderSolicitationController extends Controller
     public function show(Request $request, ChurchSolicitation $solicitation): Response
     {
         $this->authorize('view', $solicitation);
-        InboxNotificationResolver::markReadFromQuery($request);
-
         return Inertia::render('Mobile/Solicitations/LeaderShow', MobileChurchSolicitationController::memberConversationPayload(
             $solicitation,
             route('mobile.leader-solicitations.messages.store', $solicitation),

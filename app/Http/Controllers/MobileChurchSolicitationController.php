@@ -6,7 +6,6 @@ use App\Models\Church;
 use App\Models\ChurchSolicitation;
 use App\Models\ChurchSolicitationMessage;
 use App\Services\SolicitationChatNotifier;
-use App\Support\InboxNotificationResolver;
 use App\Support\SolicitationAssignees;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -180,8 +179,6 @@ class MobileChurchSolicitationController extends Controller
     public function show(Request $request, ChurchSolicitation $solicitation): Response
     {
         $this->authorize('view', $solicitation);
-        InboxNotificationResolver::markReadFromQuery($request);
-
         $hub = route('mobile.solicitations.hub');
         $churchId = $this->currentChurchId($request);
 

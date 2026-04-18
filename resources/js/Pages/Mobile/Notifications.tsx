@@ -1,5 +1,7 @@
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
+import { notificationLinkHref } from '@/utils/notificationLinkHref';
+import MarkInboxNotificationReadButton from '@/Components/MarkInboxNotificationReadButton';
 import { BellAlertIcon } from '@heroicons/react/24/outline';
 
 interface NotificationEntry {
@@ -10,6 +12,8 @@ interface NotificationEntry {
     author: { name: string } | null;
     href: string;
     kind: string;
+    inbox_notification_id?: number;
+    inbox_unread?: boolean;
 }
 
 interface Props {
@@ -72,14 +76,21 @@ export default function MobileNotifications({ notifications }: Props) {
                             );
 
                             if (n.kind === 'inbox' && n.href) {
+                                const inboxId = n.inbox_notification_id;
+                                const showMark = n.inbox_unread && typeof inboxId === 'number';
                                 return (
                                     <li key={n.id}>
-                                        <a
-                                            href={n.href}
-                                            className="block rounded-2xl bg-white dark:bg-zinc-900 border border-primary-200 dark:border-primary-900 p-4 shadow-sm active:scale-[0.99] transition-transform"
-                                        >
-                                            {inner}
-                                        </a>
+                                        <div className="flex overflow-hidden rounded-2xl border border-primary-200 bg-white shadow-sm dark:border-primary-900 dark:bg-zinc-900">
+                                            <Link
+                                                href={notificationLinkHref(n.href)}
+                                                className="min-w-0 flex-1 p-4 text-left transition-transform active:scale-[0.99]"
+                                            >
+                                                {inner}
+                                            </Link>
+                                            {showMark ? (
+                                                <MarkInboxNotificationReadButton notificationId={inboxId} />
+                                            ) : null}
+                                        </div>
                                     </li>
                                 );
                             }

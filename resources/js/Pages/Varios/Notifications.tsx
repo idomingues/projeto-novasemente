@@ -1,5 +1,6 @@
 import AdminLayout from '@/Layouts/AdminLayout';
-import { Head, useForm, router } from '@inertiajs/react';
+import { Head, useForm, router, Link } from '@inertiajs/react';
+import { notificationLinkHref } from '@/utils/notificationLinkHref';
 import { BellAlertIcon, PaperAirplaneIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
 import FlashMessages from '@/Components/FlashMessages';
 import InputLabel from '@/Components/InputLabel';
@@ -9,6 +10,7 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import InputError from '@/Components/InputError';
 import Modal from '@/Components/Modal';
 import SecondaryButton from '@/Components/SecondaryButton';
+import MarkInboxNotificationReadButton from '@/Components/MarkInboxNotificationReadButton';
 import { confirmAction } from '@/utils/confirmDialog';
 import { FormEventHandler, useMemo, useState } from 'react';
 
@@ -20,6 +22,8 @@ interface NotificationItem {
     author: { name: string } | null;
     href?: string;
     kind?: string;
+    inbox_notification_id?: number;
+    inbox_unread?: boolean;
 }
 
 interface Props {
@@ -168,11 +172,21 @@ export default function VariosNotifications({ notifications, canManage, mode = '
                                 const wrapClass =
                                     'rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors block';
                                 if (n.kind === 'inbox' && n.href) {
+                                    const inboxId = n.inbox_notification_id;
+                                    const showMark = n.inbox_unread && typeof inboxId === 'number';
                                     return (
                                         <li key={n.id}>
-                                            <a href={n.href} className={wrapClass}>
-                                                {card}
-                                            </a>
+                                            <div className="flex overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm transition-colors hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700">
+                                                <Link
+                                                    href={notificationLinkHref(n.href)}
+                                                    className="min-w-0 flex-1 p-4 text-left transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40"
+                                                >
+                                                    {card}
+                                                </Link>
+                                                {showMark ? (
+                                                    <MarkInboxNotificationReadButton notificationId={inboxId} />
+                                                ) : null}
+                                            </div>
                                         </li>
                                     );
                                 }

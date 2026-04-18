@@ -6,7 +6,6 @@ use App\Models\AppSupportMessage;
 use App\Models\AppSupportTicket;
 use App\Models\User;
 use App\Services\SupportTicketChatNotifier;
-use App\Support\InboxNotificationResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -126,7 +125,6 @@ class MobileSupportController extends Controller
     {
         $user = $request->user();
         $isAdmin = $this->isAdmin($user);
-        InboxNotificationResolver::markReadFromQuery($request);
 
         $ticket = AppSupportTicket::query()->where('public_token', $token)->firstOrFail();
 

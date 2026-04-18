@@ -1,6 +1,8 @@
 import { Link, usePage } from '@inertiajs/react';
+import { notificationLinkHref } from '@/utils/notificationLinkHref';
 import { BellIcon, SunIcon, MoonIcon, FilmIcon, NewspaperIcon, CalendarDaysIcon, HandRaisedIcon, Squares2X2Icon, ChevronRightIcon, LifebuoyIcon } from '@heroicons/react/24/outline';
 import Dropdown from '@/Components/Dropdown';
+import MarkInboxNotificationReadButton from '@/Components/MarkInboxNotificationReadButton';
 import AppVersionTrigger from '@/Components/AppVersionTrigger';
 import { useTheme } from '@/Contexts/ThemeContext';
 
@@ -12,6 +14,8 @@ interface NotificationItem {
     author: { name: string } | null;
     href?: string;
     kind?: string;
+    inbox_notification_id?: number;
+    inbox_unread?: boolean;
 }
 
 function formatTimeAgo(iso: string): string {
@@ -180,7 +184,9 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
                                             </div>
                                         ) : (
                                             notifications.map((n) => {
-                                                const href = n.href ?? route('varios.notifications');
+                                                const rawHref = n.href ?? route('varios.notifications');
+                                                const href =
+                                                    n.kind === 'inbox' ? notificationLinkHref(rawHref) : rawHref;
                                                 const Row = (
                                                     <>
                                                         <p className="font-medium text-zinc-900 dark:text-white text-sm line-clamp-1">
@@ -194,25 +200,27 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
                                                         </p>
                                                     </>
                                                 );
-                                                if (n.kind === 'inbox' && n.href) {
-                                                    return (
-                                                        <a
-                                                            key={n.id}
+                                                const inboxId = n.inbox_notification_id;
+                                                const showMark =
+                                                    n.kind === 'inbox' &&
+                                                    n.inbox_unread &&
+                                                    typeof inboxId === 'number';
+
+                                                return (
+                                                    <div
+                                                        key={n.id}
+                                                        className="flex border-b border-zinc-100 dark:border-zinc-800/50"
+                                                    >
+                                                        <Link
                                                             href={href}
-                                                            className="block px-4 py-3 border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
+                                                            className="min-w-0 flex-1 px-4 py-3 text-left transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
                                                         >
                                                             {Row}
-                                                        </a>
-                                                    );
-                                                }
-                                                return (
-                                                    <Link
-                                                        key={n.id}
-                                                        href={href}
-                                                        className="block px-4 py-3 border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
-                                                    >
-                                                        {Row}
-                                                    </Link>
+                                                        </Link>
+                                                        {showMark ? (
+                                                            <MarkInboxNotificationReadButton notificationId={inboxId} />
+                                                        ) : null}
+                                                    </div>
                                                 );
                                             })
                                         )}

@@ -8,7 +8,6 @@ use App\Models\ChurchSolicitationMessage;
 use App\Models\PastoralAppointment;
 use App\Models\User;
 use App\Services\SolicitationChatNotifier;
-use App\Support\InboxNotificationResolver;
 use App\Support\SolicitationAssignees;
 use App\Support\SupportTicketAdminPresenter;
 use Illuminate\Http\RedirectResponse;
@@ -104,8 +103,6 @@ class SolicitationAdminController extends Controller
     {
         $user = $request->user();
         abort_unless($user && $this->canView($user), 403);
-        InboxNotificationResolver::markReadFromQuery($request);
-
         $kind = $request->query('kind');
         $kindStr = is_string($kind) ? $kind : '';
         $type = $request->query('type');
