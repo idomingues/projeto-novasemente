@@ -43,6 +43,7 @@ class DashboardController extends Controller
         $volunteerCount = 0;
         if ($churchId !== null) {
             $volunteerCount = Volunteer::query()
+                ->where('app_access_only', false)
                 ->where(function ($q) use ($churchId) {
                     $q->whereDoesntHave('ministries')
                         ->orWhereHas('ministries', fn ($mq) => $mq->where('church_id', $churchId));

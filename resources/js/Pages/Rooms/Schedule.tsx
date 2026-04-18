@@ -7,6 +7,7 @@ import PageHeader from '@/Components/PageHeader';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import TextInput from '@/Components/TextInput';
+import SelectInput from '@/Components/SelectInput';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { FormEventHandler, useMemo, useState } from 'react';
@@ -493,10 +494,10 @@ export default function Schedule({
                     <div className="mt-4 space-y-4">
                         <div>
                             <InputLabel value="Sala" />
-                            <select
+                            <SelectInput
                                 value={data.room_id === '' ? '' : String(data.room_id)}
                                 onChange={(e) => setData('room_id', e.target.value === '' ? '' : Number(e.target.value))}
-                                className="mt-1 block w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+                                className="mt-1"
                                 required
                             >
                                 <option value="">Selecione…</option>
@@ -506,7 +507,7 @@ export default function Schedule({
                                         {r.floor ? ` (${FLOOR_LABEL[r.floor] ?? r.floor})` : ''}
                                     </option>
                                 ))}
-                            </select>
+                            </SelectInput>
                             <InputError message={errors.room_id} className="mt-1" />
                         </div>
                         <div>
@@ -562,7 +563,7 @@ export default function Schedule({
                             Cancelar
                         </SecondaryButton>
                         <PrimaryButton type="submit" disabled={processing}>
-                            Guardar
+                            Salvar
                         </PrimaryButton>
                     </div>
                 </form>

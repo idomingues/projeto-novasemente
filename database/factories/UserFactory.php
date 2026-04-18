@@ -11,6 +11,13 @@ use Illuminate\Support\Str;
  */
 class UserFactory extends Factory
 {
+    public function configure(): static
+    {
+        return $this->afterCreating(function (\App\Models\User $user): void {
+            $user->ensureVolunteerProfile();
+        });
+    }
+
     /**
      * The current password being used by the factory.
      */

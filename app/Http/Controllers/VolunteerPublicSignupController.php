@@ -8,7 +8,9 @@ use App\Models\Ministry;
 use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerSelfSignupToken;
+use App\Services\VolunteerMinistryRosterNotifier;
 use App\Support\VolunteerContactDuplicateChecker;
+use App\Support\VolunteerPipelineBootstrap;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,6 +21,7 @@ use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Spatie\Permission\Models\Role;
 
 class VolunteerPublicSignupController extends Controller
 {
@@ -28,7 +31,7 @@ class VolunteerPublicSignupController extends Controller
     public function createPublicPage(): RedirectResponse|Response
     {
         if (! Schema::hasTable('volunteer_self_signup_tokens')) {
-            return redirect()->route('login')->with('error', 'Cadastro de voluntários ainda não está disponível. Contacte a equipa.');
+            return redirect()->route('login')->with('error', 'Cadastro de voluntários ainda não está disponível. Contacte a equipe.');
         }
 
         $church = Church::query()->where('active', true)->orderBy('name')->first();
@@ -156,7 +159,7 @@ class VolunteerPublicSignupController extends Controller
     public function create(Request $request): RedirectResponse|Response
     {
         if (! Schema::hasTable('volunteer_self_signup_tokens')) {
-            return redirect()->route('mobile.culto')->with('error', 'Cadastro público de voluntários ainda não está disponível. Contacte a equipa.');
+            return redirect()->route('mobile.culto')->with('error', 'Cadastro público de voluntários ainda não está disponível. Contacte a equipe.');
         }
 
         $token = (string) $request->query('token', '');
@@ -279,13 +282,21 @@ class VolunteerPublicSignupController extends Controller
 
         $name = trim($validated['first_name'].' '.$validated['last_name']);
 
-        $user = DB::transaction(function () use ($validated, $name, $ministryIds) {
-            $user = User::create([
-                'name' => $name,
-                'email' => $validated['email'],
-                'password' => $validated['password'],
-                'member_id' => null,
-            ]);
+        $user = DB::transaction(function () use ($validated, $name, $ministryIds, $record) {
+            $user = User::withoutEvents(function () use ($validated, $name) {
+                return User::create([
+                    'name' => $name,
+                    'email' => $validated['email'],
+                    'password' => $validated['password'],
+                    'member_id' => null,
+                ]);
+            });
+
+            $guard = (string) config('auth.defaults.guard');
+            if (Role::query()->where('name', 'membro')->where('guard_name', $guard)->exists()) {
+                $user->assignRole('membro');
+            }
+            $user->ensureVolunteerProfile();
 
             $volunteer = $user->volunteerProfile;
             if ($volunteer) {
@@ -309,7 +320,14 @@ class VolunteerPublicSignupController extends Controller
                     'lgpd_data_consent' => (bool) $validated['lgpd_data_consent'],
                 ])->save();
                 $volunteer->ministries()->sync($ministryIds);
+                $added = collect($ministryIds)->map(fn ($id) => (int) $id)->filter(fn ($id) => $id > 0)->values()->all();
+                if ($added !== []) {
+                    app(VolunteerMinistryRosterNotifier::class)->notifyLeadersOfNewAttachments($volunteer->fresh(), $added);
+                }
+                VolunteerPipelineBootstrap::ensureRowForVolunteerInChurch($volunteer->fresh(), (int) $record->church_id);
             }
+
+            $user->ensureVolunteerProfile();
 
             return $user;
         });

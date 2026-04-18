@@ -1,6 +1,7 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head } from '@inertiajs/react';
 import { FilmIcon, PlayCircleIcon } from '@heroicons/react/24/outline';
+import { useEffect } from 'react';
 
 interface CultoItem {
     id: number;
@@ -13,6 +14,7 @@ interface CultoItem {
 
 interface Props {
     cultos: CultoItem[];
+    showPostRegistrationBanner?: boolean;
 }
 
 function formatDate(iso: string | null): string {
@@ -24,11 +26,34 @@ function formatDate(iso: string | null): string {
     });
 }
 
-export default function MobileCulto({ cultos }: Props) {
+export default function MobileCulto({ cultos, showPostRegistrationBanner = false }: Props) {
+    useEffect(() => {
+        if (!showPostRegistrationBanner || typeof window === 'undefined') {
+            return;
+        }
+        const u = new URL(window.location.href);
+        if (u.searchParams.has('reg_ok')) {
+            u.searchParams.delete('reg_ok');
+            const next = u.pathname + (u.searchParams.toString() ? `?${u.searchParams.toString()}` : '') + u.hash;
+            window.history.replaceState({}, '', next);
+        }
+    }, [showPostRegistrationBanner]);
+
     return (
         <MobileLayout>
             <Head title="Culto" />
             <div className="space-y-6">
+                {showPostRegistrationBanner ? (
+                    <div
+                        className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-50"
+                        role="status"
+                    >
+                        <p className="font-semibold">Conta criada com sucesso</p>
+                        <p className="mt-1 text-emerald-900/90 dark:text-emerald-100/90">
+                            Já está com sessão iniciada. Pode explorar o culto e o resto da app.
+                        </p>
+                    </div>
+                ) : null}
                 {cultos.length === 0 ? (
                     <div className="py-12 lg:py-20 text-center">
                         <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-4">

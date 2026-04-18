@@ -1,5 +1,5 @@
 import AdminLayout from '@/Layouts/AdminLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import {
     ClockIcon,
     PhoneIcon,
@@ -15,6 +15,8 @@ import {
     MapPinIcon,
     InboxIcon,
     NewspaperIcon,
+    UserPlusIcon,
+    ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 import { PHOTOS_DRIVE_FOLDER_URL } from '@/constants/externalLinks';
 import type { ComponentType, SVGProps } from 'react';
@@ -30,10 +32,12 @@ interface Props {
     latestPrayerRequests?: unknown[];
 }
 
+const PASTORAL_ROUTE = 'mobile.pastoral-appointments.request' as const;
+
 const items: MoreMenuItem[] = [
     { name: 'Quem somos', description: 'História e significado do nome', route: 'mobile.quem-somos', icon: UserGroupIcon },
     { name: 'Nossas crenças', description: '28 princípios de fé (IASD)', route: 'mobile.beliefs', icon: BookOpenIcon },
-    { name: 'Nossos pastores', description: 'Conheça a equipa pastoral', route: 'mobile.pastors', icon: UserCircleIcon },
+    { name: 'Nossos pastores', description: 'Conheça a equipe pastoral', route: 'mobile.pastors', icon: UserCircleIcon },
     { name: 'Escala', description: 'Escala de voluntários', route: 'varios.schedule', icon: ClipboardDocumentListIcon },
     { name: 'Cultos e horários', description: 'Dias e horários dos cultos', route: 'mobile.services', icon: ClockIcon },
     { name: 'Classe Começos', description: 'Estudo bíblico presencial ou on-line', route: 'varios.classe-comecos', icon: AcademicCapIcon },
@@ -47,7 +51,12 @@ const items: MoreMenuItem[] = [
     },
     { name: 'Localização', description: 'Endereço e mapa da igreja', route: 'mobile.location', icon: MapPinIcon },
     { name: 'Acervo', description: 'Playlists do YouTube da Nova Semente', route: 'mobile.acervo', icon: PlayCircleIcon },
-    { name: 'Fale conosco', description: 'E-mail, redes e WhatsApp', route: 'mobile.contact', icon: PhoneIcon },
+    {
+        name: 'Falar com líder',
+        description: 'Conversa com líder de ministério',
+        route: 'mobile.contact',
+        icon: PhoneIcon,
+    },
     { name: 'Notificações', description: 'Avisos de eventos e notícias', route: 'varios.notifications', icon: BellAlertIcon },
     {
         name: 'Solicitações',
@@ -58,6 +67,9 @@ const items: MoreMenuItem[] = [
 ];
 
 export default function MoreIndex(_: Props) {
+    const page = usePage();
+    const authUser = (page.props as { auth?: { user?: unknown } }).auth?.user;
+
     return (
         <AdminLayout>
             <Head title="Mais" />
@@ -68,6 +80,40 @@ export default function MoreIndex(_: Props) {
                         Acesso rápido a cultos, contato, oração e notificações.
                     </p>
                 </div>
+
+                {authUser ? (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        <Link
+                            href={route(PASTORAL_ROUTE)}
+                            className="block rounded-2xl border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 p-5 shadow-sm hover:border-zinc-400 dark:hover:border-zinc-500 transition-colors"
+                        >
+                            <span className="text-sm font-semibold text-zinc-900 dark:text-white">Agendar com pastor</span>
+                            <span className="block text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                                Os meus pedidos e novo agendamento
+                            </span>
+                        </Link>
+                    </div>
+                ) : null}
+
+                <Link
+                    href={route('volunteers.public-signup.page')}
+                    className="block rounded-2xl border border-zinc-300 dark:border-zinc-600 bg-zinc-50 dark:bg-zinc-900/70 p-6 shadow-sm hover:bg-white dark:hover:bg-zinc-900 hover:border-zinc-400 dark:hover:border-zinc-500 transition-colors"
+                >
+                    <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-zinc-900 dark:bg-white">
+                            <UserPlusIcon className="w-6 h-6 text-white dark:text-zinc-900" aria-hidden />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <h2 className="text-lg font-bold text-zinc-900 dark:text-white leading-tight">
+                                Cadastro de voluntário
+                            </h2>
+                            <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
+                                Quero servir em ministérios (formulário completo)
+                            </p>
+                        </div>
+                        <ChevronRightIcon className="w-6 h-6 text-zinc-500 dark:text-zinc-400 shrink-0 mt-1" aria-hidden />
+                    </div>
+                </Link>
 
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {items.map((item) => {

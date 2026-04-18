@@ -55,7 +55,7 @@ export default function ScheduleCheckin({
 
                 {!needsMember && !checkinEnabled && (
                     <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 text-sm text-zinc-600 dark:text-zinc-400">
-                        O check-in para este dia ainda não foi liberado pela equipa de escala.
+                        O check-in para este dia ainda não foi liberado pela equipe de escala.
                     </div>
                 )}
 

@@ -23,6 +23,7 @@ import { useState, useEffect, useRef, FormEventHandler } from 'react';
 import axios from 'axios';
 import { confirmAction } from '@/utils/confirmDialog';
 import ImageDownloadButton from '@/Components/ImageDownloadButton';
+import SelectInput from '@/Components/SelectInput';
 
 const DESKTOP_BARCODE_SCANNER_ID = 'inventory-desktop-barcode-scanner';
 
@@ -672,17 +673,17 @@ export default function Index({ items, filters }: Props) {
                                     </div>
                                     <div>
                                         <InputLabel htmlFor="status" value="Status" />
-                                        <select
+                                        <SelectInput
                                             id="status"
+                                            className="mt-1"
                                             value={data.status}
                                             onChange={(e) => setData('status', e.target.value)}
-                                            className="mt-1 block w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-zinc-100 text-sm"
                                         >
                                             <option value="active">Ativo</option>
                                             <option value="inactive">Inativo</option>
                                             <option value="maintenance">Em manutenção</option>
                                             <option value="disposed">Baixado</option>
-                                        </select>
+                                        </SelectInput>
                                         <InputError message={errors.status} className="mt-1" />
                                     </div>
                                 </div>

@@ -178,7 +178,7 @@ export default function Index({ churches }: Props) {
                                                     filenameBase={`logo-${church.slug}`}
                                                     className="absolute -bottom-0.5 -right-0.5 z-10 scale-90"
                                                     size="sm"
-                                                    title="Guardar logo"
+                                                    title="Salvar logo"
                                                 />
                                             ) : null}
                                         </div>

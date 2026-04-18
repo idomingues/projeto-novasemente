@@ -45,6 +45,19 @@ class PastorPolicy
         return $this->canManagePastors($user);
     }
 
+    public function updateWeeklySchedule(User $user, Pastor $pastor): bool
+    {
+        if ($this->canManagePastors($user)) {
+            return true;
+        }
+
+        if ($pastor->user_id !== null && (int) $pastor->user_id === (int) $user->id) {
+            return true;
+        }
+
+        return $pastor->userIsAgendaDelegate($user);
+    }
+
     public function delete(User $user, Pastor $pastor): bool
     {
         return $this->canManagePastors($user);

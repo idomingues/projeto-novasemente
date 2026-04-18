@@ -15,11 +15,14 @@ class SolicitationStaffMessageMail extends Mailable implements ShouldQueue
         public string $typeLabel,
         public string $messageContent,
         public string $conversationUrl,
+        public bool $isLeaderChat = false,
     ) {}
 
     public function build(): self
     {
-        return $this->subject('Nova mensagem da igreja — '.$this->typeLabel)
+        $prefix = $this->isLeaderChat ? 'Nova mensagem do líder' : 'Nova mensagem da igreja';
+
+        return $this->subject($prefix.' — '.$this->typeLabel)
             ->markdown('emails.solicitation-staff-message');
     }
 }

@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\AppSupportMessage;
 use App\Models\AppSupportTicket;
 use App\Models\User;
+use App\Services\SupportTicketChatNotifier;
+use App\Support\InboxNotificationResolver;
+use App\Support\SupportTicketAdminPresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -26,17 +29,6 @@ class SupportAdminController extends Controller
     private function canManageSupport(User $user): bool
     {
         return $user->hasPermissionTo('support.manage');
-    }
-
-    private function typeLabel(string $type): string
-    {
-        return match ($type) {
-            'problem' => 'Problema',
-            'suggestion' => 'Sugestão',
-            'praise' => 'Elogio',
-            'development' => 'A desenvolver',
-            default => 'Suporte do app',
-        };
     }
 
     public function store(Request $request): RedirectResponse
@@ -63,55 +55,11 @@ class SupportAdminController extends Controller
         return redirect()->route('support.index', ['modal' => $ticket->public_token]);
     }
 
-    /**
-     * @return array{ticket: array<string, mixed>, messages: array<int, array<string, mixed>>, supportUpdateUrl: string, supportDestroyUrl: string, supportCloseUrl: string, supportMessageStoreUrl: string, canManageTickets: bool}
-     */
-    private function ticketShowPayload(AppSupportTicket $ticket, User $user): array
-    {
-        $messages = AppSupportMessage::query()
-            ->where('ticket_id', $ticket->id)
-            ->with(['senderUser:id,name'])
-            ->orderBy('created_at')
-            ->get()
-            ->map(fn (AppSupportMessage $m) => [
-                'id' => $m->id,
-                'senderType' => $m->sender_type,
-                'senderUserId' => $m->sender_user_id,
-                'senderName' => $m->senderUser?->name,
-                'content' => $m->content,
-                'createdAt' => $m->created_at?->toIso8601String(),
-            ])
-            ->values()
-            ->all();
-
-        $publicToken = $ticket->public_token;
-
-        return [
-            'ticket' => [
-                'publicToken' => $publicToken,
-                'type' => $ticket->type,
-                'typeLabel' => $this->typeLabel($ticket->type),
-                'isGuest' => ! (bool) $ticket->user_id,
-                'status' => $ticket->status,
-                'message' => $ticket->message,
-                'solutionText' => $ticket->solution_text,
-                'createdAt' => $ticket->created_at?->toIso8601String(),
-                'closedAt' => $ticket->closed_at?->toIso8601String(),
-                'ownerLabel' => $ticket->user_id ? ($ticket->user?->name ?? 'Usuário') : ($ticket->guest_name ?? 'Convidado'),
-            ],
-            'messages' => $messages,
-            'supportUpdateUrl' => route('support.update', ['token' => $publicToken]),
-            'supportDestroyUrl' => route('support.destroy', ['token' => $publicToken]),
-            'supportCloseUrl' => route('support.close', ['token' => $publicToken]),
-            'supportMessageStoreUrl' => route('support.messages.store', ['token' => $publicToken]),
-            'canManageTickets' => $this->canManageSupport($user),
-        ];
-    }
-
     public function index(Request $request): Response
     {
         $user = $request->user();
         abort_unless($user && $this->canViewSupport($user), 403);
+        InboxNotificationResolver::markReadFromQuery($request);
 
         $tickets = AppSupportTicket::query()
             ->with('user:id,name')
@@ -121,7 +69,7 @@ class SupportAdminController extends Controller
             ->map(fn (AppSupportTicket $t) => [
                 'publicToken' => $t->public_token,
                 'type' => $t->type,
-                'typeLabel' => $this->typeLabel($t->type),
+                'typeLabel' => SupportTicketAdminPresenter::typeLabel($t->type),
                 'status' => $t->status,
                 'message' => $t->message,
                 'solutionText' => $t->solution_text,
@@ -139,7 +87,7 @@ class SupportAdminController extends Controller
         if (is_string($modalToken) && $modalToken !== '') {
             $modalTicket = AppSupportTicket::query()->where('public_token', $modalToken)->first();
             if ($modalTicket) {
-                $modalDetail = $this->ticketShowPayload($modalTicket, $user);
+                $modalDetail = SupportTicketAdminPresenter::adminPayload($modalTicket, $user);
             }
         }
 
@@ -156,10 +104,11 @@ class SupportAdminController extends Controller
     {
         $user = $request->user();
         abort_unless($user && $this->canViewSupport($user), 403);
+        InboxNotificationResolver::markReadFromQuery($request);
 
         $ticket = AppSupportTicket::query()->where('public_token', $token)->firstOrFail();
 
-        return Inertia::render('Support/Show', $this->ticketShowPayload($ticket, $user));
+        return Inertia::render('Support/Show', SupportTicketAdminPresenter::adminPayload($ticket, $user));
     }
 
     public function update(Request $request, string $token): RedirectResponse
@@ -207,7 +156,14 @@ class SupportAdminController extends Controller
 
         $ticket = AppSupportTicket::query()->where('public_token', $token)->firstOrFail();
         abort_unless($ticket->status === 'open', 400);
-        abort_unless(! empty($ticket->user_id), 400, 'Chat indisponível para chamados sem usuário logado.');
+        $staffPastoralThread = $ticket->type === 'pastoral'
+            && empty($ticket->user_id)
+            && ! empty($ticket->pastoral_appointment_id);
+        abort_unless(
+            ! empty($ticket->user_id) || $staffPastoralThread,
+            400,
+            'Chat indisponível para chamados sem usuário logado.'
+        );
 
         $valid = $request->validate([
             'content' => ['required', 'string', 'max:5000'],
@@ -219,6 +175,8 @@ class SupportAdminController extends Controller
             'sender_user_id' => $user->id,
             'content' => $valid['content'],
         ]);
+
+        app(SupportTicketChatNotifier::class)->notifyOwnerOfStaffMessage($ticket, $user);
 
         return redirect()->back(fallback: route('support.show', ['token' => $token]));
     }

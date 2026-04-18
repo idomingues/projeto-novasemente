@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\AppVersion;
 use App\Models\Church;
+use App\Models\Pastor;
 use App\Support\NotificationFeed;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -77,6 +78,7 @@ class HandleInertiaRequests extends Middleware
                 'secretaria' => 'Secretaria',
                 'pastor' => 'Pastor',
                 'financeiro' => 'Financeiro',
+                'membro' => 'Membro',
                 default => $first ? ucfirst(str_replace('_', ' ', $first)) : null,
             };
         }
@@ -105,6 +107,45 @@ class HandleInertiaRequests extends Middleware
             } catch (\Throwable) {
                 $appVersionHistory = [];
             }
+        }
+
+        $linkedPastor = null;
+        if ($request->user() && Schema::hasTable('pastors') && Schema::hasColumn('pastors', 'user_id')) {
+            $churchId = Church::resolveWorkingId($request);
+            if ($churchId !== null) {
+                $pid = Pastor::query()
+                    ->where('church_id', $churchId)
+                    ->where('user_id', $request->user()->id)
+                    ->value('id');
+                if ($pid) {
+                    $linkedPastor = ['id' => (int) $pid];
+                }
+            }
+        }
+
+        $pastoralAgendaMenuVisible = false;
+        if ($request->user()) {
+            $u = $request->user();
+            $agendaDelegate = false;
+            if (Schema::hasTable('pastors') && Schema::hasColumn('pastors', 'agenda_delegate_user_ids')) {
+                $cid = Church::resolveWorkingId($request);
+                if ($cid !== null) {
+                    try {
+                        $agendaDelegate = Pastor::query()
+                            ->where('church_id', $cid)
+                            ->whereJsonContains('agenda_delegate_user_ids', $u->id)
+                            ->exists();
+                    } catch (\Throwable) {
+                        $agendaDelegate = false;
+                    }
+                }
+            }
+            $pastoralAgendaMenuVisible = $linkedPastor !== null
+                || $agendaDelegate
+                || $u->hasAnyRole(['super_admin', 'admin'])
+                || $u->hasRole('pastor')
+                || $u->can('pastors.view')
+                || $u->can('pastors.manage');
         }
 
         $permissionNames = [];
@@ -136,6 +177,10 @@ class HandleInertiaRequests extends Middleware
                 'roleLabel' => $roleLabel,
                 'canAccessAdminMenu' => $canAccessAdminMenu,
                 'canManageSettings' => $canManageSettings,
+                /** Pastor com registo ligado à conta na igreja em contexto (para menu «Minha disponibilidade»). */
+                'linkedPastor' => $linkedPastor,
+                /** Mostrar «Agenda Pastoral» no menu (pastor ligado, papel pastor, ou quem gere pastores). */
+                'pastoralAgendaMenuVisible' => $pastoralAgendaMenuVisible,
             ],
             'currentChurch' => $currentChurch,
             'churchesForSwitch' => $churchesForSwitch,

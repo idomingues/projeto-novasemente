@@ -7,6 +7,7 @@ import Textarea from '@/Components/Textarea';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
+import SelectInput from '@/Components/SelectInput';
 
 interface Option {
     value: number;
@@ -55,20 +56,20 @@ export default function Create({ type, typeLabel, storeUrl, pastorOptions }: Pro
                             type="date"
                             value={data.preferred_date}
                             onChange={(e) => setData('preferred_date', e.target.value)}
-                            className="mt-1 block w-full rounded-xl border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white text-sm py-2 px-3"
+                            className="mt-1 block h-11 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 text-sm text-zinc-900 dark:text-zinc-100 shadow-sm focus:border-zinc-900 dark:focus:border-white focus:ring-1 focus:ring-zinc-900/20 dark:focus:ring-white/20"
                         />
                         <InputError message={errors.preferred_date} className="mt-1" />
                     </div>
                     {pastorOptions.length > 0 && (
                         <div>
                             <InputLabel htmlFor="sol_pastor" value="Pastor (opcional)" />
-                            <select
+                            <SelectInput
                                 id="sol_pastor"
+                                className="mt-1"
                                 value={data.assigned_pastor_id}
                                 onChange={(e) => {
                                     setData('assigned_pastor_id', e.target.value);
                                 }}
-                                className="mt-1 block w-full rounded-xl border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white text-sm py-2 px-3"
                             >
                                 <option value="">— Nenhum —</option>
                                 {pastorOptions.map((o) => (
@@ -76,7 +77,7 @@ export default function Create({ type, typeLabel, storeUrl, pastorOptions }: Pro
                                         {o.label}
                                     </option>
                                 ))}
-                            </select>
+                            </SelectInput>
                             <InputError message={errors.assigned_pastor_id} className="mt-1" />
                         </div>
                     )}

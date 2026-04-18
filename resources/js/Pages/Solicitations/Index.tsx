@@ -4,10 +4,16 @@ import { FormEventHandler, useEffect, useState } from 'react';
 import { ChevronRightIcon, InboxIcon } from '@heroicons/react/24/outline';
 import Modal from '@/Components/Modal';
 import SolicitationDetailPanel, { type SolicitationDetailPanelProps } from '@/Components/Solicitations/SolicitationDetailPanel';
+import SupportTicketDetailPanel, { type SupportTicketDetailPanelProps } from '@/Components/Support/SupportTicketDetailPanel';
 import TextInput from '@/Components/TextInput';
+import SelectInput from '@/Components/SelectInput';
 
-type SolicitationRow = {
+type DemandKind = 'solicitation' | 'pastoral';
+
+type DemandRow = {
+    kind: DemandKind;
     id: number;
+    tagLabel: string;
     typeLabel: string;
     status: string;
     statusLabel: string;
@@ -17,20 +23,28 @@ type SolicitationRow = {
     memberLabel: string;
 };
 
-type ModalPayload = Omit<SolicitationDetailPanelProps, 'variant' | 'section' | 'composerRole'>;
+type SolicitationModalPayload = Omit<SolicitationDetailPanelProps, 'variant' | 'section' | 'composerRole'>;
+type PastoralModalPayload = SupportTicketDetailPanelProps;
+
+type ModalDetail =
+    | { kind: 'solicitation'; payload: SolicitationModalPayload }
+    | { kind: 'pastoral'; payload: PastoralModalPayload }
+    | null;
 
 interface Props {
-    solicitations: SolicitationRow[];
+    demands: DemandRow[];
     solicitationsIndexUrl: string;
-    modalDetail: ModalPayload | null;
+    modalDetail: ModalDetail;
     canManage: boolean;
-    filters: { type: string; status: string; q: string };
+    filters: { kind: string; type: string; status: string; q: string };
+    kindOptions: { value: string; label: string }[];
     typeOptions: { value: string; label: string }[];
     statusOptions: { value: string; label: string }[];
 }
 
-function filterQueryParams(filters: { type: string; status: string; q: string }): Record<string, string> {
+function filterQueryParams(filters: { kind: string; type: string; status: string; q: string }): Record<string, string> {
     const p: Record<string, string> = {};
+    if (filters.kind) p.kind = filters.kind;
     if (filters.type) p.type = filters.type;
     if (filters.status) p.status = filters.status;
     if (filters.q.trim()) p.q = filters.q.trim();
@@ -38,11 +52,12 @@ function filterQueryParams(filters: { type: string; status: string; q: string })
 }
 
 export default function SolicitationsIndex({
-    solicitations,
+    demands,
     solicitationsIndexUrl,
     modalDetail,
     canManage,
     filters: filtersProp,
+    kindOptions,
     typeOptions,
     statusOptions,
 }: Props) {
@@ -55,18 +70,25 @@ export default function SolicitationsIndex({
     }, [filtersProp]);
 
     useEffect(() => {
-        if (modalDetail?.solicitation.id) {
-            setModalTab('detalhes');
+        if (modalDetail?.kind === 'solicitation' && modalDetail.payload?.solicitation?.id) {
+            setModalTab(modalDetail.payload.solicitation.type === 'leader_chat' ? 'chat' : 'detalhes');
         }
-    }, [modalDetail?.solicitation.id]);
+        if (modalDetail?.kind === 'pastoral') {
+            setModalTab('chat');
+        }
+    }, [modalDetail]);
 
     const closeModal = () => {
         setModalTab('detalhes');
         router.get(solicitationsIndexUrl, filterQueryParams(localFilters), { preserveScroll: true, replace: true });
     };
 
-    const openModal = (id: number) => {
-        router.get(solicitationsIndexUrl, { ...filterQueryParams(localFilters), modal: String(id) }, { preserveScroll: true });
+    const openModal = (kind: DemandKind, id: number) => {
+        router.get(
+            solicitationsIndexUrl,
+            { ...filterQueryParams(localFilters), modal_kind: kind, modal_id: String(id) },
+            { preserveScroll: true },
+        );
     };
 
     const applyFilters: FormEventHandler = (e) => {
@@ -88,44 +110,59 @@ export default function SolicitationsIndex({
                 <div>
                     <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Solicitações</h1>
                     <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                        Inbox de pedidos (batismo, apresentação, visita, estudo bíblico) e conversa com os membros.
+                        Inbox de pedidos formais, conversas «Falar com líder» e agendamentos pastor. Responda no separador Chat (vista tipo
+                        WhatsApp Web) quando existir conversa.
                     </p>
                 </div>
 
                 <form onSubmit={applyFilters} className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
                     <div className="w-full sm:w-auto sm:min-w-[10rem]">
+                        <label htmlFor="sol_f_kind" className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                            Demanda
+                        </label>
+                        <SelectInput
+                            id="sol_f_kind"
+                            value={localFilters.kind}
+                            onChange={(e) => setLocalFilters((f) => ({ ...f, kind: e.target.value }))}
+                        >
+                            {kindOptions.map((o) => (
+                                <option key={o.value || 'all-k'} value={o.value}>
+                                    {o.label}
+                                </option>
+                            ))}
+                        </SelectInput>
+                    </div>
+                    <div className="w-full sm:w-auto sm:min-w-[10rem]">
                         <label htmlFor="sol_f_type" className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
                             Tipo
                         </label>
-                        <select
+                        <SelectInput
                             id="sol_f_type"
                             value={localFilters.type}
                             onChange={(e) => setLocalFilters((f) => ({ ...f, type: e.target.value }))}
-                            className="block w-full rounded-xl border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white text-sm py-2 px-3"
                         >
                             {typeOptions.map((o) => (
                                 <option key={o.value || 'all'} value={o.value}>
                                     {o.label}
                                 </option>
                             ))}
-                        </select>
+                        </SelectInput>
                     </div>
                     <div className="w-full sm:w-auto sm:min-w-[10rem]">
                         <label htmlFor="sol_f_status" className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
                             Estado
                         </label>
-                        <select
+                        <SelectInput
                             id="sol_f_status"
                             value={localFilters.status}
                             onChange={(e) => setLocalFilters((f) => ({ ...f, status: e.target.value }))}
-                            className="block w-full rounded-xl border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white text-sm py-2 px-3"
                         >
                             {statusOptions.map((o) => (
                                 <option key={o.value || 'all-s'} value={o.value}>
                                     {o.label}
                                 </option>
                             ))}
-                        </select>
+                        </SelectInput>
                     </div>
                     <div className="w-full sm:flex-1 sm:min-w-[12rem]">
                         <label htmlFor="sol_f_q" className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
@@ -148,17 +185,17 @@ export default function SolicitationsIndex({
                     </button>
                 </form>
 
-                {solicitations.length === 0 ? (
+                {demands.length === 0 ? (
                     <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-8 text-center text-zinc-600 dark:text-zinc-400">
                         Nenhum pedido por agora.
                     </div>
                 ) : (
                     <div className="space-y-3">
-                        {solicitations.map((s) => (
+                        {demands.map((s) => (
                             <button
-                                key={s.id}
+                                key={`${s.kind}_${s.id}`}
                                 type="button"
-                                onClick={() => openModal(s.id)}
+                                onClick={() => openModal(s.kind, s.id)}
                                 aria-label={`Abrir pedido: ${s.typeLabel}`}
                                 className="group w-full cursor-pointer text-left rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/40 active:scale-[0.998] touch-manipulation"
                             >
@@ -167,6 +204,9 @@ export default function SolicitationsIndex({
                                         <div className="flex items-center gap-2 text-sm">
                                             <InboxIcon className="w-4 h-4 text-brand-600 dark:text-brand-400 shrink-0" />
                                             <span className="font-semibold text-zinc-900 dark:text-white">{s.typeLabel}</span>
+                                            <span className="ml-1 inline-flex rounded-full border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/70 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300">
+                                                {s.tagLabel}
+                                            </span>
                                         </div>
                                         <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
                                             {s.memberLabel} · {s.statusLabel}
@@ -192,12 +232,24 @@ export default function SolicitationsIndex({
                 )}
             </div>
 
-            <Modal show={modalDetail !== null} onClose={closeModal} maxWidth="lg">
-                <div className="flex max-h-[min(85vh,720px)] w-full flex-col overflow-hidden">
+            <Modal
+                show={modalDetail !== null}
+                onClose={closeModal}
+                maxWidth={modalDetail?.kind === 'pastoral' ? '2xl' : (modalDetail?.kind === 'solicitation' && modalDetail.payload.solicitation.type === 'leader_chat' ? '2xl' : 'lg')}
+            >
+                <div
+                    className={`flex w-full flex-col overflow-hidden ${
+                        modalDetail?.kind === 'pastoral' || (modalDetail?.kind === 'solicitation' && modalDetail.payload.solicitation.type === 'leader_chat')
+                            ? 'max-h-[min(90vh,820px)]'
+                            : 'max-h-[min(85vh,720px)]'
+                    }`}
+                >
                     <div className="flex shrink-0 items-center gap-2 border-b border-zinc-200 px-5 py-4 dark:border-zinc-800 sm:px-6">
                         <InboxIcon className="h-6 w-6 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
                         <h2 className="min-w-0 truncate text-lg font-semibold text-zinc-900 dark:text-white">
-                            {modalDetail?.solicitation.typeLabel ?? 'Pedido'}
+                            {modalDetail?.kind === 'solicitation'
+                                ? (modalDetail.payload.solicitation.typeLabel ?? 'Pedido')
+                                : (modalDetail?.kind === 'pastoral' ? modalDetail.payload.ticket.typeLabel : 'Pedido')}
                         </h2>
                     </div>
 
@@ -213,23 +265,38 @@ export default function SolicitationsIndex({
                             </div>
 
                             <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6 sm:py-5">
-                                {modalTab === 'detalhes' && (
-                                    <SolicitationDetailPanel
-                                        {...modalDetail}
-                                        variant="modal"
-                                        section="details"
-                                        composerRole="staff"
-                                        canManage={canManage && modalDetail.canManage}
-                                    />
+                                {modalDetail.kind === 'solicitation' && (
+                                    <>
+                                        {modalTab === 'detalhes' && (
+                                            <SolicitationDetailPanel
+                                                {...modalDetail.payload}
+                                                variant="modal"
+                                                section="details"
+                                                composerRole="staff"
+                                                canManage={canManage && modalDetail.payload.canManage}
+                                            />
+                                        )}
+                                        {modalTab === 'chat' && (
+                                            <SolicitationDetailPanel
+                                                {...modalDetail.payload}
+                                                variant="modal"
+                                                section="chat"
+                                                composerRole="staff"
+                                                canManage={canManage && modalDetail.payload.canManage}
+                                            />
+                                        )}
+                                    </>
                                 )}
-                                {modalTab === 'chat' && (
-                                    <SolicitationDetailPanel
-                                        {...modalDetail}
-                                        variant="modal"
-                                        section="chat"
-                                        composerRole="staff"
-                                        canManage={canManage && modalDetail.canManage}
-                                    />
+
+                                {modalDetail.kind === 'pastoral' && (
+                                    <>
+                                        {modalTab === 'detalhes' && (
+                                            <SupportTicketDetailPanel {...modalDetail.payload} variant="modal" section="details" />
+                                        )}
+                                        {modalTab === 'chat' && (
+                                            <SupportTicketDetailPanel {...modalDetail.payload} variant="modal" section="chat" />
+                                        )}
+                                    </>
                                 )}
                             </div>
                         </>

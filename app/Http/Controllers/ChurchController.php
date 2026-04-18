@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Church;
+use App\Support\VolunteerPipelineBootstrap;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -41,6 +42,8 @@ class ChurchController extends Controller
 
         $church = Church::create(collect($data)->except('logo')->toArray());
 
+        VolunteerPipelineBootstrap::seedDefaultStagesForChurch((int) $church->id);
+
         if ($request->hasFile('logo')) {
             $path = $request->file('logo')->store('logos', 'public');
             $church->update(['logo_url' => $path]);
@@ -53,7 +56,7 @@ class ChurchController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'slug' => ['required', 'string', 'max:255', 'alpha_dash', 'unique:churches,slug,' . $church->id],
+            'slug' => ['required', 'string', 'max:255', 'alpha_dash', 'unique:churches,slug,'.$church->id],
             'logo' => ['nullable', 'image', 'max:2048'],
             'city' => ['nullable', 'string', 'max:255'],
             'state' => ['nullable', 'string', 'max:255'],
@@ -83,7 +86,6 @@ class ChurchController extends Controller
         return redirect()->route('churches.index')->with('success', 'Igreja atualizada com sucesso.');
     }
 
-
     public function destroy(Church $church)
     {
         $church->delete();
@@ -91,4 +93,3 @@ class ChurchController extends Controller
         return redirect()->route('churches.index')->with('success', 'Igreja removida com sucesso.');
     }
 }
-

@@ -1,12 +1,12 @@
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
 import {
     BookOpenIcon,
     ChevronLeftIcon,
     ChevronRightIcon,
-    ClipboardDocumentListIcon,
     EllipsisHorizontalCircleIcon,
     HandRaisedIcon,
+    PencilSquareIcon,
     PlusIcon,
     SparklesIcon,
     UserGroupIcon,
@@ -17,8 +17,14 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import InputLabel from '@/Components/InputLabel';
 import Textarea from '@/Components/Textarea';
 import InputError from '@/Components/InputError';
+import SelectInput from '@/Components/SelectInput';
+import SolicitationDetailPanel, {
+    type MemberPastorOption,
+    type SolicitationDetailShape,
+    type SolicitationMessageRow,
+} from '@/Components/Solicitations/SolicitationDetailPanel';
 import type { ComponentType, SVGProps } from 'react';
-import { FormEventHandler, useMemo, useState } from 'react';
+import { FormEventHandler, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface TypeItem {
     type: string;
@@ -30,11 +36,26 @@ interface PastorOption {
     label: string;
 }
 
+export interface SolicitationHubRow {
+    solicitation: SolicitationDetailShape;
+    messages: SolicitationMessageRow[];
+    canChat: boolean;
+    messageStoreUrl: string;
+    hubUrl: string;
+    mineUrl: string;
+    memberUpdateUrl: string;
+    memberCanEditDetails: boolean;
+    memberPastorOptions: MemberPastorOption[];
+    canFinalizeLeaderChat?: boolean;
+    finalizeLeaderChatUrl?: string | null;
+}
+
 interface Props {
     types: TypeItem[];
     mineUrl: string;
     storeUrl: string;
     pastorOptions: PastorOption[];
+    mySolicitations: SolicitationHubRow[];
 }
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
@@ -55,10 +76,33 @@ function iconForSolicitationType(type: string): IconComponent {
     }
 }
 
-export default function Hub({ types, mineUrl, storeUrl, pastorOptions }: Props) {
+type DetailTab = 'detalhes' | 'chat';
+
+function formatListWhen(iso: string | null | undefined): string {
+    if (!iso) return '';
+    try {
+        return new Date(iso).toLocaleString('pt-PT', {
+            day: '2-digit',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    } catch {
+        return '';
+    }
+}
+
+export default function Hub({ types, storeUrl, pastorOptions, mySolicitations }: Props) {
     const [createOpen, setCreateOpen] = useState(false);
     const [step, setStep] = useState<'pick' | 'form'>('pick');
     const [typeLabel, setTypeLabel] = useState('');
+
+    const [detailOpen, setDetailOpen] = useState(false);
+    const [detailRow, setDetailRow] = useState<SolicitationHubRow | null>(null);
+    const [detailTab, setDetailTab] = useState<DetailTab>('detalhes');
+    const [detailKey, setDetailKey] = useState(0);
+
+    const listRef = useRef<HTMLDivElement | null>(null);
 
     const { data, setData, post, processing, errors, reset } = useForm({
         type: '',
@@ -100,6 +144,43 @@ export default function Hub({ types, mineUrl, storeUrl, pastorOptions }: Props) 
         post(storeUrl);
     };
 
+    const openDetail = useCallback((row: SolicitationHubRow, tab: DetailTab = 'detalhes') => {
+        setDetailRow(row);
+        setDetailTab(tab);
+        setDetailKey((k) => k + 1);
+        setDetailOpen(true);
+    }, []);
+
+    const closeDetail = () => {
+        setDetailOpen(false);
+        setDetailRow(null);
+    };
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const sid = params.get('solicitacao');
+        const painel = params.get('painel');
+        if (sid) {
+            const row = mySolicitations.find((r) => String(r.solicitation.id) === sid);
+            if (row) {
+                openDetail(row, painel === 'chat' ? 'chat' : 'detalhes');
+            }
+        }
+        if (params.get('lista') === '1' && listRef.current) {
+            listRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        if (sid || params.get('lista')) {
+            window.history.replaceState({}, '', window.location.pathname);
+        }
+    }, [mySolicitations, openDetail]);
+
+    const tabBtn = (active: boolean) =>
+        `flex-1 px-3 py-2.5 text-sm font-semibold border-b-2 transition-colors -mb-px text-center ${
+            active
+                ? 'border-zinc-900 text-zinc-900 dark:border-white dark:text-white'
+                : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
+        }`;
+
     return (
         <MobileLayout>
             <Head title="Solicitações" />
@@ -108,7 +189,8 @@ export default function Hub({ types, mineUrl, storeUrl, pastorOptions }: Props) 
                     <div className="min-w-0">
                         <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Solicitações</h1>
                         <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-0.5">
-                            Envie um pedido à igreja e acompanhe as respostas.
+                            Batismo, apresentação, visita pastoral. Toque num pedido para editar ou conversar. Para falar com um líder
+                            de ministério, use «Falar com líder» em Mais.
                         </p>
                     </div>
                     <button
@@ -122,19 +204,58 @@ export default function Hub({ types, mineUrl, storeUrl, pastorOptions }: Props) 
                     </button>
                 </div>
 
-                <Link
-                    href={mineUrl}
-                    className="flex items-center gap-4 p-4 rounded-2xl bg-brand-50 dark:bg-brand-950/40 border border-brand-200 dark:border-brand-800 hover:border-brand-300 dark:hover:border-brand-700 transition-colors"
-                >
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-brand-100 dark:bg-brand-900/50">
-                        <ClipboardDocumentListIcon className="w-6 h-6 text-brand-700 dark:text-brand-300" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                        <span className="font-semibold text-zinc-900 dark:text-white block">Os meus pedidos</span>
-                        <span className="text-sm text-zinc-600 dark:text-zinc-400">Ver estado e conversar com a igreja</span>
-                    </div>
-                    <ChevronRightIcon className="w-5 h-5 text-zinc-400 shrink-0" />
-                </Link>
+                <div ref={listRef} id="lista-solicitacoes" className="scroll-mt-24">
+                    <h2 className="text-sm font-semibold text-zinc-900 dark:text-white mb-3">Os meus pedidos</h2>
+                    {mySolicitations.length === 0 ? (
+                        <p className="text-sm text-zinc-600 dark:text-zinc-400 py-8 text-center rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-700">
+                            Ainda não enviou nenhum pedido. Use o botão + acima.
+                        </p>
+                    ) : (
+                        <div className="space-y-3">
+                            {mySolicitations.map((row) => (
+                                <div
+                                    key={row.solicitation.id}
+                                    className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm overflow-hidden"
+                                >
+                                    <button
+                                        type="button"
+                                        onClick={() => openDetail(row, 'detalhes')}
+                                        className="block w-full text-left px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 transition-colors"
+                                    >
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="min-w-0">
+                                                <div className="font-semibold text-zinc-900 dark:text-white">{row.solicitation.typeLabel}</div>
+                                                <div className="text-xs text-zinc-500 mt-0.5">{row.solicitation.statusLabel}</div>
+                                                <div className="text-sm text-zinc-600 dark:text-zinc-400 mt-1 line-clamp-2">
+                                                    {row.solicitation.message}
+                                                </div>
+                                                <div className="text-[11px] text-zinc-400 mt-2">{formatListWhen(row.solicitation.createdAt)}</div>
+                                            </div>
+                                            <ChevronRightIcon className="w-5 h-5 text-zinc-400 shrink-0 mt-0.5" aria-hidden />
+                                        </div>
+                                    </button>
+                                    <div className="flex items-center justify-end gap-3 border-t border-zinc-100 dark:border-zinc-800 px-3 py-2 bg-zinc-50/80 dark:bg-zinc-900/80">
+                                        <button
+                                            type="button"
+                                            onClick={() => openDetail(row, 'chat')}
+                                            className="text-xs font-semibold text-primary-600 underline dark:text-primary-400"
+                                        >
+                                            Chat
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => openDetail(row, 'detalhes')}
+                                            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-200/80 dark:hover:bg-zinc-700/80"
+                                        >
+                                            <PencilSquareIcon className="h-4 w-4" aria-hidden />
+                                            Editar
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
 
                 <div className="rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-900/50 p-6 text-center">
                     <p className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -205,18 +326,18 @@ export default function Hub({ types, mineUrl, storeUrl, pastorOptions }: Props) 
                                     type="date"
                                     value={data.preferred_date}
                                     onChange={(e) => setData('preferred_date', e.target.value)}
-                                    className="mt-1 block w-full rounded-xl border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white text-sm py-2 px-3"
+                                    className="mt-1 block h-11 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 text-sm text-zinc-900 dark:text-zinc-100 shadow-sm focus:border-zinc-900 dark:focus:border-white focus:ring-1 focus:ring-zinc-900/20 dark:focus:ring-white/20"
                                 />
                                 <InputError message={errors.preferred_date} className="mt-1" />
                             </div>
                             {pastorOptions.length > 0 && (
                                 <div>
                                     <InputLabel htmlFor="hub_sol_pastor" value="Pastor (opcional)" />
-                                    <select
+                                    <SelectInput
                                         id="hub_sol_pastor"
+                                        className="mt-1"
                                         value={data.assigned_pastor_id}
                                         onChange={(e) => setData('assigned_pastor_id', e.target.value)}
-                                        className="mt-1 block w-full rounded-xl border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white text-sm py-2 px-3"
                                     >
                                         <option value="">— Nenhum —</option>
                                         {pastorOptions.map((o) => (
@@ -224,7 +345,7 @@ export default function Hub({ types, mineUrl, storeUrl, pastorOptions }: Props) 
                                                 {o.label}
                                             </option>
                                         ))}
-                                    </select>
+                                    </SelectInput>
                                     <InputError message={errors.assigned_pastor_id} className="mt-1" />
                                 </div>
                             )}
@@ -252,6 +373,54 @@ export default function Hub({ types, mineUrl, storeUrl, pastorOptions }: Props) 
                         </form>
                     </div>
                 )}
+            </Modal>
+
+            <Modal show={detailOpen} onClose={closeDetail} maxWidth="2xl">
+                {detailRow ? (
+                    <div className="max-h-[min(92vh,860px)] overflow-y-auto p-5 sm:p-6">
+                        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white pr-10">{detailRow.solicitation.typeLabel}</h2>
+                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{detailRow.solicitation.statusLabel}</p>
+
+                        <div className="mt-4 flex border-b border-zinc-200 dark:border-zinc-800">
+                            <button type="button" className={tabBtn(detailTab === 'detalhes')} onClick={() => setDetailTab('detalhes')}>
+                                Detalhes
+                            </button>
+                            <button type="button" className={tabBtn(detailTab === 'chat')} onClick={() => setDetailTab('chat')}>
+                                Chat
+                            </button>
+                        </div>
+
+                        <div className="mt-5">
+                            <SolicitationDetailPanel
+                                key={detailKey}
+                                solicitation={detailRow.solicitation}
+                                messages={detailRow.messages}
+                                messageStoreUrl={detailRow.messageStoreUrl}
+                                canChat={detailRow.canChat}
+                                canManage={false}
+                                variant="modal"
+                                section={detailTab === 'detalhes' ? 'details' : 'chat'}
+                                composerRole="member"
+                                memberUpdateUrl={detailRow.memberUpdateUrl}
+                                memberCanEditDetails={detailRow.memberCanEditDetails}
+                                memberPastorOptions={detailRow.memberPastorOptions}
+                                messagePostReturnTo="hub"
+                                canFinalizeLeaderChat={detailRow.canFinalizeLeaderChat}
+                                finalizeLeaderChatUrl={detailRow.finalizeLeaderChatUrl ?? null}
+                            />
+                        </div>
+
+                        <div className="mt-6 flex justify-end">
+                            <button
+                                type="button"
+                                className="text-sm font-medium text-zinc-600 underline dark:text-zinc-400"
+                                onClick={closeDetail}
+                            >
+                                Fechar
+                            </button>
+                        </div>
+                    </div>
+                ) : null}
             </Modal>
         </MobileLayout>
     );

@@ -36,7 +36,7 @@ export default function ImageDownloadButton({
     appUrl = '',
     className = '',
     stopPropagation = false,
-    title = 'Guardar imagem',
+    title = 'Salvar imagem',
     size = 'md',
 }: Props) {
     const [busy, setBusy] = useState(false);
@@ -67,9 +67,9 @@ export default function ImageDownloadButton({
             }
             if (crossOrigin && typeof window !== 'undefined') {
                 window.open(abs, '_blank', 'noopener,noreferrer');
-                appToast('Abri a imagem noutro separador — use o menu do browser para guardar.', 'info');
+                appToast('Abri a imagem noutro separador — use o menu do browser para salvar.', 'info');
             } else {
-                appToast('Não foi possível guardar. Em telemóvel: toque longo na imagem → «Guardar».', 'error');
+                appToast('Não foi possível salvar. Em telemóvel: toque longo na imagem → «Salvar imagem».', 'error');
             }
         } finally {
             setBusy(false);

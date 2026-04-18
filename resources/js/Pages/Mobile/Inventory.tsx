@@ -13,6 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { FormEventHandler, useEffect, useRef, useState } from 'react';
 import ImageDownloadButton from '@/Components/ImageDownloadButton';
+import SelectInput from '@/Components/SelectInput';
 
 const SCANNER_ELEMENT_ID = 'inventory-barcode-scanner';
 
@@ -816,16 +817,16 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
                                             <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
                                                 Estado
                                             </label>
-                                            <select
+                                            <SelectInput
                                                 value={registerForm.data.status}
                                                 onChange={(e) => registerForm.setData('status', e.target.value)}
-                                                className="w-full px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm"
+                                                className="w-full"
                                             >
                                                 <option value="active">Ativo</option>
                                                 <option value="inactive">Inativo</option>
                                                 <option value="maintenance">Manutenção</option>
                                                 <option value="disposed">Baixado</option>
-                                            </select>
+                                            </SelectInput>
                                             {registerForm.errors.status && (
                                                 <p className="text-sm text-red-600">{registerForm.errors.status}</p>
                                             )}
@@ -839,7 +840,7 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
                                     disabled={registerForm.processing || !registerForm.data.barcode.trim()}
                                     className="w-full py-3 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-semibold disabled:opacity-50"
                                 >
-                                    {registerForm.processing ? 'A guardar…' : 'Cadastrar item'}
+                                    {registerForm.processing ? 'A salvar…' : 'Cadastrar item'}
                                 </button>
                             </form>
                         <button
@@ -895,7 +896,7 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
                                                 filenameBase={`inventario-${item.barcode}`}
                                                 className="absolute bottom-0.5 right-0.5 z-10"
                                                 size="sm"
-                                                title="Guardar foto"
+                                                title="Salvar foto"
                                             />
                                         ) : null}
                                     </div>

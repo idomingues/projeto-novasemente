@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Church;
 use App\Models\ChurchSolicitation;
 use App\Models\ChurchSolicitationMessage;
+use App\Models\PastoralAppointment;
 use App\Models\User;
 use App\Services\SolicitationChatNotifier;
 use App\Support\InboxNotificationResolver;
 use App\Support\SolicitationAssignees;
+use App\Support\SupportTicketAdminPresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -68,7 +70,10 @@ class SolicitationAdminController extends Controller
                 'type' => $s->type,
                 'typeLabel' => MobileChurchSolicitationController::typeLabel($s->type),
                 'status' => $s->status,
-                'statusLabel' => MobileChurchSolicitationController::statusLabel($s->status),
+                'statusLabel' => $s->type === 'leader_chat'
+                    ? MobileChurchSolicitationController::leaderChatStatusLabel($s->status)
+                    : MobileChurchSolicitationController::statusLabel($s->status),
+                'subject' => $s->subject,
                 'message' => $s->message,
                 'meta' => $s->meta,
                 'internalNotes' => $s->internal_notes,
@@ -87,11 +92,12 @@ class SolicitationAdminController extends Controller
             'canManage' => $user ? $this->canManage($user) : false,
             'staffCanReply' => $user && $this->canView($user) && $s->allowsChat(),
             'canChat' => $s->allowsChat(),
-            'assignmentOptions' => $user && $this->canManage($user) ? [
-                'pastors' => SolicitationAssignees::pastorOptions($churchId),
-                'volunteers' => SolicitationAssignees::volunteerOptions($churchId),
-            ] : null,
         ];
+    }
+
+    private function canViewPastoral(User $user): bool
+    {
+        return $user->hasAnyRole(['super_admin', 'admin']) || $user->can('pastoral_appointments.manage');
     }
 
     public function index(Request $request): Response
@@ -100,75 +106,169 @@ class SolicitationAdminController extends Controller
         abort_unless($user && $this->canView($user), 403);
         InboxNotificationResolver::markReadFromQuery($request);
 
-        $query = ChurchSolicitation::query()->with([
-            'user:id,name',
-            'assignedPastor:id,name',
-            'assignedVolunteer.member:id,name',
-        ]);
-
+        $kind = $request->query('kind');
+        $kindStr = is_string($kind) ? $kind : '';
         $type = $request->query('type');
-        if (is_string($type) && $type !== '') {
-            $query->where('type', $type);
+
+        $solRows = [];
+        if ($kindStr !== 'pastoral') {
+            $query = ChurchSolicitation::query()->with([
+                'user:id,name',
+                'assignedPastor:id,name',
+                'assignedVolunteer.member:id,name',
+            ]);
+
+            if ($kindStr === 'solicitation' && is_string($type) && $type !== '') {
+                $query->where('type', $type);
+            }
+
+            $status = $request->query('status');
+            if (is_string($status) && $status !== '') {
+                $query->where('status', $status);
+            }
+
+            $q = $request->query('q');
+            if (is_string($q) && trim($q) !== '') {
+                $needle = '%'.str_replace(['%', '_'], ['\\%', '\\_'], trim($q)).'%';
+                $query->where(function ($sub) use ($needle) {
+                    $sub->where('message', 'like', $needle)
+                        ->orWhere('subject', 'like', $needle)
+                        ->orWhereHas('user', fn ($uq) => $uq->where('name', 'like', $needle));
+                });
+            }
+
+            $solRows = $query
+                ->orderByDesc('updated_at')
+                ->limit(100)
+                ->get()
+                ->map(fn (ChurchSolicitation $s) => [
+                    'kind' => 'solicitation',
+                    'id' => $s->id,
+                    'tagLabel' => 'Solicitação',
+                    'type' => $s->type,
+                    'typeLabel' => MobileChurchSolicitationController::typeLabel($s->type),
+                    'status' => $s->status,
+                    'statusLabel' => MobileChurchSolicitationController::statusLabel($s->status),
+                    'messageExcerpt' => mb_strimwidth(strip_tags($s->message), 0, 100, '…'),
+                    'preferredDate' => $s->preferred_date?->format('Y-m-d'),
+                    'updatedAt' => $s->updated_at?->toIso8601String(),
+                    'memberLabel' => $s->user?->name ?? 'Usuário',
+                ])
+                ->values()
+                ->all();
         }
 
-        $status = $request->query('status');
-        if (is_string($status) && $status !== '') {
-            $query->where('status', $status);
+        $pastoralRows = [];
+        if ($kindStr !== 'solicitation' && $this->canViewPastoral($user)) {
+            $pQuery = PastoralAppointment::query()
+                ->with(['requesterUser:id,name', 'preferredPastor:id,name', 'supportTicket:id,public_token'])
+                ->orderByDesc('updated_at')
+                ->limit(100);
+
+            $pStatus = $request->query('status');
+            if (is_string($pStatus) && $pStatus !== '' && in_array($pStatus, ['pending', 'confirmed', 'cancelled', 'completed'], true)) {
+                $pQuery->where('status', $pStatus);
+            }
+
+            $pNeedle = $request->query('q');
+            if (is_string($pNeedle) && trim($pNeedle) !== '') {
+                $needle = '%'.str_replace(['%', '_'], ['\\%', '\\_'], trim($pNeedle)).'%';
+                $pQuery->where(function ($sub) use ($needle) {
+                    $sub->where('subject', 'like', $needle)
+                        ->orWhere('notes', 'like', $needle)
+                        ->orWhereHas('requesterUser', fn ($uq) => $uq->where('name', 'like', $needle));
+                });
+            }
+
+            $pastoralRows = $pQuery->get()
+                ->map(fn (PastoralAppointment $a) => [
+                    'kind' => 'pastoral',
+                    'id' => $a->id,
+                    'tagLabel' => 'Pastoral',
+                    'typeLabel' => 'Agendamento pastoral',
+                    'status' => $a->status,
+                    'statusLabel' => match ($a->status) {
+                        'pending' => 'Pendente',
+                        'confirmed' => 'Confirmado',
+                        'cancelled' => 'Cancelado',
+                        'completed' => 'Concluído',
+                        default => $a->status,
+                    },
+                    'messageExcerpt' => mb_strimwidth(strip_tags((string) ($a->subject ?? $a->notes ?? '')), 0, 100, '…'),
+                    'preferredDate' => $a->preferred_start?->format('Y-m-d'),
+                    'updatedAt' => ($a->updated_at ?? $a->created_at)?->toIso8601String(),
+                    'memberLabel' => $a->requester_name ?: ($a->requesterUser?->name ?? 'Membro'),
+                ])
+                ->values()
+                ->all();
         }
 
-        $q = $request->query('q');
-        if (is_string($q) && trim($q) !== '') {
-            $needle = '%'.str_replace(['%', '_'], ['\\%', '\\_'], trim($q)).'%';
-            $query->where(function ($sub) use ($needle) {
-                $sub->where('message', 'like', $needle)
-                    ->orWhereHas('user', fn ($uq) => $uq->where('name', 'like', $needle));
-            });
-        }
-
-        $rows = $query
-            ->orderByDesc('updated_at')
-            ->limit(100)
-            ->get()
-            ->map(fn (ChurchSolicitation $s) => [
-                'id' => $s->id,
-                'type' => $s->type,
-                'typeLabel' => MobileChurchSolicitationController::typeLabel($s->type),
-                'status' => $s->status,
-                'statusLabel' => MobileChurchSolicitationController::statusLabel($s->status),
-                'messageExcerpt' => mb_strimwidth(strip_tags($s->message), 0, 100, '…'),
-                'preferredDate' => $s->preferred_date?->format('Y-m-d'),
-                'updatedAt' => $s->updated_at?->toIso8601String(),
-                'memberLabel' => $s->user?->name ?? 'Usuário',
-            ])
+        $rows = collect(array_merge($solRows, $pastoralRows))
+            ->sortByDesc(fn (array $r) => $r['updatedAt'] ?? '')
             ->values()
             ->all();
 
+        $modalKind = $request->query('modal_kind');
         $modalDetail = null;
-        $modalId = $request->query('modal');
+        $modalId = $request->query('modal_id');
         if (is_string($modalId) && $modalId !== '' && ctype_digit($modalId)) {
-            $modal = ChurchSolicitation::query()->find((int) $modalId);
-            if ($modal && $this->canView($user)) {
-                $modalDetail = $this->solicitationModalPayload($modal, $user);
+            if ($modalKind === 'pastoral' && $this->canViewPastoral($user)) {
+                $apt = PastoralAppointment::query()
+                    ->with(['supportTicket'])
+                    ->find((int) $modalId);
+                if ($apt && $apt->supportTicket) {
+                    $modalDetail = [
+                        'kind' => 'pastoral',
+                        'payload' => SupportTicketAdminPresenter::adminPayload($apt->supportTicket, $user),
+                    ];
+                }
+            }
+            if (($modalKind === null || $modalKind === '' || $modalKind === 'solicitation') && $this->canView($user)) {
+                $modal = ChurchSolicitation::query()->find((int) $modalId);
+                if ($modal) {
+                    $modalDetail = [
+                        'kind' => 'solicitation',
+                        'payload' => $this->solicitationModalPayload($modal, $user),
+                    ];
+                }
+            }
+        }
+
+        if ($modalDetail === null) {
+            $legacyModal = $request->query('modal');
+            if (is_string($legacyModal) && $legacyModal !== '' && ctype_digit($legacyModal) && $this->canView($user)) {
+                $modal = ChurchSolicitation::query()->find((int) $legacyModal);
+                if ($modal) {
+                    $modalDetail = [
+                        'kind' => 'solicitation',
+                        'payload' => $this->solicitationModalPayload($modal, $user),
+                    ];
+                }
             }
         }
 
         return Inertia::render('Solicitations/Index', [
-            'solicitations' => $rows,
+            'demands' => $rows,
             'solicitationsIndexUrl' => route('solicitations.index'),
             'modalDetail' => $modalDetail,
             'canManage' => $this->canManage($user),
             'filters' => [
+                'kind' => $kindStr,
                 'type' => is_string($type) ? $type : '',
-                'status' => is_string($status) ? $status : '',
-                'q' => is_string($q) ? $q : '',
+                'status' => is_string($request->query('status')) ? (string) $request->query('status') : '',
+                'q' => is_string($request->query('q')) ? (string) $request->query('q') : '',
             ],
             'typeOptions' => [
                 ['value' => '', 'label' => 'Todos os tipos'],
                 ['value' => 'baptism', 'label' => 'Pedido de batismo'],
                 ['value' => 'baby_presentation', 'label' => 'Apresentação de bebé'],
                 ['value' => 'pastor_visit', 'label' => 'Visita aos pastores'],
-                ['value' => 'bible_study', 'label' => 'Estudo bíblico'],
-                ['value' => 'other', 'label' => 'Outros'],
+                ['value' => 'leader_chat', 'label' => 'Conversa com líder'],
+            ],
+            'kindOptions' => [
+                ['value' => '', 'label' => 'Todas as demandas'],
+                ['value' => 'solicitation', 'label' => 'Solicitações'],
+                ['value' => 'pastoral', 'label' => 'Agendamentos pastor'],
             ],
             'statusOptions' => [
                 ['value' => '', 'label' => 'Todos os estados'],
@@ -225,13 +325,16 @@ class SolicitationAdminController extends Controller
 
         $solicitation->save();
 
-        return redirect()->route('solicitations.index', ['modal' => $solicitation->id]);
+        return redirect()->route('solicitations.index', [
+            'modal_kind' => 'solicitation',
+            'modal_id' => $solicitation->id,
+        ]);
     }
 
     public function sendMessage(Request $request, ChurchSolicitation $solicitation): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user && $this->canView($user), 403);
+        abort_unless($user, 401);
 
         $this->authorize('sendMessageAsStaff', $solicitation);
 
@@ -254,6 +357,9 @@ class SolicitationAdminController extends Controller
 
         app(SolicitationChatNotifier::class)->notifyMemberOfStaffMessage($solicitation, $user, $valid['content']);
 
-        return redirect()->back(fallback: route('solicitations.index', ['modal' => $solicitation->id]));
+        return redirect()->back(fallback: route('solicitations.index', [
+            'modal_kind' => 'solicitation',
+            'modal_id' => $solicitation->id,
+        ]));
     }
 }

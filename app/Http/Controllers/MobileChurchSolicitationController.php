@@ -10,12 +10,16 @@ use App\Support\InboxNotificationResolver;
 use App\Support\SolicitationAssignees;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class MobileChurchSolicitationController extends Controller
 {
-    private const TYPES = ['baptism', 'baby_presentation', 'pastor_visit', 'bible_study', 'other'];
+    /** Tipos listados no hub (pedidos formais). «Falar com líder» é só em Mais → Contacto. */
+    private const HUB_TYPES = ['baptism', 'baby_presentation', 'pastor_visit'];
+
+    private const TYPES = ['baptism', 'baby_presentation', 'pastor_visit', 'leader_chat'];
 
     private function currentChurchId(Request $request): ?int
     {
@@ -28,8 +32,7 @@ class MobileChurchSolicitationController extends Controller
             'baptism' => 'Pedido de batismo',
             'baby_presentation' => 'Apresentação de bebé',
             'pastor_visit' => 'Visita aos pastores',
-            'bible_study' => 'Estudo bíblico',
-            'other' => 'Outros',
+            'leader_chat' => 'Conversa com líder de ministério',
             default => $type,
         };
     }
@@ -45,20 +48,62 @@ class MobileChurchSolicitationController extends Controller
         };
     }
 
+    /** Rótulo de estado para conversas com líder (membro / líder). */
+    public static function leaderChatStatusLabel(string $status): string
+    {
+        return match ($status) {
+            'pending' => 'Assunto aberto',
+            'in_progress' => 'Assunto em curso',
+            'completed' => 'Assunto finalizado',
+            'cancelled' => 'Cancelada',
+            default => self::statusLabel($status),
+        };
+    }
+
     public function hub(Request $request): Response
     {
         $churchId = $this->currentChurchId($request);
+        $user = $request->user();
 
-        $types = collect(self::TYPES)->map(fn (string $t) => [
+        $types = collect(self::HUB_TYPES)->map(fn (string $t) => [
             'type' => $t,
             'label' => self::typeLabel($t),
         ])->values()->all();
 
+        $hubUrl = route('mobile.solicitations.hub');
+        $mySolicitations = [];
+        if ($user) {
+            $mySolicitations = ChurchSolicitation::query()
+                ->where('user_id', $user->id)
+                ->whereIn('type', self::HUB_TYPES)
+                ->with(['assignedPastor:id,name', 'assignedVolunteer.member:id,name'])
+                ->orderByDesc('updated_at')
+                ->limit(40)
+                ->get()
+                ->map(function (ChurchSolicitation $s) use ($hubUrl, $churchId) {
+                    $payload = self::memberConversationPayload(
+                        $s,
+                        route('mobile.solicitations.messages.store', $s),
+                        $hubUrl,
+                        $hubUrl,
+                    );
+
+                    return array_merge($payload, [
+                        'memberUpdateUrl' => route('mobile.solicitations.update', $s),
+                        'memberCanEditDetails' => $s->status === 'pending',
+                        'memberPastorOptions' => SolicitationAssignees::pastorOptions($churchId),
+                    ]);
+                })
+                ->values()
+                ->all();
+        }
+
         return Inertia::render('Mobile/Solicitations/Hub', [
             'types' => $types,
-            'mineUrl' => route('mobile.solicitations.mine'),
+            'mineUrl' => $hubUrl,
             'storeUrl' => route('mobile.solicitations.store'),
             'pastorOptions' => SolicitationAssignees::pastorOptions($churchId),
+            'mySolicitations' => $mySolicitations,
         ]);
     }
 
@@ -93,6 +138,12 @@ class MobileChurchSolicitationController extends Controller
 
         SolicitationAssignees::assertSingleAssignee($valid);
 
+        if (($valid['type'] ?? '') === 'leader_chat') {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'type' => 'Para falar com um líder de ministério, use «Falar com líder» em Mais.',
+            ]);
+        }
+
         $pastorId = $valid['assigned_pastor_id'] ?? null;
         $volunteerId = $valid['assigned_volunteer_id'] ?? null;
 
@@ -108,36 +159,22 @@ class MobileChurchSolicitationController extends Controller
             'meta' => $valid['meta'] ?? null,
         ]);
 
-        return redirect()->route('mobile.solicitations.show', $solicitation);
+        if ($churchId !== null) {
+            app(SolicitationChatNotifier::class)->notifyChurchSolicitationsHandlerOfNewRequest($solicitation, (int) $churchId);
+        }
+
+        return redirect()->route('mobile.solicitations.hub', [
+            'solicitacao' => $solicitation->id,
+            'painel' => 'detalhes',
+        ])->with('success', 'Pedido enviado.');
     }
 
-    public function mine(Request $request): Response
+    public function mine(Request $request): RedirectResponse
     {
         $user = $request->user();
         abort_unless($user, 401);
 
-        $rows = ChurchSolicitation::query()
-            ->where('user_id', $user->id)
-            ->orderByDesc('updated_at')
-            ->limit(50)
-            ->get()
-            ->map(fn (ChurchSolicitation $s) => [
-                'id' => $s->id,
-                'type' => $s->type,
-                'typeLabel' => self::typeLabel($s->type),
-                'status' => $s->status,
-                'statusLabel' => self::statusLabel($s->status),
-                'messageExcerpt' => mb_strimwidth(strip_tags($s->message), 0, 120, '…'),
-                'updatedAt' => $s->updated_at?->toIso8601String(),
-                'showUrl' => route('mobile.solicitations.show', $s),
-            ])
-            ->values()
-            ->all();
-
-        return Inertia::render('Mobile/Solicitations/Mine', [
-            'solicitations' => $rows,
-            'hubUrl' => route('mobile.solicitations.hub'),
-        ]);
+        return redirect()->route('mobile.solicitations.hub', ['lista' => '1']);
     }
 
     public function show(Request $request, ChurchSolicitation $solicitation): Response
@@ -145,14 +182,42 @@ class MobileChurchSolicitationController extends Controller
         $this->authorize('view', $solicitation);
         InboxNotificationResolver::markReadFromQuery($request);
 
-        return Inertia::render('Mobile/Solicitations/Show', $this->memberShowPayload($solicitation));
+        $hub = route('mobile.solicitations.hub');
+        $churchId = $this->currentChurchId($request);
+
+        $finalizeLeaderChatUrl = $solicitation->type === 'leader_chat'
+            ? route('mobile.solicitations.leader-chat.finalize', $solicitation)
+            : null;
+
+        return Inertia::render(
+            'Mobile/Solicitations/Show',
+            array_merge(
+                self::memberConversationPayload(
+                    $solicitation,
+                    route('mobile.solicitations.messages.store', $solicitation),
+                    $hub,
+                    $hub,
+                    $finalizeLeaderChatUrl,
+                ),
+                [
+                    'memberUpdateUrl' => route('mobile.solicitations.update', $solicitation),
+                    'memberCanEditDetails' => $solicitation->status === 'pending',
+                    'memberPastorOptions' => SolicitationAssignees::pastorOptions($churchId),
+                ],
+            ),
+        );
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function memberShowPayload(ChurchSolicitation $s): array
-    {
+    public static function memberConversationPayload(
+        ChurchSolicitation $s,
+        string $messageStoreUrl,
+        string $hubUrl,
+        string $mineUrl,
+        ?string $finalizeLeaderChatUrl = null,
+    ): array {
         $s->loadMissing([
             'assignedPastor:id,name',
             'assignedVolunteer.member:id,name',
@@ -174,27 +239,103 @@ class MobileChurchSolicitationController extends Controller
             ->values()
             ->all();
 
+        $isLeaderChat = $s->type === 'leader_chat';
+
         return [
             'solicitation' => [
                 'id' => $s->id,
                 'type' => $s->type,
                 'typeLabel' => self::typeLabel($s->type),
                 'status' => $s->status,
-                'statusLabel' => self::statusLabel($s->status),
+                'statusLabel' => $isLeaderChat ? self::leaderChatStatusLabel($s->status) : self::statusLabel($s->status),
+                'subject' => $s->subject,
                 'message' => $s->message,
                 'meta' => $s->meta,
                 'preferredDate' => $s->preferred_date?->format('Y-m-d'),
+                'assignedPastorId' => $s->assigned_pastor_id,
+                'assignedVolunteerId' => $s->assigned_volunteer_id,
                 'assignedPastorName' => $s->assignedPastor?->name,
                 'assignedVolunteerName' => $s->assignedVolunteer?->display_name,
+                'memberLabel' => $s->user?->name ?? 'Membro',
                 'createdAt' => $s->created_at?->toIso8601String(),
                 'completedAt' => $s->completed_at?->toIso8601String(),
             ],
             'messages' => $messages,
             'canChat' => $s->allowsChat(),
-            'messageStoreUrl' => route('mobile.solicitations.messages.store', $s),
-            'hubUrl' => route('mobile.solicitations.hub'),
-            'mineUrl' => route('mobile.solicitations.mine'),
+            'messageStoreUrl' => $messageStoreUrl,
+            'hubUrl' => $hubUrl,
+            'mineUrl' => $mineUrl,
+            'canFinalizeLeaderChat' => $finalizeLeaderChatUrl !== null
+                && $isLeaderChat
+                && in_array($s->status, ['pending', 'in_progress'], true),
+            'finalizeLeaderChatUrl' => $finalizeLeaderChatUrl,
         ];
+    }
+
+    public function updateAsMember(Request $request, ChurchSolicitation $solicitation): RedirectResponse
+    {
+        $this->authorize('updateAsMember', $solicitation);
+
+        if ($solicitation->type === 'leader_chat') {
+            $valid = $request->validate([
+                'subject' => ['required', 'string', 'max:150'],
+                'message' => ['required', 'string', 'max:5000'],
+                'return_to' => ['nullable', 'string', Rule::in(['hub', 'leader_contact'])],
+            ]);
+
+            $solicitation->update([
+                'subject' => $valid['subject'],
+                'message' => $valid['message'],
+            ]);
+
+            $returnTo = (string) ($valid['return_to'] ?? 'hub');
+
+            if ($returnTo === 'leader_contact') {
+                return redirect()->route('mobile.contact', [
+                    'solicitacao' => $solicitation->id,
+                    'painel' => 'detalhes',
+                ])->with('success', 'Pedido atualizado.');
+            }
+
+            return redirect()->route('mobile.solicitations.hub', [
+                'solicitacao' => $solicitation->id,
+                'painel' => 'detalhes',
+            ])->with('success', 'Pedido atualizado.');
+        }
+
+        $churchId = $this->currentChurchId($request);
+        SolicitationAssignees::normalizeAssignmentRequest($request);
+
+        $valid = $request->validate(array_merge([
+            'message' => ['required', 'string', 'max:5000'],
+            'return_to' => ['nullable', 'string', Rule::in(['hub', 'leader_contact'])],
+        ], SolicitationAssignees::assignmentRules($churchId)));
+
+        SolicitationAssignees::assertSingleAssignee($valid);
+
+        $pastorId = $valid['assigned_pastor_id'] ?? null;
+        $volunteerId = $valid['assigned_volunteer_id'] ?? null;
+
+        $solicitation->update([
+            'message' => $valid['message'],
+            'preferred_date' => $valid['preferred_date'] ?? null,
+            'assigned_pastor_id' => $pastorId !== null ? (int) $pastorId : null,
+            'assigned_volunteer_id' => $volunteerId !== null ? (int) $volunteerId : null,
+        ]);
+
+        $returnTo = (string) ($valid['return_to'] ?? 'hub');
+
+        if ($returnTo === 'leader_contact') {
+            return redirect()->route('mobile.contact', [
+                'solicitacao' => $solicitation->id,
+                'painel' => 'detalhes',
+            ])->with('success', 'Pedido atualizado.');
+        }
+
+        return redirect()->route('mobile.solicitations.hub', [
+            'solicitacao' => $solicitation->id,
+            'painel' => 'detalhes',
+        ])->with('success', 'Pedido atualizado.');
     }
 
     public function sendMessage(Request $request, ChurchSolicitation $solicitation): RedirectResponse
@@ -203,6 +344,7 @@ class MobileChurchSolicitationController extends Controller
 
         $valid = $request->validate([
             'content' => ['required', 'string', 'max:5000'],
+            'return_to' => ['nullable', 'string', Rule::in(['hub', 'leader_contact'])],
         ]);
 
         ChurchSolicitationMessage::create([
@@ -216,6 +358,35 @@ class MobileChurchSolicitationController extends Controller
 
         app(SolicitationChatNotifier::class)->notifyStaffOfMemberMessage($solicitation, $request->user());
 
+        if (($valid['return_to'] ?? '') === 'hub') {
+            return redirect()->route('mobile.solicitations.hub', [
+                'solicitacao' => $solicitation->id,
+                'painel' => 'chat',
+            ]);
+        }
+
+        if (($valid['return_to'] ?? '') === 'leader_contact') {
+            return redirect()->route('mobile.contact', [
+                'solicitacao' => $solicitation->id,
+                'painel' => 'chat',
+            ]);
+        }
+
         return redirect()->route('mobile.solicitations.show', $solicitation);
+    }
+
+    public function finalizeLeaderChat(ChurchSolicitation $solicitation): RedirectResponse
+    {
+        $this->authorize('finalizeLeaderChat', $solicitation);
+
+        abort_unless($solicitation->type === 'leader_chat', 404);
+        abort_unless(in_array($solicitation->status, ['pending', 'in_progress'], true), 403);
+
+        $solicitation->update([
+            'status' => 'completed',
+            'completed_at' => now(),
+        ]);
+
+        return redirect()->route('mobile.contact', ['lista' => '1'])->with('success', 'Assunto finalizado. A conversa ficou encerrada para si e para o líder.');
     }
 }

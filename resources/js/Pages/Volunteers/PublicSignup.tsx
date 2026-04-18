@@ -308,9 +308,20 @@ export default function PublicSignup({ token, churchName, churchLogoUrl, ministr
                         </p>
                     </div>
 
+                    <p className="mb-6 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-center text-xs leading-relaxed text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-300">
+                        Só quer uma <span className="font-semibold text-zinc-800 dark:text-zinc-100">conta simples na app</span>{' '}
+                        (notícias, cultos, agendamentos)?{' '}
+                        <Link
+                            href={route('register')}
+                            className="font-semibold text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-400"
+                        >
+                            Criar conta aqui
+                        </Link>
+                    </p>
+
                     {noMinistries ? (
                         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-6 text-center text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
-                            Ainda não há departamentos disponíveis nesta igreja. Contacte a equipa.
+                            Ainda não há departamentos disponíveis nesta igreja. Contacte a equipe.
                         </div>
                     ) : (
                         <form

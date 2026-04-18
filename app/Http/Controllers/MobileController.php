@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AcervoItem;
 use App\Models\Church;
 use App\Models\ChurchService;
+use App\Models\ChurchSolicitation;
 use App\Models\Culto;
 use App\Models\Event;
 use App\Models\Member;
@@ -13,9 +14,12 @@ use App\Models\News;
 use App\Models\Pastor;
 use App\Models\ScheduleCheckinDate;
 use App\Models\UserInboxNotification;
+use App\Models\Volunteer;
 use App\Services\ScheduleAssignmentPresenter;
+use App\Services\SolicitationChatNotifier;
 use App\Services\VolunteerScheduleOverview;
 use App\Support\NotificationFeed;
+use App\Support\SolicitationAssignees;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -118,6 +122,7 @@ class MobileController extends Controller
 
         return Inertia::render('Mobile/Culto', [
             'cultos' => $cultos,
+            'showPostRegistrationBanner' => $request->boolean('reg_ok') && $request->user() !== null,
         ]);
     }
 
@@ -441,25 +446,87 @@ class MobileController extends Controller
         ]);
     }
 
-    public function contact(): Response
+    public function leaderContact(Request $request): Response
     {
-        $church = $this->currentChurch();
-        $contact = null;
-        if ($church) {
-            $contact = [
-                'name' => $church->name,
-                'email' => $church->email,
-                'phone' => $church->phone,
-                'whatsapp' => $church->whatsapp,
-                'address' => $church->address,
-                'city' => $church->city,
-                'state' => $church->state,
-            ];
-        }
+        $user = $request->user();
+        abort_unless($user, 401);
+        $churchId = Church::resolveWorkingId($request);
 
-        return Inertia::render('Mobile/Contact', [
-            'contact' => $contact,
+        $contactUrl = route('mobile.contact');
+        $myLeaderChats = ChurchSolicitation::query()
+            ->where('user_id', $user->id)
+            ->where('type', 'leader_chat')
+            ->with(['assignedPastor:id,name', 'assignedVolunteer.member:id,name'])
+            ->orderByDesc('updated_at')
+            ->limit(40)
+            ->get()
+            ->map(function (ChurchSolicitation $s) use ($contactUrl, $churchId) {
+                $payload = MobileChurchSolicitationController::memberConversationPayload(
+                    $s,
+                    route('mobile.solicitations.messages.store', $s),
+                    $contactUrl,
+                    $contactUrl,
+                    route('mobile.solicitations.leader-chat.finalize', $s),
+                );
+
+                return array_merge($payload, [
+                    'memberUpdateUrl' => route('mobile.solicitations.update', $s),
+                    'memberCanEditDetails' => $s->status === 'pending',
+                    'memberPastorOptions' => SolicitationAssignees::pastorOptions($churchId),
+                ]);
+            })
+            ->values()
+            ->all();
+
+        return Inertia::render('Mobile/LiderContact', [
+            'leaderOptions' => SolicitationAssignees::leaderContactVolunteerOptions($churchId),
+            'storeUrl' => route('mobile.contact.store'),
+            'mineUrl' => route('mobile.solicitations.hub', ['lista' => '1']),
+            'leaderInboxUrl' => route('mobile.leader-solicitations.index'),
+            'locationUrl' => route('mobile.location'),
+            'myLeaderChats' => $myLeaderChats,
         ]);
+    }
+
+    public function leaderContactStore(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user, 401);
+        $churchId = Church::resolveWorkingId($request);
+        abort_unless($churchId, 404, 'Nenhuma igreja ativa.');
+
+        $valid = $request->validate([
+            'assigned_volunteer_id' => ['required', 'integer'],
+            'subject' => ['required', 'string', 'max:150'],
+            'message' => ['required', 'string', 'max:5000'],
+        ]);
+
+        $volunteer = Volunteer::query()
+            ->whereKey((int) $valid['assigned_volunteer_id'])
+            ->where('active', true)
+            ->whereNotNull('user_id')
+            ->whereHas('ministries', fn ($q) => $q->where('church_id', $churchId))
+            ->firstOrFail();
+
+        $solicitation = ChurchSolicitation::create([
+            'user_id' => $user->id,
+            'member_id' => $user->member_id ? (int) $user->member_id : null,
+            'type' => 'leader_chat',
+            'status' => 'pending',
+            'subject' => $valid['subject'],
+            'message' => $valid['message'],
+            'preferred_date' => null,
+            'assigned_pastor_id' => null,
+            'assigned_volunteer_id' => (int) $volunteer->id,
+            'meta' => null,
+        ]);
+
+        app(SolicitationChatNotifier::class)->notifyAssignedLeaderOfNewRequest($solicitation);
+
+        return redirect()->route('mobile.contact', [
+            'solicitacao' => $solicitation->id,
+            'painel' => 'chat',
+        ])->with('success', 'Conversa iniciada.');
     }
 
     public function offerings(): Response
@@ -549,6 +616,27 @@ class MobileController extends Controller
             'pastors' => $rows,
             'churchName' => $church?->name,
         ]);
+    }
+
+    public function pastorMyAvailability(Request $request): Response|\Illuminate\Http\RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user, 401);
+        $churchId = Church::resolveWorkingId($request);
+        abort_unless($churchId, 404, 'Nenhuma igreja ativa.');
+
+        $pastor = Pastor::query()
+            ->where('church_id', $churchId)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if ($pastor === null) {
+            return Inertia::render('Mobile/PastorMyAvailability', [
+                'linked' => false,
+            ]);
+        }
+
+        return redirect()->route('pastoral-agenda.index');
     }
 
     public function settings(Request $request): Response

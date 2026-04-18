@@ -96,7 +96,7 @@ export default function VolunteerSchedule({
                     <div>
                         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Minha escala</h1>
                         <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
-                            Os seus serviços como voluntário e quem está na equipa consigo.
+                            Os seus serviços como voluntário e quem está na equipe consigo.
                         </p>
                     </div>
                     {canViewSchedule && memberName && (
@@ -206,7 +206,7 @@ export default function VolunteerSchedule({
                                     </div>
                                     <div className="px-4 py-2 border-b border-zinc-100 dark:border-zinc-800">
                                         <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                                            Equipa neste dia
+                                            Equipe neste dia
                                         </p>
                                     </div>
                                     <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">

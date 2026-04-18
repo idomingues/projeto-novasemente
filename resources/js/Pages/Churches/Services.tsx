@@ -7,6 +7,7 @@ import Card from '@/Components/Card';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
+import SelectInput from '@/Components/SelectInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
@@ -161,16 +162,16 @@ export default function ChurchServicesIndex({ church, services }: Props) {
                     <div className="space-y-4">
                         <div>
                             <InputLabel htmlFor="day_of_week" value="Dia da semana" />
-                            <select
+                            <SelectInput
                                 id="day_of_week"
+                                className="mt-1"
                                 value={data.day_of_week}
                                 onChange={(e) => setData('day_of_week', Number(e.target.value))}
-                                className="mt-1 block w-full rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"
                             >
                                 {DAYS.map((d) => (
                                     <option key={d.value} value={d.value}>{d.label}</option>
                                 ))}
-                            </select>
+                            </SelectInput>
                         </div>
                         <div>
                             <InputLabel htmlFor="name" value="Nome (ex: Culto de Celebração)" />

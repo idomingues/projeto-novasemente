@@ -6,7 +6,10 @@ import FlashMessages from '@/Components/FlashMessages';
 import MobileBottomNav from '@/Components/MobileBottomNav';
 import { adminSidebarRoutePermissions } from '@/constants/adminSidebarPermissions';
 
-export default function AdminLayout({ children }: PropsWithChildren) {
+export default function AdminLayout({
+    children,
+    wideLayout = false,
+}: PropsWithChildren<{ wideLayout?: boolean }>) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const isAuthenticated = !!(usePage().props as { auth?: { user?: unknown } }).auth?.user;
 
@@ -24,7 +27,9 @@ export default function AdminLayout({ children }: PropsWithChildren) {
                 <Topbar onMenuClick={() => setMobileMenuOpen(true)} hasSidebar={isAuthenticated} />
 
                 <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain pt-20 md:pt-24 px-4 sm:px-6 md:px-8 pb-24 [scrollbar-gutter:stable]">
-                    <div className="max-w-7xl xl:max-w-[90rem] mx-auto w-full min-w-0 pt-6">
+                    <div
+                        className={`mx-auto w-full min-w-0 pt-6 ${wideLayout ? 'max-w-none' : 'max-w-7xl xl:max-w-[90rem]'}`}
+                    >
                         {children}
                     </div>
                 </main>

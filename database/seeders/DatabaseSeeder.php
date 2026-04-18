@@ -32,11 +32,12 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        if (!$user->wasRecentlyCreated) {
+        if (! $user->wasRecentlyCreated) {
             $user->update(['password' => 'admin123', 'name' => 'Admin']);
         }
 
         $user->syncRoles(['admin', 'super_admin']);
+        $user->ensureVolunteerProfile();
 
         // Garantir que a cache de permissões (Spatie) seja limpa para o menu refletir tudo
         try {

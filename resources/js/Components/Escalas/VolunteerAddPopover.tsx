@@ -111,7 +111,7 @@ export default function VolunteerAddPopover({
                                 <select
                                     value={selectedRoleId}
                                     onChange={(e) => setSelectedRoleId(e.target.value)}
-                                    className="w-full rounded-lg border border-zinc-200 bg-zinc-50 py-2 px-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-white"
+                                    className="h-11 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900/20 dark:border-zinc-600 dark:bg-zinc-900 dark:text-white dark:focus:border-white dark:focus:ring-white/20"
                                 >
                                     <option value="">Sem função</option>
                                     {scheduleRoles.map((r) => (

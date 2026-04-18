@@ -13,6 +13,7 @@ class ChurchSolicitation extends Model
         'member_id',
         'type',
         'status',
+        'subject',
         'message',
         'preferred_date',
         'assigned_pastor_id',

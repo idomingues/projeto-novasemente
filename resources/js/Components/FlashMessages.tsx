@@ -11,8 +11,8 @@ export default function FlashMessages() {
     const { flash } = usePage<PageProps & { flash?: FlashProps }>().props;
     const [visible, setVisible] = useState(true);
 
-    const success = flash?.success ?? null;
-    const error = flash?.error ?? null;
+    const success = typeof flash?.success === 'string' && flash.success.length > 0 ? flash.success : null;
+    const error = typeof flash?.error === 'string' && flash.error.length > 0 ? flash.error : null;
 
     useEffect(() => {
         if (success || error) {

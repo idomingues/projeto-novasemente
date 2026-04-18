@@ -5,8 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\AppSupportMessage;
 use App\Models\AppSupportTicket;
 use App\Models\User;
+use App\Services\SupportTicketChatNotifier;
+use App\Support\InboxNotificationResolver;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -19,6 +23,7 @@ class MobileSupportController extends Controller
             'suggestion' => 'Sugestão',
             'praise' => 'Elogio',
             'development' => 'A desenvolver',
+            'pastoral' => 'Agendamento pastoral',
             default => 'Suporte do app',
         };
     }
@@ -30,6 +35,24 @@ class MobileSupportController extends Controller
         }
 
         return $user->hasRole('admin') || $user->hasRole('super_admin');
+    }
+
+    private function canReplyAsSupportStaff(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        return $this->isAdmin($user) || $user->can('support.manage');
+    }
+
+    private function canReplyAsPastoralStaff(?User $user, AppSupportTicket $ticket): bool
+    {
+        if (! $user || $ticket->type !== 'pastoral' || ! $ticket->pastoral_appointment_id) {
+            return false;
+        }
+
+        return $user->can('pastoral_appointments.manage');
     }
 
     public function index(Request $request): Response
@@ -92,6 +115,8 @@ class MobileSupportController extends Controller
             'status' => 'open',
         ]);
 
+        app(SupportTicketChatNotifier::class)->notifyStaffOfNewTicket($ticket, $user);
+
         return redirect()->route('mobile.support.ticket', ['token' => $ticket->public_token], absolute: true);
     }
 
@@ -99,6 +124,7 @@ class MobileSupportController extends Controller
     {
         $user = $request->user();
         $isAdmin = $this->isAdmin($user);
+        InboxNotificationResolver::markReadFromQuery($request);
 
         $ticket = AppSupportTicket::query()->where('public_token', $token)->firstOrFail();
 
@@ -108,23 +134,16 @@ class MobileSupportController extends Controller
 
         $isOwner = $user && $ticket->user_id && (int) $ticket->user_id === (int) $user->id;
         $hasOwner = ! empty($ticket->user_id);
-        $canChat = (bool) $hasOwner && (bool) ($isAdmin || $isOwner) && $ticket->status === 'open';
+        $isSupportStaff = $this->canReplyAsSupportStaff($user);
+        $isPastoralStaff = $this->canReplyAsPastoralStaff($user, $ticket);
+        $canAccess = $isAdmin || $isOwner || $isSupportStaff || $isPastoralStaff;
+        abort_unless($canAccess, 403);
 
-        $messages = AppSupportMessage::query()
-            ->where('ticket_id', $ticket->id)
-            ->with('senderUser:id,name,email')
-            ->orderBy('created_at')
-            ->get()
-            ->map(fn (AppSupportMessage $m) => [
-                'id' => $m->id,
-                'senderType' => $m->sender_type,
-                'senderUserId' => $m->sender_user_id,
-                'senderName' => $m->senderUser?->name,
-                'content' => $m->content,
-                'createdAt' => $m->created_at?->toIso8601String(),
-            ])
-            ->values()
-            ->all();
+        $canChat = (bool) $hasOwner
+            && $ticket->status === 'open'
+            && ($isAdmin || $isOwner || $isSupportStaff || $isPastoralStaff);
+
+        $messages = $this->ticketMessagesPayload($ticket);
 
         return Inertia::render('Mobile/SupportTicket', [
             'ticket' => [
@@ -141,8 +160,76 @@ class MobileSupportController extends Controller
             'canChat' => $canChat,
             'isAdmin' => $isAdmin,
             'isAuthenticated' => (bool) $user,
-            'showMessages' => (bool) $hasOwner && (bool) ($isAdmin || $isOwner),
+            'showMessages' => (bool) $hasOwner && (bool) ($isAdmin || $isOwner || $isSupportStaff || $isPastoralStaff),
         ]);
+    }
+
+    /**
+     * Mensagens do ticket (JSON) para painéis embutidos (ex.: modal no hub de agendamentos pastor).
+     */
+    public function ticketMessages(Request $request, string $token): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user, 401);
+        $isAdmin = $this->isAdmin($user);
+
+        $ticket = AppSupportTicket::query()->where('public_token', $token)->firstOrFail();
+
+        if ($ticket->type === 'development' && ! $isAdmin) {
+            abort(403);
+        }
+
+        $isOwner = $ticket->user_id && (int) $ticket->user_id === (int) $user->id;
+        $isSupportStaff = $this->canReplyAsSupportStaff($user);
+        $isPastoralStaff = $this->canReplyAsPastoralStaff($user, $ticket);
+        $canAccess = $isAdmin || $isOwner || $isSupportStaff || $isPastoralStaff;
+        abort_unless($canAccess, 403);
+
+        $hasOwner = ! empty($ticket->user_id);
+        $canChat = (bool) $hasOwner
+            && $ticket->status === 'open'
+            && ($isAdmin || $isOwner || $isSupportStaff || $isPastoralStaff);
+        $showMessages = (bool) $hasOwner && (bool) ($isAdmin || $isOwner || $isSupportStaff || $isPastoralStaff);
+
+        return response()->json([
+            'ticket' => [
+                'publicToken' => $ticket->public_token,
+                'type' => $ticket->type,
+                'typeLabel' => $this->typeLabel($ticket->type),
+                'status' => $ticket->status,
+                'message' => $ticket->message,
+                'solutionText' => $ticket->solution_text,
+                'createdAt' => $ticket->created_at?->toIso8601String(),
+                'closedAt' => $ticket->closed_at?->toIso8601String(),
+                'pastoralAppointmentId' => $ticket->pastoral_appointment_id,
+            ],
+            'messages' => $this->ticketMessagesPayload($ticket),
+            'canChat' => $canChat,
+            'showMessages' => $showMessages,
+            'isAdmin' => $isAdmin,
+        ]);
+    }
+
+    /**
+     * @return list<array{id: int, senderType: string, senderUserId: int|null, senderName: string|null, content: string, createdAt: string|null}>
+     */
+    private function ticketMessagesPayload(AppSupportTicket $ticket): array
+    {
+        return AppSupportMessage::query()
+            ->where('ticket_id', $ticket->id)
+            ->with('senderUser:id,name,email')
+            ->orderBy('created_at')
+            ->get()
+            ->map(fn (AppSupportMessage $m) => [
+                'id' => $m->id,
+                'senderType' => $m->sender_type,
+                'senderUserId' => $m->sender_user_id,
+                'senderName' => $m->senderUser?->name,
+                'content' => $m->content,
+                'createdAt' => $m->created_at?->toIso8601String(),
+            ])
+            ->values()
+            ->all();
     }
 
     public function sendMessage(Request $request, string $token): Response
@@ -154,20 +241,40 @@ class MobileSupportController extends Controller
 
         $ticket = AppSupportTicket::query()->where('public_token', $token)->firstOrFail();
         $isOwner = (int) $ticket->user_id === (int) $user->id;
-        abort_unless($isAdmin || $isOwner, 403);
+        $isSupportStaff = $this->canReplyAsSupportStaff($user);
+        $isPastoralStaff = $this->canReplyAsPastoralStaff($user, $ticket);
+        abort_unless($isAdmin || $isOwner || $isSupportStaff || $isPastoralStaff, 403);
         abort_unless($ticket->status === 'open', 400);
         abort_unless(! empty($ticket->user_id), 400, 'Chat indisponível para chamados sem usuário logado.');
 
         $valid = $request->validate([
             'content' => ['required', 'string', 'max:5000'],
+            'return_to' => ['nullable', 'string', Rule::in(['pastoral_hub'])],
         ]);
+
+        $senderStaff = $isAdmin || $isSupportStaff || $isPastoralStaff;
 
         AppSupportMessage::create([
             'ticket_id' => $ticket->id,
-            'sender_type' => $isAdmin ? 'admin' : 'user',
+            'sender_type' => $senderStaff ? 'admin' : 'user',
             'sender_user_id' => $user->id,
             'content' => $valid['content'],
         ]);
+
+        $notifier = app(SupportTicketChatNotifier::class);
+        if ($senderStaff) {
+            $notifier->notifyOwnerOfStaffMessage($ticket, $user);
+        } else {
+            $notifier->notifyStaffOfUserMessage($ticket, $user);
+        }
+
+        $returnTo = $valid['return_to'] ?? null;
+        if ($returnTo === 'pastoral_hub' && $ticket->pastoral_appointment_id) {
+            return redirect()->route('mobile.pastoral-appointments.request', [
+                'appointment' => $ticket->pastoral_appointment_id,
+                'painel' => 'chat',
+            ]);
+        }
 
         return redirect()->route('mobile.support.ticket', ['token' => $ticket->public_token]);
     }
@@ -180,7 +287,9 @@ class MobileSupportController extends Controller
 
         $ticket = AppSupportTicket::query()->where('public_token', $token)->firstOrFail();
         $isOwner = (int) $ticket->user_id === (int) $user->id;
-        abort_unless($isAdmin || $isOwner, 403);
+        $isSupportStaff = $this->canReplyAsSupportStaff($user);
+        $isPastoralStaff = $this->canReplyAsPastoralStaff($user, $ticket);
+        abort_unless($isAdmin || $isOwner || $isSupportStaff || $isPastoralStaff, 403);
         abort_unless($ticket->status === 'open', 400);
 
         $valid = $request->validate([
@@ -188,8 +297,9 @@ class MobileSupportController extends Controller
         ]);
 
         $solution = $valid['solution_text'] ?? null;
-        if ($isAdmin) {
-            abort_unless(is_string($solution) && trim($solution) !== '', 422, 'solution_text é obrigatório para encerrar como administrador.');
+        $staffActor = $isAdmin || $isSupportStaff || $isPastoralStaff;
+        if ($staffActor && ! $isOwner) {
+            abort_unless(is_string($solution) && trim($solution) !== '', 422, 'Indique um resumo ao encerrar o chamado.');
         }
 
         $ticket->update([

@@ -26,6 +26,25 @@ class RegistrationTest extends TestCase
         ]);
 
         $this->assertAuthenticated();
-        $response->assertRedirect(route('dashboard', absolute: false));
+        $response->assertRedirect(route('registration.welcome', absolute: false));
+        $response->assertSessionHas('registration_success', true);
+
+        $this->get(route('registration.welcome', absolute: false))
+            ->assertOk();
+    }
+
+    public function test_registration_welcome_redirects_guests_to_login(): void
+    {
+        $this->get(route('registration.welcome', absolute: false))
+            ->assertRedirect(route('login', absolute: false));
+    }
+
+    public function test_registration_welcome_without_flash_redirects_to_culto(): void
+    {
+        $user = \App\Models\User::factory()->create();
+
+        $this->actingAs($user)
+            ->get(route('registration.welcome', absolute: false))
+            ->assertRedirect(route('mobile.culto', absolute: false));
     }
 }

@@ -103,7 +103,7 @@ export default function SupportIndex({ tickets, devItemStoreUrl, supportIndexUrl
                     <div>
                         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Suporte do app</h1>
                         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                            Chamados da app e itens internos que a equipa vai desenvolver.
+                            Chamados da app e itens internos que a equipe vai desenvolver.
                         </p>
                     </div>
                     {canCreateDevItem && (
@@ -179,7 +179,7 @@ export default function SupportIndex({ tickets, devItemStoreUrl, supportIndexUrl
                         {modalTab === 'detalhes' && createOpen && !modalDetail && (
                             <form onSubmit={submitDevItem} className="space-y-4">
                                 <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                                    Descreva a funcionalidade ou correção a planear. Depois de criar, pode conversar com a equipa na
+                                    Descreva a funcionalidade ou correção a planear. Depois de criar, pode conversar com a equipe na
                                     aba Chat (quando aplicável).
                                 </p>
                                 <div>

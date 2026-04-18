@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\Request;
 
@@ -25,6 +26,7 @@ class Church extends Model
         'pix_key',
         'donation_url',
         'youtube_playlist_url',
+        'solicitations_handler_volunteer_id',
     ];
 
     protected $casts = [
@@ -47,6 +49,11 @@ class Church extends Model
     public function pastors(): HasMany
     {
         return $this->hasMany(Pastor::class)->orderBy('sort_order')->orderBy('name');
+    }
+
+    public function solicitationsHandlerVolunteer(): BelongsTo
+    {
+        return $this->belongsTo(Volunteer::class, 'solicitations_handler_volunteer_id');
     }
 
     /**

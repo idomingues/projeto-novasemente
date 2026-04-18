@@ -28,6 +28,7 @@ interface Volunteer {
     phone: string | null;
     role: string | null;
     active: boolean;
+    app_access_only?: boolean;
     ministries: { id: number; name: string }[];
     user?: { id: number; email: string | null; roles?: string[]; ministry_ids?: number[] } | null;
 }
@@ -144,7 +145,7 @@ export default function Index({
                         setSubmitToast({ kind: 'error', message: flash.error });
                         return;
                     }
-                    setSubmitToast({ kind: 'success', message: flash?.success ?? 'Alterações guardadas com sucesso.' });
+                    setSubmitToast({ kind: 'success', message: flash?.success ?? 'Alterações salvas com sucesso.' });
                     if (!flash?.error) {
                         closeModal();
                     }
@@ -229,6 +230,30 @@ export default function Index({
 
     useEffect(() => {
         setPhotoPreviewUrl(null);
+    }, []);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+        const params = new URLSearchParams(window.location.search);
+        const modal = params.get('modal');
+        let changed = false;
+        if (modal === 'create') {
+            openCreateModal();
+            params.delete('modal');
+            changed = true;
+        } else if (modal === 'public' && publicVolunteerSignupUrl) {
+            setPublicInviteModalOpen(true);
+            params.delete('modal');
+            changed = true;
+        }
+        if (changed) {
+            const q = params.toString();
+            window.history.replaceState({}, '', `${window.location.pathname}${q ? `?${q}` : ''}`);
+        }
+        // Intencionalmente só no primeiro render (deep-link desde o quadro de voluntários).
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     return (
@@ -316,13 +341,23 @@ export default function Index({
                                             <div className="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-sm font-semibold text-zinc-700 dark:text-zinc-300 flex-shrink-0 overflow-hidden">
                                                 {initial}
                                             </div>
-                                            <Link
-                                                href={route('volunteers.show', v.id)}
-                                                className="font-medium text-zinc-900 dark:text-white hover:underline focus:outline-none focus:ring-2 focus:ring-zinc-400 rounded"
-                                                title="Ver ficha completa"
-                                            >
-                                                {displayName}
-                                            </Link>
+                                            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                                                <Link
+                                                    href={route('volunteers.show', v.id)}
+                                                    className="font-medium text-zinc-900 dark:text-white hover:underline focus:outline-none focus:ring-2 focus:ring-zinc-400 rounded"
+                                                    title="Ver ficha completa"
+                                                >
+                                                    {displayName}
+                                                </Link>
+                                                {v.app_access_only ? (
+                                                    <span
+                                                        className="inline-flex shrink-0 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-800 dark:bg-violet-950/60 dark:text-violet-200"
+                                                        title="Conta na app sem registo de serviço em ministérios"
+                                                    >
+                                                        Membro (app)
+                                                    </span>
+                                                ) : null}
+                                            </div>
                                         </div>
                                     </td>
                                     <td className="px-4 md:px-8 py-3 md:py-4">

@@ -186,14 +186,14 @@ export default function Login({
                             </Link>
                         </div>
 
-                        <p className="mt-6 text-center text-sm text-zinc-600">
+                        <div className="mt-6">
                             <Link
-                                href={route('volunteers.public-signup.page')}
-                                className="font-semibold text-zinc-900 underline-offset-4 hover:underline"
+                                href={route('register')}
+                                className="flex w-full items-center justify-center rounded-xl border border-zinc-200 bg-zinc-50 py-3 text-center text-sm font-semibold text-zinc-800 transition-colors hover:bg-zinc-100"
                             >
-                                Cadastro Voluntário
+                                Criar conta para usar o app completo
                             </Link>
-                        </p>
+                        </div>
                     </div>
                 </div>
             </div>

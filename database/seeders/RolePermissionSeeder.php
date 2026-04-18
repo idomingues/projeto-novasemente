@@ -21,6 +21,7 @@ class RolePermissionSeeder extends Seeder
             'members.manage',
             'volunteers.view',
             'volunteers.manage',
+            'volunteers.ministry_operate',
             'departments.view',
             'departments.manage',
             'rooms.view',
@@ -48,6 +49,7 @@ class RolePermissionSeeder extends Seeder
             'solicitations.manage',
             'pastors.view',
             'pastors.manage',
+            'pastoral_appointments.manage',
             'roles.manage',
         ];
 
@@ -64,6 +66,7 @@ class RolePermissionSeeder extends Seeder
                 'members.manage',
                 'volunteers.view',
                 'volunteers.manage',
+                'volunteers.ministry_operate',
                 'departments.view',
                 'departments.manage',
                 'rooms.view',
@@ -91,6 +94,7 @@ class RolePermissionSeeder extends Seeder
                 'solicitations.manage',
                 'pastors.view',
                 'pastors.manage',
+                'pastoral_appointments.manage',
                 'roles.manage',
             ],
             'secretaria' => [
@@ -98,6 +102,7 @@ class RolePermissionSeeder extends Seeder
                 'members.manage',
                 'volunteers.view',
                 'volunteers.manage',
+                'volunteers.ministry_operate',
                 'departments.view',
                 'departments.manage',
                 'rooms.view',
@@ -122,6 +127,7 @@ class RolePermissionSeeder extends Seeder
                 'solicitations.manage',
                 'pastors.view',
                 'pastors.manage',
+                'pastoral_appointments.manage',
             ],
             'pastor' => [
                 'members.view',
@@ -144,15 +150,19 @@ class RolePermissionSeeder extends Seeder
                 'solicitations.manage',
                 'pastors.view',
                 'pastors.manage',
+                'pastoral_appointments.manage',
             ],
             'financeiro' => [
                 'finance.view',
                 'finance.manage',
                 'events.view',
             ],
+            'membro' => [
+                // Conta de membro com app: sem permissões de painel; rotas móveis usam `auth` onde necessário.
+            ],
             'lider_ministerio' => [
                 'members.view',
-                'volunteers.view',
+                'volunteers.ministry_operate',
                 'departments.view',
                 'rooms.view',
                 'rooms.schedule',
@@ -181,6 +191,7 @@ class RolePermissionSeeder extends Seeder
 
         if ($adminUser) {
             $adminUser->syncRoles(['admin', 'super_admin']);
+            $adminUser->ensureVolunteerProfile();
         }
     }
 }

@@ -10,6 +10,8 @@ use App\Models\Ministry;
 use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerSelfSignupToken;
+use App\Services\VolunteerMinistryRosterNotifier;
+use App\Support\VolunteerPipelineBootstrap;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -28,7 +30,19 @@ class VolunteerController extends Controller
         $ministryIds = $request->input('ministry_ids', []);
 
         if (Schema::hasTable('ministry_volunteer')) {
+            $previousIds = $volunteer->exists
+                ? $volunteer->ministries()->pluck('ministries.id')->map(fn ($id) => (int) $id)->values()->all()
+                : [];
             $volunteer->ministries()->sync($ministryIds);
+            $newIds = collect(is_array($ministryIds) ? $ministryIds : [])
+                ->map(fn ($id) => (int) $id)
+                ->filter(fn ($id) => $id > 0)
+                ->values()
+                ->all();
+            $added = array_values(array_diff($newIds, $previousIds));
+            if ($added !== []) {
+                app(VolunteerMinistryRosterNotifier::class)->notifyLeadersOfNewAttachments($volunteer->fresh(), $added);
+            }
 
             return;
         }
@@ -97,6 +111,7 @@ class VolunteerController extends Controller
                 }
                 $user->save();
                 $this->applyAppProfile($user, $request);
+                $user->ensureVolunteerProfile();
             }
 
             return;
@@ -119,6 +134,7 @@ class VolunteerController extends Controller
             }
             $existingUser->save();
             $this->applyAppProfile($existingUser, $request);
+            $existingUser->ensureVolunteerProfile();
 
             return;
         }
@@ -143,6 +159,7 @@ class VolunteerController extends Controller
         $this->applyAppProfile($user, $request);
         $this->releaseVolunteerUserIdForOtherVolunteers((int) $user->id, $volunteer);
         $volunteer->forceFill(['user_id' => $user->id])->save();
+        $user->ensureVolunteerProfile();
     }
 
     private function resolveOrCreateAppUserForInvite(Volunteer $volunteer): ?User
@@ -155,6 +172,7 @@ class VolunteerController extends Controller
         if ($existing) {
             $this->releaseVolunteerUserIdForOtherVolunteers((int) $existing->id, $volunteer);
             $volunteer->forceFill(['user_id' => $existing->id])->save();
+            $existing->ensureVolunteerProfile();
 
             return $existing;
         }
@@ -174,6 +192,7 @@ class VolunteerController extends Controller
 
         $this->releaseVolunteerUserIdForOtherVolunteers((int) $user->id, $volunteer);
         $volunteer->forceFill(['user_id' => $user->id])->save();
+        $user->ensureVolunteerProfile();
 
         return $user;
     }
@@ -212,6 +231,7 @@ class VolunteerController extends Controller
                     'phone' => $v->phone,
                     'role' => $v->role,
                     'active' => (bool) $v->active,
+                    'app_access_only' => (bool) ($v->app_access_only ?? false),
                     'ministries' => $v->ministries->map(fn (Ministry $m) => [
                         'id' => $m->id,
                         'name' => $m->name,
@@ -306,6 +326,7 @@ class VolunteerController extends Controller
             'lgpd_data_consent' => $v->lgpd_data_consent,
             'role' => $v->role,
             'active' => (bool) $v->active,
+            'app_access_only' => (bool) ($v->app_access_only ?? false),
             'created_at' => $v->created_at?->toIso8601String(),
             'updated_at' => $v->updated_at?->toIso8601String(),
             'ministries' => $v->ministries->map(fn (Ministry $m) => [
@@ -330,6 +351,11 @@ class VolunteerController extends Controller
 
         $this->syncVolunteerAppUser($request, $volunteer);
 
+        $churchId = $this->currentChurchId($request);
+        if ($churchId !== null) {
+            VolunteerPipelineBootstrap::ensureRowForVolunteerInChurch($volunteer->fresh(), $churchId);
+        }
+
         $redirect = redirect()->route('volunteers.index')->with('success', 'Voluntário cadastrado com sucesso!');
 
         return $redirect;
@@ -342,6 +368,11 @@ class VolunteerController extends Controller
         $this->syncVolunteerMinistries($request, $volunteer);
 
         $this->syncVolunteerAppUser($request, $volunteer->fresh());
+
+        $churchId = $this->currentChurchId($request);
+        if ($churchId !== null) {
+            VolunteerPipelineBootstrap::ensureRowForVolunteerInChurch($volunteer->fresh(), $churchId);
+        }
 
         $redirect = redirect()->route('volunteers.index')->with('success', 'Voluntário atualizado com sucesso!');
 

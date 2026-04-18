@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\ChurchSolicitation;
 use App\Models\User;
+use App\Models\Volunteer;
 
 class ChurchSolicitationPolicy
 {
@@ -16,6 +17,19 @@ class ChurchSolicitationPolicy
         return $user->hasAnyPermission(['solicitations.view', 'solicitations.manage']);
     }
 
+    private function isAssignedLeader(User $user, ChurchSolicitation $solicitation): bool
+    {
+        if ($solicitation->type !== 'leader_chat' || ! $solicitation->assigned_volunteer_id) {
+            return false;
+        }
+
+        $leaderUserId = Volunteer::query()
+            ->whereKey($solicitation->assigned_volunteer_id)
+            ->value('user_id');
+
+        return $leaderUserId !== null && (int) $leaderUserId === (int) $user->id;
+    }
+
     public function viewAny(User $user): bool
     {
         return $this->isStaff($user);
@@ -24,6 +38,10 @@ class ChurchSolicitationPolicy
     public function view(User $user, ChurchSolicitation $solicitation): bool
     {
         if ((int) $solicitation->user_id === (int) $user->id) {
+            return true;
+        }
+
+        if ($this->isAssignedLeader($user, $solicitation)) {
             return true;
         }
 
@@ -44,6 +62,16 @@ class ChurchSolicitationPolicy
         return $user->hasPermissionTo('solicitations.manage');
     }
 
+    /** Membro edita o próprio texto/datas enquanto o pedido está pendente. */
+    public function updateAsMember(User $user, ChurchSolicitation $solicitation): bool
+    {
+        if ((int) $solicitation->user_id !== (int) $user->id) {
+            return false;
+        }
+
+        return $solicitation->status === 'pending';
+    }
+
     public function sendMessageAsMember(User $user, ChurchSolicitation $solicitation): bool
     {
         if ((int) $solicitation->user_id !== (int) $user->id) {
@@ -55,10 +83,28 @@ class ChurchSolicitationPolicy
 
     public function sendMessageAsStaff(User $user, ChurchSolicitation $solicitation): bool
     {
-        if (! $this->isStaff($user)) {
+        if (! $solicitation->allowsChat()) {
             return false;
         }
 
-        return $solicitation->allowsChat();
+        return $this->isStaff($user) || $this->isAssignedLeader($user, $solicitation);
+    }
+
+    /** Membro ou líder atribuído encerra o assunto (conversa com líder). */
+    public function finalizeLeaderChat(User $user, ChurchSolicitation $solicitation): bool
+    {
+        if ($solicitation->type !== 'leader_chat') {
+            return false;
+        }
+
+        if (! in_array($solicitation->status, ['pending', 'in_progress'], true)) {
+            return false;
+        }
+
+        if ((int) $solicitation->user_id === (int) $user->id) {
+            return true;
+        }
+
+        return $this->isAssignedLeader($user, $solicitation);
     }
 }

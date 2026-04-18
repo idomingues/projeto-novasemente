@@ -28,7 +28,8 @@
         <!-- Scripts -->
         @routes
         @viteReactRefresh
-        @vite(['resources/css/app.css', 'resources/js/app.tsx', "resources/js/Pages/{$page['component']}.tsx"])
+        {{-- Só as entradas definidas em vite.config.js; o chunk da página vem do import.meta.glob em app.tsx --}}
+        @vite(['resources/css/app.css', 'resources/js/app.tsx'])
         @inertiaHead
     </head>
     <body>

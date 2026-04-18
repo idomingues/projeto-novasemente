@@ -28,6 +28,8 @@ export type SupportTicketShape = {
     closedAt: string | null;
     ownerLabel: string;
     isGuest: boolean;
+    /** Agendamento pastoral sem conta na app: equipe pode usar o chat no backoffice. */
+    allowStaffInternalChat?: boolean;
 };
 
 export type SupportTicketDetailPanelProps = {
@@ -62,6 +64,8 @@ export default function SupportTicketDetailPanel({
 }: SupportTicketDetailPanelProps) {
     const inertiaScrollOpts = { preserveScroll: true };
     const isOpen = ticket.status === 'open';
+    const internalCoordination = ticket.allowStaffInternalChat === true;
+    const guestNoAppUser = ticket.isGuest && !internalCoordination;
     const isModal = variant === 'modal';
     const showDetails = sectionProp === 'full' || sectionProp === 'details';
     const showChat = sectionProp === 'full' || sectionProp === 'chat';
@@ -205,7 +209,7 @@ export default function SupportTicketDetailPanel({
             </div>
             )}
 
-            {showChat && messages.length > 0 && (ticket.isGuest || !isOpen) && (
+            {showChat && messages.length > 0 && (guestNoAppUser || !isOpen) && (
                 <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
                     <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-start gap-3 bg-zinc-50/80 dark:bg-zinc-800/40">
                         <ChatBubbleLeftRightIcon className="w-5 h-5 shrink-0 text-zinc-500 dark:text-zinc-400 mt-0.5" aria-hidden />
@@ -250,14 +254,18 @@ export default function SupportTicketDetailPanel({
                 </div>
             )}
 
-            {showChat && isOpen && !ticket.isGuest && (
+            {showChat && isOpen && (!ticket.isGuest || internalCoordination) && (
                 <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden shadow-sm">
                     <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-start gap-3 bg-zinc-50/80 dark:bg-zinc-800/40">
                         <ChatBubbleLeftRightIcon className="w-6 h-6 shrink-0 text-zinc-600 dark:text-zinc-300" aria-hidden />
                         <div className="min-w-0">
-                            <h2 className="text-base font-semibold text-zinc-900 dark:text-white">Conversa com o utilizador</h2>
+                            <h2 className="text-base font-semibold text-zinc-900 dark:text-white">
+                                {internalCoordination ? 'Coordenação interna' : 'Conversa com o utilizador'}
+                            </h2>
                             <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-                                Respostas enviadas aqui aparecem no histórico deste chamado na app (utilizador com sessão iniciada).
+                                {internalCoordination
+                                    ? 'O pedido não tem conta na app; use este espaço para alinhar entre a equipe pastoral e secretaria.'
+                                    : 'Respostas enviadas aqui aparecem no histórico deste chamado na app (utilizador com sessão iniciada).'}
                             </p>
                         </div>
                     </div>
@@ -304,7 +312,11 @@ export default function SupportTicketDetailPanel({
                                         value={data.content}
                                         onChange={(e) => setData('content', e.target.value)}
                                         rows={isModal ? 3 : 4}
-                                        placeholder="Escreva a sua mensagem ao utilizador…"
+                                        placeholder={
+                                            internalCoordination
+                                                ? 'Escreva uma nota à equipe…'
+                                                : 'Escreva a sua mensagem ao utilizador…'
+                                        }
                                         className="w-full"
                                     />
                                     <InputError message={errors.content} className="mt-1" />
@@ -327,7 +339,7 @@ export default function SupportTicketDetailPanel({
                 </div>
             )}
 
-            {showDetails && isOpen && ticket.isGuest && (
+            {showDetails && isOpen && guestNoAppUser && (
                 <div className="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4">
                     <div className="text-sm font-semibold text-amber-900 dark:text-amber-200">Chamado sem usuário logado</div>
                     <div className="mt-1 text-sm text-amber-900/90 dark:text-amber-200/90">
@@ -343,7 +355,7 @@ export default function SupportTicketDetailPanel({
                 </div>
             )}
 
-            {sectionProp === 'chat' && isOpen && ticket.isGuest && (
+            {sectionProp === 'chat' && isOpen && guestNoAppUser && (
                 <div className="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4">
                     <div className="text-sm font-semibold text-amber-900 dark:text-amber-200">Chat indisponível</div>
                     <div className="mt-1 text-sm text-amber-900/90 dark:text-amber-200/90">
@@ -363,7 +375,7 @@ export default function SupportTicketDetailPanel({
                                 Cancelar
                             </SecondaryButton>
                             <PrimaryButton type="button" className="flex-1" onClick={saveEdit}>
-                                Guardar
+                                Salvar
                             </PrimaryButton>
                         </div>
                     </div>

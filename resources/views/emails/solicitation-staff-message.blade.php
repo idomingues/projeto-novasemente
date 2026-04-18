@@ -1,7 +1,13 @@
 <x-mail::message>
+@if($isLeaderChat ?? false)
+# Nova mensagem do líder
+
+Relativa à conversa: **{{ $typeLabel }}**.
+@else
 # Nova mensagem da igreja
 
 Relativa ao seu pedido: **{{ $typeLabel }}**.
+@endif
 
 ---
 

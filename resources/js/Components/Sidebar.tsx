@@ -10,6 +10,7 @@ import {
     CalendarIcon,
     CalendarDaysIcon,
     FilmIcon,
+    ClockIcon,
     PlayCircleIcon,
     NewspaperIcon,
     BellAlertIcon,
@@ -57,6 +58,7 @@ const ICON_MAP: Record<string, MenuIcon> = {
     'bell-alert': BellAlertIcon,
     'calendar-days': CalendarDaysIcon,
     film: FilmIcon,
+    clock: ClockIcon,
     'play-circle': PlayCircleIcon,
     'user-group': UserGroupIcon,
     'user-circle': UserCircleIcon,
@@ -79,13 +81,13 @@ const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'Dashboard', route: 'dashboard', icon: HomeIcon },
     { name: 'Inbox (Solicitações)', route: 'solicitations.index', icon: InboxIcon },
     { name: 'Pastores', route: 'pastors.index', icon: UserCircleIcon },
-    { name: 'Pedidos de oração', route: 'prayer.index', icon: PrayingHandsIcon },
+    { name: 'Agenda pastoral', route: 'pastoral-agenda.index', icon: ClockIcon },
     { name: 'Eventos', route: 'events.index', icon: CalendarDaysIcon },
     { name: 'Culto', route: 'culto.index', icon: FilmIcon },
     { name: 'Acervo', route: 'acervo.index', icon: PlayCircleIcon },
     { name: 'Departamentos', route: 'departments.index', icon: BuildingOffice2Icon },
     { name: 'Escalas', route: 'escalas.index', icon: CalendarIcon },
-    { name: 'Voluntários', route: 'volunteers.index', icon: UsersIcon },
+    { name: 'Voluntários', route: 'ministry-lead.volunteers.index', icon: UserGroupIcon },
     { name: 'Perfis', route: 'roles.index', icon: KeyIcon },
     { name: 'Salas', route: 'rooms.index', icon: BuildingOfficeIcon },
     { name: 'Agendamento de salas', route: 'room-bookings.index', icon: RectangleStackIcon },
@@ -112,6 +114,9 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
         permissions?: string[];
         canManageSettings?: boolean;
         adminSidebarUnrestricted?: boolean;
+        canAccessAdminMenu?: boolean;
+        linkedPastor?: { id: number } | null;
+        pastoralAgendaMenuVisible?: boolean;
     };
     const currentChurch = (props as { currentChurch?: ChurchInfo | null }).currentChurch ?? null;
     const churchesForSwitch = (props as { churchesForSwitch?: ChurchForSwitch[] }).churchesForSwitch ?? [];
@@ -124,8 +129,14 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
     const isRouteActive = (routeName: string) => route().current(routeName + '*');
 
     const isMenuItemActive = (itemRoute: string) => {
-        if (itemRoute === 'volunteers.index') {
-            return route().current('volunteers.index') || route().current('volunteers.show');
+        if (itemRoute === 'ministry-lead.volunteers.index') {
+            return (
+                route().current('ministry-lead.volunteers.index') ||
+                route().current('ministry-lead.volunteers.board') ||
+                route().current('ministry-lead.volunteers.show') ||
+                route().current('volunteers.index') ||
+                route().current('volunteers.show')
+            );
         }
         return isRouteActive(itemRoute);
     };
@@ -148,10 +159,21 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
     };
 
     const canManageSettings = auth?.canManageSettings === true;
+    const canAccessAdminMenu = auth?.canAccessAdminMenu === true;
+    const pastoralAgendaMenuVisible = auth?.pastoralAgendaMenuVisible === true;
+    /** Equipe do painel (secretaria, pastor, líder…) ou permissões de pastores / agendamentos pastorais. */
+    const showPastoralAgendaInSidebar =
+        pastoralAgendaMenuVisible ||
+        canAccessAdminMenu ||
+        canAccess('pastors.index') ||
+        permissions.includes('pastoral_appointments.manage');
 
     const menuItems = isAuthenticated
         ? allMenuItems.filter((item) => {
               if (item.route === 'settings.index' && !canManageSettings) {
+                  return false;
+              }
+              if (item.route === 'pastoral-agenda.index' && !showPastoralAgendaInSidebar) {
                   return false;
               }
               return canAccess(item.route);
@@ -217,7 +239,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
                                     router.post(route('working-church.store'), { church_id: id }, { preserveScroll: true });
                                 }
                             }}
-                            className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 text-sm py-2 pl-3 pr-8"
+                            className="h-11 w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 pl-3 pr-8 text-sm text-zinc-900 dark:text-zinc-100 shadow-sm focus:border-zinc-900 dark:focus:border-white focus:ring-1 focus:ring-zinc-900/20 dark:focus:ring-white/20"
                         >
                             {churchesForSwitch.map((c) => (
                                 <option key={c.id} value={c.id}>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\Invitation;
 use App\Models\User;
+use App\Models\Volunteer;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,6 +14,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
+use Spatie\Permission\Models\Role;
 
 class RegisteredUserController extends Controller
 {
@@ -60,13 +62,16 @@ class RegisteredUserController extends Controller
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'invitation_token' => ['nullable', 'string'],
+            'already_volunteer' => ['sometimes', 'boolean'],
         ]);
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => $request->password,
-        ]);
+        $user = User::withoutEvents(function () use ($request) {
+            return User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => $request->password,
+            ]);
+        });
 
         if ($request->filled('invitation_token')) {
             $invitation = Invitation::where('token', $request->invitation_token)->first();
@@ -78,11 +83,78 @@ class RegisteredUserController extends Controller
             }
         }
 
+        if ($user->getRoleNames()->isEmpty()) {
+            $guard = (string) config('auth.defaults.guard');
+            if (Role::query()->where('name', 'membro')->where('guard_name', $guard)->exists()) {
+                $user->assignRole('membro');
+            }
+        }
+
+        $user->ensureVolunteerProfile();
+
+        if ($request->boolean('already_volunteer')) {
+            $this->applyAlreadyVolunteerOnPublicRegister($user);
+        }
+
         event(new Registered($user));
 
         Auth::login($user);
 
-        return redirect(route('dashboard', absolute: false));
+        $request->session()->flash('registration_success', true);
+        $request->session()->flash('success', 'Conta criada com sucesso. Bem-vindo(a)!');
+
+        return redirect()->route('registration.welcome');
+    }
+
+    /**
+     * Utilizador marcou «Já sou voluntário»: liga a um registo existente em `volunteers` pelo e-mail (sem conta) ou marca o perfil para equipe.
+     */
+    private function applyAlreadyVolunteerOnPublicRegister(User $user): void
+    {
+        $user->load('volunteerProfile');
+        $current = $user->volunteerProfile;
+        if ($current === null) {
+            return;
+        }
+
+        $email = strtolower(trim((string) ($user->email ?? '')));
+        if ($email === '') {
+            return;
+        }
+
+        $preRegistered = Volunteer::query()
+            ->where('id', '!=', $current->id)
+            ->whereRaw('lower(trim(COALESCE(email, ""))) = ?', [$email])
+            ->whereNull('user_id')
+            ->orderByDesc('id')
+            ->first();
+
+        if ($preRegistered !== null) {
+            Volunteer::query()
+                ->where('user_id', $user->id)
+                ->where('id', '!=', $preRegistered->id)
+                ->update(['user_id' => null]);
+
+            $name = trim((string) ($preRegistered->name ?? ''));
+            if ($name === '') {
+                $name = trim((string) ($user->name ?? ''));
+            }
+
+            $preRegistered->forceFill([
+                'user_id' => $user->id,
+                'name' => $name !== '' ? $name : ($user->name ?? 'Voluntário'),
+                'email' => $user->email,
+            ])->save();
+
+            $current->delete();
+
+            return;
+        }
+
+        $current->forceFill([
+            'app_access_only' => false,
+            'role' => trim((string) ($current->role ?? '')) !== '' ? $current->role : 'Voluntário',
+        ])->save();
     }
 
     private function storeCompletingInvitedUser(Request $request, Invitation $invitation): RedirectResponse
@@ -109,8 +181,32 @@ class RegisteredUserController extends Controller
             $user->assignRole($invitation->role);
         }
 
+        if ($user->getRoleNames()->isEmpty()) {
+            $guard = (string) config('auth.defaults.guard');
+            if (Role::query()->where('name', 'membro')->where('guard_name', $guard)->exists()) {
+                $user->assignRole('membro');
+            }
+        }
+
+        $user->ensureVolunteerProfile();
+
         Auth::login($user);
 
-        return redirect(route('dashboard', absolute: false));
+        $request->session()->flash('registration_success', true);
+        $request->session()->flash('success', 'Conta criada com sucesso. Bem-vindo(a)!');
+
+        return redirect()->route('registration.welcome');
+    }
+
+    /**
+     * Ecrã de confirmação após registo (utilizador já autenticado).
+     */
+    public function welcome(Request $request): RedirectResponse|Response
+    {
+        if (! $request->session()->pull('registration_success', false)) {
+            return redirect()->route('mobile.culto');
+        }
+
+        return Inertia::render('Auth/RegistrationWelcome');
     }
 }

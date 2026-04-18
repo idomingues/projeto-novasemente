@@ -3,6 +3,7 @@ import { Head, Link } from '@inertiajs/react';
 import { solicitationsBackLinkClass } from '@/Pages/Mobile/Solicitations/solicitationNavClasses';
 import { useState } from 'react';
 import SolicitationDetailPanel, {
+    type MemberPastorOption,
     type SolicitationDetailShape,
     type SolicitationMessageRow,
 } from '@/Components/Solicitations/SolicitationDetailPanel';
@@ -14,9 +15,26 @@ interface Props {
     messageStoreUrl: string;
     hubUrl: string;
     mineUrl: string;
+    memberUpdateUrl?: string;
+    memberCanEditDetails?: boolean;
+    memberPastorOptions?: MemberPastorOption[];
+    canFinalizeLeaderChat?: boolean;
+    finalizeLeaderChatUrl?: string | null;
 }
 
-export default function Show({ solicitation, messages, canChat, messageStoreUrl, hubUrl, mineUrl }: Props) {
+export default function Show({
+    solicitation,
+    messages,
+    canChat,
+    messageStoreUrl,
+    hubUrl,
+    mineUrl,
+    memberUpdateUrl,
+    memberCanEditDetails,
+    memberPastorOptions,
+    canFinalizeLeaderChat,
+    finalizeLeaderChatUrl,
+}: Props) {
     const [tab, setTab] = useState<'detalhes' | 'chat'>('detalhes');
 
     const tabBtn = (active: boolean) =>
@@ -40,7 +58,11 @@ export default function Show({ solicitation, messages, canChat, messageStoreUrl,
                     </Link>
                 </div>
 
-                <h1 className="text-xl font-bold text-zinc-900 dark:text-white">{solicitation.typeLabel}</h1>
+                <h1 className="text-xl font-bold text-zinc-900 dark:text-white">
+                    {solicitation.type === 'leader_chat' && solicitation.subject?.trim()
+                        ? solicitation.subject
+                        : solicitation.typeLabel}
+                </h1>
 
                 <div className="flex border-b border-zinc-200 dark:border-zinc-800">
                     <button type="button" className={tabBtn(tab === 'detalhes')} onClick={() => setTab('detalhes')}>
@@ -60,6 +82,13 @@ export default function Show({ solicitation, messages, canChat, messageStoreUrl,
                     variant="page"
                     section={tab === 'detalhes' ? 'details' : 'chat'}
                     composerRole="member"
+                    memberUpdateUrl={memberUpdateUrl}
+                    memberCanEditDetails={memberCanEditDetails}
+                    memberPastorOptions={memberPastorOptions}
+                    messagePostReturnTo={solicitation.type === 'leader_chat' ? 'leader-contact' : undefined}
+                    memberPatchReturnTo={solicitation.type === 'leader_chat' ? 'leader-contact' : 'hub'}
+                    canFinalizeLeaderChat={canFinalizeLeaderChat}
+                    finalizeLeaderChatUrl={finalizeLeaderChatUrl ?? null}
                 />
             </div>
         </MobileLayout>

@@ -14,6 +14,7 @@ class AppSupportTicket extends Model
         'public_token',
         'user_id',
         'member_id',
+        'pastoral_appointment_id',
         'type',
         'message',
         'guest_name',
@@ -36,6 +37,11 @@ class AppSupportTicket extends Model
     public function member(): BelongsTo
     {
         return $this->belongsTo(Member::class);
+    }
+
+    public function pastoralAppointment(): BelongsTo
+    {
+        return $this->belongsTo(PastoralAppointment::class, 'pastoral_appointment_id');
     }
 
     public function messages(): HasMany

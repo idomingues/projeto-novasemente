@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Volunteer extends Model
 {
@@ -13,6 +14,7 @@ class Volunteer extends Model
 
     protected $fillable = [
         'user_id',
+        'member_id',
         'name',
         'email',
         'phone',
@@ -33,6 +35,7 @@ class Volunteer extends Model
         'lgpd_data_consent',
         'role',
         'active',
+        'app_access_only',
     ];
 
     /**
@@ -44,6 +47,7 @@ class Volunteer extends Model
     }
 
     protected $casts = [
+        'app_access_only' => 'boolean',
         'active' => 'boolean',
         'birth_date' => 'date',
         'has_whatsapp' => 'boolean',
@@ -67,6 +71,23 @@ class Volunteer extends Model
 
     public function ministries(): BelongsToMany
     {
-        return $this->belongsToMany(Ministry::class, 'ministry_volunteer')->withTimestamps();
+        return $this->belongsToMany(Ministry::class, 'ministry_volunteer')
+            ->withPivot(['id', 'clearance_status', 'cleared_at', 'cleared_by_user_id'])
+            ->withTimestamps();
+    }
+
+    public function clearanceChecks(): HasMany
+    {
+        return $this->hasMany(VolunteerClearanceCheck::class);
+    }
+
+    public function churchPipelines(): HasMany
+    {
+        return $this->hasMany(VolunteerChurchPipeline::class);
+    }
+
+    public function leaderNotes(): HasMany
+    {
+        return $this->hasMany(VolunteerLeaderNote::class);
     }
 }

@@ -26,6 +26,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'member_id',
     ];
 
     public function member(): BelongsTo
@@ -38,16 +39,12 @@ class User extends Authenticatable
         return $this->hasOne(\App\Models\Volunteer::class);
     }
 
-    protected static function booted(): void
-    {
-        static::created(function (User $user) {
-            $user->ensureVolunteerProfile();
-        });
-    }
-
     /**
-     * Garante que todo usuário autenticado também exista como voluntário (perfil no app).
-     * Um voluntário pode existir sem acesso ao app; por isso mantemos `user_id` opcional na tabela.
+     * Garante um registo em `volunteers` ligado a este utilizador (espelho de contacto / app).
+     * Ministérios em que a pessoa **serve** vêm do cadastro de voluntário; só para `lider_ministerio`
+     * espelhamos aqui os ministérios que a pessoa **lidera** (`ministry_user`).
+     *
+     * `app_access_only`: conta com app sem serviço em ministérios (ex.: membro com login).
      */
     public function ensureVolunteerProfile(): void
     {
@@ -65,12 +62,15 @@ class User extends Authenticatable
             $name = $email !== '' ? (strstr($email, '@', true) ?: 'Membro') : 'Membro';
         }
 
+        $memberId = $this->member_id !== null ? (int) $this->member_id : null;
+
         $payload = [
             'user_id' => $this->id,
             'active' => true,
             'name' => $name,
             'email' => $this->email,
             'role' => $volunteer?->role ?? ($this->getRoleNames()->first() ?: null),
+            'member_id' => $memberId ?? $volunteer?->member_id,
         ];
 
         if (! $volunteer) {
@@ -80,8 +80,32 @@ class User extends Authenticatable
             $volunteer->save();
         }
 
-        $ministryIds = $this->ministries()->pluck('ministries.id')->toArray();
-        $volunteer->ministries()->sync($ministryIds);
+        if ($this->hasRole('lider_ministerio')) {
+            $ministryIds = $this->ministries()->pluck('ministries.id')->toArray();
+            $volunteer->ministries()->sync($ministryIds);
+        }
+
+        $volunteer->unsetRelation('ministries');
+
+        $volunteer->forceFill([
+            'app_access_only' => $this->volunteerRowIsAppAccessOnly($volunteer),
+        ])->save();
+    }
+
+    /**
+     * Utilizador só com conta na app (sem papel de equipe nem ministérios de serviço no registo de voluntário).
+     */
+    public function volunteerRowIsAppAccessOnly(\App\Models\Volunteer $volunteer): bool
+    {
+        if ($volunteer->ministries()->exists()) {
+            return false;
+        }
+
+        if ($this->hasAnyRole(['admin', 'super_admin', 'pastor', 'secretaria', 'lider_ministerio', 'financeiro'])) {
+            return false;
+        }
+
+        return true;
     }
 
     /**

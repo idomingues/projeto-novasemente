@@ -676,7 +676,7 @@ export default function EscalasIndex({
                                     );
                                 }}
                             >
-                                Guardar
+                                Salvar
                             </PrimaryButton>
                         </footer>
                     </div>

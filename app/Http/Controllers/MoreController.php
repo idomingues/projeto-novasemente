@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Church;
 use App\Models\Musica;
 use App\Models\PrayerRequest;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -70,7 +69,7 @@ class MoreController extends Controller
         ];
     }
 
-    public function index(Request $request): Response
+    public function index(): Response
     {
         $data = $this->getLatestItems();
 

@@ -56,6 +56,35 @@ class SolicitationAssignees
     }
 
     /**
+     * Líderes com conta na app (user_id) — para «Falar com líder».
+     *
+     * @return list<array{value: int, label: string}>
+     */
+    public static function leaderContactVolunteerOptions(?int $churchId): array
+    {
+        if ($churchId === null) {
+            return [];
+        }
+
+        return Volunteer::query()
+            ->where('active', true)
+            ->whereNotNull('user_id')
+            ->whereHas('ministries', fn ($q) => $q->where('church_id', $churchId))
+            ->with(['member:id,name', 'ministries:id,name,church_id'])
+            ->orderBy('id')
+            ->get()
+            ->map(function (Volunteer $v) use ($churchId) {
+                $name = $v->display_name;
+                $ministry = $v->ministries->firstWhere('church_id', $churchId)?->name;
+                $label = $ministry ? $name.' ('.$ministry.')' : $name;
+
+                return ['value' => (int) $v->id, 'label' => $label];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public static function assignmentRules(?int $churchId): array

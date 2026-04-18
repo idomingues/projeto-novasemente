@@ -36,6 +36,9 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
+    Route::get('cadastro-concluido', [RegisteredUserController::class, 'welcome'])
+        ->name('registration.welcome');
+
     Route::get('verify-email', EmailVerificationPromptController::class)
         ->name('verification.notice');
 
