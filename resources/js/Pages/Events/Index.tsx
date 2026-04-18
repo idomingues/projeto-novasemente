@@ -26,6 +26,34 @@ import InputError from '@/Components/InputError';
 import { useState, FormEventHandler, useMemo } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
 
+/** Cores sugeridas (hex) — complementam o código livre e o seletor nativo. */
+const EVENT_COLOR_PRESETS = [
+    '#2563EB',
+    '#059669',
+    '#DC2626',
+    '#D97706',
+    '#7C3AED',
+    '#DB2777',
+    '#0891B2',
+    '#4F46E5',
+    '#16A34A',
+    '#EA580C',
+    '#64748B',
+    '#18181B',
+] as const;
+
+function normalizeHexColor(v: string | undefined | null): string {
+    const t = (v ?? '').trim();
+    if (!t) return '';
+    const withHash = t.startsWith('#') ? t : `#${t}`;
+    return withHash.toUpperCase();
+}
+
+function colorPickerSafeValue(hex: string): string {
+    const n = normalizeHexColor(hex);
+    return /^#[0-9A-F]{6}$/i.test(n) ? n : '#2563EB';
+}
+
 interface EventItem {
     id: number;
     title: string;
@@ -646,13 +674,46 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
                             </div>
                         </div>
                         <div>
-                            <InputLabel htmlFor="color">Cor (hex, ex: #3B82F6)</InputLabel>
+                            <InputLabel htmlFor="color">Cor do evento</InputLabel>
+                            <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                                Toque numa cor sugerida, use o seletor ou escreva o código hex (ex.: #3B82F6).
+                            </p>
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                                {EVENT_COLOR_PRESETS.map((hex) => {
+                                    const active = normalizeHexColor(data.color) === hex;
+                                    return (
+                                        <button
+                                            key={hex}
+                                            type="button"
+                                            title={hex}
+                                            onClick={() => setData('color', hex)}
+                                            className={`h-9 w-9 shrink-0 rounded-full border-2 border-white shadow-sm ring-offset-2 transition hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:border-zinc-900 dark:ring-offset-zinc-950 ${
+                                                active ? 'ring-2 ring-zinc-900 dark:ring-white' : 'ring-0'
+                                            }`}
+                                            style={{ backgroundColor: hex }}
+                                            aria-label={`Cor ${hex}`}
+                                            aria-pressed={active}
+                                        />
+                                    );
+                                })}
+                                <label className="ml-1 flex cursor-pointer items-center gap-2 rounded-xl border border-zinc-200 bg-white px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900">
+                                    <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Mais</span>
+                                    <input
+                                        type="color"
+                                        className="h-8 w-10 cursor-pointer rounded border-0 bg-transparent p-0"
+                                        value={colorPickerSafeValue(data.color)}
+                                        onChange={(e) => setData('color', e.target.value.toUpperCase())}
+                                        aria-label="Escolher cor personalizada"
+                                    />
+                                </label>
+                            </div>
                             <TextInput
                                 id="color"
                                 value={data.color}
                                 onChange={(e) => setData('color', e.target.value)}
-                                className="mt-1 block w-full"
+                                className="mt-2 block w-full font-mono text-sm"
                                 placeholder="#3B82F6"
+                                autoComplete="off"
                             />
                             <InputError message={errors.color} />
                         </div>

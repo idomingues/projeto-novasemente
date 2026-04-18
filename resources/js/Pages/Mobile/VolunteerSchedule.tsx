@@ -106,10 +106,10 @@ export default function VolunteerSchedule({
                                 <img
                                     src={memberPhotoUrl}
                                     alt=""
-                                    className="w-12 h-12 rounded-2xl object-cover border border-zinc-200 dark:border-zinc-700"
+                                    className="h-12 w-12 rounded-full object-cover ring-2 ring-zinc-200 dark:ring-zinc-600"
                                 />
                             ) : (
-                                <div className="w-12 h-12 rounded-2xl bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-lg font-semibold text-zinc-700 dark:text-zinc-300">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-200 text-lg font-semibold text-zinc-700 ring-2 ring-zinc-200 dark:bg-zinc-600 dark:text-zinc-200 dark:ring-zinc-600">
                                     {memberName.charAt(0).toUpperCase()}
                                 </div>
                             )}
@@ -201,13 +201,39 @@ export default function VolunteerSchedule({
                                             })()}
                                             {ev.ministryName}
                                         </p>
-                                        <p className="text-sm text-brand-700 dark:text-brand-300 mt-1">
+                                        <p className="mt-1 text-sm text-brand-700 dark:text-brand-300">
                                             A sua função: {ev.myRoleName ?? '—'}
                                         </p>
                                     </div>
-                                    <div className="px-4 py-2 border-b border-zinc-100 dark:border-zinc-800">
+                                    {ev.checkinEnabled && (() => {
+                                        const checkedIn = ev.teammates.filter((t) => t.checkedInAt).length;
+                                        const teamTotal = ev.teammates.length;
+                                        const pct = teamTotal > 0 ? Math.round((checkedIn / teamTotal) * 100) : 0;
+                                        return (
+                                            <div className="border-b border-zinc-100 bg-brand-50/70 px-4 py-3 dark:border-zinc-800 dark:bg-brand-950/25">
+                                                <div className="mb-2 flex items-center justify-between gap-2">
+                                                    <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-800 dark:text-brand-300">
+                                                        Check-in da equipe
+                                                    </p>
+                                                    <p className="text-lg font-bold tabular-nums text-zinc-900 dark:text-white">
+                                                        {checkedIn}
+                                                        <span className="text-sm font-semibold text-zinc-400 dark:text-zinc-500">
+                                                            /{teamTotal}
+                                                        </span>
+                                                    </p>
+                                                </div>
+                                                <div className="h-2 overflow-hidden rounded-full bg-zinc-200/80 dark:bg-zinc-800">
+                                                    <div
+                                                        className="h-full rounded-full bg-brand-600 transition-all dark:bg-brand-500"
+                                                        style={{ width: `${pct}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
+                                    <div className="border-b border-zinc-100 px-4 py-2 dark:border-zinc-800">
                                         <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                                            Equipe neste dia
+                                            Membros escalados
                                         </p>
                                     </div>
                                     <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -221,10 +247,10 @@ export default function VolunteerSchedule({
                                                         <img
                                                             src={t.memberPhotoUrl}
                                                             alt=""
-                                                            className="w-12 h-12 rounded-xl object-cover flex-shrink-0 border border-zinc-200 dark:border-zinc-700"
+                                                            className="h-12 w-12 shrink-0 rounded-full object-cover ring-2 ring-zinc-100 dark:ring-zinc-800"
                                                         />
                                                     ) : (
-                                                        <div className="w-12 h-12 rounded-xl bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-sm font-semibold text-zinc-700 dark:text-zinc-300 flex-shrink-0">
+                                                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-sm font-semibold text-zinc-700 ring-2 ring-zinc-100 dark:bg-zinc-700 dark:text-zinc-200 dark:ring-zinc-800">
                                                             {t.memberName.charAt(0).toUpperCase()}
                                                         </div>
                                                     )}
