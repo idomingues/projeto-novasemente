@@ -152,7 +152,7 @@ export default function SupportIndex({ tickets, devItemStoreUrl, supportIndexUrl
             </div>
 
             <Modal show={showModal} onClose={closeSupportModal} maxWidth="lg">
-                <div className="flex max-h-[min(85vh,720px)] w-full flex-col overflow-hidden">
+                <div className="flex min-h-0 max-h-[min(85dvh,720px)] w-full flex-col overflow-hidden">
                     <div className="flex shrink-0 items-center gap-2 border-b border-zinc-200 px-5 py-4 dark:border-zinc-800 sm:px-6">
                         <WrenchScrewdriverIcon className="h-6 w-6 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
                         <h2 className="min-w-0 truncate text-lg font-semibold text-zinc-900 dark:text-white">

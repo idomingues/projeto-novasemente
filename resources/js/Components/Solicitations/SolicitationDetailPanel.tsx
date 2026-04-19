@@ -415,7 +415,9 @@ export default function SolicitationDetailPanel({
             {showChat && (
                 <div
                     className={`flex flex-col overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-950 shadow-sm ${
-                        isModal ? 'max-h-[min(58vh,520px)]' : 'min-h-[min(55vh,560px)] max-h-[min(72vh,680px)]'
+                        isModal
+                            ? 'max-h-[min(58dvh,520px)]'
+                            : 'min-h-[min(55dvh,560px)] max-h-[min(72dvh,680px)]'
                     }`}
                 >
                     <div className="shrink-0 border-b border-zinc-200/90 dark:border-zinc-800 bg-white/95 dark:bg-zinc-900/95 px-4 py-3 backdrop-blur-sm">

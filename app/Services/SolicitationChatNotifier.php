@@ -11,6 +11,7 @@ use App\Models\Member;
 use App\Models\User;
 use App\Models\UserInboxNotification;
 use App\Models\Volunteer;
+use App\Support\SafeSpatieUsersByPermission;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
@@ -97,10 +98,10 @@ class SolicitationChatNotifier
             }
         }
 
-        $staffUsers = User::query()
-            ->permission(['solicitations.view', 'solicitations.manage'])
-            ->where('id', '!=', $member->id)
-            ->get();
+        $staffUsers = SafeSpatieUsersByPermission::usersHavingAnyPermissionOrAdmins(
+            ['solicitations.view', 'solicitations.manage'],
+            $member->id,
+        );
 
         foreach ($staffUsers as $user) {
             $this->pushInboxForUser(

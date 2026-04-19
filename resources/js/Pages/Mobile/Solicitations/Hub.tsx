@@ -266,7 +266,7 @@ export default function Hub({ types, storeUrl, pastorOptions, mySolicitations }:
 
             <Modal show={createOpen} onClose={closeCreate} maxWidth={step === 'form' ? '2xl' : 'md'}>
                 {step === 'pick' ? (
-                    <div className="p-6">
+                    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain p-6">
                         <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-1">Nova solicitação</h2>
                         <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-5">Escolha o tipo do seu pedido.</p>
 
@@ -299,7 +299,7 @@ export default function Hub({ types, storeUrl, pastorOptions, mySolicitations }:
                         </div>
                     </div>
                 ) : (
-                    <div className="p-6 sm:p-8">
+                    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain p-6 sm:p-8">
                         <button
                             type="button"
                             onClick={() => {
@@ -377,7 +377,7 @@ export default function Hub({ types, storeUrl, pastorOptions, mySolicitations }:
 
             <Modal show={detailOpen} onClose={closeDetail} maxWidth="2xl">
                 {detailRow ? (
-                    <div className="max-h-[min(92vh,860px)] overflow-y-auto p-5 sm:p-6">
+                    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain p-5 sm:p-6">
                         <h2 className="text-lg font-semibold text-zinc-900 dark:text-white pr-10">{detailRow.solicitation.typeLabel}</h2>
                         <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{detailRow.solicitation.statusLabel}</p>
 

@@ -264,7 +264,7 @@ export default function PastoralAppointmentsHub({
             </div>
 
             <Modal show={createOpen} onClose={() => setCreateOpen(false)} maxWidth="2xl">
-                <div className="max-h-[min(90vh,820px)] overflow-y-auto p-5 sm:p-6">
+                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain p-5 sm:p-6">
                     <h2 className="text-lg font-semibold text-zinc-900 dark:text-white pr-10">Novo pedido</h2>
                     <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
                         Só pode enviar o pedido se existir um horário livre na agenda do pastor — escolha um dos horários listados.
@@ -285,7 +285,7 @@ export default function PastoralAppointmentsHub({
 
             <Modal show={modalDetail !== null} onClose={closeDetail} maxWidth="2xl">
                 {modalDetail ? (
-                    <div className="max-h-[min(92vh,860px)] overflow-y-auto p-5 sm:p-6">
+                    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain p-5 sm:p-6">
                         <h2 className="text-lg font-semibold text-zinc-900 dark:text-white pr-10">Pedido pastoral</h2>
                         <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                             {modalDetail.appointment.pastorName ?? '—'} · {statusLabel(modalDetail.appointment.status)}

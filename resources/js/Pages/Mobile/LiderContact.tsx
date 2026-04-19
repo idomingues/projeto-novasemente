@@ -267,7 +267,7 @@ export default function LiderContact({
             </div>
 
             <Modal show={createOpen} onClose={closeCreate} maxWidth="2xl">
-                <div className="p-6 sm:p-8">
+                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain p-6 sm:p-8">
                     <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Nova conversa</h2>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1 mb-6">
                         Indique um assunto curto, escolha o líder com conta na app e escreva a primeira mensagem. Abre-se um chat privado
@@ -341,7 +341,7 @@ export default function LiderContact({
 
             <Modal show={detailOpen} onClose={closeDetail} maxWidth="2xl">
                 {detailRow ? (
-                    <div className="max-h-[min(92vh,860px)] overflow-y-auto p-5 sm:p-6">
+                    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain p-5 sm:p-6">
                         <h2 className="text-lg font-semibold text-zinc-900 dark:text-white pr-10">{rowTitle(detailRow)}</h2>
                         <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{detailRow.solicitation.statusLabel}</p>
 

@@ -8,8 +8,9 @@ import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { FormEventHandler, useEffect } from 'react';
 
-const DEFAULT_VIEWPORT = 'width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=overlays-content';
-const FIXED_VIEWPORT = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
+/** Evita zoom bloqueado e faz o Chrome redimensionar a área útil quando o teclado/autofill abre (melhor que sobrepor o formulário). */
+const LOGIN_VIEWPORT =
+    'width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content';
 
 export default function Login({
     status,
@@ -32,8 +33,8 @@ export default function Login({
     useEffect(() => {
         const meta = document.querySelector('meta[name="viewport"]');
         if (!meta) return;
-        const previous = meta.getAttribute('content') ?? DEFAULT_VIEWPORT;
-        meta.setAttribute('content', FIXED_VIEWPORT);
+        const previous = meta.getAttribute('content') ?? '';
+        meta.setAttribute('content', LOGIN_VIEWPORT);
         return () => {
             meta.setAttribute('content', previous);
         };
@@ -50,7 +51,7 @@ export default function Login({
         <GuestLayout>
             <Head title="Entrar" />
 
-            <div className="w-full flex flex-col lg:flex-row min-h-screen lg:min-h-0 fixed inset-0 lg:relative overflow-auto lg:overflow-visible">
+            <div className="fixed inset-0 flex w-full flex-col overflow-y-auto overflow-x-hidden lg:relative lg:inset-auto lg:min-h-screen lg:flex-row lg:overflow-visible">
                 {/* Coluna esquerda: oculta no mobile */}
                 <div className="hidden lg:flex lg:w-1/2 flex-col justify-between px-8 py-12 lg:px-16 bg-zinc-900 text-zinc-100">
                     <div className="max-w-md">
@@ -89,8 +90,8 @@ export default function Login({
                     </p>
                 </div>
 
-                <div className="w-full lg:w-1/2 bg-white dark:bg-white flex items-center justify-center px-5 pt-10 pb-12 sm:px-8 sm:pt-12 sm:pb-14 lg:px-16 lg:py-16 min-h-[100dvh] max-md:max-h-[100dvh] max-md:overflow-y-auto max-md:touch-manipulation lg:min-h-0">
-                    <div className="w-full max-w-md lg:max-w-lg">
+                <div className="flex min-h-[100dvh] w-full flex-1 touch-manipulation flex-col items-stretch justify-start bg-white px-5 pb-[max(5rem,env(safe-area-inset-bottom,0px))] pt-8 dark:bg-white sm:px-8 sm:pb-24 sm:pt-10 lg:w-1/2 lg:min-h-0 lg:flex-none lg:justify-center lg:px-16 lg:py-16 lg:pb-16">
+                    <div className="mx-auto w-full max-w-md lg:max-w-lg">
                         <div className="lg:hidden flex flex-col items-center mb-8 sm:mb-10">
                             <Link
                                 href="/"
@@ -124,9 +125,8 @@ export default function Login({
                                     type="text"
                                     name="login"
                                     value={data.login}
-                                    className="mt-1 block w-full !bg-zinc-50 dark:!bg-zinc-100 !border-zinc-300 dark:!border-zinc-300 !text-zinc-900 placeholder:!text-zinc-500"
+                                    className="mt-1.5 block w-full !bg-zinc-50 dark:!bg-zinc-100 !border-zinc-300 dark:!border-zinc-300 !text-zinc-900 placeholder:!text-zinc-500"
                                     autoComplete="username"
-                                    isFocused={true}
                                     placeholder="seu@email.com ou nome cadastrado"
                                     onChange={(e) => setData('login', e.target.value)}
                                     required
@@ -141,7 +141,7 @@ export default function Login({
                                     type="password"
                                     name="password"
                                     value={data.password}
-                                    className="mt-1 block w-full !bg-zinc-50 dark:!bg-zinc-100 !border-zinc-300 dark:!border-zinc-300 !text-zinc-900 placeholder:!text-zinc-500"
+                                    className="mt-1.5 block w-full !bg-zinc-50 dark:!bg-zinc-100 !border-zinc-300 dark:!border-zinc-300 !text-zinc-900 placeholder:!text-zinc-500"
                                     autoComplete="current-password"
                                     onChange={(e) => setData('password', e.target.value)}
                                     required
@@ -149,31 +149,34 @@ export default function Login({
                                 <InputError message={errors.password} className="mt-2" />
                             </div>
 
-                            <div className="flex items-center justify-between">
-                                <label className="flex items-center gap-2">
+                            {/* Ação principal logo após as credenciais — mais espaço para o dropdown de autofill sem tapar o botão */}
+                            <div className="pt-1">
+                                <PrimaryButton
+                                    type="submit"
+                                    className="relative z-10 w-full justify-center !rounded-xl !bg-zinc-900 !py-3.5 !text-sm !font-semibold !normal-case !tracking-normal !text-white shadow-sm hover:!bg-zinc-800 disabled:!opacity-50"
+                                    disabled={processing}
+                                >
+                                    Entrar
+                                </PrimaryButton>
+                            </div>
+
+                            <div className="flex flex-col gap-3 border-t border-zinc-100 pt-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 dark:border-zinc-200/80">
+                                <label className="flex cursor-pointer items-center gap-2.5">
                                     <Checkbox
                                         name="remember"
                                         checked={data.remember}
                                         onChange={(e) => setData('remember', (e.target.checked || false) as false)}
                                     />
-                                    <span className="text-sm text-zinc-600">
-                                        Manter conectado
-                                    </span>
+                                    <span className="text-sm text-zinc-600">Manter conectado</span>
                                 </label>
                                 {canResetPassword && (
                                     <Link
                                         href={route('password.request')}
-                                        className="text-sm font-medium text-zinc-600 hover:text-zinc-900 underline-offset-4 hover:underline"
+                                        className="shrink-0 text-sm font-medium text-zinc-600 underline-offset-4 hover:text-zinc-900 hover:underline sm:text-right"
                                     >
                                         Esqueceu a senha?
                                     </Link>
                                 )}
-                            </div>
-
-                            <div className="pt-2">
-                                <PrimaryButton type="submit" className="w-full justify-center !bg-zinc-900 !text-white hover:!bg-zinc-800 disabled:!opacity-50" disabled={processing}>
-                                    Entrar
-                                </PrimaryButton>
                             </div>
                         </form>
 

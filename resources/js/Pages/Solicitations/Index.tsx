@@ -238,10 +238,10 @@ export default function SolicitationsIndex({
                 maxWidth={modalDetail?.kind === 'pastoral' ? '2xl' : (modalDetail?.kind === 'solicitation' && modalDetail.payload.solicitation.type === 'leader_chat' ? '2xl' : 'lg')}
             >
                 <div
-                    className={`flex w-full flex-col overflow-hidden ${
+                    className={`flex min-h-0 w-full flex-col overflow-hidden ${
                         modalDetail?.kind === 'pastoral' || (modalDetail?.kind === 'solicitation' && modalDetail.payload.solicitation.type === 'leader_chat')
-                            ? 'max-h-[min(90vh,820px)]'
-                            : 'max-h-[min(85vh,720px)]'
+                            ? 'max-h-[min(90dvh,820px)]'
+                            : 'max-h-[min(85dvh,720px)]'
                     }`}
                 >
                     <div className="flex shrink-0 items-center gap-2 border-b border-zinc-200 px-5 py-4 dark:border-zinc-800 sm:px-6">

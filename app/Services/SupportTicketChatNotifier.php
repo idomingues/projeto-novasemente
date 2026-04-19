@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AppSupportTicket;
 use App\Models\User;
 use App\Models\UserInboxNotification;
+use App\Support\SafeSpatieUsersByPermission;
 use App\Support\SupportTicketAdminPresenter;
 
 class SupportTicketChatNotifier
@@ -76,21 +77,22 @@ class SupportTicketChatNotifier
      */
     private function messageRecipientUserIds(AppSupportTicket $ticket, int $senderUserId): array
     {
-        $ids = User::query()
-            ->permission('support.manage')
-            ->where('id', '!=', $senderUserId)
-            ->pluck('id');
+        $ids = SafeSpatieUsersByPermission::userIdsHavingAnyPermissionOrAdmins(
+            ['support.manage'],
+            $senderUserId,
+        );
 
         if ($ticket->type === 'pastoral') {
-            $ids = $ids->merge(
-                User::query()
-                    ->permission('pastoral_appointments.manage')
-                    ->where('id', '!=', $senderUserId)
-                    ->pluck('id')
+            $ids = array_merge(
+                $ids,
+                SafeSpatieUsersByPermission::userIdsHavingAnyPermissionOrAdmins(
+                    ['pastoral_appointments.manage'],
+                    $senderUserId,
+                ),
             );
         }
 
-        return $ids->unique()->values()->all();
+        return array_values(array_unique($ids));
     }
 
     /**
@@ -98,21 +100,22 @@ class SupportTicketChatNotifier
      */
     private function newTicketRecipientUserIds(AppSupportTicket $ticket, ?int $excludeUserId): array
     {
-        $q = User::query()->permission('support.manage');
-        if ($excludeUserId) {
-            $q->where('id', '!=', $excludeUserId);
-        }
-        $ids = $q->pluck('id');
+        $ids = SafeSpatieUsersByPermission::userIdsHavingAnyPermissionOrAdmins(
+            ['support.manage'],
+            $excludeUserId,
+        );
 
         if ($ticket->type === 'pastoral') {
-            $q2 = User::query()->permission('pastoral_appointments.manage');
-            if ($excludeUserId) {
-                $q2->where('id', '!=', $excludeUserId);
-            }
-            $ids = $ids->merge($q2->pluck('id'));
+            $ids = array_merge(
+                $ids,
+                SafeSpatieUsersByPermission::userIdsHavingAnyPermissionOrAdmins(
+                    ['pastoral_appointments.manage'],
+                    $excludeUserId,
+                ),
+            );
         }
 
-        return $ids->unique()->values()->all();
+        return array_values(array_unique($ids));
     }
 
     private function pushInboxForStaff(int $userId, string $title, string $body, string $publicToken): void
