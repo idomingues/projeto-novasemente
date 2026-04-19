@@ -7,9 +7,10 @@ import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
-import PageHeader from '@/Components/PageHeader';
 import Card from '@/Components/Card';
 import SelectInput from '@/Components/SelectInput';
+import Checkbox from '@/Components/Checkbox';
+import InputError from '@/Components/InputError';
 import { useState, useEffect, FormEventHandler } from 'react';
 import { activeInactivePillClass } from '@/lib/statusBadges';
 import { confirmAction } from '@/utils/confirmDialog';
@@ -22,6 +23,7 @@ interface Member {
     birth_date: string | null;
     address: string | null;
     status: 'active' | 'inactive';
+    is_volunteer?: boolean;
     created_at: string;
 }
 
@@ -50,8 +52,8 @@ export default function Index({ members, filters }: Props) {
         email: '',
         phone: '',
         birth_date: '',
-        address: '',
         status: 'active' as 'active' | 'inactive',
+        is_volunteer: false as boolean,
     });
 
     const openCreateModal = () => {
@@ -70,8 +72,8 @@ export default function Index({ members, filters }: Props) {
             email: member.email || '',
             phone: member.phone || '',
             birth_date: member.birth_date ? member.birth_date.split('T')[0] : '',
-            address: member.address || '',
             status: member.status,
+            is_volunteer: Boolean(member.is_volunteer),
         });
         clearErrors();
         setIsModalOpen(true);
@@ -98,7 +100,7 @@ export default function Index({ members, filters }: Props) {
 
     const handleDelete = async (id: number) => {
         const ok = await confirmAction({
-            title: 'Excluir membro?',
+            title: 'Excluir usuário?',
             text: 'Esta ação não pode ser desfeita.',
             confirmButtonText: 'Excluir',
             danger: true,
@@ -128,52 +130,87 @@ export default function Index({ members, filters }: Props) {
 
     return (
         <AdminLayout>
-            <Head title="Membros" />
+            <Head title="Usuários" />
 
-            <PageHeader title="Membros">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between w-full">
-                    <div className="w-full sm:w-80">
+            <header className="mt-6 mb-6 space-y-4 min-w-0">
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Usuários</h1>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-2xl">
+                    O mesmo tipo de dados do registo público «Criar conta» no app: <strong className="font-medium text-zinc-700 dark:text-zinc-300">nome</strong> e{' '}
+                    <strong className="font-medium text-zinc-700 dark:text-zinc-300">e-mail</strong>. Telefone e data de nascimento são opcionais para a ficha na igreja.{' '}
+                    <strong className="font-medium text-zinc-700 dark:text-zinc-300">Morada não é pedida nesta fase.</strong>
+                </p>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-between sm:gap-4 min-w-0">
+                    <div className="w-full min-w-0 sm:max-w-md">
                         <TextInput
                             type="search"
                             name="search"
                             value={search}
                             placeholder="Buscar por nome, e-mail ou telefone"
-                            className="w-full"
+                            className="w-full min-w-0"
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
-                    <AddButton onClick={openCreateModal}>Novo Membro</AddButton>
+                    <div className="flex w-full shrink-0 justify-end sm:w-auto">
+                        <AddButton onClick={openCreateModal} className="w-full justify-center sm:w-auto">
+                            Novo usuário
+                        </AddButton>
+                    </div>
                 </div>
-            </PageHeader>
+            </header>
 
             <Card className="!p-0 overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <table className="w-full min-w-[900px] text-sm">
                         <thead className="bg-zinc-50 border-b border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800">
                             <tr>
-                                <th className="px-8 py-4 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Nome</th>
-                                <th className="px-8 py-4 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Contato</th>
-                                <th className="px-8 py-4 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Status</th>
-                                <th className="px-8 py-4 text-right text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Ações</th>
+                                <th className="px-4 py-3 sm:px-6 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                    Nome
+                                </th>
+                                <th className="px-4 py-3 sm:px-6 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                    E-mail
+                                </th>
+                                <th className="px-4 py-3 sm:px-6 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                    Telefone
+                                </th>
+                                <th className="px-4 py-3 sm:px-6 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                    Voluntário
+                                </th>
+                                <th className="px-4 py-3 sm:px-6 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                    Status
+                                </th>
+                                <th className="px-4 py-3 sm:px-6 text-right text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                    Ações
+                                </th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                             {members.data.map((member) => (
                                 <tr key={member.id} className="bg-white dark:bg-zinc-950 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors group">
-                                    <td className="px-8 py-6 whitespace-nowrap">
+                                    <td className="px-4 py-4 sm:px-6 sm:py-6 align-top">
                                         <div className="text-base font-medium text-zinc-900 dark:text-white">{member.name}</div>
                                         <div className="text-xs text-zinc-500 mt-1">Cadastrado em {new Date(member.created_at).toLocaleDateString()}</div>
                                     </td>
-                                    <td className="px-8 py-6 whitespace-nowrap">
-                                        <div className="text-sm text-zinc-700 dark:text-zinc-300">{member.email}</div>
-                                        <div className="text-xs text-zinc-500 mt-1">{member.phone}</div>
+                                    <td className="px-4 py-4 sm:px-6 sm:py-6 align-top max-w-[14rem] sm:max-w-xs">
+                                        <div className="text-sm text-zinc-800 dark:text-zinc-100 break-all font-mono leading-snug">
+                                            {member.email?.trim() ? member.email : <span className="text-zinc-400 dark:text-zinc-500 font-sans">—</span>}
+                                        </div>
                                     </td>
-                                    <td className="px-8 py-6 whitespace-nowrap">
+                                    <td className="px-4 py-4 sm:px-6 sm:py-6 align-top whitespace-nowrap">
+                                        <div className="text-sm text-zinc-800 dark:text-zinc-100 tabular-nums">
+                                            {member.phone?.trim() ? member.phone : <span className="text-zinc-400 dark:text-zinc-500">—</span>}
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-4 sm:px-6 sm:py-6 whitespace-nowrap">
+                                        <span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
+                                            {member.is_volunteer ? 'Sim' : '—'}
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-4 sm:px-6 sm:py-6 whitespace-nowrap">
                                         <span className={activeInactivePillClass(member.status === 'active')}>
                                             {member.status === 'active' ? 'Ativo' : 'Inativo'}
                                         </span>
                                     </td>
-                                    <td className="px-8 py-6 whitespace-nowrap text-right text-sm font-medium">
+                                    <td className="px-4 py-4 sm:px-6 sm:py-6 whitespace-nowrap text-right text-sm font-medium">
                                         <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <Link
                                     href={route('members.show', member.id)}
@@ -205,13 +242,13 @@ export default function Index({ members, filters }: Props) {
                 
                 {members.data.length === 0 && (
                     <div className="p-12 text-center text-zinc-500">
-                        Nenhum membro encontrado.
+                        Nenhum usuário encontrado.
                     </div>
                 )}
             </Card>
 
-            <div className="mt-6 flex justify-end">
-                <nav className="inline-flex rounded-full shadow-sm border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden">
+            <div className="mt-6 flex justify-end overflow-x-auto pb-1">
+                <nav className="inline-flex shrink-0 rounded-full shadow-sm border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden">
                     {members.links.map((link, index) => (
                         <button
                             key={index}
@@ -230,18 +267,21 @@ export default function Index({ members, filters }: Props) {
                 </nav>
             </div>
 
-            <Modal show={isModalOpen} onClose={closeModal}>
-                <div className="p-8 bg-white dark:bg-zinc-900">
-                    <h2 className="text-xl font-semibold text-zinc-900 dark:text-white mb-1">
-                        {isEditing ? 'Editar membro' : 'Novo membro'}
+            <Modal show={isModalOpen} onClose={closeModal} maxWidth="lg">
+                <div className="flex max-h-[min(92dvh,calc(100dvh-1rem))] min-h-0 flex-col bg-white dark:bg-zinc-900">
+                    <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-4 pt-10 sm:px-6 sm:pb-6 sm:pt-11">
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white sm:text-xl pr-8">
+                        {isEditing ? 'Editar usuário' : 'Novo usuário'}
                     </h2>
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6">
-                        Preencha os dados abaixo para {isEditing ? 'atualizar o cadastro' : 'cadastrar um novo membro'}.
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1 mb-5">
+                        {isEditing
+                            ? 'Atualize nome, e-mail, contactos opcionais e estado. A morada não é alterada neste formulário.'
+                            : 'Mesmo núcleo do «Criar conta» no app: nome e e-mail; telefone e data de nascimento são opcionais. No app a pessoa ainda define a senha ao registar-se.'}
                     </p>
 
-                    <form onSubmit={submit} className="space-y-6">
+                    <form onSubmit={submit} className="space-y-5 sm:space-y-6">
                         <div>
-                            <InputLabel htmlFor="name" value="Nome Completo" className="mb-1" />
+                            <InputLabel htmlFor="name" value="Nome completo" className="mb-1" />
                             <TextInput
                                 id="name"
                                 type="text"
@@ -250,14 +290,14 @@ export default function Index({ members, filters }: Props) {
                                 onChange={(e) => setData('name', e.target.value)}
                                 required
                                 isFocused
-                                placeholder="Nome do membro"
+                                placeholder="Nome completo"
                             />
                             {errors.name && <div className="text-red-500 text-sm mt-2">{errors.name}</div>}
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <InputLabel htmlFor="email" value="Email" className="mb-1" />
+                                <InputLabel htmlFor="email" value="E-mail" className="mb-1" />
                                 <TextInput
                                     id="email"
                                     type="email"
@@ -270,7 +310,7 @@ export default function Index({ members, filters }: Props) {
                             </div>
 
                             <div>
-                                <InputLabel htmlFor="phone" value="Telefone" className="mb-1" />
+                                <InputLabel htmlFor="phone" value="Telefone (opcional)" className="mb-1" />
                                 <TextInput
                                     id="phone"
                                     type="text"
@@ -285,7 +325,7 @@ export default function Index({ members, filters }: Props) {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <InputLabel htmlFor="birth_date" value="Data de Nascimento" className="mb-1" />
+                                <InputLabel htmlFor="birth_date" value="Data de nascimento (opcional)" className="mb-1" />
                                 <TextInput
                                     id="birth_date"
                                     type="date"
@@ -311,27 +351,32 @@ export default function Index({ members, filters }: Props) {
                             </div>
                         </div>
 
-                        <div>
-                            <InputLabel htmlFor="address" value="Endereço" className="mb-1" />
-                            <textarea
-                                id="address"
-                                className="block w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 text-sm shadow-sm placeholder-zinc-400 dark:placeholder-zinc-500 focus:border-zinc-900 dark:focus:border-white focus:ring-1 focus:ring-zinc-900/20 dark:focus:ring-white/20 min-h-[96px] p-3"
-                                value={data.address}
-                                onChange={(e) => setData('address', e.target.value)}
-                                placeholder="Endereço completo"
-                            />
-                            {errors.address && <div className="text-red-500 text-sm mt-2">{errors.address}</div>}
+                        <div className="rounded-xl border border-zinc-200 bg-zinc-50/90 p-4 dark:border-zinc-700 dark:bg-zinc-800/40">
+                            <label className="flex cursor-pointer items-start gap-3">
+                                <Checkbox
+                                    name="is_volunteer"
+                                    checked={data.is_volunteer}
+                                    onChange={(e) => setData('is_volunteer', e.target.checked)}
+                                />
+                                <span className="text-sm leading-snug text-zinc-700 dark:text-zinc-200">
+                                    <span className="font-semibold text-zinc-900 dark:text-white">Voluntário</span> — serve ou
+                                    irá servir em ministérios. A equipa pode completar departamentos e detalhes em{' '}
+                                    <span className="font-medium">Voluntários</span> quando aplicável.
+                                </span>
+                            </label>
+                            <InputError message={errors.is_volunteer} className="mt-2" />
                         </div>
 
-                        <div className="mt-8 flex justify-end gap-3">
-                            <SecondaryButton type="button" onClick={closeModal}>
+                        <div className="flex flex-col-reverse gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800 sm:flex-row sm:justify-end sm:pt-5">
+                            <SecondaryButton type="button" onClick={closeModal} className="justify-center sm:w-auto">
                                 Cancelar
                             </SecondaryButton>
-                            <PrimaryButton disabled={processing}>
+                            <PrimaryButton disabled={processing} className="justify-center sm:w-auto">
                                 {isEditing ? 'Atualizar' : 'Salvar'}
                             </PrimaryButton>
                         </div>
                     </form>
+                    </div>
                 </div>
             </Modal>
         </AdminLayout>

@@ -12,6 +12,13 @@ class UpdateMemberRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'is_volunteer' => $this->boolean('is_volunteer'),
+        ]);
+    }
+
     /**
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
@@ -29,7 +36,7 @@ class UpdateMemberRequest extends FormRequest
             'birth_date' => ['nullable', 'date'],
             'address' => ['nullable', 'string', 'max:1000'],
             'status' => ['required', 'in:active,inactive'],
+            'is_volunteer' => ['sometimes', 'boolean'],
         ];
     }
 }
-

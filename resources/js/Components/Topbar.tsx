@@ -14,6 +14,7 @@ import {
 import Dropdown from '@/Components/Dropdown';
 import MarkInboxNotificationReadButton from '@/Components/MarkInboxNotificationReadButton';
 import AppVersionTrigger from '@/Components/AppVersionTrigger';
+import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 import { useTheme } from '@/Contexts/ThemeContext';
 
 interface NotificationItem {
@@ -41,8 +42,9 @@ function formatTimeAgo(iso: string): string {
 
 const appNavItems = [
     { name: 'Notícias', route: 'mobile.news', icon: NewspaperIcon },
-    { name: 'Eventos', route: 'mobile.events', icon: CalendarDaysIcon },
     { name: 'Batismo', route: 'mobile.baptism', icon: SparklesIcon },
+    { name: 'Eventos', route: 'mobile.events', icon: CalendarDaysIcon },
+    { name: 'Oração', route: 'mobile.prayer', icon: PrayingHandsIcon },
     { name: 'Mais', route: 'more.index', icon: Squares2X2Icon },
 ] as const;
 

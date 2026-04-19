@@ -22,6 +22,7 @@ class Member extends Model
         'birth_date',
         'address',
         'status',
+        'is_volunteer',
     ];
 
     public function church(): BelongsTo
@@ -43,5 +44,6 @@ class Member extends Model
 
     protected $casts = [
         'birth_date' => 'date',
+        'is_volunteer' => 'boolean',
     ];
 }

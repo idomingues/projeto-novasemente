@@ -22,19 +22,19 @@ const navItems = [
         iconActive: NewspaperIconSolid,
     },
     {
-        name: 'Oração',
-        route: 'mobile.prayer' as const,
-        activeRoutes: ['mobile.prayer', 'prayer.index'] as const,
-        icon: PrayingHandsIcon,
-        iconActive: PrayingHandsIcon,
-    },
-    { name: 'Eventos', route: 'mobile.events' as const, activeRoutes: ['mobile.events'] as const, icon: CalendarDaysIcon, iconActive: CalendarDaysIconSolid },
-    {
         name: 'Batismo',
         route: 'mobile.baptism' as const,
         activeRoutes: ['mobile.baptism'] as const,
         icon: SparklesIcon,
         iconActive: SparklesIconSolid,
+    },
+    { name: 'Eventos', route: 'mobile.events' as const, activeRoutes: ['mobile.events'] as const, icon: CalendarDaysIcon, iconActive: CalendarDaysIconSolid },
+    {
+        name: 'Oração',
+        route: 'mobile.prayer' as const,
+        activeRoutes: ['mobile.prayer', 'prayer.index'] as const,
+        icon: PrayingHandsIcon,
+        iconActive: PrayingHandsIcon,
     },
     {
         name: 'Mais',
@@ -89,7 +89,7 @@ interface MobileBottomNavProps {
     insetForSidebar?: boolean;
 }
 
-/** Barra inferior: Notícias, Oração, Eventos, Batismo, Mais (Culto e Dízimos em Mais). */
+/** Barra inferior: Notícias, Batismo, Eventos, Oração, Mais (Culto e Dízimos em Mais). */
 export default function MobileBottomNav({ insetForSidebar = false }: MobileBottomNavProps) {
     return (
         <nav

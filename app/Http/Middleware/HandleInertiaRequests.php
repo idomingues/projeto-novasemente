@@ -78,7 +78,7 @@ class HandleInertiaRequests extends Middleware
                 'secretaria' => 'Secretaria',
                 'pastor' => 'Pastor',
                 'financeiro' => 'Financeiro',
-                'membro' => 'Membro',
+                'membro' => 'Usuário',
                 default => $first ? ucfirst(str_replace('_', ' ', $first)) : null,
             };
         }

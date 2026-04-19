@@ -12,6 +12,7 @@ interface Member {
     birth_date: string | null;
     address: string | null;
     status: 'active' | 'inactive';
+    is_volunteer?: boolean;
     created_at: string;
 }
 
@@ -22,9 +23,9 @@ interface Props {
 export default function Show({ member }: Props) {
     return (
         <AdminLayout>
-            <Head title={`Membro - ${member.name}`} />
+            <Head title={`Usuário - ${member.name}`} />
 
-            <PageHeader title="Detalhes do Membro">
+            <PageHeader title="Detalhes do usuário">
                 <Link
                     href={route('members.index')}
                     className="text-sm font-medium text-zinc-400 hover:text-white transition-colors"
@@ -70,15 +71,20 @@ export default function Show({ member }: Props) {
                                 {member.status === 'active' ? 'Ativo' : 'Inativo'}
                             </span>
                         </div>
+
+                        <div>
+                            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Voluntário</p>
+                            <p className="text-sm text-zinc-300 mt-1">{member.is_volunteer ? 'Sim' : 'Não'}</p>
+                        </div>
                     </div>
                 </div>
 
-                <div className="mt-8">
-                    <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Endereço</p>
-                    <p className="text-sm text-zinc-300 mt-1 whitespace-pre-line">
-                        {member.address ?? '-'}
-                    </p>
-                </div>
+                {member.address?.trim() ? (
+                    <div className="mt-8">
+                        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Morada</p>
+                        <p className="text-sm text-zinc-300 mt-1 whitespace-pre-line">{member.address}</p>
+                    </div>
+                ) : null}
 
                 <p className="mt-8 text-xs text-zinc-500">
                     Cadastrado em {new Date(member.created_at).toLocaleDateString()}

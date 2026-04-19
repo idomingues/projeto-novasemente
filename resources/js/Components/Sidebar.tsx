@@ -81,6 +81,7 @@ const ICON_MAP: Record<string, MenuIcon> = {
  */
 const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'Dashboard', route: 'dashboard', icon: HomeIcon },
+    { name: 'Usuários', route: 'members.index', icon: UsersIcon },
     { name: 'Notícias', route: 'news.index', icon: NewspaperIcon },
     { name: 'Atendimento', route: 'solicitations.index', icon: InboxIcon },
     { name: 'Pastores', route: 'pastors.index', icon: UserCircleIcon },
@@ -179,6 +180,10 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
               }
               if (item.route === 'pastoral-agenda.index' && !showPastoralAgendaInSidebar) {
                   return false;
+              }
+              /** Lista de utilizadores (cadastro `members`): visível para equipa do painel ou quem tem members.view/manage. */
+              if (item.route === 'members.index') {
+                  return canAccessAdminMenu || canAccess('members.index');
               }
               return canAccess(item.route);
           })

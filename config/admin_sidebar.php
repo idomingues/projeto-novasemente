@@ -10,6 +10,7 @@
 return [
     'items' => [
         ['name' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'home'],
+        ['name' => 'Usuários', 'route' => 'members.index', 'icon' => 'users'],
         ['name' => 'Notícias', 'route' => 'news.index', 'icon' => 'newspaper'],
         ['name' => 'Atendimento', 'route' => 'solicitations.index', 'icon' => 'inbox'],
         ['name' => 'Pastores', 'route' => 'pastors.index', 'icon' => 'user-circle'],

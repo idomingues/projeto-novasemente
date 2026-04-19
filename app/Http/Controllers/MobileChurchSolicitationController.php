@@ -113,7 +113,13 @@ class MobileChurchSolicitationController extends Controller
     {
         $churchId = $this->currentChurchId($request);
         $user = $request->user();
-        abort_unless($user, 401);
+
+        if ($user === null) {
+            return Inertia::render('Mobile/Solicitations/BaptismGuest', [
+                'registerUrl' => route('register'),
+                'redirectAfterLogin' => route('mobile.baptism', [], false),
+            ]);
+        }
 
         $types = [
             ['type' => 'baptism', 'label' => self::typeLabel('baptism')],

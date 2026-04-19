@@ -247,6 +247,8 @@ Route::middleware('auth')->group(function () {
 
     // Perfis (papéis) e permissões
     Route::get('/roles', [RoleController::class, 'index'])->name('roles.index')->middleware('permission:roles.manage');
+    Route::post('/roles/novo', [RoleController::class, 'store'])->name('roles.store')->middleware('permission:roles.manage');
+    Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy')->middleware('permission:roles.manage');
     Route::post('/roles', [RoleController::class, 'update'])->name('roles.update')->middleware('permission:roles.manage');
 
     // Notícias

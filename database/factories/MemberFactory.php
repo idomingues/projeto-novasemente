@@ -3,7 +3,6 @@
 namespace Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Str;
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Member>
@@ -28,18 +27,21 @@ class MemberFactory extends Factory
                 'birth_date' => $faker->date(),
                 'address' => $faker->address(),
                 'status' => $faker->randomElement(['active', 'inactive']),
+                'is_volunteer' => false,
             ];
         }
 
         // Produção (sem Faker): dados simples para o seed passar
         $n = (string) mt_rand(1000, 9999);
+
         return [
-            'name' => 'Membro ' . $n,
-            'email' => 'membro-' . $n . '@example.com',
+            'name' => 'Membro '.$n,
+            'email' => 'membro-'.$n.'@example.com',
             'phone' => null,
             'birth_date' => null,
             'address' => null,
             'status' => 'active',
+            'is_volunteer' => false,
         ];
     }
 }

@@ -61,11 +61,11 @@ export default function Dashboard({
 }) {
     const statCards = [
         {
-            name: 'Total de membros',
+            name: 'Total de usuários',
             value: formatStat(stats.members),
             icon: UsersIcon,
             href: route('members.index'),
-            linkLabel: 'Ver membros',
+            linkLabel: 'Ver usuários',
         },
         {
             name: 'Total de voluntários',

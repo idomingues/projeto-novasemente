@@ -68,7 +68,9 @@ export default function Index({
             public_volunteer_signup_url?: string | null;
         };
         currentChurch?: { name?: string } | null;
+        auth?: { permissions?: string[] };
     };
+    const canManageAppRoles = (page.auth?.permissions ?? []).includes('roles.manage');
     const { flash } = page;
     const churchNameForPublicInvite = page.currentChurch?.name ?? 'Igreja';
 
@@ -354,7 +356,7 @@ export default function Index({
                                                         className="inline-flex shrink-0 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-800 dark:bg-violet-950/60 dark:text-violet-200"
                                                         title="Conta na app sem registo de serviço em ministérios"
                                                     >
-                                                        Membro (app)
+                                                        Usuário (app)
                                                     </span>
                                                 ) : null}
                                             </div>
@@ -603,8 +605,22 @@ export default function Index({
                             <div>
                                 <p className="text-sm font-semibold text-zinc-900 dark:text-white">Acesso e permissões</p>
                                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                                    Marque líder apenas quando este voluntário for gerir escalas.
+                                    Uma conta pode existir <strong className="font-medium text-zinc-700 dark:text-zinc-300">sem perfil</strong> no
+                                    painel; o administrador atribui o perfil aqui para liberar menus e ações. Marque líder apenas quando este
+                                    voluntário for gerir escalas.
                                 </p>
+                                {canManageAppRoles ? (
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">
+                                        Para criar perfis novos ou alterar o que cada perfil pode fazer:{' '}
+                                        <Link
+                                            href={route('roles.index')}
+                                            className="font-medium text-primary-600 underline dark:text-primary-400"
+                                        >
+                                            Perfis de acesso
+                                        </Link>
+                                        .
+                                    </p>
+                                ) : null}
                             </div>
                             <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
                                 <input
@@ -665,7 +681,7 @@ export default function Index({
                                     onChange={(e) => setData('app_role', e.target.value)}
                                     className="mt-1 block w-full min-h-[2.75rem] h-11 py-2.5 px-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white text-sm"
                                 >
-                                    <option value="">Sem perfil</option>
+                                    <option value="">Sem perfil (só conta até o administrador definir permissões)</option>
                                     {appRoles.map((r) => (
                                         <option key={r.id} value={r.name}>
                                             {appRoleLabel(r.name)}

@@ -59,7 +59,7 @@ class User extends Authenticatable
         }
         if ($name === '') {
             $email = (string) ($this->email ?? '');
-            $name = $email !== '' ? (strstr($email, '@', true) ?: 'Membro') : 'Membro';
+            $name = $email !== '' ? (strstr($email, '@', true) ?: 'Usuário') : 'Usuário';
         }
 
         $memberId = $this->member_id !== null ? (int) $this->member_id : null;

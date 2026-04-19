@@ -60,7 +60,7 @@ class MemberController extends Controller
         ]);
         $createMember($data);
 
-        return redirect()->route('members.index')->with('success', 'Membro criado com sucesso!');
+        return redirect()->route('members.index')->with('success', 'Usuário criado com sucesso!');
     }
 
     /**
@@ -80,7 +80,7 @@ class MemberController extends Controller
     {
         $updateMember($member, $request->validated());
 
-        return redirect()->route('members.index')->with('success', 'Membro atualizado com sucesso!');
+        return redirect()->route('members.index')->with('success', 'Usuário atualizado com sucesso!');
     }
 
     /**
@@ -90,6 +90,6 @@ class MemberController extends Controller
     {
         $deleteMember($member);
 
-        return redirect()->route('members.index')->with('success', 'Membro removido com sucesso!');
+        return redirect()->route('members.index')->with('success', 'Usuário removido com sucesso!');
     }
 }
