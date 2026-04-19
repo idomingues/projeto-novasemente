@@ -8,6 +8,7 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 
 import AppHead from './Components/AppHead';
+import OfflineBanner from './Components/OfflineBanner';
 import ProgressIndicator from './Components/ProgressIndicator';
 import { ThemeProvider } from './Contexts/ThemeContext';
 
@@ -75,6 +76,7 @@ createInertiaApp({
 
         root.render(
             <ThemeProvider>
+                <OfflineBanner />
                 <ProgressIndicator />
                 <App {...props} />
             </ThemeProvider>
