@@ -293,7 +293,7 @@ export default function PublicSignup({ token, churchName, churchLogoUrl, ministr
                         >
                             Voltar
                         </Link>
-                        <Link href={route('mobile.culto')} className="inline-flex rounded-full p-2 ring-2 ring-zinc-200 dark:ring-zinc-700">
+                        <Link href={route('mobile.news')} className="inline-flex rounded-full p-2 ring-2 ring-zinc-200 dark:ring-zinc-700">
                             <ApplicationLogo
                                 src={churchLogoUrl ?? undefined}
                                 className="h-16 w-16 object-contain dark:invert"
@@ -946,7 +946,7 @@ export default function PublicSignup({ token, churchName, churchLogoUrl, ministr
                             <span className="opacity-40" aria-hidden>
                                 ·
                             </span>
-                            <Link href={route('mobile.culto')} className="underline">
+                            <Link href={route('mobile.news')} className="underline">
                                 App
                             </Link>
                         </div>

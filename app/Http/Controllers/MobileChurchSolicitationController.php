@@ -106,6 +106,56 @@ class MobileChurchSolicitationController extends Controller
         ]);
     }
 
+    /**
+     * App mobile: só pedidos de batismo (+ lista + modal no mesmo padrão do hub).
+     */
+    public function baptismHub(Request $request): Response
+    {
+        $churchId = $this->currentChurchId($request);
+        $user = $request->user();
+        abort_unless($user, 401);
+
+        $types = [
+            ['type' => 'baptism', 'label' => self::typeLabel('baptism')],
+        ];
+        $hubUrl = route('mobile.baptism');
+
+        $mySolicitations = ChurchSolicitation::query()
+            ->where('user_id', $user->id)
+            ->where('type', 'baptism')
+            ->with(['assignedPastor:id,name', 'assignedVolunteer.member:id,name'])
+            ->orderByDesc('updated_at')
+            ->limit(40)
+            ->get()
+            ->map(function (ChurchSolicitation $s) use ($hubUrl, $churchId) {
+                $payload = self::memberConversationPayload(
+                    $s,
+                    route('mobile.solicitations.messages.store', $s),
+                    $hubUrl,
+                    $hubUrl,
+                );
+
+                return array_merge($payload, [
+                    'memberUpdateUrl' => route('mobile.solicitations.update', $s),
+                    'memberCanEditDetails' => $s->status === 'pending',
+                    'memberPastorOptions' => SolicitationAssignees::pastorOptions($churchId),
+                ]);
+            })
+            ->values()
+            ->all();
+
+        return Inertia::render('Mobile/Solicitations/Hub', [
+            'types' => $types,
+            'mineUrl' => $hubUrl,
+            'storeUrl' => route('mobile.solicitations.store'),
+            'pastorOptions' => SolicitationAssignees::pastorOptions($churchId),
+            'mySolicitations' => $mySolicitations,
+            'pageTitle' => 'Pedido de batismo',
+            'pageSubtitle' => 'Envie um novo pedido ou acompanhe os seus pedidos de batismo.',
+            'singleBaptismType' => true,
+        ]);
+    }
+
     public function create(Request $request, string $type): Response
     {
         abort_unless(in_array($type, self::TYPES, true), 404);
@@ -160,6 +210,14 @@ class MobileChurchSolicitationController extends Controller
 
         if ($churchId !== null) {
             app(SolicitationChatNotifier::class)->notifyChurchSolicitationsHandlerOfNewRequest($solicitation, (int) $churchId);
+        }
+
+        $ref = (string) $request->headers->get('referer', '');
+        if ($solicitation->type === 'baptism' && str_contains($ref, '/mobile/batismo')) {
+            return redirect()->route('mobile.baptism', [
+                'solicitacao' => $solicitation->id,
+                'painel' => 'detalhes',
+            ])->with('success', 'Pedido enviado.');
         }
 
         return redirect()->route('mobile.solicitations.hub', [

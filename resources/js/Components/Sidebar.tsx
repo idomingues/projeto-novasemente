@@ -20,6 +20,7 @@ import {
     RectangleStackIcon,
     InboxIcon,
     UserCircleIcon,
+    SparklesIcon,
 } from '@heroicons/react/24/outline';
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 import { useMemo } from 'react';
@@ -71,6 +72,7 @@ const ICON_MAP: Record<string, MenuIcon> = {
     'archive-box': ArchiveBoxIcon,
     cog: Cog6ToothIcon,
     'chat-bubble': ChatBubbleLeftRightIcon,
+    sparkles: SparklesIcon,
 };
 
 /**
@@ -79,13 +81,14 @@ const ICON_MAP: Record<string, MenuIcon> = {
  */
 const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'Dashboard', route: 'dashboard', icon: HomeIcon },
+    { name: 'Notícias', route: 'news.index', icon: NewspaperIcon },
     { name: 'Atendimento', route: 'solicitations.index', icon: InboxIcon },
     { name: 'Pastores', route: 'pastors.index', icon: UserCircleIcon },
     { name: 'Agenda pastoral', route: 'pastoral-agenda.index', icon: ClockIcon },
     { name: 'Eventos', route: 'events.index', icon: CalendarDaysIcon },
-    { name: 'Notícias', route: 'news.index', icon: NewspaperIcon },
-    { name: 'Culto', route: 'culto.index', icon: FilmIcon },
+    { name: 'Pedidos de batismo', route: 'baptism-requests.index', icon: SparklesIcon },
     { name: 'Acervo', route: 'acervo.index', icon: PlayCircleIcon },
+    { name: 'Culto', route: 'culto.index', icon: FilmIcon },
     { name: 'Departamentos', route: 'departments.index', icon: BuildingOffice2Icon },
     { name: 'Escalas', route: 'escalas.index', icon: CalendarIcon },
     { name: 'Voluntários', route: 'ministry-lead.volunteers.index', icon: UserGroupIcon },
@@ -199,7 +202,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
                 {/* Logo Area */}
                 <div className="h-24 flex items-center justify-between px-6 md:px-8 border-b border-zinc-100 dark:border-zinc-900 flex-shrink-0">
                     <Link
-                        href={route('mobile.culto')}
+                        href={route('mobile.news')}
                         className="flex items-center gap-3 text-zinc-900 dark:text-white min-w-0 hover:opacity-90 transition-opacity"
                     >
                         <div className="flex-shrink-0 w-10 h-10 rounded-full bg-zinc-900 dark:bg-white flex items-center justify-center overflow-hidden">

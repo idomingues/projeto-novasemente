@@ -14,9 +14,9 @@ import {
     UserCircleIcon,
     MapPinIcon,
     InboxIcon,
-    NewspaperIcon,
     UserPlusIcon,
-    ChevronRightIcon,
+    FilmIcon,
+    HandRaisedIcon,
 } from '@heroicons/react/24/outline';
 import { PHOTOS_DRIVE_FOLDER_URL } from '@/constants/externalLinks';
 import type { ComponentType, SVGProps } from 'react';
@@ -40,9 +40,10 @@ const items: MoreMenuItem[] = [
     { name: 'Nossos pastores', description: 'Conheça a equipe pastoral', route: 'mobile.pastors', icon: UserCircleIcon },
     { name: 'Escala', description: 'Escala de voluntários', route: 'varios.schedule', icon: ClipboardDocumentListIcon },
     { name: 'Cultos e horários', description: 'Dias e horários dos cultos', route: 'mobile.services', icon: ClockIcon },
+    { name: 'Culto', description: 'Vídeos do culto online', route: 'mobile.culto', icon: FilmIcon },
+    { name: 'Dízimos e Ofertas', description: 'Contribuições e ofertas', route: 'mobile.offerings', icon: HandRaisedIcon },
     { name: 'Classe Começos', description: 'Estudo bíblico presencial ou on-line', route: 'varios.classe-comecos', icon: AcademicCapIcon },
     { name: 'Música', description: 'Vídeos de música no YouTube', route: 'musica.index', icon: MusicalNoteIcon },
-    { name: 'Notícias', description: 'Avisos e comunicados', route: 'news.index', icon: NewspaperIcon },
     {
         name: 'Fotos',
         description: 'Álbum de fotos (Google Drive)',
@@ -111,7 +112,6 @@ export default function MoreIndex(_: Props) {
                                 Quero servir em ministérios (formulário completo)
                             </p>
                         </div>
-                        <ChevronRightIcon className="w-6 h-6 text-zinc-500 dark:text-zinc-400 shrink-0 mt-1" aria-hidden />
                     </div>
                 </Link>
 

@@ -1,20 +1,26 @@
 import { Link } from '@inertiajs/react';
 import {
-    FilmIcon,
+    NewspaperIcon,
     CalendarDaysIcon,
-    HandRaisedIcon,
+    SparklesIcon,
     Squares2X2Icon,
 } from '@heroicons/react/24/outline';
 import {
-    FilmIcon as FilmIconSolid,
+    NewspaperIcon as NewspaperIconSolid,
     CalendarDaysIcon as CalendarDaysIconSolid,
-    HandRaisedIcon as HandRaisedIconSolid,
+    SparklesIcon as SparklesIconSolid,
     Squares2X2Icon as Squares2X2IconSolid,
 } from '@heroicons/react/24/solid';
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 
 const navItems = [
-    { name: 'Culto', route: 'mobile.culto' as const, activeRoutes: ['mobile.culto'] as const, icon: FilmIcon, iconActive: FilmIconSolid },
+    {
+        name: 'Notícias',
+        route: 'mobile.news' as const,
+        activeRoutes: ['mobile.news', 'mobile.news.show'] as const,
+        icon: NewspaperIcon,
+        iconActive: NewspaperIconSolid,
+    },
     {
         name: 'Oração',
         route: 'mobile.prayer' as const,
@@ -23,15 +29,19 @@ const navItems = [
         iconActive: PrayingHandsIcon,
     },
     { name: 'Eventos', route: 'mobile.events' as const, activeRoutes: ['mobile.events'] as const, icon: CalendarDaysIcon, iconActive: CalendarDaysIconSolid },
-    { name: 'Dízimos e Ofertas', route: 'mobile.offerings' as const, activeRoutes: ['mobile.offerings'] as const, icon: HandRaisedIcon, iconActive: HandRaisedIconSolid },
+    {
+        name: 'Batismo',
+        route: 'mobile.baptism' as const,
+        activeRoutes: ['mobile.baptism'] as const,
+        icon: SparklesIcon,
+        iconActive: SparklesIconSolid,
+    },
     {
         name: 'Mais',
         route: 'mobile.more' as const,
         activeRoutes: [
             'mobile.more',
             'more.index',
-            'mobile.news',
-            'mobile.news.show',
             'mobile.beliefs',
             'mobile.quem-somos',
             'varios.services',
@@ -66,6 +76,8 @@ const navItems = [
             'pastors.weekly-schedule.update',
             'volunteers.public-signup.page',
             'mobile.schedule',
+            'mobile.culto',
+            'mobile.offerings',
         ] as const,
         icon: Squares2X2Icon,
         iconActive: Squares2X2IconSolid,
@@ -77,7 +89,7 @@ interface MobileBottomNavProps {
     insetForSidebar?: boolean;
 }
 
-/** Barra inferior fixa (Culto, Notícias, Eventos, Dízimos, Mais). Visitantes e admins (pré-visualização). */
+/** Barra inferior: Notícias, Oração, Eventos, Batismo, Mais (Culto e Dízimos em Mais). */
 export default function MobileBottomNav({ insetForSidebar = false }: MobileBottomNavProps) {
     return (
         <nav

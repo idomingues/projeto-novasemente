@@ -28,6 +28,7 @@ export const adminSidebarRoutePermissions: Record<string, string[]> = {
     'settings.index': [],
     'support.index': ['support.view', 'support.manage'],
     'solicitations.index': ['solicitations.view', 'solicitations.manage'],
+    'baptism-requests.index': ['solicitations.view', 'solicitations.manage'],
     'pastors.index': ['pastors.view', 'pastors.manage'],
     /** Visibilidade no Sidebar: `auth.pastoralAgendaMenuVisible` (pastor ligado, admin, gestão de pastores, etc.). */
     'pastoral-agenda.index': [],

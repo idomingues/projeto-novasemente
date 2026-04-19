@@ -1,6 +1,16 @@
 import { Link, usePage } from '@inertiajs/react';
 import { notificationLinkHref } from '@/utils/notificationLinkHref';
-import { BellIcon, SunIcon, MoonIcon, FilmIcon, NewspaperIcon, CalendarDaysIcon, HandRaisedIcon, Squares2X2Icon, ChevronRightIcon, LifebuoyIcon } from '@heroicons/react/24/outline';
+import {
+    BellIcon,
+    SunIcon,
+    MoonIcon,
+    NewspaperIcon,
+    CalendarDaysIcon,
+    Squares2X2Icon,
+    ChevronRightIcon,
+    LifebuoyIcon,
+    SparklesIcon,
+} from '@heroicons/react/24/outline';
 import Dropdown from '@/Components/Dropdown';
 import MarkInboxNotificationReadButton from '@/Components/MarkInboxNotificationReadButton';
 import AppVersionTrigger from '@/Components/AppVersionTrigger';
@@ -30,10 +40,9 @@ function formatTimeAgo(iso: string): string {
 }
 
 const appNavItems = [
-    { name: 'Culto', route: 'mobile.culto', icon: FilmIcon },
     { name: 'Notícias', route: 'mobile.news', icon: NewspaperIcon },
     { name: 'Eventos', route: 'mobile.events', icon: CalendarDaysIcon },
-    { name: 'Dízimos e Ofertas', route: 'mobile.offerings', icon: HandRaisedIcon },
+    { name: 'Batismo', route: 'mobile.baptism', icon: SparklesIcon },
     { name: 'Mais', route: 'more.index', icon: Squares2X2Icon },
 ] as const;
 

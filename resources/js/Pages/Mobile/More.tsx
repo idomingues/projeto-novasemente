@@ -16,9 +16,9 @@ import {
     ChatBubbleLeftRightIcon,
     CubeIcon,
     InboxIcon,
-    NewspaperIcon,
     UserPlusIcon,
-    ChevronRightIcon,
+    FilmIcon,
+    HandRaisedIcon,
 } from '@heroicons/react/24/outline';
 import { PHOTOS_DRIVE_FOLDER_URL } from '@/constants/externalLinks';
 import type { ComponentType, SVGProps } from 'react';
@@ -46,9 +46,10 @@ const baseItems: MoreMenuItem[] = [
     },
     { name: 'Escala', description: 'Escala de voluntários', route: 'varios.schedule', icon: ClipboardDocumentListIcon },
     { name: 'Cultos e horários', description: 'Dias e horários dos cultos', route: 'mobile.services', icon: ClockIcon },
+    { name: 'Culto', description: 'Vídeos do culto online', route: 'mobile.culto', icon: FilmIcon },
+    { name: 'Dízimos e Ofertas', description: 'Contribuições e ofertas', route: 'mobile.offerings', icon: HandRaisedIcon },
     { name: 'Classe Começos', description: 'Estudo bíblico presencial ou on-line', route: 'varios.classe-comecos', icon: AcademicCapIcon },
     { name: 'Música', description: 'Vídeos de música no YouTube', route: 'mobile.musica', icon: MusicalNoteIcon },
-    { name: 'Notícias', description: 'Avisos e comunicados', route: 'mobile.news', icon: NewspaperIcon },
     {
         name: 'Fotos',
         description: 'Álbum de fotos (Google Drive)',
@@ -117,7 +118,6 @@ export default function MobileMore(_: Props) {
                                 Quero servir em ministérios (formulário completo)
                             </p>
                         </div>
-                        <ChevronRightIcon className="w-5 h-5 text-zinc-500 dark:text-zinc-400 shrink-0 mt-0.5" aria-hidden />
                     </div>
                 </Link>
 

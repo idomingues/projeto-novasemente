@@ -38,7 +38,7 @@ use Inertia\Inertia;
 Route::get('/favicon.svg', FaviconController::class)->name('favicon');
 
 Route::get('/', function () {
-    return redirect()->route('mobile.culto');
+    return redirect()->route('mobile.news');
 });
 
 Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'verified'])->name('dashboard');
@@ -60,7 +60,7 @@ Route::post('/pedidos-oracao/{prayer}/orou', [PrayerRequestController::class, 'a
     ->middleware('throttle:60,1')
     ->name('prayer.amen');
 Route::get('/mobile/oracao', [PrayerRequestController::class, 'mobile'])->name('mobile.prayer');
-Route::redirect('/mobile', '/mobile/culto')->name('mobile.index');
+Route::redirect('/mobile', '/mobile/news')->name('mobile.index');
 Route::get('/mobile/culto', [MobileController::class, 'culto'])->name('mobile.culto');
 Route::get('/mobile/news', [MobileController::class, 'news'])->name('mobile.news');
 Route::get('/mobile/news/{news:slug}', [MobileController::class, 'newsShow'])->name('mobile.news.show');
@@ -334,6 +334,7 @@ Route::middleware('auth')->group(function () {
 
     // Solicitações (membro — requer login)
     Route::get('/mobile/solicitacoes', [MobileChurchSolicitationController::class, 'hub'])->name('mobile.solicitations.hub');
+    Route::get('/mobile/batismo', [MobileChurchSolicitationController::class, 'baptismHub'])->name('mobile.baptism');
     Route::get('/mobile/solicitacoes/meus-pedidos', [MobileChurchSolicitationController::class, 'mine'])->name('mobile.solicitations.mine');
     Route::get('/mobile/solicitacoes/novo/{type}', [MobileChurchSolicitationController::class, 'create'])->name('mobile.solicitations.create');
     Route::post('/mobile/solicitacoes', [MobileChurchSolicitationController::class, 'store'])->name('mobile.solicitations.store');
@@ -352,6 +353,9 @@ Route::middleware('auth')->group(function () {
     // Solicitações — inbox (equipe). Admin/super_admin explícitos (evita 403 como em /culto)
     Route::get('/solicitacoes', [SolicitationAdminController::class, 'index'])
         ->name('solicitations.index')
+        ->middleware('role_or_permission:super_admin|admin|solicitations.view|solicitations.manage');
+    Route::get('/pedidos-batismo', [SolicitationAdminController::class, 'baptismIndex'])
+        ->name('baptism-requests.index')
         ->middleware('role_or_permission:super_admin|admin|solicitations.view|solicitations.manage');
     Route::patch('/solicitacoes/{solicitation}', [SolicitationAdminController::class, 'update'])
         ->name('solicitations.update')

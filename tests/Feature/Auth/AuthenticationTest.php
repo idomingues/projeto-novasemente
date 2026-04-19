@@ -27,7 +27,7 @@ class AuthenticationTest extends TestCase
         ]);
 
         $this->assertAuthenticated();
-        $response->assertRedirect(route('mobile.culto', absolute: false));
+        $response->assertRedirect(route('mobile.news', absolute: false));
     }
 
     public function test_users_can_authenticate_using_display_name(): void
@@ -42,7 +42,7 @@ class AuthenticationTest extends TestCase
         ]);
 
         $this->assertAuthenticated();
-        $response->assertRedirect(route('mobile.culto', absolute: false));
+        $response->assertRedirect(route('mobile.news', absolute: false));
     }
 
     public function test_users_can_not_authenticate_with_invalid_password(): void
@@ -64,6 +64,6 @@ class AuthenticationTest extends TestCase
         $response = $this->actingAs($user)->post('/logout');
 
         $this->assertGuest();
-        $response->assertRedirect(route('mobile.culto', absolute: false));
+        $response->assertRedirect(route('mobile.news', absolute: false));
     }
 }

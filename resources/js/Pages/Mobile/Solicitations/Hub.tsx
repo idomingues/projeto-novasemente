@@ -56,6 +56,10 @@ interface Props {
     storeUrl: string;
     pastorOptions: PastorOption[];
     mySolicitations: SolicitationHubRow[];
+    /** Ecrã dedicado a batismo (menu principal mobile). */
+    pageTitle?: string;
+    pageSubtitle?: string;
+    singleBaptismType?: boolean;
 }
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
@@ -92,7 +96,15 @@ function formatListWhen(iso: string | null | undefined): string {
     }
 }
 
-export default function Hub({ types, storeUrl, pastorOptions, mySolicitations }: Props) {
+export default function Hub({
+    types,
+    storeUrl,
+    pastorOptions,
+    mySolicitations,
+    pageTitle,
+    pageSubtitle,
+    singleBaptismType = false,
+}: Props) {
     const [createOpen, setCreateOpen] = useState(false);
     const [step, setStep] = useState<'pick' | 'form'>('pick');
     const [typeLabel, setTypeLabel] = useState('');
@@ -121,8 +133,15 @@ export default function Hub({ types, storeUrl, pastorOptions, mySolicitations }:
 
     const openCreate = () => {
         reset();
-        setStep('pick');
-        setTypeLabel('');
+        if (singleBaptismType && types.length === 1) {
+            const t = types[0].type;
+            setData('type', t);
+            setTypeLabel(typeLabelByType.get(t) ?? '');
+            setStep('form');
+        } else {
+            setStep('pick');
+            setTypeLabel('');
+        }
         setCreateOpen(true);
     };
 
@@ -181,17 +200,19 @@ export default function Hub({ types, storeUrl, pastorOptions, mySolicitations }:
                 : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
         }`;
 
+    const heading = pageTitle ?? 'Solicitações';
+    const sub =
+        pageSubtitle ??
+        'Batismo, apresentação, visita pastoral. Toque num pedido para editar ou conversar. Para falar com um líder de ministério, use «Falar com líder» em Mais.';
+
     return (
         <MobileLayout>
-            <Head title="Solicitações" />
+            <Head title={heading} />
             <div className="space-y-4">
                 <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                        <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Solicitações</h1>
-                        <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-0.5">
-                            Batismo, apresentação, visita pastoral. Toque num pedido para editar ou conversar. Para falar com um líder
-                            de ministério, use «Falar com líder» em Mais.
-                        </p>
+                        <h1 className="text-xl font-bold text-zinc-900 dark:text-white">{heading}</h1>
+                        <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-0.5">{sub}</p>
                     </div>
                     <button
                         type="button"

@@ -10,13 +10,14 @@
 return [
     'items' => [
         ['name' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'home'],
+        ['name' => 'Notícias', 'route' => 'news.index', 'icon' => 'newspaper'],
         ['name' => 'Atendimento', 'route' => 'solicitations.index', 'icon' => 'inbox'],
         ['name' => 'Pastores', 'route' => 'pastors.index', 'icon' => 'user-circle'],
         ['name' => 'Agenda pastoral', 'route' => 'pastoral-agenda.index', 'icon' => 'clock'],
         ['name' => 'Eventos', 'route' => 'events.index', 'icon' => 'calendar-days'],
-        ['name' => 'Notícias', 'route' => 'news.index', 'icon' => 'newspaper'],
-        ['name' => 'Culto', 'route' => 'culto.index', 'icon' => 'film'],
+        ['name' => 'Pedidos de batismo', 'route' => 'baptism-requests.index', 'icon' => 'sparkles'],
         ['name' => 'Acervo', 'route' => 'acervo.index', 'icon' => 'play-circle'],
+        ['name' => 'Culto', 'route' => 'culto.index', 'icon' => 'film'],
         ['name' => 'Departamentos', 'route' => 'departments.index', 'icon' => 'building-office-2'],
         ['name' => 'Escalas', 'route' => 'escalas.index', 'icon' => 'calendar'],
         ['name' => 'Voluntários', 'route' => 'ministry-lead.volunteers.index', 'icon' => 'user-group'],

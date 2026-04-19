@@ -39,12 +39,12 @@ class RegistrationTest extends TestCase
             ->assertRedirect(route('login', absolute: false));
     }
 
-    public function test_registration_welcome_without_flash_redirects_to_culto(): void
+    public function test_registration_welcome_without_flash_redirects_to_news(): void
     {
         $user = \App\Models\User::factory()->create();
 
         $this->actingAs($user)
             ->get(route('registration.welcome', absolute: false))
-            ->assertRedirect(route('mobile.culto', absolute: false));
+            ->assertRedirect(route('mobile.news', absolute: false));
     }
 }
