@@ -75,7 +75,7 @@ export default function PrayerMobile({ requests }: Props) {
                         <div className="min-w-0">
                             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Pedidos de oração</h1>
                             <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5 lg:mt-1">
-                                Veja os pedidos e ore por alguém.
+                                Veja os pedidos e ore por alguém. Obs.: O nome não é divulgado.
                             </p>
                         </div>
                         <button

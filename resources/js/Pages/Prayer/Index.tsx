@@ -75,7 +75,7 @@ export default function PrayerIndex({ requests }: Props) {
                         <div className="min-w-0">
                             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-zinc-900 dark:text-white">Pedidos de oração</h1>
                             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                Veja os pedidos e ore por alguém.
+                                Veja os pedidos e ore por alguém. Obs.: O nome não é divulgado.
                             </p>
                         </div>
                         <button

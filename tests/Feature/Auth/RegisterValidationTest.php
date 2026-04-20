@@ -21,6 +21,10 @@ class RegisterValidationTest extends TestCase
             'email' => 'test@example.com',
             'password' => 'password',
             'password_confirmation' => 'different',
+            'notify_via_app' => true,
+            'notify_via_email' => true,
+            'notify_via_whatsapp' => false,
+            'lgpd_accepted' => true,
         ], [
             'HTTP_X_INERTIA' => 'true',
             'HTTP_X_INERTIA_VERSION' => $version,
@@ -58,6 +62,10 @@ class RegisterValidationTest extends TestCase
                 'email' => 'test@example.com',
                 'password' => 'password',
                 'password_confirmation' => 'different',
+                'notify_via_app' => true,
+                'notify_via_email' => true,
+                'notify_via_whatsapp' => false,
+                'lgpd_accepted' => true,
             ]);
 
         $response->assertRedirect(route('register', absolute: false));
@@ -71,7 +79,7 @@ class RegisterValidationTest extends TestCase
             ->post(route('register', absolute: false), []);
 
         $response->assertRedirect(route('register', absolute: false));
-        $response->assertSessionHasErrors(['name', 'email', 'password']);
+        $response->assertSessionHasErrors(['name', 'email', 'password', 'notify_via_app', 'notify_via_email', 'notify_via_whatsapp', 'lgpd_accepted']);
         $this->assertGuest();
     }
 }

@@ -23,6 +23,10 @@ class RegistrationTest extends TestCase
             'email' => 'test@example.com',
             'password' => 'password',
             'password_confirmation' => 'password',
+            'notify_via_app' => true,
+            'notify_via_email' => true,
+            'notify_via_whatsapp' => false,
+            'lgpd_accepted' => true,
         ]);
 
         $this->assertAuthenticated();

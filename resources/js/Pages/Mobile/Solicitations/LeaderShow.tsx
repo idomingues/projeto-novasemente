@@ -16,6 +16,8 @@ interface Props {
     mineUrl: string;
     canFinalizeLeaderChat?: boolean;
     finalizeLeaderChatUrl?: string | null;
+    memberHideConversationUrl?: string | null;
+    leaderHideConversationUrl?: string | null;
 }
 
 export default function LeaderShow({
@@ -27,6 +29,8 @@ export default function LeaderShow({
     mineUrl,
     canFinalizeLeaderChat,
     finalizeLeaderChatUrl,
+    memberHideConversationUrl,
+    leaderHideConversationUrl,
 }: Props) {
     const [tab, setTab] = useState<'detalhes' | 'chat'>('chat');
 
@@ -81,6 +85,8 @@ export default function LeaderShow({
                     memberBubbleLabel="Membro"
                     canFinalizeLeaderChat={canFinalizeLeaderChat}
                     finalizeLeaderChatUrl={finalizeLeaderChatUrl ?? null}
+                    memberHideConversationUrl={memberHideConversationUrl ?? null}
+                    leaderHideConversationUrl={leaderHideConversationUrl ?? null}
                 />
             </div>
         </MobileLayout>

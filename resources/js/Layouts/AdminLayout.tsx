@@ -12,11 +12,13 @@ export default function AdminLayout({
     wideLayout = false,
 }: PropsWithChildren<{ wideLayout?: boolean }>) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const isAuthenticated = !!(usePage().props as { auth?: { user?: unknown } }).auth?.user;
+    const auth = (usePage().props as { auth?: { user?: unknown; canAccessAdminMenu?: boolean } }).auth;
+    const isAuthenticated = !!auth?.user;
+    const canAccessAdminMenu = auth?.canAccessAdminMenu === true;
 
     return (
         <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-black">
-            {isAuthenticated && (
+            {isAuthenticated && canAccessAdminMenu && (
                 <Sidebar
                     mobileOpen={mobileMenuOpen}
                     onMobileClose={() => setMobileMenuOpen(false)}
@@ -24,8 +26,15 @@ export default function AdminLayout({
                 />
             )}
 
-            <div className={`flex h-[100dvh] flex-col overflow-hidden transition-all duration-300 ${isAuthenticated ? 'md:pl-72' : ''}`}>
-                <Topbar onMenuClick={() => setMobileMenuOpen(true)} hasSidebar={isAuthenticated} />
+            <div
+                className={`flex h-[100dvh] flex-col overflow-hidden transition-all duration-300 ${
+                    isAuthenticated && canAccessAdminMenu ? 'md:pl-72' : ''
+                }`}
+            >
+                <Topbar
+                    onMenuClick={canAccessAdminMenu ? () => setMobileMenuOpen(true) : undefined}
+                    hasSidebar={isAuthenticated && canAccessAdminMenu}
+                />
 
                 <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain pt-20 md:pt-24 px-4 sm:px-6 md:px-8 pb-24 [scrollbar-gutter:stable]">
                     <div
@@ -36,7 +45,7 @@ export default function AdminLayout({
                 </main>
 
                 {/* Barra inferior: sempre visível (visitantes + logados), para o admin pré-visualizar o app; no md+ com sidebar, só na coluna principal */}
-                <MobileBottomNav insetForSidebar={isAuthenticated} />
+                <MobileBottomNav insetForSidebar={isAuthenticated && canAccessAdminMenu} />
 
                 <FlashMessages />
                 {isAuthenticated && <InboxNotificationPoller />}

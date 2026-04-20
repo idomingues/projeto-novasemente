@@ -1,8 +1,6 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { DocumentTextIcon, NewspaperIcon, PhotoIcon, PlayCircleIcon } from '@heroicons/react/24/outline';
-import ImageDownloadButton from '@/Components/ImageDownloadButton';
-
 function imageSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
@@ -146,15 +144,6 @@ export default function MobileNews({ posts }: Props) {
                                                     </span>
                                                 </div>
                                             </Link>
-                                            {p.image_url && (
-                                                <ImageDownloadButton
-                                                    src={imageSrc(p.image_url, appUrl)}
-                                                    appUrl={appUrl}
-                                                    filenameBase={`noticia-${p.slug}`}
-                                                    className="absolute right-2 top-2 z-10"
-                                                    stopPropagation
-                                                />
-                                            )}
                                         </div>
                                     ) : (
                                         <Link

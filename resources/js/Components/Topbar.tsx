@@ -79,15 +79,15 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
     const showRecentDot = badgeCount === 0 && notifications.length > 0;
     const roleLabel = auth?.roleLabel ?? 'Utilizador';
     const { theme, toggleTheme } = useTheme();
-    const profileHref =
-        route().current('mobile.*') ? route('mobile.profile') : route().has('profile.edit') ? route('profile.edit') : route('mobile.profile');
+    /** Hub de perfil (opções); evita ir direto ao formulário Breeze no PC. */
+    const profileHref = route().has('mobile.profile') ? route('mobile.profile') : route('profile.edit');
 
     return (
         <header className={`bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 h-16 md:h-24 fixed top-0 right-0 left-0 z-40 transition-all duration-300 ${hasSidebar ? 'md:left-72' : ''}`}>
             <div className="flex items-center justify-between h-full px-4 md:px-8">
                 {/* Menu button (mobile) + Search / Title */}
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                    {hasSidebar && (
+                    {hasSidebar && onMenuClick ? (
                         <button
                             type="button"
                             onClick={onMenuClick}
@@ -98,7 +98,7 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                             </svg>
                         </button>
-                    )}
+                    ) : null}
                     <div className="hidden">
                         {appNavItems.map(({ name, route: routeName, icon: Icon }) => (
                             <Link

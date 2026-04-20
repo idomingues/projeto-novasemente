@@ -2,16 +2,19 @@
 
 namespace App\Services;
 
+use App\Mail\SupportTicketStaffMessageMail;
 use App\Models\AppSupportTicket;
 use App\Models\User;
 use App\Models\UserInboxNotification;
 use App\Support\SafeSpatieUsersByPermission;
 use App\Support\SupportTicketAdminPresenter;
+use App\Support\UserMessagingPreferences;
+use Illuminate\Support\Facades\Mail;
 
 class SupportTicketChatNotifier
 {
-    /** Resposta da equipe (painel ou app como staff) → utilizador dono do ticket na app. */
-    public function notifyOwnerOfStaffMessage(AppSupportTicket $ticket, User $staff): void
+    /** Resposta da equipe (painel ou app como staff) → utilizador dono do ticket na app (e e-mail informativo). */
+    public function notifyOwnerOfStaffMessage(AppSupportTicket $ticket, User $staff, string $messageContent): void
     {
         if (! $ticket->user_id) {
             return;
@@ -26,19 +29,35 @@ class SupportTicketChatNotifier
         $title = $ticket->type === 'pastoral' ? 'Nova mensagem sobre o seu agendamento' : 'Nova mensagem no suporte';
         $body = 'A equipe respondeu sobre: '.$typeLabel.'.';
 
-        $row = UserInboxNotification::create([
-            'user_id' => $owner->id,
-            'title' => $title,
-            'body' => $body,
-            'action_url' => null,
-        ]);
+        if (UserMessagingPreferences::acceptsInbox($owner)) {
+            $row = UserInboxNotification::create([
+                'user_id' => $owner->id,
+                'title' => $title,
+                'body' => $body,
+                'action_url' => null,
+            ]);
 
-        $row->update([
-            'action_url' => route('mobile.support.ticket', [
-                'token' => $ticket->public_token,
-                'inbox' => $row->id,
-            ], absolute: true),
-        ]);
+            $row->update([
+                'action_url' => route('mobile.support.ticket', [
+                    'token' => $ticket->public_token,
+                    'inbox' => $row->id,
+                ], absolute: true),
+            ]);
+        }
+
+        $selfMessage = (int) $ticket->user_id === (int) $staff->id;
+        if (! $selfMessage && is_string($owner->email) && filter_var($owner->email, FILTER_VALIDATE_EMAIL)) {
+            $owner->loadMissing('church:id,name');
+            $conversationUrl = route('mobile.support.ticket', ['token' => $ticket->public_token], absolute: true);
+            Mail::to($owner->email)->send(new SupportTicketStaffMessageMail(
+                $title,
+                $typeLabel,
+                $messageContent,
+                $conversationUrl,
+                $staff->name,
+                $owner->church?->name,
+            ));
+        }
     }
 
     /** Mensagem do membro na app → equipe de suporte (e pastoral, se aplicável). */

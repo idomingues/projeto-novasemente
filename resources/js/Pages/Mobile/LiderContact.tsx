@@ -1,8 +1,7 @@
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
 import {
     ChevronRightIcon,
-    MapPinIcon,
     PencilSquareIcon,
     PlusIcon,
     UserGroupIcon,
@@ -39,14 +38,13 @@ export interface LeaderContactRow {
     memberPastorOptions: MemberPastorOption[];
     canFinalizeLeaderChat?: boolean;
     finalizeLeaderChatUrl?: string | null;
+    memberHideConversationUrl?: string | null;
+    leaderHideConversationUrl?: string | null;
 }
 
 interface Props {
     leaderOptions: LeaderOpt[];
     storeUrl: string;
-    mineUrl: string;
-    leaderInboxUrl: string;
-    locationUrl: string;
     myLeaderChats: LeaderContactRow[];
 }
 
@@ -74,14 +72,7 @@ function rowTitle(row: LeaderContactRow): string {
     return row.solicitation.assignedVolunteerName ?? row.solicitation.typeLabel;
 }
 
-export default function LiderContact({
-    leaderOptions,
-    storeUrl,
-    mineUrl,
-    leaderInboxUrl,
-    locationUrl,
-    myLeaderChats,
-}: Props) {
+export default function LiderContact({ leaderOptions, storeUrl, myLeaderChats }: Props) {
     const [createOpen, setCreateOpen] = useState(false);
     const [detailOpen, setDetailOpen] = useState(false);
     const [detailRow, setDetailRow] = useState<LeaderContactRow | null>(null);
@@ -154,14 +145,6 @@ export default function LiderContact({
                 <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Falar com líder</h1>
-                        <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-0.5">
-                            Conversa privada com um líder de ministério (conta na app). Toque numa conversa para ver detalhes ou abrir o
-                            chat. Para batismo, visita pastoral, etc., use{' '}
-                            <Link href={mineUrl} className="font-semibold text-primary-600 underline dark:text-primary-400">
-                                Solicitações
-                            </Link>
-                            .
-                        </p>
                     </div>
                     <button
                         type="button"
@@ -172,20 +155,6 @@ export default function LiderContact({
                     >
                         <PlusIcon className="h-6 w-6" strokeWidth={2.2} aria-hidden />
                     </button>
-                </div>
-
-                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/50 p-4">
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                        Se for líder e quiser responder no telemóvel, use{' '}
-                        <Link href={leaderInboxUrl} className="font-semibold text-primary-600 underline dark:text-primary-400">
-                            as minhas conversas como líder
-                        </Link>
-                        . Morada e mapa:{' '}
-                        <Link href={locationUrl} className="font-semibold text-primary-600 underline dark:text-primary-400">
-                            Localização
-                        </Link>
-                        .
-                    </p>
                 </div>
 
                 <div ref={listRef} id="lista-lider" className="scroll-mt-24">
@@ -249,20 +218,6 @@ export default function LiderContact({
                             ))}
                         </div>
                     )}
-                </div>
-
-                <Link
-                    href={locationUrl}
-                    className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
-                >
-                    <MapPinIcon className="h-6 w-6 shrink-0 text-zinc-500" aria-hidden />
-                    <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">Localização e contactos da igreja</span>
-                </Link>
-
-                <div className="rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-900/50 p-6 text-center">
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                        Clique no <strong>+</strong> para iniciar uma nova conversa com um líder.
-                    </p>
                 </div>
             </div>
 
@@ -372,6 +327,9 @@ export default function LiderContact({
                                 memberPatchReturnTo="leader-contact"
                                 canFinalizeLeaderChat={detailRow.canFinalizeLeaderChat}
                                 finalizeLeaderChatUrl={detailRow.finalizeLeaderChatUrl ?? null}
+                                memberHideConversationUrl={detailRow.memberHideConversationUrl ?? null}
+                                leaderHideConversationUrl={detailRow.leaderHideConversationUrl ?? null}
+                                hideConversationReturnTo="leader_contact"
                             />
                         </div>
 

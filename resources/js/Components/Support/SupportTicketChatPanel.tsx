@@ -3,9 +3,11 @@ import axios from 'axios';
 import { FormEventHandler, useCallback, useEffect, useState } from 'react';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import PrimaryButton from '@/Components/PrimaryButton';
+import SecondaryButton from '@/Components/SecondaryButton';
 import InputLabel from '@/Components/InputLabel';
 import Textarea from '@/Components/Textarea';
 import InputError from '@/Components/InputError';
+import { confirmAction } from '@/utils/confirmDialog';
 
 export type SupportTicketChatMessage = {
     id: number;
@@ -45,6 +47,7 @@ export default function SupportTicketChatPanel({ publicToken, returnTo, compact 
     const [messages, setMessages] = useState<SupportTicketChatMessage[]>([]);
     const [canChat, setCanChat] = useState(false);
     const [showMessages, setShowMessages] = useState(false);
+    const [hideFromMyAppUrl, setHideFromMyAppUrl] = useState<string | null>(null);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const load = useCallback(async () => {
@@ -56,11 +59,13 @@ export default function SupportTicketChatPanel({ publicToken, returnTo, compact 
                 messages: SupportTicketChatMessage[];
                 canChat: boolean;
                 showMessages: boolean;
+                hideFromMyAppUrl?: string | null;
             }>(route('mobile.support.ticket.messages', { token: publicToken }));
             setTicket(data.ticket);
             setMessages(data.messages);
             setCanChat(data.canChat);
             setShowMessages(data.showMessages);
+            setHideFromMyAppUrl(data.hideFromMyAppUrl ?? null);
         } catch {
             setLoadError('Não foi possível carregar a conversa.');
         } finally {
@@ -123,6 +128,31 @@ export default function SupportTicketChatPanel({ publicToken, returnTo, compact 
                 <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4">
                     <div className="text-sm font-semibold text-zinc-900 dark:text-white">{ticket.typeLabel}</div>
                     <div className="mt-2 text-sm text-zinc-700 dark:text-zinc-200 whitespace-pre-wrap">{ticket.message}</div>
+                    {hideFromMyAppUrl ? (
+                        <div className="mt-3 rounded-xl border border-zinc-200 bg-zinc-50/90 p-3 dark:border-zinc-700 dark:bg-zinc-800/50">
+                            <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                                Pode remover este chamado da sua lista na app; a equipa mantém o registo.
+                            </p>
+                            <SecondaryButton
+                                type="button"
+                                className="mt-2 w-full justify-center border-red-200 text-red-800 hover:bg-red-50 dark:border-red-900/50 dark:text-red-200 dark:hover:bg-red-950/30"
+                                onClick={async () => {
+                                    const ok = await confirmAction({
+                                        title: 'Remover este chamado da sua app?',
+                                        text: 'Deixa de aparecer nos seus chamados. A equipa continua a poder ver o histórico.',
+                                        icon: 'warning',
+                                        danger: true,
+                                        confirmButtonText: 'Sim, remover da minha app',
+                                        cancelButtonText: 'Cancelar',
+                                    });
+                                    if (!ok || !hideFromMyAppUrl) return;
+                                    router.post(hideFromMyAppUrl, {}, { preserveScroll: true });
+                                }}
+                            >
+                                Excluir conversa da minha app
+                            </SecondaryButton>
+                        </div>
+                    ) : null}
                 </div>
             )}
 

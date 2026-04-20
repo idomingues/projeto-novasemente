@@ -112,7 +112,7 @@ export default function MobileSettings({ church, user }: Props) {
                             <p className="font-medium text-zinc-900 dark:text-white">{user.name}</p>
                             <p className="text-sm text-zinc-500 dark:text-zinc-400">{user.email}</p>
                             <Link
-                                href={route('profile.edit')}
+                                href={route('mobile.profile.edit')}
                                 className="inline-block mt-3 text-sm font-medium text-primary-600 dark:text-primary-400"
                             >
                                 Editar perfil

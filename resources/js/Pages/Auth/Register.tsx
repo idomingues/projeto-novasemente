@@ -15,8 +15,14 @@ interface InvitationProps {
     completes_existing_user: boolean;
 }
 
+interface MinistryOption {
+    id: number;
+    name: string;
+}
+
 interface Props {
     invitation: InvitationProps | null;
+    ministryOptions: MinistryOption[];
 }
 
 type LooseErrors = Record<string, string | string[] | undefined> | undefined;
@@ -32,7 +38,7 @@ function firstError(errors: LooseErrors, field: string): string | undefined {
     return typeof v === 'string' ? v : String(v);
 }
 
-export default function Register({ invitation }: Props) {
+export default function Register({ invitation, ministryOptions = [] }: Props) {
     const page = usePage();
     const pageErrors = ((page.props as { errors?: Record<string, string | string[]> }).errors ?? {}) as Record<
         string,
@@ -46,6 +52,11 @@ export default function Register({ invitation }: Props) {
         password_confirmation: '',
         invitation_token: invitation?.token ?? '',
         already_volunteer: false as boolean,
+        volunteer_ministry_ids: [] as number[],
+        notify_via_app: true,
+        notify_via_email: true,
+        notify_via_whatsapp: false,
+        lgpd_accepted: false as boolean,
     });
 
     const fieldError = (field: string) => firstError(formErrors, field) ?? firstError(pageErrors, field);
@@ -171,13 +182,69 @@ export default function Register({ invitation }: Props) {
                         <InputError message={fieldError('password_confirmation')} className="mt-2" />
                     </div>
 
+                    <div className="rounded-xl border border-zinc-200 bg-zinc-50/90 p-4 dark:border-zinc-700 dark:bg-zinc-800/40 space-y-3">
+                        <p className="text-sm font-semibold text-zinc-900 dark:text-white">Comunicações</p>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                            Autorizo o envio de informações sobre a igreja e a app por estes meios (pode alterar depois no perfil).
+                        </p>
+                        <label className="flex cursor-pointer items-start gap-3">
+                            <Checkbox
+                                name="notify_via_app"
+                                checked={data.notify_via_app}
+                                onChange={(e) => setData('notify_via_app', e.target.checked)}
+                            />
+                            <span className="text-sm text-zinc-700 dark:text-zinc-200">Notificações na app (caixa de entrada)</span>
+                        </label>
+                        <label className="flex cursor-pointer items-start gap-3">
+                            <Checkbox
+                                name="notify_via_email"
+                                checked={data.notify_via_email}
+                                onChange={(e) => setData('notify_via_email', e.target.checked)}
+                            />
+                            <span className="text-sm text-zinc-700 dark:text-zinc-200">E-mail</span>
+                        </label>
+                        <label className="flex cursor-pointer items-start gap-3">
+                            <Checkbox
+                                name="notify_via_whatsapp"
+                                checked={data.notify_via_whatsapp}
+                                onChange={(e) => setData('notify_via_whatsapp', e.target.checked)}
+                            />
+                            <span className="text-sm text-zinc-700 dark:text-zinc-200">WhatsApp (quando o serviço estiver disponível)</span>
+                        </label>
+                        <InputError message={fieldError('notify_via_app')} className="mt-1" />
+                        <InputError message={fieldError('notify_via_email')} className="mt-1" />
+                        <InputError message={fieldError('notify_via_whatsapp')} className="mt-1" />
+                    </div>
+
+                    <div className="rounded-xl border border-zinc-200 bg-zinc-50/90 p-4 dark:border-zinc-700 dark:bg-zinc-800/40">
+                        <label className="flex cursor-pointer items-start gap-3">
+                            <Checkbox
+                                name="lgpd_accepted"
+                                checked={data.lgpd_accepted}
+                                onChange={(e) => setData('lgpd_accepted', e.target.checked)}
+                            />
+                            <span className="text-sm leading-snug text-zinc-700 dark:text-zinc-200">
+                                Li e aceito o tratamento dos meus dados pessoais conforme a{' '}
+                                <strong className="font-semibold text-zinc-900 dark:text-white">Lei Geral de Proteção de Dados
+                                (LGPD)</strong>, para fins de cadastro, pastoral e comunicação da igreja nesta plataforma.
+                            </span>
+                        </label>
+                        <InputError message={fieldError('lgpd_accepted')} className="mt-2" />
+                    </div>
+
                     {!invitation ? (
-                        <div className="rounded-xl border border-zinc-200 bg-zinc-50/90 p-4 dark:border-zinc-700 dark:bg-zinc-800/40">
+                        <div className="rounded-xl border border-zinc-200 bg-zinc-50/90 p-4 dark:border-zinc-700 dark:bg-zinc-800/40 space-y-4">
                             <label className="flex cursor-pointer items-start gap-3">
                                 <Checkbox
                                     name="already_volunteer"
                                     checked={data.already_volunteer}
-                                    onChange={(e) => setData('already_volunteer', e.target.checked)}
+                                    onChange={(e) => {
+                                        const checked = e.target.checked;
+                                        setData('already_volunteer', checked);
+                                        if (!checked) {
+                                            setData('volunteer_ministry_ids', []);
+                                        }
+                                    }}
                                 />
                                 <span className="text-sm leading-snug text-zinc-700 dark:text-zinc-200">
                                     <span className="font-semibold text-zinc-900 dark:text-white">Já sou voluntário</span> na
@@ -186,6 +253,44 @@ export default function Register({ invitation }: Props) {
                                 </span>
                             </label>
                             <InputError message={fieldError('already_volunteer')} className="mt-2" />
+                            {data.already_volunteer && ministryOptions.length > 0 ? (
+                                <div className="border-t border-zinc-200 pt-4 dark:border-zinc-600 space-y-2">
+                                    <p className="text-sm font-semibold text-zinc-900 dark:text-white">
+                                        Departamentos em que serve
+                                    </p>
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                        Esta informação ajuda os líderes a incluí-lo nas escalas.
+                                    </p>
+                                    <div className="space-y-2">
+                                        {ministryOptions.map((m) => (
+                                            <label key={m.id} className="flex cursor-pointer items-start gap-3">
+                                                <Checkbox
+                                                    name={`volunteer_ministry_${m.id}`}
+                                                    checked={data.volunteer_ministry_ids.includes(m.id)}
+                                                    onChange={(e) => {
+                                                        const on = e.target.checked;
+                                                        const next = new Set(data.volunteer_ministry_ids);
+                                                        if (on) {
+                                                            next.add(m.id);
+                                                        } else {
+                                                            next.delete(m.id);
+                                                        }
+                                                        setData('volunteer_ministry_ids', [...next]);
+                                                    }}
+                                                />
+                                                <span className="text-sm text-zinc-700 dark:text-zinc-200">{m.name}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                    <InputError message={fieldError('volunteer_ministry_ids')} className="mt-1" />
+                                </div>
+                            ) : null}
+                            {data.already_volunteer && ministryOptions.length === 0 ? (
+                                <p className="text-xs text-amber-700 dark:text-amber-300 border-t border-zinc-200 pt-3 dark:border-zinc-600">
+                                    Ainda não há departamentos configurados nesta igreja. A secretaria pode associá-lo aos
+                                    ministérios depois.
+                                </p>
+                            ) : null}
                         </div>
                     ) : null}
 

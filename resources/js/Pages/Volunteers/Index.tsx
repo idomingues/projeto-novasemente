@@ -13,7 +13,7 @@ import PageHeader from '@/Components/PageHeader';
 import Card from '@/Components/Card';
 import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
-import { useState, useEffect, FormEventHandler } from 'react';
+import { useState, useEffect, FormEventHandler, useMemo } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
 import { activeInactivePillClass } from '@/lib/statusBadges';
 import { appRoleLabel } from '@/lib/appRoleLabels';
@@ -111,16 +111,27 @@ export default function Index({
         setIsModalOpen(true);
     };
 
+    const editingVolunteer = useMemo(() => {
+        if (!isEditing || editingId === null) {
+            return undefined;
+        }
+        return volunteers.data.find((v) => v.id === editingId);
+    }, [isEditing, editingId, volunteers.data]);
+
+    const editingUserIsSuperAdmin = Boolean(editingVolunteer?.user?.roles?.includes('super_admin'));
+
     const openEditModal = (v: Volunteer) => {
         setIsEditing(true);
         setEditingId(v.id);
+        const roles = v.user?.roles ?? [];
+        const isSuper = roles.includes('super_admin');
         setData({
             name: v.name ?? '',
             email: v.user?.email ?? v.email ?? '',
             phone: v.phone ?? '',
             ministry_ids: v.ministries?.map((m) => m.id) ?? [],
             active: v.active,
-            app_role: v.user?.roles?.[0] ?? '',
+            app_role: isSuper ? '' : roles[0] ?? '',
             app_ministry_ids: v.user?.ministry_ids ?? [],
             app_password: '',
             app_password_confirmation: '',
@@ -675,19 +686,26 @@ export default function Index({
 
                             <div>
                                 <InputLabel htmlFor="app_role" value="Perfil de acesso no app (opcional)" />
-                                <select
-                                    id="app_role"
-                                    value={data.app_role}
-                                    onChange={(e) => setData('app_role', e.target.value)}
-                                    className="mt-1 block w-full min-h-[2.75rem] h-11 py-2.5 px-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white text-sm"
-                                >
-                                    <option value="">Sem perfil (só conta até o administrador definir permissões)</option>
-                                    {appRoles.map((r) => (
-                                        <option key={r.id} value={r.name}>
-                                            {appRoleLabel(r.name)}
-                                        </option>
-                                    ))}
-                                </select>
+                                {editingUserIsSuperAdmin ? (
+                                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 px-3 py-2.5">
+                                        Este utilizador é <strong className="font-medium text-zinc-800 dark:text-zinc-200">super administrador</strong>
+                                        : tem acesso total e o papel não é definido aqui (gestão de utilizadores / sistema).
+                                    </p>
+                                ) : (
+                                    <select
+                                        id="app_role"
+                                        value={data.app_role}
+                                        onChange={(e) => setData('app_role', e.target.value)}
+                                        className="mt-1 block w-full min-h-[2.75rem] h-11 py-2.5 px-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white text-sm"
+                                    >
+                                        <option value="">Sem perfil (só conta até o administrador definir permissões)</option>
+                                        {appRoles.map((r) => (
+                                            <option key={r.id} value={r.name}>
+                                                {appRoleLabel(r.name)}
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
                                 <InputError message={errors.app_role} className="mt-1" />
                             </div>
                         </div>

@@ -107,16 +107,6 @@ const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'Configurações', route: 'settings.index', icon: Cog6ToothIcon },
 ];
 
-/** Menu simplificado (conta comum da app, sem acesso ao painel admin). */
-const APP_ONLY_MENU: MenuItem[] = [
-    { name: 'News', route: 'mobile.news', icon: NewspaperIcon },
-    { name: 'Eventos', route: 'mobile.events', icon: CalendarDaysIcon },
-    { name: 'Oração', route: 'mobile.prayer', icon: PrayingHandsIcon },
-    { name: 'Notificações', route: 'mobile.notifications', icon: BellAlertIcon },
-    { name: 'Suporte APP', route: 'mobile.support.index', icon: ChatBubbleLeftRightIcon },
-    { name: 'Mais', route: 'mobile.more', icon: SparklesIcon },
-];
-
 function menuFromServer(items: ServerSidebarItem[]): MenuItem[] {
     return items.map((item) => ({
         name: item.name,
@@ -124,6 +114,16 @@ function menuFromServer(items: ServerSidebarItem[]): MenuItem[] {
         icon: ICON_MAP[item.icon] ?? HomeIcon,
     }));
 }
+
+/** Rotas espelhadas na barra inferior mobile — não repetir no menu lateral. */
+const MOBILE_BOTTOM_NAV_ROUTES = new Set([
+    'mobile.news',
+    'mobile.baptism',
+    'mobile.events',
+    'mobile.prayer',
+    'mobile.more',
+    'more.index',
+]);
 
 export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPermissions = {} }: SidebarProps) {
     const { props } = usePage();
@@ -203,7 +203,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
     const menuItems = !isAuthenticated
         ? []
         : !canAccessAdminMenu
-          ? APP_ONLY_MENU
+          ? []
           : allMenuItems.filter((item) => {
                 if (item.route === 'settings.index' && !canManageSettings) {
                     return false;
@@ -260,8 +260,14 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
                   })
                   .filter((i): i is MenuItem => i !== undefined)
             : [];
-    const mainMenuItems =
-        canAccessAdminMenu ? menuItems.filter((i) => !sectionRoutes.has(i.route)) : menuItems;
+    const mainMenuItems = canAccessAdminMenu
+        ? menuItems.filter((i) => !sectionRoutes.has(i.route) && !MOBILE_BOTTOM_NAV_ROUTES.has(i.route))
+        : [];
+
+    /** Conta só com app: navegação principal é a barra inferior — sem coluna lateral. */
+    if (!isAuthenticated || !canAccessAdminMenu) {
+        return null;
+    }
 
     return (
         <>
@@ -274,7 +280,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
                 />
             )}
             <aside
-                className={`w-72 bg-white dark:bg-zinc-950 border-r border-zinc-200 dark:border-zinc-800 h-screen fixed left-0 top-0 flex flex-col z-50 transition-transform duration-300 ease-out md:translate-x-0 ${
+                className={`w-72 bg-white dark:bg-zinc-950 border-r border-zinc-200 dark:border-zinc-800 h-screen fixed left-0 top-0 z-50 transition-transform duration-300 ease-out flex flex-col ${
                     mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
                 }`}
             >
@@ -336,53 +342,59 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
                 )}
 
                 <div className="flex-1 overflow-y-auto py-8 px-4">
-                    <div className="mb-4 px-4">
-                        <p className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Menu Principal</p>
-                    </div>
-                    <ul className="space-y-2">
-                        {mainMenuItems.map((item) => {
-                            const routeExists = route().has(item.route);
-                            const href = routeExists ? route(item.route) : '#';
-                            const isActive = routeExists && isMenuItemActive(item.route);
-                            const Icon = item.icon;
+                    {mainMenuItems.length > 0 ? (
+                        <>
+                            <div className="mb-4 px-4">
+                                <p className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+                                    Menu Principal
+                                </p>
+                            </div>
+                            <ul className="space-y-2">
+                                {mainMenuItems.map((item) => {
+                                    const routeExists = route().has(item.route);
+                                    const href = routeExists ? route(item.route) : '#';
+                                    const isActive = routeExists && isMenuItemActive(item.route);
+                                    const Icon = item.icon;
 
-                            return (
-                                <li key={item.route}>
-                                    <Link
-                                        href={href}
-                                        onClick={onMobileClose}
-                                        className={`flex items-center px-4 py-3.5 rounded-2xl transition-all duration-200 group ${
-                                            isActive
-                                                ? 'bg-zinc-900 text-white shadow-lg shadow-zinc-900/10 dark:bg-white dark:text-black dark:shadow-white/10'
-                                                : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-white'
-                                        }`}
-                                    >
-                                        <Icon
-                                            className={`w-6 h-6 mr-3 ${
-                                                isActive
-                                                    ? 'text-white dark:text-black'
-                                                    : 'text-zinc-400 group-hover:text-zinc-900 dark:text-zinc-500 dark:group-hover:text-white'
-                                            }`}
-                                        />
-                                        <span className="font-medium text-sm">{item.name}</span>
-                                        {item.route === 'solicitations.index' && openSolicitationsCount > 0 ? (
-                                            <span
-                                                className={`ml-auto inline-flex min-w-6 items-center justify-center rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${
+                                    return (
+                                        <li key={item.route}>
+                                            <Link
+                                                href={href}
+                                                onClick={onMobileClose}
+                                                className={`flex items-center px-4 py-3.5 rounded-2xl transition-all duration-200 group ${
                                                     isActive
-                                                        ? 'bg-white/20 text-white dark:bg-black/10 dark:text-black'
-                                                        : 'bg-rose-600 text-white'
+                                                        ? 'bg-zinc-900 text-white shadow-lg shadow-zinc-900/10 dark:bg-white dark:text-black dark:shadow-white/10'
+                                                        : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-white'
                                                 }`}
-                                                title={`${openSolicitationsCount} em aberto`}
-                                                aria-label={`${openSolicitationsCount} em aberto`}
                                             >
-                                                {openSolicitationsCount > 99 ? '99+' : openSolicitationsCount}
-                                            </span>
-                                        ) : null}
-                                    </Link>
-                                </li>
-                            );
-                        })}
-                    </ul>
+                                                <Icon
+                                                    className={`w-6 h-6 mr-3 ${
+                                                        isActive
+                                                            ? 'text-white dark:text-black'
+                                                            : 'text-zinc-400 group-hover:text-zinc-900 dark:text-zinc-500 dark:group-hover:text-white'
+                                                    }`}
+                                                />
+                                                <span className="font-medium text-sm">{item.name}</span>
+                                                {item.route === 'solicitations.index' && openSolicitationsCount > 0 ? (
+                                                    <span
+                                                        className={`ml-auto inline-flex min-w-6 items-center justify-center rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${
+                                                            isActive
+                                                                ? 'bg-white/20 text-white dark:bg-black/10 dark:text-black'
+                                                                : 'bg-rose-600 text-white'
+                                                        }`}
+                                                        title={`${openSolicitationsCount} em aberto`}
+                                                        aria-label={`${openSolicitationsCount} em aberto`}
+                                                    >
+                                                        {openSolicitationsCount > 99 ? '99+' : openSolicitationsCount}
+                                                    </span>
+                                                ) : null}
+                                            </Link>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        </>
+                    ) : null}
 
                     {publicationMenuItems.length > 0 ? (
                         <>

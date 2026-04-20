@@ -1,8 +1,6 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { ArrowLeftIcon, NewspaperIcon, PlayCircleIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
-import ImageDownloadButton from '@/Components/ImageDownloadButton';
-
 function imageSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
@@ -103,14 +101,6 @@ export default function MobileNewsShow({ post }: Props) {
                                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20">
                                     <PlayCircleIcon className="h-16 w-16 text-white drop-shadow-lg sm:h-20 sm:w-20" aria-hidden />
                                 </div>
-                            )}
-                            {post.image_url && (
-                                <ImageDownloadButton
-                                    src={imageSrc(post.image_url, appUrl)}
-                                    appUrl={appUrl}
-                                    filenameBase={`noticia-${post.slug}`}
-                                    className="absolute right-2 top-2 z-10"
-                                />
                             )}
                         </div>
                     ) : isPdf ? (

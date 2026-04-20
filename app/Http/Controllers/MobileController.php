@@ -8,6 +8,7 @@ use App\Models\ChurchService;
 use App\Models\ChurchSolicitation;
 use App\Models\Culto;
 use App\Models\Event;
+use App\Models\Ministry;
 use App\Models\Musica;
 use App\Models\News;
 use App\Models\Pastor;
@@ -484,6 +485,7 @@ class MobileController extends Controller
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->where('user_id', $user->id)
             ->where('type', 'leader_chat')
+            ->whereNull('member_hidden_at')
             ->with(['assignedPastor:id,name', 'assignedVolunteer.user:id,name'])
             ->orderByDesc('updated_at')
             ->limit(40)
@@ -495,6 +497,7 @@ class MobileController extends Controller
                     $contactUrl,
                     $contactUrl,
                     route('mobile.solicitations.leader-chat.finalize', $s),
+                    false,
                 );
 
                 return array_merge($payload, [
@@ -509,9 +512,6 @@ class MobileController extends Controller
         return Inertia::render('Mobile/LiderContact', [
             'leaderOptions' => SolicitationAssignees::leaderContactVolunteerOptions($churchId),
             'storeUrl' => route('mobile.contact.store'),
-            'mineUrl' => route('mobile.solicitations.hub', ['lista' => '1']),
-            'leaderInboxUrl' => route('mobile.leader-solicitations.index'),
-            'locationUrl' => route('mobile.location'),
             'myLeaderChats' => $myLeaderChats,
         ]);
     }
@@ -711,9 +711,28 @@ class MobileController extends Controller
         $user = $request->user();
         abort_unless($user, 401);
 
+        $churchId = (int) ($user->church_id ?? 0);
+        if ($churchId === 0) {
+            $resolved = Church::resolveWorkingId($request);
+            if ($resolved !== null) {
+                $churchId = (int) $resolved;
+            }
+        }
+
+        $ministryOptions = $churchId > 0
+            ? Ministry::query()->where('church_id', $churchId)->orderBy('name')->get(['id', 'name'])->values()->all()
+            : [];
+
+        $user->loadMissing('volunteerProfile');
+        $volunteerMinistryIds = $user->volunteerProfile
+            ? $user->volunteerProfile->ministries()->pluck('ministries.id')->map(fn ($id) => (int) $id)->values()->all()
+            : [];
+
         return Inertia::render('Mobile/ProfileEdit', [
             'mustVerifyEmail' => $user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail,
             'status' => session('status'),
+            'ministryOptions' => $ministryOptions,
+            'volunteerMinistryIds' => $volunteerMinistryIds,
         ]);
     }
 }

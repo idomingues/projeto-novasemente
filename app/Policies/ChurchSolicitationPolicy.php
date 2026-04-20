@@ -44,11 +44,11 @@ class ChurchSolicitationPolicy
         }
 
         if ((int) $solicitation->user_id === (int) $user->id) {
-            return true;
+            return $solicitation->member_hidden_at === null;
         }
 
         if ($this->isAssignedLeader($user, $solicitation)) {
-            return true;
+            return $solicitation->leader_hidden_at === null;
         }
 
         return $this->isStaff($user);
@@ -84,7 +84,7 @@ class ChurchSolicitationPolicy
             return false;
         }
 
-        return $solicitation->allowsChat();
+        return $solicitation->member_hidden_at === null && $solicitation->allowsChat();
     }
 
     public function sendMessageAsStaff(User $user, ChurchSolicitation $solicitation): bool
@@ -93,7 +93,15 @@ class ChurchSolicitationPolicy
             return false;
         }
 
-        return $this->isStaff($user) || $this->isAssignedLeader($user, $solicitation);
+        if ($this->isStaff($user)) {
+            return true;
+        }
+
+        if ($this->isAssignedLeader($user, $solicitation)) {
+            return $solicitation->leader_hidden_at === null;
+        }
+
+        return false;
     }
 
     /** Membro ou líder atribuído encerra o assunto (conversa com líder). */
@@ -111,6 +119,18 @@ class ChurchSolicitationPolicy
             return true;
         }
 
+        return $this->isAssignedLeader($user, $solicitation);
+    }
+
+    /** O membro remove a conversa da app (mantém-se no atendimento da igreja). */
+    public function hideFromMemberApp(User $user, ChurchSolicitation $solicitation): bool
+    {
+        return (int) $solicitation->user_id === (int) $user->id;
+    }
+
+    /** O líder atribuído remove a conversa da sua lista na app. */
+    public function hideFromLeaderApp(User $user, ChurchSolicitation $solicitation): bool
+    {
         return $this->isAssignedLeader($user, $solicitation);
     }
 }

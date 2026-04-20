@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Models\User;
 use App\Support\VolunteerContactDuplicateChecker;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreVolunteerRequest extends FormRequest
 {
@@ -26,7 +27,7 @@ class StoreVolunteerRequest extends FormRequest
             'ministry_ids.*' => ['exists:ministries,id'],
             'role' => ['nullable', 'string', 'max:100'],
             'active' => ['boolean'],
-            'app_role' => ['nullable', 'string', 'exists:roles,name'],
+            'app_role' => ['nullable', 'string', Rule::notIn(['super_admin']), 'exists:roles,name'],
             'app_ministry_ids' => ['nullable', 'array'],
             'app_ministry_ids.*' => ['exists:ministries,id'],
             'app_password' => ['nullable', 'string', 'max:255', 'confirmed'],

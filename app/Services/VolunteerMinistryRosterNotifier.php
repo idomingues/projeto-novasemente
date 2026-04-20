@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\Models\Ministry;
+use App\Models\User;
 use App\Models\UserInboxNotification;
 use App\Models\Volunteer;
+use App\Support\UserMessagingPreferences;
 
 class VolunteerMinistryRosterNotifier
 {
@@ -29,6 +31,11 @@ class VolunteerMinistryRosterNotifier
             $leaderIds = $ministry->users()->pluck('users.id')->map(fn ($id) => (int) $id)->unique()->values()->all();
             foreach ($leaderIds as $leaderUserId) {
                 if ($volunteer->user_id && $leaderUserId === (int) $volunteer->user_id) {
+                    continue;
+                }
+
+                $leaderUser = User::query()->find($leaderUserId);
+                if (! UserMessagingPreferences::acceptsInbox($leaderUser)) {
                     continue;
                 }
 

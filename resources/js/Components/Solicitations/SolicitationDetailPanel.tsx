@@ -79,6 +79,12 @@ export type SolicitationDetailPanelProps = {
     /** Membro ou líder pode encerrar conversa com líder (assunto finalizado). */
     canFinalizeLeaderChat?: boolean;
     finalizeLeaderChatUrl?: string | null;
+    /** Membro remove o pedido/conversa da sua app (mantém-se na equipe). */
+    memberHideConversationUrl?: string | null;
+    /** Líder remove a conversa da sua lista na app. */
+    leaderHideConversationUrl?: string | null;
+    /** Corpo POST `return_to` ao ocultar como membro (batismo / hub / contacto líder). */
+    hideConversationReturnTo?: 'hub' | 'leader_contact' | 'baptism_hub';
 };
 
 function formatTime(iso: string): string {
@@ -113,6 +119,9 @@ export default function SolicitationDetailPanel({
     memberPatchReturnTo = 'hub',
     canFinalizeLeaderChat = false,
     finalizeLeaderChatUrl = null,
+    memberHideConversationUrl = null,
+    leaderHideConversationUrl = null,
+    hideConversationReturnTo = 'hub',
 }: SolicitationDetailPanelProps) {
     const inertiaScrollOpts = { preserveScroll: true };
     const isModal = variant === 'modal';
@@ -502,6 +511,46 @@ export default function SolicitationDetailPanel({
                     )}
                 </div>
             )}
+
+            {(showDetails || showChat) &&
+            !canManage &&
+            (memberHideConversationUrl || leaderHideConversationUrl) ? (
+                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/60 p-4 space-y-3">
+                    <div className="text-sm font-semibold text-zinc-900 dark:text-white">Confidencialidade</div>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                        Se preferir não ver mais esta conversa na app, pode removê-la da sua conta. O registo pode manter-se
+                        disponível para a igreja no atendimento (suporte interno e obrigações legais).
+                    </p>
+                    <SecondaryButton
+                        type="button"
+                        className="w-full justify-center border-red-200 bg-white text-red-800 hover:bg-red-50 dark:border-red-900/60 dark:bg-zinc-900 dark:text-red-200 dark:hover:bg-red-950/40"
+                        onClick={async () => {
+                            const url = memberHideConversationUrl ?? leaderHideConversationUrl;
+                            if (!url) return;
+                            const ok = await confirmAction({
+                                title: 'Remover esta conversa da sua app?',
+                                text: 'Deixa de aparecer nos seus pedidos e listas. A igreja pode continuar a aceder ao histórico no painel de atendimento.',
+                                icon: 'warning',
+                                danger: true,
+                                confirmButtonText: 'Sim, remover da minha app',
+                                cancelButtonText: 'Cancelar',
+                            });
+                            if (!ok) return;
+                            if (memberHideConversationUrl) {
+                                router.post(
+                                    url,
+                                    { return_to: hideConversationReturnTo },
+                                    { preserveScroll: true },
+                                );
+                            } else {
+                                router.post(url, {}, { preserveScroll: true });
+                            }
+                        }}
+                    >
+                        Excluir conversa da minha app
+                    </SecondaryButton>
+                </div>
+            ) : null}
         </div>
     );
 }

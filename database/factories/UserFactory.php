@@ -42,6 +42,10 @@ class UserFactory extends Factory
             'address' => null,
             'status' => 'active',
             'is_volunteer' => false,
+            'notify_via_app' => true,
+            'notify_via_email' => true,
+            'notify_via_whatsapp' => false,
+            'lgpd_accepted_at' => now(),
         ];
     }
 

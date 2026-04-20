@@ -8,6 +8,7 @@ use App\Models\ChurchSolicitation;
 use App\Models\Pastor;
 use App\Support\NotificationFeed;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Middleware;
 use Spatie\Permission\Models\Permission;
@@ -181,6 +182,14 @@ class HandleInertiaRequests extends Middleware
 
         return [
             ...parent::share($request),
+            /**
+             * Dados do último POST com validação falhada (sem senhas), para reabrir formulários
+             * após o redirect 303 usado em pedidos Inertia (ex.: cadastro de utilizadores no painel).
+             */
+            'oldInput' => fn () => Arr::except(
+                $request->session()->getOldInput() ?? [],
+                ['password', 'password_confirmation', 'photo', 'lgpd_accepted', '_token', '_method']
+            ),
             /** Token atual para o axios do Inertia (evita 419 em DELETE/PUT após navegação SPA) */
             'csrf_token' => fn () => csrf_token(),
             'appVersion' => AppVersion::latestLabel(),

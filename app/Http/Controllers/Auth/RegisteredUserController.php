@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Domain\Users\Actions\SyncUserChurchFromRegistration;
+use App\Domain\Volunteers\Actions\SyncVolunteerMinistryAttachments;
 use App\Http\Controllers\Controller;
+use App\Models\Church;
 use App\Models\Invitation;
+use App\Models\Ministry;
 use App\Models\User;
 use App\Models\Volunteer;
 use Illuminate\Auth\Events\Registered;
@@ -13,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Role;
@@ -33,6 +37,18 @@ class RegisteredUserController extends Controller
             }
         }
 
+        $churchId = Church::resolveWorkingId($request);
+        $ministryOptions = [];
+        if ($churchId !== null) {
+            $ministryOptions = Ministry::query()
+                ->where('church_id', $churchId)
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(fn (Ministry $m) => ['id' => (int) $m->id, 'name' => (string) $m->name])
+                ->values()
+                ->all();
+        }
+
         return Inertia::render('Auth/Register', [
             'invitation' => $invitation ? [
                 'email' => $invitation->email,
@@ -41,6 +57,7 @@ class RegisteredUserController extends Controller
                 'token' => $invitation->token,
                 'completes_existing_user' => $invitation->user_id !== null,
             ] : null,
+            'ministryOptions' => $ministryOptions,
         ]);
     }
 
@@ -58,12 +75,26 @@ class RegisteredUserController extends Controller
             }
         }
 
+        $churchIdForRegister = Church::resolveWorkingId($request);
+        $ministryIdRules = ['integer'];
+        if ($churchIdForRegister !== null) {
+            $ministryIdRules[] = Rule::exists('ministries', 'id')->where('church_id', $churchIdForRegister);
+        } else {
+            $ministryIdRules[] = 'exists:ministries,id';
+        }
+
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'invitation_token' => ['nullable', 'string'],
             'already_volunteer' => ['sometimes', 'boolean'],
+            'volunteer_ministry_ids' => ['nullable', 'array'],
+            'volunteer_ministry_ids.*' => $ministryIdRules,
+            'notify_via_app' => ['required', 'boolean'],
+            'notify_via_email' => ['required', 'boolean'],
+            'notify_via_whatsapp' => ['required', 'boolean'],
+            'lgpd_accepted' => ['required', 'accepted'],
         ]);
 
         $user = User::withoutEvents(function () use ($request) {
@@ -71,6 +102,10 @@ class RegisteredUserController extends Controller
                 'name' => $request->name,
                 'email' => $request->email,
                 'password' => $request->password,
+                'notify_via_app' => $request->boolean('notify_via_app'),
+                'notify_via_email' => $request->boolean('notify_via_email'),
+                'notify_via_whatsapp' => $request->boolean('notify_via_whatsapp'),
+                'lgpd_accepted_at' => now(),
             ]);
         });
 
@@ -98,6 +133,7 @@ class RegisteredUserController extends Controller
         }
 
         app(SyncUserChurchFromRegistration::class)($user, $request);
+        $this->applyRegistrationVolunteerDepartments($request, $user);
         $user->ensureVolunteerProfile();
 
         event(new Registered($user));
@@ -108,6 +144,71 @@ class RegisteredUserController extends Controller
         $request->session()->flash('success', 'Conta criada com sucesso. Bem-vindo(a)!');
 
         return redirect()->route('registration.welcome');
+    }
+
+    /**
+     * Quem marca «Já sou voluntário» indica em que departamentos serve (para a escala).
+     */
+    private function applyRegistrationVolunteerDepartments(Request $request, User $user): void
+    {
+        if (! $request->boolean('already_volunteer')) {
+            return;
+        }
+
+        $user->load('volunteerProfile');
+        $volunteer = $user->volunteerProfile;
+        if ($volunteer === null) {
+            return;
+        }
+
+        $churchId = (int) ($user->church_id ?? 0);
+        if ($churchId === 0) {
+            $resolved = Church::resolveWorkingId($request);
+            $churchId = $resolved !== null ? (int) $resolved : 0;
+        }
+
+        if ($churchId === 0) {
+            return;
+        }
+
+        if (Ministry::query()->where('church_id', $churchId)->exists()) {
+            $submitted = $request->input('volunteer_ministry_ids', []);
+            $nonEmpty = is_array($submitted)
+                ? count(array_filter($submitted, fn ($v) => (int) $v > 0))
+                : 0;
+            if ($nonEmpty < 1) {
+                throw ValidationException::withMessages([
+                    'volunteer_ministry_ids' => 'Selecione pelo menos um departamento em que serve.',
+                ]);
+            }
+        }
+
+        $ids = collect($request->input('volunteer_ministry_ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        $allowed = Ministry::query()
+            ->where('church_id', $churchId)
+            ->whereIn('id', $ids)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+
+        if ($ids !== [] && count($allowed) !== count($ids)) {
+            throw ValidationException::withMessages([
+                'volunteer_ministry_ids' => 'Um ou mais departamentos são inválidos para esta igreja.',
+            ]);
+        }
+
+        app(SyncVolunteerMinistryAttachments::class)($volunteer, $allowed);
+
+        if ($allowed !== []) {
+            $user->forceFill(['is_volunteer' => true])->save();
+        }
     }
 
     /**
@@ -173,11 +274,19 @@ class RegisteredUserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'notify_via_app' => ['required', 'boolean'],
+            'notify_via_email' => ['required', 'boolean'],
+            'notify_via_whatsapp' => ['required', 'boolean'],
+            'lgpd_accepted' => ['required', 'accepted'],
         ]);
 
         $user->name = $validated['name'];
         $user->email = $validated['email'];
         $user->password = $validated['password'];
+        $user->notify_via_app = $request->boolean('notify_via_app');
+        $user->notify_via_email = $request->boolean('notify_via_email');
+        $user->notify_via_whatsapp = $request->boolean('notify_via_whatsapp');
+        $user->lgpd_accepted_at = now();
         $user->save();
 
         $invitation->update(['used_at' => now()]);

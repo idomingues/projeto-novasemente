@@ -7,6 +7,7 @@ use App\Models\AppSupportTicket;
 use App\Models\User;
 use App\Services\SupportTicketChatNotifier;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -63,7 +64,9 @@ class MobileSupportController extends Controller
         if ($user) {
             $ticketsQuery = AppSupportTicket::query()->where('status', 'open');
             if (! $isAdmin) {
-                $ticketsQuery->where('type', '!=', 'development')->where('user_id', $user->id);
+                $ticketsQuery->where('type', '!=', 'development')
+                    ->where('user_id', $user->id)
+                    ->whereNull('user_hidden_at');
             } else {
                 $ticketsQuery->where('type', '!=', 'development');
             }
@@ -132,6 +135,9 @@ class MobileSupportController extends Controller
         }
 
         $isOwner = $user && $ticket->user_id && (int) $ticket->user_id === (int) $user->id;
+        if ($isOwner && $ticket->user_hidden_at) {
+            abort(403);
+        }
         $hasOwner = ! empty($ticket->user_id);
         $isSupportStaff = $this->canReplyAsSupportStaff($user);
         $isPastoralStaff = $this->canReplyAsPastoralStaff($user, $ticket);
@@ -160,6 +166,9 @@ class MobileSupportController extends Controller
             'isAdmin' => $isAdmin,
             'isAuthenticated' => (bool) $user,
             'showMessages' => (bool) $hasOwner && (bool) ($isAdmin || $isOwner || $isSupportStaff || $isPastoralStaff),
+            'hideFromMyAppUrl' => ($isOwner && ! $isAdmin)
+                ? route('mobile.support.ticket.hide', ['token' => $ticket->public_token], false)
+                : null,
         ]);
     }
 
@@ -179,6 +188,9 @@ class MobileSupportController extends Controller
         }
 
         $isOwner = $ticket->user_id && (int) $ticket->user_id === (int) $user->id;
+        if ($isOwner && $ticket->user_hidden_at) {
+            abort(403);
+        }
         $isSupportStaff = $this->canReplyAsSupportStaff($user);
         $isPastoralStaff = $this->canReplyAsPastoralStaff($user, $ticket);
         $canAccess = $isAdmin || $isOwner || $isSupportStaff || $isPastoralStaff;
@@ -206,6 +218,9 @@ class MobileSupportController extends Controller
             'canChat' => $canChat,
             'showMessages' => $showMessages,
             'isAdmin' => $isAdmin,
+            'hideFromMyAppUrl' => ($isOwner && ! $isAdmin)
+                ? route('mobile.support.ticket.hide', ['token' => $ticket->public_token], false)
+                : null,
         ]);
     }
 
@@ -240,6 +255,9 @@ class MobileSupportController extends Controller
 
         $ticket = AppSupportTicket::query()->where('public_token', $token)->firstOrFail();
         $isOwner = (int) $ticket->user_id === (int) $user->id;
+        if ($isOwner && $ticket->user_hidden_at) {
+            abort(403);
+        }
         $isSupportStaff = $this->canReplyAsSupportStaff($user);
         $isPastoralStaff = $this->canReplyAsPastoralStaff($user, $ticket);
         abort_unless($isAdmin || $isOwner || $isSupportStaff || $isPastoralStaff, 403);
@@ -262,7 +280,7 @@ class MobileSupportController extends Controller
 
         $notifier = app(SupportTicketChatNotifier::class);
         if ($senderStaff) {
-            $notifier->notifyOwnerOfStaffMessage($ticket, $user);
+            $notifier->notifyOwnerOfStaffMessage($ticket, $user, $valid['content']);
             if ($ticket->user_id && (int) $ticket->user_id === (int) $user->id) {
                 $request->session()->flash(
                     'success',
@@ -292,6 +310,9 @@ class MobileSupportController extends Controller
 
         $ticket = AppSupportTicket::query()->where('public_token', $token)->firstOrFail();
         $isOwner = (int) $ticket->user_id === (int) $user->id;
+        if ($isOwner && $ticket->user_hidden_at) {
+            abort(403);
+        }
         $isSupportStaff = $this->canReplyAsSupportStaff($user);
         $isPastoralStaff = $this->canReplyAsPastoralStaff($user, $ticket);
         abort_unless($isAdmin || $isOwner || $isSupportStaff || $isPastoralStaff, 403);
@@ -314,5 +335,19 @@ class MobileSupportController extends Controller
         ]);
 
         return redirect()->route('mobile.support.ticket', ['token' => $ticket->public_token]);
+    }
+
+    public function hideFromUser(Request $request, string $token): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user, 401);
+
+        $ticket = AppSupportTicket::query()->where('public_token', $token)->firstOrFail();
+        abort_unless($ticket->user_id && (int) $ticket->user_id === (int) $user->id, 403);
+
+        $ticket->update(['user_hidden_at' => now()]);
+
+        return redirect()->route('mobile.support.index')
+            ->with('success', 'O chamado foi removido da sua lista. A equipa de suporte mantém o registo.');
     }
 }

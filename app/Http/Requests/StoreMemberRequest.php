@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rules\Password;
 
 class StoreMemberRequest extends FormRequest
 {
@@ -15,6 +16,9 @@ class StoreMemberRequest extends FormRequest
     {
         $this->merge([
             'is_volunteer' => $this->boolean('is_volunteer'),
+            'notify_via_app' => $this->boolean('notify_via_app'),
+            'notify_via_email' => $this->boolean('notify_via_email'),
+            'notify_via_whatsapp' => $this->boolean('notify_via_whatsapp'),
         ]);
     }
 
@@ -31,6 +35,12 @@ class StoreMemberRequest extends FormRequest
             'address' => ['nullable', 'string', 'max:1000'],
             'status' => ['required', 'in:active,inactive'],
             'is_volunteer' => ['sometimes', 'boolean'],
+            'password' => ['required', 'string', 'confirmed', Password::defaults()],
+            'photo' => ['nullable', 'image', 'max:4096'],
+            'notify_via_app' => ['required', 'boolean'],
+            'notify_via_email' => ['required', 'boolean'],
+            'notify_via_whatsapp' => ['required', 'boolean'],
+            'lgpd_accepted' => ['required', 'accepted'],
         ];
     }
 }

@@ -41,11 +41,9 @@ const GROUP_LABELS: Record<string, string> = {
     news: 'News',
     events: 'Eventos',
     escalas: 'Escalas',
-    support: 'Suporte do app',
     roles: 'Perfis',
     music: 'Acervo e músicas',
     culto: 'Culto',
-    finance: 'Financeiro',
     notifications: 'Notificações',
     pastors: 'Pastores',
     pastoral_appointments: 'Agenda pastoral',
@@ -224,8 +222,10 @@ export default function RolesIndex({ roles, permissions }: Props) {
                     <Link href={route('volunteers.index')} className="font-medium text-primary-600 underline dark:text-primary-400">
                         Voluntários
                     </Link>
-                    . Aqui cria <strong className="font-medium text-zinc-700 dark:text-zinc-300">novos perfis</strong> e marca as{' '}
-                    <strong className="font-medium text-zinc-700 dark:text-zinc-300">funcionalidades</strong> de cada um.
+                    .                     Aqui cria <strong className="font-medium text-zinc-700 dark:text-zinc-300">novos perfis</strong> e marca as{' '}
+                    <strong className="font-medium text-zinc-700 dark:text-zinc-300">funcionalidades</strong> de cada um. O perfil{' '}
+                    <strong className="font-medium text-zinc-700 dark:text-zinc-300">super administrador</strong> não é listado: tem
+                    acesso total ao sistema.
                 </p>
             </PageHeader>
 

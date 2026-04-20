@@ -116,6 +116,9 @@ Route::post('/mobile/suporte/ticket/{token}/messages', [MobileSupportController:
 Route::patch('/mobile/suporte/ticket/{token}/close', [MobileSupportController::class, 'closeTicket'])
     ->middleware('auth')
     ->name('mobile.support.close');
+Route::post('/mobile/suporte/ticket/{token}/ocultar', [MobileSupportController::class, 'hideFromUser'])
+    ->middleware('auth')
+    ->name('mobile.support.ticket.hide');
 
 Route::get('/mobile/agendamento-pastoral', [MobilePastoralAppointmentController::class, 'hub'])
     ->middleware('auth')
@@ -369,6 +372,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('/mobile/solicitacoes/{solicitation}', [MobileChurchSolicitationController::class, 'updateAsMember'])->name('mobile.solicitations.update');
     Route::post('/mobile/solicitacoes/{solicitation}/messages', [MobileChurchSolicitationController::class, 'sendMessage'])->name('mobile.solicitations.messages.store');
     Route::post('/mobile/solicitacoes/{solicitation}/finalizar-conversa-lider', [MobileChurchSolicitationController::class, 'finalizeLeaderChat'])->name('mobile.solicitations.leader-chat.finalize');
+    Route::post('/mobile/solicitacoes/{solicitation}/ocultar-para-mim', [MobileChurchSolicitationController::class, 'hideFromMemberApp'])->name('mobile.solicitations.hide-from-member');
 
     Route::get('/mobile/contact', [MobileController::class, 'leaderContact'])->name('mobile.contact');
     Route::post('/mobile/contact', [MobileController::class, 'leaderContactStore'])->name('mobile.contact.store');
@@ -376,6 +380,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/mobile/lider/conversas/{solicitation}', [MobileLeaderSolicitationController::class, 'show'])->name('mobile.leader-solicitations.show');
     Route::post('/mobile/lider/conversas/{solicitation}/messages', [MobileLeaderSolicitationController::class, 'sendMessage'])->name('mobile.leader-solicitations.messages.store');
     Route::post('/mobile/lider/conversas/{solicitation}/finalizar', [MobileLeaderSolicitationController::class, 'finalizeLeaderChat'])->name('mobile.leader-solicitations.finalize');
+    Route::post('/mobile/lider/conversas/{solicitation}/ocultar-para-mim', [MobileLeaderSolicitationController::class, 'hideFromLeaderApp'])->name('mobile.leader-solicitations.hide-from-leader');
 
     // Solicitações — inbox (equipe). Admin/super_admin explícitos (evita 403 como em /culto)
     Route::get('/solicitacoes', [SolicitationAdminController::class, 'index'])

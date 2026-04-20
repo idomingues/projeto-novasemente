@@ -21,6 +21,7 @@ class MobileLeaderSolicitationController extends Controller
         $rows = ChurchSolicitation::query()
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->where('type', 'leader_chat')
+            ->whereNull('leader_hidden_at')
             ->whereHas('assignedVolunteer', fn ($q) => $q->where('user_id', $user->id))
             ->with('user:id,name')
             ->orderByDesc('updated_at')
@@ -49,12 +50,14 @@ class MobileLeaderSolicitationController extends Controller
     public function show(Request $request, ChurchSolicitation $solicitation): Response
     {
         $this->authorize('view', $solicitation);
+
         return Inertia::render('Mobile/Solicitations/LeaderShow', MobileChurchSolicitationController::memberConversationPayload(
             $solicitation,
             route('mobile.leader-solicitations.messages.store', $solicitation),
             route('mobile.leader-solicitations.index'),
             route('mobile.more'),
             route('mobile.leader-solicitations.finalize', $solicitation),
+            true,
         ));
     }
 
@@ -105,5 +108,15 @@ class MobileLeaderSolicitationController extends Controller
         ]);
 
         return redirect()->route('mobile.leader-solicitations.index')->with('success', 'Assunto finalizado. A conversa ficou encerrada para si e para o membro.');
+    }
+
+    public function hideFromLeaderApp(ChurchSolicitation $solicitation): RedirectResponse
+    {
+        $this->authorize('hideFromLeaderApp', $solicitation);
+
+        $solicitation->update(['leader_hidden_at' => now()]);
+
+        return redirect()->route('mobile.leader-solicitations.index')
+            ->with('success', 'A conversa foi removida da sua app. O membro e a igreja podem continuar a vê-la no atendimento.');
     }
 }

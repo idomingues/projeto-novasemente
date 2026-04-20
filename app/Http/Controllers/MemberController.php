@@ -10,6 +10,8 @@ use App\Http\Requests\UpdateMemberRequest;
 use App\Models\Church;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class MemberController extends Controller
@@ -57,6 +59,11 @@ class MemberController extends Controller
                     'address' => $user->address,
                     'status' => $user->status ?? 'active',
                     'is_volunteer' => (bool) ($user->is_volunteer ?? false),
+                    'photo_url' => $user->photo_url,
+                    'notify_via_app' => (bool) ($user->notify_via_app ?? true),
+                    'notify_via_email' => (bool) ($user->notify_via_email ?? true),
+                    'notify_via_whatsapp' => (bool) ($user->notify_via_whatsapp ?? false),
+                    'lgpd_accepted_at' => $user->lgpd_accepted_at?->toIso8601String(),
                     'created_at' => $user->created_at->toIso8601String(),
                 ];
             }),
@@ -72,7 +79,13 @@ class MemberController extends Controller
         if ($churchId === null) {
             return redirect()->route('members.index')->with('error', 'Nenhuma igreja ativa. Selecione uma igreja para trabalhar.');
         }
-        $data = array_merge($request->validated(), [
+        $validated = $request->validated();
+        if ($request->hasFile('photo')) {
+            $validated['photo_url'] = $this->storeUserPhoto($request->file('photo'));
+        }
+        unset($validated['photo']);
+
+        $data = array_merge($validated, [
             'church_id' => $churchId,
         ]);
         $createChurchUserProfile($data);
@@ -94,6 +107,11 @@ class MemberController extends Controller
                 'address' => $user->address,
                 'status' => $user->status ?? 'active',
                 'is_volunteer' => (bool) ($user->is_volunteer ?? false),
+                'photo_url' => $user->photo_url,
+                'notify_via_app' => (bool) ($user->notify_via_app ?? true),
+                'notify_via_email' => (bool) ($user->notify_via_email ?? true),
+                'notify_via_whatsapp' => (bool) ($user->notify_via_whatsapp ?? false),
+                'lgpd_accepted_at' => $user->lgpd_accepted_at?->toIso8601String(),
                 'created_at' => $user->created_at->toIso8601String(),
             ],
         ]);
@@ -102,7 +120,18 @@ class MemberController extends Controller
     public function update(UpdateMemberRequest $request, User $user, UpdateChurchUserProfile $updateChurchUserProfile)
     {
         $this->assertUserBelongsToWorkingChurch($request, $user);
-        $updateChurchUserProfile($user, $request->validated());
+        $validated = $request->validated();
+        unset($validated['lgpd_accepted']);
+        if ($request->boolean('lgpd_accepted') && $user->lgpd_accepted_at === null) {
+            $validated['lgpd_accepted_at'] = now();
+        }
+        if ($request->hasFile('photo')) {
+            $this->deleteStoredUserPhoto($user->photo_url);
+            $validated['photo_url'] = $this->storeUserPhoto($request->file('photo'));
+        }
+        unset($validated['photo']);
+
+        $updateChurchUserProfile($user, $validated);
 
         return redirect()->route('members.index')->with('success', 'Usuário atualizado com sucesso!');
     }
@@ -113,5 +142,21 @@ class MemberController extends Controller
         $deleteChurchUserProfile($user);
 
         return redirect()->route('members.index')->with('success', 'Usuário removido com sucesso!');
+    }
+
+    private function storeUserPhoto(UploadedFile $file): string
+    {
+        $path = $file->store('users/photos', 'public');
+
+        return '/storage/'.$path;
+    }
+
+    private function deleteStoredUserPhoto(?string $photoUrl): void
+    {
+        if (! $photoUrl || ! str_starts_with($photoUrl, '/storage/')) {
+            return;
+        }
+        $relative = ltrim(substr($photoUrl, strlen('/storage/')), '/');
+        Storage::disk('public')->delete($relative);
     }
 }

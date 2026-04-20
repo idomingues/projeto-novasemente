@@ -8,6 +8,7 @@ use App\Models\Ministry;
 use App\Models\User;
 use App\Models\UserInboxNotification;
 use App\Models\Volunteer;
+use App\Support\UserMessagingPreferences;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Mail;
 
@@ -53,31 +54,33 @@ class ScheduleCheckinNotifier
         $checkinUrl = route('mobile.schedule.checkin', ['date' => $dateYmd], true);
 
         foreach (User::whereIn('id', $memberIds)->get() as $user) {
-            if ($user->email && filter_var($user->email, FILTER_VALIDATE_EMAIL)) {
+            if ($user->email && filter_var($user->email, FILTER_VALIDATE_EMAIL) && UserMessagingPreferences::acceptsAccountEmail($user)) {
                 Mail::to($user->email)->send(
                     new ScheduleCheckinEnabledMail($label, $checkinUrl)
                 );
             }
-            $row = UserInboxNotification::create([
-                'user_id' => $user->id,
-                'title' => 'Check-in liberado',
-                'body' => 'O check-in para a escala do dia '.$label.' foi liberado. Toque para registar a sua presença.',
-                'action_url' => null,
-            ]);
-            $row->update([
-                'action_url' => route('mobile.schedule.checkin', ['date' => $dateYmd, 'inbox' => $row->id], true),
-            ]);
+            if (UserMessagingPreferences::acceptsInbox($user)) {
+                $row = UserInboxNotification::create([
+                    'user_id' => $user->id,
+                    'title' => 'Check-in liberado',
+                    'body' => 'O check-in para a escala do dia '.$label.' foi liberado. Toque para registar a sua presença.',
+                    'action_url' => null,
+                ]);
+                $row->update([
+                    'action_url' => route('mobile.schedule.checkin', ['date' => $dateYmd, 'inbox' => $row->id], true),
+                ]);
+            }
         }
 
         foreach (Volunteer::query()->whereIn('id', $volunteerIds)->get() as $volunteer) {
-            if ($volunteer->email && filter_var($volunteer->email, FILTER_VALIDATE_EMAIL)) {
+            if ($volunteer->email && filter_var($volunteer->email, FILTER_VALIDATE_EMAIL) && UserMessagingPreferences::acceptsEmailForVolunteerContact($volunteer)) {
                 Mail::to($volunteer->email)->send(
                     new ScheduleCheckinEnabledMail($label, $checkinUrl)
                 );
             }
             if ($volunteer->user_id) {
                 $user = User::query()->find($volunteer->user_id);
-                if ($user) {
+                if ($user && UserMessagingPreferences::acceptsInbox($user)) {
                     $row = UserInboxNotification::create([
                         'user_id' => $user->id,
                         'title' => 'Check-in liberado',

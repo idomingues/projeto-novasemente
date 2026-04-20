@@ -2,7 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Models\Church;
+use App\Models\Ministry;
 use App\Models\User;
+use Database\Seeders\ChurchSeeder;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -41,6 +45,37 @@ class ProfileTest extends TestCase
         $this->assertSame('Test User', $user->name);
         $this->assertSame('test@example.com', $user->email);
         $this->assertNull($user->email_verified_at);
+    }
+
+    public function test_profile_can_sync_volunteer_departments(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+        $ministry = Ministry::query()->create([
+            'church_id' => $churchId,
+            'name' => 'Receção',
+        ]);
+
+        $user = User::factory()->create(['church_id' => $churchId]);
+
+        $this->actingAs($user)
+            ->patch('/profile', [
+                'name' => $user->name,
+                'email' => $user->email,
+                'notify_via_app' => true,
+                'notify_via_email' => true,
+                'notify_via_whatsapp' => false,
+                'volunteer_ministry_ids' => [(int) $ministry->id],
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect('/profile');
+
+        $user->refresh();
+        $this->assertTrue($user->is_volunteer);
+        $this->assertTrue(
+            $user->volunteerProfile?->ministries()->where('ministries.id', $ministry->id)->exists() ?? false
+        );
     }
 
     public function test_email_verification_status_is_unchanged_when_the_email_address_is_unchanged(): void

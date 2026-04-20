@@ -31,6 +31,10 @@ class User extends Authenticatable
         'address',
         'status',
         'is_volunteer',
+        'notify_via_app',
+        'notify_via_email',
+        'notify_via_whatsapp',
+        'lgpd_accepted_at',
     ];
 
     public function church(): BelongsTo
@@ -82,8 +86,9 @@ class User extends Authenticatable
         }
 
         if ($this->hasRole('lider_ministerio')) {
-            $ministryIds = $this->ministries()->pluck('ministries.id')->toArray();
-            $volunteer->ministries()->sync($ministryIds);
+            $ledMinistryIds = $this->ministries()->pluck('ministries.id')->map(fn ($id) => (int) $id)->values()->all();
+            $attachedIds = $volunteer->ministries()->pluck('ministries.id')->map(fn ($id) => (int) $id)->values()->all();
+            $volunteer->ministries()->sync(array_values(array_unique(array_merge($ledMinistryIds, $attachedIds))));
         }
 
         $volunteer->unsetRelation('ministries');
@@ -144,6 +149,10 @@ class User extends Authenticatable
             'password' => 'hashed',
             'birth_date' => 'date',
             'is_volunteer' => 'boolean',
+            'notify_via_app' => 'boolean',
+            'notify_via_email' => 'boolean',
+            'notify_via_whatsapp' => 'boolean',
+            'lgpd_accepted_at' => 'datetime',
         ];
     }
 }

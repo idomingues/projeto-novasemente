@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Church;
 use App\Models\PrayerRequest;
+use App\Models\User;
 use App\Models\UserInboxNotification;
+use App\Support\UserMessagingPreferences;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
@@ -136,12 +138,15 @@ class PrayerRequestController extends Controller
                 ->exists();
 
             if (! $recentExists && (int) $ownerId !== (int) ($request->user()?->id ?? 0)) {
-                UserInboxNotification::create([
-                    'user_id' => $ownerId,
-                    'title' => $title,
-                    'body' => $body,
-                    'action_url' => $actionUrl,
-                ]);
+                $ownerUser = User::query()->find($ownerId);
+                if (UserMessagingPreferences::acceptsInbox($ownerUser)) {
+                    UserInboxNotification::create([
+                        'user_id' => $ownerId,
+                        'title' => $title,
+                        'body' => $body,
+                        'action_url' => $actionUrl,
+                    ]);
+                }
             }
         }
 

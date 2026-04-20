@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\RoleController;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -51,6 +53,82 @@ class RoleManagementTest extends TestCase
 
         $this->delete(route('roles.destroy', $super))
             ->assertSessionHas('error');
+    }
+
+    public function test_roles_index_excludes_finance_and_support_from_permission_matrix(): void
+    {
+        $this->seed();
+
+        $admin = User::query()->where('email', 'ivan@iresult.com.br')->first();
+        $response = $this->actingAs($admin)->get(route('roles.index'));
+        $response->assertOk();
+        $perms = $response->inertiaProps('permissions');
+        $this->assertIsArray($perms);
+        foreach ($perms as $row) {
+            $this->assertIsArray($row);
+            $this->assertArrayHasKey('name', $row);
+            $this->assertFalse(
+                RoleController::permissionExcludedFromProfileMatrix((string) $row['name']),
+                'Permissão '.$row['name'].' não deve aparecer na matriz de perfis.'
+            );
+        }
+    }
+
+    public function test_super_admin_role_is_not_listed_on_roles_index(): void
+    {
+        $this->seed();
+
+        $admin = User::query()->where('email', 'ivan@iresult.com.br')->first();
+        $response = $this->actingAs($admin)->get(route('roles.index'));
+        $response->assertOk();
+        $roles = $response->inertiaProps('roles');
+        $this->assertIsArray($roles);
+        $names = collect($roles)->pluck('name')->all();
+        $this->assertNotContains('super_admin', $names);
+    }
+
+    public function test_bulk_role_update_cannot_strip_super_admin_permissions(): void
+    {
+        $this->seed();
+
+        $admin = User::query()->where('email', 'ivan@iresult.com.br')->first();
+        $this->actingAs($admin);
+
+        $super = Role::findByName('super_admin');
+        $before = $super->permissions()->count();
+        $this->assertGreaterThan(0, $before);
+
+        $this->post(route('roles.update'), [
+            'roles' => [
+                ['name' => 'super_admin', 'permissions' => []],
+            ],
+        ])->assertRedirect(route('roles.index'));
+
+        $super->refresh();
+        $this->assertSame($before, $super->permissions()->count());
+    }
+
+    public function test_bulk_role_update_cannot_add_permissions_to_super_admin_via_payload(): void
+    {
+        $this->seed();
+
+        $admin = User::query()->where('email', 'ivan@iresult.com.br')->first();
+        $this->actingAs($admin);
+
+        $super = Role::findByName('super_admin');
+        $beforeNames = $super->permissions()->pluck('name')->sort()->values()->all();
+
+        $one = Permission::query()->first();
+        $this->assertNotNull($one);
+
+        $this->post(route('roles.update'), [
+            'roles' => [
+                ['name' => 'super_admin', 'permissions' => [$one->name]],
+            ],
+        ])->assertRedirect(route('roles.index'));
+
+        $super->refresh();
+        $this->assertSame($beforeNames, $super->permissions()->pluck('name')->sort()->values()->all());
     }
 
     public function test_role_name_must_match_slug_pattern(): void

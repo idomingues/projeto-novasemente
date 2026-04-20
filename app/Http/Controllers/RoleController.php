@@ -15,12 +15,22 @@ class RoleController extends Controller
 {
     private const SYSTEM_ROLE_NAMES = ['super_admin', 'admin'];
 
+    /**
+     * Permissões que não entram na grelha de perfis: sem módulo financeiro no produto;
+     * suporte administrativo do app é só para super administrador (rotas próprias).
+     */
+    public static function permissionExcludedFromProfileMatrix(string $name): bool
+    {
+        return str_starts_with($name, 'finance.') || str_starts_with($name, 'support.');
+    }
+
     public function index(Request $request): Response
     {
         $roles = Role::query()
             ->with('permissions')
             ->withCount('users')
-            ->orderByRaw("CASE WHEN name IN ('super_admin','admin') THEN 0 ELSE 1 END")
+            ->where('name', '!=', 'super_admin')
+            ->orderByRaw("CASE WHEN name = 'admin' THEN 0 ELSE 1 END")
             ->orderBy('name')
             ->get()
             ->map(fn (Role $role) => [
@@ -34,10 +44,12 @@ class RoleController extends Controller
         $permissions = Permission::query()
             ->orderBy('name')
             ->get()
+            ->filter(fn (Permission $p) => ! self::permissionExcludedFromProfileMatrix($p->name))
             ->map(fn (Permission $p) => [
                 'id' => $p->id,
                 'name' => $p->name,
-            ]);
+            ])
+            ->values();
 
         return Inertia::render('Roles/Index', [
             'roles' => $roles,
@@ -81,9 +93,17 @@ class RoleController extends Controller
         ]);
 
         foreach ($data['roles'] as $roleData) {
+            if (($roleData['name'] ?? '') === 'super_admin') {
+                continue;
+            }
             $role = Role::where('name', $roleData['name'])->first();
             if ($role) {
-                $role->syncPermissions($roleData['permissions'] ?? []);
+                $incoming = $roleData['permissions'] ?? [];
+                $assignable = array_values(array_filter(
+                    $incoming,
+                    fn ($name) => is_string($name) && ! self::permissionExcludedFromProfileMatrix($name)
+                ));
+                $role->syncPermissions($assignable);
             }
         }
 

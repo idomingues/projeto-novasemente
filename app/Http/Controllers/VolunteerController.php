@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Volunteers\Actions\SyncVolunteerMinistryAttachments;
 use App\Http\Requests\StoreVolunteerRequest;
 use App\Http\Requests\UpdateVolunteerRequest;
 use App\Models\Church;
@@ -10,7 +11,6 @@ use App\Models\Ministry;
 use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerSelfSignupToken;
-use App\Services\VolunteerMinistryRosterNotifier;
 use App\Support\VolunteerPipelineBootstrap;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -30,19 +30,7 @@ class VolunteerController extends Controller
         $ministryIds = $request->input('ministry_ids', []);
 
         if (Schema::hasTable('ministry_volunteer')) {
-            $previousIds = $volunteer->exists
-                ? $volunteer->ministries()->pluck('ministries.id')->map(fn ($id) => (int) $id)->values()->all()
-                : [];
-            $volunteer->ministries()->sync($ministryIds);
-            $newIds = collect(is_array($ministryIds) ? $ministryIds : [])
-                ->map(fn ($id) => (int) $id)
-                ->filter(fn ($id) => $id > 0)
-                ->values()
-                ->all();
-            $added = array_values(array_diff($newIds, $previousIds));
-            if ($added !== []) {
-                app(VolunteerMinistryRosterNotifier::class)->notifyLeadersOfNewAttachments($volunteer->fresh(), $added);
-            }
+            app(SyncVolunteerMinistryAttachments::class)($volunteer, is_array($ministryIds) ? $ministryIds : []);
 
             return;
         }
@@ -66,6 +54,10 @@ class VolunteerController extends Controller
 
     private function applyAppProfile(User $user, Request $request): void
     {
+        if ($user->hasRole('super_admin')) {
+            return;
+        }
+
         $appRole = $request->input('app_role');
         if (is_string($appRole) && trim($appRole) !== '') {
             $user->syncRoles([$appRole]);
@@ -252,7 +244,10 @@ class VolunteerController extends Controller
         return Inertia::render('Volunteers/Index', [
             'volunteers' => $volunteers,
             'ministries' => $ministriesQuery->orderBy('name')->get(['id', 'name']),
-            'appRoles' => Role::query()->orderBy('name')->get(['id', 'name']),
+            'appRoles' => Role::query()
+                ->where('name', '!=', 'super_admin')
+                ->orderBy('name')
+                ->get(['id', 'name']),
             'publicVolunteerSignupUrl' => $churchId !== null
                 ? VolunteerSelfSignupToken::ensurePublicSignupUrl($churchId)
                 : null,

@@ -20,6 +20,8 @@ interface Props {
     memberPastorOptions?: MemberPastorOption[];
     canFinalizeLeaderChat?: boolean;
     finalizeLeaderChatUrl?: string | null;
+    memberHideConversationUrl?: string | null;
+    leaderHideConversationUrl?: string | null;
 }
 
 export default function Show({
@@ -34,6 +36,8 @@ export default function Show({
     memberPastorOptions,
     canFinalizeLeaderChat,
     finalizeLeaderChatUrl,
+    memberHideConversationUrl,
+    leaderHideConversationUrl,
 }: Props) {
     const [tab, setTab] = useState<'detalhes' | 'chat'>('detalhes');
 
@@ -89,6 +93,9 @@ export default function Show({
                     memberPatchReturnTo={solicitation.type === 'leader_chat' ? 'leader-contact' : 'hub'}
                     canFinalizeLeaderChat={canFinalizeLeaderChat}
                     finalizeLeaderChatUrl={finalizeLeaderChatUrl ?? null}
+                    memberHideConversationUrl={memberHideConversationUrl ?? null}
+                    leaderHideConversationUrl={leaderHideConversationUrl ?? null}
+                    hideConversationReturnTo={solicitation.type === 'leader_chat' ? 'leader_contact' : 'hub'}
                 />
             </div>
         </MobileLayout>

@@ -85,6 +85,7 @@ class MobileChurchSolicitationController extends Controller
             $mySolicitations = ChurchSolicitation::query()
                 ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
                 ->where('user_id', $user->id)
+                ->whereNull('member_hidden_at')
                 ->whereIn('type', self::HUB_TYPES)
                 ->with(['assignedPastor:id,name', 'assignedVolunteer.user:id,name'])
                 ->orderByDesc('updated_at')
@@ -96,6 +97,8 @@ class MobileChurchSolicitationController extends Controller
                         route('mobile.solicitations.messages.store', $s),
                         $hubUrl,
                         $hubUrl,
+                        null,
+                        false,
                     );
 
                     return array_merge($payload, [
@@ -141,6 +144,7 @@ class MobileChurchSolicitationController extends Controller
         $mySolicitations = ChurchSolicitation::query()
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->where('user_id', $user->id)
+            ->whereNull('member_hidden_at')
             ->where('type', 'baptism')
             ->with(['assignedPastor:id,name', 'assignedVolunteer.user:id,name'])
             ->orderByDesc('updated_at')
@@ -152,6 +156,8 @@ class MobileChurchSolicitationController extends Controller
                     route('mobile.solicitations.messages.store', $s),
                     $hubUrl,
                     $hubUrl,
+                    null,
+                    false,
                 );
 
                 return array_merge($payload, [
@@ -170,8 +176,9 @@ class MobileChurchSolicitationController extends Controller
             'pastorOptions' => SolicitationAssignees::pastorOptions($churchId),
             'mySolicitations' => $mySolicitations,
             'pageTitle' => 'Pedido de batismo',
-            'pageSubtitle' => 'Envie um novo pedido ou acompanhe os seus pedidos de batismo.',
+            'pageSubtitle' => 'Toque num pedido para editar ou conversar com a igreja.',
             'singleBaptismType' => true,
+            'hideConversationReturnTo' => 'baptism_hub',
         ]);
     }
 
@@ -276,6 +283,7 @@ class MobileChurchSolicitationController extends Controller
                     $hub,
                     $hub,
                     $finalizeLeaderChatUrl,
+                    false,
                 ),
                 [
                     'memberUpdateUrl' => route('mobile.solicitations.update', $solicitation),
@@ -295,6 +303,7 @@ class MobileChurchSolicitationController extends Controller
         string $hubUrl,
         string $mineUrl,
         ?string $finalizeLeaderChatUrl = null,
+        bool $audienceIsAssignedLeader = false,
     ): array {
         $s->loadMissing([
             'assignedPastor:id,name',
@@ -347,6 +356,12 @@ class MobileChurchSolicitationController extends Controller
                 && $isLeaderChat
                 && in_array($s->status, ['pending', 'in_progress'], true),
             'finalizeLeaderChatUrl' => $finalizeLeaderChatUrl,
+            'memberHideConversationUrl' => $audienceIsAssignedLeader
+                ? null
+                : route('mobile.solicitations.hide-from-member', $s, false),
+            'leaderHideConversationUrl' => ($audienceIsAssignedLeader && $isLeaderChat)
+                ? route('mobile.leader-solicitations.hide-from-leader', $s, false)
+                : null,
         ];
     }
 
@@ -466,5 +481,30 @@ class MobileChurchSolicitationController extends Controller
         ]);
 
         return redirect()->route('mobile.contact', ['lista' => '1'])->with('success', 'Assunto finalizado. A conversa ficou encerrada para si e para o líder.');
+    }
+
+    public function hideFromMemberApp(Request $request, ChurchSolicitation $solicitation): RedirectResponse
+    {
+        $this->authorize('hideFromMemberApp', $solicitation);
+
+        $valid = $request->validate([
+            'return_to' => ['nullable', 'string', Rule::in(['hub', 'leader_contact', 'baptism_hub'])],
+        ]);
+
+        $solicitation->update(['member_hidden_at' => now()]);
+
+        $target = $valid['return_to'] ?? null;
+        if ($target === 'baptism_hub') {
+            return redirect()->route('mobile.baptism', ['lista' => '1'])
+                ->with('success', 'A conversa foi removida da sua app. A igreja pode continuar a vê-la no atendimento.');
+        }
+
+        if ($target === 'leader_contact' || $solicitation->type === 'leader_chat') {
+            return redirect()->route('mobile.contact', ['lista' => '1'])
+                ->with('success', 'A conversa foi removida da sua app. A igreja pode continuar a vê-la no atendimento.');
+        }
+
+        return redirect()->route('mobile.solicitations.hub', ['lista' => '1'])
+            ->with('success', 'A conversa foi removida da sua app. A igreja pode continuar a vê-la no atendimento.');
     }
 }

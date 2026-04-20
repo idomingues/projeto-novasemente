@@ -1,6 +1,7 @@
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import { useEffect, useState, FormEventHandler } from 'react';
+import { confirmAction } from '@/utils/confirmDialog';
 import { CheckCircleIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
@@ -34,6 +35,7 @@ interface Props {
     showMessages: boolean;
     isAuthenticated: boolean;
     isAdmin: boolean;
+    hideFromMyAppUrl?: string | null;
 }
 
 function formatTime(iso: string): string {
@@ -41,7 +43,14 @@ function formatTime(iso: string): string {
     return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
-export default function MobileSupportTicket({ ticket, messages, canChat, showMessages, isAdmin }: Props) {
+export default function MobileSupportTicket({
+    ticket,
+    messages,
+    canChat,
+    showMessages,
+    isAdmin,
+    hideFromMyAppUrl = null,
+}: Props) {
     const inertiaScrollOpts = { preserveScroll: true };
 
     const { data, setData, post, patch, processing, errors, reset } = useForm({
@@ -99,6 +108,32 @@ export default function MobileSupportTicket({ ticket, messages, canChat, showMes
                     <div className="mt-3 text-sm text-zinc-700 dark:text-zinc-200 whitespace-pre-wrap">
                         {ticket.message}
                     </div>
+                    {hideFromMyAppUrl ? (
+                        <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50/90 p-3 dark:border-zinc-700 dark:bg-zinc-800/50">
+                            <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                                <span className="font-semibold text-zinc-800 dark:text-zinc-200">Confidencialidade:</span> pode remover
+                                este chamado da sua lista na app. A equipa de suporte mantém o registo.
+                            </p>
+                            <button
+                                type="button"
+                                className="mt-2 w-full rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-800 hover:bg-red-50 dark:border-red-900/50 dark:bg-zinc-900 dark:text-red-200 dark:hover:bg-red-950/30"
+                                onClick={async () => {
+                                    const ok = await confirmAction({
+                                        title: 'Remover este chamado da sua app?',
+                                        text: 'Deixa de aparecer em «Os meus chamados». A equipa continua a poder ver o histórico.',
+                                        icon: 'warning',
+                                        danger: true,
+                                        confirmButtonText: 'Sim, remover da minha app',
+                                        cancelButtonText: 'Cancelar',
+                                    });
+                                    if (!ok || !hideFromMyAppUrl) return;
+                                    router.post(hideFromMyAppUrl, {}, { preserveScroll: true });
+                                }}
+                            >
+                                Excluir conversa da minha app
+                            </button>
+                        </div>
+                    ) : null}
                 </div>
 
                 {showMessages && messages.length > 0 && (

@@ -48,6 +48,8 @@ export interface SolicitationHubRow {
     memberPastorOptions: MemberPastorOption[];
     canFinalizeLeaderChat?: boolean;
     finalizeLeaderChatUrl?: string | null;
+    memberHideConversationUrl?: string | null;
+    leaderHideConversationUrl?: string | null;
 }
 
 interface Props {
@@ -60,6 +62,8 @@ interface Props {
     pageTitle?: string;
     pageSubtitle?: string;
     singleBaptismType?: boolean;
+    /** Redirecionamento após «excluir da minha app» (batismo vs hub geral). */
+    hideConversationReturnTo?: 'hub' | 'baptism_hub';
 }
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
@@ -104,6 +108,7 @@ export default function Hub({
     pageTitle,
     pageSubtitle,
     singleBaptismType = false,
+    hideConversationReturnTo = 'hub',
 }: Props) {
     const [createOpen, setCreateOpen] = useState(false);
     const [step, setStep] = useState<'pick' | 'form'>('pick');
@@ -203,7 +208,9 @@ export default function Hub({
     const heading = pageTitle ?? 'Solicitações';
     const sub =
         pageSubtitle ??
-        'Batismo, apresentação, visita pastoral. Toque num pedido para editar ou conversar. Para falar com um líder de ministério, use «Falar com líder» no seu perfil.';
+        'Batismo, apresentação, visita pastoral. Toque num pedido para editar ou conversar.';
+
+    const listHeading = singleBaptismType ? 'Os meus pedidos de batismo' : 'Os meus pedidos';
 
     return (
         <MobileLayout>
@@ -226,10 +233,19 @@ export default function Hub({
                 </div>
 
                 <div ref={listRef} id="lista-solicitacoes" className="scroll-mt-24">
-                    <h2 className="text-sm font-semibold text-zinc-900 dark:text-white mb-3">Os meus pedidos</h2>
+                    <h2 className="text-sm font-semibold text-zinc-900 dark:text-white mb-3">{listHeading}</h2>
                     {mySolicitations.length === 0 ? (
-                        <p className="text-sm text-zinc-600 dark:text-zinc-400 py-8 text-center rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-700">
-                            Ainda não enviou nenhum pedido. Use o botão + acima.
+                        <p className="text-sm text-zinc-600 dark:text-zinc-400 py-8 text-center rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-700 px-4">
+                            {singleBaptismType ? (
+                                <>
+                                    Você não tem nenhum pedido de batismo. Clique no <strong>+</strong> para criar uma
+                                    solicitação.
+                                </>
+                            ) : (
+                                <>
+                                    Você não tem nenhum pedido. Clique no <strong>+</strong> para criar uma solicitação.
+                                </>
+                            )}
                         </p>
                     ) : (
                         <div className="space-y-3">
@@ -276,12 +292,6 @@ export default function Hub({
                             ))}
                         </div>
                     )}
-                </div>
-
-                <div className="rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-900/50 p-6 text-center">
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                        Clique no <strong>+</strong> para criar uma solicitação.
-                    </p>
                 </div>
             </div>
 
@@ -336,10 +346,23 @@ export default function Hub({
 
                         <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">{typeLabel}</h2>
                         <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1 mb-6">
-                            Descreva o seu pedido. A igreja responderá pela conversa do pedido, através do app web.
+                            A igreja responderá pelo seu pedido através do App e email.
                         </p>
 
                         <form onSubmit={submit} className="space-y-4">
+                            <div>
+                                <InputLabel htmlFor="hub_sol_message" value="Mensagem" />
+                                <Textarea
+                                    id="hub_sol_message"
+                                    value={data.message}
+                                    onChange={(e) => setData('message', e.target.value)}
+                                    rows={8}
+                                    className="mt-1 block w-full"
+                                    placeholder="Escreva os detalhes do seu pedido…"
+                                    required
+                                />
+                                <InputError message={errors.message} className="mt-1" />
+                            </div>
                             <div>
                                 <InputLabel htmlFor="hub_sol_pref_date" value="Data pretendida ou relevante (opcional)" />
                                 <input
@@ -370,19 +393,6 @@ export default function Hub({
                                     <InputError message={errors.assigned_pastor_id} className="mt-1" />
                                 </div>
                             )}
-                            <div>
-                                <InputLabel htmlFor="hub_sol_message" value="Mensagem" />
-                                <Textarea
-                                    id="hub_sol_message"
-                                    value={data.message}
-                                    onChange={(e) => setData('message', e.target.value)}
-                                    rows={8}
-                                    className="mt-1 block w-full"
-                                    placeholder="Escreva os detalhes do seu pedido…"
-                                    required
-                                />
-                                <InputError message={errors.message} className="mt-1" />
-                            </div>
                             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end pt-2">
                                 <SecondaryButton type="button" className="justify-center" onClick={closeCreate}>
                                     Cancelar
@@ -428,6 +438,9 @@ export default function Hub({
                                 messagePostReturnTo="hub"
                                 canFinalizeLeaderChat={detailRow.canFinalizeLeaderChat}
                                 finalizeLeaderChatUrl={detailRow.finalizeLeaderChatUrl ?? null}
+                                memberHideConversationUrl={detailRow.memberHideConversationUrl ?? null}
+                                leaderHideConversationUrl={detailRow.leaderHideConversationUrl ?? null}
+                                hideConversationReturnTo={hideConversationReturnTo}
                             />
                         </div>
 

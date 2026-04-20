@@ -21,7 +21,7 @@ class ChurchSeeder extends Seeder
                     'city' => null,
                     'state' => null,
                     'country' => null,
-                    'description' => 'Primeira igreja a utilizar o sistema.',
+                    'description' => null,
                     'active' => true,
                 ]
             );

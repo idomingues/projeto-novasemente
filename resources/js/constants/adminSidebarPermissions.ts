@@ -1,4 +1,4 @@
-/** Permissões por rota do menu lateral (Sidebar em AdminLayout e MobileLayout logado). */
+/** Permissões por rota do menu lateral (Sidebar só para quem tem `auth.canAccessAdminMenu`). */
 export const adminSidebarRoutePermissions: Record<string, string[]> = {
     dashboard: [],
     'members.index': ['members.view', 'members.manage'],

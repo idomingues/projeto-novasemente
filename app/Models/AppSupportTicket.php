@@ -22,10 +22,12 @@ class AppSupportTicket extends Model
         'status',
         'solution_text',
         'closed_at',
+        'user_hidden_at',
     ];
 
     protected $casts = [
         'closed_at' => 'datetime',
+        'user_hidden_at' => 'datetime',
     ];
 
     public function user(): BelongsTo

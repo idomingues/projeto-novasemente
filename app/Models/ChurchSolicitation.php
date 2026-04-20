@@ -21,6 +21,8 @@ class ChurchSolicitation extends Model
         'meta',
         'internal_notes',
         'completed_at',
+        'member_hidden_at',
+        'leader_hidden_at',
     ];
 
     protected function casts(): array
@@ -29,6 +31,8 @@ class ChurchSolicitation extends Model
             'meta' => 'array',
             'preferred_date' => 'date',
             'completed_at' => 'datetime',
+            'member_hidden_at' => 'datetime',
+            'leader_hidden_at' => 'datetime',
         ];
     }
 

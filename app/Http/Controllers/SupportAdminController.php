@@ -170,7 +170,7 @@ class SupportAdminController extends Controller
             'content' => $valid['content'],
         ]);
 
-        app(SupportTicketChatNotifier::class)->notifyOwnerOfStaffMessage($ticket, $user);
+        app(SupportTicketChatNotifier::class)->notifyOwnerOfStaffMessage($ticket, $user, $valid['content']);
 
         if ($ticket->user_id && (int) $ticket->user_id === (int) $user->id) {
             $request->session()->flash(

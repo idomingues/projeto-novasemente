@@ -11,8 +11,9 @@ import AppVersionTrigger from '@/Components/AppVersionTrigger';
 export default function MobileLayout({ children }: PropsWithChildren) {
     const { props } = usePage();
     const currentChurch = (props as { currentChurch?: { name: string; logo_url?: string | null } | null }).currentChurch;
-    const auth = (props as { auth?: { user?: { name: string } } }).auth;
+    const auth = (props as { auth?: { user?: { name: string }; canAccessAdminMenu?: boolean } }).auth;
     const isAuthenticated = !!auth?.user;
+    const canAccessAdminMenu = auth?.canAccessAdminMenu === true;
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     if (isAuthenticated) {
@@ -24,8 +25,15 @@ export default function MobileLayout({ children }: PropsWithChildren) {
                     routeToPermissions={adminSidebarRoutePermissions}
                 />
 
-                <div className="flex h-full min-h-0 flex-col overflow-hidden transition-all duration-300 md:pl-72">
-                    <Topbar onMenuClick={() => setMobileMenuOpen(true)} hasSidebar />
+                <div
+                    className={`flex h-full min-h-0 flex-col overflow-hidden transition-all duration-300 ${
+                        canAccessAdminMenu ? 'md:pl-72' : ''
+                    }`}
+                >
+                    <Topbar
+                        onMenuClick={canAccessAdminMenu ? () => setMobileMenuOpen(true) : undefined}
+                        hasSidebar={canAccessAdminMenu}
+                    />
 
                     <main className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pt-20 md:pt-24 px-4 sm:px-6 md:px-8 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] md:pb-24 [scrollbar-gutter:stable]">
                         <div className="max-w-7xl xl:max-w-[90rem] mx-auto w-full min-w-0 pt-6 pb-2">
@@ -33,7 +41,7 @@ export default function MobileLayout({ children }: PropsWithChildren) {
                         </div>
                     </main>
 
-                    <MobileBottomNav insetForSidebar />
+                    <MobileBottomNav insetForSidebar={canAccessAdminMenu} />
 
                     <FlashMessages />
                     <InboxNotificationPoller />

@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\UserInboxNotification;
 use App\Models\Volunteer;
 use App\Support\SafeSpatieUsersByPermission;
+use App\Support\UserMessagingPreferences;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
@@ -60,36 +61,51 @@ class SolicitationChatNotifier
             ? 'Resposta sobre: '.$subjectLine.'.'
             : 'Sobre o seu pedido: '.$typeLabel.'.';
 
-        $row = UserInboxNotification::create([
-            'user_id' => $owner->id,
-            'title' => $title,
-            'body' => $body,
-            'action_url' => null,
-        ]);
-
         $conversationUrl = $isLeaderChat
             ? route('mobile.contact', [
                 'solicitacao' => $solicitation->id,
                 'painel' => 'chat',
-                'inbox' => $row->id,
             ], absolute: true)
             : route('mobile.solicitations.show', [
                 'solicitation' => $solicitation->id,
-                'inbox' => $row->id,
             ], absolute: true);
 
-        $row->update([
-            'action_url' => $conversationUrl,
-        ]);
+        if (UserMessagingPreferences::acceptsInbox($owner)) {
+            $row = UserInboxNotification::create([
+                'user_id' => $owner->id,
+                'title' => $title,
+                'body' => $body,
+                'action_url' => null,
+            ]);
 
+            $conversationUrl = $isLeaderChat
+                ? route('mobile.contact', [
+                    'solicitacao' => $solicitation->id,
+                    'painel' => 'chat',
+                    'inbox' => $row->id,
+                ], absolute: true)
+                : route('mobile.solicitations.show', [
+                    'solicitation' => $solicitation->id,
+                    'inbox' => $row->id,
+                ], absolute: true);
+
+            $row->update([
+                'action_url' => $conversationUrl,
+            ]);
+        }
+
+        /** E-mail de cópia informativa: sempre que exista e-mail válido na conta (além da notificação na app). */
         if (! $selfMessage) {
             $email = $this->resolveMemberEmail($owner);
             if ($email !== null) {
+                $solicitation->loadMissing('church:id,name');
                 Mail::to($email)->send(new SolicitationStaffMessageMail(
                     $subjectLine,
                     $messageContent,
                     $conversationUrl,
                     $isLeaderChat,
+                    $solicitation->church?->name,
+                    $staff->name,
                 ));
             }
         }
@@ -171,15 +187,17 @@ class SolicitationChatNotifier
             ? (string) $solicitation->subject
             : MobileChurchSolicitationController::typeLabel($solicitation->type);
         $inboxUrl = route('mobile.leader-solicitations.show', ['solicitation' => $solicitation->id], absolute: true);
-        $email = $this->resolveVolunteerContactEmail($volunteer);
-        if ($email !== null) {
-            Mail::to($email)->send(new SolicitationNewRequestMail(
-                'Novo pedido de conversa — '.$typeLabel,
-                'Novo pedido de conversa',
-                $memberName.' iniciou uma conversa consigo na app.',
-                $this->solicitationMessagePreview($solicitation),
-                $inboxUrl,
-            ));
+        if (UserMessagingPreferences::acceptsEmailForVolunteerContact($volunteer)) {
+            $email = $this->resolveVolunteerContactEmail($volunteer);
+            if ($email !== null) {
+                Mail::to($email)->send(new SolicitationNewRequestMail(
+                    'Novo pedido de conversa — '.$typeLabel,
+                    'Novo pedido de conversa',
+                    $memberName.' iniciou uma conversa consigo na app.',
+                    $this->solicitationMessagePreview($solicitation),
+                    $inboxUrl,
+                ));
+            }
         }
     }
 
@@ -241,19 +259,21 @@ class SolicitationChatNotifier
             );
         }
 
-        $email = $this->resolveVolunteerContactEmail($volunteer);
-        if ($email !== null) {
-            $inboxUrl = route('solicitations.index', [
-                'modal_kind' => 'solicitation',
-                'modal_id' => $solicitation->id,
-            ], absolute: true);
-            Mail::to($email)->send(new SolicitationNewRequestMail(
-                'Novo pedido — '.$typeLabel,
-                'Novo pedido na app',
-                $memberName.' enviou um pedido do tipo «'.$typeLabel.'».',
-                $this->solicitationMessagePreview($solicitation),
-                $inboxUrl,
-            ));
+        if (UserMessagingPreferences::acceptsEmailForVolunteerContact($volunteer)) {
+            $email = $this->resolveVolunteerContactEmail($volunteer);
+            if ($email !== null) {
+                $inboxUrl = route('solicitations.index', [
+                    'modal_kind' => 'solicitation',
+                    'modal_id' => $solicitation->id,
+                ], absolute: true);
+                Mail::to($email)->send(new SolicitationNewRequestMail(
+                    'Novo pedido — '.$typeLabel,
+                    'Novo pedido na app',
+                    $memberName.' enviou um pedido do tipo «'.$typeLabel.'».',
+                    $this->solicitationMessagePreview($solicitation),
+                    $inboxUrl,
+                ));
+            }
         }
     }
 
@@ -262,6 +282,11 @@ class SolicitationChatNotifier
      */
     private function pushInboxForUser(int $userId, string $title, string $body, string $routeName, array $routeParams): void
     {
+        $user = User::query()->find($userId);
+        if (! UserMessagingPreferences::acceptsInbox($user)) {
+            return;
+        }
+
         $row = UserInboxNotification::create([
             'user_id' => $userId,
             'title' => $title,
