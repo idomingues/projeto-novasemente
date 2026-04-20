@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Models\AuthLoginEvent;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -52,6 +53,17 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
 
         $request->session()->regenerate();
+
+        $user = $request->user();
+        if ($user) {
+            AuthLoginEvent::record(
+                AuthLoginEvent::OUTCOME_SUCCESS,
+                (int) $user->id,
+                trim((string) $request->input('login')),
+                $request->ip(),
+                $request->userAgent(),
+            );
+        }
 
         $afterLogin = $this->safeRedirectPath($request->string('redirect')->toString());
         if ($afterLogin !== null) {

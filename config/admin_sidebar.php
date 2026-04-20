@@ -26,6 +26,7 @@ return [
         ['name' => 'Agendamento de salas', 'route' => 'room-bookings.index', 'icon' => 'rectangle-stack'],
         ['name' => 'Inventário', 'route' => 'inventory.index', 'icon' => 'archive-box'],
         ['name' => 'Igrejas', 'route' => 'churches.index', 'icon' => 'building-office'],
+        ['name' => 'Operações', 'route' => 'operations.index', 'icon' => 'chart-bar-square'],
         ['name' => 'Perfis', 'route' => 'roles.index', 'icon' => 'key'],
         ['name' => 'Suporte APP', 'route' => 'support.index', 'icon' => 'chat-bubble'],
         ['name' => 'Versão do APP', 'route' => 'app-versions.index', 'icon' => 'cog'],

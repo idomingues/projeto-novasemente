@@ -20,6 +20,8 @@ export const adminSidebarRoutePermissions: Record<string, string[]> = {
     'inventory.index': ['inventory.view', 'inventory.manage'],
     'roles.index': ['roles.manage'],
     'news.index': ['news.view', 'news.manage'],
+    /** No Sidebar o item só entra no bloco ADM com `auth.isSuperAdmin`; rota `role:super_admin`. */
+    'operations.index': [],
     /** No Sidebar o item só entra no bloco ADM com `auth.isSuperAdmin`; rotas são `role:super_admin`. */
     'churches.index': ['churches.manage'],
     'churches.services.index': ['churches.manage'],

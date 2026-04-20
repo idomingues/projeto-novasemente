@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\AuthLoginEvent;
 use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
@@ -47,6 +48,8 @@ class LoginRequest extends FormRequest
             'password' => ['required', 'string'],
             'church_id' => ['nullable', 'integer', 'exists:churches,id'],
             'redirect' => ['nullable', 'string', 'max:500'],
+            /** Campo armadilha: normalmente vazio; se preenchido, tratamos em `authenticate()`. */
+            'website' => ['nullable', 'string', 'max:128'],
         ];
     }
 
@@ -57,9 +60,22 @@ class LoginRequest extends FormRequest
      */
     public function authenticate(): void
     {
+        $login = trim((string) $this->input('login'));
+        $ua = $this->userAgent();
+        $ip = $this->ip();
+
+        if (filled($this->input('website'))) {
+            AuthLoginEvent::record(AuthLoginEvent::OUTCOME_HONEYPOT, null, $login, $ip, $ua);
+            RateLimiter::hit($this->ipThrottleKey(), $this->ipDecaySeconds());
+
+            throw ValidationException::withMessages([
+                'login' => trans('auth.failed'),
+            ]);
+        }
+
+        $this->ensureIpNotRateLimited();
         $this->ensureIsNotRateLimited();
 
-        $login = trim((string) $this->input('login'));
         $password = (string) $this->input('password');
 
         $user = User::query()
@@ -70,7 +86,9 @@ class LoginRequest extends FormRequest
             ->first();
 
         if (! $user || ! Hash::check($password, $user->password)) {
-            RateLimiter::hit($this->throttleKey());
+            RateLimiter::hit($this->throttleKey(), $this->identityDecaySeconds());
+            RateLimiter::hit($this->ipThrottleKey(), $this->ipDecaySeconds());
+            AuthLoginEvent::record(AuthLoginEvent::OUTCOME_FAILED, null, $login, $ip, $ua);
 
             throw ValidationException::withMessages([
                 'login' => trans('auth.failed'),
@@ -89,13 +107,47 @@ class LoginRequest extends FormRequest
      */
     public function ensureIsNotRateLimited(): void
     {
-        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
+        $max = max(1, (int) config('operations.login_max_attempts_per_identity', 5));
+        if (! RateLimiter::tooManyAttempts($this->throttleKey(), $max)) {
             return;
         }
 
         event(new Lockout($this));
 
         $seconds = RateLimiter::availableIn($this->throttleKey());
+        AuthLoginEvent::record(
+            AuthLoginEvent::OUTCOME_LOCKOUT,
+            null,
+            trim((string) $this->input('login')),
+            $this->ip(),
+            $this->userAgent(),
+        );
+
+        throw ValidationException::withMessages([
+            'login' => trans('auth.throttle', [
+                'seconds' => $seconds,
+                'minutes' => ceil($seconds / 60),
+            ]),
+        ]);
+    }
+
+    private function ensureIpNotRateLimited(): void
+    {
+        $max = max(1, (int) config('operations.login_max_attempts_per_ip', 40));
+        if (! RateLimiter::tooManyAttempts($this->ipThrottleKey(), $max)) {
+            return;
+        }
+
+        event(new Lockout($this));
+
+        $seconds = RateLimiter::availableIn($this->ipThrottleKey());
+        AuthLoginEvent::record(
+            AuthLoginEvent::OUTCOME_IP_BLOCKED,
+            null,
+            trim((string) $this->input('login')),
+            $this->ip(),
+            $this->userAgent(),
+        );
 
         throw ValidationException::withMessages([
             'login' => trans('auth.throttle', [
@@ -111,5 +163,20 @@ class LoginRequest extends FormRequest
     public function throttleKey(): string
     {
         return Str::transliterate(Str::lower($this->string('login')).'|'.$this->ip());
+    }
+
+    private function ipThrottleKey(): string
+    {
+        return 'login-ip:'.sha1((string) $this->ip());
+    }
+
+    private function identityDecaySeconds(): int
+    {
+        return max(60, (int) config('operations.login_decay_seconds', 900));
+    }
+
+    private function ipDecaySeconds(): int
+    {
+        return max(60, (int) config('operations.login_ip_decay_seconds', 900));
     }
 }

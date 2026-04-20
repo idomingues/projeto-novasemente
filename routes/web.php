@@ -19,6 +19,7 @@ use App\Http\Controllers\MobilePastoralAppointmentController;
 use App\Http\Controllers\MobileSupportController;
 use App\Http\Controllers\MusicaController;
 use App\Http\Controllers\NewsController;
+use App\Http\Controllers\OperationsDashboardController;
 use App\Http\Controllers\PastoralAgendaController;
 use App\Http\Controllers\PastorController;
 use App\Http\Controllers\PrayerRequestController;
@@ -395,6 +396,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/app-versions', [AppVersionController::class, 'store'])->name('app-versions.store')->middleware('role:super_admin');
     Route::put('/app-versions/{appVersion}', [AppVersionController::class, 'update'])->name('app-versions.update')->middleware('role:super_admin');
     Route::delete('/app-versions/{appVersion}', [AppVersionController::class, 'destroy'])->name('app-versions.destroy')->middleware('role:super_admin');
+
+    // Operações / métricas / auditoria de login — apenas super admin
+    Route::get('/operacoes', [OperationsDashboardController::class, 'index'])
+        ->name('operations.index')
+        ->middleware('role:super_admin');
 
     // Igrejas — apenas super admin
     Route::get('/churches', [ChurchController::class, 'index'])->name('churches.index')->middleware('role:super_admin');

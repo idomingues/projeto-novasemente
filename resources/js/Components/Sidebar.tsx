@@ -22,6 +22,7 @@ import {
     UserCircleIcon,
     SparklesIcon,
     ChevronDownIcon,
+    ChartBarSquareIcon,
 } from '@heroicons/react/24/outline';
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 import { useMemo, useState } from 'react';
@@ -74,6 +75,7 @@ const ICON_MAP: Record<string, MenuIcon> = {
     cog: Cog6ToothIcon,
     'chat-bubble': ChatBubbleLeftRightIcon,
     sparkles: SparklesIcon,
+    'chart-bar-square': ChartBarSquareIcon,
 };
 
 /**
@@ -98,6 +100,7 @@ const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'Agendamento de salas', route: 'room-bookings.index', icon: RectangleStackIcon },
     { name: 'Inventário', route: 'inventory.index', icon: ArchiveBoxIcon },
     { name: 'Igrejas', route: 'churches.index', icon: BuildingOfficeIcon },
+    { name: 'Operações', route: 'operations.index', icon: ChartBarSquareIcon },
     { name: 'Perfis', route: 'roles.index', icon: KeyIcon },
     { name: 'Suporte APP', route: 'support.index', icon: ChatBubbleLeftRightIcon },
     { name: 'Versão do APP', route: 'app-versions.index', icon: Cog6ToothIcon },
@@ -213,7 +216,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
                     return canAccessAdminMenu || canAccess('members.index');
                 }
                 /** Igrejas: só no bloco ADM e alinhado à rota `role:super_admin`. */
-                if (item.route === 'churches.index') {
+                if (item.route === 'churches.index' || item.route === 'operations.index') {
                     return isSuperAdminUser && canAccess(item.route);
                 }
                 return canAccess(item.route);
@@ -228,7 +231,14 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
     const publicationRoutes = new Set(['news.index', 'culto.index', 'events.index', 'acervo.index', 'notifications.manage']);
     const cadastroRoutes = new Set(['rooms.index', 'departments.index', 'pastors.index']);
     /** Ordem fixa do bloco ADM — só visível para `super_admin` (sem acordeão). */
-    const admRouteOrder = ['churches.index', 'roles.index', 'support.index', 'app-versions.index', 'settings.index'] as const;
+    const admRouteOrder = [
+        'churches.index',
+        'operations.index',
+        'roles.index',
+        'support.index',
+        'app-versions.index',
+        'settings.index',
+    ] as const;
     /** Inclui `mobile.support.index` quando o item Suporte é remapeado (evita duplicar na lista principal). */
     const admRoutes = new Set<string>([...admRouteOrder, 'mobile.support.index']);
     const sectionRoutes = new Set([...publicationRoutes, ...cadastroRoutes, ...admRoutes]);

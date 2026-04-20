@@ -28,6 +28,8 @@ export default function Login({
         password: '',
         remember: false as boolean,
         redirect: redirectTo ?? '',
+        /** Honeypot (deixar vazio): bots preenchem; o servidor rejeita. */
+        website: '',
     });
 
     useEffect(() => {
@@ -118,6 +120,16 @@ export default function Login({
                         </p>
 
                         <form onSubmit={submit} className="mt-6 space-y-5">
+                            <input
+                                type="text"
+                                name="website"
+                                value={data.website}
+                                tabIndex={-1}
+                                autoComplete="off"
+                                aria-hidden
+                                className="absolute -left-[9999px] h-0 w-0 overflow-hidden opacity-0"
+                                onChange={(e) => setData('website', e.target.value)}
+                            />
                             <div>
                                 <InputLabel htmlFor="login" value="E-mail ou nome" />
                                 <TextInput
