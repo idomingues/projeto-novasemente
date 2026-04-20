@@ -12,16 +12,16 @@ use Inertia\Response;
 
 class AppVersionController extends Controller
 {
-    private function isAdmin(Request $request): bool
+    private function isSuperAdmin(Request $request): bool
     {
         $user = $request->user();
 
-        return $user && ($user->hasRole('admin') || $user->hasRole('super_admin'));
+        return (bool) ($user && $user->hasRole('super_admin'));
     }
 
     public function index(Request $request): Response
     {
-        abort_unless($this->isAdmin($request), 403);
+        abort_unless($this->isSuperAdmin($request), 403);
 
         if (! Schema::hasTable('app_versions')) {
             return Inertia::render('AppVersions/Index', [
@@ -53,7 +53,7 @@ class AppVersionController extends Controller
 
     public function store(Request $request)
     {
-        abort_unless($this->isAdmin($request), 403);
+        abort_unless($this->isSuperAdmin($request), 403);
         abort_unless(Schema::hasTable('app_versions'), 400, 'Tabela de versões ainda não foi criada.');
 
         $valid = $request->validate([
@@ -73,7 +73,7 @@ class AppVersionController extends Controller
 
     public function update(Request $request, AppVersion $appVersion)
     {
-        abort_unless($this->isAdmin($request), 403);
+        abort_unless($this->isSuperAdmin($request), 403);
         abort_unless(Schema::hasTable('app_versions'), 400, 'Tabela de versões ainda não foi criada.');
 
         $valid = $request->validate([
@@ -93,7 +93,7 @@ class AppVersionController extends Controller
 
     public function destroy(Request $request, AppVersion $appVersion)
     {
-        abort_unless($this->isAdmin($request), 403);
+        abort_unless($this->isSuperAdmin($request), 403);
         abort_unless(Schema::hasTable('app_versions'), 400, 'Tabela de versões ainda não foi criada.');
 
         $appVersion->delete();

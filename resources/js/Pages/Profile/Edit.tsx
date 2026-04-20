@@ -16,8 +16,8 @@ export default function Edit({
 }: PageProps<{ mustVerifyEmail: boolean; status?: string }>) {
     const { auth } = usePage().props as { auth?: { permissions?: string[] } };
     const perms = auth?.permissions ?? [];
-    const canAccessSupportAdmin = perms.includes('support.view') || perms.includes('support.manage');
-    const supportRouteName = canAccessSupportAdmin && route().has('support.index') ? 'support.index' : 'mobile.support.index';
+    /** Suporte administrativo fica só no menu ADM (super admin); no perfil web usamos sempre o fluxo da app. */
+    const supportRouteName = 'mobile.support.index';
     const showPastorsCadastro = canAccessPastorsCadastro(auth?.permissions);
 
     return (

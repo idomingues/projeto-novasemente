@@ -1,5 +1,5 @@
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { PlayCircleIcon, Bars3Icon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 
 interface PlaylistItem {
@@ -21,6 +21,9 @@ export default function MobileAcervo({ playlists, playlistsUrl }: Props) {
             <Head title="Acervo" />
             <div className="space-y-6">
                 <div>
+                    <Link href={route('mobile.more')} className="text-sm text-zinc-500 underline dark:text-zinc-400">
+                        ← Mais
+                    </Link>
                     <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Acervo</h1>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
                         Sermões da Nova Semente.

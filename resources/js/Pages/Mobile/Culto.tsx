@@ -1,5 +1,5 @@
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { FilmIcon, PlayCircleIcon } from '@heroicons/react/24/outline';
 import { useEffect } from 'react';
 
@@ -43,6 +43,9 @@ export default function MobileCulto({ cultos, showPostRegistrationBanner = false
         <MobileLayout>
             <Head title="Culto" />
             <div className="space-y-6">
+                <Link href={route('mobile.more')} className="text-sm text-zinc-500 underline dark:text-zinc-400">
+                    ← Mais
+                </Link>
                 {showPostRegistrationBanner ? (
                     <div
                         className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-50"

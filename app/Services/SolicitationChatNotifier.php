@@ -16,6 +16,29 @@ use Illuminate\Support\Str;
 
 class SolicitationChatNotifier
 {
+    /**
+     * @return \Illuminate\Support\Collection<int, \App\Models\User>
+     */
+    private function staffRecipientsForChurch(?int $churchId, ?int $excludeUserId = null): \Illuminate\Support\Collection
+    {
+        $users = SafeSpatieUsersByPermission::usersHavingAnyPermissionOrAdmins(
+            ['solicitations.view', 'solicitations.manage'],
+            $excludeUserId,
+        );
+
+        if ($churchId === null) {
+            return $users;
+        }
+
+        return $users->filter(function (User $u) use ($churchId) {
+            if ($u->hasRole('super_admin')) {
+                return true;
+            }
+
+            return (int) ($u->church_id ?? 0) === (int) $churchId;
+        })->values();
+    }
+
     /** Aviso ao membro quando a igreja (staff) ou o líder envia uma mensagem no chat. */
     public function notifyMemberOfStaffMessage(ChurchSolicitation $solicitation, User $staff, string $messageContent): void
     {
@@ -97,8 +120,8 @@ class SolicitationChatNotifier
             }
         }
 
-        $staffUsers = SafeSpatieUsersByPermission::usersHavingAnyPermissionOrAdmins(
-            ['solicitations.view', 'solicitations.manage'],
+        $staffUsers = $this->staffRecipientsForChurch(
+            $solicitation->church_id !== null ? (int) $solicitation->church_id : null,
             $member->id,
         );
 
@@ -198,6 +221,25 @@ class SolicitationChatNotifier
                 'modal_id' => $solicitation->id,
             ],
         );
+
+        // Também notifica a equipe do painel com acesso ao Atendimento (na mesma igreja).
+        $staffUsers = $this->staffRecipientsForChurch($churchId, $solicitation->user_id);
+        foreach ($staffUsers as $user) {
+            // Evita duplicar a mesma notificação para o responsável, se ele também for staff.
+            if ((int) $user->id === (int) $volunteer->user_id) {
+                continue;
+            }
+            $this->pushInboxForUser(
+                (int) $user->id,
+                'Novo pedido na app',
+                $memberName.' enviou: '.$typeLabel.'.',
+                'solicitations.index',
+                [
+                    'modal_kind' => 'solicitation',
+                    'modal_id' => $solicitation->id,
+                ],
+            );
+        }
 
         $email = $this->resolveVolunteerContactEmail($volunteer);
         if ($email !== null) {

@@ -15,25 +15,25 @@ use Inertia\Response;
 
 class SupportAdminController extends Controller
 {
-    private function isAdmin(User $user): bool
+    private function isSuperAdmin(User $user): bool
     {
-        return $user->hasRole('admin') || $user->hasRole('super_admin');
+        return $user->hasRole('super_admin');
     }
 
     private function canViewSupport(User $user): bool
     {
-        return $user->hasAnyPermission(['support.view', 'support.manage']);
+        return $this->isSuperAdmin($user) || $user->hasAnyPermission(['support.view', 'support.manage']);
     }
 
     private function canManageSupport(User $user): bool
     {
-        return $user->hasPermissionTo('support.manage');
+        return $this->isSuperAdmin($user) || $user->hasPermissionTo('support.manage');
     }
 
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user && $this->isAdmin($user), 403);
+        abort_unless($user && $this->isSuperAdmin($user), 403);
 
         $valid = $request->validate([
             'message' => ['required', 'string', 'max:5000'],
@@ -92,7 +92,7 @@ class SupportAdminController extends Controller
             'devItemStoreUrl' => route('support.store'),
             'supportIndexUrl' => route('support.index'),
             'modalDetail' => $modalDetail,
-            'canCreateDevItem' => $this->isAdmin($user),
+            'canCreateDevItem' => $this->isSuperAdmin($user),
         ]);
     }
 

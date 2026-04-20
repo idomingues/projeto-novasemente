@@ -21,9 +21,10 @@ import {
     InboxIcon,
     UserCircleIcon,
     SparklesIcon,
+    ChevronDownIcon,
 } from '@heroicons/react/24/outline';
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { ComponentType, SVGProps } from 'react';
 
 interface SidebarProps {
@@ -87,21 +88,20 @@ const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'Pastores', route: 'pastors.index', icon: UserCircleIcon },
     { name: 'Agenda pastoral', route: 'pastoral-agenda.index', icon: ClockIcon },
     { name: 'Eventos', route: 'events.index', icon: CalendarDaysIcon },
-    { name: 'Pedidos de batismo', route: 'baptism-requests.index', icon: SparklesIcon },
     { name: 'Acervo', route: 'acervo.index', icon: PlayCircleIcon },
     { name: 'Culto', route: 'culto.index', icon: FilmIcon },
+    { name: 'Notificações', route: 'notifications.manage', icon: BellAlertIcon },
     { name: 'Departamentos', route: 'departments.index', icon: BuildingOffice2Icon },
     { name: 'Escalas', route: 'escalas.index', icon: CalendarIcon },
     { name: 'Voluntários', route: 'ministry-lead.volunteers.index', icon: UserGroupIcon },
-    { name: 'Perfis', route: 'roles.index', icon: KeyIcon },
     { name: 'Salas', route: 'rooms.index', icon: BuildingOfficeIcon },
     { name: 'Agendamento de salas', route: 'room-bookings.index', icon: RectangleStackIcon },
     { name: 'Inventário', route: 'inventory.index', icon: ArchiveBoxIcon },
     { name: 'Igrejas', route: 'churches.index', icon: BuildingOfficeIcon },
-    { name: 'Notificações', route: 'notifications.manage', icon: BellAlertIcon },
+    { name: 'Perfis', route: 'roles.index', icon: KeyIcon },
+    { name: 'Suporte APP', route: 'support.index', icon: ChatBubbleLeftRightIcon },
+    { name: 'Versão do APP', route: 'app-versions.index', icon: Cog6ToothIcon },
     { name: 'Configurações', route: 'settings.index', icon: Cog6ToothIcon },
-    { name: 'Suporte do app', route: 'support.index', icon: ChatBubbleLeftRightIcon },
-    { name: 'Versão do App', route: 'app-versions.index', icon: Cog6ToothIcon },
 ];
 
 /** Menu simplificado (conta comum da app, sem acesso ao painel admin). */
@@ -110,7 +110,7 @@ const APP_ONLY_MENU: MenuItem[] = [
     { name: 'Eventos', route: 'mobile.events', icon: CalendarDaysIcon },
     { name: 'Oração', route: 'mobile.prayer', icon: PrayingHandsIcon },
     { name: 'Notificações', route: 'mobile.notifications', icon: BellAlertIcon },
-    { name: 'Suporte do app', route: 'mobile.support.index', icon: ChatBubbleLeftRightIcon },
+    { name: 'Suporte APP', route: 'mobile.support.index', icon: ChatBubbleLeftRightIcon },
     { name: 'Mais', route: 'mobile.more', icon: SparklesIcon },
 ];
 
@@ -128,10 +128,12 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
         user?: { name?: string; email?: string } | null;
         permissions?: string[];
         canManageSettings?: boolean;
+        isSuperAdmin?: boolean;
         adminSidebarUnrestricted?: boolean;
         canAccessAdminMenu?: boolean;
         linkedPastor?: { id: number } | null;
         pastoralAgendaMenuVisible?: boolean;
+        openSolicitationsCount?: number;
     };
     const currentChurch = (props as { currentChurch?: ChurchInfo | null }).currentChurch ?? null;
     const churchesForSwitch = (props as { churchesForSwitch?: ChurchForSwitch[] }).churchesForSwitch ?? [];
@@ -139,8 +141,15 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
 
     const permissions: string[] = auth?.permissions ?? [];
     const isAuthenticated = !!auth?.user;
-    const isSuperAdmin = churchesForSwitch.length > 0;
+    /** Troca de igreja ativa: só utilizadores com papel `super_admin` recebem a lista. */
+    const showChurchSwitcher = churchesForSwitch.length > 0;
+    const isSuperAdminUser = auth?.isSuperAdmin === true;
     const canAccessSupportAdmin = permissions.includes('support.view') || permissions.includes('support.manage');
+    const openSolicitationsCount =
+        typeof auth?.openSolicitationsCount === 'number' ? auth.openSolicitationsCount : 0;
+
+    const [isPublicationOpen, setIsPublicationOpen] = useState(false);
+    const [isCadastroOpen, setIsCadastroOpen] = useState(false);
 
     const isRouteActive = (routeName: string) => route().current(routeName + '*');
 
@@ -153,6 +162,10 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
                 route().current('volunteers.index') ||
                 route().current('volunteers.show')
             );
+        }
+        if (itemRoute === 'churches.index') {
+            const c = route().current();
+            return typeof c === 'string' && c.startsWith('churches.');
         }
         return isRouteActive(itemRoute);
     };
@@ -199,14 +212,46 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
                 if (item.route === 'members.index') {
                     return canAccessAdminMenu || canAccess('members.index');
                 }
+                /** Igrejas: só no bloco ADM e alinhado à rota `role:super_admin`. */
+                if (item.route === 'churches.index') {
+                    return isSuperAdminUser && canAccess(item.route);
+                }
                 return canAccess(item.route);
             }).map((item) => {
                 // Evita 403: item pode aparecer para admin mesmo sem permission middleware alinhado.
-                if (item.route === 'support.index' && !canAccessSupportAdmin) {
+                if (item.route === 'support.index' && !canAccessSupportAdmin && !isSuperAdminUser) {
                     return { ...item, route: 'mobile.support.index' };
                 }
                 return item;
             });
+
+    const publicationRoutes = new Set(['news.index', 'culto.index', 'events.index', 'acervo.index', 'notifications.manage']);
+    const cadastroRoutes = new Set(['rooms.index', 'departments.index', 'pastors.index']);
+    /** Ordem fixa do bloco ADM — só visível para `super_admin` (sem acordeão). */
+    const admRouteOrder = ['churches.index', 'roles.index', 'support.index', 'app-versions.index', 'settings.index'] as const;
+    /** Inclui `mobile.support.index` quando o item Suporte é remapeado (evita duplicar na lista principal). */
+    const admRoutes = new Set<string>([...admRouteOrder, 'mobile.support.index']);
+    const sectionRoutes = new Set([...publicationRoutes, ...cadastroRoutes, ...admRoutes]);
+
+    const publicationMenuItems =
+        canAccessAdminMenu ? menuItems.filter((i) => publicationRoutes.has(i.route)) : [];
+    const cadastroMenuItems =
+        canAccessAdminMenu ? menuItems.filter((i) => cadastroRoutes.has(i.route)) : [];
+    const admMenuItems =
+        canAccessAdminMenu && isSuperAdminUser
+            ? admRouteOrder
+                  .map((r) => {
+                      if (r === 'support.index') {
+                          return menuItems.find(
+                              (i) => i.route === 'support.index' || i.route === 'mobile.support.index',
+                          );
+                      }
+                      return menuItems.find((i) => i.route === r);
+                  })
+                  .filter((i): i is MenuItem => i !== undefined)
+            : [];
+    const mainMenuItems =
+        canAccessAdminMenu ? menuItems.filter((i) => !sectionRoutes.has(i.route)) : menuItems;
 
     return (
         <>
@@ -252,7 +297,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
                     </button>
                 </div>
 
-                {isSuperAdmin && churchesForSwitch.length > 0 && (
+                {showChurchSwitcher && (
                     <div className="px-4 py-2 border-b border-zinc-100 dark:border-zinc-900">
                         <label htmlFor="sidebar-church-switch" className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
                             Igreja em que está trabalhando
@@ -285,7 +330,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
                         <p className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Menu Principal</p>
                     </div>
                     <ul className="space-y-2">
-                        {menuItems.map((item) => {
+                        {mainMenuItems.map((item) => {
                             const routeExists = route().has(item.route);
                             const href = routeExists ? route(item.route) : '#';
                             const isActive = routeExists && isMenuItemActive(item.route);
@@ -310,11 +355,171 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
                                             }`}
                                         />
                                         <span className="font-medium text-sm">{item.name}</span>
+                                        {item.route === 'solicitations.index' && openSolicitationsCount > 0 ? (
+                                            <span
+                                                className={`ml-auto inline-flex min-w-6 items-center justify-center rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${
+                                                    isActive
+                                                        ? 'bg-white/20 text-white dark:bg-black/10 dark:text-black'
+                                                        : 'bg-rose-600 text-white'
+                                                }`}
+                                                title={`${openSolicitationsCount} em aberto`}
+                                                aria-label={`${openSolicitationsCount} em aberto`}
+                                            >
+                                                {openSolicitationsCount > 99 ? '99+' : openSolicitationsCount}
+                                            </span>
+                                        ) : null}
                                     </Link>
                                 </li>
                             );
                         })}
                     </ul>
+
+                    {publicationMenuItems.length > 0 ? (
+                        <>
+                            <button
+                                type="button"
+                                onClick={() => setIsPublicationOpen((v) => !v)}
+                                className="mt-8 mb-2 w-full px-4 flex items-center justify-between text-left"
+                            >
+                                <span className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+                                    Publicação
+                                </span>
+                                <ChevronDownIcon
+                                    className={`h-4 w-4 text-zinc-400 dark:text-zinc-500 transition-transform ${
+                                        isPublicationOpen ? 'rotate-180' : ''
+                                    }`}
+                                    aria-hidden
+                                />
+                            </button>
+                            {isPublicationOpen ? (
+                                <ul className="space-y-2">
+                                    {publicationMenuItems.map((item) => {
+                                        const routeExists = route().has(item.route);
+                                        const href = routeExists ? route(item.route) : '#';
+                                        const isActive = routeExists && isMenuItemActive(item.route);
+                                        const Icon = item.icon;
+
+                                        return (
+                                            <li key={item.route}>
+                                                <Link
+                                                    href={href}
+                                                    onClick={onMobileClose}
+                                                    className={`flex items-center px-4 py-3.5 rounded-2xl transition-all duration-200 group ${
+                                                        isActive
+                                                            ? 'bg-zinc-900 text-white shadow-lg shadow-zinc-900/10 dark:bg-white dark:text-black dark:shadow-white/10'
+                                                            : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-white'
+                                                    }`}
+                                                >
+                                                    <Icon
+                                                        className={`w-6 h-6 mr-3 ${
+                                                            isActive
+                                                                ? 'text-white dark:text-black'
+                                                                : 'text-zinc-400 group-hover:text-zinc-900 dark:text-zinc-500 dark:group-hover:text-white'
+                                                        }`}
+                                                    />
+                                                    <span className="font-medium text-sm">{item.name}</span>
+                                                </Link>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            ) : null}
+                        </>
+                    ) : null}
+
+                    {cadastroMenuItems.length > 0 ? (
+                        <>
+                            <button
+                                type="button"
+                                onClick={() => setIsCadastroOpen((v) => !v)}
+                                className="mt-8 mb-2 w-full px-4 flex items-center justify-between text-left"
+                            >
+                                <span className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+                                    Cadastro
+                                </span>
+                                <ChevronDownIcon
+                                    className={`h-4 w-4 text-zinc-400 dark:text-zinc-500 transition-transform ${
+                                        isCadastroOpen ? 'rotate-180' : ''
+                                    }`}
+                                    aria-hidden
+                                />
+                            </button>
+                            {isCadastroOpen ? (
+                                <ul className="space-y-2">
+                                    {cadastroMenuItems.map((item) => {
+                                        const routeExists = route().has(item.route);
+                                        const href = routeExists ? route(item.route) : '#';
+                                        const isActive = routeExists && isMenuItemActive(item.route);
+                                        const Icon = item.icon;
+
+                                        return (
+                                            <li key={item.route}>
+                                                <Link
+                                                    href={href}
+                                                    onClick={onMobileClose}
+                                                    className={`flex items-center px-4 py-3.5 rounded-2xl transition-all duration-200 group ${
+                                                        isActive
+                                                            ? 'bg-zinc-900 text-white shadow-lg shadow-zinc-900/10 dark:bg-white dark:text-black dark:shadow-white/10'
+                                                            : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-white'
+                                                    }`}
+                                                >
+                                                    <Icon
+                                                        className={`w-6 h-6 mr-3 ${
+                                                            isActive
+                                                                ? 'text-white dark:text-black'
+                                                                : 'text-zinc-400 group-hover:text-zinc-900 dark:text-zinc-500 dark:group-hover:text-white'
+                                                        }`}
+                                                    />
+                                                    <span className="font-medium text-sm">{item.name}</span>
+                                                </Link>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            ) : null}
+                        </>
+                    ) : null}
+
+                    {admMenuItems.length > 0 ? (
+                        <>
+                            <div className="mt-8 mb-2 px-4">
+                                <span className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+                                    ADM
+                                </span>
+                            </div>
+                            <ul className="space-y-2">
+                                {admMenuItems.map((item) => {
+                                    const routeExists = route().has(item.route);
+                                    const href = routeExists ? route(item.route) : '#';
+                                    const isActive = routeExists && isMenuItemActive(item.route);
+                                    const Icon = item.icon;
+
+                                    return (
+                                        <li key={item.route}>
+                                            <Link
+                                                href={href}
+                                                onClick={onMobileClose}
+                                                className={`flex items-center px-4 py-3.5 rounded-2xl transition-all duration-200 group ${
+                                                    isActive
+                                                        ? 'bg-zinc-900 text-white shadow-lg shadow-zinc-900/10 dark:bg-white dark:text-black dark:shadow-white/10'
+                                                        : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-white'
+                                                }`}
+                                            >
+                                                <Icon
+                                                    className={`w-6 h-6 mr-3 ${
+                                                        isActive
+                                                            ? 'text-white dark:text-black'
+                                                            : 'text-zinc-400 group-hover:text-zinc-900 dark:text-zinc-500 dark:group-hover:text-white'
+                                                    }`}
+                                                />
+                                                <span className="font-medium text-sm">{item.name}</span>
+                                            </Link>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        </>
+                    ) : null}
                 </div>
             </aside>
         </>

@@ -20,17 +20,17 @@ export const adminSidebarRoutePermissions: Record<string, string[]> = {
     'inventory.index': ['inventory.view', 'inventory.manage'],
     'roles.index': ['roles.manage'],
     'news.index': ['news.view', 'news.manage'],
+    /** No Sidebar o item só entra no bloco ADM com `auth.isSuperAdmin`; rotas são `role:super_admin`. */
     'churches.index': ['churches.manage'],
     'churches.services.index': ['churches.manage'],
     'events.index': ['events.view', 'events.manage'],
     'culto.index': ['culto.manage'],
     'musica.index': ['music.manage'],
     'services.index': [],
-    /** Visibilidade real: só admin/super_admin via auth.canManageSettings no Sidebar. */
+    /** Visibilidade real: só `super_admin` via auth.canManageSettings no Sidebar (bloco ADM). */
     'settings.index': [],
     'support.index': ['support.view', 'support.manage'],
     'solicitations.index': ['solicitations.view', 'solicitations.manage'],
-    'baptism-requests.index': ['solicitations.view', 'solicitations.manage'],
     'pastors.index': ['pastors.view', 'pastors.manage'],
     /** Visibilidade no Sidebar: `auth.pastoralAgendaMenuVisible` (pastor ligado, admin, gestão de pastores, etc.). */
     'pastoral-agenda.index': [],

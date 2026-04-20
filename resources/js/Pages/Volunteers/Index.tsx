@@ -68,9 +68,9 @@ export default function Index({
             public_volunteer_signup_url?: string | null;
         };
         currentChurch?: { name?: string } | null;
-        auth?: { permissions?: string[] };
+        auth?: { permissions?: string[]; isSuperAdmin?: boolean };
     };
-    const canManageAppRoles = (page.auth?.permissions ?? []).includes('roles.manage');
+    const isSuperAdmin = page.auth?.isSuperAdmin === true;
     const { flash } = page;
     const churchNameForPublicInvite = page.currentChurch?.name ?? 'Igreja';
 
@@ -609,7 +609,7 @@ export default function Index({
                                     painel; o administrador atribui o perfil aqui para liberar menus e ações. Marque líder apenas quando este
                                     voluntário for gerir escalas.
                                 </p>
-                                {canManageAppRoles ? (
+                                {isSuperAdmin ? (
                                     <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">
                                         Para criar perfis novos ou alterar o que cada perfil pode fazer:{' '}
                                         <Link

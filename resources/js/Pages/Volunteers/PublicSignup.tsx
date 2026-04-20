@@ -326,7 +326,7 @@ export default function PublicSignup({ token, churchName, churchLogoUrl, ministr
                     ) : (
                         <form
                             onSubmit={submit}
-                            className="flex min-h-0 max-h-[78vh] sm:max-h-none flex-col rounded-3xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900/80"
+                            className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900/80"
                         >
                             <div className="mb-5">
                                 <div className="flex items-center justify-between gap-4">
@@ -361,7 +361,7 @@ export default function PublicSignup({ token, churchName, churchLogoUrl, ministr
                                 </div>
                             </div>
 
-                            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 pb-28 sm:flex-none sm:overflow-visible sm:pb-0">
+                            <div className="pb-28 sm:pb-0">
                                 {step === 0 ? (
                                     <>
                                         <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-100">

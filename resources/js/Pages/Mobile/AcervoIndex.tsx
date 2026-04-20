@@ -1,5 +1,5 @@
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Head, useForm, router } from '@inertiajs/react';
+import { Head, Link, useForm, router } from '@inertiajs/react';
 import { PencilIcon, TrashIcon, Bars3Icon, ArrowTopRightOnSquareIcon, PlayCircleIcon, MagnifyingGlassIcon, XMarkIcon, PlusIcon } from '@heroicons/react/24/outline';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
@@ -95,6 +95,9 @@ export default function MobileAcervoIndex({ items, playlistsUrl, canManage }: Pr
         <MobileLayout>
             <Head title="Acervo" />
             <div className="space-y-6 -mt-8">
+                <Link href={route('mobile.more')} className="text-sm text-zinc-500 underline dark:text-zinc-400">
+                    ← Mais
+                </Link>
                 {/* Título e botão Adicionar na mesma linha */}
                 <div className="flex items-center justify-between gap-3 flex-nowrap">
                     <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white truncate min-w-0">Acervo</h1>

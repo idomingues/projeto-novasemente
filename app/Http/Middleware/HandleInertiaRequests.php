@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\AppVersion;
 use App\Models\Church;
+use App\Models\ChurchSolicitation;
 use App\Models\Pastor;
 use App\Support\NotificationFeed;
 use Illuminate\Http\Request;
@@ -87,7 +88,8 @@ class HandleInertiaRequests extends Middleware
         $appName = ($currentChurch ? $currentChurch['name'] : null) ?? Church::where('active', true)->orderBy('name')->value('name') ?? config('app.name');
         $faviconUrl = ($currentChurch ? $currentChurch['logo_url'] : null) ?? $appLogoUrl;
 
-        $canManageSettings = $request->user()?->hasAnyRole(['admin', 'super_admin']) ?? false;
+        /** Definições da igreja no painel (`/settings`): apenas super admin (bloco ADM). */
+        $canManageSettings = $request->user()?->hasRole('super_admin') ?? false;
 
         $appVersionHistory = [];
         if (Schema::hasTable('app_versions')) {
@@ -159,6 +161,24 @@ class HandleInertiaRequests extends Middleware
             }
         }
 
+        $openSolicitationsCount = 0;
+        if ($request->user()) {
+            $u = $request->user();
+            $canViewSolicitations = $u->hasAnyRole(['super_admin', 'admin'])
+                || $u->hasAnyPermission(['solicitations.view', 'solicitations.manage']);
+            $cid = Church::resolveWorkingId($request);
+            if ($canViewSolicitations && $cid !== null) {
+                try {
+                    $openSolicitationsCount = (int) ChurchSolicitation::query()
+                        ->where('church_id', (int) $cid)
+                        ->whereIn('status', ['pending', 'in_progress'])
+                        ->count();
+                } catch (\Throwable) {
+                    $openSolicitationsCount = 0;
+                }
+            }
+        }
+
         return [
             ...parent::share($request),
             /** Token atual para o axios do Inertia (evita 419 em DELETE/PUT após navegação SPA) */
@@ -172,6 +192,8 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
                 'permissions' => $permissionNames,
+                /** Bloco ADM do menu (Perfis, Suporte APP, Versão, Config. da igreja): só super admin. */
+                'isSuperAdmin' => $request->user()?->hasRole('super_admin') ?? false,
                 /** Alinha o menu com Gate::before (admin/super_admin) quando permissions estão desatualizadas na BD. */
                 'adminSidebarUnrestricted' => $request->user()?->hasAnyRole(['admin', 'super_admin']) ?? false,
                 'roleLabel' => $roleLabel,
@@ -181,6 +203,8 @@ class HandleInertiaRequests extends Middleware
                 'linkedPastor' => $linkedPastor,
                 /** Mostrar «Agenda Pastoral» no menu (pastor ligado, papel pastor, ou quem gere pastores). */
                 'pastoralAgendaMenuVisible' => $pastoralAgendaMenuVisible,
+                /** Badge no menu lateral para alertas (Atendimento). */
+                'openSolicitationsCount' => $openSolicitationsCount,
             ],
             'currentChurch' => $currentChurch,
             'churchesForSwitch' => $churchesForSwitch,

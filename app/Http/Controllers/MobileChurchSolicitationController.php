@@ -228,8 +228,11 @@ class MobileChurchSolicitationController extends Controller
             'meta' => $valid['meta'] ?? null,
         ]);
 
-        if ($churchId !== null) {
-            app(SolicitationChatNotifier::class)->notifyChurchSolicitationsHandlerOfNewRequest($solicitation, (int) $churchId);
+        if ($effectiveChurchId) {
+            app(SolicitationChatNotifier::class)->notifyChurchSolicitationsHandlerOfNewRequest(
+                $solicitation,
+                (int) $effectiveChurchId,
+            );
         }
 
         $ref = (string) $request->headers->get('referer', '');

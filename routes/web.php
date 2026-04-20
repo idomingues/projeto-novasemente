@@ -272,10 +272,10 @@ Route::middleware('auth')->group(function () {
     Route::delete('/invitations/{invitation}', [\App\Http\Controllers\InvitationController::class, 'destroy'])->name('invitations.destroy')->middleware('permission:users.manage');
 
     // Perfis (papéis) e permissões
-    Route::get('/roles', [RoleController::class, 'index'])->name('roles.index')->middleware('permission:roles.manage');
-    Route::post('/roles/novo', [RoleController::class, 'store'])->name('roles.store')->middleware('permission:roles.manage');
-    Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy')->middleware('permission:roles.manage');
-    Route::post('/roles', [RoleController::class, 'update'])->name('roles.update')->middleware('permission:roles.manage');
+    Route::get('/roles', [RoleController::class, 'index'])->name('roles.index')->middleware('role:super_admin');
+    Route::post('/roles/novo', [RoleController::class, 'store'])->name('roles.store')->middleware('role:super_admin');
+    Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy')->middleware('role:super_admin');
+    Route::post('/roles', [RoleController::class, 'update'])->name('roles.update')->middleware('role:super_admin');
 
     // Notícias
     Route::get('/news', [NewsController::class, 'index'])->name('news.index');
@@ -299,10 +299,10 @@ Route::middleware('auth')->group(function () {
         return Inertia::render('Dashboard');
     })->name('services.index');
     Route::get('/acervo', [AcervoController::class, 'index'])->name('acervo.index')->middleware('permission:music.manage');
-    Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index')->middleware('role:admin|super_admin');
+    Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index')->middleware('role:super_admin');
     Route::put('/settings/solicitations-handler', [SettingsController::class, 'updateSolicitationsHandler'])
         ->name('settings.solicitations-handler.update')
-        ->middleware('role:admin|super_admin');
+        ->middleware('role:super_admin');
     Route::post('/acervo', [AcervoController::class, 'store'])->name('acervo.store')->middleware('permission:music.manage');
     Route::put('/acervo/{acervo}', [AcervoController::class, 'update'])->name('acervo.update')->middleware('permission:music.manage');
     Route::delete('/acervo/{acervo}', [AcervoController::class, 'destroy'])->name('acervo.destroy')->middleware('permission:music.manage');
@@ -340,25 +340,25 @@ Route::middleware('auth')->group(function () {
     // Suporte (Admin) — permissões dedicadas; item «A desenvolver» só admin/super_admin
     Route::get('/suporte', [SupportAdminController::class, 'index'])
         ->name('support.index')
-        ->middleware('permission:support.view|support.manage');
+        ->middleware('role:super_admin');
     Route::post('/suporte', [SupportAdminController::class, 'store'])
         ->name('support.store')
-        ->middleware('role:admin|super_admin');
+        ->middleware('role:super_admin');
     Route::patch('/suporte/{token}', [SupportAdminController::class, 'update'])
         ->name('support.update')
-        ->middleware('permission:support.manage');
+        ->middleware('role:super_admin');
     Route::delete('/suporte/{token}', [SupportAdminController::class, 'destroy'])
         ->name('support.destroy')
-        ->middleware('permission:support.manage');
+        ->middleware('role:super_admin');
     Route::get('/suporte/{token}', [SupportAdminController::class, 'show'])
         ->name('support.show')
-        ->middleware('permission:support.view|support.manage');
+        ->middleware('role:super_admin');
     Route::post('/suporte/{token}/messages', [SupportAdminController::class, 'sendMessage'])
         ->name('support.messages.store')
-        ->middleware('permission:support.manage');
+        ->middleware('role:super_admin');
     Route::patch('/suporte/{token}/close', [SupportAdminController::class, 'closeTicket'])
         ->name('support.close')
-        ->middleware('permission:support.manage');
+        ->middleware('role:super_admin');
 
     // Solicitações (membro — requer login para enviar/acompanhar)
     Route::get('/mobile/solicitacoes/meus-pedidos', [MobileChurchSolicitationController::class, 'mine'])->name('mobile.solicitations.mine');
@@ -390,11 +390,11 @@ Route::middleware('auth')->group(function () {
         ->name('solicitations.messages.store')
         ->middleware('role_or_permission:super_admin|admin|solicitations.view|solicitations.manage');
 
-    // Versões do App (Admin)
-    Route::get('/app-versions', [AppVersionController::class, 'index'])->name('app-versions.index');
-    Route::post('/app-versions', [AppVersionController::class, 'store'])->name('app-versions.store');
-    Route::put('/app-versions/{appVersion}', [AppVersionController::class, 'update'])->name('app-versions.update');
-    Route::delete('/app-versions/{appVersion}', [AppVersionController::class, 'destroy'])->name('app-versions.destroy');
+    // Versões do App (Admin) — só super admin
+    Route::get('/app-versions', [AppVersionController::class, 'index'])->name('app-versions.index')->middleware('role:super_admin');
+    Route::post('/app-versions', [AppVersionController::class, 'store'])->name('app-versions.store')->middleware('role:super_admin');
+    Route::put('/app-versions/{appVersion}', [AppVersionController::class, 'update'])->name('app-versions.update')->middleware('role:super_admin');
+    Route::delete('/app-versions/{appVersion}', [AppVersionController::class, 'destroy'])->name('app-versions.destroy')->middleware('role:super_admin');
 
     // Igrejas — apenas super admin
     Route::get('/churches', [ChurchController::class, 'index'])->name('churches.index')->middleware('role:super_admin');
