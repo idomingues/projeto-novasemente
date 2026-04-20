@@ -36,7 +36,7 @@ export default function MobileSettings({ church, user }: Props) {
         <MobileLayout>
             <Head title="Configurações" />
             <div className="space-y-6">
-                <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Configurações</h1>
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Configurações</h1>
 
                 <section className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 overflow-hidden">
                     <h2 className="px-4 py-2 text-sm font-semibold text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">

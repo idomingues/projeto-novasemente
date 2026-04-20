@@ -2,7 +2,7 @@
 
 namespace App\Support;
 
-use App\Models\Member;
+use App\Models\User;
 use App\Models\Volunteer;
 
 /**
@@ -19,10 +19,10 @@ final class VolunteerRosterSignals
         $memberNs = (bool) $v->is_official_member && (bool) $v->member_record_at_nova_semente;
 
         $sixMonths = false;
-        if ($v->member_id) {
-            $member = Member::query()->find($v->member_id);
-            if ($member?->created_at) {
-                $sixMonths = $member->created_at->lte(now()->subMonths(6));
+        if ($v->user_id) {
+            $u = User::query()->find($v->user_id);
+            if ($u?->created_at) {
+                $sixMonths = $u->created_at->lte(now()->subMonths(6));
             }
         }
 

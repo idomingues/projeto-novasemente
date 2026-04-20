@@ -41,7 +41,7 @@ class SolicitationAssignees
         return Volunteer::query()
             ->where('active', true)
             ->whereHas('ministries', fn ($q) => $q->where('church_id', $churchId))
-            ->with(['member:id,name', 'ministries:id,name,church_id'])
+            ->with(['user:id,name', 'ministries:id,name,church_id'])
             ->orderBy('id')
             ->get()
             ->map(function (Volunteer $v) use ($churchId) {
@@ -70,7 +70,7 @@ class SolicitationAssignees
             ->where('active', true)
             ->whereNotNull('user_id')
             ->whereHas('ministries', fn ($q) => $q->where('church_id', $churchId))
-            ->with(['member:id,name', 'ministries:id,name,church_id'])
+            ->with(['user:id,name', 'ministries:id,name,church_id'])
             ->orderBy('id')
             ->get()
             ->map(function (Volunteer $v) use ($churchId) {

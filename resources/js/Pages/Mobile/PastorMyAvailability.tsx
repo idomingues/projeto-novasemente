@@ -18,7 +18,7 @@ export default function PastorMyAvailability({ linked }: Props) {
                         ← Mais
                     </Link>
                 </div>
-                <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Agenda Pastoral</h1>
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Agenda Pastoral</h1>
 
                 {!linked ? (
                     <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 text-sm text-zinc-600 dark:text-zinc-400">

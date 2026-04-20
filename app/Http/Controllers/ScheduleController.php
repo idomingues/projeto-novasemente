@@ -68,7 +68,7 @@ class ScheduleController extends Controller
         $user = $request->user();
         $valid = $request->validate([
             'ministry_id' => 'required|exists:ministries,id',
-            'member_id' => 'nullable|exists:members,id',
+            'member_id' => 'nullable|exists:users,id',
             'volunteer_id' => 'nullable|exists:volunteers,id',
             'schedule_role_id' => 'nullable|exists:schedule_roles,id',
             'saturday_number' => 'nullable|integer|min:1|max:5',
@@ -83,10 +83,10 @@ class ScheduleController extends Controller
             return back()->withErrors(['volunteer_id' => 'Escolha um voluntário para esta escala.']);
         }
         if (! empty($valid['member_id']) && ! empty($valid['volunteer_id'])) {
-            return back()->withErrors(['volunteer_id' => 'Envie apenas volunteer_id ou member_id.']);
+            return back()->withErrors(['volunteer_id' => 'Envie apenas volunteer_id ou o utilizador (member_id).']);
         }
 
-        $memberId = null;
+        $userId = null;
         $volunteerId = null;
         if (! empty($valid['volunteer_id'])) {
             $vol = Volunteer::query()->findOrFail((int) $valid['volunteer_id']);
@@ -97,9 +97,9 @@ class ScheduleController extends Controller
                 return back()->withErrors(['volunteer_id' => 'Voluntário inativo.']);
             }
             $volunteerId = $vol->id;
-            $memberId = $vol->member_id;
+            $userId = $vol->user_id;
         } else {
-            $memberId = (int) $valid['member_id'];
+            $userId = (int) $valid['member_id'];
         }
 
         if ($user && $user->hasRole('lider_ministerio') && ! $user->hasRole('admin') && ! $user->hasRole('super_admin')) {
@@ -124,7 +124,7 @@ class ScheduleController extends Controller
 
         ScheduleAssignment::create([
             'ministry_id' => $valid['ministry_id'],
-            'member_id' => $memberId,
+            'user_id' => $userId,
             'volunteer_id' => $volunteerId,
             'schedule_role_id' => $valid['schedule_role_id'] ?? null,
             'saturday_number' => $hasSaturday ? $valid['saturday_number'] : null,
@@ -193,7 +193,7 @@ class ScheduleController extends Controller
                     if ($assignment->volunteer_id) {
                         $q->where('volunteer_id', $assignment->volunteer_id);
                     } else {
-                        $q->where('member_id', $assignment->member_id);
+                        $q->where('user_id', $assignment->user_id);
                     }
                 })
                 ->first();
@@ -203,7 +203,7 @@ class ScheduleController extends Controller
             } else {
                 ScheduleAssignment::create([
                     'ministry_id' => $assignment->ministry_id,
-                    'member_id' => $assignment->member_id,
+                    'user_id' => $assignment->user_id,
                     'volunteer_id' => $assignment->volunteer_id,
                     'schedule_role_id' => $roleId,
                     'saturday_number' => null,
@@ -365,7 +365,7 @@ class ScheduleController extends Controller
         $user = $request->user();
 
         $selfCheckin = false;
-        if ($user && $assignment->member_id && (int) $assignment->member_id === (int) ($user->member_id ?? 0)) {
+        if ($user && $assignment->user_id && (int) $assignment->user_id === (int) $user->id) {
             $selfCheckin = true;
         }
         $volProfile = $user?->volunteerProfile;

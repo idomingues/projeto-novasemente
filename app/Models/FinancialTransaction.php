@@ -4,13 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class FinancialTransaction extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'member_id',
+        'user_id',
         'type',
         'amount',
         'date',
@@ -21,5 +22,9 @@ class FinancialTransaction extends Model
         'amount' => 'decimal:2',
         'date' => 'date',
     ];
-}
 
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+}

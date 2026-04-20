@@ -5,7 +5,7 @@ export default function PageHeader({ title, subtitle, children }: { title: strin
     return (
         <div className="flex flex-row items-center justify-between gap-3 mt-6 mb-8 flex-nowrap">
             <div className="min-w-0 flex-1">
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white truncate">
+                <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-zinc-900 dark:text-white truncate">
                     {title}
                 </h1>
                 {subtitle && <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400 line-clamp-1">{subtitle}</p>}

@@ -82,7 +82,7 @@ export default function Register({ invitation }: Props) {
                 ) : (
                     <div className="mb-8 space-y-3">
                         <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-white">
-                            Criar conta para usar o app completo
+                            Cadastro para uso completo do app
                         </h1>
                         <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
                             Preencha nome, e-mail e senha. Com a conta você poderá usar o agendamento pastoral, falar com
@@ -203,7 +203,7 @@ export default function Register({ invitation }: Props) {
                             className="order-1 w-full justify-center sm:order-2 sm:w-auto sm:min-w-[11rem]"
                             disabled={processing}
                         >
-                            Criar conta
+                            Fazer cadastro
                         </PrimaryButton>
                     </div>
                 </form>

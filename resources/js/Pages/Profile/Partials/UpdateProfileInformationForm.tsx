@@ -19,7 +19,7 @@ export default function UpdateProfileInformation({
         name: string;
         email: string;
         email_verified_at?: string | null;
-        member?: { photo_url?: string | null } | null;
+        photo_url?: string | null;
     };
 
     const { data, setData, patch, errors, processing, recentlySuccessful } =
@@ -52,8 +52,8 @@ export default function UpdateProfileInformation({
                     <InputLabel htmlFor="photo_file" value="Foto de perfil" />
                     <div className="mt-2 flex items-center gap-4">
                         <div className="h-14 w-14 rounded-full overflow-hidden bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-sm font-semibold text-zinc-600 dark:text-zinc-300">
-                            {user.member?.photo_url ? (
-                                <img src={user.member.photo_url} alt="" className="h-full w-full object-cover" />
+                            {user.photo_url ? (
+                                <img src={user.photo_url} alt="" className="h-full w-full object-cover" />
                             ) : (
                                 user.name?.charAt(0)?.toUpperCase() ?? '?'
                             )}

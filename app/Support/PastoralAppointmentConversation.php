@@ -27,7 +27,6 @@ class PastoralAppointmentConversation
         $ticket = AppSupportTicket::create([
             'public_token' => Str::uuid()->toString(),
             'user_id' => $appointment->requester_user_id,
-            'member_id' => null,
             'pastoral_appointment_id' => $appointment->id,
             'type' => 'pastoral',
             'message' => implode("\n\n", array_filter($lines, fn ($l) => $l !== null && $l !== '')),

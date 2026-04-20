@@ -105,7 +105,7 @@ export default function BaptismRequestsIndex({
                 title="Pedidos de batismo"
                 subtitle="Lista e tratamento dos pedidos formais de batismo."
             >
-                <AddButton onClick={() => router.visit(route('mobile.solicitations.create', 'baptism'))}>Novo pedido (membro)</AddButton>
+                <AddButton onClick={() => router.visit(route('mobile.baptism'))}>Novo pedido (membro)</AddButton>
             </PageHeader>
 
             <div className="space-y-6">

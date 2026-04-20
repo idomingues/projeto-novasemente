@@ -154,7 +154,7 @@ export default function PastoralAppointmentsHub({
                         <Link href={route('mobile.more')} className="text-sm text-zinc-500 underline">
                             ← Mais
                         </Link>
-                        <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Agendamentos pastor</h1>
+                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Agendamentos pastor</h1>
                         <p className="text-sm text-zinc-600 dark:text-zinc-400">
                             Toque num pedido para ver ou editar. Use o separador «Chat» para falar com a equipe pastoral.
                         </p>

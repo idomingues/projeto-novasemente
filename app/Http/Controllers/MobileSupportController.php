@@ -107,7 +107,6 @@ class MobileSupportController extends Controller
         $ticket = AppSupportTicket::create([
             'public_token' => Str::uuid()->toString(),
             'user_id' => $user?->id,
-            'member_id' => $user?->member_id ? (int) $user->member_id : null,
             'type' => $valid['type'],
             'message' => $valid['message'],
             'guest_name' => $valid['guest_name'] ?? null,

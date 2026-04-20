@@ -48,7 +48,7 @@ class UpdateVolunteerRequest extends FormRequest
             $volunteer = $this->route('volunteer');
             $excludeVolunteerId = $volunteer?->id;
             $excludeUserId = $volunteer?->user_id;
-            $excludeMemberId = null;
+            $excludeMemberId = $volunteer?->user_id;
             $emailNorm = VolunteerContactDuplicateChecker::normalizeEmail(trim((string) $this->input('email')));
             if ($emailNorm !== null) {
                 if ($msg = VolunteerContactDuplicateChecker::emailConflicts($this, $emailNorm, $excludeVolunteerId, $excludeMemberId, $excludeUserId)) {

@@ -18,20 +18,24 @@ class User extends Authenticatable
     use HasFactory, HasRoles, Notifiable;
 
     /**
-     * The attributes that are mass assignable.
-     *
      * @var list<string>
      */
     protected $fillable = [
         'name',
         'email',
         'password',
-        'member_id',
+        'church_id',
+        'photo_url',
+        'phone',
+        'birth_date',
+        'address',
+        'status',
+        'is_volunteer',
     ];
 
-    public function member(): BelongsTo
+    public function church(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Member::class);
+        return $this->belongsTo(Church::class);
     }
 
     public function volunteerProfile(): HasOne
@@ -44,7 +48,7 @@ class User extends Authenticatable
      * Ministérios em que a pessoa **serve** vêm do cadastro de voluntário; só para `lider_ministerio`
      * espelhamos aqui os ministérios que a pessoa **lidera** (`ministry_user`).
      *
-     * `app_access_only`: conta com app sem serviço em ministérios (ex.: membro com login).
+     * `app_access_only`: conta com app sem serviço em ministérios (ex.: utilizador só com login).
      */
     public function ensureVolunteerProfile(): void
     {
@@ -62,15 +66,12 @@ class User extends Authenticatable
             $name = $email !== '' ? (strstr($email, '@', true) ?: 'Usuário') : 'Usuário';
         }
 
-        $memberId = $this->member_id !== null ? (int) $this->member_id : null;
-
         $payload = [
             'user_id' => $this->id,
             'active' => true,
             'name' => $name,
             'email' => $this->email,
             'role' => $volunteer?->role ?? ($this->getRoleNames()->first() ?: null),
-            'member_id' => $memberId ?? $volunteer?->member_id,
         ];
 
         if (! $volunteer) {
@@ -141,6 +142,8 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'birth_date' => 'date',
+            'is_volunteer' => 'boolean',
         ];
     }
 }

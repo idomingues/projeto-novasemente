@@ -10,7 +10,7 @@ class ScheduleAssignment extends Model
 {
     protected $fillable = [
         'ministry_id',
-        'member_id',
+        'user_id',
         'volunteer_id',
         'schedule_role_id',
         'saturday_number',
@@ -30,9 +30,9 @@ class ScheduleAssignment extends Model
         'checked_in_at' => 'datetime',
     ];
 
-    public function member(): BelongsTo
+    public function user(): BelongsTo
     {
-        return $this->belongsTo(Member::class);
+        return $this->belongsTo(User::class);
     }
 
     public function volunteer(): BelongsTo

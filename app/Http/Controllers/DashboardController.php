@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Church;
 use App\Models\Event;
-use App\Models\Member;
 use App\Models\PrayerRequest;
+use App\Models\User;
 use App\Models\Volunteer;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -37,7 +37,7 @@ class DashboardController extends Controller
         }
 
         $memberCount = $churchId !== null
-            ? Member::where('church_id', $churchId)->count()
+            ? User::where('church_id', $churchId)->count()
             : 0;
 
         $volunteerCount = 0;

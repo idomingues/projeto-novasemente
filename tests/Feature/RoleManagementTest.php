@@ -22,7 +22,7 @@ class RoleManagementTest extends TestCase
     {
         $this->seed();
 
-        $admin = User::first();
+        $admin = User::query()->where('email', 'admin@example.com')->first();
         $this->assertNotNull($admin);
         $this->actingAs($admin);
 
@@ -44,7 +44,7 @@ class RoleManagementTest extends TestCase
     {
         $this->seed();
 
-        $admin = User::first();
+        $admin = User::query()->where('email', 'admin@example.com')->first();
         $this->actingAs($admin);
 
         $super = Role::findByName('super_admin');
@@ -57,7 +57,7 @@ class RoleManagementTest extends TestCase
     {
         $this->seed();
 
-        $admin = User::first();
+        $admin = User::query()->where('email', 'admin@example.com')->first();
         $this->actingAs($admin);
 
         $this->post(route('roles.store'), ['name' => 'Nome Inválido'])

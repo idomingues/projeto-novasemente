@@ -170,7 +170,7 @@ class HandleInertiaRequests extends Middleware
             'appName' => $appName,
             'faviconUrl' => $faviconUrl,
             'auth' => [
-                'user' => $request->user() ? $request->user()->load('member') : null,
+                'user' => $request->user(),
                 'permissions' => $permissionNames,
                 /** Alinha o menu com Gate::before (admin/super_admin) quando permissions estão desatualizadas na BD. */
                 'adminSidebarUnrestricted' => $request->user()?->hasAnyRole(['admin', 'super_admin']) ?? false,

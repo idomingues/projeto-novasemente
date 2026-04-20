@@ -7,7 +7,6 @@ use App\Mail\SolicitationNewRequestMail;
 use App\Mail\SolicitationStaffMessageMail;
 use App\Models\Church;
 use App\Models\ChurchSolicitation;
-use App\Models\Member;
 use App\Models\User;
 use App\Models\UserInboxNotification;
 use App\Models\Volunteer;
@@ -239,13 +238,6 @@ class SolicitationChatNotifier
             return $owner->email;
         }
 
-        if ($owner->member_id) {
-            $member = Member::query()->find($owner->member_id);
-            if ($member?->email && filter_var($member->email, FILTER_VALIDATE_EMAIL)) {
-                return $member->email;
-            }
-        }
-
         return null;
     }
 
@@ -259,13 +251,6 @@ class SolicitationChatNotifier
         $user = $volunteer->relationLoaded('user') ? $volunteer->user : User::query()->find($volunteer->user_id);
         if ($user?->email && filter_var($user->email, FILTER_VALIDATE_EMAIL)) {
             return $user->email;
-        }
-
-        if ($volunteer->member_id) {
-            $member = Member::query()->find($volunteer->member_id);
-            if ($member?->email && filter_var($member->email, FILTER_VALIDATE_EMAIL)) {
-                return $member->email;
-            }
         }
 
         return null;

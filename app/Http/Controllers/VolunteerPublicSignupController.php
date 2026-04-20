@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Church;
-use App\Models\Member;
 use App\Models\Ministry;
 use App\Models\User;
 use App\Models\Volunteer;
@@ -87,7 +86,7 @@ class VolunteerPublicSignupController extends Controller
         if ($fn !== '' && $ln !== '') {
             $normalized = $this->normalizedFullName($fn, $ln);
             if (mb_strlen($normalized) >= 3) {
-                $memberDup = Member::query()
+                $churchUserDup = User::query()
                     ->where('church_id', $churchId)
                     ->whereRaw('LOWER(TRIM(COALESCE(name, ""))) = ?', [$normalized])
                     ->exists();
@@ -98,18 +97,18 @@ class VolunteerPublicSignupController extends Controller
 
                 $volunteerDup = Volunteer::query()
                     ->where(function ($q) use ($normalized, $churchId) {
-                        $q->whereHas('member', function ($m) use ($normalized, $churchId) {
-                            $m->where('church_id', $churchId)
-                                ->whereRaw('LOWER(TRIM(COALESCE(members.name, ""))) = ?', [$normalized]);
+                        $q->whereHas('user', function ($uq) use ($normalized, $churchId) {
+                            $uq->where('church_id', $churchId)
+                                ->whereRaw('LOWER(TRIM(COALESCE(users.name, ""))) = ?', [$normalized]);
                         })->orWhere(function ($q) use ($normalized, $churchId) {
-                            $q->whereNull('member_id')
+                            $q->whereNull('user_id')
                                 ->whereHas('ministries', fn ($m) => $m->where('church_id', $churchId))
                                 ->whereRaw('LOWER(TRIM(COALESCE(volunteers.name, ""))) = ?', [$normalized]);
                         });
                     })
                     ->exists();
 
-                $nameDup = $memberDup || $userDup || $volunteerDup;
+                $nameDup = $churchUserDup || $userDup || $volunteerDup;
             }
         }
 
@@ -283,12 +282,12 @@ class VolunteerPublicSignupController extends Controller
         $name = trim($validated['first_name'].' '.$validated['last_name']);
 
         $user = DB::transaction(function () use ($validated, $name, $ministryIds, $record) {
-            $user = User::withoutEvents(function () use ($validated, $name) {
+            $user = User::withoutEvents(function () use ($validated, $name, $record) {
                 return User::create([
                     'name' => $name,
                     'email' => $validated['email'],
                     'password' => $validated['password'],
-                    'member_id' => null,
+                    'church_id' => $record->church_id,
                 ]);
             });
 

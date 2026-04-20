@@ -10,7 +10,6 @@ class ChurchSolicitation extends Model
 {
     protected $fillable = [
         'user_id',
-        'member_id',
         'type',
         'status',
         'subject',
@@ -35,11 +34,6 @@ class ChurchSolicitation extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
-    }
-
-    public function member(): BelongsTo
-    {
-        return $this->belongsTo(Member::class);
     }
 
     public function assignedPastor(): BelongsTo

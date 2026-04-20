@@ -84,7 +84,7 @@ export default function MobileSupport({ tickets, isAuthenticated }: Props) {
                         <Link href={route('mobile.more')} className="text-sm text-zinc-500 underline dark:text-zinc-400">
                             ← Mais
                         </Link>
-                        <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Suporte do app</h1>
+                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Suporte do app</h1>
                         <p className="text-sm text-zinc-600 dark:text-zinc-400">
                             Acompanhe os chamados ou envie um <span className="font-semibold">{selectedTypeLabel}</span>.
                         </p>

@@ -153,7 +153,7 @@ export default function LiderContact({
             <div className="space-y-4">
                 <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                        <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Falar com líder</h1>
+                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Falar com líder</h1>
                         <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-0.5">
                             Conversa privada com um líder de ministério (conta na app). Toque numa conversa para ver detalhes ou abrir o
                             chat. Para batismo, visita pastoral, etc., use{' '}

@@ -37,7 +37,7 @@ export default function MobileNotifications({ notifications }: Props) {
             <Head title="Notificações" />
             <div className="space-y-4">
                 <div>
-                    <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Notificações</h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Notificações</h1>
                     <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">Avisos da igreja e da sua conta</p>
                 </div>
 

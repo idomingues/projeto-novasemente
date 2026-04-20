@@ -2,21 +2,21 @@
 
 namespace App\Services;
 
-use App\Models\Member;
 use App\Models\ScheduleCheckinDate;
+use App\Models\User;
 use App\Models\Volunteer;
 use Carbon\Carbon;
 
 class VolunteerScheduleOverview
 {
     /**
-     * @param  callable(Member|null): ?string  $memberPhotoUrl
+     * @param  callable(User|null): ?string  $userPhotoUrl
      * @return array{events: array<int, array<string, mixed>>, departments: array<int, array{id: int, name: string}>, hasVolunteerProfile: bool}
      */
-    public static function forMember(int $memberId, int $year, int $month, callable $memberPhotoUrl): array
+    public static function forMember(int $userId, int $year, int $month, callable $userPhotoUrl): array
     {
         $volunteer = Volunteer::query()
-            ->where('member_id', $memberId)
+            ->where('user_id', $userId)
             ->where('active', true)
             ->first();
 
@@ -53,7 +53,7 @@ class VolunteerScheduleOverview
                 (int) $ministry->id,
                 $year,
                 $month,
-                $memberPhotoUrl
+                $userPhotoUrl
             );
 
             $byDate = [];
@@ -66,8 +66,8 @@ class VolunteerScheduleOverview
             }
 
             foreach ($byDate as $dateKey => $group) {
-                $mine = collect($group)->first(function ($row) use ($memberId, $volunteer) {
-                    if ((int) ($row['memberId'] ?? 0) === $memberId) {
+                $mine = collect($group)->first(function ($row) use ($userId, $volunteer) {
+                    if ((int) ($row['memberId'] ?? 0) === $userId) {
                         return true;
                     }
 
@@ -87,7 +87,7 @@ class VolunteerScheduleOverview
                         'memberPhotoUrl' => $r['memberPhotoUrl'],
                         'roleName' => $r['roleName'],
                         'checkedInAt' => $r['checkedInAt'],
-                        'isMe' => (int) ($r['memberId'] ?? 0) === $memberId
+                        'isMe' => (int) ($r['memberId'] ?? 0) === $userId
                             || (isset($r['volunteerId']) && (int) $r['volunteerId'] === (int) $volunteer->id),
                     ];
                 }

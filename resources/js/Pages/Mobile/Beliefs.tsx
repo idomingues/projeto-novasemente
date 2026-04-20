@@ -28,7 +28,7 @@ export default function MobileBeliefs() {
                     >
                         ← Mais
                     </Link>
-                    <h1 className="mt-2 text-xl font-bold text-zinc-900 dark:text-white">Nossas crenças</h1>
+                    <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Nossas crenças</h1>
                     <p className="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
                         Os adventistas do sétimo dia aceitam a Bíblia como regra de fé e prática. Abaixo estão os 28
                         princípios de fé, com imagens e o{' '}

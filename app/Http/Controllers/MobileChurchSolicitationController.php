@@ -16,9 +16,9 @@ use Inertia\Response;
 class MobileChurchSolicitationController extends Controller
 {
     /** Tipos listados no hub (pedidos formais). «Falar com líder» é só em Mais → Contacto. */
-    private const HUB_TYPES = ['baptism', 'baby_presentation', 'pastor_visit'];
+    private const HUB_TYPES = ['baptism', 'bible_study', 'baby_presentation', 'pastor_visit', 'other'];
 
-    private const TYPES = ['baptism', 'baby_presentation', 'pastor_visit', 'leader_chat'];
+    private const TYPES = ['baptism', 'bible_study', 'baby_presentation', 'pastor_visit', 'other', 'leader_chat'];
 
     private function currentChurchId(Request $request): ?int
     {
@@ -29,9 +29,11 @@ class MobileChurchSolicitationController extends Controller
     {
         return match ($type) {
             'baptism' => 'Pedido de batismo',
+            'bible_study' => 'Pedido de estudo bíblico',
             'baby_presentation' => 'Apresentação de bebé',
             'pastor_visit' => 'Visita aos pastores',
             'leader_chat' => 'Conversa com líder de ministério',
+            'other' => 'Outros',
             default => $type,
         };
     }
@@ -64,6 +66,14 @@ class MobileChurchSolicitationController extends Controller
         $churchId = $this->currentChurchId($request);
         $user = $request->user();
 
+        if ($user === null) {
+            return Inertia::render('Mobile/Solicitations/GuestGate', [
+                'registerUrl' => route('register'),
+                'redirectAfterLogin' => route('mobile.solicitations.hub', [], false),
+                'continueUrl' => route('mobile.news', [], false),
+            ]);
+        }
+
         $types = collect(self::HUB_TYPES)->map(fn (string $t) => [
             'type' => $t,
             'label' => self::typeLabel($t),
@@ -75,7 +85,7 @@ class MobileChurchSolicitationController extends Controller
             $mySolicitations = ChurchSolicitation::query()
                 ->where('user_id', $user->id)
                 ->whereIn('type', self::HUB_TYPES)
-                ->with(['assignedPastor:id,name', 'assignedVolunteer.member:id,name'])
+                ->with(['assignedPastor:id,name', 'assignedVolunteer.user:id,name'])
                 ->orderByDesc('updated_at')
                 ->limit(40)
                 ->get()
@@ -118,6 +128,7 @@ class MobileChurchSolicitationController extends Controller
             return Inertia::render('Mobile/Solicitations/BaptismGuest', [
                 'registerUrl' => route('register'),
                 'redirectAfterLogin' => route('mobile.baptism', [], false),
+                'redirectAfterLoginStudy' => route('mobile.solicitations.create', ['type' => 'bible_study'], false),
             ]);
         }
 
@@ -129,7 +140,7 @@ class MobileChurchSolicitationController extends Controller
         $mySolicitations = ChurchSolicitation::query()
             ->where('user_id', $user->id)
             ->where('type', 'baptism')
-            ->with(['assignedPastor:id,name', 'assignedVolunteer.member:id,name'])
+            ->with(['assignedPastor:id,name', 'assignedVolunteer.user:id,name'])
             ->orderByDesc('updated_at')
             ->limit(40)
             ->get()
@@ -204,7 +215,6 @@ class MobileChurchSolicitationController extends Controller
 
         $solicitation = ChurchSolicitation::create([
             'user_id' => $user->id,
-            'member_id' => $user->member_id ? (int) $user->member_id : null,
             'type' => $valid['type'],
             'status' => 'pending',
             'message' => $valid['message'],
@@ -281,7 +291,7 @@ class MobileChurchSolicitationController extends Controller
     ): array {
         $s->loadMissing([
             'assignedPastor:id,name',
-            'assignedVolunteer.member:id,name',
+            'assignedVolunteer.user:id,name',
         ]);
 
         $messages = ChurchSolicitationMessage::query()

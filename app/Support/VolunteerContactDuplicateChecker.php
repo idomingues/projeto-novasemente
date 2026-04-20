@@ -3,7 +3,6 @@
 namespace App\Support;
 
 use App\Models\Church;
-use App\Models\Member;
 use App\Models\User;
 use App\Models\Volunteer;
 use Illuminate\Http\Request;
@@ -43,17 +42,17 @@ class VolunteerContactDuplicateChecker
     }
 
     /**
-     * E-mail já usado por outro utilizador, membro ou voluntário (âmbito igreja atual).
+     * E-mail já usado por outro utilizador ou voluntário (âmbito igreja atual).
      *
      * @param  int|null  $excludeVolunteerId  voluntário em edição
-     * @param  int|null  $excludeMemberId  membro vinculado ao voluntário atual
+     * @param  int|null  $excludeChurchUserId  utilizador com ficha na igreja (excluir na verificação de duplicados)
      * @param  int|null  $excludeUserId  utilizador vinculado ao voluntário atual
      */
     public static function emailConflicts(
         Request $request,
         string $emailNorm,
         ?int $excludeVolunteerId = null,
-        ?int $excludeMemberId = null,
+        ?int $excludeChurchUserId = null,
         ?int $excludeUserId = null,
     ): ?string {
         $churchId = self::churchId($request);
@@ -69,20 +68,10 @@ class VolunteerContactDuplicateChecker
             return 'Este e-mail já está registado a outro utilizador.';
         }
 
-        $memberQ = Member::query()
-            ->where('church_id', $churchId)
-            ->whereRaw('LOWER(TRIM(COALESCE(email, ""))) = ?', [$emailNorm]);
-        if ($excludeMemberId) {
-            $memberQ->where('id', '!=', $excludeMemberId);
-        }
-        if ($memberQ->exists()) {
-            return 'Este e-mail já está associado a outro membro nesta igreja.';
-        }
-
         $volQ = Volunteer::query()
             ->whereRaw('LOWER(TRIM(COALESCE(email, ""))) = ?', [$emailNorm])
             ->where(function ($q) use ($churchId) {
-                $q->whereHas('member', fn ($m) => $m->where('church_id', $churchId))
+                $q->whereHas('user', fn ($uq) => $uq->where('church_id', $churchId))
                     ->orWhereHas('ministries', fn ($mq) => $mq->where('church_id', $churchId));
             });
         if ($excludeVolunteerId) {
@@ -92,11 +81,9 @@ class VolunteerContactDuplicateChecker
             return 'Este e-mail já está associado a outro voluntário nesta igreja.';
         }
 
-        // Voluntários sem departamento e sem membro (não dá para inferir igreja por relação).
-        // Ainda assim, bloqueamos duplicidade para evitar registos confusos.
         $volNoScopeQ = Volunteer::query()
             ->whereRaw('LOWER(TRIM(COALESCE(email, ""))) = ?', [$emailNorm])
-            ->whereNull('member_id')
+            ->whereNull('user_id')
             ->whereDoesntHave('ministries');
         if ($excludeVolunteerId) {
             $volNoScopeQ->where('id', '!=', $excludeVolunteerId);
@@ -109,33 +96,33 @@ class VolunteerContactDuplicateChecker
     }
 
     /**
-     * Telefone já usado por outro membro ou voluntário (âmbito igreja atual).
+     * Telefone já usado por outro utilizador ou voluntário (âmbito igreja atual).
      */
     public static function phoneConflicts(
         Request $request,
         string $phoneNorm,
         ?int $excludeVolunteerId = null,
-        ?int $excludeMemberId = null,
+        ?int $excludeChurchUserId = null,
     ): ?string {
         $churchId = self::churchId($request);
         if ($churchId === null) {
             return null;
         }
 
-        $members = Member::query()
+        $users = User::query()
             ->where('church_id', $churchId)
-            ->when($excludeMemberId, fn ($q) => $q->where('id', '!=', $excludeMemberId))
+            ->when($excludeChurchUserId, fn ($q) => $q->where('id', '!=', $excludeChurchUserId))
             ->get(['id', 'phone']);
 
-        foreach ($members as $m) {
-            if (self::normalizePhone($m->phone) === $phoneNorm) {
-                return 'Este telefone já está associado a outro membro nesta igreja.';
+        foreach ($users as $u) {
+            if (self::normalizePhone($u->phone) === $phoneNorm) {
+                return 'Este telefone já está associado a outro utilizador nesta igreja.';
             }
         }
 
         $volunteers = Volunteer::query()
             ->where(function ($q) use ($churchId) {
-                $q->whereHas('member', fn ($m) => $m->where('church_id', $churchId))
+                $q->whereHas('user', fn ($uq) => $uq->where('church_id', $churchId))
                     ->orWhereHas('ministries', fn ($mq) => $mq->where('church_id', $churchId));
             })
             ->when($excludeVolunteerId, fn ($q) => $q->where('id', '!=', $excludeVolunteerId))
@@ -148,7 +135,7 @@ class VolunteerContactDuplicateChecker
         }
 
         $volNoScope = Volunteer::query()
-            ->whereNull('member_id')
+            ->whereNull('user_id')
             ->whereDoesntHave('ministries')
             ->when($excludeVolunteerId, fn ($q) => $q->where('id', '!=', $excludeVolunteerId))
             ->get(['id', 'phone']);
@@ -162,21 +149,21 @@ class VolunteerContactDuplicateChecker
     }
 
     /**
-     * Cadastro público: utilizadores já cobertos por unique:users; aqui só membro/voluntário na igreja.
+     * Cadastro público: utilizadores já cobertos por unique:users; aqui voluntário/utilizador na igreja.
      */
     public static function emailConflictsMemberVolunteerForChurch(int $churchId, string $emailNorm): ?string
     {
-        if (Member::query()
+        if (User::query()
             ->where('church_id', $churchId)
             ->whereRaw('LOWER(TRIM(COALESCE(email, ""))) = ?', [$emailNorm])
             ->exists()) {
-            return 'Este e-mail já está associado a outro membro nesta igreja.';
+            return 'Este e-mail já está associado a outro utilizador nesta igreja.';
         }
 
         if (Volunteer::query()
             ->whereRaw('LOWER(TRIM(COALESCE(email, ""))) = ?', [$emailNorm])
             ->where(function ($q) use ($churchId) {
-                $q->whereHas('member', fn ($m) => $m->where('church_id', $churchId))
+                $q->whereHas('user', fn ($uq) => $uq->where('church_id', $churchId))
                     ->orWhereHas('ministries', fn ($mq) => $mq->where('church_id', $churchId));
             })
             ->exists()) {
@@ -188,16 +175,16 @@ class VolunteerContactDuplicateChecker
 
     public static function phoneConflictsForChurch(int $churchId, string $phoneNorm): ?string
     {
-        $members = Member::query()->where('church_id', $churchId)->get(['id', 'phone']);
-        foreach ($members as $m) {
-            if (self::normalizePhone($m->phone) === $phoneNorm) {
-                return 'Este telefone já está associado a outro membro nesta igreja.';
+        $users = User::query()->where('church_id', $churchId)->get(['id', 'phone']);
+        foreach ($users as $u) {
+            if (self::normalizePhone($u->phone) === $phoneNorm) {
+                return 'Este telefone já está associado a outro utilizador nesta igreja.';
             }
         }
 
         $volunteers = Volunteer::query()
             ->where(function ($q) use ($churchId) {
-                $q->whereHas('member', fn ($m) => $m->where('church_id', $churchId))
+                $q->whereHas('user', fn ($uq) => $uq->where('church_id', $churchId))
                     ->orWhereHas('ministries', fn ($mq) => $mq->where('church_id', $churchId));
             })
             ->get(['id', 'phone']);
@@ -218,9 +205,9 @@ class VolunteerContactDuplicateChecker
         Request $request,
         string $emailNorm,
         ?int $excludeVolunteerId = null,
-        ?int $excludeMemberId = null,
+        ?int $excludeChurchUserId = null,
         ?int $excludeUserId = null,
     ): ?string {
-        return self::emailConflicts($request, $emailNorm, $excludeVolunteerId, $excludeMemberId, $excludeUserId);
+        return self::emailConflicts($request, $emailNorm, $excludeVolunteerId, $excludeChurchUserId, $excludeUserId);
     }
 }

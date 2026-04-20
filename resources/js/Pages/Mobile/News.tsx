@@ -93,7 +93,7 @@ export default function MobileNews({ posts }: Props) {
     const appUrl = (usePage().props as { appUrl?: string }).appUrl ?? '';
     return (
         <MobileLayout>
-            <Head title="Notícias" />
+            <Head title="News" />
             <div className="space-y-6">
                 {posts.data.length === 0 ? (
                     <div className="py-12 text-center">

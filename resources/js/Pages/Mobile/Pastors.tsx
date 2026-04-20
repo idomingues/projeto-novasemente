@@ -26,7 +26,7 @@ export default function MobilePastors({ pastors, churchName }: Props) {
                     <Link href={route('mobile.more')} className="text-sm text-brand-600 dark:text-brand-400 hover:underline">
                         ← Mais
                     </Link>
-                    <h1 className="text-xl font-bold text-zinc-900 dark:text-white mt-2">Nossos pastores</h1>
+                    <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Nossos pastores</h1>
                     {churchName && <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">{churchName}</p>}
                 </div>
 

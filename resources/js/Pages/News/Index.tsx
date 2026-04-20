@@ -240,15 +240,15 @@ export default function Index({ posts, filters, canManage }: Props) {
 
     return (
         <AdminLayout>
-            <Head title="Notícias" />
-            <PageHeader title="Notícias">
+            <Head title="News" />
+            <PageHeader title="News">
                 <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="w-full sm:w-80">
                         <TextInput
                             type="search"
                             name="search"
                             value={search}
-                            placeholder="Buscar notícias…"
+                            placeholder="Buscar news…"
                             className="w-full"
                             onChange={(e) => setSearch(e.target.value)}
                         />

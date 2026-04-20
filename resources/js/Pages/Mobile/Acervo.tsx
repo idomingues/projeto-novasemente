@@ -21,7 +21,7 @@ export default function MobileAcervo({ playlists, playlistsUrl }: Props) {
             <Head title="Acervo" />
             <div className="space-y-6">
                 <div>
-                    <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Acervo</h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Acervo</h1>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
                         Sermões da Nova Semente.
                     </p>

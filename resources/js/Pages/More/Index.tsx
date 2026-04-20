@@ -76,7 +76,7 @@ export default function MoreIndex(_: Props) {
             <Head title="Mais" />
             <div className="space-y-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Mais</h1>
+                    <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-zinc-900 dark:text-white">Mais</h1>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
                         Acesso rápido a cultos, contato, oração e notificações.
                     </p>

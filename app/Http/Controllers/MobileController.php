@@ -8,11 +8,11 @@ use App\Models\ChurchService;
 use App\Models\ChurchSolicitation;
 use App\Models\Culto;
 use App\Models\Event;
-use App\Models\Member;
 use App\Models\Musica;
 use App\Models\News;
 use App\Models\Pastor;
 use App\Models\ScheduleCheckinDate;
+use App\Models\User;
 use App\Models\UserInboxNotification;
 use App\Models\Volunteer;
 use App\Services\ScheduleAssignmentPresenter;
@@ -101,6 +101,17 @@ class MobileController extends Controller
             ] : null,
             'latestNews' => $latestNews,
             'upcomingEvents' => $upcomingEvents,
+        ]);
+    }
+
+    /**
+     * Splash screen (vídeo) ao abrir /mobile.
+     */
+    public function splash(Request $request): Response
+    {
+        return Inertia::render('Mobile/Splash', [
+            'videoSrc' => route('media.ns-splash'),
+            'nextUrl' => route('mobile.news', [], false),
         ]);
     }
 
@@ -275,18 +286,9 @@ class MobileController extends Controller
         return $saturdays;
     }
 
-    private function memberPhotoPublicUrl(?Member $member): ?string
+    private function userPhotoPublicUrl(?User $user): ?string
     {
-        if (! $member || empty($member->photo_url)) {
-            return null;
-        }
-        $u = $member->photo_url;
-        if (str_starts_with($u, 'http://') || str_starts_with($u, 'https://')) {
-            return $u;
-        }
-        $base = request()->getSchemeAndHttpHost();
-
-        return $base.(str_starts_with($u, '/') ? '' : '/').$u;
+        return ScheduleBoardViewData::userPhotoPublicUrl($user);
     }
 
     public function schedule(Request $request): Response
@@ -312,9 +314,8 @@ class MobileController extends Controller
             return Inertia::render('Mobile/MinistrySchedule', ScheduleBoardViewData::forIndexRequest($request));
         }
 
-        $memberId = $user->member_id ? (int) $user->member_id : null;
-
-        if (! $memberId) {
+        $workingChurchId = Church::resolveWorkingId($request);
+        if (! $user->church_id || (int) $user->church_id !== (int) $workingChurchId) {
             return Inertia::render('Mobile/VolunteerSchedule', [
                 'canViewSchedule' => true,
                 'month' => $month,
@@ -326,20 +327,19 @@ class MobileController extends Controller
             ]);
         }
 
-        $member = Member::find($memberId);
         $overview = VolunteerScheduleOverview::forMember(
-            $memberId,
+            (int) $user->id,
             $year,
             $month,
-            fn ($m) => $this->memberPhotoPublicUrl($m)
+            fn ($u) => $this->userPhotoPublicUrl($u)
         );
 
         return Inertia::render('Mobile/VolunteerSchedule', [
             'canViewSchedule' => true,
             'month' => $month,
             'year' => $year,
-            'memberName' => $member?->name ?? $user->name,
-            'memberPhotoUrl' => $this->memberPhotoPublicUrl($member),
+            'memberName' => $user->name,
+            'memberPhotoUrl' => $this->userPhotoPublicUrl($user),
             'needsMember' => false,
             'volunteerOverview' => $overview,
         ]);
@@ -365,7 +365,7 @@ class MobileController extends Controller
             }
         }
 
-        if (! $user || (! $user->member_id && ! $user->volunteerProfile)) {
+        if (! $user || (! $user->church_id && ! $user->volunteerProfile)) {
             return Inertia::render('Mobile/ScheduleCheckin', [
                 'date' => $valid['date'],
                 'dateLabel' => $date->translatedFormat('d/m/Y'),
@@ -376,10 +376,10 @@ class MobileController extends Controller
             ]);
         }
 
-        $photo = fn ($m) => $this->memberPhotoPublicUrl($m);
+        $photo = fn ($u) => $this->userPhotoPublicUrl($u);
         $byAssignmentId = [];
-        if ($user->member_id) {
-            foreach (ScheduleAssignmentPresenter::assignmentsForMemberOnDate((int) $user->member_id, $valid['date'], $photo) as $row) {
+        if ($user->church_id) {
+            foreach (ScheduleAssignmentPresenter::assignmentsForMemberOnDate((int) $user->id, $valid['date'], $photo) as $row) {
                 $byAssignmentId[$row['id']] = $row;
             }
         }
@@ -483,7 +483,7 @@ class MobileController extends Controller
         $myLeaderChats = ChurchSolicitation::query()
             ->where('user_id', $user->id)
             ->where('type', 'leader_chat')
-            ->with(['assignedPastor:id,name', 'assignedVolunteer.member:id,name'])
+            ->with(['assignedPastor:id,name', 'assignedVolunteer.user:id,name'])
             ->orderByDesc('updated_at')
             ->limit(40)
             ->get()
@@ -537,7 +537,6 @@ class MobileController extends Controller
 
         $solicitation = ChurchSolicitation::create([
             'user_id' => $user->id,
-            'member_id' => $user->member_id ? (int) $user->member_id : null,
             'type' => 'leader_chat',
             'status' => 'pending',
             'subject' => $valid['subject'],

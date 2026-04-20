@@ -315,7 +315,7 @@ export default function PublicSignup({ token, churchName, churchLogoUrl, ministr
                             href={route('register')}
                             className="font-semibold text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-400"
                         >
-                            Criar conta aqui
+                            Fazer cadastro aqui
                         </Link>
                     </p>
 

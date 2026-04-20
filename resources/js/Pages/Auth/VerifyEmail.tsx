@@ -14,38 +14,42 @@ export default function VerifyEmail({ status }: { status?: string }) {
 
     return (
         <GuestLayout>
-            <Head title="Email Verification" />
+            <Head title="Verificação de e-mail" />
 
-            <div className="mb-4 text-sm text-gray-600 dark:text-gray-400">
-                Thanks for signing up! Before getting started, could you verify
-                your email address by clicking on the link we just emailed to
-                you? If you didn't receive the email, we will gladly send you
-                another.
-            </div>
-
-            {status === 'verification-link-sent' && (
-                <div className="mb-4 text-sm font-medium text-green-600 dark:text-green-400">
-                    A new verification link has been sent to the email address
-                    you provided during registration.
+            <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 py-10 sm:max-w-lg sm:py-14">
+                <div className="mb-8 space-y-3">
+                    <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-white">
+                        Confirme seu e-mail
+                    </h1>
+                    <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                        Enviamos um link de verificação para o seu e-mail. Abra a mensagem e clique no link para ativar sua conta.
+                    </p>
                 </div>
-            )}
 
-            <form onSubmit={submit}>
-                <div className="mt-4 flex items-center justify-between">
-                    <PrimaryButton disabled={processing}>
-                        Resend Verification Email
+                {status === 'verification-link-sent' ? (
+                    <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-100">
+                        Enviamos um novo link de verificação para o seu e-mail.
+                    </div>
+                ) : null}
+
+                <form onSubmit={submit} className="space-y-4">
+                    <PrimaryButton
+                        disabled={processing}
+                        className="w-full justify-center !rounded-xl !bg-zinc-900 !py-3.5 !text-sm !font-semibold !text-white shadow-sm hover:!bg-zinc-800 disabled:!opacity-50"
+                    >
+                        Reenviar e-mail de verificação
                     </PrimaryButton>
 
                     <Link
                         href={route('logout')}
                         method="post"
                         as="button"
-                        className="rounded-md text-sm text-gray-600 dark:text-gray-400 underline hover:text-gray-900 dark:hover:text-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+                        className="block w-full text-center text-sm font-medium text-zinc-600 underline decoration-zinc-400 underline-offset-4 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
                     >
-                        Log Out
+                        Sair
                     </Link>
-                </div>
-            </form>
+                </form>
+            </div>
         </GuestLayout>
     );
 }

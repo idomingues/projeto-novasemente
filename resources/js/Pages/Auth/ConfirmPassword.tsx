@@ -21,7 +21,7 @@ export default function ConfirmPassword() {
 
     return (
         <GuestLayout>
-            <Head title="Confirm Password" />
+            <Head title="Confirmar senha" />
 
             <div className="mb-4 text-sm text-gray-600 dark:text-gray-400">
                 This is a secure area of the application. Please confirm your

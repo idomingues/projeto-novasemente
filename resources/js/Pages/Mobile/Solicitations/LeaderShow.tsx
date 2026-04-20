@@ -51,7 +51,7 @@ export default function LeaderShow({
                     </Link>
                 </div>
 
-                <h1 className="text-xl font-bold text-zinc-900 dark:text-white">
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
                     {solicitation.subject?.trim() ?? solicitation.memberLabel ?? 'Membro'}
                 </h1>
                 {solicitation.subject?.trim() ? (

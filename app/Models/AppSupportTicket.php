@@ -13,7 +13,6 @@ class AppSupportTicket extends Model
     protected $fillable = [
         'public_token',
         'user_id',
-        'member_id',
         'pastoral_appointment_id',
         'type',
         'message',
@@ -32,11 +31,6 @@ class AppSupportTicket extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
-    }
-
-    public function member(): BelongsTo
-    {
-        return $this->belongsTo(Member::class);
     }
 
     public function pastoralAppointment(): BelongsTo

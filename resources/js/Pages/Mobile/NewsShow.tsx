@@ -133,7 +133,9 @@ export default function MobileNewsShow({ post }: Props) {
                             </span>
                             <p className="text-sm text-zinc-500 dark:text-zinc-400">{formatDate(post.published_at)}</p>
                         </div>
-                        <h1 className="text-xl font-bold leading-tight text-zinc-900 dark:text-white sm:text-2xl">{post.title}</h1>
+                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight leading-tight text-zinc-900 dark:text-white">
+                            {post.title}
+                        </h1>
                         {post.excerpt && (
                             <p className="mt-3 border-l-4 border-primary-500 pl-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
                                 {post.excerpt}

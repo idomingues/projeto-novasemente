@@ -41,7 +41,7 @@ function formatTimeAgo(iso: string): string {
 }
 
 const appNavItems = [
-    { name: 'Notícias', route: 'mobile.news', icon: NewspaperIcon },
+    { name: 'News', route: 'mobile.news', icon: NewspaperIcon },
     { name: 'Batismo', route: 'mobile.baptism', icon: SparklesIcon },
     { name: 'Eventos', route: 'mobile.events', icon: CalendarDaysIcon },
     { name: 'Oração', route: 'mobile.prayer', icon: PrayingHandsIcon },
@@ -113,12 +113,12 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
 
                     <button
                         onClick={toggleTheme}
-                        className="w-12 h-12 flex items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                        className="w-10 h-10 flex items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-colors"
                     >
                         {theme === 'dark' ? (
-                            <SunIcon className="w-6 h-6" />
+                            <SunIcon className="w-5 h-5" />
                         ) : (
-                            <MoonIcon className="w-6 h-6" />
+                            <MoonIcon className="w-5 h-5" />
                         )}
                     </button>
 
@@ -126,18 +126,18 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
                         <>
                             <Link
                                 href={route(supportRouteName)}
-                                className="w-12 h-12 flex items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                                className="w-10 h-10 flex items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-colors"
                                 aria-label="Suporte do app"
                                 title="Suporte do app"
                             >
-                                <LifebuoyIcon className="w-6 h-6" />
+                                <LifebuoyIcon className="w-5 h-5" />
                             </Link>
 
                             <Dropdown>
                                 <Dropdown.Trigger>
                                     <button
                                         type="button"
-                                        className="relative flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-zinc-900 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+                                        className="relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-zinc-900 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
                                         aria-label={
                                             badgeCount > 0
                                                 ? `Notificações, ${badgeCount} por ler`
@@ -146,9 +146,9 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
                                                   : 'Notificações'
                                         }
                                     >
-                                        <BellIcon className="h-6 w-6" />
+                                        <BellIcon className="h-5 w-5" />
                                         {badgeCount > 0 ? (
-                                            <span className="absolute -right-0.5 -top-0.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-[11px] font-bold leading-none text-white shadow-sm ring-2 ring-white dark:ring-zinc-900">
+                                            <span className="absolute -right-1 -top-1 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-[11px] font-bold leading-none text-white shadow-sm ring-2 ring-white dark:ring-zinc-900">
                                                 {badgeCount > 99 ? '99+' : badgeCount}
                                             </span>
                                         ) : showRecentDot ? (

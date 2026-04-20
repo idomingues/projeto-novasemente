@@ -39,7 +39,7 @@ export default function MobileContact({ contact }: Props) {
                     >
                         ← Mais
                     </Link>
-                    <h1 className="mt-2 text-xl font-bold text-zinc-900 dark:text-white">Fale conosco</h1>
+                    <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Fale conosco</h1>
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

@@ -60,7 +60,20 @@ Route::post('/pedidos-oracao/{prayer}/orou', [PrayerRequestController::class, 'a
     ->middleware('throttle:60,1')
     ->name('prayer.amen');
 Route::get('/mobile/oracao', [PrayerRequestController::class, 'mobile'])->name('mobile.prayer');
-Route::redirect('/mobile', '/mobile/news')->name('mobile.index');
+
+// Splash (vídeo) ao abrir a app
+Route::get('/media/ns.mp4', function () {
+    $path = base_path('assets/NS.MP4');
+    abort_unless(file_exists($path), 404);
+
+    return response()
+        ->file($path, [
+            'Content-Type' => 'video/mp4',
+            'Cache-Control' => 'public, max-age=86400',
+        ]);
+})->name('media.ns-splash');
+
+Route::get('/mobile', [MobileController::class, 'splash'])->name('mobile.index');
 Route::get('/mobile/culto', [MobileController::class, 'culto'])->name('mobile.culto');
 Route::get('/mobile/news', [MobileController::class, 'news'])->name('mobile.news');
 Route::get('/mobile/news/{news:slug}', [MobileController::class, 'newsShow'])->name('mobile.news.show');
@@ -121,6 +134,12 @@ Route::post('/voluntario/cadastro/check-duplicate', [VolunteerPublicSignupContro
     ->middleware('throttle:30,1')
     ->name('volunteers.self-signup.check-duplicate');
 
+// Batismo: visitantes veem tela de explicação + atalhos; logados seguem para o hub.
+Route::get('/mobile/batismo', [MobileChurchSolicitationController::class, 'baptismHub'])->name('mobile.baptism');
+
+// Solicitações: visitantes veem tela de explicação + atalhos; logados seguem para o hub.
+Route::get('/mobile/solicitacoes', [MobileChurchSolicitationController::class, 'hub'])->name('mobile.solicitations.hub');
+
 Route::middleware('auth')->group(function () {
     Route::post('/working-church', [\App\Http\Controllers\SetWorkingChurchController::class, '__invoke'])->name('working-church.store');
 
@@ -131,6 +150,7 @@ Route::middleware('auth')->group(function () {
     // Members Resource Routes (restricted to users with appropriate permission)
     Route::resource('members', MemberController::class)
         ->except(['create', 'edit'])
+        ->parameters(['member' => 'user'])
         ->middleware('permission:members.view|members.manage');
 
     // Escala semanal (qualquer usuário autenticado pode ver; edição exige escalas.manage no controller)
@@ -334,9 +354,7 @@ Route::middleware('auth')->group(function () {
         ->name('support.close')
         ->middleware('permission:support.manage');
 
-    // Solicitações (membro — requer login)
-    Route::get('/mobile/solicitacoes', [MobileChurchSolicitationController::class, 'hub'])->name('mobile.solicitations.hub');
-    Route::get('/mobile/batismo', [MobileChurchSolicitationController::class, 'baptismHub'])->name('mobile.baptism');
+    // Solicitações (membro — requer login para enviar/acompanhar)
     Route::get('/mobile/solicitacoes/meus-pedidos', [MobileChurchSolicitationController::class, 'mine'])->name('mobile.solicitations.mine');
     Route::get('/mobile/solicitacoes/novo/{type}', [MobileChurchSolicitationController::class, 'create'])->name('mobile.solicitations.create');
     Route::post('/mobile/solicitacoes', [MobileChurchSolicitationController::class, 'store'])->name('mobile.solicitations.store');

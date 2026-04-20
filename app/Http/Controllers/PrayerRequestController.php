@@ -6,6 +6,7 @@ use App\Models\Church;
 use App\Models\PrayerRequest;
 use App\Models\UserInboxNotification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -103,6 +104,14 @@ class PrayerRequestController extends Controller
             ->exists();
         if (! $visible) {
             abort(404);
+        }
+
+        // Qualquer pessoa pode marcar que está orando (mesmo sem login), mas limitamos a 1 ação por hora por pedido.
+        $actorKey = $request->user()?->id ? 'u:'.$request->user()->id : 'g:'.sha1((string) $request->ip().'|'.(string) $request->userAgent().'|'.(string) $request->session()->getId());
+        $throttleKey = 'prayer_amen:'.$prayer->id.':'.$actorKey;
+        $allowed = Cache::add($throttleKey, 1, now()->addHour());
+        if (! $allowed) {
+            return back()->with('error', 'Você já marcou que está orando por este pedido recentemente. Aguarde 1 hora para marcar novamente.');
         }
 
         $prayer->increment('prayer_amen_count');

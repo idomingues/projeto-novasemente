@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Domain\Users\Actions\SyncUserChurchFromRegistration;
 use App\Http\Controllers\Controller;
 use App\Models\Invitation;
 use App\Models\User;
@@ -96,6 +97,9 @@ class RegisteredUserController extends Controller
             $this->applyAlreadyVolunteerOnPublicRegister($user);
         }
 
+        app(SyncUserChurchFromRegistration::class)($user, $request);
+        $user->ensureVolunteerProfile();
+
         event(new Registered($user));
 
         Auth::login($user);
@@ -188,6 +192,9 @@ class RegisteredUserController extends Controller
             }
         }
 
+        $user->ensureVolunteerProfile();
+
+        app(SyncUserChurchFromRegistration::class)($user, $request);
         $user->ensureVolunteerProfile();
 
         Auth::login($user);

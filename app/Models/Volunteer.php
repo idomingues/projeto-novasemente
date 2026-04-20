@@ -14,7 +14,6 @@ class Volunteer extends Model
 
     protected $fillable = [
         'user_id',
-        'member_id',
         'name',
         'email',
         'phone',
@@ -39,7 +38,7 @@ class Volunteer extends Model
     ];
 
     /**
-     * Nome para exibição: do membro vinculado ou do cadastro do voluntário (quando não é membro).
+     * Nome para exibição: do utilizador vinculado ou do cadastro do voluntário (quando não há user).
      */
     public function getDisplayNameAttribute(): string
     {
@@ -62,11 +61,6 @@ class Volunteer extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
-    }
-
-    public function member(): BelongsTo
-    {
-        return $this->belongsTo(Member::class);
     }
 
     public function ministries(): BelongsToMany

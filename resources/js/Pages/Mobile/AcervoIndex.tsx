@@ -96,7 +96,7 @@ export default function MobileAcervoIndex({ items, canManage }: Props) {
             <div className="space-y-6 -mt-8">
                 {/* Título e botão Adicionar na mesma linha */}
                 <div className="flex items-center justify-between gap-3 flex-nowrap">
-                    <h1 className="text-xl font-bold text-zinc-900 dark:text-white truncate min-w-0">Acervo</h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white truncate min-w-0">Acervo</h1>
                     {canManage && (
                         <PrimaryButton
                             type="button"

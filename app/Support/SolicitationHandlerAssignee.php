@@ -18,7 +18,7 @@ class SolicitationHandlerAssignee
             ->whereNotNull('user_id')
             ->whereHas('user.roles', fn ($q) => $q->where('name', 'lider_ministerio'))
             ->whereHas('ministries', fn ($q) => $q->where('church_id', $churchId))
-            ->with(['member:id,name', 'ministries:id,name,church_id'])
+            ->with(['user:id,name', 'ministries:id,name,church_id'])
             ->orderBy('id')
             ->get()
             ->map(function (Volunteer $v) use ($churchId) {

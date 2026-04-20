@@ -121,7 +121,7 @@ export default function MobileIndex({ church, latestNews, upcomingEvents }: Prop
                         <div className="flex items-center justify-between mb-2">
                             <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-2">
                                 <NewspaperIcon className="w-5 h-5" />
-                                Notícias
+                                News
                             </h2>
                             <Link
                                 href={route('mobile.news')}

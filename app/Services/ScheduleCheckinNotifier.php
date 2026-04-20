@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Mail\ScheduleCheckinEnabledMail;
 use App\Models\Church;
-use App\Models\Member;
 use App\Models\Ministry;
 use App\Models\User;
 use App\Models\UserInboxNotification;
@@ -53,15 +52,12 @@ class ScheduleCheckinNotifier
 
         $checkinUrl = route('mobile.schedule.checkin', ['date' => $dateYmd], true);
 
-        foreach (Member::whereIn('id', $memberIds)->get() as $member) {
-            if ($member->email && filter_var($member->email, FILTER_VALIDATE_EMAIL)) {
-                Mail::to($member->email)->send(
+        foreach (User::whereIn('id', $memberIds)->get() as $user) {
+            if ($user->email && filter_var($user->email, FILTER_VALIDATE_EMAIL)) {
+                Mail::to($user->email)->send(
                     new ScheduleCheckinEnabledMail($label, $checkinUrl)
                 );
             }
-        }
-
-        foreach (User::whereIn('member_id', $memberIds)->get() as $user) {
             $row = UserInboxNotification::create([
                 'user_id' => $user->id,
                 'title' => 'Check-in liberado',

@@ -15,12 +15,12 @@ use Illuminate\Support\Collection;
 
 class ScheduleBoardViewData
 {
-    public static function memberPhotoPublicUrl(?\App\Models\Member $member): ?string
+    public static function userPhotoPublicUrl(?User $user): ?string
     {
-        if (! $member || empty($member->photo_url)) {
+        if (! $user || empty($user->photo_url)) {
             return null;
         }
-        $u = $member->photo_url;
+        $u = $user->photo_url;
         if (str_starts_with($u, 'http://') || str_starts_with($u, 'https://')) {
             return $u;
         }
@@ -112,7 +112,7 @@ class ScheduleBoardViewData
                 $ministryId,
                 $year,
                 $month,
-                fn ($m) => self::memberPhotoPublicUrl($m)
+                fn ($u) => self::userPhotoPublicUrl($u)
             );
 
             $checkinDates = ScheduleCheckinDate::query()
@@ -126,12 +126,12 @@ class ScheduleBoardViewData
             $scheduleVolunteers = Volunteer::query()
                 ->whereHas('ministries', fn ($q) => $q->where('ministries.id', $ministryId))
                 ->where('active', true)
-                ->with('member')
+                ->with('user')
                 ->orderBy('name')
                 ->get()
                 ->map(fn (Volunteer $v) => [
                     'volunteerId' => (int) $v->id,
-                    'memberId' => $v->member_id !== null ? (int) $v->member_id : null,
+                    'memberId' => $v->user_id !== null ? (int) $v->user_id : null,
                     'name' => $v->display_name,
                 ])
                 ->values()

@@ -82,7 +82,7 @@ const ICON_MAP: Record<string, MenuIcon> = {
 const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'Dashboard', route: 'dashboard', icon: HomeIcon },
     { name: 'Usuários', route: 'members.index', icon: UsersIcon },
-    { name: 'Notícias', route: 'news.index', icon: NewspaperIcon },
+    { name: 'News', route: 'news.index', icon: NewspaperIcon },
     { name: 'Atendimento', route: 'solicitations.index', icon: InboxIcon },
     { name: 'Pastores', route: 'pastors.index', icon: UserCircleIcon },
     { name: 'Agenda pastoral', route: 'pastoral-agenda.index', icon: ClockIcon },
@@ -104,6 +104,16 @@ const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'Versão do App', route: 'app-versions.index', icon: Cog6ToothIcon },
 ];
 
+/** Menu simplificado (conta comum da app, sem acesso ao painel admin). */
+const APP_ONLY_MENU: MenuItem[] = [
+    { name: 'News', route: 'mobile.news', icon: NewspaperIcon },
+    { name: 'Eventos', route: 'mobile.events', icon: CalendarDaysIcon },
+    { name: 'Oração', route: 'mobile.prayer', icon: PrayingHandsIcon },
+    { name: 'Notificações', route: 'mobile.notifications', icon: BellAlertIcon },
+    { name: 'Suporte do app', route: 'mobile.support.index', icon: ChatBubbleLeftRightIcon },
+    { name: 'Mais', route: 'mobile.more', icon: SparklesIcon },
+];
+
 function menuFromServer(items: ServerSidebarItem[]): MenuItem[] {
     return items.map((item) => ({
         name: item.name,
@@ -115,7 +125,7 @@ function menuFromServer(items: ServerSidebarItem[]): MenuItem[] {
 export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPermissions = {} }: SidebarProps) {
     const { props } = usePage();
     const auth = props.auth as {
-        user?: { name?: string; email?: string; member?: { name: string } };
+        user?: { name?: string; email?: string } | null;
         permissions?: string[];
         canManageSettings?: boolean;
         adminSidebarUnrestricted?: boolean;
@@ -173,21 +183,23 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
         canAccess('pastors.index') ||
         permissions.includes('pastoral_appointments.manage');
 
-    const menuItems = isAuthenticated
-        ? allMenuItems.filter((item) => {
-              if (item.route === 'settings.index' && !canManageSettings) {
-                  return false;
-              }
-              if (item.route === 'pastoral-agenda.index' && !showPastoralAgendaInSidebar) {
-                  return false;
-              }
-              /** Lista de utilizadores (cadastro `members`): visível para equipa do painel ou quem tem members.view/manage. */
-              if (item.route === 'members.index') {
-                  return canAccessAdminMenu || canAccess('members.index');
-              }
-              return canAccess(item.route);
-          })
-        : [];
+    const menuItems = !isAuthenticated
+        ? []
+        : !canAccessAdminMenu
+          ? APP_ONLY_MENU
+          : allMenuItems.filter((item) => {
+                if (item.route === 'settings.index' && !canManageSettings) {
+                    return false;
+                }
+                if (item.route === 'pastoral-agenda.index' && !showPastoralAgendaInSidebar) {
+                    return false;
+                }
+                /** Lista de utilizadores (cadastro `members`): visível para equipa do painel ou quem tem members.view/manage. */
+                if (item.route === 'members.index') {
+                    return canAccessAdminMenu || canAccess('members.index');
+                }
+                return canAccess(item.route);
+            });
 
     return (
         <>

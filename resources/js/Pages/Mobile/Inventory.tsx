@@ -325,7 +325,7 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
                     >
                         <ArrowLeftIcon className="w-6 h-6" />
                     </Link>
-                    <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Inventário</h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Inventário</h1>
                 </div>
 
                 {canManage && (

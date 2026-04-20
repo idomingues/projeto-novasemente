@@ -103,7 +103,7 @@ export default function MobileOfferings({ donation, localOffer }: Props) {
             <Head title="Dízimos e Ofertas" />
             <div className="space-y-6 max-w-3xl mx-auto">
                 <div>
-                    <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Dízimos e Ofertas</h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Dízimos e Ofertas</h1>
                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                         Faça sua doação pelo 7me ou pelo atalho PIX abaixo.
                     </p>

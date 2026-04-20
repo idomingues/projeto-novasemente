@@ -2,16 +2,25 @@
 
 namespace Database\Seeders;
 
-use App\Models\Member;
+use App\Models\Church;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 
+/**
+ * Semeadura de utilizadores com ficha na igreja (substitui o antigo modelo Member).
+ */
 class MemberSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        Member::factory()->count(15)->create();
+        $churchId = Church::query()->value('id');
+        if ($churchId === null) {
+            return;
+        }
+
+        User::factory()->count(15)->create([
+            'church_id' => $churchId,
+            'status' => 'active',
+        ]);
     }
 }

@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Church;
 use App\Models\ChurchService;
-use App\Models\Member;
+use App\Models\User;
 use App\Services\VolunteerScheduleOverview;
 use App\Services\YoutubePlaylistsService;
 use App\Support\NotificationFeed;
@@ -29,18 +29,9 @@ class VariosController extends Controller
         return Church::where('active', true)->orderBy('name')->first();
     }
 
-    private function memberPhotoPublicUrl(?Member $member): ?string
+    private function userPhotoPublicUrl(?User $user): ?string
     {
-        if (! $member || empty($member->photo_url)) {
-            return null;
-        }
-        $u = $member->photo_url;
-        if (str_starts_with($u, 'http://') || str_starts_with($u, 'https://')) {
-            return $u;
-        }
-        $base = request()->getSchemeAndHttpHost();
-
-        return $base.(str_starts_with($u, '/') ? '' : '/').$u;
+        return ScheduleBoardViewData::userPhotoPublicUrl($user);
     }
 
     public function schedule(Request $request): Response
@@ -66,9 +57,8 @@ class VariosController extends Controller
             return Inertia::render('Escalas/Index', ScheduleBoardViewData::forIndexRequest($request));
         }
 
-        $memberId = $user->member_id ? (int) $user->member_id : null;
-
-        if (! $memberId) {
+        $workingChurchId = Church::resolveWorkingId($request);
+        if (! $user->church_id || (int) $user->church_id !== (int) $workingChurchId) {
             return Inertia::render('Varios/VolunteerSchedule', [
                 'canViewSchedule' => true,
                 'month' => $month,
@@ -80,20 +70,19 @@ class VariosController extends Controller
             ]);
         }
 
-        $member = Member::find($memberId);
         $overview = VolunteerScheduleOverview::forMember(
-            $memberId,
+            (int) $user->id,
             $year,
             $month,
-            fn ($m) => $this->memberPhotoPublicUrl($m)
+            fn ($u) => $this->userPhotoPublicUrl($u)
         );
 
         return Inertia::render('Varios/VolunteerSchedule', [
             'canViewSchedule' => true,
             'month' => $month,
             'year' => $year,
-            'memberName' => $member?->name ?? $user->name,
-            'memberPhotoUrl' => $this->memberPhotoPublicUrl($member),
+            'memberName' => $user->name,
+            'memberPhotoUrl' => $this->userPhotoPublicUrl($user),
             'needsMember' => false,
             'volunteerOverview' => $overview,
         ]);

@@ -3,13 +3,14 @@
 namespace Database\Seeders;
 
 use App\Models\Church;
-use App\Models\Member;
 use App\Models\Ministry;
 use App\Models\ScheduleAssignment;
 use App\Models\ScheduleRole;
+use App\Models\User;
 use App\Models\Volunteer;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 /**
  * Cadastra voluntários (diáconos) e escalas da IASD Paraíso - Nova Semente:
@@ -24,29 +25,30 @@ class DeaconsSeeder extends Seeder
         if (Schema::hasColumn('churches', 'active')) {
             $churchId = Church::where('active', true)->orderBy('id')->value('id');
         }
-        if (!$churchId && Schema::hasColumn('churches', 'slug')) {
+        if (! $churchId && Schema::hasColumn('churches', 'slug')) {
             $churchId = Church::where('slug', 'nova-semente')->value('id');
         }
-        if (!$churchId) {
+        if (! $churchId) {
             $churchId = Church::orderBy('id')->value('id');
         }
 
-        if (!$churchId) {
+        if (! $churchId) {
             $this->command->warn('Nenhuma igreja ativa encontrada. Crie a igreja Nova Semente antes.');
+
             return;
         }
 
         $ministry = Ministry::where('name', 'Diáconos')
             ->where(fn ($q) => $q->where('church_id', $churchId)->orWhereNull('church_id'))
             ->first();
-        if (!$ministry) {
+        if (! $ministry) {
             $ministry = Ministry::create([
                 'church_id' => $churchId,
                 'name' => 'Diáconos',
                 'icon' => 'user_group',
                 'description' => null,
             ]);
-        } elseif (!$ministry->church_id) {
+        } elseif (! $ministry->church_id) {
             $ministry->update(['church_id' => $churchId]);
         }
 
@@ -86,24 +88,33 @@ class DeaconsSeeder extends Seeder
         ];
 
         $allNames = collect($bySaturday)->flatten(1)->pluck('name')->filter()->unique()->values();
-        $membersByName = [];
+        $usersByName = [];
 
         foreach ($allNames as $name) {
             $name = (string) $name;
             if ($name === '') {
                 continue;
             }
-            $member = Member::firstOrCreate(
-                ['name' => $name, 'church_id' => $churchId],
-                ['status' => 'active']
+            $email = 'diacono-'.mb_strtolower(preg_replace('/\s+/', '-', $name)).'-'.(int) $churchId.'@invalid.local';
+            $user = User::firstOrCreate(
+                ['email' => $email],
+                [
+                    'name' => $name,
+                    'password' => bcrypt(Str::random(32)),
+                    'church_id' => $churchId,
+                    'status' => 'active',
+                ]
             );
+            if ($user->church_id === null) {
+                $user->update(['church_id' => $churchId]);
+            }
 
             $volunteer = Volunteer::firstOrCreate(
-                ['member_id' => $member->id],
-                ['role' => 'Diácono', 'active' => true]
+                ['user_id' => $user->id],
+                ['name' => $name, 'email' => $email, 'role' => 'Diácono', 'active' => true]
             );
             $volunteer->ministries()->syncWithoutDetaching([$ministry->id]);
-            $membersByName[$name] = $member;
+            $usersByName[$name] = $user;
         }
 
         $now = now();
@@ -114,15 +125,15 @@ class DeaconsSeeder extends Seeder
             foreach ($entries as $entry) {
                 $name = $entry['name'];
                 $isCoordinator = $entry['coordinator'] ?? false;
-                if (!isset($membersByName[$name])) {
+                if (! isset($usersByName[$name])) {
                     continue;
                 }
-                $member = $membersByName[$name];
+                $churchUser = $usersByName[$name];
 
                 ScheduleAssignment::firstOrCreate(
                     [
                         'ministry_id' => $ministry->id,
-                        'member_id' => $member->id,
+                        'user_id' => $churchUser->id,
                         'saturday_number' => $saturdayNumber,
                         'schedule_date' => null,
                     ],
@@ -137,7 +148,7 @@ class DeaconsSeeder extends Seeder
             }
         }
 
-        $totalMembers = count($membersByName);
+        $totalMembers = count($usersByName);
         $totalAssignments = collect($bySaturday)->flatten(1)->count();
         $this->command->info("Diáconos: {$totalMembers} voluntários cadastrados e {$totalAssignments} escalas (1º a 4º sábado). O 5º sábado aparece nos meses com 5 semanas, vazio.");
     }

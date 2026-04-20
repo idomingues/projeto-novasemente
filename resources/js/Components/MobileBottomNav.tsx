@@ -15,7 +15,7 @@ import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 
 const navItems = [
     {
-        name: 'Notícias',
+        name: 'News',
         route: 'mobile.news' as const,
         activeRoutes: ['mobile.news', 'mobile.news.show'] as const,
         icon: NewspaperIcon,
@@ -89,7 +89,7 @@ interface MobileBottomNavProps {
     insetForSidebar?: boolean;
 }
 
-/** Barra inferior: Notícias, Batismo, Eventos, Oração, Mais (Culto e Dízimos em Mais). */
+/** Barra inferior: News, Batismo, Eventos, Oração, Mais (Culto e Dízimos em Mais). */
 export default function MobileBottomNav({ insetForSidebar = false }: MobileBottomNavProps) {
     return (
         <nav

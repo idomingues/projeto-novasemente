@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\Member;
+use App\Models\Church;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -27,11 +27,11 @@ class MembersTest extends TestCase
         $role = Role::firstOrCreate(['name' => 'admin']);
         $user->assignRole($role);
 
-        Member::factory()->count(2)->create();
+        $churchId = Church::query()->value('id');
+        User::factory()->count(2)->create(['church_id' => $churchId]);
 
         $response = $this->actingAs($user)->get('/members');
 
         $response->assertStatus(200);
     }
 }
-

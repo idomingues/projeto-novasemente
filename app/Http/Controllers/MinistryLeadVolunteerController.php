@@ -372,7 +372,7 @@ class MinistryLeadVolunteerController extends Controller
         abort_unless($volunteer->ministries()->where('ministries.id', $ministry->id)->exists(), 404);
         abort_unless($this->volunteerInChurch($volunteer, $churchId), 404);
 
-        $volunteer->load(['member:id,name', 'ministries' => fn ($q) => $q->where('ministries.id', $ministry->id)]);
+        $volunteer->load(['user:id,name', 'ministries' => fn ($q) => $q->where('ministries.id', $ministry->id)]);
 
         $criteria = VolunteerClearanceCriterion::query()
             ->where('ministry_id', $ministry->id)
@@ -400,7 +400,7 @@ class MinistryLeadVolunteerController extends Controller
                 'phone' => $mask['phone'],
                 'piiMasked' => $mask['piiMasked'],
                 'active' => (bool) $volunteer->active,
-                'memberName' => $volunteer->member?->name,
+                'memberName' => $volunteer->user?->name,
                 'signals' => $signals,
                 'clearanceStatus' => $pivot?->clearance_status ?? 'pending',
             ],

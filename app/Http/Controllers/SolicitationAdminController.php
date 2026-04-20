@@ -43,7 +43,7 @@ class SolicitationAdminController extends Controller
         $user = $user ?? request()->user();
         $s->loadMissing([
             'assignedPastor:id,name',
-            'assignedVolunteer.member:id,name',
+            'assignedVolunteer.user:id,name',
         ]);
         $messages = ChurchSolicitationMessage::query()
             ->where('church_solicitation_id', $s->id)
@@ -134,7 +134,7 @@ class SolicitationAdminController extends Controller
             $query = ChurchSolicitation::query()->with([
                 'user:id,name',
                 'assignedPastor:id,name',
-                'assignedVolunteer.member:id,name',
+                'assignedVolunteer.user:id,name',
             ]);
 
             if ($kindStr === 'solicitation' && is_string($type) && $type !== '') {
@@ -312,7 +312,7 @@ class SolicitationAdminController extends Controller
             ->with([
                 'user:id,name',
                 'assignedPastor:id,name',
-                'assignedVolunteer.member:id,name',
+                'assignedVolunteer.user:id,name',
             ]);
 
         $status = $request->query('status');

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ScheduleAssignment;
 use App\Models\ScheduleOccurrenceRoleOverride;
 use App\Models\ScheduleOccurrenceSkip;
+use App\Models\User;
 use Carbon\Carbon;
 
 class ScheduleAssignmentPresenter
@@ -14,29 +15,29 @@ class ScheduleAssignmentPresenter
         if ($a->volunteer_id) {
             return 'v:'.$a->volunteer_id;
         }
-        if ($a->member_id) {
-            return 'm:'.$a->member_id;
+        if ($a->user_id) {
+            return 'm:'.$a->user_id;
         }
 
         return 'a:'.$a->id;
     }
 
     /**
-     * @param  callable(\App\Models\Member|null): ?string  $memberPhotoUrl
+     * @param  callable(User|null): ?string  $userPhotoUrl
      * @return array{memberId: int|null, volunteerId: int|null, memberName: string, memberPhotoUrl: ?string, participantKey: string}
      */
-    private static function assigneeFace(ScheduleAssignment $a, callable $memberPhotoUrl): array
+    private static function assigneeFace(ScheduleAssignment $a, callable $userPhotoUrl): array
     {
         $vol = $a->volunteer;
-        $member = $a->member;
-        $displayMember = $member ?? $vol?->member;
-        $name = $member?->name ?? $vol?->display_name ?? 'Sem nome';
+        $user = $a->user ?? $vol?->user;
+        $displayUser = $user;
+        $name = $user?->name ?? $vol?->display_name ?? 'Sem nome';
 
         return [
-            'memberId' => $a->member_id !== null ? (int) $a->member_id : null,
+            'memberId' => $a->user_id !== null ? (int) $a->user_id : null,
             'volunteerId' => $a->volunteer_id !== null ? (int) $a->volunteer_id : null,
             'memberName' => $name,
-            'memberPhotoUrl' => $displayMember ? $memberPhotoUrl($displayMember) : null,
+            'memberPhotoUrl' => $displayUser ? $userPhotoUrl($displayUser) : null,
             'participantKey' => self::participantKey($a),
         ];
     }
@@ -47,20 +48,20 @@ class ScheduleAssignmentPresenter
     }
 
     /**
-     * @param  callable(\App\Models\Member|null): ?string  $memberPhotoUrl
+     * @param  callable(User|null): ?string  $userPhotoUrl
      * @return array<int, array<string, mixed>>
      */
     public static function monthAssignmentsForMinistry(
         int $ministryId,
         int $year,
         int $month,
-        callable $memberPhotoUrl
+        callable $userPhotoUrl
     ): array {
         $startDate = Carbon::create($year, $month, 1);
         $endDate = $startDate->copy()->endOfMonth()->addDay();
 
         $baseQuery = ScheduleAssignment::query()
-            ->with(['member', 'volunteer.member', 'scheduleRole', 'ministry'])
+            ->with(['user', 'volunteer.user', 'scheduleRole', 'ministry'])
             ->where('ministry_id', $ministryId);
 
         $oneOff = (clone $baseQuery)
@@ -105,7 +106,7 @@ class ScheduleAssignmentPresenter
         $assignments = [];
 
         foreach ($oneOff as $a) {
-            $assignments[] = self::rowFromOneOff($a, $memberPhotoUrl);
+            $assignments[] = self::rowFromOneOff($a, $userPhotoUrl);
         }
 
         $oneOffKeys = [];
@@ -130,7 +131,7 @@ class ScheduleAssignmentPresenter
                 continue;
             }
             $override = $overrides->get($a->id.'|'.$dateKey);
-            $assignments[] = self::rowFromRecurring($a, $computedDate, $memberPhotoUrl, $override);
+            $assignments[] = self::rowFromRecurring($a, $computedDate, $userPhotoUrl, $override);
         }
 
         usort($assignments, fn ($x, $y) => strcmp($x['scheduleDate'] ?? '', $y['scheduleDate'] ?? ''));
@@ -139,12 +140,12 @@ class ScheduleAssignmentPresenter
     }
 
     /**
-     * @param  callable(\App\Models\Member|null): ?string  $memberPhotoUrl
+     * @param  callable(User|null): ?string  $userPhotoUrl
      * @return array<string, mixed>
      */
-    public static function rowFromOneOff(ScheduleAssignment $a, callable $memberPhotoUrl): array
+    public static function rowFromOneOff(ScheduleAssignment $a, callable $userPhotoUrl): array
     {
-        $face = self::assigneeFace($a, $memberPhotoUrl);
+        $face = self::assigneeFace($a, $userPhotoUrl);
 
         return array_merge($face, [
             'id' => $a->id,
@@ -163,13 +164,13 @@ class ScheduleAssignmentPresenter
     }
 
     /**
-     * @param  callable(\App\Models\Member|null): ?string  $memberPhotoUrl
+     * @param  callable(User|null): ?string  $userPhotoUrl
      * @return array<string, mixed>
      */
     public static function rowFromRecurring(
         ScheduleAssignment $a,
         Carbon $computedDate,
-        callable $memberPhotoUrl,
+        callable $userPhotoUrl,
         ?ScheduleOccurrenceRoleOverride $override = null
     ): array {
         $roleId = $override ? $override->schedule_role_id : $a->schedule_role_id;
@@ -179,7 +180,7 @@ class ScheduleAssignmentPresenter
 
         $recurringSeries = $a->recurring && $a->saturday_number !== null && $a->schedule_date === null;
 
-        $face = self::assigneeFace($a, $memberPhotoUrl);
+        $face = self::assigneeFace($a, $userPhotoUrl);
 
         return array_merge($face, [
             'id' => $a->id,
@@ -213,15 +214,16 @@ class ScheduleAssignmentPresenter
     }
 
     /**
-     * Todas as linhas de escala de um membro numa data (vários departamentos).
+     * Todas as linhas de escala de um utilizador numa data (vários departamentos).
+     * `memberId` no resultado é o id em `users` (compatibilidade com API anterior).
      *
-     * @param  callable(\App\Models\Member|null): ?string  $memberPhotoUrl
+     * @param  callable(User|null): ?string  $userPhotoUrl
      * @return array<int, array<string, mixed>>
      */
     public static function assignmentsForMemberOnDate(
-        int $memberId,
+        int $userId,
         string $dateYmd,
-        callable $memberPhotoUrl
+        callable $userPhotoUrl
     ): array {
         $date = Carbon::parse($dateYmd)->startOfDay();
         $month = (int) $date->month;
@@ -229,13 +231,13 @@ class ScheduleAssignmentPresenter
         $out = [];
 
         $oneOffs = ScheduleAssignment::query()
-            ->with(['member', 'volunteer.member', 'scheduleRole', 'ministry'])
-            ->where('member_id', $memberId)
+            ->with(['user', 'volunteer.user', 'scheduleRole', 'ministry'])
+            ->where('user_id', $userId)
             ->whereDate('schedule_date', $date)
             ->get();
 
         foreach ($oneOffs as $a) {
-            $out[] = self::rowFromOneOff($a, $memberPhotoUrl);
+            $out[] = self::rowFromOneOff($a, $userPhotoUrl);
         }
 
         $oneOffKeys = [];
@@ -269,8 +271,8 @@ class ScheduleAssignmentPresenter
         $dateKey = $computedDate->format('Y-m-d');
 
         $recurring = ScheduleAssignment::query()
-            ->with(['member', 'volunteer.member', 'scheduleRole', 'ministry'])
-            ->where('member_id', $memberId)
+            ->with(['user', 'volunteer.user', 'scheduleRole', 'ministry'])
+            ->where('user_id', $userId)
             ->whereNull('schedule_date')
             ->where('saturday_number', $targetSaturday)
             ->where(function ($q) use ($month, $year) {
@@ -301,7 +303,7 @@ class ScheduleAssignmentPresenter
                 ->with('scheduleRole')
                 ->first();
 
-            $out[] = self::rowFromRecurring($a, $computedDate, $memberPhotoUrl, $override);
+            $out[] = self::rowFromRecurring($a, $computedDate, $userPhotoUrl, $override);
         }
 
         return $out;
@@ -310,13 +312,13 @@ class ScheduleAssignmentPresenter
     /**
      * Linhas de escala ligadas ao registo de voluntário (sem depender de membro).
      *
-     * @param  callable(\App\Models\Member|null): ?string  $memberPhotoUrl
+     * @param  callable(User|null): ?string  $userPhotoUrl
      * @return array<int, array<string, mixed>>
      */
     public static function assignmentsForVolunteerOnDate(
         int $volunteerId,
         string $dateYmd,
-        callable $memberPhotoUrl
+        callable $userPhotoUrl
     ): array {
         $date = Carbon::parse($dateYmd)->startOfDay();
         $month = (int) $date->month;
@@ -324,13 +326,13 @@ class ScheduleAssignmentPresenter
         $out = [];
 
         $oneOffs = ScheduleAssignment::query()
-            ->with(['member', 'volunteer.member', 'scheduleRole', 'ministry'])
+            ->with(['user', 'volunteer.user', 'scheduleRole', 'ministry'])
             ->where('volunteer_id', $volunteerId)
             ->whereDate('schedule_date', $date)
             ->get();
 
         foreach ($oneOffs as $a) {
-            $out[] = self::rowFromOneOff($a, $memberPhotoUrl);
+            $out[] = self::rowFromOneOff($a, $userPhotoUrl);
         }
 
         $oneOffKeys = [];
@@ -364,7 +366,7 @@ class ScheduleAssignmentPresenter
         $dateKey = $computedDate->format('Y-m-d');
 
         $recurring = ScheduleAssignment::query()
-            ->with(['member', 'volunteer.member', 'scheduleRole', 'ministry'])
+            ->with(['user', 'volunteer.user', 'scheduleRole', 'ministry'])
             ->where('volunteer_id', $volunteerId)
             ->whereNull('schedule_date')
             ->where('saturday_number', $targetSaturday)
@@ -396,7 +398,7 @@ class ScheduleAssignmentPresenter
                 ->with('scheduleRole')
                 ->first();
 
-            $out[] = self::rowFromRecurring($a, $computedDate, $memberPhotoUrl, $override);
+            $out[] = self::rowFromRecurring($a, $computedDate, $userPhotoUrl, $override);
         }
 
         return $out;

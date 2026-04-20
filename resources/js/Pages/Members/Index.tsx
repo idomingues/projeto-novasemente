@@ -135,8 +135,8 @@ export default function Index({ members, filters }: Props) {
             <header className="mt-6 mb-6 space-y-4 min-w-0">
                 <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Usuários</h1>
                 <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-2xl">
-                    O mesmo tipo de dados do registo público «Criar conta» no app: <strong className="font-medium text-zinc-700 dark:text-zinc-300">nome</strong> e{' '}
-                    <strong className="font-medium text-zinc-700 dark:text-zinc-300">e-mail</strong>. Telefone e data de nascimento são opcionais para a ficha na igreja.{' '}
+                    Acesso e login baseiam-se na tabela de utilizadores (<strong className="font-medium text-zinc-700 dark:text-zinc-300">users</strong>); a ficha na igreja é{' '}
+                    <strong className="font-medium text-zinc-700 dark:text-zinc-300">members</strong>. O mesmo núcleo do registo público «Criar conta»: nome e e-mail obrigatórios; telefone e data de nascimento são opcionais.{' '}
                     <strong className="font-medium text-zinc-700 dark:text-zinc-300">Morada não é pedida nesta fase.</strong>
                 </p>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-between sm:gap-4 min-w-0">
@@ -276,7 +276,7 @@ export default function Index({ members, filters }: Props) {
                     <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1 mb-5">
                         {isEditing
                             ? 'Atualize nome, e-mail, contactos opcionais e estado. A morada não é alterada neste formulário.'
-                            : 'Mesmo núcleo do «Criar conta» no app: nome e e-mail; telefone e data de nascimento são opcionais. No app a pessoa ainda define a senha ao registar-se.'}
+                            : 'Cria a conta em users (login) e a ficha em members. A senha é definida pela pessoa ao usar «Esqueci a senha» ou ao completar o primeiro acesso, como no registo público.'}
                     </p>
 
                     <form onSubmit={submit} className="space-y-5 sm:space-y-6">
@@ -305,6 +305,7 @@ export default function Index({ members, filters }: Props) {
                                     value={data.email}
                                     onChange={(e) => setData('email', e.target.value)}
                                     placeholder="exemplo@email.com"
+                                    required
                                 />
                                 {errors.email && <div className="text-red-500 text-sm mt-2">{errors.email}</div>}
                             </div>

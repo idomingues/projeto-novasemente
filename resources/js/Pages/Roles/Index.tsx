@@ -38,7 +38,7 @@ const GROUP_LABELS: Record<string, string> = {
     inventory: 'Inventário',
     users: 'Usuários',
     churches: 'Igrejas',
-    news: 'Notícias',
+    news: 'News',
     events: 'Eventos',
     escalas: 'Escalas',
     support: 'Suporte do app',

@@ -27,10 +27,10 @@ class UpdateMemberRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => [
-                'nullable',
+                'required',
                 'email',
                 'max:255',
-                Rule::unique('members')->ignore($this->member?->id),
+                Rule::unique('users', 'email')->ignore($this->user?->id),
             ],
             'phone' => ['nullable', 'string', 'max:20'],
             'birth_date' => ['nullable', 'date'],
