@@ -194,7 +194,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
                 if (item.route === 'pastoral-agenda.index' && !showPastoralAgendaInSidebar) {
                     return false;
                 }
-                /** Lista de utilizadores (cadastro `members`): visível para equipa do painel ou quem tem members.view/manage. */
+                /** Lista de utilizadores (cadastro `members`): visível para equipe do painel ou quem tem members.view/manage. */
                 if (item.route === 'members.index') {
                     return canAccessAdminMenu || canAccess('members.index');
                 }
@@ -230,9 +230,8 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
                             )}
                         </div>
                         <div className="flex flex-col min-w-0">
-                            <span className="text-lg font-bold tracking-tight leading-none truncate">New Church</span>
-                            <span className="text-sm text-zinc-500 font-medium leading-none truncate">
-                                {currentChurch?.name ?? 'Painel Administrativo'}
+                            <span className="text-lg font-bold tracking-tight leading-none truncate">
+                                {currentChurch?.name ?? 'Igreja'}
                             </span>
                         </div>
                     </Link>

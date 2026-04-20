@@ -361,7 +361,7 @@ export default function Index({ members, filters }: Props) {
                                 />
                                 <span className="text-sm leading-snug text-zinc-700 dark:text-zinc-200">
                                     <span className="font-semibold text-zinc-900 dark:text-white">Voluntário</span> — serve ou
-                                    irá servir em ministérios. A equipa pode completar departamentos e detalhes em{' '}
+                                    irá servir em ministérios. A equipe pode completar departamentos e detalhes em{' '}
                                     <span className="font-medium">Voluntários</span> quando aplicável.
                                 </span>
                             </label>

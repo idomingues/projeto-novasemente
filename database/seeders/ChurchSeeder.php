@@ -21,10 +21,11 @@ class ChurchSeeder extends Seeder
                     'city' => null,
                     'state' => null,
                     'country' => null,
-                    'description' => 'Primeira igreja a utilizar o sistema New Church.',
+                    'description' => 'Primeira igreja a utilizar o sistema.',
                     'active' => true,
                 ]
             );
+
             return;
         }
 
@@ -35,4 +36,3 @@ class ChurchSeeder extends Seeder
         );
     }
 }
-
