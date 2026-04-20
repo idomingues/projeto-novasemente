@@ -55,7 +55,7 @@ npm run serve
 Abra: **http://localhost:8000**
 
 ## 4. Login
-- **E-mail:** admin@example.com  
+- **E-mail:** ivan@iresult.com.br  
 - **Senha:** admin123  
 
 Se o login falhar, no terminal (na pasta do projeto) rode:

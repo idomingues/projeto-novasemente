@@ -33,7 +33,7 @@ npm run dev           # Vite (frontend)
 
 Usuário admin criado pelo seeder:
 
-- Email: `admin@example.com`
+- Email: `ivan@iresult.com.br`
 - Senha: defina após rodar `php artisan tinker` ou ajuste a factory conforme necessário.
 
 ## Testes

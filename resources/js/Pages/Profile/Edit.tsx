@@ -15,7 +15,9 @@ export default function Edit({
     status,
 }: PageProps<{ mustVerifyEmail: boolean; status?: string }>) {
     const { auth } = usePage().props as { auth?: { permissions?: string[] } };
-    const supportRouteName = route().has('support.index') ? 'support.index' : 'mobile.support.index';
+    const perms = auth?.permissions ?? [];
+    const canAccessSupportAdmin = perms.includes('support.view') || perms.includes('support.manage');
+    const supportRouteName = canAccessSupportAdmin && route().has('support.index') ? 'support.index' : 'mobile.support.index';
     const showPastorsCadastro = canAccessPastorsCadastro(auth?.permissions);
 
     return (

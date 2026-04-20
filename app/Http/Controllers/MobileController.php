@@ -602,11 +602,12 @@ class MobileController extends Controller
                 'videoCount' => $item->video_count,
             ]);
 
-        $user = request()->user();
-
         return Inertia::render('Mobile/AcervoIndex', [
             'items' => $items,
-            'canManage' => $user !== null && $user->can('music.manage'),
+            // Fallback quando não há itens cadastrados.
+            'playlistsUrl' => 'https://www.youtube.com/@advnovasemente/playlists',
+            // No app (Mais) o acervo é apenas leitura; gestão fica no painel (acervo.index).
+            'canManage' => false,
         ]);
     }
 
@@ -702,6 +703,17 @@ class MobileController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
             ],
+        ]);
+    }
+
+    public function profileEdit(Request $request): Response
+    {
+        $user = $request->user();
+        abort_unless($user, 401);
+
+        return Inertia::render('Mobile/ProfileEdit', [
+            'mustVerifyEmail' => $user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail,
+            'status' => session('status'),
         ]);
     }
 }

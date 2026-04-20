@@ -19,12 +19,13 @@ interface AcervoItem {
 
 interface Props {
     items: AcervoItem[];
+    playlistsUrl: string;
     canManage: boolean;
 }
 
 const normalizeForSearch = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
 
-export default function MobileAcervoIndex({ items, canManage }: Props) {
+export default function MobileAcervoIndex({ items, playlistsUrl, canManage }: Props) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
@@ -212,17 +213,34 @@ export default function MobileAcervoIndex({ items, canManage }: Props) {
                         </div>
                     </>
                 ) : (
-                    <div className="rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-700 p-8 text-center">
-                        <PlayCircleIcon className="w-14 h-14 text-zinc-400 mx-auto mb-3" />
-                        <p className="text-zinc-600 dark:text-zinc-400 text-sm mb-4">
-                            Nenhum item no acervo.
-                        </p>
-                        {canManage && (
-                            <PrimaryButton type="button" onClick={openCreateModal} className="gap-2 !normal-case !tracking-normal">
-                                <PlusIcon className="h-5 w-5" />
-                                Adicionar link
-                            </PrimaryButton>
-                        )}
+                    <div className="space-y-4">
+                        <div className="rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 min-h-[520px]">
+                            <iframe
+                                src={playlistsUrl}
+                                title="Playlists do canal ADV Nova Semente"
+                                className="w-full h-[70vh] min-h-[520px] border-0"
+                                sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                                allowFullScreen
+                            />
+                        </div>
+                        <a
+                            href={playlistsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Abrir playlists no YouTube (nova aba)"
+                            className="inline-flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+                        >
+                            Abrir no YouTube
+                            <ArrowTopRightOnSquareIcon className="w-4 h-4" />
+                        </a>
+                        {canManage ? (
+                            <div className="pt-2">
+                                <PrimaryButton type="button" onClick={openCreateModal} className="gap-2 !normal-case !tracking-normal">
+                                    <PlusIcon className="h-5 w-5" />
+                                    Adicionar link
+                                </PrimaryButton>
+                            </div>
+                        ) : null}
                     </div>
                 )}
             </div>

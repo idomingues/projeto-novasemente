@@ -8,7 +8,6 @@ import {
     CalendarDaysIcon,
     Squares2X2Icon,
     ChevronRightIcon,
-    LifebuoyIcon,
     SparklesIcon,
 } from '@heroicons/react/24/outline';
 import Dropdown from '@/Components/Dropdown';
@@ -80,10 +79,8 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
     const showRecentDot = badgeCount === 0 && notifications.length > 0;
     const roleLabel = auth?.roleLabel ?? 'Utilizador';
     const { theme, toggleTheme } = useTheme();
-    const canAccessSupportAdmin =
-        adminSidebarUnrestricted || permissions.includes('support.view') || permissions.includes('support.manage');
-    const supportRouteName =
-        canAccessSupportAdmin && route().has('support.index') ? 'support.index' : 'mobile.support.index';
+    const profileHref =
+        route().current('mobile.*') ? route('mobile.profile') : route().has('profile.edit') ? route('profile.edit') : route('mobile.profile');
 
     return (
         <header className={`bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 h-16 md:h-24 fixed top-0 right-0 left-0 z-40 transition-all duration-300 ${hasSidebar ? 'md:left-72' : ''}`}>
@@ -134,15 +131,6 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
 
                     {user ? (
                         <>
-                            <Link
-                                href={route(supportRouteName)}
-                                className="w-10 h-10 flex items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-colors"
-                                aria-label="Suporte do app"
-                                title="Suporte do app"
-                            >
-                                <LifebuoyIcon className="w-5 h-5" />
-                            </Link>
-
                             <Dropdown>
                                 <Dropdown.Trigger>
                                     <button
@@ -250,7 +238,7 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
                             </Dropdown>
 
                             <Link
-                                href={route('mobile.profile')}
+                                href={profileHref}
                                 className="flex items-center gap-3 pl-4 border-l border-zinc-200 dark:border-zinc-800 focus:outline-none group"
                                 aria-label="Abrir meu perfil"
                                 title="Meu perfil"

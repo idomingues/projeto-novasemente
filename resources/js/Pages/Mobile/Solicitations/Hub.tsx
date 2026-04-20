@@ -203,7 +203,7 @@ export default function Hub({
     const heading = pageTitle ?? 'Solicitações';
     const sub =
         pageSubtitle ??
-        'Batismo, apresentação, visita pastoral. Toque num pedido para editar ou conversar. Para falar com um líder de ministério, use «Falar com líder» em Mais.';
+        'Batismo, apresentação, visita pastoral. Toque num pedido para editar ou conversar. Para falar com um líder de ministério, use «Falar com líder» no seu perfil.';
 
     return (
         <MobileLayout>

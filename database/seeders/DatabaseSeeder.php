@@ -25,15 +25,15 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $user = User::query()->firstOrCreate(
-            ['email' => 'admin@example.com'],
+            ['email' => 'ivan@iresult.com.br'],
             [
-                'name' => 'Admin',
+                'name' => 'Ivan',
                 'password' => 'admin123', // o cast 'hashed' do User já faz o hash
             ]
         );
 
         if (! $user->wasRecentlyCreated) {
-            $user->update(['password' => 'admin123', 'name' => 'Admin']);
+            $user->update(['password' => 'admin123', 'name' => 'Ivan']);
         }
 
         $user->syncRoles(['admin', 'super_admin']);

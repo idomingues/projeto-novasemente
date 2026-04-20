@@ -140,6 +140,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
     const permissions: string[] = auth?.permissions ?? [];
     const isAuthenticated = !!auth?.user;
     const isSuperAdmin = churchesForSwitch.length > 0;
+    const canAccessSupportAdmin = permissions.includes('support.view') || permissions.includes('support.manage');
 
     const isRouteActive = (routeName: string) => route().current(routeName + '*');
 
@@ -199,6 +200,12 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
                     return canAccessAdminMenu || canAccess('members.index');
                 }
                 return canAccess(item.route);
+            }).map((item) => {
+                // Evita 403: item pode aparecer para admin mesmo sem permission middleware alinhado.
+                if (item.route === 'support.index' && !canAccessSupportAdmin) {
+                    return { ...item, route: 'mobile.support.index' };
+                }
+                return item;
             });
 
     return (

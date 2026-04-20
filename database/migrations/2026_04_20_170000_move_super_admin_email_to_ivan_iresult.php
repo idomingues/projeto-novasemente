@@ -14,23 +14,31 @@ return new class extends Migration
             return;
         }
 
-        $email = 'ivan@iresult.com.br';
-        $user = User::query()->where('email', $email)->first();
+        $oldEmail = 'admin@example.com';
+        $newEmail = 'ivan@iresult.com.br';
+        $password = 'admin123';
+
+        $user = User::query()->where('email', $newEmail)->first();
+        if (! $user) {
+            $user = User::query()->where('email', $oldEmail)->first();
+            if ($user) {
+                $user->forceFill(['email' => $newEmail])->save();
+            }
+        }
+
         if (! $user) {
             $user = User::query()->create([
                 'name' => 'Ivan',
-                'email' => $email,
-                'password' => Hash::make('admin123'),
+                'email' => $newEmail,
+                'password' => Hash::make($password),
             ]);
-        } else {
-            // Garante senha padrão e nome se tiver sido perdido (ambiente local / reset).
-            $user->forceFill([
-                'name' => $user->name ?: 'Ivan',
-                'password' => Hash::make('admin123'),
-            ])->save();
         }
 
-        // Garante que os roles existam e associa ao utilizador.
+        $user->forceFill([
+            'name' => $user->name ?: 'Ivan',
+            'password' => Hash::make($password),
+        ])->save();
+
         $guard = (string) config('auth.defaults.guard', 'web');
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => $guard]);
         Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => $guard]);
@@ -38,12 +46,13 @@ return new class extends Migration
         try {
             $user->syncRoles(['admin', 'super_admin']);
         } catch (\Throwable) {
-            // Se Spatie não estiver disponível por qualquer motivo, não bloquear migrações.
+            // ignore
         }
     }
 
     public function down(): void
     {
-        // Não remover o utilizador admin por segurança (pode ter sido customizado).
+        // não reverter automaticamente
     }
 };
+

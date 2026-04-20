@@ -2,9 +2,7 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
 import {
     ClockIcon,
-    PhoneIcon,
-    BellAlertIcon,
-    ClipboardDocumentListIcon,
+    MapPinIcon,
     PlayCircleIcon,
     AcademicCapIcon,
     MusicalNoteIcon,
@@ -12,8 +10,6 @@ import {
     BookOpenIcon,
     UserGroupIcon,
     UserCircleIcon,
-    MapPinIcon,
-    InboxIcon,
     UserPlusIcon,
     FilmIcon,
     HandRaisedIcon,
@@ -35,15 +31,10 @@ interface Props {
 const PASTORAL_ROUTE = 'mobile.pastoral-appointments.request' as const;
 
 const items: MoreMenuItem[] = [
-    { name: 'Quem somos', description: 'História e significado do nome', route: 'mobile.quem-somos', icon: UserGroupIcon },
-    { name: 'Nossas crenças', description: '28 princípios de fé (IASD)', route: 'mobile.beliefs', icon: BookOpenIcon },
-    { name: 'Nossos pastores', description: 'Conheça a equipe pastoral', route: 'mobile.pastors', icon: UserCircleIcon },
-    { name: 'Escala', description: 'Escala de voluntários', route: 'varios.schedule', icon: ClipboardDocumentListIcon },
-    { name: 'Cultos e horários', description: 'Dias e horários dos cultos', route: 'mobile.services', icon: ClockIcon },
-    { name: 'Culto', description: 'Vídeos do culto online', route: 'mobile.culto', icon: FilmIcon },
     { name: 'Dízimos e Ofertas', description: 'Contribuições e ofertas', route: 'mobile.offerings', icon: HandRaisedIcon },
-    { name: 'Classe Começos', description: 'Estudo bíblico presencial ou on-line', route: 'varios.classe-comecos', icon: AcademicCapIcon },
+    { name: 'Culto', description: 'Vídeos do culto online', route: 'mobile.culto', icon: FilmIcon },
     { name: 'Música', description: 'Vídeos de música no YouTube', route: 'musica.index', icon: MusicalNoteIcon },
+    { name: 'Cultos e horários', description: 'Dias e horários dos cultos', route: 'mobile.services', icon: ClockIcon },
     {
         name: 'Fotos',
         description: 'Álbum de fotos (Google Drive)',
@@ -51,20 +42,17 @@ const items: MoreMenuItem[] = [
         icon: PhotoIcon,
     },
     { name: 'Localização', description: 'Endereço e mapa da igreja', route: 'mobile.location', icon: MapPinIcon },
+    { name: 'Nossos pastores', description: 'Conheça a equipe pastoral', route: 'mobile.pastors', icon: UserCircleIcon },
+    { name: 'Quem somos', description: 'História e significado do nome', route: 'mobile.quem-somos', icon: UserGroupIcon },
+    { name: 'Em que acreditamos', description: '28 princípios de fé (IASD)', route: 'mobile.beliefs', icon: BookOpenIcon },
+    {
+        name: 'Cadastro de voluntário',
+        description: 'Quero servir em ministérios (formulário completo)',
+        route: 'volunteers.public-signup.page',
+        icon: UserPlusIcon,
+    },
     { name: 'Acervo', description: 'Playlists do YouTube da Nova Semente', route: 'mobile.acervo', icon: PlayCircleIcon },
-    {
-        name: 'Falar com líder',
-        description: 'Conversa com líder de ministério',
-        route: 'mobile.contact',
-        icon: PhoneIcon,
-    },
-    { name: 'Notificações', description: 'Avisos de eventos e notícias', route: 'varios.notifications', icon: BellAlertIcon },
-    {
-        name: 'Solicitações',
-        description: 'Batismo, apresentação, visita, estudo, outros',
-        route: 'mobile.solicitations.hub',
-        icon: InboxIcon,
-    },
+    { name: 'Classe Começos', description: 'Estudo bíblico presencial ou on-line', route: 'varios.classe-comecos', icon: AcademicCapIcon },
 ];
 
 export default function MoreIndex(_: Props) {
@@ -77,9 +65,16 @@ export default function MoreIndex(_: Props) {
             <div className="space-y-6">
                 <div>
                     <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-zinc-900 dark:text-white">Mais</h1>
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
-                        Acesso rápido a cultos, contato, oração e notificações.
-                    </p>
+                    <div className="mt-1 space-y-1">
+                        <p className="text-sm font-semibold text-zinc-900 dark:text-white">Outras funcionalidades</p>
+                        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                            Para acessar todas as funcionalidades do nosso app,{' '}
+                            <Link href={route('register')} className="font-semibold underline">
+                                faça seu cadastro aqui
+                            </Link>
+                            .
+                        </p>
+                    </div>
                 </div>
 
                 {authUser ? (
@@ -95,25 +90,6 @@ export default function MoreIndex(_: Props) {
                         </Link>
                     </div>
                 ) : null}
-
-                <Link
-                    href={route('volunteers.public-signup.page')}
-                    className="block rounded-2xl border border-zinc-300 dark:border-zinc-600 bg-zinc-50 dark:bg-zinc-900/70 p-6 shadow-sm hover:bg-white dark:hover:bg-zinc-900 hover:border-zinc-400 dark:hover:border-zinc-500 transition-colors"
-                >
-                    <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-zinc-900 dark:bg-white">
-                            <UserPlusIcon className="w-6 h-6 text-white dark:text-zinc-900" aria-hidden />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                            <h2 className="text-lg font-bold text-zinc-900 dark:text-white leading-tight">
-                                Cadastro de voluntário
-                            </h2>
-                            <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
-                                Quero servir em ministérios (formulário completo)
-                            </p>
-                        </div>
-                    </div>
-                </Link>
 
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {items.map((item) => {

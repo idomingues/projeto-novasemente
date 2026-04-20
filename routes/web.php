@@ -94,6 +94,9 @@ Route::get('/mobile/notifications', [MobileController::class, 'notifications'])-
 Route::get('/mobile/profile', [MobileController::class, 'profile'])
     ->middleware('auth')
     ->name('mobile.profile');
+Route::get('/mobile/perfil/editar', [MobileController::class, 'profileEdit'])
+    ->middleware('auth')
+    ->name('mobile.profile.edit');
 Route::get('/mobile/escala/checkin', [MobileController::class, 'scheduleCheckin'])
     ->middleware('auth')
     ->name('mobile.schedule.checkin');
@@ -393,15 +396,15 @@ Route::middleware('auth')->group(function () {
     Route::put('/app-versions/{appVersion}', [AppVersionController::class, 'update'])->name('app-versions.update');
     Route::delete('/app-versions/{appVersion}', [AppVersionController::class, 'destroy'])->name('app-versions.destroy');
 
-    // Igrejas — apenas super admin (via permission churches.manage)
-    Route::get('/churches', [ChurchController::class, 'index'])->name('churches.index')->middleware('permission:churches.manage');
-    Route::post('/churches', [ChurchController::class, 'store'])->name('churches.store')->middleware('permission:churches.manage');
-    Route::put('/churches/{church}', [ChurchController::class, 'update'])->name('churches.update')->middleware('permission:churches.manage');
-    Route::delete('/churches/{church}', [ChurchController::class, 'destroy'])->name('churches.destroy')->middleware('permission:churches.manage');
-    Route::get('/churches/{church}/services', [\App\Http\Controllers\ChurchServiceController::class, 'index'])->name('churches.services.index')->middleware('permission:churches.manage');
-    Route::post('/churches/{church}/services', [\App\Http\Controllers\ChurchServiceController::class, 'store'])->name('churches.services.store')->middleware('permission:churches.manage');
-    Route::put('/churches/{church}/services/{service}', [\App\Http\Controllers\ChurchServiceController::class, 'update'])->name('churches.services.update')->middleware('permission:churches.manage');
-    Route::delete('/churches/{church}/services/{service}', [\App\Http\Controllers\ChurchServiceController::class, 'destroy'])->name('churches.services.destroy')->middleware('permission:churches.manage');
+    // Igrejas — apenas super admin
+    Route::get('/churches', [ChurchController::class, 'index'])->name('churches.index')->middleware('role:super_admin');
+    Route::post('/churches', [ChurchController::class, 'store'])->name('churches.store')->middleware('role:super_admin');
+    Route::put('/churches/{church}', [ChurchController::class, 'update'])->name('churches.update')->middleware('role:super_admin');
+    Route::delete('/churches/{church}', [ChurchController::class, 'destroy'])->name('churches.destroy')->middleware('role:super_admin');
+    Route::get('/churches/{church}/services', [\App\Http\Controllers\ChurchServiceController::class, 'index'])->name('churches.services.index')->middleware('role:super_admin');
+    Route::post('/churches/{church}/services', [\App\Http\Controllers\ChurchServiceController::class, 'store'])->name('churches.services.store')->middleware('role:super_admin');
+    Route::put('/churches/{church}/services/{service}', [\App\Http\Controllers\ChurchServiceController::class, 'update'])->name('churches.services.update')->middleware('role:super_admin');
+    Route::delete('/churches/{church}/services/{service}', [\App\Http\Controllers\ChurchServiceController::class, 'destroy'])->name('churches.services.destroy')->middleware('role:super_admin');
 });
 
 require __DIR__.'/auth.php';

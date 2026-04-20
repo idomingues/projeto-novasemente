@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Hash;
 
 class ResetAdminPassword extends Command
 {
-    protected $signature = 'admin:reset-password {email=admin@example.com} {password=admin123}';
+    protected $signature = 'admin:reset-password {email=ivan@iresult.com.br} {password=admin123}';
 
     protected $description = 'Redefine a senha do usuário admin (para recuperar acesso).';
 
