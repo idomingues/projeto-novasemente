@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class ChurchSolicitation extends Model
 {
     protected $fillable = [
+        'church_id',
         'user_id',
         'type',
         'status',
@@ -34,6 +35,11 @@ class ChurchSolicitation extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function church(): BelongsTo
+    {
+        return $this->belongsTo(Church::class);
     }
 
     public function assignedPastor(): BelongsTo

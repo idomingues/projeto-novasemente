@@ -83,6 +83,7 @@ class MobileChurchSolicitationController extends Controller
         $mySolicitations = [];
         if ($user) {
             $mySolicitations = ChurchSolicitation::query()
+                ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
                 ->where('user_id', $user->id)
                 ->whereIn('type', self::HUB_TYPES)
                 ->with(['assignedPastor:id,name', 'assignedVolunteer.user:id,name'])
@@ -138,6 +139,7 @@ class MobileChurchSolicitationController extends Controller
         $hubUrl = route('mobile.baptism');
 
         $mySolicitations = ChurchSolicitation::query()
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->where('user_id', $user->id)
             ->where('type', 'baptism')
             ->with(['assignedPastor:id,name', 'assignedVolunteer.user:id,name'])
@@ -194,6 +196,7 @@ class MobileChurchSolicitationController extends Controller
         abort_unless($user, 401);
 
         $churchId = $this->currentChurchId($request);
+        $effectiveChurchId = $churchId ?? (int) ($user->church_id ?? 0) ?: (int) (Church::query()->orderByDesc('active')->orderBy('name')->value('id') ?? 0);
         SolicitationAssignees::normalizeAssignmentRequest($request);
 
         $valid = $request->validate(array_merge([
@@ -214,6 +217,7 @@ class MobileChurchSolicitationController extends Controller
         $volunteerId = $valid['assigned_volunteer_id'] ?? null;
 
         $solicitation = ChurchSolicitation::create([
+            'church_id' => $effectiveChurchId ?: null,
             'user_id' => $user->id,
             'type' => $valid['type'],
             'status' => 'pending',

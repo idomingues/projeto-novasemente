@@ -37,6 +37,12 @@ class ChurchSolicitationPolicy
 
     public function view(User $user, ChurchSolicitation $solicitation): bool
     {
+        if ($solicitation->church_id !== null && $user->church_id !== null) {
+            if ((int) $solicitation->church_id !== (int) $user->church_id && ! $user->hasRole('super_admin')) {
+                return false;
+            }
+        }
+
         if ((int) $solicitation->user_id === (int) $user->id) {
             return true;
         }

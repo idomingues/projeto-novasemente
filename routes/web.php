@@ -38,7 +38,7 @@ use Inertia\Inertia;
 Route::get('/favicon.svg', FaviconController::class)->name('favicon');
 
 Route::get('/', function () {
-    return redirect()->route('mobile.news');
+    return redirect()->route('mobile.index');
 });
 
 Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'verified'])->name('dashboard');
@@ -91,6 +91,9 @@ Route::get('/mobile/localizacao', [MobileController::class, 'location'])->name('
 Route::get('/mobile/pastores', [MobileController::class, 'pastors'])->name('mobile.pastors');
 Route::get('/mobile/offerings', [MobileController::class, 'offerings'])->name('mobile.offerings');
 Route::get('/mobile/notifications', [MobileController::class, 'notifications'])->name('mobile.notifications');
+Route::get('/mobile/profile', [MobileController::class, 'profile'])
+    ->middleware('auth')
+    ->name('mobile.profile');
 Route::get('/mobile/escala/checkin', [MobileController::class, 'scheduleCheckin'])
     ->middleware('auth')
     ->name('mobile.schedule.checkin');

@@ -16,8 +16,10 @@ class MobileLeaderSolicitationController extends Controller
     {
         $user = $request->user();
         abort_unless($user, 401);
+        $churchId = \App\Models\Church::resolveWorkingId($request);
 
         $rows = ChurchSolicitation::query()
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->where('type', 'leader_chat')
             ->whereHas('assignedVolunteer', fn ($q) => $q->where('user_id', $user->id))
             ->with('user:id,name')

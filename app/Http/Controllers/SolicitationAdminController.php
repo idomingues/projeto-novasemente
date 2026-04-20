@@ -125,6 +125,7 @@ class SolicitationAdminController extends Controller
     {
         $user = $request->user();
         abort_unless($user && $this->canView($user), 403);
+        $churchId = Church::resolveWorkingId($request);
         $kind = $request->query('kind');
         $kindStr = is_string($kind) ? $kind : '';
         $type = $request->query('type');
@@ -136,6 +137,9 @@ class SolicitationAdminController extends Controller
                 'assignedPastor:id,name',
                 'assignedVolunteer.user:id,name',
             ]);
+            if ($churchId !== null) {
+                $query->where('church_id', $churchId);
+            }
 
             if ($kindStr === 'solicitation' && is_string($type) && $type !== '') {
                 $query->where('type', $type);
@@ -243,7 +247,11 @@ class SolicitationAdminController extends Controller
                 }
             }
             if (($modalKind === null || $modalKind === '' || $modalKind === 'solicitation') && $this->canView($user)) {
-                $modal = ChurchSolicitation::query()->find((int) $modalId);
+                $modalQuery = ChurchSolicitation::query();
+                if ($churchId !== null) {
+                    $modalQuery->where('church_id', $churchId);
+                }
+                $modal = $modalQuery->find((int) $modalId);
                 if ($modal) {
                     $modalDetail = [
                         'kind' => 'solicitation',
@@ -256,7 +264,11 @@ class SolicitationAdminController extends Controller
         if ($modalDetail === null) {
             $legacyModal = $request->query('modal');
             if (is_string($legacyModal) && $legacyModal !== '' && ctype_digit($legacyModal) && $this->canView($user)) {
-                $modal = ChurchSolicitation::query()->find((int) $legacyModal);
+                $modalQuery = ChurchSolicitation::query();
+                if ($churchId !== null) {
+                    $modalQuery->where('church_id', $churchId);
+                }
+                $modal = $modalQuery->find((int) $legacyModal);
                 if ($modal) {
                     $modalDetail = [
                         'kind' => 'solicitation',
@@ -306,6 +318,7 @@ class SolicitationAdminController extends Controller
     {
         $user = $request->user();
         abort_unless($user && $this->canView($user), 403);
+        $churchId = Church::resolveWorkingId($request);
 
         $query = ChurchSolicitation::query()
             ->where('type', 'baptism')
@@ -314,6 +327,9 @@ class SolicitationAdminController extends Controller
                 'assignedPastor:id,name',
                 'assignedVolunteer.user:id,name',
             ]);
+        if ($churchId !== null) {
+            $query->where('church_id', $churchId);
+        }
 
         $status = $request->query('status');
         if (is_string($status) && $status !== '') {
@@ -357,7 +373,11 @@ class SolicitationAdminController extends Controller
         $modalId = $request->query('modal_id');
         if (is_string($modalId) && $modalId !== '' && ctype_digit($modalId) && $this->canView($user)) {
             if (($modalKind === null || $modalKind === '' || $modalKind === 'solicitation')) {
-                $modal = ChurchSolicitation::query()->where('type', 'baptism')->find((int) $modalId);
+                $modalQuery = ChurchSolicitation::query()->where('type', 'baptism');
+                if ($churchId !== null) {
+                    $modalQuery->where('church_id', $churchId);
+                }
+                $modal = $modalQuery->find((int) $modalId);
                 if ($modal) {
                     $modalDetail = [
                         'kind' => 'solicitation',
@@ -370,7 +390,11 @@ class SolicitationAdminController extends Controller
         if ($modalDetail === null) {
             $legacyModal = $request->query('modal');
             if (is_string($legacyModal) && $legacyModal !== '' && ctype_digit($legacyModal) && $this->canView($user)) {
-                $modal = ChurchSolicitation::query()->where('type', 'baptism')->find((int) $legacyModal);
+                $modalQuery = ChurchSolicitation::query()->where('type', 'baptism');
+                if ($churchId !== null) {
+                    $modalQuery->where('church_id', $churchId);
+                }
+                $modal = $modalQuery->find((int) $legacyModal);
                 if ($modal) {
                     $modalDetail = [
                         'kind' => 'solicitation',

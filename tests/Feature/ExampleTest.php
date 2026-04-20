@@ -10,12 +10,12 @@ class ExampleTest extends TestCase
     use RefreshDatabase;
 
     /**
-     * A raiz da app redireciona para Notícias (menu principal mobile).
+     * A raiz da app redireciona para o Splash do mobile.
      */
     public function test_the_application_returns_a_successful_response(): void
     {
         $response = $this->get('/');
 
-        $response->assertRedirect(route('mobile.news', absolute: false));
+        $response->assertRedirect(route('mobile.index', absolute: false));
     }
 }

@@ -48,11 +48,11 @@ export default function MobileSupport({ tickets, isAuthenticated }: Props) {
         guest_phone: '',
     });
 
-    const [selectedTypeLabel, setSelectedTypeLabel] = useState<string>('Problema');
+    const [selectedTypeLabel, setSelectedTypeLabel] = useState<string>('Relatar problema');
 
     const onChangeType = (v: 'problem' | 'suggestion' | 'praise') => {
         setData('type', v);
-        setSelectedTypeLabel(v === 'problem' ? 'Problema' : v === 'suggestion' ? 'Sugestão' : 'Elogio');
+        setSelectedTypeLabel(v === 'problem' ? 'Relatar problema' : v === 'suggestion' ? 'Enviar sugestão' : 'Enviar elogio');
     };
 
     const openModal = () => {
@@ -86,7 +86,7 @@ export default function MobileSupport({ tickets, isAuthenticated }: Props) {
                         </Link>
                         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Suporte do app</h1>
                         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                            Acompanhe os chamados ou envie um <span className="font-semibold">{selectedTypeLabel}</span>.
+                            Relate um problema, envie uma sugestão ou deixe seu elogio.
                         </p>
                         {!isAuthenticated && (
                             <p className="text-xs text-amber-800 dark:text-amber-200/90">
@@ -165,7 +165,7 @@ export default function MobileSupport({ tickets, isAuthenticated }: Props) {
                                         onChange={() => onChangeType('problem')}
                                         className="mt-1"
                                     />
-                                    <span className="text-sm text-zinc-900 dark:text-zinc-100">Problema</span>
+                                    <span className="text-sm text-zinc-900 dark:text-zinc-100">Relatar problema</span>
                                 </label>
                                 <label className="flex cursor-pointer items-start gap-2">
                                     <input
@@ -174,7 +174,7 @@ export default function MobileSupport({ tickets, isAuthenticated }: Props) {
                                         onChange={() => onChangeType('suggestion')}
                                         className="mt-1"
                                     />
-                                    <span className="text-sm text-zinc-900 dark:text-zinc-100">Sugestão</span>
+                                    <span className="text-sm text-zinc-900 dark:text-zinc-100">Enviar sugestão</span>
                                 </label>
                                 <label className="flex cursor-pointer items-start gap-2">
                                     <input
@@ -183,7 +183,7 @@ export default function MobileSupport({ tickets, isAuthenticated }: Props) {
                                         onChange={() => onChangeType('praise')}
                                         className="mt-1"
                                     />
-                                    <span className="text-sm text-zinc-900 dark:text-zinc-100">Elogio</span>
+                                    <span className="text-sm text-zinc-900 dark:text-zinc-100">Enviar elogio</span>
                                 </label>
                             </div>
                             <InputError message={errors.type} className="mt-1" />

@@ -58,7 +58,12 @@ interface AuthUser {
 }
 
 type PageProps = {
-    auth: { user?: AuthUser | null; roleLabel?: string };
+    auth: {
+        user?: AuthUser | null;
+        roleLabel?: string;
+        permissions?: string[];
+        adminSidebarUnrestricted?: boolean;
+    };
     recentNotifications?: NotificationItem[];
     unreadInboxNotificationsCount?: number;
 };
@@ -66,6 +71,8 @@ type PageProps = {
 export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) {
     const { auth, recentNotifications = [], unreadInboxNotificationsCount = 0 } = usePage().props as PageProps;
     const user = auth?.user ?? null;
+    const permissions = auth?.permissions ?? [];
+    const adminSidebarUnrestricted = auth?.adminSidebarUnrestricted === true;
     const notifications = Array.isArray(recentNotifications) ? recentNotifications : [];
     const unread = typeof unreadInboxNotificationsCount === 'number' ? unreadInboxNotificationsCount : 0;
     /** Número no sino: notificações de caixa por ler (servidor). */
@@ -73,7 +80,10 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
     const showRecentDot = badgeCount === 0 && notifications.length > 0;
     const roleLabel = auth?.roleLabel ?? 'Utilizador';
     const { theme, toggleTheme } = useTheme();
-    const supportRouteName = route().has('support.index') ? 'support.index' : 'mobile.support.index';
+    const canAccessSupportAdmin =
+        adminSidebarUnrestricted || permissions.includes('support.view') || permissions.includes('support.manage');
+    const supportRouteName =
+        canAccessSupportAdmin && route().has('support.index') ? 'support.index' : 'mobile.support.index';
 
     return (
         <header className={`bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 h-16 md:h-24 fixed top-0 right-0 left-0 z-40 transition-all duration-300 ${hasSidebar ? 'md:left-72' : ''}`}>
@@ -239,32 +249,20 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
                                 </Dropdown.Content>
                             </Dropdown>
 
-                            <div className="relative">
-                                <Dropdown>
-                                    <Dropdown.Trigger>
-                                        <button
-                                            type="button"
-                                            className="flex items-center gap-3 pl-4 border-l border-zinc-200 dark:border-zinc-800 focus:outline-none group"
-                                        >
-                                            <div className="text-right hidden sm:block">
-                                                <p className="text-sm font-medium text-zinc-900 dark:text-white group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors">{user.name}</p>
-                                                <p className="text-xs text-zinc-500">{roleLabel}</p>
-                                            </div>
-                                            <div className="w-10 h-10 rounded-full bg-zinc-900 dark:bg-white flex items-center justify-center text-white dark:text-black font-bold text-sm ring-4 ring-zinc-100 dark:ring-zinc-900 group-hover:ring-zinc-200 dark:group-hover:ring-zinc-800 transition-all">
-                                                {user.name.charAt(0).toUpperCase()}
-                                            </div>
-                                        </button>
-                                    </Dropdown.Trigger>
-
-                                    <Dropdown.Content contentClasses="py-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300">
-                                        <Dropdown.Link href={route(supportRouteName)} className="hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white">Suporte do app</Dropdown.Link>
-                                        <Dropdown.Link href={route('profile.edit')} className="hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white">Perfil</Dropdown.Link>
-                                        <Dropdown.Link href={route('logout')} method="post" as="button" className="hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white">
-                                            Sair
-                                        </Dropdown.Link>
-                                    </Dropdown.Content>
-                                </Dropdown>
-                            </div>
+                            <Link
+                                href={route('mobile.profile')}
+                                className="flex items-center gap-3 pl-4 border-l border-zinc-200 dark:border-zinc-800 focus:outline-none group"
+                                aria-label="Abrir meu perfil"
+                                title="Meu perfil"
+                            >
+                                <div className="text-right hidden sm:block">
+                                    <p className="text-sm font-medium text-zinc-900 dark:text-white group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors">{user.name}</p>
+                                    <p className="text-xs text-zinc-500">{roleLabel}</p>
+                                </div>
+                                <div className="w-10 h-10 rounded-full bg-zinc-900 dark:bg-white flex items-center justify-center text-white dark:text-black font-bold text-sm ring-4 ring-zinc-100 dark:ring-zinc-900 group-hover:ring-zinc-200 dark:group-hover:ring-zinc-800 transition-all">
+                                    {user.name.charAt(0).toUpperCase()}
+                                </div>
+                            </Link>
                         </>
                     ) : (
                         <Link

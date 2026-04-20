@@ -481,6 +481,7 @@ class MobileController extends Controller
 
         $contactUrl = route('mobile.contact');
         $myLeaderChats = ChurchSolicitation::query()
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->where('user_id', $user->id)
             ->where('type', 'leader_chat')
             ->with(['assignedPastor:id,name', 'assignedVolunteer.user:id,name'])
@@ -536,6 +537,7 @@ class MobileController extends Controller
             ->firstOrFail();
 
         $solicitation = ChurchSolicitation::create([
+            'church_id' => (int) $churchId,
             'user_id' => $user->id,
             'type' => 'leader_chat',
             'status' => 'pending',
@@ -683,6 +685,23 @@ class MobileController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
             ] : null,
+        ]);
+    }
+
+    public function profile(Request $request): Response
+    {
+        $church = $this->currentChurch();
+        $user = $request->user();
+        abort_unless($user, 401);
+
+        return Inertia::render('Mobile/Profile', [
+            'church' => $church ? [
+                'name' => $church->name,
+            ] : null,
+            'user' => [
+                'name' => $user->name,
+                'email' => $user->email,
+            ],
         ]);
     }
 }

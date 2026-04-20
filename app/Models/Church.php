@@ -69,6 +69,14 @@ class Church extends Model
             }
         }
 
-        return static::where('active', true)->orderBy('name')->value('id');
+        $activeId = static::where('active', true)->orderBy('name')->value('id');
+        if ($activeId) {
+            return (int) $activeId;
+        }
+
+        // Fallback: se nenhuma igreja estiver marcada como ativa, usa a primeira cadastrada.
+        $anyId = static::orderBy('id')->value('id');
+
+        return $anyId ? (int) $anyId : null;
     }
 }

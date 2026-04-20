@@ -35,7 +35,15 @@ class PastoralAgendaController extends Controller
         abort_unless($user, 401);
 
         $churchId = Church::resolveWorkingId($request);
-        abort_unless($churchId, 404, 'Nenhuma igreja ativa.');
+        if (! $churchId) {
+            $canManageChurches = $user->hasAnyRole(['super_admin', 'admin']) || $user->hasPermissionTo('churches.manage');
+
+            return Inertia::render('PastoralAgenda/NeedsChurch', [
+                'canManageChurches' => $canManageChurches,
+                'churchesIndexUrl' => $canManageChurches ? route('churches.index') : null,
+                'pastoralModuleNavUrl' => $this->pastoralModuleNavUrl($user),
+            ]);
+        }
 
         $pastorQuery = $request->query('pastor');
         $pastorIdFromQuery = is_string($pastorQuery) && $pastorQuery !== '' && ctype_digit($pastorQuery)
