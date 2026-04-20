@@ -1,4 +1,5 @@
 import Checkbox from '@/Components/Checkbox';
+import GuestAppBar from '@/Components/GuestAppBar';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -79,9 +80,13 @@ export default function Register({ invitation, ministryOptions = [] }: Props) {
 
     const errClass = (field: string) => (fieldError(field) ? 'border-red-500 focus:border-red-600 focus:ring-red-500/25' : '');
 
+    const showVolunteerDepartments = !invitation && data.already_volunteer && ministryOptions.length > 0;
+    const showVolunteerNoMinistriesHint = !invitation && data.already_volunteer && ministryOptions.length === 0;
+
     return (
         <GuestLayout>
-            <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 py-10 sm:max-w-lg sm:py-14">
+            <GuestAppBar />
+            <main className="mx-auto w-full max-w-md flex-1 px-4 pb-12 pt-[calc(3.5rem+env(safe-area-inset-top,0px)+1.5rem)] sm:max-w-lg sm:px-6 sm:pb-16">
                 <Head title={invitation ? 'Cadastro por convite' : 'Criar conta'} />
 
                 {invitation ? (
@@ -92,10 +97,10 @@ export default function Register({ invitation, ministryOptions = [] }: Props) {
                     </p>
                 ) : (
                     <div className="mb-8 space-y-3">
-                        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-white">
+                        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
                             Cadastro para uso completo do app
                         </h1>
-                        <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                        <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400 sm:text-base">
                             Preencha nome, e-mail e senha. Com a conta você poderá usar o agendamento pastoral, falar com
                             seu líder ou realizar solicitações diversas.
                         </p>
@@ -234,34 +239,35 @@ export default function Register({ invitation, ministryOptions = [] }: Props) {
 
                     {!invitation ? (
                         <div className="rounded-xl border border-zinc-200 bg-zinc-50/90 p-4 dark:border-zinc-700 dark:bg-zinc-800/40 space-y-4">
+                            <p className="text-sm font-semibold text-zinc-900 dark:text-white">Voluntariado</p>
                             <label className="flex cursor-pointer items-start gap-3">
                                 <Checkbox
                                     name="already_volunteer"
                                     checked={data.already_volunteer}
                                     onChange={(e) => {
                                         const checked = e.target.checked;
-                                        setData('already_volunteer', checked);
                                         if (!checked) {
                                             setData('volunteer_ministry_ids', []);
+                                            setData('already_volunteer', false);
+                                        } else {
+                                            setData('already_volunteer', true);
                                         }
                                     }}
                                 />
                                 <span className="text-sm leading-snug text-zinc-700 dark:text-zinc-200">
-                                    <span className="font-semibold text-zinc-900 dark:text-white">Já sou voluntário</span> na
-                                    igreja (a equipe já me tem no cadastro de voluntários). Ao marcar, ligamos a sua conta ao
-                                    registo existente pelo e-mail.
+                                    <span className="font-semibold text-zinc-900 dark:text-white">Já sou voluntário</span> no
+                                    cadastro da equipe (ligamos a conta ao registo existente pelo e-mail, se existir). Indique
+                                    abaixo em que departamentos participa para a escala.
                                 </span>
                             </label>
                             <InputError message={fieldError('already_volunteer')} className="mt-2" />
-                            {data.already_volunteer && ministryOptions.length > 0 ? (
+                            {showVolunteerDepartments ? (
                                 <div className="border-t border-zinc-200 pt-4 dark:border-zinc-600 space-y-2">
-                                    <p className="text-sm font-semibold text-zinc-900 dark:text-white">
-                                        Departamentos em que serve
-                                    </p>
+                                    <p className="text-sm font-semibold text-zinc-900 dark:text-white">Departamentos</p>
                                     <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                        Esta informação ajuda os líderes a incluí-lo nas escalas.
+                                        Marque todos em que participa — ajuda os líderes a incluí-lo nas escalas.
                                     </p>
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                                         {ministryOptions.map((m) => (
                                             <label key={m.id} className="flex cursor-pointer items-start gap-3">
                                                 <Checkbox
@@ -285,7 +291,7 @@ export default function Register({ invitation, ministryOptions = [] }: Props) {
                                     <InputError message={fieldError('volunteer_ministry_ids')} className="mt-1" />
                                 </div>
                             ) : null}
-                            {data.already_volunteer && ministryOptions.length === 0 ? (
+                            {showVolunteerNoMinistriesHint ? (
                                 <p className="text-xs text-amber-700 dark:text-amber-300 border-t border-zinc-200 pt-3 dark:border-zinc-600">
                                     Ainda não há departamentos configurados nesta igreja. A secretaria pode associá-lo aos
                                     ministérios depois.
@@ -299,7 +305,7 @@ export default function Register({ invitation, ministryOptions = [] }: Props) {
                     <div className="flex flex-col gap-4 pt-2 sm:flex-row sm:items-center sm:justify-between">
                         <Link
                             href={route('login')}
-                            className="order-2 text-center text-sm text-zinc-600 underline decoration-zinc-400 underline-offset-4 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 sm:order-1 sm:text-left"
+                            className="order-2 text-center text-sm text-zinc-600 underline decoration-zinc-400 underline-offset-4 hover:text-zinc-900 dark:text-zinc-600 dark:hover:text-zinc-900 sm:order-1 sm:text-left"
                         >
                             Já tem conta? Entrar
                         </Link>
@@ -312,7 +318,7 @@ export default function Register({ invitation, ministryOptions = [] }: Props) {
                         </PrimaryButton>
                     </div>
                 </form>
-            </div>
+            </main>
         </GuestLayout>
     );
 }

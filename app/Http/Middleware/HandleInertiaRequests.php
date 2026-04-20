@@ -86,6 +86,8 @@ class HandleInertiaRequests extends Middleware
         }
 
         $appLogoUrl = Church::where('active', true)->orderBy('name')->first()?->logo_url;
+        /** URL absoluta do logo padrão (evita `/logo-ns.png` em dev com APP_URL em subpasta, ex.: XAMPP/htdocs/...). */
+        $defaultBrandLogoUrl = asset('logo-ns.png');
         $appName = ($currentChurch ? $currentChurch['name'] : null) ?? Church::where('active', true)->orderBy('name')->value('name') ?? config('app.name');
         $faviconUrl = ($currentChurch ? $currentChurch['logo_url'] : null) ?? $appLogoUrl;
 
@@ -196,6 +198,7 @@ class HandleInertiaRequests extends Middleware
             'appVersionHistory' => $appVersionHistory,
             'appUrl' => $request->getSchemeAndHttpHost(),
             'appLogoUrl' => $appLogoUrl,
+            'defaultBrandLogoUrl' => $defaultBrandLogoUrl,
             'appName' => $appName,
             'faviconUrl' => $faviconUrl,
             'auth' => [

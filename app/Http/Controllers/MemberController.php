@@ -8,6 +8,7 @@ use App\Domain\Users\Actions\UpdateChurchUserProfile;
 use App\Http\Requests\StoreMemberRequest;
 use App\Http\Requests\UpdateMemberRequest;
 use App\Models\Church;
+use App\Models\Ministry;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -35,6 +36,7 @@ class MemberController extends Controller
         $churchId = $this->currentChurchId($request);
 
         $query = User::query()
+            ->with(['volunteerProfile.ministries'])
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId));
 
@@ -48,8 +50,23 @@ class MemberController extends Controller
 
         $users = $query->orderByDesc('created_at')->paginate(10)->withQueryString();
 
+        $ministryOptions = [];
+        if ($churchId !== null) {
+            $ministryOptions = Ministry::query()
+                ->where('church_id', $churchId)
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(fn (Ministry $m) => ['id' => (int) $m->id, 'name' => (string) $m->name])
+                ->values()
+                ->all();
+        }
+
         return Inertia::render('Members/Index', [
             'members' => $users->through(function (User $user) {
+                $volunteerMinistryIds = $user->volunteerProfile
+                    ? $user->volunteerProfile->ministries()->pluck('ministries.id')->map(fn ($id) => (int) $id)->values()->all()
+                    : [];
+
                 return [
                     'id' => $user->id,
                     'name' => $user->name,
@@ -59,6 +76,7 @@ class MemberController extends Controller
                     'address' => $user->address,
                     'status' => $user->status ?? 'active',
                     'is_volunteer' => (bool) ($user->is_volunteer ?? false),
+                    'volunteer_ministry_ids' => $volunteerMinistryIds,
                     'photo_url' => $user->photo_url,
                     'notify_via_app' => (bool) ($user->notify_via_app ?? true),
                     'notify_via_email' => (bool) ($user->notify_via_email ?? true),
@@ -67,6 +85,7 @@ class MemberController extends Controller
                     'created_at' => $user->created_at->toIso8601String(),
                 ];
             }),
+            'ministryOptions' => $ministryOptions,
             'filters' => [
                 'search' => $search,
             ],

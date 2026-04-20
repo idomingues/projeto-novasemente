@@ -1,10 +1,10 @@
-import GuestLayout from '@/Layouts/GuestLayout';
+import MobileLayout from '@/Layouts/MobileLayout';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
-import ApplicationLogo from '@/Components/ApplicationLogo';
 import { Head, Link, useForm } from '@inertiajs/react';
+import { UserPlusIcon } from '@heroicons/react/24/outline';
 import axios from 'axios';
 import { FormEventHandler, useCallback, useMemo, useRef, useState } from 'react';
 
@@ -16,7 +16,6 @@ interface Ministry {
 interface Props {
     token: string;
     churchName: string;
-    churchLogoUrl: string | null;
     ministries: Ministry[];
 }
 
@@ -89,7 +88,7 @@ function ChoiceCard<T extends string | boolean>({
     );
 }
 
-export default function PublicSignup({ token, churchName, churchLogoUrl, ministries }: Props) {
+export default function PublicSignup({ token, churchName, ministries }: Props) {
     const { data, setData, post, processing, errors, reset } = useForm({
         token,
         full_name: '',
@@ -281,32 +280,32 @@ export default function PublicSignup({ token, churchName, churchLogoUrl, ministr
     const noMinistries = ministries.length === 0;
 
     return (
-        <GuestLayout>
+        <MobileLayout>
             <Head title={`Cadastro Voluntário — ${churchName}`} />
 
-            <div className="min-h-screen w-full flex flex-col items-center px-4 py-10 sm:py-12">
-                <div className="w-full max-w-md flex-1">
-                    <div className="mb-8 flex flex-col items-center text-center">
-                        <Link
-                            href={route('more.index')}
-                            className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-zinc-600 underline dark:text-zinc-400"
-                        >
-                            Voltar
-                        </Link>
-                        <Link href={route('mobile.news')} className="inline-flex rounded-full p-2 ring-2 ring-zinc-200 dark:ring-zinc-700">
-                            <ApplicationLogo
-                                src={churchLogoUrl ?? undefined}
-                                className="h-16 w-16 object-contain dark:invert"
-                            />
-                        </Link>
-                        <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400">
-                            Cadastro Voluntário
-                        </p>
-                        <h1 className="mt-2 text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">{churchName}</h1>
-                        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
-                            Preencha os seus dados e, no final, escolha um ou mais departamentos em que pretende servir.
-                        </p>
+            <div className="mx-auto w-full max-w-md">
+                <div className="mb-6 space-y-4">
+                    <Link
+                        href={route('more.index')}
+                        className="inline-flex text-sm font-medium text-emerald-800 underline-offset-2 hover:underline dark:text-emerald-300"
+                    >
+                        Voltar
+                    </Link>
+                    <div className="flex items-start gap-3">
+                        <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-emerald-600 shadow-sm dark:bg-emerald-500">
+                            <UserPlusIcon className="size-6 text-white" aria-hidden />
+                        </div>
+                        <div className="min-w-0">
+                            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
+                                Cadastro voluntário
+                            </h1>
+                            <p className="mt-1 text-sm font-semibold text-zinc-700 dark:text-zinc-300">{churchName}</p>
+                            <p className="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                                Preencha os seus dados e, no final, escolha um ou mais departamentos em que pretende servir.
+                            </p>
+                        </div>
                     </div>
+                </div>
 
                     <p className="mb-6 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-center text-xs leading-relaxed text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-300">
                         Só quer uma <span className="font-semibold text-zinc-800 dark:text-zinc-100">conta simples na app</span>{' '}
@@ -361,7 +360,7 @@ export default function PublicSignup({ token, churchName, churchLogoUrl, ministr
                                 </div>
                             </div>
 
-                            <div className="pb-28 sm:pb-0">
+                            <div className="pb-2 sm:pb-1">
                                 {step === 0 ? (
                                     <>
                                         <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-100">
@@ -907,36 +906,36 @@ export default function PublicSignup({ token, churchName, churchLogoUrl, ministr
                                 ) : null}
                             </div>
 
-                            <div className="sticky bottom-0 z-20 -mx-6 mt-6 rounded-b-3xl border-t border-zinc-200 bg-white/95 px-6 py-4 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95">
-                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                <Link
-                                    href={route('login')}
-                                    className="text-center text-sm text-zinc-600 underline dark:text-zinc-400 sm:text-left"
-                                >
-                                    Já tem conta? Entrar
-                                </Link>
+                            <div className="mt-8 border-t border-zinc-200 pt-6 pb-2 dark:border-zinc-700">
+                                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+                                    <Link
+                                        href={route('login')}
+                                        className="order-2 text-center text-sm text-zinc-600 underline underline-offset-2 decoration-zinc-400 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200 sm:order-1 sm:text-left sm:self-center"
+                                    >
+                                        Já tem conta? Entrar
+                                    </Link>
 
-                                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                                    <PrimaryButton type="button" onClick={goBack} disabled={processing || step === 0} className="w-full sm:w-auto">
-                                        Voltar
-                                    </PrimaryButton>
-                                    {step < totalSteps - 1 ? (
-                                        <PrimaryButton type="button" onClick={goNext} disabled={processing} className="w-full sm:w-auto">
-                                            Avançar
+                                    <div className="order-1 flex w-full flex-col gap-2 sm:order-2 sm:w-auto sm:flex-row sm:items-stretch sm:justify-end">
+                                        <PrimaryButton type="button" onClick={goBack} disabled={processing || step === 0} className="w-full sm:w-auto">
+                                            Voltar
                                         </PrimaryButton>
-                                    ) : (
-                                        <PrimaryButton type="submit" disabled={processing} className="w-full sm:w-auto">
-                                            Concluir cadastro
-                                        </PrimaryButton>
-                                    )}
+                                        {step < totalSteps - 1 ? (
+                                            <PrimaryButton type="button" onClick={goNext} disabled={processing} className="w-full sm:w-auto">
+                                                Avançar
+                                            </PrimaryButton>
+                                        ) : (
+                                            <PrimaryButton type="submit" disabled={processing} className="w-full sm:w-auto">
+                                                Concluir cadastro
+                                            </PrimaryButton>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
                             </div>
                         </form>
                     )}
                 </div>
 
-                <footer className="mt-10 hidden w-full max-w-md pb-6 text-center text-xs text-zinc-500 dark:text-zinc-400 sm:block">
+                <footer className="mx-auto mt-10 hidden w-full max-w-md pb-6 text-center text-xs text-zinc-500 dark:text-zinc-400 sm:block">
                     <div className="flex flex-col items-center gap-2">
                         <span>Nova Semente — Voluntariado</span>
                         <div className="flex items-center gap-3">
@@ -952,7 +951,6 @@ export default function PublicSignup({ token, churchName, churchLogoUrl, ministr
                         </div>
                     </div>
                 </footer>
-            </div>
-        </GuestLayout>
+        </MobileLayout>
     );
 }

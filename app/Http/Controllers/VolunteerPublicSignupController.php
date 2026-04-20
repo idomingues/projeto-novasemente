@@ -51,7 +51,6 @@ class VolunteerPublicSignupController extends Controller
         return Inertia::render('Volunteers/PublicSignup', [
             'token' => $record->token,
             'churchName' => $church->name,
-            'churchLogoUrl' => $church->logo_url,
             'ministries' => $ministries,
         ]);
     }
@@ -184,7 +183,6 @@ class VolunteerPublicSignupController extends Controller
         return Inertia::render('Volunteers/PublicSignup', [
             'token' => $token,
             'churchName' => $church->name,
-            'churchLogoUrl' => $church->logo_url,
             'ministries' => $ministries,
         ]);
     }

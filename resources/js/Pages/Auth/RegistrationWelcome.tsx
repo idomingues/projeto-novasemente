@@ -1,5 +1,5 @@
 import PrimaryButton from '@/Components/PrimaryButton';
-import GuestLayout from '@/Layouts/GuestLayout';
+import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
@@ -34,10 +34,10 @@ export default function RegistrationWelcome() {
     }, []);
 
     return (
-        <GuestLayout>
+        <MobileLayout>
             <Head title="Cadastro concluído" />
 
-            <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-12 sm:max-w-lg sm:py-16">
+            <div className="mx-auto w-full max-w-md py-6 sm:max-w-lg sm:py-8">
                 <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/90 px-6 py-8 text-center shadow-sm dark:border-emerald-900/50 dark:bg-emerald-950/40 sm:px-10">
                     <div
                         className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-2xl text-white shadow-md shadow-emerald-600/25"
@@ -76,6 +76,6 @@ export default function RegistrationWelcome() {
                     </p>
                 </div>
             </div>
-        </GuestLayout>
+        </MobileLayout>
     );
 }

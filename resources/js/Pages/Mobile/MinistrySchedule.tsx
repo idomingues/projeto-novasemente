@@ -94,8 +94,10 @@ export default function MinistrySchedule({
     scheduleRoles,
 }: Props) {
     const page = usePage();
-    const currentChurch = (page.props as { currentChurch?: { name?: string; logo_url?: string | null } | null })
-        .currentChurch;
+    const { currentChurch, defaultBrandLogoUrl } = page.props as {
+        currentChurch?: { name?: string; logo_url?: string | null } | null;
+        defaultBrandLogoUrl?: string;
+    };
     const authUser = (page.props as { auth?: { user?: { name?: string } } }).auth?.user;
 
     const saturdays = useMemo(() => getSaturdays(year, month), [year, month]);
@@ -239,7 +241,7 @@ export default function MinistrySchedule({
                 <header className="flex items-center justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-2">
                         <img
-                            src={currentChurch?.logo_url ?? '/logo-ns.png'}
+                            src={currentChurch?.logo_url ?? defaultBrandLogoUrl ?? '/logo-ns.png'}
                             alt=""
                             className="h-9 w-9 shrink-0 rounded-full object-cover ring-2 ring-brand-600/20"
                         />

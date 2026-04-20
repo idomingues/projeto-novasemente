@@ -2,6 +2,8 @@
 
 namespace App\Domain\Users\Actions;
 
+use App\Domain\Volunteers\Actions\SyncVolunteerMinistryAttachments;
+use App\Models\Ministry;
 use App\Models\User;
 
 class UpdateChurchUserProfile
@@ -11,6 +13,24 @@ class UpdateChurchUserProfile
      */
     public function __invoke(User $user, array $data): User
     {
+        $requestedMinistryIds = collect($data['volunteer_ministry_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        $churchId = (int) ($user->church_id ?? 0);
+        $allowedMinistryIds = $churchId > 0 && $requestedMinistryIds !== []
+            ? Ministry::query()
+                ->where('church_id', $churchId)
+                ->whereIn('id', $requestedMinistryIds)
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->values()
+                ->all()
+            : [];
+
         $payload = [
             'name' => $data['name'],
             'email' => $data['email'],
@@ -32,6 +52,14 @@ class UpdateChurchUserProfile
             $payload['lgpd_accepted_at'] = $data['lgpd_accepted_at'];
         }
         $user->update($payload);
+        $user->ensureVolunteerProfile();
+
+        $volunteer = $user->fresh()->volunteerProfile;
+        if ($volunteer !== null) {
+            $syncIds = ($user->is_volunteer) ? $allowedMinistryIds : [];
+            app(SyncVolunteerMinistryAttachments::class)($volunteer, $syncIds);
+        }
+
         $user->ensureVolunteerProfile();
 
         return $user->fresh();

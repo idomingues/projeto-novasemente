@@ -15,6 +15,11 @@ import { useState, useEffect, useRef, FormEventHandler } from 'react';
 import { activeInactivePillClass } from '@/lib/statusBadges';
 import { confirmAction } from '@/utils/confirmDialog';
 
+interface MinistryOption {
+    id: number;
+    name: string;
+}
+
 interface Member {
     id: number;
     name: string;
@@ -24,6 +29,7 @@ interface Member {
     address: string | null;
     status: 'active' | 'inactive';
     is_volunteer?: boolean;
+    volunteer_ministry_ids?: number[];
     photo_url?: string | null;
     notify_via_app?: boolean;
     notify_via_email?: boolean;
@@ -41,12 +47,13 @@ interface Props {
             active: boolean;
         }[];
     };
+    ministryOptions: MinistryOption[];
     filters?: {
         search?: string;
     };
 }
 
-export default function Index({ members, filters }: Props) {
+export default function Index({ members, ministryOptions = [], filters }: Props) {
     const page = usePage();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
@@ -67,6 +74,7 @@ export default function Index({ members, filters }: Props) {
         birth_date: '',
         status: 'active' as 'active' | 'inactive',
         is_volunteer: false as boolean,
+        volunteer_ministry_ids: [] as number[],
         password: '',
         password_confirmation: '',
         photo: null as File | null,
@@ -118,6 +126,7 @@ export default function Index({ members, filters }: Props) {
             birth_date: member.birth_date ? member.birth_date.split('T')[0] : '',
             status: member.status,
             is_volunteer: Boolean(member.is_volunteer),
+            volunteer_ministry_ids: [...(member.volunteer_ministry_ids ?? [])],
             password: '',
             password_confirmation: '',
             photo: null,
@@ -182,6 +191,7 @@ export default function Index({ members, filters }: Props) {
             'address',
             'status',
             'is_volunteer',
+            'volunteer_ministry_ids',
             'password',
             'password_confirmation',
             'photo',
@@ -219,6 +229,9 @@ export default function Index({ members, filters }: Props) {
                       : prev.birth_date,
             status: old.status === 'inactive' ? 'inactive' : 'active',
             is_volunteer: old.is_volunteer === true || old.is_volunteer === 1 || old.is_volunteer === '1',
+            volunteer_ministry_ids: Array.isArray(old.volunteer_ministry_ids)
+                ? (old.volunteer_ministry_ids as unknown[]).map((x) => Number(x)).filter((n) => !Number.isNaN(n) && n > 0)
+                : prev.volunteer_ministry_ids,
             password: '',
             password_confirmation: '',
             photo: null,
@@ -634,20 +647,59 @@ export default function Index({ members, filters }: Props) {
                             </div>
                         ) : null}
 
-                        <div className="rounded-xl border border-zinc-200 bg-zinc-50/90 p-4 dark:border-zinc-700 dark:bg-zinc-800/40">
+                        <div className="rounded-xl border border-zinc-200 bg-zinc-50/90 p-4 dark:border-zinc-700 dark:bg-zinc-800/40 space-y-3">
                             <label className="flex cursor-pointer items-start gap-3">
                                 <Checkbox
                                     name="is_volunteer"
                                     checked={data.is_volunteer}
-                                    onChange={(e) => setData('is_volunteer', e.target.checked)}
+                                    onChange={(e) => {
+                                        const on = e.target.checked;
+                                        setData('is_volunteer', on);
+                                        if (!on) {
+                                            setData('volunteer_ministry_ids', []);
+                                        }
+                                    }}
                                 />
                                 <span className="text-sm leading-snug text-zinc-700 dark:text-zinc-200">
                                     <span className="font-semibold text-zinc-900 dark:text-white">Voluntário</span> — serve ou
-                                    irá servir em ministérios. A equipe pode completar departamentos e detalhes em{' '}
-                                    <span className="font-medium">Voluntários</span> quando aplicável.
+                                    irá servir em ministérios. Os departamentos abaixo são usados nas escalas; outros detalhes
+                                    podem ser completados em <span className="font-medium">Voluntários</span> quando aplicável.
                                 </span>
                             </label>
                             <InputError message={errors.is_volunteer} className="mt-2" />
+                            {data.is_volunteer && ministryOptions.length > 0 ? (
+                                <div className="border-t border-zinc-200 pt-3 dark:border-zinc-600 space-y-2">
+                                    <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">Departamentos</p>
+                                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                                        {ministryOptions.map((m) => (
+                                            <label key={m.id} className="flex cursor-pointer items-start gap-3">
+                                                <Checkbox
+                                                    name={`volunteer_ministry_${m.id}`}
+                                                    checked={data.volunteer_ministry_ids.includes(m.id)}
+                                                    onChange={(e) => {
+                                                        const checked = e.target.checked;
+                                                        const next = new Set(data.volunteer_ministry_ids);
+                                                        if (checked) {
+                                                            next.add(m.id);
+                                                        } else {
+                                                            next.delete(m.id);
+                                                        }
+                                                        setData('volunteer_ministry_ids', [...next]);
+                                                    }}
+                                                />
+                                                <span className="text-sm text-zinc-700 dark:text-zinc-200">{m.name}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                    <InputError message={errors.volunteer_ministry_ids} className="!mt-1" />
+                                </div>
+                            ) : null}
+                            {data.is_volunteer && ministryOptions.length === 0 ? (
+                                <p className="text-xs text-amber-800 dark:text-amber-200 border-t border-zinc-200 pt-3 dark:border-zinc-600">
+                                    Ainda não há departamentos (ministérios) configurados para esta igreja. Crie-os nas definições
+                                    ou em Voluntários para associar esta pessoa às escalas.
+                                </p>
+                            ) : null}
                         </div>
 
                         <div className="flex flex-col-reverse gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800 sm:flex-row sm:justify-end sm:pt-5">

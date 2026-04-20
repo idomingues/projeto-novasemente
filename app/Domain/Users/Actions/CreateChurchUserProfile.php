@@ -2,11 +2,11 @@
 
 namespace App\Domain\Users\Actions;
 
+use App\Domain\Volunteers\Actions\SyncVolunteerMinistryAttachments;
+use App\Models\Ministry;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
-
-use function Illuminate\Support\tap;
 
 class CreateChurchUserProfile
 {
@@ -15,21 +15,52 @@ class CreateChurchUserProfile
      */
     public function __invoke(array $data): User
     {
-        return tap(User::create([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'password' => Hash::make((string) ($data['password'] ?? Str::password())),
-            'church_id' => $data['church_id'],
-            'phone' => $data['phone'] ?? null,
-            'birth_date' => $data['birth_date'] ?? null,
-            'address' => $data['address'] ?? null,
-            'status' => $data['status'] ?? 'active',
-            'is_volunteer' => (bool) ($data['is_volunteer'] ?? false),
-            'photo_url' => $data['photo_url'] ?? null,
-            'notify_via_app' => (bool) ($data['notify_via_app'] ?? true),
-            'notify_via_email' => (bool) ($data['notify_via_email'] ?? true),
-            'notify_via_whatsapp' => (bool) ($data['notify_via_whatsapp'] ?? false),
-            'lgpd_accepted_at' => $data['lgpd_accepted_at'] ?? null,
+        $churchId = (int) ($data['church_id'] ?? 0);
+        $requestedMinistryIds = collect($data['volunteer_ministry_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        $allowedMinistryIds = $churchId > 0 && $requestedMinistryIds !== []
+            ? Ministry::query()
+                ->where('church_id', $churchId)
+                ->whereIn('id', $requestedMinistryIds)
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->values()
+                ->all()
+            : [];
+
+        $userPayload = $data;
+        unset($userPayload['volunteer_ministry_ids']);
+
+        $user = tap(User::create([
+            'name' => $userPayload['name'],
+            'email' => $userPayload['email'],
+            'password' => Hash::make((string) ($userPayload['password'] ?? Str::password())),
+            'church_id' => $userPayload['church_id'],
+            'phone' => $userPayload['phone'] ?? null,
+            'birth_date' => $userPayload['birth_date'] ?? null,
+            'address' => $userPayload['address'] ?? null,
+            'status' => $userPayload['status'] ?? 'active',
+            'is_volunteer' => (bool) ($userPayload['is_volunteer'] ?? false),
+            'photo_url' => $userPayload['photo_url'] ?? null,
+            'notify_via_app' => (bool) ($userPayload['notify_via_app'] ?? true),
+            'notify_via_email' => (bool) ($userPayload['notify_via_email'] ?? true),
+            'notify_via_whatsapp' => (bool) ($userPayload['notify_via_whatsapp'] ?? false),
+            'lgpd_accepted_at' => $userPayload['lgpd_accepted_at'] ?? null,
         ]), fn (User $u) => $u->ensureVolunteerProfile());
+
+        $volunteer = $user->fresh()->volunteerProfile;
+        if ($volunteer !== null) {
+            $syncIds = ($userPayload['is_volunteer'] ?? false) ? $allowedMinistryIds : [];
+            app(SyncVolunteerMinistryAttachments::class)($volunteer, $syncIds);
+        }
+
+        $user->ensureVolunteerProfile();
+
+        return $user->fresh();
     }
 }
