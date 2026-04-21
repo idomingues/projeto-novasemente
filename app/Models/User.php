@@ -10,6 +10,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Schema;
+use Spatie\Permission\Models\Role as SpatieRole;
+use Spatie\Permission\PermissionRegistrar;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
@@ -25,6 +28,7 @@ class User extends Authenticatable
         'email',
         'password',
         'church_id',
+        'role_id',
         'photo_url',
         'phone',
         'birth_date',
@@ -40,6 +44,53 @@ class User extends Authenticatable
     public function church(): BelongsTo
     {
         return $this->belongsTo(Church::class);
+    }
+
+    /**
+     * Papel de painel / permissões (espelho do primeiro nome em Spatie `roles` via `model_has_roles`).
+     */
+    public function panelRole(): BelongsTo
+    {
+        return $this->belongsTo(SpatieRole::class, 'role_id');
+    }
+
+    /**
+     * Mantém `users.role_id` alinhado com o primeiro papel Spatie atribuído ao utilizador.
+     */
+    public function syncRoleIdFromSpatieAssignments(): void
+    {
+        if (! Schema::hasColumn($this->getTable(), 'role_id')) {
+            return;
+        }
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $this->unsetRelation('roles');
+
+        $name = $this->getRoleNames()->first();
+        $guard = (string) config('auth.defaults.guard');
+
+        if ($name === null || $name === '') {
+            if ($this->getAttributes()['role_id'] ?? null) {
+                $this->forceFill(['role_id' => null])->saveQuietly();
+            }
+
+            return;
+        }
+
+        $id = SpatieRole::query()
+            ->where('name', (string) $name)
+            ->where('guard_name', $guard)
+            ->value('id');
+
+        $id = $id !== null ? (int) $id : null;
+
+        $current = array_key_exists('role_id', $this->getAttributes()) && $this->getAttributes()['role_id'] !== null
+            ? (int) $this->getAttributes()['role_id']
+            : null;
+
+        if ($current !== $id) {
+            $this->forceFill(['role_id' => $id])->saveQuietly();
+        }
     }
 
     public function volunteerProfile(): HasOne
@@ -147,6 +198,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'role_id' => 'integer',
             'birth_date' => 'date',
             'is_volunteer' => 'boolean',
             'notify_via_app' => 'boolean',

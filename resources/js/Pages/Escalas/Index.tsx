@@ -627,7 +627,45 @@ export default function EscalasIndex({
                 )}
             </div>
 
-            <Modal show={roleModalAssignment !== null} onClose={() => setRoleModalAssignment(null)} maxWidth="lg">
+            <Modal
+                show={roleModalAssignment !== null}
+                onClose={() => setRoleModalAssignment(null)}
+                maxWidth="lg"
+                footer={
+                    roleModalAssignment ? (
+                        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                            <SecondaryButton type="button" onClick={() => setRoleModalAssignment(null)}>
+                                Cancelar
+                            </SecondaryButton>
+                            <PrimaryButton
+                                type="button"
+                                onClick={() => {
+                                    const rid = roleModalRoleId === '' ? null : Number.parseInt(roleModalRoleId, 10);
+                                    const payload: Record<string, string | number | null> = {
+                                        schedule_role_id: rid !== null && !Number.isNaN(rid) ? rid : null,
+                                    };
+                                    if (roleModalAssignment.recurringSeries) {
+                                        payload.scope = roleScope === 'occurrence' ? 'single' : 'all';
+                                        if (roleScope === 'occurrence' && roleModalAssignment.scheduleDate) {
+                                            payload.occurrence_date = roleModalAssignment.scheduleDate;
+                                        }
+                                    }
+                                    router.patch(
+                                        route('escalas.update', roleModalAssignment.id),
+                                        payload,
+                                        {
+                                            ...inertiaScrollOpts,
+                                            onSuccess: () => setRoleModalAssignment(null),
+                                        },
+                                    );
+                                }}
+                            >
+                                Salvar
+                            </PrimaryButton>
+                        </div>
+                    ) : null
+                }
+            >
                 {roleModalAssignment && (
                     <div className="p-6 sm:p-8">
                         <header className="pb-6 mb-6 border-b border-zinc-100 dark:border-zinc-800">
@@ -712,43 +750,26 @@ export default function EscalasIndex({
                                 </fieldset>
                             )}
                         </div>
-
-                        <footer className="mt-8 pt-6 border-t border-zinc-100 dark:border-zinc-800 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
-                            <SecondaryButton type="button" onClick={() => setRoleModalAssignment(null)}>
-                                Cancelar
-                            </SecondaryButton>
-                            <PrimaryButton
-                                type="button"
-                                onClick={() => {
-                                    const rid = roleModalRoleId === '' ? null : Number.parseInt(roleModalRoleId, 10);
-                                    const payload: Record<string, string | number | null> = {
-                                        schedule_role_id: rid !== null && !Number.isNaN(rid) ? rid : null,
-                                    };
-                                    if (roleModalAssignment.recurringSeries) {
-                                        payload.scope = roleScope === 'occurrence' ? 'single' : 'all';
-                                        if (roleScope === 'occurrence' && roleModalAssignment.scheduleDate) {
-                                            payload.occurrence_date = roleModalAssignment.scheduleDate;
-                                        }
-                                    }
-                                    router.patch(
-                                        route('escalas.update', roleModalAssignment.id),
-                                        payload,
-                                        {
-                                            ...inertiaScrollOpts,
-                                            onSuccess: () => setRoleModalAssignment(null),
-                                        },
-                                    );
-                                }}
-                            >
-                                Salvar
-                            </PrimaryButton>
-                        </footer>
                     </div>
                 )}
             </Modal>
 
-            <Modal show={checkinConfirmDate !== null} onClose={() => setCheckinConfirmDate(null)} maxWidth="md">
-                <div className="p-1">
+            <Modal
+                show={checkinConfirmDate !== null}
+                onClose={() => setCheckinConfirmDate(null)}
+                maxWidth="md"
+                footer={
+                    <div className="flex justify-end gap-2">
+                        <SecondaryButton type="button" onClick={() => setCheckinConfirmDate(null)}>
+                            Cancelar
+                        </SecondaryButton>
+                        <PrimaryButton type="button" onClick={confirmEnableCheckin}>
+                            Liberar e notificar
+                        </PrimaryButton>
+                    </div>
+                }
+            >
+                <div className="p-4 sm:p-6">
                     <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Liberar check-in</h3>
                     <div className="mt-3 text-sm text-zinc-600 dark:text-zinc-400 space-y-3">
                         <p>
@@ -761,30 +782,16 @@ export default function EscalasIndex({
                             (check-in).
                         </p>
                     </div>
-                    <div className="mt-6 flex justify-end gap-2">
-                        <SecondaryButton type="button" onClick={() => setCheckinConfirmDate(null)}>
-                            Cancelar
-                        </SecondaryButton>
-                        <PrimaryButton type="button" onClick={confirmEnableCheckin}>
-                            Liberar e notificar
-                        </PrimaryButton>
-                    </div>
                 </div>
             </Modal>
 
-            <Modal show={removeModalAssignment !== null} onClose={() => setRemoveModalAssignment(null)} maxWidth="md">
-                {removeModalAssignment && (
-                    <div className="p-1">
-                        <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Remover da escala</h3>
-                        <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">{removeModalAssignment.memberName}</p>
-                        <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
-                            Esta linha repete em todos os meses. Pode remover só{' '}
-                            {removeModalAssignment.scheduleDate
-                                ? new Date(removeModalAssignment.scheduleDate + 'T12:00:00').toLocaleDateString('pt-BR')
-                                : 'esta data'}{' '}
-                            ou eliminar toda a série.
-                        </p>
-                        <div className="mt-6 flex flex-col-reverse sm:flex-row gap-2 justify-end">
+            <Modal
+                show={removeModalAssignment !== null}
+                onClose={() => setRemoveModalAssignment(null)}
+                maxWidth="md"
+                footer={
+                    removeModalAssignment ? (
+                        <div className="flex flex-col-reverse gap-2 justify-end sm:flex-row">
                             <SecondaryButton type="button" onClick={() => setRemoveModalAssignment(null)}>
                                 Cancelar
                             </SecondaryButton>
@@ -795,6 +802,20 @@ export default function EscalasIndex({
                                 Toda a série
                             </PrimaryButton>
                         </div>
+                    ) : null
+                }
+            >
+                {removeModalAssignment && (
+                    <div className="p-4 sm:p-6">
+                        <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Remover da escala</h3>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">{removeModalAssignment.memberName}</p>
+                        <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+                            Esta linha repete em todos os meses. Pode remover só{' '}
+                            {removeModalAssignment.scheduleDate
+                                ? new Date(removeModalAssignment.scheduleDate + 'T12:00:00').toLocaleDateString('pt-BR')
+                                : 'esta data'}{' '}
+                            ou eliminar toda a série.
+                        </p>
                     </div>
                 )}
             </Modal>

@@ -64,6 +64,7 @@ class VolunteerController extends Controller
         } else {
             $user->syncRoles([]);
         }
+        $user->syncRoleIdFromSpatieAssignments();
 
         if ($appRole === 'lider_ministerio') {
             $user->ministries()->sync($request->input('app_ministry_ids', []));

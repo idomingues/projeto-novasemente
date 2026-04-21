@@ -22,7 +22,7 @@ class PastorPolicy
             return true;
         }
 
-        return $user->hasPermissionTo('pastors.manage');
+        return $user->can('pastors.manage');
     }
 
     public function viewAny(User $user): bool

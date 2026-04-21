@@ -40,6 +40,7 @@ class UserController extends Controller
         if (! empty($valid['role'])) {
             $user->assignRole($valid['role']);
         }
+        $user->syncRoleIdFromSpatieAssignments();
 
         if (($valid['role'] ?? '') === 'lider_ministerio' && ! empty($valid['ministry_ids'])) {
             $user->ministries()->sync($valid['ministry_ids']);
@@ -72,6 +73,7 @@ class UserController extends Controller
         $user->save();
 
         $user->syncRoles($valid['role'] ? [$valid['role']] : []);
+        $user->syncRoleIdFromSpatieAssignments();
 
         if (($valid['role'] ?? '') === 'lider_ministerio') {
             $user->ministries()->sync($valid['ministry_ids'] ?? []);

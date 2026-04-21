@@ -180,6 +180,7 @@ class RolePermissionSeeder extends Seeder
 
         if ($adminUser) {
             $adminUser->syncRoles(['admin', 'super_admin']);
+            $adminUser->syncRoleIdFromSpatieAssignments();
             $adminUser->ensureVolunteerProfile();
         }
     }

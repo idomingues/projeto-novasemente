@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Church;
 use App\Models\Musica;
 use App\Models\News;
+use App\Support\StorageUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -160,7 +161,7 @@ class NewsController extends Controller
         $imageUrl = null;
         if ($request->hasFile('image_file')) {
             $path = $request->file('image_file')->store('news', 'public');
-            $imageUrl = '/storage/'.$path;
+            $imageUrl = StorageUrl::publicMediaUrl($path);
         } else {
             $t = trim((string) ($data['image_url'] ?? ''));
             $imageUrl = $t !== '' ? $t : null;
@@ -209,7 +210,7 @@ class NewsController extends Controller
         $imageUrl = $news->image_url;
         if ($request->hasFile('image_file')) {
             $path = $request->file('image_file')->store('news', 'public');
-            $imageUrl = '/storage/'.$path;
+            $imageUrl = StorageUrl::publicMediaUrl($path);
         } else {
             $t = trim((string) ($data['image_url'] ?? ''));
             $imageUrl = $t !== '' ? $t : null;

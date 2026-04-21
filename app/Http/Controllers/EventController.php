@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Church;
 use App\Models\Event;
+use App\Support\StorageUrl;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -110,7 +111,7 @@ class EventController extends Controller
         $imageUrl = isset($data['image_url']) && trim((string) $data['image_url']) !== '' ? trim($data['image_url']) : null;
         if ($request->hasFile('image_file')) {
             $path = $request->file('image_file')->store('events', 'public');
-            $imageUrl = '/storage/'.$path;
+            $imageUrl = StorageUrl::publicMediaUrl($path);
         }
         $data['image_url'] = $imageUrl;
         unset($data['image_file']);
@@ -161,7 +162,7 @@ class EventController extends Controller
         $imageUrl = isset($data['image_url']) && trim((string) $data['image_url']) !== '' ? trim($data['image_url']) : $event->image_url;
         if ($request->hasFile('image_file')) {
             $path = $request->file('image_file')->store('events', 'public');
-            $imageUrl = '/storage/'.$path;
+            $imageUrl = StorageUrl::publicMediaUrl($path);
         }
         $data['image_url'] = $imageUrl;
         unset($data['image_file']);

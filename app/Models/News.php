@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\StorageUrl;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -118,6 +119,6 @@ class News extends Model
             return $path;
         }
 
-        return $baseUrl.'/storage/'.$path;
+        return StorageUrl::publicMediaUrl($path);
     }
 }

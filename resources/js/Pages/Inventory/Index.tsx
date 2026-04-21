@@ -417,7 +417,7 @@ export default function Index({ items, filters }: Props) {
                 )}
             </div>
 
-            <Modal show={isModalOpen} onClose={closeModal}>
+            <Modal show={isModalOpen} onClose={closeModal} disableBodyScroll>
                 <form
                     onSubmit={submit}
                     className="flex max-h-[min(92dvh,56rem)] flex-col overflow-hidden sm:max-h-[min(90dvh,900px)]"

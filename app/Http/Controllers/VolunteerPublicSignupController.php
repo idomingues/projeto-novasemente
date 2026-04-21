@@ -293,6 +293,7 @@ class VolunteerPublicSignupController extends Controller
             if (Role::query()->where('name', 'membro')->where('guard_name', $guard)->exists()) {
                 $user->assignRole('membro');
             }
+            $user->syncRoleIdFromSpatieAssignments();
             $user->ensureVolunteerProfile();
 
             $volunteer = $user->volunteerProfile;

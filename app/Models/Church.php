@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\StorageUrl;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -37,7 +38,7 @@ class Church extends Model
     protected function logoUrl(): Attribute
     {
         return Attribute::make(
-            get: fn (?string $value) => $value ? (str_starts_with($value, 'http') ? $value : asset('storage/'.$value)) : null,
+            get: fn (?string $value) => $value ? (str_starts_with($value, 'http') ? $value : StorageUrl::publicMediaUrl($value)) : null,
         );
     }
 

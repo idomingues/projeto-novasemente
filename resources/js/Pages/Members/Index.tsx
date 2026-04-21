@@ -71,6 +71,20 @@ function pickAssignableRoleName(assignableRoles: AssignableRole[], preferred: st
     return '';
 }
 
+function firstFlatError(errors: Record<string, string | string[] | undefined>): string | null {
+    for (const key of Object.keys(errors)) {
+        const v = errors[key];
+        if (v === undefined) {
+            continue;
+        }
+        const s = Array.isArray(v) ? v[0] : v;
+        if (typeof s === 'string' && s.trim() !== '') {
+            return s;
+        }
+    }
+    return null;
+}
+
 export default function Index({ members, ministryOptions = [], assignableRoles = [], filters }: Props) {
     const page = usePage();
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -84,6 +98,7 @@ export default function Index({ members, ministryOptions = [], assignableRoles =
     });
     const lastSavedMemberPhotoRef = useRef<string | null>(null);
     const [avatarPreviewSrc, setAvatarPreviewSrc] = useState<string | null>(null);
+    const [submitMessage, setSubmitMessage] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
 
     const { data, setData, post, processing, errors, reset, clearErrors, transform } = useForm({
         name: '',
@@ -112,16 +127,23 @@ export default function Index({ members, ministryOptions = [], assignableRoles =
     transform((form) => {
         const editing =
             memberFormModeRef.current.isEditing && memberFormModeRef.current.editingId;
+        // Sem isto, `photo` (ficheiro) vem antes de `role_name` na ordem das chaves do `useForm` e o
+        // multipart pode cortar o fim do pedido (post_max_size / limites) — o Laravel deixa de receber `role_name`.
+        const { photo, ...rest } = form;
         return {
-            ...form,
+            ...rest,
+            role_name: rest.role_name ?? '',
             inertia_member_form: editing ? 'edit' : 'create',
             inertia_member_id: editing ? memberFormModeRef.current.editingId : null,
             // PHP < 8.4 não preenche $_POST em PUT multipart; POST + _method é o padrão Laravel para uploads.
             ...(editing ? { _method: 'put' as const } : {}),
+            photo,
         };
     });
 
     const openCreateModal = () => {
+        memberFormModeRef.current = { isEditing: false, editingId: null };
+        setSubmitMessage(null);
         setIsEditing(false);
         setEditingId(null);
         lastSavedMemberPhotoRef.current = null;
@@ -133,6 +155,8 @@ export default function Index({ members, ministryOptions = [], assignableRoles =
     };
 
     const openEditModal = (member: Member) => {
+        memberFormModeRef.current = { isEditing: true, editingId: member.id };
+        setSubmitMessage(null);
         setIsEditing(true);
         setEditingId(member.id);
         const saved = member.photo_url?.trim() ? member.photo_url : null;
@@ -163,6 +187,8 @@ export default function Index({ members, ministryOptions = [], assignableRoles =
     };
 
     const closeModal = () => {
+        memberFormModeRef.current = { isEditing: false, editingId: null };
+        setSubmitMessage(null);
         if (avatarPreviewSrc?.startsWith('blob:')) {
             URL.revokeObjectURL(avatarPreviewSrc);
         }
@@ -181,12 +207,20 @@ export default function Index({ members, ministryOptions = [], assignableRoles =
                 preserveScroll: true,
                 forceFormData: true,
                 onSuccess: () => closeModal(),
+                onError: (errs) => {
+                    const msg = firstFlatError(errs) ?? 'Não foi possível guardar. Verifique os campos.';
+                    setSubmitMessage({ kind: 'error', text: msg });
+                },
             });
         } else {
             post(route('members.store'), {
                 preserveScroll: true,
                 forceFormData: true,
                 onSuccess: () => closeModal(),
+                onError: (errs) => {
+                    const msg = firstFlatError(errs) ?? 'Não foi possível guardar. Verifique os campos.';
+                    setSubmitMessage({ kind: 'error', text: msg });
+                },
             });
         }
     };
@@ -267,12 +301,26 @@ export default function Index({ members, ministryOptions = [], assignableRoles =
             inertia_member_form: formKind === 'edit' ? 'edit' : 'create',
             inertia_member_id: formKind === 'edit' && !Number.isNaN(idNum) ? idNum : null,
         }));
+        const errMsg = firstFlatError(flatErrors);
+        if (errMsg) {
+            setSubmitMessage({ kind: 'error', text: errMsg });
+        }
         setIsModalOpen(true);
     }, [page.props, assignableRoles]);
 
     const memberForLgpd =
         isEditing && editingId !== null ? members.data.find((m) => m.id === editingId) ?? null : null;
     const showLgpdField = !memberForLgpd?.lgpd_accepted_at;
+
+    /** Só leitura: quem tem `members.view` sem poder atribuir perfis ainda vê o perfil actual. */
+    const profileReadOnly =
+        isEditing && assignableRoles.length === 0 && memberForLgpd !== null;
+    const profileReadOnlyText =
+        memberForLgpd?.role_label && memberForLgpd.role_label.trim() !== ''
+            ? memberForLgpd.role_label
+            : memberForLgpd?.role_name && String(memberForLgpd.role_name).trim() !== ''
+              ? String(memberForLgpd.role_name)
+              : 'Sem perfil';
 
     const handleDelete = async (id: number) => {
         const ok = await confirmAction({
@@ -304,6 +352,11 @@ export default function Index({ members, ministryOptions = [], assignableRoles =
         return () => clearTimeout(timeout);
     }, [search, filters?.search]);
 
+    const flash = (page.props as { flash?: { success?: string | null; error?: string | null } }).flash;
+    const pageFlashSuccess =
+        typeof flash?.success === 'string' && flash.success.trim() !== '' ? flash.success : null;
+    const pageFlashError = typeof flash?.error === 'string' && flash.error.trim() !== '' ? flash.error : null;
+
     return (
         <AdminLayout>
             <Head title="Usuários" />
@@ -331,6 +384,24 @@ export default function Index({ members, ministryOptions = [], assignableRoles =
                     />
                 </div>
             </PageHeader>
+
+            {pageFlashSuccess ? (
+                <div
+                    role="status"
+                    className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-50"
+                >
+                    {pageFlashSuccess}
+                </div>
+            ) : null}
+            {pageFlashError ? (
+                <div
+                    role="alert"
+                    className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-950 dark:border-red-900 dark:bg-red-950/40 dark:text-red-50"
+                >
+                    <span className="font-semibold">Erro</span>
+                    <p className="mt-1 font-normal opacity-95">{pageFlashError}</p>
+                </div>
+            ) : null}
 
             <Card className="!p-0 overflow-hidden">
                 <div className="overflow-x-auto">
@@ -449,7 +520,7 @@ export default function Index({ members, ministryOptions = [], assignableRoles =
                 </nav>
             </div>
 
-            <Modal show={isModalOpen} onClose={closeModal} maxWidth="lg">
+            <Modal show={isModalOpen} onClose={closeModal} maxWidth="lg" disableBodyScroll>
                 <div className="flex max-h-[min(92dvh,calc(100dvh-1rem))] min-h-0 flex-col bg-white dark:bg-zinc-900">
                     <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-4 pt-10 sm:px-6 sm:pb-6 sm:pt-11">
                     <h2 className="text-lg font-semibold text-zinc-900 dark:text-white sm:text-xl pr-8">
@@ -460,6 +531,33 @@ export default function Index({ members, ministryOptions = [], assignableRoles =
                             ? 'Atualize nome, e-mail, contactos opcionais e estado. A morada não é alterada neste formulário.'
                             : 'Cria a conta de login na igreja. Defina uma senha inicial (mínimo 6 caracteres); a pessoa pode alterá-la depois em «Editar dados da conta» ou em «Esqueci a senha».'}
                     </p>
+
+                    {submitMessage ? (
+                        <div
+                            role="alert"
+                            className={`mb-5 rounded-xl border px-4 py-3 text-sm ${
+                                submitMessage.kind === 'success'
+                                    ? 'border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-100'
+                                    : 'border-red-200 bg-red-50 text-red-950 dark:border-red-900 dark:bg-red-950/50 dark:text-red-100'
+                            }`}
+                        >
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <p className="font-semibold">
+                                        {submitMessage.kind === 'success' ? 'Guardado com sucesso' : 'Não foi possível guardar'}
+                                    </p>
+                                    <p className="mt-1 text-sm opacity-90">{submitMessage.text}</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setSubmitMessage(null)}
+                                    className="shrink-0 rounded-lg px-2 py-1 text-xs font-medium opacity-70 hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
+                                >
+                                    Fechar
+                                </button>
+                            </div>
+                        </div>
+                    ) : null}
 
                     <form onSubmit={submit} className="space-y-5 sm:space-y-6">
                         <div>
@@ -584,6 +682,16 @@ export default function Index({ members, ministryOptions = [], assignableRoles =
                                     ))}
                                 </SelectInput>
                                 <InputError message={errors.role_name} className="mt-2" />
+                            </div>
+                        ) : profileReadOnly ? (
+                            <div>
+                                <InputLabel value="Perfil de acesso" className="mb-1" />
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">
+                                    O seu acesso permite ver utilizadores, mas não alterar o perfil de permissões.
+                                </p>
+                                <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-800 dark:border-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-100">
+                                    {profileReadOnlyText}
+                                </p>
                             </div>
                         ) : null}
 

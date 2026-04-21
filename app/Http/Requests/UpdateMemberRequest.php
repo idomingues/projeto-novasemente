@@ -28,6 +28,10 @@ class UpdateMemberRequest extends FormRequest
         ];
         if ($user instanceof User && $user->lgpd_accepted_at !== null) {
             $merge['lgpd_accepted'] = true;
+        } elseif ($user instanceof User && $user->lgpd_accepted_at === null && $this->user()?->can('members.manage')) {
+            // Quem gere membros actualiza dados em nome da igreja; não exigir novo clique LGPD em cada edição
+            // (evita erro «lgpd accepted» quando o checkbox não vai no multipart ou o utilizador nunca abriu o fluxo da app).
+            $merge['lgpd_accepted'] = true;
         }
         $this->merge($merge);
     }

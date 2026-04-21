@@ -36,7 +36,7 @@ class PastoralAgendaController extends Controller
 
         $churchId = Church::resolveWorkingId($request);
         if (! $churchId) {
-            $canManageChurches = $user->hasAnyRole(['super_admin', 'admin']) || $user->hasPermissionTo('churches.manage');
+            $canManageChurches = $user->hasAnyRole(['super_admin', 'admin']) || $user->can('churches.manage');
 
             return Inertia::render('PastoralAgenda/NeedsChurch', [
                 'canManageChurches' => $canManageChurches,
@@ -72,7 +72,7 @@ class PastoralAgendaController extends Controller
         }
 
         $canPickPastorForAgenda = $user->hasAnyRole(['super_admin', 'admin'])
-            || $user->hasPermissionTo('pastors.manage');
+            || $user->can('pastors.manage');
 
         if ($canPickPastorForAgenda) {
             $pastors = Pastor::query()

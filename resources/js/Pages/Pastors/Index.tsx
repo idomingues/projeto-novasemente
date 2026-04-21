@@ -257,11 +257,13 @@ export default function PastorsIndex({ pastors, canManage, linkableUsers }: Prop
             )}
 
             {canManage && (
-                <Modal show={isModalOpen} onClose={closeModal} maxWidth="lg">
-                    <form onSubmit={submit} className="p-6 space-y-4">
-                        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
-                            {isEditing ? 'Editar pastor' : 'Novo pastor'}
-                        </h2>
+                <Modal show={isModalOpen} onClose={closeModal} maxWidth="lg" disableBodyScroll>
+                    <div className="flex max-h-[min(92dvh,calc(100dvh-1rem))] min-h-0 flex-col bg-white dark:bg-zinc-900">
+                        <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-3 pt-10 sm:px-6 sm:pb-4 sm:pt-11">
+                            <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white sm:text-xl pr-8">
+                                {isEditing ? 'Editar pastor' : 'Novo pastor'}
+                            </h2>
+                            <form id="pastors-modal-form" onSubmit={submit} className="space-y-4">
                         <div>
                             <InputLabel htmlFor="pastor_name" value="Nome" />
                             <TextInput
@@ -393,15 +395,24 @@ export default function PastorsIndex({ pastors, canManage, linkableUsers }: Prop
                                 .
                             </div>
                         ) : null}
-                        <div className="flex justify-end gap-2 pt-2">
-                            <SecondaryButton type="button" onClick={closeModal}>
-                                Cancelar
-                            </SecondaryButton>
-                            <PrimaryButton type="submit" disabled={processing}>
-                                {isEditing ? 'Salvar' : 'Criar'}
-                            </PrimaryButton>
+                            </form>
                         </div>
-                    </form>
+                        <div className="shrink-0 border-t border-zinc-100 bg-white px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] dark:border-zinc-800 dark:bg-zinc-900 sm:px-6">
+                            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                                <SecondaryButton type="button" onClick={closeModal} className="justify-center sm:w-auto">
+                                    Cancelar
+                                </SecondaryButton>
+                                <PrimaryButton
+                                    type="submit"
+                                    form="pastors-modal-form"
+                                    disabled={processing}
+                                    className="justify-center sm:w-auto"
+                                >
+                                    {isEditing ? 'Salvar' : 'Criar'}
+                                </PrimaryButton>
+                            </div>
+                        </div>
+                    </div>
                 </Modal>
             )}
         </AdminLayout>

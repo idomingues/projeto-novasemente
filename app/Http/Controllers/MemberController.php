@@ -11,6 +11,7 @@ use App\Models\Church;
 use App\Models\Ministry;
 use App\Models\User;
 use App\Support\MemberRoleAssignment;
+use App\Support\StorageUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -165,7 +166,8 @@ class MemberController extends Controller
         $this->assertUserBelongsToWorkingChurch($request, $user);
         $validated = $request->validated();
         $assignable = MemberRoleAssignment::assignableRoleNames($request->user());
-        $roleName = array_key_exists('role_name', $validated) ? $validated['role_name'] : null;
+        $roleFromFormProvided = array_key_exists('role_name', $validated);
+        $roleFromForm = $roleFromFormProvided ? $validated['role_name'] : null;
         unset($validated['role_name']);
 
         unset($validated['lgpd_accepted']);
@@ -180,16 +182,17 @@ class MemberController extends Controller
 
         $updateChurchUserProfile($user, $validated);
 
-        if ($assignable !== [] && is_string($roleName)) {
-            $next = trim($roleName);
-            if ($next === '') {
-                // Permite limpar o perfil (sem papel) para a maioria dos utilizadores.
+        // Aceitar null (ex.: «Sem perfil» após ConvertEmptyStringsToNull); o código antigo exigia is_string e ignorava a actualização.
+        if ($assignable !== [] && $roleFromFormProvided) {
+            $next = $roleFromForm;
+            if ($next === null || (is_string($next) && trim($next) === '')) {
                 if ($user->hasRole('super_admin') && ! $request->user()->hasRole('super_admin')) {
                     abort(403, 'Não autorizado a alterar o perfil deste utilizador.');
                 }
                 $user->syncRoles([]);
                 app(PermissionRegistrar::class)->forgetCachedPermissions();
-            } else {
+                $user->syncRoleIdFromSpatieAssignments();
+            } elseif (is_string($next)) {
                 MemberRoleAssignment::syncUserRole($request->user(), $user->fresh(), $next);
             }
         }
@@ -209,15 +212,14 @@ class MemberController extends Controller
     {
         $path = $file->store('users/photos', 'public');
 
-        return '/storage/'.$path;
+        return StorageUrl::publicMediaUrl($path);
     }
 
     private function deleteStoredUserPhoto(?string $photoUrl): void
     {
-        if (! $photoUrl || ! str_starts_with($photoUrl, '/storage/')) {
-            return;
+        $relative = StorageUrl::relativePathFromAnyPublicUrl($photoUrl);
+        if ($relative !== null) {
+            Storage::disk('public')->delete($relative);
         }
-        $relative = ltrim(substr($photoUrl, strlen('/storage/')), '/');
-        Storage::disk('public')->delete($relative);
     }
 }

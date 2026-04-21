@@ -43,11 +43,14 @@ final class MemberRoleAssignment
             ->values()
             ->all();
 
-        if ($actor->hasRole('super_admin') || $actor->can('roles.manage')) {
+        // Usar `checkPermissionTo` (Spatie), não `can()` / Gate: `AppServiceProvider::Gate::before` devolve true
+        // para admin/super_admin e invalidaria `can('roles.manage')` como critério de permissão real.
+        if ($actor->hasRole('super_admin') || $actor->checkPermissionTo('roles.manage')) {
             return array_values(array_filter($all, fn (string $n) => $n !== 'super_admin'));
         }
 
-        if ($actor->can('members.manage')) {
+        // Papel `admin` no painel sem `roles.manage` na BD: pode atribuir perfis operacionais, mas não admin/super_admin.
+        if ($actor->hasRole('admin') || $actor->checkPermissionTo('members.manage')) {
             return array_values(array_filter(
                 $all,
                 fn (string $n) => ! in_array($n, self::ADMIN_LEVEL_ROLES, true)
@@ -84,5 +87,6 @@ final class MemberRoleAssignment
 
         $target->syncRoles([$roleName]);
         app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $target->syncRoleIdFromSpatieAssignments();
     }
 }

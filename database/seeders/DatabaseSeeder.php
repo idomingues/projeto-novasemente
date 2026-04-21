@@ -37,6 +37,7 @@ class DatabaseSeeder extends Seeder
         }
 
         $user->syncRoles(['admin', 'super_admin']);
+        $user->syncRoleIdFromSpatieAssignments();
         $user->ensureVolunteerProfile();
 
         // Garantir que a cache de permissões (Spatie) seja limpa para o menu refletir tudo

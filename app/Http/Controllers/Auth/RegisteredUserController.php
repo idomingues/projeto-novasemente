@@ -126,6 +126,8 @@ class RegisteredUserController extends Controller
             }
         }
 
+        $user->syncRoleIdFromSpatieAssignments();
+
         $user->ensureVolunteerProfile();
 
         if ($request->boolean('already_volunteer')) {
@@ -300,6 +302,8 @@ class RegisteredUserController extends Controller
                 $user->assignRole('membro');
             }
         }
+
+        $user->syncRoleIdFromSpatieAssignments();
 
         $user->ensureVolunteerProfile();
 

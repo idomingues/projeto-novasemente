@@ -31,7 +31,7 @@ export default function FlashMessages() {
  
     
     return (
-        <div className="fixed bottom-6 right-6 z-50 pointer-events-none">
+        <div className="fixed bottom-6 right-6 z-[300] pointer-events-none">
             <div
                 className={`rounded-2xl px-4 py-3 shadow-lg border text-sm flex items-center gap-3 max-w-sm ${
                     isSuccess

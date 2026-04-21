@@ -806,7 +806,21 @@ const PastoralWeeklyScheduleEditor = forwardRef<PastoralWeeklyScheduleEditorHand
                     </div>
                 </div>
 
-                <Modal show={modalOpen} onClose={closeModal} maxWidth="md">
+                <Modal
+                    show={modalOpen}
+                    onClose={closeModal}
+                    maxWidth="md"
+                    footer={
+                        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                            <SecondaryButton type="button" onClick={closeModal} disabled={saving}>
+                                Cancelar
+                            </SecondaryButton>
+                            <PrimaryButton type="button" onClick={applyDraft} disabled={saving}>
+                                {editingAvailabilityId === null ? 'Adicionar' : 'Salvar alteração'}
+                            </PrimaryButton>
+                        </div>
+                    }
+                >
                     <div className="p-6 pt-12 sm:p-8 sm:pt-10">
                         <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
                             {editingAvailabilityId === null ? 'Nova disponibilidade' : 'Editar disponibilidade'}
@@ -909,19 +923,21 @@ const PastoralWeeklyScheduleEditor = forwardRef<PastoralWeeklyScheduleEditorHand
                             </div>
                             {draftError ? <p className="text-sm text-red-600 dark:text-red-400">{draftError}</p> : null}
                         </div>
-
-                        <div className="mt-8 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                            <SecondaryButton type="button" onClick={closeModal} disabled={saving}>
-                                Cancelar
-                            </SecondaryButton>
-                            <PrimaryButton type="button" onClick={applyDraft} disabled={saving}>
-                                {editingAvailabilityId === null ? 'Adicionar' : 'Salvar alteração'}
-                            </PrimaryButton>
-                        </div>
                     </div>
                 </Modal>
 
-                <Modal show={bookingDetailOpen} onClose={closeBookingDetails} maxWidth="lg">
+                <Modal
+                    show={bookingDetailOpen}
+                    onClose={closeBookingDetails}
+                    maxWidth="lg"
+                    footer={
+                        <div className="flex justify-end">
+                            <SecondaryButton type="button" onClick={closeBookingDetails}>
+                                Fechar
+                            </SecondaryButton>
+                        </div>
+                    }
+                >
                     <div className="p-6 pt-12 sm:p-8 sm:pt-10">
                         <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Dados da marcação</h2>
                         {bookingDetailSubtitle ? (
@@ -992,11 +1008,6 @@ const PastoralWeeklyScheduleEditor = forwardRef<PastoralWeeklyScheduleEditorHand
                                 </p>
                             </>
                         ) : null}
-                        <div className="mt-8 flex justify-end">
-                            <SecondaryButton type="button" onClick={closeBookingDetails}>
-                                Fechar
-                            </SecondaryButton>
-                        </div>
                     </div>
                 </Modal>
             </>

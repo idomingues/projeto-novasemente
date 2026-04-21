@@ -6,6 +6,7 @@ use App\Models\Church;
 use App\Models\Pastor;
 use App\Models\User;
 use App\Support\PastorWeeklySchedule;
+use App\Support\StorageUrl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -118,11 +119,8 @@ class PastorController extends Controller
 
     private function deleteStoredPhoto(?string $photoPath): void
     {
-        if (! $photoPath || ! str_starts_with($photoPath, '/storage/')) {
-            return;
-        }
-        $relative = ltrim(substr($photoPath, strlen('/storage/')), '/');
-        if ($relative !== '') {
+        $relative = StorageUrl::relativePathFromAnyPublicUrl($photoPath);
+        if ($relative !== null) {
             Storage::disk('public')->delete($relative);
         }
     }
@@ -210,7 +208,7 @@ class PastorController extends Controller
         $photoUrl = null;
         if ($request->hasFile('photo')) {
             $path = $request->file('photo')->store('pastors', 'public');
-            $photoUrl = '/storage/'.$path;
+            $photoUrl = StorageUrl::publicMediaUrl($path);
         }
 
         Pastor::create([
@@ -259,7 +257,7 @@ class PastorController extends Controller
         if ($request->hasFile('photo')) {
             $this->deleteStoredPhoto($pastor->photo_path);
             $path = $request->file('photo')->store('pastors', 'public');
-            $pastor->photo_path = '/storage/'.$path;
+            $pastor->photo_path = StorageUrl::publicMediaUrl($path);
         }
 
         $pastor->name = $data['name'];

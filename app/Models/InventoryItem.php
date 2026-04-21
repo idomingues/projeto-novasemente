@@ -2,17 +2,20 @@
 
 namespace App\Models;
 
+use App\Support\StorageUrl;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Storage;
 
 class InventoryItem extends Model
 {
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_INACTIVE = 'inactive';
+
     public const STATUS_MAINTENANCE = 'maintenance';
+
     public const STATUS_DISPOSED = 'disposed';
 
     protected $fillable = [
@@ -60,7 +63,7 @@ class InventoryItem extends Model
                 return null;
             }
 
-            return Storage::disk('public')->url($this->photo_path);
+            return StorageUrl::publicMediaUrl($this->photo_path);
         });
     }
 }

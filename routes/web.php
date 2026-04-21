@@ -24,6 +24,7 @@ use App\Http\Controllers\PastoralAgendaController;
 use App\Http\Controllers\PastorController;
 use App\Http\Controllers\PrayerRequestController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PublicDiskFileController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\RoomBookingController;
 use App\Http\Controllers\SettingsController;
@@ -37,6 +38,11 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/favicon.svg', FaviconController::class)->name('favicon');
+
+/** Ficheiros em storage/app/public sem depender do symlink public/storage (evita 403 em XAMPP/Apache). */
+Route::get('/media/{path}', PublicDiskFileController::class)
+    ->where('path', '.+')
+    ->name('media.public');
 
 Route::get('/', function () {
     return redirect()->route('mobile.index');

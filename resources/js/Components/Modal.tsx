@@ -1,13 +1,15 @@
 import { Dialog, DialogBackdrop, DialogPanel } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import { PropsWithChildren } from 'react';
+import { PropsWithChildren, ReactNode } from 'react';
 
 export default function Modal({
     children,
+    footer,
     show = false,
     maxWidth = '2xl',
     closeable = true,
     showCloseButton = true,
+    disableBodyScroll = false,
     onClose = () => {},
 }: PropsWithChildren<{
     show: boolean;
@@ -15,6 +17,16 @@ export default function Modal({
     closeable?: boolean;
     /** Botão X no canto superior direito (só quando `closeable` é true) */
     showCloseButton?: boolean;
+    /**
+     * Rodapé fixo fora da zona de scroll (ex.: Cancelar / Guardar). Evita botões cortados em ecrãs baixos.
+     * O conteúdo principal fica em `children` e desliza por cima.
+     */
+    footer?: ReactNode;
+    /**
+     * Quando true, não envolve `children` em scroll interno — use em modais que já definem o layout completo
+     * (ex.: Membros, Pastores, Inventário com form flex + scroll próprio).
+     */
+    disableBodyScroll?: boolean;
     onClose: CallableFunction;
 }>) {
     const close = () => {
@@ -58,7 +70,18 @@ export default function Modal({
                                 <XMarkIcon className="h-6 w-6" aria-hidden />
                             </button>
                         )}
-                        {children}
+                        {disableBodyScroll ? (
+                            children
+                        ) : footer != null ? (
+                            <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
+                                <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">{children}</div>
+                                <div className="shrink-0 border-t border-zinc-100 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] dark:border-zinc-800 dark:bg-zinc-900 sm:px-6">
+                                    {footer}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="min-h-0 w-full flex-1 overflow-y-auto overscroll-y-contain">{children}</div>
+                        )}
                     </DialogPanel>
                 </div>
             </div>

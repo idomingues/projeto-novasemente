@@ -21,10 +21,10 @@ class FaviconController extends Controller
         }
 
         $svg = '<?xml version="1.0" encoding="UTF-8"?>'
-            . '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">'
-            . '<defs><clipPath id="c"><circle cx="16" cy="16" r="16"/></clipPath></defs>'
-            . '<image width="32" height="32" preserveAspectRatio="xMidYMid slice" clip-path="url(#c)" href="' . htmlspecialchars($base64) . '"/>'
-            . '</svg>';
+            .'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">'
+            .'<defs><clipPath id="c"><circle cx="16" cy="16" r="16"/></clipPath></defs>'
+            .'<image width="32" height="32" preserveAspectRatio="xMidYMid slice" clip-path="url(#c)" href="'.htmlspecialchars($base64).'"/>'
+            .'</svg>';
 
         return response($svg, 200, [
             'Content-Type' => 'image/svg+xml',
@@ -44,15 +44,15 @@ class FaviconController extends Controller
             if (is_file($filePath)) {
                 $mime = mime_content_type($filePath) ?: 'image/png';
 
-                return 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($filePath));
+                return 'data:'.$mime.';base64,'.base64_encode(file_get_contents($filePath));
             }
         }
 
-        if ($path && preg_match('#^/storage/(.+)$#', $path, $m)) {
+        if ($path && preg_match('#^/(?:storage|media)/(.+)$#', $path, $m)) {
             if (Storage::disk('public')->exists($m[1])) {
                 $mime = Storage::disk('public')->mimeType($m[1]) ?: 'image/png';
 
-                return 'data:' . $mime . ';base64,' . base64_encode(Storage::disk('public')->get($m[1]));
+                return 'data:'.$mime.';base64,'.base64_encode(Storage::disk('public')->get($m[1]));
             }
         }
 
@@ -62,7 +62,7 @@ class FaviconController extends Controller
                 if ($res->successful()) {
                     $mime = explode(';', $res->header('Content-Type') ?? 'image/png')[0];
 
-                    return 'data:' . $mime . ';base64,' . base64_encode($res->body());
+                    return 'data:'.$mime.';base64,'.base64_encode($res->body());
                 }
             } catch (\Throwable $e) {
                 //
@@ -76,7 +76,7 @@ class FaviconController extends Controller
     {
         $filePath = public_path('logo-ns.png');
         if (is_file($filePath)) {
-            return 'data:image/png;base64,' . base64_encode(file_get_contents($filePath));
+            return 'data:image/png;base64,'.base64_encode(file_get_contents($filePath));
         }
 
         return null;

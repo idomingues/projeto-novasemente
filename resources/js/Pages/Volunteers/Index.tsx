@@ -492,24 +492,26 @@ export default function Index({
                 )}
             </Card>
 
-            <Modal show={isModalOpen} onClose={closeModal}>
-                <form onSubmit={submit} className="p-6">
-                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-6">
-                        {isEditing ? 'Editar voluntário' : 'Novo voluntário'}
-                    </h2>
-                    {submitToast && (
-                        <div
-                            className={`mb-5 rounded-2xl border px-4 py-3 text-sm ${
-                                submitToast.kind === 'success'
-                                    ? 'border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-100'
-                                    : 'border-red-300 bg-red-50 text-red-900 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-100'
-                            }`}
-                            role="alert"
-                        >
-                            {submitToast.message}
-                        </div>
-                    )}
-                    <div className="space-y-4">
+            <Modal show={isModalOpen} onClose={closeModal} maxWidth="lg" disableBodyScroll>
+                <div className="flex max-h-[min(92dvh,calc(100dvh-1rem))] min-h-0 flex-col bg-white dark:bg-zinc-900">
+                    <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-4 pt-10 sm:px-6 sm:pb-6 sm:pt-11">
+                        <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white sm:text-xl pr-8">
+                            {isEditing ? 'Editar voluntário' : 'Novo voluntário'}
+                        </h2>
+                        {submitToast && (
+                            <div
+                                className={`mb-5 rounded-2xl border px-4 py-3 text-sm ${
+                                    submitToast.kind === 'success'
+                                        ? 'border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-100'
+                                        : 'border-red-300 bg-red-50 text-red-900 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-100'
+                                }`}
+                                role="alert"
+                            >
+                                {submitToast.message}
+                            </div>
+                        )}
+                        <form onSubmit={submit} className="space-y-4">
+                            <div className="space-y-4">
                         <div>
                             <InputLabel htmlFor="name" value="Nome completo" />
                             <TextInput
@@ -521,7 +523,8 @@ export default function Index({
                             />
                             <InputError message={errors.name} className="mt-1" />
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Em mobile, uma coluna evita “saltos” quando o teclado abre e o Safari recalcula a grelha. */}
+                        <div className="flex flex-col gap-4 sm:grid sm:grid-cols-2">
                             <div>
                                 <InputLabel htmlFor="phone" value="Telefone (opcional)" />
                                 <TextInput
@@ -532,28 +535,30 @@ export default function Index({
                                 />
                                 <InputError message={errors.phone} className="mt-1" />
                             </div>
-                            <div className="flex items-end justify-between gap-3">
-                                <div className="flex-1">
-                                    <InputLabel value="Ativar voluntário" />
-                                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                        Se desativado, não aparece para seleção em escalas.
-                                    </p>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setData('active', !data.active)}
-                                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
-                                        data.active ? 'bg-emerald-600' : 'bg-zinc-300 dark:bg-zinc-700'
-                                    }`}
-                                    role="switch"
-                                    aria-checked={data.active}
-                                >
-                                    <span
-                                        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
-                                            data.active ? 'translate-x-6' : 'translate-x-1'
+                            <div className="flex flex-col gap-2 rounded-xl border border-zinc-100 bg-zinc-50/80 px-3 py-3 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 dark:border-zinc-800 dark:bg-zinc-900/40 sm:dark:bg-transparent">
+                                <div className="flex items-center justify-between gap-3 sm:items-end sm:pb-0.5">
+                                    <div className="min-w-0 flex-1">
+                                        <InputLabel value="Ativar voluntário" />
+                                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                            Se desativado, não aparece para seleção em escalas.
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setData('active', !data.active)}
+                                        className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors ${
+                                            data.active ? 'bg-emerald-600' : 'bg-zinc-300 dark:bg-zinc-700'
                                         }`}
-                                    />
-                                </button>
+                                        role="switch"
+                                        aria-checked={data.active}
+                                    >
+                                        <span
+                                            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                                                data.active ? 'translate-x-6' : 'translate-x-1'
+                                            }`}
+                                        />
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         <div>
@@ -573,7 +578,7 @@ export default function Index({
                             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
                                 Defina a senha de acesso ao aplicativo.
                             </p>
-                            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="mt-3 flex flex-col gap-4 sm:grid sm:grid-cols-2">
                                 <div>
                                     <InputLabel htmlFor="app_password" value="Senha" />
                                     <TextInput
@@ -689,7 +694,7 @@ export default function Index({
                                         id="app_role"
                                         value={data.app_role}
                                         onChange={(e) => setData('app_role', e.target.value)}
-                                        className="mt-1 block w-full min-h-[2.75rem] h-11 py-2.5 px-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white text-sm"
+                                        className="mt-1 block h-11 min-h-[2.75rem] w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-base text-zinc-900 shadow-sm focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:focus:border-white dark:focus:ring-white/20 sm:text-sm"
                                     >
                                         <option value="">Sem perfil (só conta até o administrador definir permissões)</option>
                                         {appRoles.map((r) => (
@@ -726,14 +731,18 @@ export default function Index({
                             </div>
                             <InputError message={errors.ministry_ids} className="mt-1" />
                         </div>
+                            </div>
+                            <div className="sticky bottom-0 z-10 -mx-4 mt-4 flex flex-col-reverse gap-3 border-t border-zinc-100 bg-white/95 px-4 pb-2 pt-4 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-900/95 sm:-mx-6 sm:flex-row sm:justify-end sm:px-6 sm:pb-0 sm:pt-5">
+                                <SecondaryButton type="button" onClick={closeModal} className="justify-center sm:w-auto">
+                                    Cancelar
+                                </SecondaryButton>
+                                <PrimaryButton type="submit" disabled={processing} className="justify-center sm:w-auto">
+                                    {isEditing ? 'Salvar' : 'Cadastrar'}
+                                </PrimaryButton>
+                            </div>
+                        </form>
                     </div>
-                    <div className="mt-6 flex justify-end gap-2">
-                        <SecondaryButton type="button" onClick={closeModal}>Cancelar</SecondaryButton>
-                        <PrimaryButton type="submit" disabled={processing}>
-                            {isEditing ? 'Salvar' : 'Cadastrar'}
-                        </PrimaryButton>
-                    </div>
-                </form>
+                </div>
             </Modal>
 
             <VolunteerInviteShareModal

@@ -165,16 +165,9 @@ export default function MobileProfile({ church, user }: Props) {
             ? ([
                   {
                       title: 'Atendimento',
-                      description: 'Gestão de solicitações (painel)',
+                      description: 'Solicitações e pedidos de batismo (painel)',
                       icon: InboxIcon,
                       href: route('solicitations.index'),
-                      tone: 'critical',
-                  },
-                  {
-                      title: 'Pedidos de batismo',
-                      description: 'Tratamento de pedidos de batismo (painel)',
-                      icon: SparklesIcon,
-                      href: route('baptism-requests.index'),
                       tone: 'critical',
                   },
               ] as Row[])

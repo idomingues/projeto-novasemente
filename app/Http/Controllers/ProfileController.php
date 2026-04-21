@@ -6,6 +6,7 @@ use App\Domain\Volunteers\Actions\SyncVolunteerMinistryAttachments;
 use App\Http\Requests\ProfileUpdateRequest;
 use App\Models\Church;
 use App\Models\Ministry;
+use App\Support\StorageUrl;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -122,16 +123,15 @@ class ProfileController extends Controller
     {
         $path = $file->store('users/photos', 'public');
 
-        return '/storage/'.$path;
+        return StorageUrl::publicMediaUrl($path);
     }
 
     private function deleteStoredUserPhoto(?string $photoUrl): void
     {
-        if (! $photoUrl || ! str_starts_with($photoUrl, '/storage/')) {
-            return;
+        $relative = StorageUrl::relativePathFromAnyPublicUrl($photoUrl);
+        if ($relative !== null) {
+            Storage::disk('public')->delete($relative);
         }
-        $relative = ltrim(substr($photoUrl, strlen('/storage/')), '/');
-        Storage::disk('public')->delete($relative);
     }
 
     /**

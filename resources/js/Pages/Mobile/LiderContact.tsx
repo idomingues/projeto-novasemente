@@ -221,7 +221,7 @@ export default function LiderContact({ leaderOptions, storeUrl, myLeaderChats }:
                 </div>
             </div>
 
-            <Modal show={createOpen} onClose={closeCreate} maxWidth="2xl">
+            <Modal show={createOpen} onClose={closeCreate} maxWidth="2xl" disableBodyScroll>
                 <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain p-6 sm:p-8">
                     <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Nova conversa</h2>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1 mb-6">
@@ -294,7 +294,7 @@ export default function LiderContact({ leaderOptions, storeUrl, myLeaderChats }:
                 </div>
             </Modal>
 
-            <Modal show={detailOpen} onClose={closeDetail} maxWidth="2xl">
+            <Modal show={detailOpen} onClose={closeDetail} maxWidth="2xl" disableBodyScroll>
                 {detailRow ? (
                     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain p-5 sm:p-6">
                         <h2 className="text-lg font-semibold text-zinc-900 dark:text-white pr-10">{rowTitle(detailRow)}</h2>

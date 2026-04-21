@@ -286,7 +286,7 @@ export default function Hub({
                 </div>
             </div>
 
-            <Modal show={createOpen} onClose={closeCreate} maxWidth={step === 'form' ? '2xl' : 'md'}>
+            <Modal show={createOpen} onClose={closeCreate} maxWidth={step === 'form' ? '2xl' : 'md'} disableBodyScroll>
                 {step === 'pick' ? (
                     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain p-6">
                         <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-1">Nova solicitação</h2>
@@ -397,7 +397,7 @@ export default function Hub({
                 )}
             </Modal>
 
-            <Modal show={detailOpen} onClose={closeDetail} maxWidth="2xl">
+            <Modal show={detailOpen} onClose={closeDetail} maxWidth="2xl" disableBodyScroll>
                 {detailRow ? (
                     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain p-5 sm:p-6">
                         <h2 className="text-lg font-semibold text-zinc-900 dark:text-white pr-10">{detailRow.solicitation.typeLabel}</h2>

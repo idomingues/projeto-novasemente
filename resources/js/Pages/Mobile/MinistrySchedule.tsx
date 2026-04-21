@@ -549,7 +549,41 @@ export default function MinistrySchedule({
                 )}
             </div>
 
-            <Modal show={roleModalAssignment !== null} onClose={() => setRoleModalAssignment(null)} maxWidth="md">
+            <Modal
+                show={roleModalAssignment !== null}
+                onClose={() => setRoleModalAssignment(null)}
+                maxWidth="md"
+                footer={
+                    roleModalAssignment ? (
+                        <div className="flex justify-end gap-2">
+                            <SecondaryButton type="button" onClick={() => setRoleModalAssignment(null)}>
+                                Cancelar
+                            </SecondaryButton>
+                            <PrimaryButton
+                                type="button"
+                                onClick={() => {
+                                    const rid = roleModalRoleId === '' ? null : Number.parseInt(roleModalRoleId, 10);
+                                    const payload: Record<string, string | number | null> = {
+                                        schedule_role_id: rid !== null && !Number.isNaN(rid) ? rid : null,
+                                    };
+                                    if (roleModalAssignment.recurringSeries) {
+                                        payload.scope = roleScope === 'occurrence' ? 'single' : 'all';
+                                        if (roleScope === 'occurrence' && roleModalAssignment.scheduleDate) {
+                                            payload.occurrence_date = roleModalAssignment.scheduleDate;
+                                        }
+                                    }
+                                    router.patch(route('escalas.update', roleModalAssignment.id), payload, {
+                                        ...inertiaScrollOpts,
+                                        onSuccess: () => setRoleModalAssignment(null),
+                                    });
+                                }}
+                            >
+                                Salvar
+                            </PrimaryButton>
+                        </div>
+                    ) : null
+                }
+            >
                 {roleModalAssignment && (
                     <div className="p-5">
                         <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Função na escala</h3>
@@ -587,43 +621,16 @@ export default function MinistrySchedule({
                                 </label>
                             </fieldset>
                         )}
-                        <div className="mt-6 flex justify-end gap-2">
-                            <SecondaryButton type="button" onClick={() => setRoleModalAssignment(null)}>
-                                Cancelar
-                            </SecondaryButton>
-                            <PrimaryButton
-                                type="button"
-                                onClick={() => {
-                                    const rid = roleModalRoleId === '' ? null : Number.parseInt(roleModalRoleId, 10);
-                                    const payload: Record<string, string | number | null> = {
-                                        schedule_role_id: rid !== null && !Number.isNaN(rid) ? rid : null,
-                                    };
-                                    if (roleModalAssignment.recurringSeries) {
-                                        payload.scope = roleScope === 'occurrence' ? 'single' : 'all';
-                                        if (roleScope === 'occurrence' && roleModalAssignment.scheduleDate) {
-                                            payload.occurrence_date = roleModalAssignment.scheduleDate;
-                                        }
-                                    }
-                                    router.patch(route('escalas.update', roleModalAssignment.id), payload, {
-                                        ...inertiaScrollOpts,
-                                        onSuccess: () => setRoleModalAssignment(null),
-                                    });
-                                }}
-                            >
-                                Salvar
-                            </PrimaryButton>
-                        </div>
                     </div>
                 )}
             </Modal>
 
-            <Modal show={checkinConfirmDate !== null} onClose={() => setCheckinConfirmDate(null)} maxWidth="md">
-                <div className="p-5">
-                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Liberar check-in</h3>
-                    <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                        Os voluntários escalados serão notificados na app e por e-mail (quando existir).
-                    </p>
-                    <div className="mt-6 flex justify-end gap-2">
+            <Modal
+                show={checkinConfirmDate !== null}
+                onClose={() => setCheckinConfirmDate(null)}
+                maxWidth="md"
+                footer={
+                    <div className="flex justify-end gap-2">
                         <SecondaryButton type="button" onClick={() => setCheckinConfirmDate(null)}>
                             Cancelar
                         </SecondaryButton>
@@ -631,15 +638,23 @@ export default function MinistrySchedule({
                             Liberar e notificar
                         </PrimaryButton>
                     </div>
+                }
+            >
+                <div className="p-5">
+                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Liberar check-in</h3>
+                    <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                        Os voluntários escalados serão notificados na app e por e-mail (quando existir).
+                    </p>
                 </div>
             </Modal>
 
-            <Modal show={removeModalAssignment !== null} onClose={() => setRemoveModalAssignment(null)} maxWidth="md">
-                {removeModalAssignment && (
-                    <div className="p-5">
-                        <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Remover da escala</h3>
-                        <p className="mt-2 text-sm text-zinc-500">{removeModalAssignment.memberName}</p>
-                        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Modal
+                show={removeModalAssignment !== null}
+                onClose={() => setRemoveModalAssignment(null)}
+                maxWidth="md"
+                footer={
+                    removeModalAssignment ? (
+                        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                             <SecondaryButton type="button" onClick={() => setRemoveModalAssignment(null)}>
                                 Cancelar
                             </SecondaryButton>
@@ -650,6 +665,13 @@ export default function MinistrySchedule({
                                 Toda a série
                             </PrimaryButton>
                         </div>
+                    ) : null
+                }
+            >
+                {removeModalAssignment && (
+                    <div className="p-5">
+                        <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Remover da escala</h3>
+                        <p className="mt-2 text-sm text-zinc-500">{removeModalAssignment.memberName}</p>
                     </div>
                 )}
             </Modal>
