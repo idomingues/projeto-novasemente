@@ -12,7 +12,15 @@
 /.vscode
 /.zed
 /auth.json
-/node_modules
+/node_modules/*
+!/node_modules/@capacitor/
+/node_modules/@capacitor/*
+!/node_modules/@capacitor/network/
+!/node_modules/@capacitor/network/**
+/node_modules/@capacitor/network/dist/
+/node_modules/@capacitor/network/android/
+/node_modules/@capacitor/network/README.md
+/node_modules/@capacitor/network/LICENSE
 /public/build
 /public/hot
 /public/storage
