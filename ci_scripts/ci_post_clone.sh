@@ -2,7 +2,11 @@
 set -euo pipefail
 
 echo "==> Xcode Cloud: installing JS dependencies"
-cd "$CI_WORKSPACE"
+REPO_DIR="$CI_WORKSPACE"
+if [ -d "$CI_WORKSPACE/repository" ]; then
+  REPO_DIR="$CI_WORKSPACE/repository"
+fi
+cd "$REPO_DIR"
 
 # Ensure a consistent install on CI.
 npm ci
