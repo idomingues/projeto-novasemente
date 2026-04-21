@@ -1,10 +1,9 @@
 import Checkbox from '@/Components/Checkbox';
-import GuestAppBar from '@/Components/GuestAppBar';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
-import GuestLayout from '@/Layouts/GuestLayout';
+import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { FormEventHandler, useMemo } from 'react';
 
@@ -84,10 +83,10 @@ export default function Register({ invitation, ministryOptions = [] }: Props) {
     const showVolunteerNoMinistriesHint = !invitation && data.already_volunteer && ministryOptions.length === 0;
 
     return (
-        <GuestLayout>
-            <GuestAppBar />
-            <main className="mx-auto w-full max-w-md flex-1 px-4 pb-12 pt-[calc(3.5rem+env(safe-area-inset-top,0px)+1.5rem)] sm:max-w-lg sm:px-6 sm:pb-16">
-                <Head title={invitation ? 'Cadastro por convite' : 'Criar conta'} />
+        <MobileLayout>
+            <Head title={invitation ? 'Cadastro por convite' : 'Criar conta'} />
+
+            <div className="mx-auto w-full max-w-md px-0 sm:max-w-lg">
 
                 {invitation ? (
                     <p className="mb-6 text-sm text-zinc-600 dark:text-zinc-400">
@@ -116,7 +115,7 @@ export default function Register({ invitation, ministryOptions = [] }: Props) {
                     </div>
                 ) : null}
 
-                <form noValidate onSubmit={submit} className="space-y-5">
+                <form noValidate onSubmit={submit} className="space-y-5 pb-6 sm:pb-8">
                     <div>
                         <InputLabel htmlFor="name" value="Nome completo" />
 
@@ -267,7 +266,7 @@ export default function Register({ invitation, ministryOptions = [] }: Props) {
                                     <p className="text-xs text-zinc-500 dark:text-zinc-400">
                                         Marque todos em que participa — ajuda os líderes a incluí-lo nas escalas.
                                     </p>
-                                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                                    <div className="space-y-2 pr-1 sm:max-h-48 sm:overflow-y-auto">
                                         {ministryOptions.map((m) => (
                                             <label key={m.id} className="flex cursor-pointer items-start gap-3">
                                                 <Checkbox
@@ -318,7 +317,7 @@ export default function Register({ invitation, ministryOptions = [] }: Props) {
                         </PrimaryButton>
                     </div>
                 </form>
-            </main>
-        </GuestLayout>
+            </div>
+        </MobileLayout>
     );
 }

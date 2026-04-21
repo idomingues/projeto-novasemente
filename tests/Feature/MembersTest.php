@@ -94,4 +94,33 @@ class MembersTest extends TestCase
             $user->volunteerProfile?->ministries()->where('ministries.id', $ministryId)->exists() ?? false
         );
     }
+
+    public function test_store_member_assigns_selected_role(): void
+    {
+        $this->seed();
+
+        $admin = User::query()->where('email', 'ivan@iresult.com.br')->firstOrFail();
+        $churchId = (int) Church::query()->value('id');
+
+        $this->actingAs($admin)
+            ->withSession(['working_church_id' => $churchId])
+            ->post(route('members.store'), [
+                'name' => 'User Pastor Role',
+                'email' => 'pastor-role-member@example.com',
+                'password' => 'Password1!xx',
+                'password_confirmation' => 'Password1!xx',
+                'status' => 'active',
+                'is_volunteer' => false,
+                'volunteer_ministry_ids' => [],
+                'notify_via_app' => true,
+                'notify_via_email' => true,
+                'notify_via_whatsapp' => false,
+                'lgpd_accepted' => true,
+                'role_name' => 'pastor',
+            ])
+            ->assertRedirect(route('members.index'));
+
+        $user = User::query()->where('email', 'pastor-role-member@example.com')->firstOrFail();
+        $this->assertTrue($user->hasRole('pastor'));
+    }
 }

@@ -10,6 +10,7 @@ use App\Http\Requests\UpdateMemberRequest;
 use App\Models\Church;
 use App\Models\Ministry;
 use App\Models\User;
+use App\Support\MemberRoleAssignment;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -36,7 +37,7 @@ class MemberController extends Controller
         $churchId = $this->currentChurchId($request);
 
         $query = User::query()
-            ->with(['volunteerProfile.ministries'])
+            ->with(['volunteerProfile.ministries', 'roles'])
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId));
 
@@ -61,11 +62,18 @@ class MemberController extends Controller
                 ->all();
         }
 
+        $assignableRoles = collect(MemberRoleAssignment::assignableRoleNames($request->user()))
+            ->map(fn (string $name) => ['name' => $name, 'label' => MemberRoleAssignment::label($name)])
+            ->values()
+            ->all();
+
         return Inertia::render('Members/Index', [
             'members' => $users->through(function (User $user) {
                 $volunteerMinistryIds = $user->volunteerProfile
                     ? $user->volunteerProfile->ministries()->pluck('ministries.id')->map(fn ($id) => (int) $id)->values()->all()
                     : [];
+
+                $roleName = $user->getRoleNames()->first();
 
                 return [
                     'id' => $user->id,
@@ -83,8 +91,11 @@ class MemberController extends Controller
                     'notify_via_whatsapp' => (bool) ($user->notify_via_whatsapp ?? false),
                     'lgpd_accepted_at' => $user->lgpd_accepted_at?->toIso8601String(),
                     'created_at' => $user->created_at->toIso8601String(),
+                    'role_name' => $roleName,
+                    'role_label' => MemberRoleAssignment::label((string) ($roleName ?? 'membro')),
                 ];
             }),
+            'assignableRoles' => $assignableRoles,
             'ministryOptions' => $ministryOptions,
             'filters' => [
                 'search' => $search,
@@ -99,6 +110,10 @@ class MemberController extends Controller
             return redirect()->route('members.index')->with('error', 'Nenhuma igreja ativa. Selecione uma igreja para trabalhar.');
         }
         $validated = $request->validated();
+        $assignable = MemberRoleAssignment::assignableRoleNames($request->user());
+        $roleName = $assignable !== [] ? ($validated['role_name'] ?? 'membro') : null;
+        unset($validated['role_name']);
+
         if ($request->hasFile('photo')) {
             $validated['photo_url'] = $this->storeUserPhoto($request->file('photo'));
         }
@@ -107,7 +122,13 @@ class MemberController extends Controller
         $data = array_merge($validated, [
             'church_id' => $churchId,
         ]);
-        $createChurchUserProfile($data);
+        $user = $createChurchUserProfile($data);
+
+        if ($assignable !== [] && $roleName !== null && $roleName !== '') {
+            MemberRoleAssignment::syncUserRole($request->user(), $user, (string) $roleName);
+        } elseif ($user->getRoleNames()->isEmpty()) {
+            $user->assignRole('membro');
+        }
 
         return redirect()->route('members.index')->with('success', 'Usuário criado com sucesso!');
     }
@@ -115,6 +136,8 @@ class MemberController extends Controller
     public function show(Request $request, User $user)
     {
         $this->assertUserBelongsToWorkingChurch($request, $user);
+
+        $roleName = $user->getRoleNames()->first();
 
         return Inertia::render('Members/Show', [
             'member' => [
@@ -132,6 +155,8 @@ class MemberController extends Controller
                 'notify_via_whatsapp' => (bool) ($user->notify_via_whatsapp ?? false),
                 'lgpd_accepted_at' => $user->lgpd_accepted_at?->toIso8601String(),
                 'created_at' => $user->created_at->toIso8601String(),
+                'role_name' => $roleName,
+                'role_label' => MemberRoleAssignment::label((string) ($roleName ?? 'membro')),
             ],
         ]);
     }
@@ -140,6 +165,10 @@ class MemberController extends Controller
     {
         $this->assertUserBelongsToWorkingChurch($request, $user);
         $validated = $request->validated();
+        $assignable = MemberRoleAssignment::assignableRoleNames($request->user());
+        $roleName = array_key_exists('role_name', $validated) ? $validated['role_name'] : null;
+        unset($validated['role_name']);
+
         unset($validated['lgpd_accepted']);
         if ($request->boolean('lgpd_accepted') && $user->lgpd_accepted_at === null) {
             $validated['lgpd_accepted_at'] = now();
@@ -151,6 +180,10 @@ class MemberController extends Controller
         unset($validated['photo']);
 
         $updateChurchUserProfile($user, $validated);
+
+        if ($assignable !== [] && is_string($roleName) && trim($roleName) !== '') {
+            MemberRoleAssignment::syncUserRole($request->user(), $user->fresh(), trim($roleName));
+        }
 
         return redirect()->route('members.index')->with('success', 'Usuário atualizado com sucesso!');
     }

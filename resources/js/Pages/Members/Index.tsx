@@ -20,6 +20,11 @@ interface MinistryOption {
     name: string;
 }
 
+interface AssignableRole {
+    name: string;
+    label: string;
+}
+
 interface Member {
     id: number;
     name: string;
@@ -36,6 +41,8 @@ interface Member {
     notify_via_whatsapp?: boolean;
     lgpd_accepted_at?: string | null;
     created_at: string;
+    role_name?: string | null;
+    role_label?: string | null;
 }
 
 interface Props {
@@ -48,12 +55,26 @@ interface Props {
         }[];
     };
     ministryOptions: MinistryOption[];
+    assignableRoles?: AssignableRole[];
     filters?: {
         search?: string;
     };
 }
 
-export default function Index({ members, ministryOptions = [], filters }: Props) {
+function pickAssignableRoleName(assignableRoles: AssignableRole[], preferred: string | null | undefined): string {
+    const list = assignableRoles ?? [];
+    if (list.length === 0) {
+        return 'membro';
+    }
+    const p = preferred ?? '';
+    if (p && list.some((r) => r.name === p)) {
+        return p;
+    }
+    const membro = list.find((r) => r.name === 'membro');
+    return membro?.name ?? list[0].name;
+}
+
+export default function Index({ members, ministryOptions = [], assignableRoles = [], filters }: Props) {
     const page = usePage();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
@@ -84,6 +105,7 @@ export default function Index({ members, ministryOptions = [], filters }: Props)
         notify_via_email: true,
         notify_via_whatsapp: false,
         lgpd_accepted: false as boolean,
+        role_name: pickAssignableRoleName(assignableRoles, 'membro'),
     });
 
     useEffect(() => {
@@ -136,6 +158,7 @@ export default function Index({ members, ministryOptions = [], filters }: Props)
             notify_via_email: member.notify_via_email !== false,
             notify_via_whatsapp: member.notify_via_whatsapp === true,
             lgpd_accepted: Boolean(member.lgpd_accepted_at),
+            role_name: pickAssignableRoleName(assignableRoles, member.role_name),
         });
         clearErrors();
         hydratedErrorKey.current = null;
@@ -199,6 +222,7 @@ export default function Index({ members, ministryOptions = [], filters }: Props)
             'notify_via_email',
             'notify_via_whatsapp',
             'lgpd_accepted',
+            'role_name',
         ]);
         if (!errKeys.some((k) => memberKeys.has(k))) {
             return;
@@ -239,11 +263,15 @@ export default function Index({ members, ministryOptions = [], filters }: Props)
             notify_via_email: old.notify_via_email === false ? false : true,
             notify_via_whatsapp: old.notify_via_whatsapp === true || old.notify_via_whatsapp === '1',
             lgpd_accepted: old.lgpd_accepted === true || old.lgpd_accepted === '1' || old.lgpd_accepted === 1,
+            role_name:
+                typeof old.role_name === 'string' && old.role_name
+                    ? pickAssignableRoleName(assignableRoles, old.role_name)
+                    : pickAssignableRoleName(assignableRoles, 'membro'),
             inertia_member_form: formKind === 'edit' ? 'edit' : 'create',
             inertia_member_id: formKind === 'edit' && !Number.isNaN(idNum) ? idNum : null,
         }));
         setIsModalOpen(true);
-    }, [page.props]);
+    }, [page.props, assignableRoles]);
 
     const memberForLgpd =
         isEditing && editingId !== null ? members.data.find((m) => m.id === editingId) ?? null : null;
@@ -311,7 +339,7 @@ export default function Index({ members, ministryOptions = [], filters }: Props)
 
             <Card className="!p-0 overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full min-w-[900px] text-sm">
+                    <table className="w-full min-w-[980px] text-sm">
                         <thead className="bg-zinc-50 border-b border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800">
                             <tr>
                                 <th className="px-4 py-3 sm:px-6 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
@@ -319,6 +347,9 @@ export default function Index({ members, ministryOptions = [], filters }: Props)
                                 </th>
                                 <th className="px-4 py-3 sm:px-6 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
                                     E-mail
+                                </th>
+                                <th className="px-4 py-3 sm:px-6 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                    Perfil
                                 </th>
                                 <th className="px-4 py-3 sm:px-6 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
                                     Telefone
@@ -345,6 +376,11 @@ export default function Index({ members, ministryOptions = [], filters }: Props)
                                         <div className="text-sm text-zinc-800 dark:text-zinc-100 break-all font-mono leading-snug">
                                             {member.email?.trim() ? member.email : <span className="text-zinc-400 dark:text-zinc-500 font-sans">—</span>}
                                         </div>
+                                    </td>
+                                    <td className="px-4 py-4 sm:px-6 sm:py-6 align-top max-w-[10rem]">
+                                        <span className="text-xs font-medium text-zinc-700 dark:text-zinc-200 leading-snug">
+                                            {member.role_label ?? '—'}
+                                        </span>
                                     </td>
                                     <td className="px-4 py-4 sm:px-6 sm:py-6 align-top whitespace-nowrap">
                                         <div className="text-sm text-zinc-800 dark:text-zinc-100 tabular-nums">
@@ -533,6 +569,28 @@ export default function Index({ members, ministryOptions = [], filters }: Props)
                             </div>
                         </div>
 
+                        {assignableRoles.length > 0 ? (
+                            <div>
+                                <InputLabel htmlFor="role_name" value="Perfil de acesso" className="mb-1" />
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">
+                                    Define o papel no painel e nas permissões (ex.: secretaria, pastor, membro da app).
+                                </p>
+                                <SelectInput
+                                    id="role_name"
+                                    className="block w-full"
+                                    value={data.role_name}
+                                    onChange={(e) => setData('role_name', e.target.value)}
+                                >
+                                    {assignableRoles.map((r) => (
+                                        <option key={r.name} value={r.name}>
+                                            {r.label}
+                                        </option>
+                                    ))}
+                                </SelectInput>
+                                <InputError message={errors.role_name} className="mt-2" />
+                            </div>
+                        ) : null}
+
                         <div className="rounded-xl border border-zinc-200 bg-zinc-50/90 p-4 dark:border-zinc-700 dark:bg-zinc-800/40 space-y-3">
                             <div className="flex items-start gap-3">
                                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-zinc-200 dark:bg-zinc-700">
@@ -670,7 +728,7 @@ export default function Index({ members, ministryOptions = [], filters }: Props)
                             {data.is_volunteer && ministryOptions.length > 0 ? (
                                 <div className="border-t border-zinc-200 pt-3 dark:border-zinc-600 space-y-2">
                                     <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">Departamentos</p>
-                                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                                    <div className="space-y-2 pr-1 sm:max-h-48 sm:overflow-y-auto">
                                         {ministryOptions.map((m) => (
                                             <label key={m.id} className="flex cursor-pointer items-start gap-3">
                                                 <Checkbox

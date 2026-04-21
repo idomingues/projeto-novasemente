@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\Church;
 use App\Models\Ministry;
+use App\Support\MemberRoleAssignment;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
@@ -38,6 +39,12 @@ class StoreMemberRequest extends FormRequest
             $ministryItemRules[] = 'prohibited';
         }
 
+        $assignable = MemberRoleAssignment::assignableRoleNames($this->user());
+        $roleRules = ['nullable', 'string'];
+        if ($assignable !== []) {
+            $roleRules[] = Rule::in($assignable);
+        }
+
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
@@ -54,6 +61,7 @@ class StoreMemberRequest extends FormRequest
             'notify_via_email' => ['required', 'boolean'],
             'notify_via_whatsapp' => ['required', 'boolean'],
             'lgpd_accepted' => ['required', 'accepted'],
+            'role_name' => $roleRules,
         ];
     }
 

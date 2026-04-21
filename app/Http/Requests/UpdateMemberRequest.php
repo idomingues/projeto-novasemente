@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Models\Church;
 use App\Models\Ministry;
 use App\Models\User;
+use App\Support\MemberRoleAssignment;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -46,6 +47,12 @@ class UpdateMemberRequest extends FormRequest
             $ministryItemRules[] = 'prohibited';
         }
 
+        $assignable = MemberRoleAssignment::assignableRoleNames($this->user());
+        $roleRules = ['sometimes', 'nullable', 'string'];
+        if ($assignable !== []) {
+            $roleRules[] = Rule::in($assignable);
+        }
+
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => [
@@ -73,6 +80,7 @@ class UpdateMemberRequest extends FormRequest
                 }),
                 'accepted',
             ],
+            'role_name' => $roleRules,
         ];
     }
 

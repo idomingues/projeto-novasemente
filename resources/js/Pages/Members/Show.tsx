@@ -13,6 +13,7 @@ interface Member {
     address: string | null;
     status: 'active' | 'inactive';
     is_volunteer?: boolean;
+    role_label?: string | null;
     created_at: string;
 }
 
@@ -70,6 +71,11 @@ export default function Show({ member }: Props) {
                             <span className={`mt-1 ${activeInactivePillClass(member.status === 'active')}`}>
                                 {member.status === 'active' ? 'Ativo' : 'Inativo'}
                             </span>
+                        </div>
+
+                        <div>
+                            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Perfil de acesso</p>
+                            <p className="text-sm text-zinc-300 mt-1">{member.role_label ?? '—'}</p>
                         </div>
 
                         <div>
