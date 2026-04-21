@@ -152,4 +152,51 @@ class MembersTest extends TestCase
         $user = User::query()->where('email', 'sem-perfil-member@example.com')->firstOrFail();
         $this->assertCount(0, $user->getRoleNames());
     }
+
+    public function test_update_member_syncs_assignable_roles_with_put_and_post_method_spoof(): void
+    {
+        $this->seed();
+
+        $admin = User::query()->where('email', 'ivan@iresult.com.br')->firstOrFail();
+        $churchId = (int) Church::query()->value('id');
+        $member = User::factory()->create([
+            'church_id' => $churchId,
+            'email' => 'update-role-member@example.com',
+        ]);
+        $this->assertCount(0, $member->fresh()->getRoleNames());
+
+        $payload = [
+            'name' => $member->name,
+            'email' => $member->email,
+            'phone' => '',
+            'birth_date' => '',
+            'status' => 'active',
+            'is_volunteer' => false,
+            'volunteer_ministry_ids' => [],
+            'notify_via_app' => true,
+            'notify_via_email' => true,
+            'notify_via_whatsapp' => false,
+            'role_name' => 'pastor',
+        ];
+
+        // PUT directo (cliente de testes) — o papel deve persistir.
+        $putResponse = $this->actingAs($admin)
+            ->withSession(['working_church_id' => $churchId])
+            ->from(route('members.index'))
+            ->put(route('members.update', $member), $payload);
+
+        $putResponse->assertSessionDoesntHaveErrors();
+        $putResponse->assertRedirect(route('members.index'));
+
+        $this->assertTrue($member->fresh()->hasRole('pastor'));
+
+        // Mesmo fluxo que o painel com forceFormData: POST + _method (PHP preenche multipart em POST).
+        $this->actingAs($admin)
+            ->withSession(['working_church_id' => $churchId])
+            ->from(route('members.index'))
+            ->post(route('members.update', $member), array_merge($payload, ['role_name' => 'secretaria', '_method' => 'PUT']))
+            ->assertRedirect(route('members.index'));
+
+        $this->assertTrue($member->fresh()->hasRole('secretaria'));
+    }
 }

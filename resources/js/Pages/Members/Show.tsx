@@ -26,14 +26,17 @@ export default function Show({ member }: Props) {
         <AdminLayout>
             <Head title={`Usuário - ${member.name}`} />
 
-            <PageHeader title="Detalhes do usuário">
-                <Link
-                    href={route('members.index')}
-                    className="text-sm font-medium text-zinc-400 hover:text-white transition-colors"
-                >
-                    Voltar para lista
-                </Link>
-            </PageHeader>
+            <PageHeader
+                title="Detalhes do usuário"
+                lead={
+                    <Link
+                        href={route('members.index')}
+                        className="text-sm font-medium text-zinc-500 underline-offset-2 hover:text-zinc-800 hover:underline dark:text-zinc-400 dark:hover:text-zinc-200"
+                    >
+                        Voltar para lista
+                    </Link>
+                }
+            />
 
             <Card>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

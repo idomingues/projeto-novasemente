@@ -2,6 +2,7 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm, router, Link, usePage } from '@inertiajs/react';
 import { PencilIcon, TrashIcon, EyeIcon, CameraIcon } from '@heroicons/react/24/outline';
 import AddButton from '@/Components/AddButton';
+import PageHeader from '@/Components/PageHeader';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
@@ -84,7 +85,7 @@ export default function Index({ members, ministryOptions = [], assignableRoles =
     const lastSavedMemberPhotoRef = useRef<string | null>(null);
     const [avatarPreviewSrc, setAvatarPreviewSrc] = useState<string | null>(null);
 
-    const { data, setData, post, put, processing, errors, reset, clearErrors, transform } = useForm({
+    const { data, setData, post, processing, errors, reset, clearErrors, transform } = useForm({
         name: '',
         email: '',
         phone: '',
@@ -108,17 +109,17 @@ export default function Index({ members, ministryOptions = [], assignableRoles =
         memberFormModeRef.current = { isEditing, editingId };
     }, [isEditing, editingId]);
 
-    transform((form) => ({
-        ...form,
-        inertia_member_form:
-            memberFormModeRef.current.isEditing && memberFormModeRef.current.editingId
-                ? 'edit'
-                : 'create',
-        inertia_member_id:
-            memberFormModeRef.current.isEditing && memberFormModeRef.current.editingId
-                ? memberFormModeRef.current.editingId
-                : null,
-    }));
+    transform((form) => {
+        const editing =
+            memberFormModeRef.current.isEditing && memberFormModeRef.current.editingId;
+        return {
+            ...form,
+            inertia_member_form: editing ? 'edit' : 'create',
+            inertia_member_id: editing ? memberFormModeRef.current.editingId : null,
+            // PHP < 8.4 não preenche $_POST em PUT multipart; POST + _method é o padrão Laravel para uploads.
+            ...(editing ? { _method: 'put' as const } : {}),
+        };
+    });
 
     const openCreateModal = () => {
         setIsEditing(false);
@@ -176,7 +177,7 @@ export default function Index({ members, ministryOptions = [], assignableRoles =
         e.preventDefault();
 
         if (isEditing && editingId) {
-            put(route('members.update', editingId), {
+            post(route('members.update', editingId), {
                 preserveScroll: true,
                 forceFormData: true,
                 onSuccess: () => closeModal(),
@@ -307,31 +308,29 @@ export default function Index({ members, ministryOptions = [], assignableRoles =
         <AdminLayout>
             <Head title="Usuários" />
 
-            <header className="mt-6 mb-6 space-y-4 min-w-0">
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Usuários</h1>
-                <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-2xl">
-                    Acesso e login baseiam-se na tabela de utilizadores (<strong className="font-medium text-zinc-700 dark:text-zinc-300">users</strong>); a ficha na igreja é{' '}
-                    <strong className="font-medium text-zinc-700 dark:text-zinc-300">members</strong>. O mesmo núcleo do registo público «Criar conta»: nome e e-mail obrigatórios; telefone e data de nascimento são opcionais.{' '}
-                    <strong className="font-medium text-zinc-700 dark:text-zinc-300">Morada não é pedida nesta fase.</strong>
-                </p>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-between sm:gap-4 min-w-0">
-                    <div className="w-full min-w-0 sm:max-w-md">
-                        <TextInput
-                            type="search"
-                            name="search"
-                            value={search}
-                            placeholder="Buscar por nome, e-mail ou telefone"
-                            className="w-full min-w-0"
-                            onChange={(e) => setSearch(e.target.value)}
-                        />
-                    </div>
-                    <div className="flex w-full shrink-0 justify-end sm:w-auto">
-                        <AddButton onClick={openCreateModal} className="w-full justify-center sm:w-auto">
-                            Novo usuário
-                        </AddButton>
-                    </div>
+            <PageHeader
+                title="Usuários"
+                subtitle={
+                    <>
+                        Acesso e login baseiam-se na tabela de utilizadores (
+                        <strong className="font-medium text-zinc-700 dark:text-zinc-300">users</strong>); a ficha na igreja é{' '}
+                        <strong className="font-medium text-zinc-700 dark:text-zinc-300">members</strong>. O mesmo núcleo do registo público «Criar conta»: nome e e-mail obrigatórios; telefone e data de nascimento são opcionais.{' '}
+                        <strong className="font-medium text-zinc-700 dark:text-zinc-300">Morada não é pedida nesta fase.</strong>
+                    </>
+                }
+                actions={<AddButton variant="icon" onClick={openCreateModal} title="Novo usuário">Novo usuário</AddButton>}
+            >
+                <div className="w-full min-w-0 max-w-md">
+                    <TextInput
+                        type="search"
+                        name="search"
+                        value={search}
+                        placeholder="Buscar por nome, e-mail ou telefone"
+                        className="w-full min-w-0"
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
                 </div>
-            </header>
+            </PageHeader>
 
             <Card className="!p-0 overflow-hidden">
                 <div className="overflow-x-auto">
@@ -757,7 +756,7 @@ export default function Index({ members, ministryOptions = [], assignableRoles =
                             ) : null}
                         </div>
 
-                        <div className="flex flex-col-reverse gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800 sm:flex-row sm:justify-end sm:pt-5">
+                        <div className="sticky bottom-0 z-10 -mx-4 mt-2 flex flex-col-reverse gap-3 border-t border-zinc-100 bg-white/95 px-4 pb-2 pt-4 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-900/95 sm:-mx-6 sm:flex-row sm:justify-end sm:px-6 sm:pb-0 sm:pt-5">
                             <SecondaryButton type="button" onClick={closeModal} className="justify-center sm:w-auto">
                                 Cancelar
                             </SecondaryButton>

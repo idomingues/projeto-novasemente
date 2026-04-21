@@ -144,9 +144,10 @@ export default function Index({ churches }: Props) {
     return (
         <AdminLayout>
             <Head title="Igrejas" />
-            <PageHeader title="Igrejas">
-                <AddButton onClick={openCreateModal}>Nova Igreja</AddButton>
-            </PageHeader>
+            <PageHeader
+                title="Igrejas"
+                actions={<AddButton variant="icon" onClick={openCreateModal} title="Nova igreja">Nova Igreja</AddButton>}
+            />
 
             <Card className="!p-0 overflow-hidden">
                 <div className="overflow-x-auto">

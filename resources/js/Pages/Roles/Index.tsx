@@ -1,6 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import PageHeader from '@/Components/PageHeader';
+import AddButton from '@/Components/AddButton';
 import Card from '@/Components/Card';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
@@ -215,34 +216,36 @@ export default function RolesIndex({ roles, permissions }: Props) {
     return (
         <AdminLayout>
             <Head title="Perfis de acesso" />
-            <PageHeader title="Perfis de acesso">
-                <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-2xl">
-                    Utilizadores podem ficar <strong className="font-medium text-zinc-700 dark:text-zinc-300">sem perfil</strong>{' '}
-                    no app até um administrador definir o acesso em{' '}
-                    <Link href={route('volunteers.index')} className="font-medium text-primary-600 underline dark:text-primary-400">
-                        Voluntários
-                    </Link>
-                    .                     Aqui cria <strong className="font-medium text-zinc-700 dark:text-zinc-300">novos perfis</strong> e marca as{' '}
-                    <strong className="font-medium text-zinc-700 dark:text-zinc-300">funcionalidades</strong> de cada um. O perfil{' '}
-                    <strong className="font-medium text-zinc-700 dark:text-zinc-300">super administrador</strong> não é listado: tem
-                    acesso total ao sistema.
-                </p>
-            </PageHeader>
+            <PageHeader
+                title="Perfis de acesso"
+                subtitle={
+                    <>
+                        Utilizadores podem ficar <strong className="font-medium text-zinc-700 dark:text-zinc-300">sem perfil</strong>{' '}
+                        no app até um administrador definir o acesso em{' '}
+                        <Link href={route('volunteers.index')} className="font-medium text-primary-600 underline dark:text-primary-400">
+                            Voluntários
+                        </Link>
+                        . Aqui cria <strong className="font-medium text-zinc-700 dark:text-zinc-300">novos perfis</strong> e marca as{' '}
+                        <strong className="font-medium text-zinc-700 dark:text-zinc-300">funcionalidades</strong> de cada um. O perfil{' '}
+                        <strong className="font-medium text-zinc-700 dark:text-zinc-300">super administrador</strong> não é listado: tem acesso total ao sistema.
+                    </>
+                }
+                actions={
+                    <AddButton variant="icon" onClick={() => setCreateOpen(true)} title="Novo perfil">
+                        Novo perfil
+                    </AddButton>
+                }
+            />
 
-            <div className="mb-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/40 p-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                <div className="min-w-0 flex-1">
-                    <InputLabel htmlFor="perm_search_roles" value="Procurar permissão ou área" className="!mb-1" />
-                    <TextInput
-                        id="perm_search_roles"
-                        value={permSearch}
-                        onChange={(e) => setPermSearch(e.target.value)}
-                        placeholder="Ex.: notícias, escalas, salas…"
-                        className="block w-full max-w-md"
-                    />
-                </div>
-                <PrimaryButton type="button" className="shrink-0 justify-center" onClick={() => setCreateOpen(true)}>
-                    Novo perfil
-                </PrimaryButton>
+            <div className="mb-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/40 p-4">
+                <InputLabel htmlFor="perm_search_roles" value="Procurar permissão ou área" className="!mb-1" />
+                <TextInput
+                    id="perm_search_roles"
+                    value={permSearch}
+                    onChange={(e) => setPermSearch(e.target.value)}
+                    placeholder="Ex.: notícias, escalas, salas…"
+                    className="block w-full max-w-md"
+                />
             </div>
 
             <Modal show={createOpen} onClose={() => !createForm.processing && setCreateOpen(false)} maxWidth="md">

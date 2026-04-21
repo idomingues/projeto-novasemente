@@ -104,12 +104,15 @@ export default function BaptismRequestsIndex({
             <PageHeader
                 title="Pedidos de batismo"
                 subtitle="Lista e tratamento dos pedidos formais de batismo."
-            >
-                <AddButton onClick={() => router.visit(route('mobile.baptism'))}>Novo pedido (membro)</AddButton>
-            </PageHeader>
+                actions={
+                    <AddButton variant="icon" onClick={() => router.visit(route('mobile.baptism'))} title="Novo pedido (membro)">
+                        Novo pedido (membro)
+                    </AddButton>
+                }
+            />
 
             <div className="space-y-6">
-                <p className="text-sm text-zinc-500 dark:text-zinc-400 -mt-4">
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
                     O botão + abre o formulário como no app do membro. Para outros tipos de pedido, use{' '}
                     <Link href={route('solicitations.index', { kind: 'solicitation' })} className="font-semibold text-brand-700 underline dark:text-brand-400">
                         Atendimento

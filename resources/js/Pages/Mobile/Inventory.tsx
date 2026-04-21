@@ -7,13 +7,13 @@ import {
     CameraIcon,
     ChevronDownIcon,
     MagnifyingGlassIcon,
-    PlusCircleIcon,
     QrCodeIcon,
     XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { FormEventHandler, useEffect, useRef, useState } from 'react';
 import ImageDownloadButton from '@/Components/ImageDownloadButton';
 import SelectInput from '@/Components/SelectInput';
+import AddButton from '@/Components/AddButton';
 
 const SCANNER_ELEMENT_ID = 'inventory-barcode-scanner';
 
@@ -317,35 +317,31 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
         <MobileLayout>
             <Head title="Inventário" />
             <div className="space-y-6">
-                <div className="flex items-center gap-3">
+                <div className="flex min-w-0 items-center gap-3">
                     <Link
                         href={route('mobile.more')}
-                        className="p-2 -ml-2 rounded-xl text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                        className="-ml-2 shrink-0 rounded-xl p-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                         aria-label="Voltar"
                     >
-                        <ArrowLeftIcon className="w-6 h-6" />
+                        <ArrowLeftIcon className="h-6 w-6" />
                     </Link>
-                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Inventário</h1>
+                    <h1 className="min-w-0 flex-1 truncate text-2xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
+                        Inventário
+                    </h1>
+                    {canManage ? (
+                        <AddButton variant="icon" onClick={openNewItemForm} title="Novo item">
+                            Novo item
+                        </AddButton>
+                    ) : null}
                 </div>
 
                 {canManage && (
-                    <div className="rounded-2xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/70 dark:bg-emerald-950/25 p-4 space-y-2">
-                        <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
-                            Cadastrar um item novo
-                        </p>
+                    <div className="space-y-1 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/25">
+                        <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">Cadastrar um item novo</p>
                         <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                            Abre o formulário com <strong className="font-semibold">dados básicos</strong> visíveis e os
-                            restantes campos dentro de <strong className="font-semibold">«Mais opções»</strong> (toque para
-                            expandir).
+                            Toque no <strong className="font-semibold">+</strong> ao lado do título. O formulário mostra os dados básicos; o restante fica em{' '}
+                            <strong className="font-semibold">«Mais opções»</strong> (toque para expandir).
                         </p>
-                        <button
-                            type="button"
-                            onClick={openNewItemForm}
-                            className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-700 dark:bg-emerald-600 text-white px-4 py-3 font-semibold active:scale-[0.99] transition-transform"
-                        >
-                            <PlusCircleIcon className="w-6 h-6 shrink-0" />
-                            Novo item
-                        </button>
                     </div>
                 )}
 

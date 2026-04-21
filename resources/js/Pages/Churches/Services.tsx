@@ -101,8 +101,9 @@ export default function ChurchServicesIndex({ church, services }: Props) {
     return (
         <AdminLayout>
             <Head title={`Horários de culto – ${church.name}`} />
-            <PageHeader title={`Horários de culto: ${church.name}`}>
-                <div className="flex items-center gap-2">
+            <PageHeader
+                title={`Horários de culto: ${church.name}`}
+                lead={
                     <Link
                         href={route('churches.index')}
                         className="inline-flex items-center gap-1 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
@@ -110,9 +111,9 @@ export default function ChurchServicesIndex({ church, services }: Props) {
                         <ArrowLeftIcon className="w-4 h-4" />
                         Voltar
                     </Link>
-                    <AddButton onClick={openCreate}>Adicionar horário</AddButton>
-                </div>
-            </PageHeader>
+                }
+                actions={<AddButton variant="icon" onClick={openCreate} title="Adicionar horário">Adicionar horário</AddButton>}
+            />
 
             <Card className="!p-0 overflow-hidden">
                 {services.length === 0 ? (

@@ -279,11 +279,10 @@ export default function Schedule({
     return (
         <AdminLayout>
             <Head title="Agendamento de salas" />
-            <PageHeader title="Agendamento de salas">
-                <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-2xl">
-                    Filtre por sala ou veja todas no período. O responsável é o utilizador que cria o agendamento.
-                </p>
-            </PageHeader>
+            <PageHeader
+                title="Agendamento de salas"
+                subtitle="Filtre por sala ou veja todas no período. O responsável é o utilizador que cria o agendamento."
+            />
 
             <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                 <div className="flex flex-wrap items-center gap-2">

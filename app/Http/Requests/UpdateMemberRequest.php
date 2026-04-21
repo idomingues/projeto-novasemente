@@ -18,14 +18,15 @@ class UpdateMemberRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $member = $this->route('member');
+        // Parâmetro da rota: `members/{user}` (routes: ->parameters(['members' => 'user'])).
+        $user = $this->route('user');
         $merge = [
             'is_volunteer' => $this->boolean('is_volunteer'),
             'notify_via_app' => $this->boolean('notify_via_app'),
             'notify_via_email' => $this->boolean('notify_via_email'),
             'notify_via_whatsapp' => $this->boolean('notify_via_whatsapp'),
         ];
-        if ($member instanceof User && $member->lgpd_accepted_at !== null) {
+        if ($user instanceof User && $user->lgpd_accepted_at !== null) {
             $merge['lgpd_accepted'] = true;
         }
         $this->merge($merge);
@@ -36,8 +37,8 @@ class UpdateMemberRequest extends FormRequest
      */
     public function rules(): array
     {
-        $member = $this->route('member');
-        $memberId = $member instanceof User ? $member->id : null;
+        $user = $this->route('user');
+        $memberId = $user instanceof User ? $user->id : null;
 
         $churchId = Church::resolveWorkingId($this);
         $ministryItemRules = ['integer'];
@@ -48,7 +49,7 @@ class UpdateMemberRequest extends FormRequest
         }
 
         $assignable = MemberRoleAssignment::assignableRoleNames($this->user());
-        $roleRules = ['sometimes', 'nullable', 'string'];
+        $roleRules = ['nullable', 'string'];
         if ($assignable !== []) {
             $roleRules[] = Rule::in($assignable);
         }
@@ -74,9 +75,9 @@ class UpdateMemberRequest extends FormRequest
             'notify_via_whatsapp' => ['sometimes', 'boolean'],
             'lgpd_accepted' => [
                 Rule::requiredIf(function (): bool {
-                    $member = $this->route('member');
+                    $target = $this->route('user');
 
-                    return $member instanceof User && $member->lgpd_accepted_at === null;
+                    return $target instanceof User && $target->lgpd_accepted_at === null;
                 }),
                 'accepted',
             ],

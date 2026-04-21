@@ -99,14 +99,17 @@ export default function Show({ volunteer: v }: Props) {
         <AdminLayout>
             <Head title={`Voluntário — ${titleName}`} />
 
-            <PageHeader title="Detalhe do voluntário">
-                <Link
-                    href={route('volunteers.index')}
-                    className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors shrink-0"
-                >
-                    Voltar à lista
-                </Link>
-            </PageHeader>
+            <PageHeader
+                title="Detalhe do voluntário"
+                lead={
+                    <Link
+                        href={route('volunteers.index')}
+                        className="text-sm font-medium text-zinc-500 underline-offset-2 hover:text-zinc-800 hover:underline dark:text-zinc-400 dark:hover:text-zinc-200"
+                    >
+                        Voltar à lista
+                    </Link>
+                }
+            />
 
             <div className="space-y-6">
                 <Card>

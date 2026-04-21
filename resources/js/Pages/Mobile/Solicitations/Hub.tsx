@@ -7,11 +7,12 @@ import {
     EllipsisHorizontalCircleIcon,
     HandRaisedIcon,
     PencilSquareIcon,
-    PlusIcon,
     SparklesIcon,
     UserGroupIcon,
 } from '@heroicons/react/24/outline';
 import Modal from '@/Components/Modal';
+import PageHeader from '@/Components/PageHeader';
+import AddButton from '@/Components/AddButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import PrimaryButton from '@/Components/PrimaryButton';
 import InputLabel from '@/Components/InputLabel';
@@ -216,21 +217,11 @@ export default function Hub({
         <MobileLayout>
             <Head title={heading} />
             <div className="space-y-4">
-                <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">{heading}</h1>
-                        <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-0.5">{sub}</p>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={openCreate}
-                        className="flex size-12 shrink-0 items-center justify-center rounded-full bg-zinc-900 p-0 text-white shadow-sm ring-1 ring-inset ring-white/10 transition hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-100"
-                        aria-label="Nova solicitação"
-                        title="Nova solicitação"
-                    >
-                        <PlusIcon className="h-6 w-6 shrink-0" strokeWidth={2.2} aria-hidden />
-                    </button>
-                </div>
+                <PageHeader
+                    title={heading}
+                    subtitle={<span className="text-zinc-600 dark:text-zinc-400">{sub}</span>}
+                    actions={<AddButton variant="icon" onClick={openCreate} title="Nova solicitação">Nova solicitação</AddButton>}
+                />
 
                 <div ref={listRef} id="lista-solicitacoes" className="scroll-mt-24">
                     <h2 className="text-sm font-semibold text-zinc-900 dark:text-white mb-3">{listHeading}</h2>

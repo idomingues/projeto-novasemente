@@ -98,9 +98,10 @@ export default function CultoIndex({ cultos }: Props) {
     return (
         <AdminLayout>
             <Head title="Culto" />
-            <PageHeader title="Culto (vídeos)">
-                <AddButton onClick={openCreateModal}>Novo culto</AddButton>
-            </PageHeader>
+            <PageHeader
+                title="Culto (vídeos)"
+                actions={<AddButton variant="icon" onClick={openCreateModal} title="Novo culto">Novo culto</AddButton>}
+            />
 
             <div className="w-full space-y-5">
                 {cultos.length === 0 ? (
@@ -110,7 +111,9 @@ export default function CultoIndex({ cultos }: Props) {
                         </div>
                         <p className="text-zinc-600 dark:text-zinc-400 font-medium">Nenhum culto cadastrado</p>
                         <p className="text-sm text-zinc-500 dark:text-zinc-500 mt-1">Os vídeos aparecerão aqui.</p>
-                        <AddButton onClick={openCreateModal} className="mt-4">Novo culto</AddButton>
+                        <AddButton variant="icon" onClick={openCreateModal} className="mt-4" title="Novo culto">
+                            Novo culto
+                        </AddButton>
                     </div>
                 ) : (
                     cultos.map((c) => (

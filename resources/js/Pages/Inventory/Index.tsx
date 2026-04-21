@@ -302,13 +302,11 @@ export default function Index({ items, filters }: Props) {
     return (
         <AdminLayout>
             <Head title="Inventário" />
-            <PageHeader title="Inventário">
-                <AddButton onClick={openCreateModal}>Novo Item</AddButton>
-            </PageHeader>
-
-            <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6">
-                Gerencie os objetos da igreja com código de barras. Use a busca para encontrar por código ou nome e visualize o histórico de cada item.
-            </p>
+            <PageHeader
+                title="Inventário"
+                subtitle="Gerencie os objetos da igreja com código de barras. Use a busca para encontrar por código ou nome e visualize o histórico de cada item."
+                actions={<AddButton variant="icon" onClick={openCreateModal} title="Novo item">Novo Item</AddButton>}
+            />
 
             <div className="mb-6">
                 <div className="relative max-w-md flex items-stretch gap-2">

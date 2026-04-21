@@ -281,16 +281,25 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
     return (
         <AdminLayout>
             <Head title="Eventos" />
-            <PageHeader title="Eventos">
-                <div className="flex flex-wrap items-center gap-2 w-full">
-                    <div className="flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
+            <PageHeader
+                title="Eventos"
+                actions={
+                    canManage ? (
+                        <AddButton variant="icon" onClick={openCreateModal} title="Novo evento">
+                            Novo evento
+                        </AddButton>
+                    ) : undefined
+                }
+            >
+                <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex overflow-hidden rounded-lg border border-gray-300 dark:border-gray-600">
                         <button
                             type="button"
                             onClick={() => setViewMode('calendar')}
-                            className={`px-3 py-2 text-sm font-medium flex items-center gap-1 ${
+                            className={`flex items-center gap-1 px-3 py-2 text-sm font-medium ${
                                 viewMode === 'calendar'
                                     ? 'bg-primary-600 text-white'
-                                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                    : 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700'
                             }`}
                         >
                             <CalendarDaysIcon className="w-4 h-4" />
@@ -299,19 +308,16 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
                         <button
                             type="button"
                             onClick={() => setViewMode('list')}
-                            className={`px-3 py-2 text-sm font-medium flex items-center gap-1 ${
+                            className={`flex items-center gap-1 px-3 py-2 text-sm font-medium ${
                                 viewMode === 'list'
                                     ? 'bg-primary-600 text-white'
-                                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                    : 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700'
                             }`}
                         >
                             <ListBulletIcon className="w-4 h-4" />
                             Lista
                         </button>
                     </div>
-                    {canManage && (
-                        <AddButton onClick={openCreateModal}>Novo evento</AddButton>
-                    )}
                 </div>
             </PageHeader>
 

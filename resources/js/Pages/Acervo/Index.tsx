@@ -2,6 +2,7 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm, router } from '@inertiajs/react';
 import { PencilIcon, TrashIcon, Bars3Icon, ArrowTopRightOnSquareIcon, PlayCircleIcon, MagnifyingGlassIcon, XMarkIcon, PlusIcon } from '@heroicons/react/24/outline';
 import PageHeader from '@/Components/PageHeader';
+import AddButton from '@/Components/AddButton';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
@@ -93,22 +94,18 @@ export default function AcervoIndex({ items, canManage }: Props) {
     return (
         <AdminLayout>
             <Head title="Acervo" />
-            <div className="space-y-6 -mt-8">
+            <div className="space-y-6">
                 <PageHeader
                     title="Acervo"
                     subtitle="Playlists do YouTube da Nova Semente."
-                >
-                    {canManage && (
-                        <PrimaryButton
-                            type="button"
-                            onClick={openCreateModal}
-                            className="gap-2 flex-shrink-0 !px-4 !py-2.5 !text-sm !normal-case !tracking-normal"
-                        >
-                            <PlusIcon className="h-5 w-5" />
-                            Adicionar link
-                        </PrimaryButton>
-                    )}
-                </PageHeader>
+                    actions={
+                        canManage ? (
+                            <AddButton variant="icon" onClick={openCreateModal} title="Adicionar link">
+                                Adicionar link
+                            </AddButton>
+                        ) : undefined
+                    }
+                />
 
                 {items.length > 0 && (
                     <div className="relative">

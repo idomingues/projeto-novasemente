@@ -106,15 +106,17 @@ export default function Index({ rooms, byFloor, floors, canManage = false }: Pro
     return (
         <AdminLayout>
             <Head title="Salas" />
-            <PageHeader title="Salas">
-                {canManage && (
-                    <AddButton onClick={() => openCreateModal()}>Nova Sala</AddButton>
-                )}
-            </PageHeader>
-
-            <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6">
-                Gerencie as salas por andar. Use cada seção para organizar e visualizar as salas do Térreo ao Terceiro andar.
-            </p>
+            <PageHeader
+                title="Salas"
+                subtitle="Gerencie as salas por andar. Use cada seção para organizar e visualizar as salas do Térreo ao Terceiro andar."
+                actions={
+                    canManage ? (
+                        <AddButton variant="icon" onClick={() => openCreateModal()} title="Nova sala">
+                            Nova Sala
+                        </AddButton>
+                    ) : undefined
+                }
+            />
 
             <div className="space-y-4">
                 {floorOrder.map((floorKey) => {

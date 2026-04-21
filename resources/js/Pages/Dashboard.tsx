@@ -87,15 +87,18 @@ export default function Dashboard({
         <AdminLayout>
             <Head title="Dashboard" />
 
-            <PageHeader title="Dashboard">
-                {churchName ? (
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400 md:text-right">
-                        Dados da igreja: <span className="font-semibold text-zinc-900 dark:text-zinc-100">{churchName}</span>
-                    </p>
-                ) : (
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400 md:text-right">Nenhuma igreja ativa selecionada</p>
-                )}
-            </PageHeader>
+            <PageHeader
+                title="Dashboard"
+                subtitle={
+                    churchName ? (
+                        <>
+                            Dados da igreja: <span className="font-semibold text-zinc-900 dark:text-zinc-100">{churchName}</span>
+                        </>
+                    ) : (
+                        'Nenhuma igreja ativa selecionada'
+                    )
+                }
+            />
 
             <div className="space-y-8">
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-3">

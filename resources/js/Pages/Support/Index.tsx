@@ -4,6 +4,8 @@ import { FormEventHandler, useEffect, useState } from 'react';
 import { ChatBubbleLeftRightIcon, ChevronRightIcon, WrenchScrewdriverIcon } from '@heroicons/react/24/outline';
 import InputLabel from '@/Components/InputLabel';
 import Textarea from '@/Components/Textarea';
+import PageHeader from '@/Components/PageHeader';
+import AddButton from '@/Components/AddButton';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
@@ -99,19 +101,17 @@ export default function SupportIndex({ tickets, devItemStoreUrl, supportIndexUrl
         <AdminLayout>
             <Head title="Suporte do app" />
             <div className="space-y-6">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-zinc-900 dark:text-white">Suporte do app</h1>
-                        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                            Chamados da app e itens internos que a equipe vai desenvolver.
-                        </p>
-                    </div>
-                    {canCreateDevItem && (
-                        <PrimaryButton type="button" onClick={openCreateModal} className="shrink-0">
-                            Novo item a desenvolver
-                        </PrimaryButton>
-                    )}
-                </div>
+                <PageHeader
+                    title="Suporte do app"
+                    subtitle="Chamados da app e itens internos que a equipe vai desenvolver."
+                    actions={
+                        canCreateDevItem ? (
+                            <AddButton variant="icon" onClick={openCreateModal} title="Novo item a desenvolver">
+                                Novo item a desenvolver
+                            </AddButton>
+                        ) : undefined
+                    }
+                />
 
                 {tickets.length === 0 ? (
                     <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-8 text-center text-zinc-600 dark:text-zinc-400">

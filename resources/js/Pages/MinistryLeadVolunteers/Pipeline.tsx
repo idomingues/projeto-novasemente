@@ -3,6 +3,7 @@ import FlashMessages from '@/Components/FlashMessages';
 import Modal from '@/Components/Modal';
 import Card from '@/Components/Card';
 import PageHeader from '@/Components/PageHeader';
+import { titleBarAddIconClass } from '@/Components/AddButton';
 import TextInput from '@/Components/TextInput';
 import Textarea from '@/Components/Textarea';
 import InputLabel from '@/Components/InputLabel';
@@ -18,7 +19,7 @@ import {
     ChevronUpIcon,
     LinkIcon,
     MagnifyingGlassIcon,
-    UserPlusIcon,
+    PlusIcon,
 } from '@heroicons/react/24/outline';
 import PublicVolunteerSignupShareModal from '@/Components/Volunteers/PublicVolunteerSignupShareModal';
 
@@ -230,34 +231,39 @@ export default function Pipeline({
             <PageHeader
                 title="Voluntários"
                 subtitle="Quadro por fases: inscrição, treino até servir. Toque numa linha para abrir a ficha ou as anotações."
-            >
-                {canVolunteerManage ? (
-                    <>
+                actions={
+                    canVolunteerManage ? (
                         <Link
                             href={`${volunteersAdminUrl}?modal=create`}
-                            className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                            className={titleBarAddIconClass}
+                            title="Novo voluntário"
+                            aria-label="Novo voluntário"
                         >
-                            <UserPlusIcon className="h-4 w-4" aria-hidden />
-                            Novo voluntário
+                            <PlusIcon className="h-6 w-6" strokeWidth={2.25} />
                         </Link>
+                    ) : undefined
+                }
+            >
+                <div className="flex flex-wrap items-center gap-2">
+                    {canVolunteerManage ? (
                         <Link
                             href={volunteersAdminUrl}
                             className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
                         >
                             Cadastro secretaria
                         </Link>
-                    </>
-                ) : null}
-                {publicVolunteerSignupUrl && canPipelineMutate ? (
-                    <button
-                        type="button"
-                        onClick={() => setPublicInviteOpen(true)}
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
-                    >
-                        <LinkIcon className="h-4 w-4" aria-hidden />
-                        Link cadastro público
-                    </button>
-                ) : null}
+                    ) : null}
+                    {publicVolunteerSignupUrl && canPipelineMutate ? (
+                        <button
+                            type="button"
+                            onClick={() => setPublicInviteOpen(true)}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                        >
+                            <LinkIcon className="h-4 w-4" aria-hidden />
+                            Link cadastro público
+                        </button>
+                    ) : null}
+                </div>
             </PageHeader>
 
             <div className="flex flex-col gap-6 lg:flex-row">

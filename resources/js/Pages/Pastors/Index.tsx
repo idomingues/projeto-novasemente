@@ -147,17 +147,24 @@ export default function PastorsIndex({ pastors, canManage, linkableUsers }: Prop
     return (
         <AdminLayout>
             <Head title="Pastores" />
-            <PageHeader title="Pastores">
-                {canManage && <AddButton onClick={openCreateModal}>Novo pastor</AddButton>}
-            </PageHeader>
-
-            <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6 max-w-2xl">
-                Equipe pastoral da igreja em contexto (foto e texto). A página pública fica em Mais → Nossos pastores. A{' '}
-                <span className="font-medium">disponibilidade semanal</span> para «Agendar com pastor» define-se no módulo{' '}
-                <span className="font-medium">Agenda pastoral</span> no menu lateral (não neste formulário). Associe a «Conta da
-                app» ao pastor e, se quiser, <span className="font-medium">delegados da agenda</span> para outros utilizadores
-                poderem editar as mesmas faixas nesse módulo.
-            </p>
+            <PageHeader
+                title="Pastores"
+                actions={
+                    canManage ? (
+                        <AddButton variant="icon" onClick={openCreateModal} title="Novo pastor">
+                            Novo pastor
+                        </AddButton>
+                    ) : undefined
+                }
+                subtitle={
+                    <>
+                        Equipe pastoral da igreja em contexto (foto e texto). A página pública fica em Mais → Nossos pastores. A{' '}
+                        <span className="font-medium text-zinc-700 dark:text-zinc-300">disponibilidade semanal</span> para «Agendar com pastor» define-se no módulo{' '}
+                        <span className="font-medium text-zinc-700 dark:text-zinc-300">Agenda pastoral</span> no menu lateral (não neste formulário). Associe a «Conta da app» ao pastor e, se quiser,{' '}
+                        <span className="font-medium text-zinc-700 dark:text-zinc-300">delegados da agenda</span> para outros utilizadores poderem editar as mesmas faixas nesse módulo.
+                    </>
+                }
+            />
 
             {flashSuccess ? (
                 <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-100">

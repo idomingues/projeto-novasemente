@@ -285,12 +285,12 @@ export default function Board({
     return (
         <AdminLayout>
             <Head title={`Voluntários — ${ministry.name}`} />
-            <div className="mb-4">
-                <Link href={indexUrl} className="text-sm font-medium text-primary-600 hover:underline dark:text-primary-400">
-                    ← Todos os ministérios
-                </Link>
-            </div>
             <PageHeader
+                lead={
+                    <Link href={indexUrl} className="text-sm font-medium text-primary-600 hover:underline dark:text-primary-400">
+                        ← Todos os ministérios
+                    </Link>
+                }
                 title={ministry.name}
                 subtitle="Lista de voluntários cadastrados na igreja (como em Voluntários). Filtre pelo formulário de inscrição, encaminhe para este ministério e faça a liberação na ficha."
             />

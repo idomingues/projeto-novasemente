@@ -163,9 +163,12 @@ export default function Index({ users, invitations, roles, ministries, filters }
     return (
         <AdminLayout>
             <Head title="Usuários" />
-            <PageHeader title="Usuários">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between w-full">
-                    <div className="w-full sm:w-80">
+            <PageHeader
+                title="Usuários"
+                actions={<AddButton variant="icon" onClick={openNewUser} title="Novo usuário">Novo usuário</AddButton>}
+            >
+                <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="w-full min-w-0 sm:max-w-md">
                         <TextInput
                             type="search"
                             name="search"
@@ -175,13 +178,10 @@ export default function Index({ users, invitations, roles, ministries, filters }
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
-                    <div className="flex gap-2">
-                        <SecondaryButton type="button" onClick={() => setInviteModalOpen(true)} className="gap-2">
-                            <EnvelopeIcon className="w-5 h-5" />
-                            Convidar
-                        </SecondaryButton>
-                        <AddButton onClick={openNewUser}>Novo usuário</AddButton>
-                    </div>
+                    <SecondaryButton type="button" onClick={() => setInviteModalOpen(true)} className="gap-2 justify-center sm:w-auto">
+                        <EnvelopeIcon className="w-5 h-5" />
+                        Convidar
+                    </SecondaryButton>
                 </div>
             </PageHeader>
 

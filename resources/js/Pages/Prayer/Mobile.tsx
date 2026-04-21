@@ -1,6 +1,7 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, useForm } from '@inertiajs/react';
-import { PlusIcon } from '@heroicons/react/24/outline';
+import AddButton from '@/Components/AddButton';
+import PageHeader from '@/Components/PageHeader';
 import PrayerAmenButton from '@/Components/PrayerAmenButton';
 import FlashMessages from '@/Components/FlashMessages';
 import InputLabel from '@/Components/InputLabel';
@@ -70,25 +71,13 @@ export default function PrayerMobile({ requests }: Props) {
             <Head title="Pedidos de oração" />
             <FlashMessages />
             <div className="space-y-6 lg:space-y-0">
-                <div className="lg:mb-6">
-                    <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Pedidos de oração</h1>
-                            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5 lg:mt-1">
-                                Veja os pedidos e ore por alguém. Obs.: O nome não é divulgado.
-                            </p>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => setCreateOpen(true)}
-                            className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-zinc-900 text-white shadow-sm ring-1 ring-inset ring-white/10 transition hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-100"
-                            aria-label="Novo pedido de oração"
-                            title="Novo pedido"
-                        >
-                            <PlusIcon className="h-6 w-6" strokeWidth={2.2} aria-hidden />
-                        </button>
-                    </div>
-                    <p className="mt-3 rounded-xl border border-brand-200/90 bg-brand-50/90 px-3 py-2.5 text-sm leading-relaxed text-brand-950 dark:border-brand-900/45 dark:bg-brand-950/30 dark:text-brand-50">
+                <div className="lg:mb-6 space-y-3">
+                    <PageHeader
+                        title="Pedidos de oração"
+                        subtitle="Veja os pedidos e ore por alguém. Obs.: O nome não é divulgado."
+                        actions={<AddButton variant="icon" onClick={() => setCreateOpen(true)} title="Novo pedido">Novo pedido</AddButton>}
+                    />
+                    <p className="rounded-xl border border-brand-200/90 bg-brand-50/90 px-3 py-2.5 text-sm leading-relaxed text-brand-950 dark:border-brand-900/45 dark:bg-brand-950/30 dark:text-brand-50">
                         Clique no ícone <strong className="font-semibold text-brand-800 dark:text-brand-200">Orar</strong> e a pessoa vai saber que tem alguém orando por ela.
                     </p>
                 </div>

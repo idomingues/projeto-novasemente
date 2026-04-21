@@ -162,7 +162,7 @@ Route::middleware('auth')->group(function () {
     // Members Resource Routes (restricted to users with appropriate permission)
     Route::resource('members', MemberController::class)
         ->except(['create', 'edit'])
-        ->parameters(['member' => 'user'])
+        ->parameters(['members' => 'user'])
         ->middleware('permission:members.view|members.manage');
 
     // Escala semanal (qualquer usuário autenticado pode ver; edição exige escalas.manage no controller)

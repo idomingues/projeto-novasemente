@@ -1,6 +1,7 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import Modal from '@/Components/Modal';
 import AddButton from '@/Components/AddButton';
+import PageHeader from '@/Components/PageHeader';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { useState, FormEventHandler } from 'react';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
@@ -79,25 +80,27 @@ export default function MobileSupport({ tickets, isAuthenticated }: Props) {
         <MobileLayout>
             <Head title="Suporte do app" />
             <div className="space-y-5">
-                <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 space-y-1">
+                <PageHeader
+                    lead={
                         <Link href={route('mobile.more')} className="text-sm text-zinc-500 underline dark:text-zinc-400">
                             ← Mais
                         </Link>
-                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Suporte do app</h1>
-                        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                            Relate um problema, envie uma sugestão ou deixe seu elogio.
-                        </p>
-                        {!isAuthenticated && (
-                            <p className="text-xs text-amber-800 dark:text-amber-200/90">
-                                Pode enviar sem login; o chat completo fica disponível após entrar na conta.
-                            </p>
-                        )}
-                    </div>
-                    <AddButton onClick={openModal} title="Novo chamado de suporte">
-                        Novo chamado
-                    </AddButton>
-                </div>
+                    }
+                    title="Suporte do app"
+                    subtitle={
+                        <>
+                            <span className="block text-zinc-600 dark:text-zinc-400">
+                                Relate um problema, envie uma sugestão ou deixe seu elogio.
+                            </span>
+                            {!isAuthenticated ? (
+                                <span className="mt-2 block text-xs text-amber-800 dark:text-amber-200/90">
+                                    Pode enviar sem login; o chat completo fica disponível após entrar na conta.
+                                </span>
+                            ) : null}
+                        </>
+                    }
+                    actions={<AddButton variant="icon" onClick={openModal} title="Novo chamado de suporte">Novo chamado</AddButton>}
+                />
 
                 <div>
                     <h2 className="mb-3 text-sm font-semibold text-zinc-900 dark:text-white">

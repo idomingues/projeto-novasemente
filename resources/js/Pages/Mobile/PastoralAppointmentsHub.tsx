@@ -1,6 +1,7 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import Modal from '@/Components/Modal';
 import AddButton from '@/Components/AddButton';
+import PageHeader from '@/Components/PageHeader';
 import PastoralAppointmentForm, { type PastoralPastorOpt } from '@/Components/PastoralAppointment/PastoralAppointmentForm';
 import PastoralAppointmentEditForm, {
     type PastoralAppointmentEditShape,
@@ -149,29 +150,31 @@ export default function PastoralAppointmentsHub({
         <MobileLayout>
             <Head title="Agendamentos pastor" />
             <div className="space-y-5">
-                <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 space-y-1">
-                        <Link href={route('mobile.more')} className="text-sm text-zinc-500 underline">
+                <PageHeader
+                    lead={
+                        <Link href={route('mobile.more')} className="text-sm text-zinc-500 underline dark:text-zinc-400">
                             ← Mais
                         </Link>
-                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Agendamentos pastor</h1>
-                        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                            Toque num pedido para ver ou editar. Use o separador «Chat» para falar com a equipe pastoral.
-                        </p>
-                        {!hasAnyFreeSlot ? (
-                            <p className="text-xs text-amber-700 dark:text-amber-300">
-                                Ainda não há horários livres publicados na agenda pastoral — pode abrir «Novo pedido» para ver os
-                                pastores, mas só conseguirá enviar quando existir pelo menos um horário livre para escolher.
-                            </p>
-                        ) : null}
-                    </div>
-                    <AddButton
-                        onClick={openCreate}
-                        title="Novo pedido de agendamento pastoral"
-                    >
-                        Novo pedido
-                    </AddButton>
-                </div>
+                    }
+                    title="Agendamentos pastor"
+                    subtitle={
+                        <>
+                            <span className="block text-zinc-600 dark:text-zinc-400">
+                                Toque num pedido para ver ou editar. Use o separador «Chat» para falar com a equipe pastoral.
+                            </span>
+                            {!hasAnyFreeSlot ? (
+                                <span className="mt-2 block text-xs text-amber-700 dark:text-amber-300">
+                                    Ainda não há horários livres publicados na agenda pastoral — pode abrir «Novo pedido» para ver os pastores, mas só conseguirá enviar quando existir pelo menos um horário livre para escolher.
+                                </span>
+                            ) : null}
+                        </>
+                    }
+                    actions={
+                        <AddButton variant="icon" onClick={openCreate} title="Novo pedido de agendamento pastoral">
+                            Novo pedido
+                        </AddButton>
+                    }
+                />
 
                 <div>
                     <h2 className="text-sm font-semibold text-zinc-900 dark:text-white mb-3">Os meus pedidos</h2>

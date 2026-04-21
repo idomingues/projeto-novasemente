@@ -98,9 +98,16 @@ export default function MusicIndex({ musicas, canManage }: Props) {
     return (
         <AdminLayout>
             <Head title="Música" />
-            <PageHeader title="Música (vídeos)">
-                {canManage && <AddButton onClick={openCreateModal}>Nova música</AddButton>}
-            </PageHeader>
+            <PageHeader
+                title="Música (vídeos)"
+                actions={
+                    canManage ? (
+                        <AddButton variant="icon" onClick={openCreateModal} title="Nova música">
+                            Nova música
+                        </AddButton>
+                    ) : undefined
+                }
+            />
 
             <div className="w-full space-y-5">
                 {musicas.length === 0 ? (
@@ -110,7 +117,11 @@ export default function MusicIndex({ musicas, canManage }: Props) {
                         </div>
                         <p className="text-zinc-600 dark:text-zinc-400 font-medium">Nenhum vídeo de música cadastrado</p>
                         <p className="text-sm text-zinc-500 dark:text-zinc-500 mt-1">Os vídeos do YouTube aparecerão aqui.</p>
-                        {canManage && <AddButton onClick={openCreateModal} className="mt-4">Nova música</AddButton>}
+                        {canManage && (
+                            <AddButton variant="icon" onClick={openCreateModal} className="mt-4" title="Nova música">
+                                Nova música
+                            </AddButton>
+                        )}
                     </div>
                 ) : (
                     musicas.map((m) => (

@@ -241,19 +241,19 @@ export default function Index({ posts, filters, canManage }: Props) {
     return (
         <AdminLayout>
             <Head title="News" />
-            <PageHeader title="News">
-                <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="w-full sm:w-80">
-                        <TextInput
-                            type="search"
-                            name="search"
-                            value={search}
-                            placeholder="Buscar news…"
-                            className="w-full"
-                            onChange={(e) => setSearch(e.target.value)}
-                        />
-                    </div>
-                    {canManage && <AddButton onClick={openCreateModal}>Nova notícia</AddButton>}
+            <PageHeader
+                title="News"
+                actions={canManage ? <AddButton variant="icon" onClick={openCreateModal} title="Nova notícia">Nova notícia</AddButton> : undefined}
+            >
+                <div className="w-full max-w-md">
+                    <TextInput
+                        type="search"
+                        name="search"
+                        value={search}
+                        placeholder="Buscar news…"
+                        className="w-full"
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
                 </div>
             </PageHeader>
 

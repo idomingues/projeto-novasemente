@@ -99,9 +99,10 @@ export default function Index({ departments, scheduleRolesByDepartmentId, canMan
     return (
         <AdminLayout>
             <Head title="Departamentos" />
-            <PageHeader title="Departamentos">
-                <AddButton onClick={openCreateModal}>Novo Departamento</AddButton>
-            </PageHeader>
+            <PageHeader
+                title="Departamentos"
+                actions={<AddButton variant="icon" onClick={openCreateModal} title="Novo departamento">Novo Departamento</AddButton>}
+            />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {departments.map((d) => {

@@ -272,9 +272,12 @@ export default function Index({
     return (
         <AdminLayout>
             <Head title="Voluntários" />
-            <PageHeader title="Voluntários">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between w-full">
-                    <div className="w-full sm:w-80">
+            <PageHeader
+                title="Voluntários"
+                actions={<AddButton variant="icon" onClick={openCreateModal} title="Novo voluntário">Novo Voluntário</AddButton>}
+            >
+                <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="w-full min-w-0 sm:max-w-md">
                         <TextInput
                             type="search"
                             name="search"
@@ -284,29 +287,19 @@ export default function Index({
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 justify-end w-full sm:w-auto">
-                        {publicVolunteerSignupUrl ? (
-                            <>
-                                <button
-                                    type="button"
-                                    onClick={() => setPublicInviteModalOpen(true)}
-                                    aria-label="Convidar voluntários"
-                                    className="md:hidden flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-white/90 bg-zinc-900 text-white shadow-lg ring-1 ring-inset ring-white/70 hover:bg-zinc-800 active:scale-95 dark:bg-zinc-900 dark:hover:bg-zinc-800"
-                                >
-                                    <UserPlusIcon className="h-6 w-6" strokeWidth={2.2} />
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setPublicInviteModalOpen(true)}
-                                    className="hidden md:inline-flex h-12 shrink-0 items-center gap-2 rounded-full border-2 border-white/90 bg-zinc-900 px-6 text-xs font-semibold uppercase tracking-widest text-white shadow-sm ring-1 ring-inset ring-white/70 transition hover:bg-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800"
-                                >
-                                    <UserPlusIcon className="h-5 w-5" strokeWidth={2} />
-                                    Convidar voluntários
-                                </button>
-                            </>
-                        ) : null}
-                        <AddButton onClick={openCreateModal}>Novo Voluntário</AddButton>
-                    </div>
+                    {publicVolunteerSignupUrl ? (
+                        <div className="flex justify-end sm:justify-start">
+                            <button
+                                type="button"
+                                onClick={() => setPublicInviteModalOpen(true)}
+                                className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full border-2 border-white/90 bg-zinc-900 px-4 text-xs font-semibold uppercase tracking-widest text-white shadow-sm ring-1 ring-inset ring-white/70 transition hover:bg-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800 sm:px-6"
+                            >
+                                <UserPlusIcon className="h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
+                                <span className="hidden sm:inline">Convidar voluntários</span>
+                                <span className="sm:hidden">Convidar</span>
+                            </button>
+                        </div>
+                    ) : null}
                 </div>
             </PageHeader>
 
