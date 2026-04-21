@@ -63,15 +63,11 @@ interface Props {
 
 function pickAssignableRoleName(assignableRoles: AssignableRole[], preferred: string | null | undefined): string {
     const list = assignableRoles ?? [];
-    if (list.length === 0) {
-        return 'membro';
-    }
     const p = preferred ?? '';
     if (p && list.some((r) => r.name === p)) {
         return p;
     }
-    const membro = list.find((r) => r.name === 'membro');
-    return membro?.name ?? list[0].name;
+    return '';
 }
 
 export default function Index({ members, ministryOptions = [], assignableRoles = [], filters }: Props) {
@@ -105,7 +101,7 @@ export default function Index({ members, ministryOptions = [], assignableRoles =
         notify_via_email: true,
         notify_via_whatsapp: false,
         lgpd_accepted: false as boolean,
-        role_name: pickAssignableRoleName(assignableRoles, 'membro'),
+        role_name: '',
     });
 
     useEffect(() => {
@@ -266,7 +262,7 @@ export default function Index({ members, ministryOptions = [], assignableRoles =
             role_name:
                 typeof old.role_name === 'string' && old.role_name
                     ? pickAssignableRoleName(assignableRoles, old.role_name)
-                    : pickAssignableRoleName(assignableRoles, 'membro'),
+                    : '',
             inertia_member_form: formKind === 'edit' ? 'edit' : 'create',
             inertia_member_id: formKind === 'edit' && !Number.isNaN(idNum) ? idNum : null,
         }));
@@ -581,6 +577,7 @@ export default function Index({ members, ministryOptions = [], assignableRoles =
                                     value={data.role_name}
                                     onChange={(e) => setData('role_name', e.target.value)}
                                 >
+                                    <option value="">Sem perfil</option>
                                     {assignableRoles.map((r) => (
                                         <option key={r.name} value={r.name}>
                                             {r.label}

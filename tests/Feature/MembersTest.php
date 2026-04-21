@@ -123,4 +123,33 @@ class MembersTest extends TestCase
         $user = User::query()->where('email', 'pastor-role-member@example.com')->firstOrFail();
         $this->assertTrue($user->hasRole('pastor'));
     }
+
+    public function test_store_member_without_role_keeps_user_without_any_profile(): void
+    {
+        $this->seed();
+
+        $admin = User::query()->where('email', 'ivan@iresult.com.br')->firstOrFail();
+        $churchId = (int) Church::query()->value('id');
+
+        $this->actingAs($admin)
+            ->withSession(['working_church_id' => $churchId])
+            ->post(route('members.store'), [
+                'name' => 'User Sem Perfil',
+                'email' => 'sem-perfil-member@example.com',
+                'password' => 'Password1!xx',
+                'password_confirmation' => 'Password1!xx',
+                'status' => 'active',
+                'is_volunteer' => false,
+                'volunteer_ministry_ids' => [],
+                'notify_via_app' => true,
+                'notify_via_email' => true,
+                'notify_via_whatsapp' => false,
+                'lgpd_accepted' => true,
+                'role_name' => '',
+            ])
+            ->assertRedirect(route('members.index'));
+
+        $user = User::query()->where('email', 'sem-perfil-member@example.com')->firstOrFail();
+        $this->assertCount(0, $user->getRoleNames());
+    }
 }

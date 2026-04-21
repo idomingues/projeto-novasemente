@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\User;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 final class MemberRoleAssignment
 {
@@ -82,5 +83,6 @@ final class MemberRoleAssignment
         }
 
         $target->syncRoles([$roleName]);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 }

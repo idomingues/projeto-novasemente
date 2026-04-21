@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
+use Spatie\Permission\PermissionRegistrar;
 
 class MemberController extends Controller
 {
@@ -92,7 +93,7 @@ class MemberController extends Controller
                     'lgpd_accepted_at' => $user->lgpd_accepted_at?->toIso8601String(),
                     'created_at' => $user->created_at->toIso8601String(),
                     'role_name' => $roleName,
-                    'role_label' => MemberRoleAssignment::label((string) ($roleName ?? 'membro')),
+                    'role_label' => $roleName ? MemberRoleAssignment::label((string) $roleName) : null,
                 ];
             }),
             'assignableRoles' => $assignableRoles,
@@ -111,7 +112,7 @@ class MemberController extends Controller
         }
         $validated = $request->validated();
         $assignable = MemberRoleAssignment::assignableRoleNames($request->user());
-        $roleName = $assignable !== [] ? ($validated['role_name'] ?? 'membro') : null;
+        $roleName = $assignable !== [] ? ($validated['role_name'] ?? null) : null;
         unset($validated['role_name']);
 
         if ($request->hasFile('photo')) {
@@ -124,10 +125,8 @@ class MemberController extends Controller
         ]);
         $user = $createChurchUserProfile($data);
 
-        if ($assignable !== [] && $roleName !== null && $roleName !== '') {
+        if ($assignable !== [] && is_string($roleName) && trim($roleName) !== '') {
             MemberRoleAssignment::syncUserRole($request->user(), $user, (string) $roleName);
-        } elseif ($user->getRoleNames()->isEmpty()) {
-            $user->assignRole('membro');
         }
 
         return redirect()->route('members.index')->with('success', 'Usuário criado com sucesso!');
@@ -156,7 +155,7 @@ class MemberController extends Controller
                 'lgpd_accepted_at' => $user->lgpd_accepted_at?->toIso8601String(),
                 'created_at' => $user->created_at->toIso8601String(),
                 'role_name' => $roleName,
-                'role_label' => MemberRoleAssignment::label((string) ($roleName ?? 'membro')),
+                'role_label' => $roleName ? MemberRoleAssignment::label((string) $roleName) : null,
             ],
         ]);
     }
@@ -181,8 +180,18 @@ class MemberController extends Controller
 
         $updateChurchUserProfile($user, $validated);
 
-        if ($assignable !== [] && is_string($roleName) && trim($roleName) !== '') {
-            MemberRoleAssignment::syncUserRole($request->user(), $user->fresh(), trim($roleName));
+        if ($assignable !== [] && is_string($roleName)) {
+            $next = trim($roleName);
+            if ($next === '') {
+                // Permite limpar o perfil (sem papel) para a maioria dos utilizadores.
+                if ($user->hasRole('super_admin') && ! $request->user()->hasRole('super_admin')) {
+                    abort(403, 'Não autorizado a alterar o perfil deste utilizador.');
+                }
+                $user->syncRoles([]);
+                app(PermissionRegistrar::class)->forgetCachedPermissions();
+            } else {
+                MemberRoleAssignment::syncUserRole($request->user(), $user->fresh(), $next);
+            }
         }
 
         return redirect()->route('members.index')->with('success', 'Usuário atualizado com sucesso!');
