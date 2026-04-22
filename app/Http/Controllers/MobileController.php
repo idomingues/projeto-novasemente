@@ -665,7 +665,7 @@ class MobileController extends Controller
             ]);
         }
 
-        return redirect()->route('pastoral-agenda.index');
+        return redirect()->route('pastoral-agenda.index', ['mine' => true]);
     }
 
     public function settings(Request $request): Response

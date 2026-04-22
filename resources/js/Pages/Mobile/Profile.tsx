@@ -99,7 +99,16 @@ function RowItem({ row }: { row: Row }) {
 
 export default function MobileProfile({ church, user }: Props) {
     const page = usePage();
-    const auth = (page.props as { auth?: { permissions?: string[]; canAccessAdminMenu?: boolean; pastoralAgendaMenuVisible?: boolean; user?: { is_volunteer?: boolean } } }).auth;
+    const auth = (page.props as {
+        auth?: {
+            permissions?: string[];
+            canAccessAdminMenu?: boolean;
+            pastoralAgendaMenuVisible?: boolean;
+            linkedPastor?: { id: number } | null;
+            user?: { is_volunteer?: boolean };
+        };
+    }).auth;
+    const linkedPastor = auth?.linkedPastor ?? null;
     const permissions = auth?.permissions ?? [];
     const canAccessAdminMenu = auth?.canAccessAdminMenu === true;
     const isVolunteer = auth?.user?.is_volunteer === true;
@@ -175,10 +184,12 @@ export default function MobileProfile({ church, user }: Props) {
         ...(pastoralAgendaMenuVisible
             ? ([
                   {
-                      title: 'Agenda pastoral',
-                      description: 'Disponibilidade semanal (painel)',
+                      title: linkedPastor ? 'Minha Agenda' : 'Agenda Pastoral',
+                      description: linkedPastor
+                          ? 'Compromissos e disponibilidade do seu perfil (painel)'
+                          : 'Disponibilidade dos perfis de pastor (painel)',
                       icon: ClockIcon,
-                      href: route('pastoral-agenda.index'),
+                      href: linkedPastor ? route('pastoral-agenda.index', { mine: 1 }) : route('pastoral-agenda.index'),
                       tone: 'critical',
                   },
               ] as Row[])

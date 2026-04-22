@@ -45,6 +45,24 @@ class PastoralAgendaController extends Controller
             ]);
         }
 
+        /** Só a agenda do perfil ligado a esta conta (perfil móvel «Minha Agenda»); nunca o ecrã de escolher outro pastor. */
+        if ($request->boolean('mine')) {
+            $minePastor = Pastor::query()
+                ->where('church_id', $churchId)
+                ->where('user_id', $user->id)
+                ->first();
+            if ($minePastor === null) {
+                return Inertia::render('PastoralAgenda/NeedsAccountLink', [
+                    'variant' => 'pastor',
+                    'pastorsIndexUrl' => route('pastors.index'),
+                    'pastoralModuleNavUrl' => $this->pastoralModuleNavUrl($user),
+                ]);
+            }
+            Gate::authorize('updateWeeklySchedule', $minePastor);
+
+            return $this->agendaEditorResponse($user, $minePastor);
+        }
+
         $pastorQuery = $request->query('pastor');
         $pastorIdFromQuery = is_string($pastorQuery) && $pastorQuery !== '' && ctype_digit($pastorQuery)
             ? (int) $pastorQuery
@@ -143,6 +161,12 @@ class PastoralAgendaController extends Controller
             ->orderByDesc('updated_at')
             ->limit(40)
             ->get()
+            ->sortBy(function (PastoralAppointment $a) {
+                $dt = $a->preferred_start ?? $a->starts_at;
+
+                return $dt?->timestamp ?? PHP_INT_MAX;
+            })
+            ->values()
             ->map(function (PastoralAppointment $a) use ($tz) {
                 $dt = $a->preferred_start ?? $a->starts_at;
                 $slotStartKey = null;
@@ -152,6 +176,11 @@ class PastoralAgendaController extends Controller
 
                 $subject = trim((string) ($a->subject ?? ''));
                 $notes = trim((string) ($a->notes ?? ''));
+
+                $startAtIso = $dt?->clone()->timezone($tz)->toIso8601String();
+                $startLabel = $dt !== null
+                    ? $dt->clone()->timezone($tz)->format('d/m/Y · H:i')
+                    : null;
 
                 return [
                     'appointmentId' => $a->id,
@@ -166,6 +195,8 @@ class PastoralAgendaController extends Controller
                     'requesterLabel' => $a->requesterUser?->name
                         ?: (trim((string) ($a->requester_name ?? '')) !== '' ? trim((string) $a->requester_name) : 'Membro'),
                     'slotStartKey' => $slotStartKey,
+                    'startAt' => $startAtIso,
+                    'startLabel' => $startLabel,
                     'subject' => $subject !== '' ? $subject : null,
                     'notes' => $notes !== '' ? Str::limit($notes, 4000) : null,
                     'preferredModality' => $a->preferred_modality,
@@ -193,6 +224,8 @@ class PastoralAgendaController extends Controller
             ->values()
             ->all();
 
+        $linkedAccountPastorAgenda = (int) ($pastor->user_id ?? 0) === (int) $user->id;
+
         return Inertia::render('PastoralAgenda/Index', [
             'pastor' => [
                 'id' => $pastor->id,
@@ -209,6 +242,7 @@ class PastoralAgendaController extends Controller
             'scheduleTimezone' => $tz,
             'scheduleAnchorIso' => $from->clone()->timezone($tz)->toIso8601String(),
             'editingAsDelegate' => $editingAsDelegate,
+            'linkedAccountPastorAgenda' => $linkedAccountPastorAgenda,
             'pastoralModuleNavUrl' => $this->pastoralModuleNavUrl($user),
         ]);
     }

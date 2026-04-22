@@ -291,6 +291,10 @@ function emptyDraft(defaults: Partial<ScheduleRow>): ScheduleRow {
 export type PastoralAppointmentSlotMatch = {
     appointmentId: number;
     slotStartKey: string | null;
+    /** ISO8601 no fuso da agenda (lista de compromissos). */
+    startAt?: string | null;
+    /** Texto curto para a lista (ex.: dd/mm/aaaa · HH:mm). */
+    startLabel?: string | null;
     requesterLabel: string;
     status: string;
     statusLabel: string;
