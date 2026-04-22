@@ -107,7 +107,6 @@ class SolicitationAdminController extends Controller
             'modal_id' => (string) $solicitation->id,
         ];
         if ($solicitation->type === 'baptism') {
-            $params['kind'] = 'solicitation';
             $params['type'] = 'baptism';
         }
 
@@ -139,7 +138,7 @@ class SolicitationAdminController extends Controller
                 $query->where('church_id', $churchId);
             }
 
-            if ($kindStr === 'solicitation' && is_string($type) && $type !== '') {
+            if (is_string($type) && $type !== '') {
                 $query->where('type', $type);
             }
 
@@ -180,7 +179,9 @@ class SolicitationAdminController extends Controller
         }
 
         $pastoralRows = [];
-        if ($kindStr !== 'solicitation' && $this->canViewPastoral($user)) {
+        $omitPastoralMerge = ($kindStr === 'solicitation')
+            || ($kindStr === '' && is_string($type) && $type !== '');
+        if (! $omitPastoralMerge && $this->canViewPastoral($user)) {
             $pQuery = PastoralAppointment::query()
                 ->with(['requesterUser:id,name', 'preferredPastor:id,name', 'supportTicket:id,public_token'])
                 ->orderByDesc('updated_at')
@@ -282,7 +283,6 @@ class SolicitationAdminController extends Controller
             'modalDetail' => $modalDetail,
             'canManage' => $this->canManage($user),
             'filters' => [
-                'kind' => $kindStr,
                 'type' => is_string($type) ? $type : '',
                 'status' => is_string($request->query('status')) ? (string) $request->query('status') : '',
                 'q' => is_string($request->query('q')) ? (string) $request->query('q') : '',
@@ -293,11 +293,6 @@ class SolicitationAdminController extends Controller
                 ['value' => 'baby_presentation', 'label' => 'Apresentação de bebé'],
                 ['value' => 'pastor_visit', 'label' => 'Visita aos pastores'],
                 ['value' => 'leader_chat', 'label' => 'Conversa com líder'],
-            ],
-            'kindOptions' => [
-                ['value' => '', 'label' => 'Todas as demandas'],
-                ['value' => 'solicitation', 'label' => 'Solicitações'],
-                ['value' => 'pastoral', 'label' => 'Agendamentos pastor'],
             ],
             'statusOptions' => [
                 ['value' => '', 'label' => 'Todos os estados'],
@@ -326,7 +321,7 @@ class SolicitationAdminController extends Controller
         }
 
         return redirect()->route('solicitations.index', array_merge(
-            ['kind' => 'solicitation', 'type' => 'baptism'],
+            ['type' => 'baptism'],
             $carry
         ));
     }

@@ -1,12 +1,14 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, router } from '@inertiajs/react';
-import { FormEventHandler, useEffect, useState } from 'react';
-import { ChevronRightIcon, InboxIcon } from '@heroicons/react/24/outline';
+import { FormEventHandler, useEffect, useMemo, useState } from 'react';
+import { ChevronRightIcon, FunnelIcon, InboxIcon } from '@heroicons/react/24/outline';
 import Modal from '@/Components/Modal';
 import SolicitationDetailPanel, { type SolicitationDetailPanelProps } from '@/Components/Solicitations/SolicitationDetailPanel';
 import SupportTicketDetailPanel, { type SupportTicketDetailPanelProps } from '@/Components/Support/SupportTicketDetailPanel';
 import TextInput from '@/Components/TextInput';
 import SelectInput from '@/Components/SelectInput';
+import PrimaryButton from '@/Components/PrimaryButton';
+import SecondaryButton from '@/Components/SecondaryButton';
 
 type DemandKind = 'solicitation' | 'pastoral';
 
@@ -36,19 +38,22 @@ interface Props {
     solicitationsIndexUrl: string;
     modalDetail: ModalDetail;
     canManage: boolean;
-    filters: { kind: string; type: string; status: string; q: string };
-    kindOptions: { value: string; label: string }[];
+    filters: { type: string; status: string; q: string };
     typeOptions: { value: string; label: string }[];
     statusOptions: { value: string; label: string }[];
 }
 
-function filterQueryParams(filters: { kind: string; type: string; status: string; q: string }): Record<string, string> {
+function filterQueryParams(filters: { type: string; status: string; q: string }): Record<string, string> {
     const p: Record<string, string> = {};
-    if (filters.kind) p.kind = filters.kind;
     if (filters.type) p.type = filters.type;
     if (filters.status) p.status = filters.status;
     if (filters.q.trim()) p.q = filters.q.trim();
     return p;
+}
+
+function optionLabel(options: { value: string; label: string }[], value: string): string | null {
+    const hit = options.find((o) => o.value === value);
+    return hit?.label ?? null;
 }
 
 export default function SolicitationsIndex({
@@ -57,17 +62,12 @@ export default function SolicitationsIndex({
     modalDetail,
     canManage,
     filters: filtersProp,
-    kindOptions,
     typeOptions,
     statusOptions,
 }: Props) {
-    const inertiaScrollOpts = { preserveScroll: true };
     const [modalTab, setModalTab] = useState<'detalhes' | 'chat'>('detalhes');
-    const [localFilters, setLocalFilters] = useState(filtersProp);
-
-    useEffect(() => {
-        setLocalFilters(filtersProp);
-    }, [filtersProp]);
+    const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+    const [draftFilters, setDraftFilters] = useState(filtersProp);
 
     useEffect(() => {
         if (modalDetail?.kind === 'solicitation' && modalDetail.payload?.solicitation?.id) {
@@ -78,22 +78,82 @@ export default function SolicitationsIndex({
         }
     }, [modalDetail]);
 
+    useEffect(() => {
+        if (filterSheetOpen) {
+            setDraftFilters(filtersProp);
+        }
+    }, [filterSheetOpen, filtersProp]);
+
+    const activeFilterCount = useMemo(() => {
+        let n = 0;
+        if (filtersProp.type) n += 1;
+        if (filtersProp.status) n += 1;
+        if (filtersProp.q.trim()) n += 1;
+        return n;
+    }, [filtersProp]);
+
+    const activeChips = useMemo(() => {
+        const chips: { key: string; label: string }[] = [];
+        if (filtersProp.type) {
+            const lb = optionLabel(typeOptions, filtersProp.type);
+            if (lb) chips.push({ key: 'type', label: lb });
+        }
+        if (filtersProp.status) {
+            const lb = optionLabel(statusOptions, filtersProp.status);
+            if (lb) chips.push({ key: 'status', label: lb });
+        }
+        if (filtersProp.q.trim()) {
+            const q = filtersProp.q.trim();
+            chips.push({
+                key: 'q',
+                label: q.length > 28 ? `${q.slice(0, 28)}…` : q,
+            });
+        }
+        return chips;
+    }, [filtersProp, typeOptions, statusOptions]);
+
     const closeModal = () => {
         setModalTab('detalhes');
-        router.get(solicitationsIndexUrl, filterQueryParams(localFilters), { preserveScroll: true, replace: true });
+        router.get(solicitationsIndexUrl, filterQueryParams(filtersProp), { preserveScroll: true, replace: true });
     };
 
     const openModal = (kind: DemandKind, id: number) => {
         router.get(
             solicitationsIndexUrl,
-            { ...filterQueryParams(localFilters), modal_kind: kind, modal_id: String(id) },
+            { ...filterQueryParams(filtersProp), modal_kind: kind, modal_id: String(id) },
             { preserveScroll: true },
         );
     };
 
-    const applyFilters: FormEventHandler = (e) => {
+    const applyFiltersFromDraft = () => {
+        router.get(solicitationsIndexUrl, filterQueryParams(draftFilters), { preserveScroll: true, replace: true });
+        setFilterSheetOpen(false);
+    };
+
+    const clearFiltersAndApply = () => {
+        const empty = { type: '', status: '', q: '' };
+        setDraftFilters(empty);
+        router.get(solicitationsIndexUrl, {}, { preserveScroll: true, replace: true });
+        setFilterSheetOpen(false);
+    };
+
+    const removeChip = (key: string) => {
+        const next = {
+            type: key === 'type' ? '' : filtersProp.type,
+            status: key === 'status' ? '' : filtersProp.status,
+            q: key === 'q' ? '' : filtersProp.q,
+        };
+        router.get(solicitationsIndexUrl, filterQueryParams(next), { preserveScroll: true, replace: true });
+    };
+
+    const openFilterSheet = () => {
+        setDraftFilters(filtersProp);
+        setFilterSheetOpen(true);
+    };
+
+    const filterSheetSubmit: FormEventHandler = (e) => {
         e.preventDefault();
-        router.get(solicitationsIndexUrl, filterQueryParams(localFilters), { preserveScroll: true, replace: true });
+        applyFiltersFromDraft();
     };
 
     const tabBtn = (active: boolean) =>
@@ -106,7 +166,7 @@ export default function SolicitationsIndex({
     return (
         <AdminLayout>
             <Head title="Atendimento" />
-            <div className="space-y-6">
+            <div className="space-y-5 sm:space-y-6">
                 <div>
                     <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-zinc-900 dark:text-white">Atendimento</h1>
                     <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
@@ -115,75 +175,47 @@ export default function SolicitationsIndex({
                     </p>
                 </div>
 
-                <form onSubmit={applyFilters} className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-                    <div className="w-full sm:w-auto sm:min-w-[10rem]">
-                        <label htmlFor="sol_f_kind" className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
-                            Demanda
-                        </label>
-                        <SelectInput
-                            id="sol_f_kind"
-                            value={localFilters.kind}
-                            onChange={(e) => setLocalFilters((f) => ({ ...f, kind: e.target.value }))}
-                        >
-                            {kindOptions.map((o) => (
-                                <option key={o.value || 'all-k'} value={o.value}>
-                                    {o.label}
-                                </option>
-                            ))}
-                        </SelectInput>
-                    </div>
-                    <div className="w-full sm:w-auto sm:min-w-[10rem]">
-                        <label htmlFor="sol_f_type" className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
-                            Tipo
-                        </label>
-                        <SelectInput
-                            id="sol_f_type"
-                            value={localFilters.type}
-                            onChange={(e) => setLocalFilters((f) => ({ ...f, type: e.target.value }))}
-                        >
-                            {typeOptions.map((o) => (
-                                <option key={o.value || 'all'} value={o.value}>
-                                    {o.label}
-                                </option>
-                            ))}
-                        </SelectInput>
-                    </div>
-                    <div className="w-full sm:w-auto sm:min-w-[10rem]">
-                        <label htmlFor="sol_f_status" className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
-                            Estado
-                        </label>
-                        <SelectInput
-                            id="sol_f_status"
-                            value={localFilters.status}
-                            onChange={(e) => setLocalFilters((f) => ({ ...f, status: e.target.value }))}
-                        >
-                            {statusOptions.map((o) => (
-                                <option key={o.value || 'all-s'} value={o.value}>
-                                    {o.label}
-                                </option>
-                            ))}
-                        </SelectInput>
-                    </div>
-                    <div className="w-full sm:flex-1 sm:min-w-[12rem]">
-                        <label htmlFor="sol_f_q" className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
-                            Pesquisar
-                        </label>
-                        <TextInput
-                            id="sol_f_q"
-                            type="search"
-                            value={localFilters.q}
-                            onChange={(e) => setLocalFilters((f) => ({ ...f, q: e.target.value }))}
-                            placeholder="Nome ou texto do pedido"
-                            className="w-full"
-                        />
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                    <div className="min-w-0 flex-1">
+                        {activeChips.length > 0 ? (
+                            <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-xs font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">A filtrar</span>
+                                {activeChips.map((c) => (
+                                    <button
+                                        key={c.key}
+                                        type="button"
+                                        onClick={() => removeChip(c.key)}
+                                        className="group inline-flex max-w-full items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 py-1 pl-3 pr-2 text-xs font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-white dark:border-zinc-600 dark:bg-zinc-800/80 dark:text-zinc-200 dark:hover:border-zinc-500 dark:hover:bg-zinc-800"
+                                        title="Remover filtro"
+                                    >
+                                        <span className="truncate">{c.label}</span>
+                                        <span
+                                            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-zinc-400 group-hover:bg-zinc-200 group-hover:text-zinc-700 dark:group-hover:bg-zinc-700 dark:group-hover:text-zinc-100"
+                                            aria-hidden
+                                        >
+                                            ×
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-xs text-zinc-400 dark:text-zinc-500">Lista completa — use filtros para afinar.</p>
+                        )}
                     </div>
                     <button
-                        type="submit"
-                        className="inline-flex h-12 items-center justify-center rounded-full bg-zinc-900 dark:bg-white px-6 text-sm font-semibold uppercase tracking-widest text-white dark:text-black"
+                        type="button"
+                        onClick={openFilterSheet}
+                        className="relative inline-flex h-12 shrink-0 items-center justify-center gap-2 self-stretch rounded-2xl border border-zinc-200 bg-white px-5 text-sm font-semibold text-zinc-900 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 active:scale-[0.99] dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:hover:border-zinc-600 dark:hover:bg-zinc-800 sm:self-center"
                     >
-                        Filtrar
+                        <FunnelIcon className="h-5 w-5 text-zinc-500 dark:text-zinc-400" aria-hidden />
+                        Filtros
+                        {activeFilterCount > 0 ? (
+                            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-zinc-900 px-1 text-[10px] font-bold text-white dark:bg-white dark:text-zinc-900">
+                                {activeFilterCount > 9 ? '9+' : activeFilterCount}
+                            </span>
+                        ) : null}
                     </button>
-                </form>
+                </div>
 
                 {demands.length === 0 ? (
                     <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-8 text-center text-zinc-600 dark:text-zinc-400">
@@ -231,6 +263,83 @@ export default function SolicitationsIndex({
                     </div>
                 )}
             </div>
+
+            <Modal
+                show={filterSheetOpen}
+                onClose={() => setFilterSheetOpen(false)}
+                maxWidth="md"
+                footer={
+                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <button
+                            type="button"
+                            onClick={clearFiltersAndApply}
+                            className="text-center text-sm font-medium text-zinc-500 underline-offset-2 hover:text-zinc-800 hover:underline dark:text-zinc-400 dark:hover:text-zinc-200"
+                        >
+                            Limpar filtros
+                        </button>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                            <SecondaryButton type="button" className="justify-center sm:w-auto" onClick={() => setFilterSheetOpen(false)}>
+                                Cancelar
+                            </SecondaryButton>
+                            <PrimaryButton type="submit" form="solicitations-filter-form" className="justify-center sm:w-auto">
+                                Aplicar filtros
+                            </PrimaryButton>
+                        </div>
+                    </div>
+                }
+            >
+                <div className="px-5 pb-2 pt-14 sm:px-6 sm:pt-16">
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Filtros</h2>
+                    <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Escolha tipo, estado ou texto — só a lista muda ao tocar em «Aplicar filtros».</p>
+                </div>
+                <form id="solicitations-filter-form" onSubmit={filterSheetSubmit} className="space-y-4 px-5 pb-6 sm:px-6">
+                    <div>
+                        <label htmlFor="sol_f_type" className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                            Tipo
+                        </label>
+                        <SelectInput
+                            id="sol_f_type"
+                            value={draftFilters.type}
+                            onChange={(e) => setDraftFilters((f) => ({ ...f, type: e.target.value }))}
+                        >
+                            {typeOptions.map((o) => (
+                                <option key={o.value || 'all'} value={o.value}>
+                                    {o.label}
+                                </option>
+                            ))}
+                        </SelectInput>
+                    </div>
+                    <div>
+                        <label htmlFor="sol_f_status" className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                            Estado
+                        </label>
+                        <SelectInput
+                            id="sol_f_status"
+                            value={draftFilters.status}
+                            onChange={(e) => setDraftFilters((f) => ({ ...f, status: e.target.value }))}
+                        >
+                            {statusOptions.map((o) => (
+                                <option key={o.value || 'all-s'} value={o.value}>
+                                    {o.label}
+                                </option>
+                            ))}
+                        </SelectInput>
+                    </div>
+                    <div>
+                        <label htmlFor="sol_f_q" className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                            Pesquisar
+                        </label>
+                        <TextInput
+                            id="sol_f_q"
+                            type="search"
+                            value={draftFilters.q}
+                            onChange={(e) => setDraftFilters((f) => ({ ...f, q: e.target.value }))}
+                            placeholder="Nome ou texto do pedido"
+                            className="w-full"
+                        />
+                    </div>
+                </form>
+            </Modal>
 
             <Modal
                 show={modalDetail !== null}
