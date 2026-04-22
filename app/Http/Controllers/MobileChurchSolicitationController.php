@@ -5,11 +5,16 @@ namespace App\Http\Controllers;
 use App\Models\Church;
 use App\Models\ChurchSolicitation;
 use App\Models\ChurchSolicitationMessage;
+use App\Models\Pastor;
+use App\Models\PastoralAvailability;
 use App\Services\SolicitationChatNotifier;
+use App\Support\PastoralBookingInertiaProps;
 use App\Support\SolicitationAssignees;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -61,6 +66,55 @@ class MobileChurchSolicitationController extends Controller
         };
     }
 
+    /**
+     * @return array{start: \Carbon\Carbon, modality: string}
+     */
+    private static function resolvePastoralVisitSlot(
+        int $churchId,
+        int $pastorId,
+        string $preferredRaw,
+        ?string $preferredModalityInput,
+        ?int $ignoreChurchSolicitationId,
+    ): array {
+        Pastor::query()
+            ->where('church_id', $churchId)
+            ->where('id', $pastorId)
+            ->firstOrFail();
+
+        $from = Carbon::now((string) config('app.timezone'))->startOfMinute();
+
+        if (PastoralAvailability::freeUpcomingCollection($churchId, $pastorId, $from, 90, null, $ignoreChurchSolicitationId)->isEmpty()) {
+            throw ValidationException::withMessages([
+                'assigned_pastor_id' => 'Não é possível enviar o pedido: não há horários livres na agenda deste pastor.',
+            ]);
+        }
+
+        if (! PastoralAvailability::preferredStartIsAllowed($preferredRaw, $churchId, $pastorId, $from, 90, null, $ignoreChurchSolicitationId)) {
+            throw ValidationException::withMessages([
+                'preferred_start' => 'Escolha um dos horários livres disponíveis para este pastor.',
+            ]);
+        }
+
+        $slotMeta = PastoralAvailability::findSlotMetadata($preferredRaw, $churchId, $pastorId, $from, 90, null, $ignoreChurchSolicitationId);
+        $slotModality = $slotMeta['modality'] ?? 'both';
+        if ($slotModality === 'both') {
+            $m = $preferredModalityInput ?? null;
+            if ($m !== 'presential' && $m !== 'online') {
+                throw ValidationException::withMessages([
+                    'preferred_modality' => 'Indique se prefere atendimento presencial ou online.',
+                ]);
+            }
+            $preferredModality = $m;
+        } else {
+            $preferredModality = (string) $slotModality;
+        }
+
+        return [
+            'start' => Carbon::parse($preferredRaw)->timezone((string) config('app.timezone'))->startOfMinute(),
+            'modality' => $preferredModality,
+        ];
+    }
+
     public function hub(Request $request): Response
     {
         $churchId = $this->currentChurchId($request);
@@ -91,7 +145,7 @@ class MobileChurchSolicitationController extends Controller
                 ->orderByDesc('updated_at')
                 ->limit(40)
                 ->get()
-                ->map(function (ChurchSolicitation $s) use ($hubUrl, $churchId) {
+                ->map(function (ChurchSolicitation $s) use ($hubUrl, $churchId, $request) {
                     $payload = self::memberConversationPayload(
                         $s,
                         route('mobile.solicitations.messages.store', $s),
@@ -105,6 +159,9 @@ class MobileChurchSolicitationController extends Controller
                         'memberUpdateUrl' => route('mobile.solicitations.update', $s),
                         'memberCanEditDetails' => $s->status === 'pending',
                         'memberPastorOptions' => SolicitationAssignees::pastorOptions($churchId),
+                        'memberPastoralBooking' => $s->type === 'pastor_visit' && $s->status === 'pending' && $churchId !== null
+                            ? PastoralBookingInertiaProps::pastorPayload($request, null, (int) $s->id)
+                            : null,
                     ]);
                 })
                 ->values()
@@ -117,6 +174,8 @@ class MobileChurchSolicitationController extends Controller
             'storeUrl' => route('mobile.solicitations.store'),
             'pastorOptions' => SolicitationAssignees::pastorOptions($churchId),
             'mySolicitations' => $mySolicitations,
+            'pastoralBooking' => PastoralBookingInertiaProps::forRequest($request),
+            'pastoralAgendaUrl' => route('mobile.pastoral-appointments.request', [], false),
         ]);
     }
 
@@ -150,7 +209,7 @@ class MobileChurchSolicitationController extends Controller
             ->orderByDesc('updated_at')
             ->limit(40)
             ->get()
-            ->map(function (ChurchSolicitation $s) use ($hubUrl, $churchId) {
+            ->map(function (ChurchSolicitation $s) use ($hubUrl, $churchId, $request) {
                 $payload = self::memberConversationPayload(
                     $s,
                     route('mobile.solicitations.messages.store', $s),
@@ -164,6 +223,9 @@ class MobileChurchSolicitationController extends Controller
                     'memberUpdateUrl' => route('mobile.solicitations.update', $s),
                     'memberCanEditDetails' => $s->status === 'pending',
                     'memberPastorOptions' => SolicitationAssignees::pastorOptions($churchId),
+                    'memberPastoralBooking' => $s->type === 'pastor_visit' && $s->status === 'pending' && $churchId !== null
+                        ? PastoralBookingInertiaProps::pastorPayload($request, null, (int) $s->id)
+                        : null,
                 ]);
             })
             ->values()
@@ -175,6 +237,8 @@ class MobileChurchSolicitationController extends Controller
             'storeUrl' => route('mobile.solicitations.store'),
             'pastorOptions' => SolicitationAssignees::pastorOptions($churchId),
             'mySolicitations' => $mySolicitations,
+            'pastoralBooking' => PastoralBookingInertiaProps::forRequest($request),
+            'pastoralAgendaUrl' => route('mobile.pastoral-appointments.request', [], false),
             'pageTitle' => 'Pedido de batismo',
             'pageSubtitle' => 'Toque num pedido para editar ou conversar com a igreja.',
             'singleBaptismType' => true,
@@ -194,6 +258,8 @@ class MobileChurchSolicitationController extends Controller
             'storeUrl' => route('mobile.solicitations.store'),
             'pastorOptions' => SolicitationAssignees::pastorOptions($churchId),
             'volunteerOptions' => [],
+            'pastoralBooking' => $type === 'pastor_visit' ? PastoralBookingInertiaProps::forRequest($request) : null,
+            'pastoralAgendaUrl' => route('mobile.pastoral-appointments.request', [], false),
         ]);
     }
 
@@ -206,33 +272,87 @@ class MobileChurchSolicitationController extends Controller
         $effectiveChurchId = $churchId ?? (int) ($user->church_id ?? 0) ?: (int) (Church::query()->orderByDesc('active')->orderBy('name')->value('id') ?? 0);
         SolicitationAssignees::normalizeAssignmentRequest($request);
 
-        $valid = $request->validate(array_merge([
+        $typeInput = (string) $request->input('type', '');
+        $messageRules = $typeInput === 'pastor_visit'
+            ? ['nullable', 'string', 'max:5000']
+            : ['required', 'string', 'max:5000'];
+
+        $rules = array_merge([
             'type' => ['required', 'in:'.implode(',', self::TYPES)],
-            'message' => ['required', 'string', 'max:5000'],
+            'message' => $messageRules,
             'meta' => ['nullable', 'array'],
-        ], SolicitationAssignees::assignmentRules($churchId)));
+        ], SolicitationAssignees::assignmentRules($churchId));
+
+        if ($typeInput === 'pastor_visit') {
+            $rules['preferred_start'] = ['required', 'string', 'max:64'];
+            $rules['preferred_modality'] = ['nullable', 'string', Rule::in(['presential', 'online'])];
+            if ($effectiveChurchId > 0) {
+                $rules['assigned_pastor_id'] = ['required', 'integer', Rule::exists('pastors', 'id')->where('church_id', $effectiveChurchId)];
+            } else {
+                $rules['assigned_pastor_id'] = ['prohibited'];
+            }
+        }
+
+        $valid = $request->validate($rules);
 
         SolicitationAssignees::assertSingleAssignee($valid);
 
         if (($valid['type'] ?? '') === 'leader_chat') {
-            throw \Illuminate\Validation\ValidationException::withMessages([
+            throw ValidationException::withMessages([
                 'type' => 'Para falar com um líder de ministério, use «Falar com líder» em Mais.',
             ]);
         }
 
+        $meta = $valid['meta'] ?? [];
+        if (! is_array($meta)) {
+            $meta = [];
+        }
+
+        $preferredDate = $valid['preferred_date'] ?? null;
         $pastorId = $valid['assigned_pastor_id'] ?? null;
         $volunteerId = $valid['assigned_volunteer_id'] ?? null;
+        $message = trim((string) ($valid['message'] ?? ''));
+
+        if (($valid['type'] ?? '') === 'pastor_visit') {
+            if ($effectiveChurchId <= 0 || $pastorId === null) {
+                throw ValidationException::withMessages([
+                    'assigned_pastor_id' => 'Não foi possível identificar a igreja ou o pastor. Tente novamente.',
+                ]);
+            }
+            $resolved = self::resolvePastoralVisitSlot(
+                (int) $effectiveChurchId,
+                (int) $pastorId,
+                (string) $valid['preferred_start'],
+                $valid['preferred_modality'] ?? null,
+                null,
+            );
+            $meta['pastoral_visit'] = [
+                'preferred_start' => $resolved['start']->toIso8601String(),
+                'preferred_modality' => $resolved['modality'],
+            ];
+            $preferredDate = $resolved['start']->copy()->timezone((string) config('app.timezone'))->format('Y-m-d');
+            $volunteerId = null;
+            if ($message === '') {
+                $message = 'Pedido de visita aos pastores (horário escolhido na app).';
+            }
+        }
+
+        if ($message === '') {
+            throw ValidationException::withMessages([
+                'message' => 'Escreva uma mensagem.',
+            ]);
+        }
 
         $solicitation = ChurchSolicitation::create([
             'church_id' => $effectiveChurchId ?: null,
             'user_id' => $user->id,
             'type' => $valid['type'],
             'status' => 'pending',
-            'message' => $valid['message'],
-            'preferred_date' => $valid['preferred_date'] ?? null,
+            'message' => $message,
+            'preferred_date' => $preferredDate,
             'assigned_pastor_id' => $pastorId !== null ? (int) $pastorId : null,
             'assigned_volunteer_id' => $volunteerId !== null ? (int) $volunteerId : null,
-            'meta' => $valid['meta'] ?? null,
+            'meta' => $meta !== [] ? $meta : null,
         ]);
 
         if ($effectiveChurchId) {
@@ -289,6 +409,10 @@ class MobileChurchSolicitationController extends Controller
                     'memberUpdateUrl' => route('mobile.solicitations.update', $solicitation),
                     'memberCanEditDetails' => $solicitation->status === 'pending',
                     'memberPastorOptions' => SolicitationAssignees::pastorOptions($churchId),
+                    'memberPastoralBooking' => $solicitation->type === 'pastor_visit' && $solicitation->status === 'pending' && $churchId !== null
+                        ? PastoralBookingInertiaProps::pastorPayload($request, null, (int) $solicitation->id)
+                        : null,
+                    'pastoralAgendaUrl' => route('mobile.pastoral-appointments.request', [], false),
                 ],
             ),
         );
@@ -327,6 +451,8 @@ class MobileChurchSolicitationController extends Controller
             ->all();
 
         $isLeaderChat = $s->type === 'leader_chat';
+        $pvStart = data_get($s->meta, 'pastoral_visit.preferred_start');
+        $pvMod = data_get($s->meta, 'pastoral_visit.preferred_modality');
 
         return [
             'solicitation' => [
@@ -339,6 +465,8 @@ class MobileChurchSolicitationController extends Controller
                 'message' => $s->message,
                 'meta' => $s->meta,
                 'preferredDate' => $s->preferred_date?->format('Y-m-d'),
+                'preferredPastoralStart' => is_string($pvStart) ? $pvStart : null,
+                'preferredPastoralModality' => is_string($pvMod) ? $pvMod : null,
                 'assignedPastorId' => $s->assigned_pastor_id,
                 'assignedVolunteerId' => $s->assigned_volunteer_id,
                 'assignedPastorName' => $s->assignedPastor?->name,
@@ -379,6 +507,94 @@ class MobileChurchSolicitationController extends Controller
             $solicitation->update([
                 'subject' => $valid['subject'],
                 'message' => $valid['message'],
+            ]);
+
+            $returnTo = (string) ($valid['return_to'] ?? 'hub');
+
+            if ($returnTo === 'leader_contact') {
+                return redirect()->route('mobile.contact', [
+                    'solicitacao' => $solicitation->id,
+                    'painel' => 'detalhes',
+                ])->with('success', 'Pedido atualizado.');
+            }
+
+            return redirect()->route('mobile.solicitations.hub', [
+                'solicitacao' => $solicitation->id,
+                'painel' => 'detalhes',
+            ])->with('success', 'Pedido atualizado.');
+        }
+
+        if ($solicitation->type === 'pastor_visit') {
+            SolicitationAssignees::normalizeAssignmentRequest($request);
+
+            if (! $request->filled('preferred_start')) {
+                $valid = $request->validate([
+                    'message' => ['required', 'string', 'max:5000'],
+                    'return_to' => ['nullable', 'string', Rule::in(['hub', 'leader_contact'])],
+                ]);
+
+                $solicitation->update([
+                    'message' => $valid['message'],
+                ]);
+
+                $returnTo = (string) ($valid['return_to'] ?? 'hub');
+
+                if ($returnTo === 'leader_contact') {
+                    return redirect()->route('mobile.contact', [
+                        'solicitacao' => $solicitation->id,
+                        'painel' => 'detalhes',
+                    ])->with('success', 'Pedido atualizado.');
+                }
+
+                return redirect()->route('mobile.solicitations.hub', [
+                    'solicitacao' => $solicitation->id,
+                    'painel' => 'detalhes',
+                ])->with('success', 'Pedido atualizado.');
+            }
+
+            $churchId = $this->currentChurchId($request);
+            $cid = (int) ($solicitation->church_id ?? 0);
+            if ($cid <= 0 && $churchId !== null) {
+                $cid = (int) $churchId;
+            }
+            if ($cid <= 0) {
+                throw ValidationException::withMessages([
+                    'assigned_pastor_id' => 'Não foi possível identificar a igreja deste pedido.',
+                ]);
+            }
+
+            $rules = array_merge([
+                'message' => ['required', 'string', 'max:5000'],
+                'return_to' => ['nullable', 'string', Rule::in(['hub', 'leader_contact'])],
+                'preferred_start' => ['required', 'string', 'max:64'],
+                'preferred_modality' => ['nullable', 'string', Rule::in(['presential', 'online'])],
+                'assigned_pastor_id' => ['required', 'integer', Rule::exists('pastors', 'id')->where('church_id', $cid)],
+            ], SolicitationAssignees::assignmentRules($cid));
+
+            $valid = $request->validate($rules);
+
+            SolicitationAssignees::assertSingleAssignee($valid);
+
+            $resolved = self::resolvePastoralVisitSlot(
+                $cid,
+                (int) $valid['assigned_pastor_id'],
+                (string) $valid['preferred_start'],
+                $valid['preferred_modality'] ?? null,
+                (int) $solicitation->id,
+            );
+
+            $meta = is_array($solicitation->meta) ? $solicitation->meta : [];
+            $meta['pastoral_visit'] = [
+                'preferred_start' => $resolved['start']->toIso8601String(),
+                'preferred_modality' => $resolved['modality'],
+            ];
+
+            $solicitation->update([
+                'message' => $valid['message'],
+                'preferred_date' => $resolved['start']->copy()->timezone((string) config('app.timezone'))->format('Y-m-d'),
+                'assigned_pastor_id' => (int) $valid['assigned_pastor_id'],
+                'assigned_volunteer_id' => null,
+                'meta' => $meta,
             ]);
 
             $returnTo = (string) ($valid['return_to'] ?? 'hub');

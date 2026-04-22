@@ -4,6 +4,7 @@ import { solicitationsBackLinkClass } from '@/Pages/Mobile/Solicitations/solicit
 import { useState } from 'react';
 import SolicitationDetailPanel, {
     type MemberPastorOption,
+    type MemberPastoralBookingPayload,
     type SolicitationDetailShape,
     type SolicitationMessageRow,
 } from '@/Components/Solicitations/SolicitationDetailPanel';
@@ -18,6 +19,8 @@ interface Props {
     memberUpdateUrl?: string;
     memberCanEditDetails?: boolean;
     memberPastorOptions?: MemberPastorOption[];
+    memberPastoralBooking?: MemberPastoralBookingPayload | null;
+    pastoralAgendaUrl?: string;
     canFinalizeLeaderChat?: boolean;
     finalizeLeaderChatUrl?: string | null;
     memberHideConversationUrl?: string | null;
@@ -34,6 +37,8 @@ export default function Show({
     memberUpdateUrl,
     memberCanEditDetails,
     memberPastorOptions,
+    memberPastoralBooking,
+    pastoralAgendaUrl,
     canFinalizeLeaderChat,
     finalizeLeaderChatUrl,
     memberHideConversationUrl,
@@ -89,6 +94,8 @@ export default function Show({
                     memberUpdateUrl={memberUpdateUrl}
                     memberCanEditDetails={memberCanEditDetails}
                     memberPastorOptions={memberPastorOptions}
+                    memberPastoralBooking={memberPastoralBooking ?? null}
+                    pastoralAgendaUrl={pastoralAgendaUrl}
                     messagePostReturnTo={solicitation.type === 'leader_chat' ? 'leader-contact' : undefined}
                     memberPatchReturnTo={solicitation.type === 'leader_chat' ? 'leader-contact' : 'hub'}
                     canFinalizeLeaderChat={canFinalizeLeaderChat}

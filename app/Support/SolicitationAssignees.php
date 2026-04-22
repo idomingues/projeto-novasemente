@@ -128,7 +128,7 @@ class SolicitationAssignees
     /** Normaliza strings vazias vindas de selects / date para null antes da validação. */
     public static function normalizeAssignmentRequest(Request $request): void
     {
-        foreach (['preferred_date', 'assigned_pastor_id', 'assigned_volunteer_id'] as $key) {
+        foreach (['preferred_date', 'assigned_pastor_id', 'assigned_volunteer_id', 'preferred_modality'] as $key) {
             if ($request->has($key) && $request->input($key) === '') {
                 $request->merge([$key => null]);
             }

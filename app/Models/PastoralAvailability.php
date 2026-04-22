@@ -7,6 +7,7 @@ use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Collection;
+use Throwable;
 
 class PastoralAvailability extends Model
 {
@@ -69,7 +70,7 @@ class PastoralAvailability extends Model
      *
      * @return array<string, true>
      */
-    private static function takenPreferredStartIsoKeys(int $churchId, int $pastorId, ?int $ignoreAppointmentId): array
+    private static function takenPreferredStartIsoKeys(int $churchId, int $pastorId, ?int $ignoreAppointmentId, ?int $ignoreChurchSolicitationId): array
     {
         $tz = (string) config('app.timezone');
         $q = PastoralAppointment::query()
@@ -91,6 +92,29 @@ class PastoralAvailability extends Model
             $keys[$iso] = true;
         }
 
+        $solicitations = ChurchSolicitation::query()
+            ->where('church_id', $churchId)
+            ->where('assigned_pastor_id', $pastorId)
+            ->where('type', 'pastor_visit')
+            ->whereIn('status', ['pending', 'in_progress'])
+            ->get(['id', 'meta']);
+
+        foreach ($solicitations as $sol) {
+            if ($ignoreChurchSolicitationId !== null && (int) $sol->id === $ignoreChurchSolicitationId) {
+                continue;
+            }
+            $raw = data_get($sol->meta, 'pastoral_visit.preferred_start');
+            if (! is_string($raw) || $raw === '') {
+                continue;
+            }
+            try {
+                $iso = Carbon::parse($raw)->timezone($tz)->startOfMinute()->toIso8601String();
+                $keys[$iso] = true;
+            } catch (Throwable) {
+                continue;
+            }
+        }
+
         return $keys;
     }
 
@@ -105,9 +129,10 @@ class PastoralAvailability extends Model
         CarbonInterface $from,
         int $daysAhead = 90,
         ?int $ignoreConflictAppointmentId = null,
+        ?int $ignoreChurchSolicitationId = null,
     ): Collection {
         $tz = (string) config('app.timezone');
-        $taken = self::takenPreferredStartIsoKeys($churchId, $pastorId, $ignoreConflictAppointmentId);
+        $taken = self::takenPreferredStartIsoKeys($churchId, $pastorId, $ignoreConflictAppointmentId, $ignoreChurchSolicitationId);
 
         return self::upcomingCollection($churchId, $pastorId, $from, $daysAhead)
             ->filter(function (PastoralAvailability $a) use ($taken, $tz) {
@@ -128,10 +153,11 @@ class PastoralAvailability extends Model
         int $daysAhead = 90,
         int $maxSlots = 48,
         ?int $ignoreConflictAppointmentId = null,
+        ?int $ignoreChurchSolicitationId = null,
     ): array {
         $tz = (string) config('app.timezone');
         $rows = [];
-        foreach (self::freeUpcomingCollection($churchId, $pastorId, $from, $daysAhead, $ignoreConflictAppointmentId) as $a) {
+        foreach (self::freeUpcomingCollection($churchId, $pastorId, $from, $daysAhead, $ignoreConflictAppointmentId, $ignoreChurchSolicitationId) as $a) {
             $slotStart = Carbon::parse($a->date->toDateString().' '.$a->start, $tz)->startOfMinute();
             $slotEnd = Carbon::parse($a->date->toDateString().' '.$a->end, $tz);
             $modality = (string) ($a->modality ?? 'both');
@@ -162,8 +188,9 @@ class PastoralAvailability extends Model
         CarbonInterface $from,
         int $daysAhead = 90,
         ?int $ignoreConflictAppointmentId = null,
+        ?int $ignoreChurchSolicitationId = null,
     ): bool {
-        return self::findSlotMetadata($iso, $churchId, $pastorId, $from, $daysAhead, $ignoreConflictAppointmentId) !== null;
+        return self::findSlotMetadata($iso, $churchId, $pastorId, $from, $daysAhead, $ignoreConflictAppointmentId, $ignoreChurchSolicitationId) !== null;
     }
 
     /**
@@ -176,6 +203,7 @@ class PastoralAvailability extends Model
         CarbonInterface $from,
         int $daysAhead = 90,
         ?int $ignoreConflictAppointmentId = null,
+        ?int $ignoreChurchSolicitationId = null,
     ): ?array {
         if ($iso === null || $iso === '') {
             return null;
@@ -183,7 +211,7 @@ class PastoralAvailability extends Model
         $tz = (string) config('app.timezone');
         $target = Carbon::parse($iso, $tz)->startOfMinute();
 
-        foreach (self::freeUpcomingCollection($churchId, $pastorId, $from, $daysAhead, $ignoreConflictAppointmentId) as $a) {
+        foreach (self::freeUpcomingCollection($churchId, $pastorId, $from, $daysAhead, $ignoreConflictAppointmentId, $ignoreChurchSolicitationId) as $a) {
             $slotStart = Carbon::parse($a->date->toDateString().' '.$a->start, $tz)->startOfMinute();
             if ($slotStart->equalTo($target)) {
                 return ['modality' => (string) ($a->modality ?? 'both')];

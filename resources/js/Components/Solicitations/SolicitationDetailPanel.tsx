@@ -1,5 +1,5 @@
 import { router, useForm } from '@inertiajs/react';
-import { FormEventHandler, useEffect } from 'react';
+import { FormEventHandler, useEffect, useMemo } from 'react';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
@@ -9,6 +9,15 @@ import InputLabel from '@/Components/InputLabel';
 import InputError from '@/Components/InputError';
 import SelectInput from '@/Components/SelectInput';
 import { confirmAction } from '@/utils/confirmDialog';
+import PastorVisitScheduleSection from '@/Components/Solicitations/PastorVisitScheduleSection';
+import type { PastoralPastorOpt } from '@/Components/PastoralAppointment/PastoralAppointmentForm';
+
+/** Mesmo formato que `PastoralBookingInertiaProps` (agenda pastoral). */
+export type MemberPastoralBookingPayload = {
+    pastors: PastoralPastorOpt[];
+    storeUrl: string;
+    defaultRequesterName: string;
+};
 
 export type SolicitationMessageRow = {
     id: number;
@@ -29,6 +38,9 @@ export type SolicitationDetailShape = {
     internalNotes?: string | null;
     memberLabel?: string;
     preferredDate?: string | null;
+    /** ISO8601 — horário escolhido em «Visita aos pastores». */
+    preferredPastoralStart?: string | null;
+    preferredPastoralModality?: string | null;
     /** Presente quando o payload inclui ids (edição membro / equipe). */
     assignedPastorId?: number | null;
     assignedVolunteerId?: number | null;
@@ -48,6 +60,8 @@ type MemberPatchFormData = {
     preferred_date: string;
     assigned_pastor_id: string;
     assigned_volunteer_id: string;
+    preferred_start: string;
+    preferred_modality: '' | 'presential' | 'online';
     return_to: 'hub' | 'leader_contact';
 };
 
@@ -72,6 +86,9 @@ export type SolicitationDetailPanelProps = {
     memberUpdateUrl?: string;
     memberCanEditDetails?: boolean;
     memberPastorOptions?: MemberPastorOption[];
+    /** Horários para reagendar «Visita aos pastores» (pedido pendente). */
+    memberPastoralBooking?: MemberPastoralBookingPayload | null;
+    pastoralAgendaUrl?: string;
     /** Após enviar mensagem no chat, o servidor redireciona para o hub ou para «Falar com líder». */
     messagePostReturnTo?: 'hub' | 'leader-contact';
     /** Após o membro salvar edição do pedido, redirecionamento (PATCH). */
@@ -99,6 +116,27 @@ function formatPreferredDate(ymd: string): string {
     return new Date(y, m - 1, d).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+function formatPastoralSlot(iso: string): string {
+    try {
+        return new Date(iso).toLocaleString('pt-PT', {
+            weekday: 'short',
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    } catch {
+        return iso;
+    }
+}
+
+function modalityShort(m: string | null | undefined): string {
+    if (m === 'presential') return 'Presencial';
+    if (m === 'online') return 'Online';
+    return '';
+}
+
 export default function SolicitationDetailPanel({
     solicitation,
     messages,
@@ -115,6 +153,8 @@ export default function SolicitationDetailPanel({
     memberUpdateUrl,
     memberCanEditDetails = false,
     memberPastorOptions = [],
+    memberPastoralBooking = null,
+    pastoralAgendaUrl,
     messagePostReturnTo,
     memberPatchReturnTo = 'hub',
     canFinalizeLeaderChat = false,
@@ -152,6 +192,7 @@ export default function SolicitationDetailPanel({
         // eslint-disable-next-line react-hooks/exhaustive-deps -- sincronizar quando abrimos outro pedido
     }, [solicitation.id]);
 
+    const pvMod = solicitation.preferredPastoralModality;
     const memberPatchForm = useForm<MemberPatchFormData>({
         subject: isLeaderChat ? (solicitation.subject ?? '') : '',
         message: solicitation.message,
@@ -160,11 +201,15 @@ export default function SolicitationDetailPanel({
             solicitation.assignedPastorId != null ? String(solicitation.assignedPastorId) : '',
         assigned_volunteer_id:
             solicitation.assignedVolunteerId != null ? String(solicitation.assignedVolunteerId) : '',
+        preferred_start: solicitation.preferredPastoralStart ?? '',
+        preferred_modality:
+            pvMod === 'presential' || pvMod === 'online' ? pvMod : ('' as '' | 'presential' | 'online'),
         return_to: memberPatchReturnTo === 'leader-contact' ? 'leader_contact' : 'hub',
     });
 
     useEffect(() => {
         const leader = solicitation.type === 'leader_chat';
+        const m = solicitation.preferredPastoralModality;
         memberPatchForm.setData({
             subject: leader ? (solicitation.subject ?? '') : '',
             message: solicitation.message,
@@ -173,10 +218,21 @@ export default function SolicitationDetailPanel({
                 solicitation.assignedPastorId != null ? String(solicitation.assignedPastorId) : '',
             assigned_volunteer_id:
                 solicitation.assignedVolunteerId != null ? String(solicitation.assignedVolunteerId) : '',
+            preferred_start: solicitation.preferredPastoralStart ?? '',
+            preferred_modality:
+                m === 'presential' || m === 'online' ? m : ('' as '' | 'presential' | 'online'),
             return_to: memberPatchReturnTo === 'leader-contact' ? 'leader_contact' : 'hub',
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [solicitation.id, solicitation.subject, solicitation.message, solicitation.type, memberPatchReturnTo]);
+    }, [
+        solicitation.id,
+        solicitation.subject,
+        solicitation.message,
+        solicitation.type,
+        solicitation.preferredPastoralStart,
+        solicitation.preferredPastoralModality,
+        memberPatchReturnTo,
+    ]);
 
     const sendMessage: FormEventHandler = (e) => {
         e.preventDefault();
@@ -202,6 +258,36 @@ export default function SolicitationDetailPanel({
         if (!memberUpdateUrl || !memberCanEditDetails) return;
         memberPatchForm.patch(memberUpdateUrl, inertiaScrollOpts);
     };
+
+    const isPastorVisitFlow =
+        !isLeaderChat && solicitation.type === 'pastor_visit' && memberPastoralBooking !== null;
+
+    const editPastorVisitPastor = useMemo(() => {
+        if (!isPastorVisitFlow || !memberPastoralBooking) return null;
+        const pid =
+            memberPatchForm.data.assigned_pastor_id === ''
+                ? null
+                : Number(memberPatchForm.data.assigned_pastor_id);
+        if (pid === null || Number.isNaN(pid)) return null;
+        return memberPastoralBooking.pastors.find((p) => p.id === pid) ?? null;
+    }, [isPastorVisitFlow, memberPastoralBooking, memberPatchForm.data.assigned_pastor_id]);
+
+    const editPastorVisitReady = useMemo(() => {
+        if (!editPastorVisitPastor || !memberPatchForm.data.preferred_start) return false;
+        const slot = editPastorVisitPastor.slots.find((s) => s.value === memberPatchForm.data.preferred_start);
+        if (!slot) return false;
+        if (slot.modality === 'both') {
+            return (
+                memberPatchForm.data.preferred_modality === 'presential' ||
+                memberPatchForm.data.preferred_modality === 'online'
+            );
+        }
+        return true;
+    }, [
+        editPastorVisitPastor,
+        memberPatchForm.data.preferred_start,
+        memberPatchForm.data.preferred_modality,
+    ]);
 
     const saveAdmin: FormEventHandler = (e) => {
         e.preventDefault();
@@ -235,11 +321,24 @@ export default function SolicitationDetailPanel({
                         </div>
                     )}
                     <div className="text-sm text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap">{solicitation.message}</div>
-                    {(solicitation.preferredDate ||
+                    {(solicitation.preferredPastoralStart ||
+                        solicitation.preferredDate ||
                         solicitation.assignedPastorName ||
                         solicitation.assignedVolunteerName) && (
                         <div className="mt-3 rounded-xl border border-zinc-100 dark:border-zinc-700 bg-zinc-50/80 dark:bg-zinc-800/40 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 space-y-1">
-                            {solicitation.preferredDate && (
+                            {solicitation.preferredPastoralStart && (
+                                <div>
+                                    <span className="font-medium text-zinc-600 dark:text-zinc-400">Horário: </span>
+                                    {formatPastoralSlot(solicitation.preferredPastoralStart)}
+                                    {solicitation.preferredPastoralModality ? (
+                                        <span className="text-zinc-500 dark:text-zinc-400">
+                                            {' '}
+                                            · {modalityShort(solicitation.preferredPastoralModality)}
+                                        </span>
+                                    ) : null}
+                                </div>
+                            )}
+                            {solicitation.preferredDate && !solicitation.preferredPastoralStart && (
                                 <div>
                                     <span className="font-medium text-zinc-600 dark:text-zinc-400">Data: </span>
                                     {formatPreferredDate(solicitation.preferredDate)}
@@ -297,7 +396,9 @@ export default function SolicitationDetailPanel({
                     <p className="text-xs text-zinc-500 dark:text-zinc-400">
                         {isLeaderChat
                             ? 'Enquanto estiver pendente, pode alterar o assunto e a mensagem inicial.'
-                            : 'Enquanto estiver pendente, pode alterar a mensagem, a data e o pastor opcional.'}
+                            : solicitation.type === 'pastor_visit'
+                              ? 'Enquanto estiver pendente, pode alterar o horário (lista abaixo), o pastor e as notas.'
+                              : 'Enquanto estiver pendente, pode alterar a mensagem, a data e o pastor opcional.'}
                     </p>
                     {isLeaderChat && (
                         <div>
@@ -325,7 +426,23 @@ export default function SolicitationDetailPanel({
                         />
                         <InputError message={memberPatchForm.errors.message} className="mt-1" />
                     </div>
-                    {!isLeaderChat && (
+                    {!isLeaderChat && isPastorVisitFlow && memberPastoralBooking ? (
+                        <PastorVisitScheduleSection
+                            pastors={memberPastoralBooking.pastors}
+                            value={{
+                                assigned_pastor_id: memberPatchForm.data.assigned_pastor_id,
+                                preferred_start: memberPatchForm.data.preferred_start,
+                                preferred_modality: memberPatchForm.data.preferred_modality,
+                            }}
+                            onChange={(patch) => {
+                                memberPatchForm.setData((data) => ({ ...data, ...patch }));
+                            }}
+                            errors={memberPatchForm.errors}
+                            fieldIdPrefix="member_pv"
+                            pastoralAgendaUrl={pastoralAgendaUrl}
+                        />
+                    ) : null}
+                    {!isLeaderChat && !isPastorVisitFlow && (
                         <>
                             <div>
                                 <InputLabel htmlFor="member_sol_pref_date" value="Data pretendida ou relevante (opcional)" />
@@ -365,8 +482,20 @@ export default function SolicitationDetailPanel({
                             )}
                         </>
                     )}
+                    {!isLeaderChat && solicitation.type === 'pastor_visit' && !memberPastoralBooking ? (
+                        <p className="text-xs text-amber-700 dark:text-amber-300">
+                            Não foi possível carregar a lista de horários. Pode alterar a mensagem; para mudar data ou pastor,
+                            contacte a igreja ou use «Agendar com pastor» em Mais.
+                        </p>
+                    ) : null}
                     <div className="flex justify-end">
-                        <PrimaryButton type="submit" disabled={memberPatchForm.processing}>
+                        <PrimaryButton
+                            type="submit"
+                            disabled={
+                                memberPatchForm.processing ||
+                                (isPastorVisitFlow && memberPastoralBooking ? !editPastorVisitReady : false)
+                            }
+                        >
                             Salvar alterações
                         </PrimaryButton>
                     </div>

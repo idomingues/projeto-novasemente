@@ -17,14 +17,15 @@ class PastoralBookingInertiaProps
      */
     public static function forRequest(Request $request): ?array
     {
-        return self::pastorPayload($request, null);
+        return self::pastorPayload($request, null, null);
     }
 
     /**
      * @param  int|null  $ignoreConflictAppointmentId  Ignorar este pedido ao marcar horários como ocupados (edição do próprio pedido).
+     * @param  int|null  $ignoreChurchSolicitationId  Ignorar esta solicitação «visita aos pastores» ao calcular ocupação (edição do próprio pedido).
      * @return array{pastors: array<int, array{id: int, name: string, slots: array<int, array{value: string, label: string, modality: string}>}>, storeUrl: string, defaultRequesterName: string}|null
      */
-    public static function pastorPayload(Request $request, ?int $ignoreConflictAppointmentId = null): ?array
+    public static function pastorPayload(Request $request, ?int $ignoreConflictAppointmentId = null, ?int $ignoreChurchSolicitationId = null): ?array
     {
         $user = $request->user();
         if ($user === null) {
@@ -54,6 +55,7 @@ class PastoralBookingInertiaProps
                     90,
                     48,
                     $ignoreConflictAppointmentId,
+                    $ignoreChurchSolicitationId,
                 ),
             ])
             ->values()
