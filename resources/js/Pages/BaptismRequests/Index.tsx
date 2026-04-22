@@ -1,6 +1,6 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { FormEventHandler, useEffect, useState } from 'react';
+import { FormEventHandler, useEffect, useMemo, useState } from 'react';
 import { ChevronRightIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import Modal from '@/Components/Modal';
 import SolicitationDetailPanel, { type SolicitationDetailPanelProps } from '@/Components/Solicitations/SolicitationDetailPanel';
@@ -91,11 +91,16 @@ export default function BaptismRequestsIndex({
         router.get(baptismIndexUrl, filterQueryParams(localFilters), { preserveScroll: true, replace: true });
     };
 
+    const chatBadgeCount = useMemo(
+        () => (modalDetail?.kind === 'solicitation' ? modalDetail.payload.messages?.length ?? 0 : 0),
+        [modalDetail],
+    );
+
     const tabBtn = (active: boolean) =>
-        `px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors -mb-px ${
+        `rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
             active
-                ? 'border-zinc-900 text-zinc-900 dark:border-white dark:text-white'
-                : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
+                ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-white'
+                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
         }`;
 
     return (
@@ -205,39 +210,64 @@ export default function BaptismRequestsIndex({
                 )}
             </div>
 
-            <Modal
-                show={modalDetail !== null}
-                onClose={closeModal}
-                maxWidth={modalDetail?.kind === 'pastoral' ? '2xl' : (modalDetail?.kind === 'solicitation' && modalDetail.payload.solicitation.type === 'leader_chat' ? '2xl' : 'lg')}
-            >
-                <div
-                    className={`flex min-h-0 w-full flex-col overflow-hidden ${
-                        modalDetail?.kind === 'pastoral' || (modalDetail?.kind === 'solicitation' && modalDetail.payload.solicitation.type === 'leader_chat')
-                            ? 'max-h-[min(90dvh,820px)]'
-                            : 'max-h-[min(85dvh,720px)]'
-                    }`}
-                >
-                    <div className="flex shrink-0 items-center gap-2 border-b border-zinc-200 px-5 py-4 dark:border-zinc-800 sm:px-6">
-                        <SparklesIcon className="h-6 w-6 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
-                        <h2 className="min-w-0 truncate text-lg font-semibold text-zinc-900 dark:text-white">
-                            {modalDetail?.kind === 'solicitation'
-                                ? (modalDetail.payload.solicitation.typeLabel ?? 'Pedido')
-                                : (modalDetail?.kind === 'pastoral' ? modalDetail.payload.ticket.typeLabel : 'Pedido')}
-                        </h2>
+            <Modal show={modalDetail !== null} onClose={closeModal} disableBodyScroll maxWidth="2xl">
+                <div className="flex max-h-[min(100dvh-1rem,880px)] min-h-0 w-full flex-col overflow-hidden sm:max-h-[min(90dvh,860px)]">
+                    <div className="flex shrink-0 items-start gap-3 border-b border-zinc-200 px-5 pb-3 pt-4 dark:border-zinc-800 sm:px-6 sm:pb-4 sm:pt-5">
+                        <SparklesIcon className="mt-0.5 h-6 w-6 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
+                        <div className="min-w-0 flex-1 pr-10">
+                            <h2 className="truncate text-lg font-semibold leading-tight text-zinc-900 dark:text-white">
+                                {modalDetail?.kind === 'solicitation'
+                                    ? (modalDetail.payload.solicitation.typeLabel ?? 'Pedido')
+                                    : modalDetail?.kind === 'pastoral'
+                                      ? modalDetail.payload.ticket.typeLabel
+                                      : 'Pedido'}
+                            </h2>
+                            {modalDetail?.kind === 'solicitation' && modalDetail.payload.solicitation.memberLabel ? (
+                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                    Membro:{' '}
+                                    <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                                        {modalDetail.payload.solicitation.memberLabel}
+                                    </span>
+                                    <span className="mx-1.5 text-zinc-300 dark:text-zinc-600">·</span>
+                                    <span className="font-mono text-zinc-400 dark:text-zinc-500">#{modalDetail.payload.solicitation.id}</span>
+                                </p>
+                            ) : null}
+                        </div>
                     </div>
 
                     {modalDetail && (
                         <>
-                            <div className="flex shrink-0 border-b border-zinc-200 px-5 dark:border-zinc-800 sm:px-6">
-                                <button type="button" className={tabBtn(modalTab === 'detalhes')} onClick={() => setModalTab('detalhes')}>
-                                    Detalhes
-                                </button>
-                                <button type="button" className={tabBtn(modalTab === 'chat')} onClick={() => setModalTab('chat')}>
-                                    Chat
-                                </button>
+                            <div className="shrink-0 border-b border-zinc-200 px-5 py-2 dark:border-zinc-800 sm:px-6">
+                                <div className="inline-flex w-full max-w-md rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800/80">
+                                    <button
+                                        type="button"
+                                        className={`flex-1 ${tabBtn(modalTab === 'detalhes')}`}
+                                        onClick={() => setModalTab('detalhes')}
+                                    >
+                                        Detalhes
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`flex flex-1 items-center justify-center gap-2 ${tabBtn(modalTab === 'chat')}`}
+                                        onClick={() => setModalTab('chat')}
+                                    >
+                                        Chat
+                                        {chatBadgeCount > 0 ? (
+                                            <span className="inline-flex min-h-[1.25rem] min-w-[1.25rem] items-center justify-center rounded-full bg-emerald-600 px-1.5 text-[10px] font-bold text-white dark:bg-emerald-500">
+                                                {chatBadgeCount > 99 ? '99+' : chatBadgeCount}
+                                            </span>
+                                        ) : null}
+                                    </button>
+                                </div>
                             </div>
 
-                            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6 sm:py-5">
+                            <div
+                                className={
+                                    modalTab === 'chat'
+                                        ? 'flex min-h-0 flex-1 flex-col overflow-hidden px-5 py-3 sm:px-6 sm:py-4'
+                                        : 'min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-5 py-4 sm:px-6 sm:py-5'
+                                }
+                            >
                                 {modalDetail.kind === 'solicitation' && (
                                     <>
                                         {modalTab === 'detalhes' && (

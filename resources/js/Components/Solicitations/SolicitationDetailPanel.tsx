@@ -297,22 +297,43 @@ export default function SolicitationDetailPanel({
 
     const isStaffBubble = (senderType: string) => senderType === 'staff';
 
+    const isModalChatOnly = isModal && sectionProp === 'chat';
+
+    /** Membro a editar pedido pendente: o cartão «Pedido» repete mensagem/data — mostramos só o formulário com cabeçalho compacto. */
+    const memberEditsOwnPending =
+        Boolean(memberUpdateUrl && memberCanEditDetails && composerRole === 'member');
+
     return (
-        <div className={`space-y-6 ${isModal ? 'pb-1' : ''}`}>
-            {showDetails && (
-                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 space-y-3">
-                    <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Pedido</div>
+        <div
+            className={
+                isModalChatOnly
+                    ? 'flex min-h-0 flex-1 flex-col'
+                    : `${isModal ? 'space-y-5 pb-1' : 'space-y-6'}`
+            }
+        >
+            {showDetails && !memberEditsOwnPending && (
+                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 shadow-sm sm:p-5 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                            Pedido
+                        </div>
+                        {composerRole === 'staff' ? (
+                            <span className="shrink-0 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 font-mono text-[11px] font-medium text-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                                #{solicitation.id}
+                            </span>
+                        ) : null}
+                    </div>
                     <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
                         <span className="inline-flex rounded-full border border-zinc-200 dark:border-zinc-600 bg-zinc-50 dark:bg-zinc-800/80 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:text-zinc-200">
                             {solicitation.statusLabel}
                         </span>
-                        <span>{solicitation.typeLabel}</span>
-                        {solicitation.memberLabel && (
+                        <span className="font-medium text-zinc-800 dark:text-zinc-200">{solicitation.typeLabel}</span>
+                        {solicitation.memberLabel && composerRole !== 'staff' ? (
                             <>
                                 <span className="text-zinc-300 dark:text-zinc-600">·</span>
                                 <span>{solicitation.memberLabel}</span>
                             </>
-                        )}
+                        ) : null}
                     </div>
                     {isLeaderChat && (
                         <div className="text-sm text-zinc-800 dark:text-zinc-200">
@@ -320,7 +341,12 @@ export default function SolicitationDetailPanel({
                             {solicitation.subject?.trim() ? solicitation.subject : '—'}
                         </div>
                     )}
-                    <div className="text-sm text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap">{solicitation.message}</div>
+                    <div>
+                        <p className="sr-only">Mensagem inicial do pedido</p>
+                        <div className="rounded-xl border border-zinc-100 bg-zinc-50/90 px-3.5 py-3 text-sm leading-relaxed text-zinc-800 dark:border-zinc-700/80 dark:bg-zinc-950/50 dark:text-zinc-100 whitespace-pre-wrap">
+                            {solicitation.message}
+                        </div>
+                    </div>
                     {(solicitation.preferredPastoralStart ||
                         solicitation.preferredDate ||
                         solicitation.assignedPastorName ||
@@ -391,15 +417,41 @@ export default function SolicitationDetailPanel({
             )}
 
             {showDetails && memberUpdateUrl && memberCanEditDetails && (
-                <form onSubmit={saveMemberDetails} className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 space-y-4">
-                    <div className="text-sm font-semibold text-zinc-900 dark:text-white">Editar o seu pedido</div>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                        {isLeaderChat
-                            ? 'Enquanto estiver pendente, pode alterar o assunto e a mensagem inicial.'
-                            : solicitation.type === 'pastor_visit'
-                              ? 'Enquanto estiver pendente, pode alterar o horário (lista abaixo), o pastor e as notas.'
-                              : 'Enquanto estiver pendente, pode alterar a mensagem, a data e o pastor opcional.'}
-                    </p>
+                <form
+                    onSubmit={saveMemberDetails}
+                    className="overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 space-y-4 sm:p-5"
+                >
+                    {memberEditsOwnPending ? (
+                        <div className="-mx-4 -mt-4 mb-1 border-b border-zinc-200 bg-gradient-to-b from-zinc-50 to-transparent px-4 pb-4 pt-3 dark:border-zinc-800 dark:from-zinc-800/50 sm:-mx-5 sm:-mt-5 sm:mb-2 sm:px-5 sm:pb-4 sm:pt-4">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <span className="inline-flex rounded-full border border-zinc-200 bg-white px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200">
+                                    {solicitation.statusLabel}
+                                </span>
+                                <span className="text-sm font-semibold text-zinc-900 dark:text-white">{solicitation.typeLabel}</span>
+                            </div>
+                            <h2 className="mt-2 text-base font-semibold tracking-tight text-zinc-900 dark:text-white">
+                                Alterar o seu pedido
+                            </h2>
+                            <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+                                {isLeaderChat
+                                    ? 'Pode mudar o assunto e a mensagem inicial. Para a conversa em tempo real, use o separador Chat.'
+                                    : solicitation.type === 'pastor_visit'
+                                      ? 'Escolha pastor e horário na lista abaixo; as notas são opcionais. Mensagens à igreja ficam no separador Chat.'
+                                      : 'Atualize a mensagem, a data ou o pastor abaixo. Para falar com a igreja, use o separador Chat.'}
+                            </p>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="text-sm font-semibold text-zinc-900 dark:text-white">Editar o seu pedido</div>
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                {isLeaderChat
+                                    ? 'Enquanto estiver pendente, pode alterar o assunto e a mensagem inicial.'
+                                    : solicitation.type === 'pastor_visit'
+                                      ? 'Enquanto estiver pendente, pode alterar o horário (lista abaixo), o pastor e as notas.'
+                                      : 'Enquanto estiver pendente, pode alterar a mensagem, a data e o pastor opcional.'}
+                            </p>
+                        </>
+                    )}
                     {isLeaderChat && (
                         <div>
                             <InputLabel htmlFor="member_sol_subject" value="Assunto" />
@@ -503,48 +555,59 @@ export default function SolicitationDetailPanel({
             )}
 
             {showDetails && canManage && updateUrl && (
-                <form onSubmit={saveAdmin} className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 space-y-4">
-                    <div className="text-sm font-semibold text-zinc-900 dark:text-white">Gestão (equipe)</div>
+                <form
+                    onSubmit={saveAdmin}
+                    className="space-y-4 rounded-2xl border border-indigo-100 bg-gradient-to-b from-indigo-50/90 to-white p-4 shadow-sm dark:border-indigo-900/45 dark:from-indigo-950/35 dark:to-zinc-900 sm:p-5"
+                >
                     <div>
-                        <InputLabel htmlFor="sol_status" value="Estado" />
-                        <SelectInput
-                            id="sol_status"
-                            className="mt-1"
-                            value={adminForm.data.status}
-                            onChange={(e) => adminForm.setData('status', e.target.value)}
-                        >
-                            <option value="pending">Pendente</option>
-                            <option value="in_progress">Em tratamento</option>
-                            <option value="completed">Concluído</option>
-                            <option value="cancelled">Cancelado</option>
-                        </SelectInput>
-                        <InputError message={adminForm.errors.status} className="mt-1" />
+                        <div className="text-sm font-semibold text-indigo-950 dark:text-indigo-100">Gestão interna</div>
+                        <p className="mt-1 text-xs leading-relaxed text-indigo-900/75 dark:text-indigo-200/75">
+                            Estado e notas só para a equipe. Responda ao membro no separador <strong className="font-semibold">Chat</strong>.
+                        </p>
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                            <InputLabel htmlFor="sol_status" value="Estado do pedido" />
+                            <SelectInput
+                                id="sol_status"
+                                className="mt-1"
+                                value={adminForm.data.status}
+                                onChange={(e) => adminForm.setData('status', e.target.value)}
+                            >
+                                <option value="pending">Pendente</option>
+                                <option value="in_progress">Em tratamento</option>
+                                <option value="completed">Concluído</option>
+                                <option value="cancelled">Cancelado</option>
+                            </SelectInput>
+                            <InputError message={adminForm.errors.status} className="mt-1" />
+                        </div>
+                        <div>
+                            <InputLabel htmlFor="sol_pref_date" value="Data preferida ou agendada" />
+                            <input
+                                id="sol_pref_date"
+                                type="date"
+                                value={adminForm.data.preferred_date}
+                                onChange={(e) => adminForm.setData('preferred_date', e.target.value)}
+                                className="mt-1 block h-11 w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 text-sm text-zinc-900 dark:text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/25 dark:focus:border-indigo-400 dark:focus:ring-indigo-400/30"
+                            />
+                            <InputError message={adminForm.errors.preferred_date} className="mt-1" />
+                        </div>
                     </div>
                     <div>
-                        <InputLabel htmlFor="sol_internal" value="Notas internas (não visíveis ao membro)" />
+                        <InputLabel htmlFor="sol_internal" value="Notas internas (confidenciais)" />
                         <Textarea
                             id="sol_internal"
                             value={adminForm.data.internal_notes}
                             onChange={(e) => adminForm.setData('internal_notes', e.target.value)}
-                            rows={4}
-                            className="mt-1 block w-full"
+                            rows={isModal ? 3 : 4}
+                            placeholder="Lembretes para a equipe, acordos telefónicos, etc."
+                            className="mt-1 block w-full rounded-xl border-zinc-200 dark:border-zinc-700"
                         />
                         <InputError message={adminForm.errors.internal_notes} className="mt-1" />
                     </div>
-                    <div>
-                        <InputLabel htmlFor="sol_pref_date" value="Data (preferida ou agendada)" />
-                        <input
-                            id="sol_pref_date"
-                            type="date"
-                            value={adminForm.data.preferred_date}
-                            onChange={(e) => adminForm.setData('preferred_date', e.target.value)}
-                            className="mt-1 block h-11 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 text-sm text-zinc-900 dark:text-zinc-100 shadow-sm focus:border-zinc-900 dark:focus:border-white focus:ring-1 focus:ring-zinc-900/20 dark:focus:ring-white/20"
-                        />
-                        <InputError message={adminForm.errors.preferred_date} className="mt-1" />
-                    </div>
-                    <div className="flex justify-end">
-                        <PrimaryButton type="submit" disabled={adminForm.processing}>
-                            Enviar
+                    <div className="flex justify-end pt-1">
+                        <PrimaryButton type="submit" disabled={adminForm.processing} className="min-w-[10rem] justify-center">
+                            Guardar gestão
                         </PrimaryButton>
                     </div>
                 </form>
@@ -553,29 +616,37 @@ export default function SolicitationDetailPanel({
             {showChat && (
                 <div
                     className={`flex flex-col overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-950 shadow-sm ${
-                        isModal
-                            ? 'max-h-[min(58dvh,520px)]'
-                            : 'min-h-[min(55dvh,560px)] max-h-[min(72dvh,680px)]'
+                        isModalChatOnly
+                            ? 'min-h-0 flex-1'
+                            : isModal
+                              ? 'max-h-[min(58dvh,520px)]'
+                              : 'min-h-[min(55dvh,560px)] max-h-[min(72dvh,680px)]'
                     }`}
                 >
-                    <div className="shrink-0 border-b border-zinc-200/90 dark:border-zinc-800 bg-white/95 dark:bg-zinc-900/95 px-4 py-3 backdrop-blur-sm">
+                    <div className="shrink-0 border-b border-zinc-200/90 dark:border-zinc-800 bg-white/95 dark:bg-zinc-900/95 px-4 py-3 backdrop-blur-sm sm:px-4">
                         <div className="flex items-start gap-2">
                             <ChatBubbleLeftRightIcon className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
                             <div className="min-w-0">
-                                <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">Chat</h2>
-                                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                                <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">Conversa com o membro</h2>
+                                <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
                                     {canChat
-                                        ? 'Estilo conversa — mensagens abaixo, caixa de texto em baixo.'
-                                        : 'Pedido encerrado — só leitura.'}
+                                        ? 'Histórico abaixo — escreva a resposta no fim. O membro vê no telemóvel e por email.'
+                                        : 'Este pedido está encerrado — histórico só para consulta.'}
                                 </p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="min-h-0 flex-1 overflow-y-auto px-2 py-3 sm:px-3">
+                    <div
+                        className={`min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-2 py-3 sm:px-3 ${
+                            isModalChatOnly ? 'min-h-[12rem]' : ''
+                        }`}
+                    >
                         {messages.length === 0 ? (
-                            <p className="text-center text-sm text-zinc-500 dark:text-zinc-400 py-8">
-                                Ainda não há mensagens neste fio. O pedido inicial está no separador de detalhes.
+                            <p className="px-2 py-10 text-center text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
+                                {composerRole === 'staff'
+                                    ? 'Ainda não há mensagens nesta conversa. O texto inicial do pedido está no separador «Detalhes» — pode enviar aqui a primeira resposta ao membro.'
+                                    : 'Ainda não há mensagens neste fio. O pedido inicial está no separador de detalhes.'}
                             </p>
                         ) : (
                             <div className="flex flex-col gap-2">
@@ -614,7 +685,7 @@ export default function SolicitationDetailPanel({
                     </div>
 
                     {canChat && (composerRole === 'member' || (composerRole === 'staff' && staffCanReply)) && (
-                        <div className="shrink-0 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3 sm:p-4">
+                        <div className="shrink-0 border-t border-zinc-200 bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] dark:border-zinc-800 dark:bg-zinc-900/95 sm:p-4">
                             <form onSubmit={sendMessage} className="flex flex-col gap-2 sm:flex-row sm:items-end">
                                 <div className="min-w-0 flex-1">
                                     <label className="sr-only" htmlFor="sol_chat_input">
@@ -624,15 +695,21 @@ export default function SolicitationDetailPanel({
                                         id="sol_chat_input"
                                         value={msgForm.data.content}
                                         onChange={(e) => msgForm.setData('content', e.target.value)}
-                                        rows={isModal ? 2 : 3}
+                                        rows={isModalChatOnly ? 3 : isModal ? 2 : 3}
                                         placeholder={
-                                            composerRole === 'staff' ? 'Escreva a resposta…' : 'Escreva a sua mensagem…'
+                                            composerRole === 'staff'
+                                                ? 'Resposta ao membro… (Shift+Enter para nova linha)'
+                                                : 'Escreva a sua mensagem…'
                                         }
-                                        className="w-full rounded-xl border-zinc-300 dark:border-zinc-600"
+                                        className="w-full rounded-xl border-zinc-300 shadow-sm dark:border-zinc-600"
                                     />
                                     <InputError message={msgForm.errors.content} className="mt-1" />
                                 </div>
-                                <PrimaryButton type="submit" disabled={msgForm.processing} className="shrink-0 sm:mb-0.5">
+                                <PrimaryButton
+                                    type="submit"
+                                    disabled={msgForm.processing}
+                                    className="h-11 shrink-0 justify-center px-6 sm:mb-0.5"
+                                >
                                     Enviar
                                 </PrimaryButton>
                             </form>
