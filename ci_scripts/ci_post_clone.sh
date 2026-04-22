@@ -41,8 +41,9 @@ fi
 NODE_MAJOR="$(node -p 'process.versions.node.split(\".\")[0]')"
 echo "==> Node version: $(node -v)"
 
-if [ "$NODE_MAJOR" -lt 22 ]; then
-  echo "==> Node < 22; skipping npm/capacitor steps"
+# Vite 7 runs fine on Node 20+; Xcode Cloud images may ship 20 LTS (not 22).
+if [ "$NODE_MAJOR" -lt 20 ]; then
+  echo "==> Node < 20; skipping npm/capacitor steps"
   exit 0
 fi
 
