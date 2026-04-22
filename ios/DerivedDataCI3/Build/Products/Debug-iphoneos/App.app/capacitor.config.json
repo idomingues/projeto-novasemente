@@ -1,0 +1,12 @@
+{
+	"appId": "br.org.novasemente.app",
+	"appName": "Nova Semente",
+	"webDir": "capacitor-www",
+	"server": {
+		"url": "https://app.novasemente.com.br",
+		"cleartext": false
+	},
+	"packageClassList": [
+		"CAPNetworkPlugin"
+	]
+}

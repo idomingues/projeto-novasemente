@@ -1,0 +1,29 @@
+{
+  "" : {
+    "diagnostics" : "/Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente/ios/DerivedDataCI/Build/Intermediates.noindex/App.build/Debug-iphoneos/App.build/Objects-normal/arm64/App-primary.dia",
+    "emit-module-dependencies" : "/Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente/ios/DerivedDataCI/Build/Intermediates.noindex/App.build/Debug-iphoneos/App.build/Objects-normal/arm64/App-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente/ios/DerivedDataCI/Build/Intermediates.noindex/App.build/Debug-iphoneos/App.build/Objects-normal/arm64/App-primary-emit-module.dia",
+    "pch" : "/Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente/ios/DerivedDataCI/Build/Intermediates.noindex/App.build/Debug-iphoneos/App.build/Objects-normal/arm64/App-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente/ios/DerivedDataCI/Build/Intermediates.noindex/App.build/Debug-iphoneos/App.build/Objects-normal/arm64/App-primary.swiftdeps"
+  },
+  "/Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente/ios/App/App/AppDelegate.swift" : {
+    "const-values" : "/Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente/ios/DerivedDataCI/Build/Intermediates.noindex/App.build/Debug-iphoneos/App.build/Objects-normal/arm64/AppDelegate.swiftconstvalues",
+    "dependencies" : "/Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente/ios/DerivedDataCI/Build/Intermediates.noindex/App.build/Debug-iphoneos/App.build/Objects-normal/arm64/AppDelegate.d",
+    "diagnostics" : "/Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente/ios/DerivedDataCI/Build/Intermediates.noindex/App.build/Debug-iphoneos/App.build/Objects-normal/arm64/AppDelegate.dia",
+    "index-unit-output-path" : "/App.build/Debug-iphoneos/App.build/Objects-normal/arm64/AppDelegate.o",
+    "llvm-bc" : "/Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente/ios/DerivedDataCI/Build/Intermediates.noindex/App.build/Debug-iphoneos/App.build/Objects-normal/arm64/AppDelegate.bc",
+    "object" : "/Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente/ios/DerivedDataCI/Build/Intermediates.noindex/App.build/Debug-iphoneos/App.build/Objects-normal/arm64/AppDelegate.o",
+    "swift-dependencies" : "/Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente/ios/DerivedDataCI/Build/Intermediates.noindex/App.build/Debug-iphoneos/App.build/Objects-normal/arm64/AppDelegate.swiftdeps",
+    "swiftmodule" : "/Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente/ios/DerivedDataCI/Build/Intermediates.noindex/App.build/Debug-iphoneos/App.build/Objects-normal/arm64/AppDelegate~partial.swiftmodule"
+  },
+  "/Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente/ios/DerivedDataCI/Build/Intermediates.noindex/App.build/Debug-iphoneos/App.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "const-values" : "/Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente/ios/DerivedDataCI/Build/Intermediates.noindex/App.build/Debug-iphoneos/App.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftconstvalues",
+    "dependencies" : "/Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente/ios/DerivedDataCI/Build/Intermediates.noindex/App.build/Debug-iphoneos/App.build/Objects-normal/arm64/GeneratedAssetSymbols.d",
+    "diagnostics" : "/Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente/ios/DerivedDataCI/Build/Intermediates.noindex/App.build/Debug-iphoneos/App.build/Objects-normal/arm64/GeneratedAssetSymbols.dia",
+    "index-unit-output-path" : "/App.build/Debug-iphoneos/App.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente/ios/DerivedDataCI/Build/Intermediates.noindex/App.build/Debug-iphoneos/App.build/Objects-normal/arm64/GeneratedAssetSymbols.bc",
+    "object" : "/Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente/ios/DerivedDataCI/Build/Intermediates.noindex/App.build/Debug-iphoneos/App.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "swift-dependencies" : "/Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente/ios/DerivedDataCI/Build/Intermediates.noindex/App.build/Debug-iphoneos/App.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftdeps",
+    "swiftmodule" : "/Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente/ios/DerivedDataCI/Build/Intermediates.noindex/App.build/Debug-iphoneos/App.build/Objects-normal/arm64/GeneratedAssetSymbols~partial.swiftmodule"
+  }
+}
