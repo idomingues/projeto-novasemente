@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Church;
+use App\Models\ChurchSolicitation;
 use App\Models\Pastor;
 use App\Models\PastoralAppointment;
 use App\Models\PastoralAvailability;
@@ -183,6 +184,7 @@ class PastoralAgendaController extends Controller
                     : null;
 
                 return [
+                    'source' => 'pastoral_appointment',
                     'appointmentId' => $a->id,
                     'status' => $a->status,
                     'statusLabel' => match ($a->status) {
@@ -201,6 +203,70 @@ class PastoralAgendaController extends Controller
                     'notes' => $notes !== '' ? Str::limit($notes, 4000) : null,
                     'preferredModality' => $a->preferred_modality,
                 ];
+            })
+            ->values()
+            ->all();
+
+        $pastorVisitSolicitations = ChurchSolicitation::query()
+            ->where('church_id', $churchId)
+            ->where('type', 'pastor_visit')
+            ->where('assigned_pastor_id', $pastor->id)
+            ->whereIn('status', ['pending', 'in_progress'])
+            ->with(['user:id,name'])
+            ->orderByDesc('updated_at')
+            ->limit(40)
+            ->get()
+            ->map(function (ChurchSolicitation $s) use ($tz) {
+                $raw = data_get($s->meta, 'pastoral_visit.preferred_start');
+                $dt = null;
+                if (is_string($raw) && $raw !== '') {
+                    try {
+                        $dt = Carbon::parse($raw)->timezone($tz);
+                    } catch (\Throwable) {
+                        $dt = null;
+                    }
+                }
+
+                $slotStartKey = null;
+                if ($dt !== null) {
+                    $slotStartKey = $dt->copy()->startOfMinute()->format('Y-m-d H:i');
+                }
+
+                $subject = trim((string) ($s->subject ?? ''));
+                $message = trim((string) ($s->message ?? ''));
+
+                $startAtIso = $dt?->toIso8601String();
+                $startLabel = $dt !== null
+                    ? $dt->format('d/m/Y · H:i')
+                    : null;
+
+                return [
+                    'source' => 'church_solicitation',
+                    /** ID negativo para não colidir com `pastoral_appointments.id` na UI. */
+                    'appointmentId' => -((int) $s->id),
+                    'status' => $s->status,
+                    'statusLabel' => MobileChurchSolicitationController::statusLabel((string) $s->status),
+                    'requesterLabel' => $s->user?->name
+                        ?: 'Membro',
+                    'slotStartKey' => $slotStartKey,
+                    'startAt' => $startAtIso,
+                    'startLabel' => $startLabel,
+                    'subject' => $subject !== '' ? $subject : null,
+                    'notes' => $message !== '' ? Str::limit($message, 4000) : null,
+                    'preferredModality' => data_get($s->meta, 'pastoral_visit.preferred_modality'),
+                ];
+            })
+            ->values()
+            ->all();
+
+        $pastoralAppointments = collect($pastoralAppointments)
+            ->concat($pastorVisitSolicitations)
+            ->sortBy(function (array $row) {
+                $iso = $row['startAt'] ?? null;
+
+                return is_string($iso) && $iso !== ''
+                    ? strtotime($iso) ?: PHP_INT_MAX
+                    : PHP_INT_MAX;
             })
             ->values()
             ->all();

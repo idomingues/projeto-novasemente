@@ -137,6 +137,7 @@ class PastorController extends Controller
         $pastors = Pastor::query()
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
+            ->with(['linkedUser:id,email'])
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get()
@@ -147,6 +148,7 @@ class PastorController extends Controller
                 'photo_path' => $p->photo_path,
                 'sort_order' => $p->sort_order,
                 'user_id' => $p->user_id,
+                'linked_user_email' => $p->linkedUser?->email,
                 'agenda_delegate_user_ids' => $this->normalizedAgendaDelegateUserIds(
                     is_array($p->agenda_delegate_user_ids) ? $p->agenda_delegate_user_ids : null,
                     $p->user_id !== null ? (int) $p->user_id : null

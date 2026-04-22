@@ -10,7 +10,7 @@ import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import Textarea from '@/Components/Textarea';
 import InputError from '@/Components/InputError';
-import { useState, FormEventHandler, ChangeEventHandler } from 'react';
+import { useState, useEffect, FormEventHandler, ChangeEventHandler } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
 import ImageDownloadButton from '@/Components/ImageDownloadButton';
 import SelectInput from '@/Components/SelectInput';
@@ -22,6 +22,8 @@ interface PastorRow {
     photo_path: string | null;
     sort_order: number;
     user_id: number | null;
+    /** Email da conta da app associada (quando existe). */
+    linked_user_email: string | null;
     /** Utilizadores que podem editar a agenda pastoral deste perfil (além da conta principal). */
     agenda_delegate_user_ids: number[];
     scheduleSummary: string | null;
@@ -51,6 +53,9 @@ export default function PastorsIndex({ pastors, canManage, linkableUsers }: Prop
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
+    /** Foto já guardada ao abrir edição (para pré-visualização quando não há ficheiro novo). */
+    const [savedPhotoUrl, setSavedPhotoUrl] = useState<string | null>(null);
+    const [photoObjectUrl, setPhotoObjectUrl] = useState<string | null>(null);
 
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
         name: '',
@@ -64,6 +69,7 @@ export default function PastorsIndex({ pastors, canManage, linkableUsers }: Prop
     const openCreateModal = () => {
         setIsEditing(false);
         setEditingId(null);
+        setSavedPhotoUrl(null);
         reset();
         clearErrors();
         setIsModalOpen(true);
@@ -72,6 +78,7 @@ export default function PastorsIndex({ pastors, canManage, linkableUsers }: Prop
     const openEditModal = (p: PastorRow) => {
         setIsEditing(true);
         setEditingId(p.id);
+        setSavedPhotoUrl(p.photo_path);
         setData({
             name: p.name,
             bio: p.bio ?? '',
@@ -88,11 +95,32 @@ export default function PastorsIndex({ pastors, canManage, linkableUsers }: Prop
         setIsModalOpen(false);
         reset();
         setEditingId(null);
+        setSavedPhotoUrl(null);
     };
+
+    useEffect(() => {
+        if (!data.photo) {
+            setPhotoObjectUrl(null);
+            return;
+        }
+        const url = URL.createObjectURL(data.photo);
+        setPhotoObjectUrl(url);
+        return () => {
+            URL.revokeObjectURL(url);
+        };
+    }, [data.photo]);
+
+    const photoPreviewSrc = photoObjectUrl ?? savedPhotoUrl ?? null;
 
     const onPhotoChange: ChangeEventHandler<HTMLInputElement> = (e) => {
         const file = e.target.files?.[0] ?? null;
         setData('photo', file);
+    };
+
+    const clearPickedPhotoFile = () => {
+        setData('photo', null);
+        const el = document.getElementById('pastor_photo') as HTMLInputElement | null;
+        if (el) el.value = '';
     };
 
     const submit: FormEventHandler = (e) => {
@@ -208,6 +236,17 @@ export default function PastorsIndex({ pastors, canManage, linkableUsers }: Prop
                                 <div className="min-w-0 flex-1">
                                     <h2 className="font-semibold text-zinc-900 dark:text-white truncate">{p.name}</h2>
                                     <p className="text-xs text-zinc-500 mt-0.5">Ordem: {p.sort_order}</p>
+                                    {p.linked_user_email ? (
+                                        <p
+                                            className="mt-1 truncate text-xs text-zinc-600 dark:text-zinc-300"
+                                            title={p.linked_user_email}
+                                        >
+                                            <span className="font-medium text-zinc-500 dark:text-zinc-400">Conta: </span>
+                                            {p.linked_user_email}
+                                        </p>
+                                    ) : (
+                                        <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">Sem conta da app associada.</p>
+                                    )}
                                     {p.scheduleSummary ? (
                                         <p className="text-xs text-primary-700 dark:text-primary-300 mt-1 font-medium">
                                             Horários: {p.scheduleSummary}
@@ -274,6 +313,40 @@ export default function PastorsIndex({ pastors, canManage, linkableUsers }: Prop
                                 required
                             />
                             <InputError message={errors.name} className="mt-1" />
+                        </div>
+                        <div>
+                            <InputLabel htmlFor="pastor_photo" value="Foto (opcional)" />
+                            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                Aparece neste cartão e na página pública (Mais → Nossos pastores). Formatos: JPG ou PNG, até 4&nbsp;MB.
+                            </p>
+                            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+                                <div className="relative flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800">
+                                    {photoPreviewSrc ? (
+                                        <img src={photoPreviewSrc} alt="" className="h-full w-full object-cover" />
+                                    ) : (
+                                        <UserCircleIcon className="h-16 w-16 text-zinc-400" aria-hidden />
+                                    )}
+                                </div>
+                                <div className="min-w-0 flex-1 space-y-2">
+                                    <input
+                                        id="pastor_photo"
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp,image/gif"
+                                        onChange={onPhotoChange}
+                                        className="block w-full text-sm text-zinc-600 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-200 file:px-3 file:py-2 file:text-sm file:font-medium file:text-zinc-800 hover:file:bg-zinc-300 dark:text-zinc-400 dark:file:bg-zinc-700 dark:file:text-zinc-100 dark:hover:file:bg-zinc-600"
+                                    />
+                                    {data.photo ? (
+                                        <button
+                                            type="button"
+                                            onClick={clearPickedPhotoFile}
+                                            className="text-xs font-medium text-zinc-600 underline underline-offset-2 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
+                                        >
+                                            Desfazer ficheiro novo (mantém a foto já guardada)
+                                        </button>
+                                    ) : null}
+                                </div>
+                            </div>
+                            <InputError message={errors.photo} className="mt-1" />
                         </div>
                         <div>
                             <InputLabel htmlFor="pastor_bio" value="Texto / biografia" />
@@ -369,20 +442,6 @@ export default function PastorsIndex({ pastors, canManage, linkableUsers }: Prop
                                 <InputError message={(errors as { agenda_delegate_user_ids?: string }).agenda_delegate_user_ids} className="mt-1" />
                             </div>
                         ) : null}
-                        <div>
-                            <InputLabel
-                                htmlFor="pastor_photo"
-                                value={isEditing ? 'Nova foto (opcional)' : 'Foto (opcional)'}
-                            />
-                            <input
-                                id="pastor_photo"
-                                type="file"
-                                accept="image/*"
-                                onChange={onPhotoChange}
-                                className="mt-1 block w-full text-sm text-zinc-600 dark:text-zinc-400"
-                            />
-                            <InputError message={errors.photo} className="mt-1" />
-                        </div>
                         {isEditing && editingId ? (
                             <div className="rounded-xl border border-dashed border-primary-300/60 bg-primary-50/50 px-3 py-2.5 text-xs text-primary-900 dark:border-primary-800 dark:bg-primary-950/30 dark:text-primary-100">
                                 As faixas de disponibilidade semanal editam-se no módulo{' '}

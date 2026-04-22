@@ -289,6 +289,8 @@ function emptyDraft(defaults: Partial<ScheduleRow>): ScheduleRow {
 // (sem helper aqui) — a data default é escolhida no openAdd()
 
 export type PastoralAppointmentSlotMatch = {
+    /** Pedido na tabela `pastoral_appointments` ou «visita aos pastores» (`church_solicitations`). */
+    source?: 'pastoral_appointment' | 'church_solicitation';
     appointmentId: number;
     slotStartKey: string | null;
     /** ISO8601 no fuso da agenda (lista de compromissos). */
@@ -1008,7 +1010,9 @@ const PastoralWeeklyScheduleEditor = forwardRef<PastoralWeeklyScheduleEditorHand
                                     </div>
                                 </dl>
                                 <p className="mt-6 text-xs text-zinc-400 dark:text-zinc-500">
-                                    Identificador interno do pedido: {bookingDetail.appointmentId}
+                                    {bookingDetail.source === 'church_solicitation'
+                                        ? `Pedido na app (visita aos pastores) n.º ${Math.abs(bookingDetail.appointmentId)}`
+                                        : `Identificador interno do pedido: ${bookingDetail.appointmentId}`}
                                 </p>
                             </>
                         ) : null}

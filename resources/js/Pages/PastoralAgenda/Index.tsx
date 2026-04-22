@@ -89,6 +89,9 @@ export default function PastoralAgendaIndex({
         if (status === 'pending') {
             return 'border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/35 dark:text-amber-100';
         }
+        if (status === 'in_progress') {
+            return 'border-sky-200 bg-sky-50 text-sky-950 dark:border-sky-900/50 dark:bg-sky-950/40 dark:text-sky-100';
+        }
         if (status === 'cancelled') {
             return 'border-zinc-200 bg-zinc-100 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300';
         }
@@ -125,7 +128,9 @@ export default function PastoralAgendaIndex({
                         <div className="min-w-0 flex-1">
                             <h2 className="text-base font-semibold text-zinc-900 dark:text-white">{commitmentsHeading}</h2>
                             <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                                Pedidos de agendamento pastoral com si como pastor preferido (ordenados por data).
+                                {linkedAccountPastorAgenda
+                                    ? 'Inclui horários escolhidos na app («visita aos pastores») e pedidos do fluxo de agenda pastoral (ordenados por data).'
+                                    : 'Inclui visitas agendadas na app e outros pedidos de agenda pastoral neste perfil (ordenados por data).'}
                             </p>
                         </div>
                     </div>
@@ -136,7 +141,10 @@ export default function PastoralAgendaIndex({
                     ) : (
                         <ul className="mt-4 divide-y divide-zinc-100 dark:divide-zinc-800">
                             {sortedAppointments.map((row) => (
-                                <li key={row.appointmentId} className="flex flex-col gap-1 py-3 first:pt-0 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                                <li
+                                    key={`${row.source ?? 'pastoral_appointment'}-${row.appointmentId}`}
+                                    className="flex flex-col gap-1 py-3 first:pt-0 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
+                                >
                                     <div className="min-w-0">
                                         <p className="text-sm font-semibold text-zinc-900 dark:text-white">
                                             {row.startLabel ?? 'Data a combinar'}
