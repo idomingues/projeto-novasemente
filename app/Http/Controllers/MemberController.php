@@ -170,6 +170,15 @@ class MemberController extends Controller
         $roleFromForm = $roleFromFormProvided ? $validated['role_name'] : null;
         unset($validated['role_name']);
 
+        $newPasswordPlain = null;
+        if ($request->user()?->hasRole('super_admin')) {
+            $pw = $validated['password'] ?? null;
+            if (is_string($pw) && $pw !== '') {
+                $newPasswordPlain = $pw;
+            }
+        }
+        unset($validated['password'], $validated['password_confirmation']);
+
         unset($validated['lgpd_accepted']);
         if ($request->boolean('lgpd_accepted') && $user->lgpd_accepted_at === null) {
             $validated['lgpd_accepted_at'] = now();
@@ -181,6 +190,10 @@ class MemberController extends Controller
         unset($validated['photo']);
 
         $updateChurchUserProfile($user, $validated);
+
+        if ($newPasswordPlain !== null) {
+            $user->forceFill(['password' => $newPasswordPlain])->save();
+        }
 
         // Aceitar null (ex.: «Sem perfil» após ConvertEmptyStringsToNull); o código antigo exigia is_string e ignorava a actualização.
         if ($assignable !== [] && $roleFromFormProvided) {

@@ -87,6 +87,7 @@ function firstFlatError(errors: Record<string, string | string[] | undefined>): 
 
 export default function Index({ members, ministryOptions = [], assignableRoles = [], filters }: Props) {
     const page = usePage();
+    const isSuperAdmin = (page.props as { auth?: { isSuperAdmin?: boolean } }).auth?.isSuperAdmin === true;
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
@@ -630,6 +631,42 @@ export default function Index({ members, ministryOptions = [], assignableRoles =
                                         autoComplete="new-password"
                                     />
                                     <InputError message={errors.password_confirmation} className="mt-2" />
+                                </div>
+                            </div>
+                        ) : null}
+
+                        {isEditing && isSuperAdmin ? (
+                            <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-900/60 dark:bg-amber-950/30">
+                                <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">Nova senha de acesso</p>
+                                <p className="mt-1 text-xs text-amber-900/80 dark:text-amber-200/90">
+                                    Apenas super administrador: deixe em branco para manter a senha actual; caso contrário, defina uma nova
+                                    (mesmas regras de complexidade que no registo).
+                                </p>
+                                <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
+                                    <div>
+                                        <InputLabel htmlFor="edit_password" value="Nova senha (opcional)" className="mb-1" />
+                                        <TextInput
+                                            id="edit_password"
+                                            type="password"
+                                            className="block w-full"
+                                            value={data.password}
+                                            onChange={(e) => setData('password', e.target.value)}
+                                            autoComplete="new-password"
+                                        />
+                                        <InputError message={errors.password} className="mt-2" />
+                                    </div>
+                                    <div>
+                                        <InputLabel htmlFor="edit_password_confirmation" value="Confirmar nova senha" className="mb-1" />
+                                        <TextInput
+                                            id="edit_password_confirmation"
+                                            type="password"
+                                            className="block w-full"
+                                            value={data.password_confirmation}
+                                            onChange={(e) => setData('password_confirmation', e.target.value)}
+                                            autoComplete="new-password"
+                                        />
+                                        <InputError message={errors.password_confirmation} className="mt-2" />
+                                    </div>
                                 </div>
                             </div>
                         ) : null}

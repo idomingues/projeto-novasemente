@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Support\MemberRoleAssignment;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 
 class UpdateMemberRequest extends FormRequest
 {
@@ -86,6 +87,13 @@ class UpdateMemberRequest extends FormRequest
                 'accepted',
             ],
             'role_name' => $roleRules,
+            'password' => [
+                Rule::excludeIf(fn () => ! $this->user()?->hasRole('super_admin')),
+                'nullable',
+                'string',
+                'confirmed',
+                Password::defaults(),
+            ],
         ];
     }
 

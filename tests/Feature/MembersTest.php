@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Support\MemberRoleAssignment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
@@ -303,5 +304,85 @@ class MembersTest extends TestCase
 
         $this->assertCount(0, $member->fresh()->getRoleNames());
         $this->assertNull($member->fresh()->role_id);
+    }
+
+    public function test_super_admin_can_set_new_password_when_updating_member(): void
+    {
+        $this->seed();
+
+        $super = User::query()->where('email', 'ivan@iresult.com.br')->firstOrFail();
+        $this->assertTrue($super->hasRole('super_admin'));
+        $churchId = (int) Church::query()->value('id');
+        $member = User::factory()->create([
+            'church_id' => $churchId,
+            'email' => 'pwd-update-member@example.com',
+            'password' => Hash::make('Original-Password1!'),
+        ]);
+
+        $payload = [
+            'name' => $member->name,
+            'email' => $member->email,
+            'phone' => '',
+            'birth_date' => '',
+            'status' => 'active',
+            'is_volunteer' => false,
+            'volunteer_ministry_ids' => [],
+            'notify_via_app' => true,
+            'notify_via_email' => true,
+            'notify_via_whatsapp' => false,
+            'password' => 'Replaced-Password2!',
+            'password_confirmation' => 'Replaced-Password2!',
+        ];
+
+        $this->actingAs($super)
+            ->withSession(['working_church_id' => $churchId])
+            ->put(route('members.update', $member), $payload)
+            ->assertSessionDoesntHaveErrors()
+            ->assertRedirect(route('members.index'));
+
+        $this->assertTrue(Hash::check('Replaced-Password2!', $member->fresh()->password));
+    }
+
+    public function test_non_super_admin_member_update_does_not_change_password_even_if_sent(): void
+    {
+        $this->seed();
+
+        $churchId = (int) Church::query()->value('id');
+        $guard = (string) config('auth.defaults.guard');
+        $adminRole = Role::firstOrCreate(['name' => 'admin', 'guard_name' => $guard]);
+        $manager = User::factory()->create(['church_id' => $churchId]);
+        $manager->assignRole($adminRole);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $member = User::factory()->create([
+            'church_id' => $churchId,
+            'email' => 'pwd-locked-member@example.com',
+            'password' => Hash::make('Stable-Password1!'),
+        ]);
+        $hashBefore = $member->fresh()->password;
+
+        $payload = [
+            'name' => $member->name,
+            'email' => $member->email,
+            'phone' => '',
+            'birth_date' => '',
+            'status' => 'active',
+            'is_volunteer' => false,
+            'volunteer_ministry_ids' => [],
+            'notify_via_app' => true,
+            'notify_via_email' => true,
+            'notify_via_whatsapp' => false,
+            'password' => 'Hacker-Password2!',
+            'password_confirmation' => 'Hacker-Password2!',
+        ];
+
+        $this->actingAs($manager)
+            ->withSession(['working_church_id' => $churchId])
+            ->put(route('members.update', $member), $payload)
+            ->assertSessionDoesntHaveErrors()
+            ->assertRedirect(route('members.index'));
+
+        $this->assertSame($hashBefore, $member->fresh()->password);
+        $this->assertFalse(Hash::check('Hacker-Password2!', $member->fresh()->password));
     }
 }
