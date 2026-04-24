@@ -12,9 +12,9 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", exact: "8.3.1"),
-        .package(name: "CapacitorDevice", path: "../../../node_modules/@capacitor/device"),
-        .package(name: "CapacitorNetwork", path: "../../../node_modules/@capacitor/network"),
-        .package(name: "CapacitorPushNotifications", path: "../../../node_modules/@capacitor/push-notifications")
+        .package(name: "CapacitorDevice", path: "../CapacitorSpmPlugins/device"),
+        .package(name: "CapacitorNetwork", path: "../CapacitorSpmPlugins/network"),
+        .package(name: "CapacitorPushNotifications", path: "../CapacitorSpmPlugins/push-notifications")
     ],
     targets: [
         .target(
