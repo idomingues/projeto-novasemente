@@ -1,9 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
-# Xcode Cloud expects `ci_scripts/` next to the `.xcodeproj`.
-# Keep the canonical logic in `ci_scripts/lib/` at the repository root.
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+echo "==> Xcode Cloud: post-clone (noop)"
 
-bash "$REPO_ROOT/ci_scripts/lib/capacitor_cloud_prepare.sh"
+# Heavy dependency install happens in `ci_pre_xcodebuild.sh` to ensure it runs
+# before `xcodebuild`/SwiftPM resolution.
+
+exit 0

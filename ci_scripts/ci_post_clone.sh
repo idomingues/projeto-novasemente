@@ -1,8 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "==> Xcode Cloud: post-clone"
+echo "==> Xcode Cloud: post-clone (noop)"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Important: keep this script non-fatal.
+# Some Xcode Cloud pipelines resolve SwiftPM very early; heavy work should run in
+# `ios/App/ci_scripts/ci_pre_xcodebuild.sh` (runs before `xcodebuild`).
 
-bash "$SCRIPT_DIR/lib/capacitor_cloud_prepare.sh"
+exit 0
