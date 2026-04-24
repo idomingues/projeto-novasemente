@@ -1,8 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-# Xcode Cloud expects `ci_scripts/` next to the `.xcodeproj`.
-# Keep the canonical logic in `ci_scripts/lib/` at the repository root.
+echo "==> Xcode Cloud: pre-xcodebuild"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
