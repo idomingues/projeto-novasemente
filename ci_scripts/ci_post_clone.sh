@@ -41,10 +41,27 @@ fi
 NODE_MAJOR="$(node -p 'process.versions.node.split(\".\")[0]')"
 echo "==> Node version: $(node -v)"
 
-# Vite 7 runs fine on Node 20+; Xcode Cloud images may ship 20 LTS (not 22).
+# Vite 7 / toolchain moderno espera Node 20+. Em Xcode Cloud, às vezes o default ainda é 18.x.
+# NUNCA podemos "saltar" estes passos: o iOS SPM (`CapApp-SPM/Package.swift`) referencia plugins via
+# `node_modules/...` e o build falha se `npm ci` não correr.
 if [ "$NODE_MAJOR" -lt 20 ]; then
-  echo "==> Node < 20; skipping npm/capacitor steps"
-  exit 0
+  if command -v brew >/dev/null 2>&1; then
+    echo "==> Node < 20; installing Node 20 via Homebrew (Xcode Cloud)"
+    brew list --formula | grep -q '^node@20$' || brew install node@20
+    BREW_PREFIX="$(brew --prefix)"
+    export PATH="$BREW_PREFIX/opt/node@20/bin:$PATH"
+    hash -r
+    NODE_MAJOR="$(node -p 'process.versions.node.split(\".\")[0]')"
+    echo "==> Node version (after brew): $(node -v)"
+  else
+    echo "==> ERROR: Node < 20 and Homebrew not available; cannot install dependencies."
+    exit 1
+  fi
+fi
+
+if [ "$NODE_MAJOR" -lt 20 ]; then
+  echo "==> ERROR: Still on Node < 20 after install attempt."
+  exit 1
 fi
 
 if ! command -v npm >/dev/null 2>&1; then
