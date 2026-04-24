@@ -1,9 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "==> Xcode Cloud: post-clone (noop)"
+echo "==> Xcode Cloud: post-clone"
 
-# Heavy dependency install happens in `ci_pre_xcodebuild.sh` to ensure it runs
-# before `xcodebuild`/SwiftPM resolution.
+# Must run BEFORE SwiftPM dependency resolution in Xcode Cloud.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
-exit 0
+bash "$REPO_ROOT/ci_scripts/lib/capacitor_cloud_prepare.sh"
