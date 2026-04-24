@@ -65,6 +65,31 @@ class AppNotificationController extends Controller
     private function dispatchNativePushForNotification(AppNotification $notification): void
     {
         if (! FcmMessaging::enabled()) {
+            // #region agent log
+            try {
+                logger()->info('debug-5acbd2 FCM disabled; skipping native push dispatch', [
+                    'runId' => 'pre-fix',
+                    'hypothesisId' => 'H2',
+                    'notification_id' => (string) $notification->id,
+                ]);
+            } catch (\Throwable) {
+            }
+            @file_put_contents(
+                base_path('.cursor/debug-5acbd2.log'),
+                json_encode([
+                    'sessionId' => '5acbd2',
+                    'runId' => 'pre-fix',
+                    'hypothesisId' => 'H2',
+                    'location' => 'app/Http/Controllers/AppNotificationController.php:dispatchNativePushForNotification',
+                    'message' => 'FCM disabled; skipping native push dispatch',
+                    'data' => [
+                        'notification_id' => (string) $notification->id,
+                    ],
+                    'timestamp' => (int) round(microtime(true) * 1000),
+                ], JSON_UNESCAPED_SLASHES) . "\n",
+                FILE_APPEND
+            );
+            // #endregion agent log
             return;
         }
 
@@ -80,6 +105,33 @@ class AppNotificationController extends Controller
             ->all();
 
         if ($userIds === []) {
+            // #region agent log
+            try {
+                logger()->info('debug-5acbd2 No users with notify_via_app + pushTokens; skipping', [
+                    'runId' => 'pre-fix',
+                    'hypothesisId' => 'H3',
+                    'notification_id' => (string) $notification->id,
+                    'church_id' => $churchId === null ? null : (int) $churchId,
+                ]);
+            } catch (\Throwable) {
+            }
+            @file_put_contents(
+                base_path('.cursor/debug-5acbd2.log'),
+                json_encode([
+                    'sessionId' => '5acbd2',
+                    'runId' => 'pre-fix',
+                    'hypothesisId' => 'H3',
+                    'location' => 'app/Http/Controllers/AppNotificationController.php:dispatchNativePushForNotification',
+                    'message' => 'No users with notify_via_app + pushTokens; skipping',
+                    'data' => [
+                        'notification_id' => (string) $notification->id,
+                        'church_id' => $churchId === null ? null : (int) $churchId,
+                    ],
+                    'timestamp' => (int) round(microtime(true) * 1000),
+                ], JSON_UNESCAPED_SLASHES) . "\n",
+                FILE_APPEND
+            );
+            // #endregion agent log
             return;
         }
 
@@ -88,6 +140,33 @@ class AppNotificationController extends Controller
             ->get(['platform', 'token']);
 
         if ($tokens->isEmpty()) {
+            // #region agent log
+            try {
+                logger()->info('debug-5acbd2 Users exist but no tokens returned; skipping', [
+                    'runId' => 'pre-fix',
+                    'hypothesisId' => 'H3',
+                    'notification_id' => (string) $notification->id,
+                    'user_ids_count' => count($userIds),
+                ]);
+            } catch (\Throwable) {
+            }
+            @file_put_contents(
+                base_path('.cursor/debug-5acbd2.log'),
+                json_encode([
+                    'sessionId' => '5acbd2',
+                    'runId' => 'pre-fix',
+                    'hypothesisId' => 'H3',
+                    'location' => 'app/Http/Controllers/AppNotificationController.php:dispatchNativePushForNotification',
+                    'message' => 'Users exist but no tokens returned; skipping',
+                    'data' => [
+                        'notification_id' => (string) $notification->id,
+                        'user_ids_count' => count($userIds),
+                    ],
+                    'timestamp' => (int) round(microtime(true) * 1000),
+                ], JSON_UNESCAPED_SLASHES) . "\n",
+                FILE_APPEND
+            );
+            // #endregion agent log
             return;
         }
 
@@ -100,6 +179,40 @@ class AppNotificationController extends Controller
             'title' => $title,
             'body' => $body,
         ];
+
+        // #region agent log
+        try {
+            logger()->info('debug-5acbd2 Dispatching native push via FCM', [
+                'runId' => 'pre-fix',
+                'hypothesisId' => 'H4',
+                'notification_id' => (string) $notification->id,
+                'church_id' => $churchId === null ? null : (int) $churchId,
+                'user_ids_count' => count($userIds),
+                'tokens_count' => $tokens->count(),
+                'platform_counts' => $tokens->groupBy('platform')->map->count()->all(),
+            ]);
+        } catch (\Throwable) {
+        }
+        @file_put_contents(
+            base_path('.cursor/debug-5acbd2.log'),
+            json_encode([
+                'sessionId' => '5acbd2',
+                'runId' => 'pre-fix',
+                'hypothesisId' => 'H4',
+                'location' => 'app/Http/Controllers/AppNotificationController.php:dispatchNativePushForNotification',
+                'message' => 'Dispatching native push via FCM',
+                'data' => [
+                    'notification_id' => (string) $notification->id,
+                    'church_id' => $churchId === null ? null : (int) $churchId,
+                    'user_ids_count' => count($userIds),
+                    'tokens_count' => $tokens->count(),
+                    'platform_counts' => $tokens->groupBy('platform')->map->count()->all(),
+                ],
+                'timestamp' => (int) round(microtime(true) * 1000),
+            ], JSON_UNESCAPED_SLASHES) . "\n",
+            FILE_APPEND
+        );
+        // #endregion agent log
 
         foreach ($tokens as $row) {
             $token = (string) $row->token;
