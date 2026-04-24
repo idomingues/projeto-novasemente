@@ -76,13 +76,27 @@ class ScheduleBoardViewData
         $month = (int) $request->input('month', now()->month);
         $year = (int) $request->input('year', now()->year);
         $ministryId = $request->input('ministry_id') ? (int) $request->input('ministry_id') : null;
-        $churchId = Church::where('active', true)->orderBy('name')->value('id');
+        // Usa a igreja "trabalhando em" (sessão) para manter consistência com o restante do painel.
+        $churchId = Church::resolveWorkingId($request);
         $user = $request->user();
 
         $ministriesQuery = Ministry::query()
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
             ->orderBy('name');
+
+        // Para usuário comum (sem visão/gestão do quadro), mostra apenas os departamentos em que ele é voluntário.
+        if ($user && ! self::userSeesMinistryScheduleBoard($user)) {
+            $user->loadMissing('volunteerProfile.ministries:id');
+            $volMinistryIds = $user->volunteerProfile
+                ? $user->volunteerProfile->ministries->pluck('id')->map(fn ($id) => (int) $id)->values()->all()
+                : [];
+            if (count($volMinistryIds) > 0) {
+                $ministriesQuery->whereIn('id', $volMinistryIds);
+            } else {
+                $ministriesQuery->whereRaw('1 = 0');
+            }
+        }
 
         if ($user && $user->hasRole('lider_ministerio') && ! $user->hasRole('admin') && ! $user->hasRole('super_admin')) {
             $leaderMinistryIds = $user->ministries()->pluck('ministries.id')->toArray();
@@ -96,7 +110,8 @@ class ScheduleBoardViewData
         /** @var Collection<int, Ministry> $ministries */
         $ministries = $ministriesQuery->get(['id', 'name']);
 
-        if ($user && $user->hasRole('lider_ministerio') && ! $user->hasRole('admin') && ! $user->hasRole('super_admin') && $ministries->count() === 1 && $ministryId === null) {
+        // Se só há 1 departamento disponível, seleciona automaticamente (evita tela em branco).
+        if ($ministries->count() === 1 && $ministryId === null) {
             $ministryId = $ministries->first()->id;
         }
 

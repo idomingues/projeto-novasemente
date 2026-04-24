@@ -113,7 +113,11 @@ class ScheduleAssignmentPresenter
         foreach ($oneOff as $a) {
             $dk = $a->schedule_date?->format('Y-m-d');
             if ($dk !== null) {
-                $oneOffKeys[self::participantOccurrenceKey($a, $dk)] = true;
+                // Só bloqueia a exibição do recorrente quando for override da série (tem saturday_number).
+                // Escala extra (saturday_number null) é um card separado e não deve "esconder" o sábado.
+                if ($a->saturday_number !== null) {
+                    $oneOffKeys[self::participantOccurrenceKey($a, $dk)] = true;
+                }
             }
         }
 
@@ -242,7 +246,9 @@ class ScheduleAssignmentPresenter
 
         $oneOffKeys = [];
         foreach ($oneOffs as $a) {
-            $oneOffKeys[self::participantOccurrenceKey($a, $date->format('Y-m-d'))] = true;
+            if ($a->saturday_number !== null) {
+                $oneOffKeys[self::participantOccurrenceKey($a, $date->format('Y-m-d'))] = true;
+            }
         }
 
         $saturdays = self::getSaturdays($year, $month);
@@ -337,7 +343,9 @@ class ScheduleAssignmentPresenter
 
         $oneOffKeys = [];
         foreach ($oneOffs as $a) {
-            $oneOffKeys[self::participantOccurrenceKey($a, $date->format('Y-m-d'))] = true;
+            if ($a->saturday_number !== null) {
+                $oneOffKeys[self::participantOccurrenceKey($a, $date->format('Y-m-d'))] = true;
+            }
         }
 
         $saturdays = self::getSaturdays($year, $month);

@@ -12,6 +12,7 @@ use App\Models\Ministry;
 use App\Models\Musica;
 use App\Models\News;
 use App\Models\Pastor;
+use App\Models\PastoralAppointment;
 use App\Models\ScheduleCheckinDate;
 use App\Models\User;
 use App\Models\UserInboxNotification;
@@ -292,7 +293,7 @@ class MobileController extends Controller
         return ScheduleBoardViewData::userPhotoPublicUrl($user);
     }
 
-    public function schedule(Request $request): Response
+    public function schedule(Request $request): Response|RedirectResponse
     {
         $month = (int) $request->input('month', now()->month);
         $year = (int) $request->input('year', now()->year);
@@ -311,39 +312,70 @@ class MobileController extends Controller
 
         $user = $request->user();
 
-        if (ScheduleBoardViewData::userSeesMinistryScheduleBoard($user)) {
-            return Inertia::render('Mobile/MinistrySchedule', ScheduleBoardViewData::forIndexRequest($request));
-        }
-
         $workingChurchId = Church::resolveWorkingId($request);
         if (! $user->church_id || (int) $user->church_id !== (int) $workingChurchId) {
-            return Inertia::render('Mobile/VolunteerSchedule', [
+            return Inertia::render('Mobile/VolunteerScheduleHome', [
                 'canViewSchedule' => true,
-                'month' => $month,
-                'year' => $year,
                 'memberName' => $user->name,
                 'memberPhotoUrl' => null,
                 'needsMember' => true,
-                'volunteerOverview' => null,
+                'months' => [],
             ]);
         }
 
-        $overview = VolunteerScheduleOverview::forMember(
+        $month1 = $month;
+        $year1 = $year;
+        $month2 = $month1 + 1;
+        $year2 = $year1;
+        if ($month2 > 12) {
+            $month2 = 1;
+            $year2 += 1;
+        }
+
+        $overview1 = VolunteerScheduleOverview::forMember(
             (int) $user->id,
-            $year,
-            $month,
+            $year1,
+            $month1,
+            fn ($u) => $this->userPhotoPublicUrl($u)
+        );
+        $overview2 = VolunteerScheduleOverview::forMember(
+            (int) $user->id,
+            $year2,
+            $month2,
             fn ($u) => $this->userPhotoPublicUrl($u)
         );
 
-        return Inertia::render('Mobile/VolunteerSchedule', [
+        return Inertia::render('Mobile/VolunteerScheduleHome', [
             'canViewSchedule' => true,
-            'month' => $month,
-            'year' => $year,
             'memberName' => $user->name,
             'memberPhotoUrl' => $this->userPhotoPublicUrl($user),
             'needsMember' => false,
-            'volunteerOverview' => $overview,
+            'months' => [
+                ['month' => $month1, 'year' => $year1, 'overview' => $overview1],
+                ['month' => $month2, 'year' => $year2, 'overview' => $overview2],
+            ],
         ]);
+    }
+
+    public function scheduleFull(Request $request): Response|RedirectResponse
+    {
+        $month = (int) $request->input('month', now()->month);
+        $year = (int) $request->input('year', now()->year);
+
+        if (! $request->user()) {
+            return redirect()->route('login');
+        }
+
+        $user = $request->user();
+
+        // "Agenda Completa" no mobile abre a visão completa (Escalas/Index).
+        // Para líderes/admins é modo edição; para usuário comum é somente leitura (canEdit=false).
+        $query = ['month' => $month, 'year' => $year];
+        if ($request->filled('ministry_id')) {
+            $query['ministry_id'] = (int) $request->input('ministry_id');
+        }
+
+        return redirect()->route('escalas.index', $query);
     }
 
     public function scheduleCheckin(Request $request): Response
@@ -695,6 +727,45 @@ class MobileController extends Controller
         $user = $request->user();
         abort_unless($user, 401);
 
+        /** Igual ao `currentChurch` do HandleInertiaRequests (feed do sino); evita divergir de `resolveWorkingId`. */
+        $churchId = $church !== null ? (int) $church->id : Church::resolveWorkingId($request);
+
+        $atendimentoOpen = null;
+        if ($user->hasAnyRole(['super_admin', 'admin'])
+            || $user->can('solicitations.view')
+            || $user->can('solicitations.manage')) {
+            if ($churchId !== null) {
+                $atendimentoOpen = (int) ChurchSolicitation::query()
+                    ->where('church_id', $churchId)
+                    ->whereIn('status', ['pending', 'in_progress'])
+                    ->count();
+            }
+        }
+
+        $pastoralAgendaItems = null;
+        if ($churchId !== null) {
+            $linkedPastor = Pastor::query()
+                ->where('church_id', $churchId)
+                ->where('user_id', $user->id)
+                ->first();
+            if ($linkedPastor !== null) {
+                $appointments = PastoralAppointment::query()
+                    ->where('church_id', $churchId)
+                    ->where('preferred_pastor_id', $linkedPastor->id)
+                    ->where('status', '!=', 'cancelled')
+                    ->count();
+                $visits = ChurchSolicitation::query()
+                    ->where('church_id', $churchId)
+                    ->where('type', 'pastor_visit')
+                    ->where('assigned_pastor_id', $linkedPastor->id)
+                    ->whereIn('status', ['pending', 'in_progress'])
+                    ->count();
+                $pastoralAgendaItems = (int) $appointments + (int) $visits;
+            }
+        }
+
+        $notificationsTotal = NotificationFeed::mergedTotalCountForUser($request, $churchId);
+
         return Inertia::render('Mobile/Profile', [
             'church' => $church ? [
                 'name' => $church->name,
@@ -702,6 +773,11 @@ class MobileController extends Controller
             'user' => [
                 'name' => $user->name,
                 'email' => $user->email,
+            ],
+            'profileCounts' => [
+                'atendimento_open' => $atendimentoOpen,
+                'pastoral_agenda' => $pastoralAgendaItems,
+                'notifications' => $notificationsTotal,
             ],
         ]);
     }

@@ -143,9 +143,6 @@ class RolePermissionSeeder extends Seeder
                 'pastors.manage',
                 'pastoral_appointments.manage',
             ],
-            'financeiro' => [
-                'events.view',
-            ],
             'membro' => [
                 // Conta de membro com app: sem permissões de painel; rotas móveis usam `auth` onde necessário.
             ],

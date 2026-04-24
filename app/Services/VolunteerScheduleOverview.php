@@ -99,6 +99,9 @@ class VolunteerScheduleOverview
                     'ministryName' => $ministry->name,
                     'myAssignmentId' => (int) $mine['id'],
                     'myRoleName' => $mine['roleName'],
+                    'myStartTime' => $mine['startTime'] ?? null,
+                    'myEndTime' => $mine['endTime'] ?? null,
+                    'myCheckedInAt' => $mine['checkedInAt'] ?? null,
                     'checkinEnabled' => isset($checkinSet[$dateKey]),
                     'teammates' => $teammates,
                 ];

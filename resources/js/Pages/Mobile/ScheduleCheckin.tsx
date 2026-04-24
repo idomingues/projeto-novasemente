@@ -23,6 +23,7 @@ interface Props {
 }
 
 export default function ScheduleCheckin({
+    date,
     dateLabel,
     assignments,
     checkinEnabled,
@@ -32,7 +33,7 @@ export default function ScheduleCheckin({
     const inertiaScrollOpts = { preserveScroll: true };
 
     const doCheckin = (assignmentId: number) => {
-        router.post(route('escalas.checkin'), { assignment_id: assignmentId }, inertiaScrollOpts);
+        router.post(route('escalas.checkin'), { assignment_id: assignmentId, schedule_date: date }, inertiaScrollOpts);
     };
 
     return (

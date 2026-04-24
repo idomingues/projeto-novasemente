@@ -1,5 +1,5 @@
 import AdminLayout from '@/Layouts/AdminLayout';
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     ChevronLeftIcon,
     ChevronRightIcon,
@@ -89,6 +89,8 @@ export default function EscalasIndex({
     scheduleVolunteers,
     scheduleRoles,
 }: Props) {
+    const auth = (usePage().props as { auth?: { user?: { id?: number }; volunteerId?: number | null } }).auth;
+    const currentUserId = auth?.user?.id ?? null;
     const [localExtraDates, setLocalExtraDates] = useState<string[]>([]);
     const [roleModalAssignment, setRoleModalAssignment] = useState<Assignment | null>(null);
     const [roleModalRoleId, setRoleModalRoleId] = useState<string>('');
@@ -96,6 +98,8 @@ export default function EscalasIndex({
     const [newRoleName, setNewRoleName] = useState('');
     const [checkinConfirmDate, setCheckinConfirmDate] = useState<Date | null>(null);
     const [removeModalAssignment, setRemoveModalAssignment] = useState<Assignment | null>(null);
+    /** Atalho 1º–5º em destaque (verde); atualiza ao clicar e reinicia ao mudar mês/departamento. */
+    const [highlightedSaturday, setHighlightedSaturday] = useState(1);
 
     useEffect(() => {
         if (!roleModalAssignment) {
@@ -108,6 +112,31 @@ export default function EscalasIndex({
     }, [roleModalAssignment]);
 
     const saturdays = useMemo(() => getSaturdays(year, month), [year, month]);
+
+    const todayKey = useMemo(() => formatDateKey(new Date()), []);
+
+    useEffect(() => {
+        // Seleciona automaticamente o "sábado corrente" (próximo sábado do mês), quando estamos no mês atual.
+        const now = new Date();
+        const isCurrentMonth = now.getFullYear() === year && now.getMonth() + 1 === month;
+        if (!isCurrentMonth || saturdays.length === 0) {
+            setHighlightedSaturday(1);
+            return;
+        }
+
+        const nextIdx = saturdays.findIndex((d) => formatDateKey(d) >= todayKey);
+        setHighlightedSaturday(nextIdx === -1 ? saturdays.length : nextIdx + 1);
+    }, [month, year, ministryId, saturdays.length]);
+
+    useEffect(() => {
+        // Faz scroll para o sábado selecionado ao abrir/trocar mês/departamento.
+        const el = document.getElementById(`escala-sabado-${highlightedSaturday}`);
+        if (!el) return;
+        const t = window.setTimeout(() => {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 50);
+        return () => window.clearTimeout(t);
+    }, [highlightedSaturday, month, year, ministryId]);
 
     const selectDepartment = (id: number | '') => {
         const mid = id === '' ? undefined : id;
@@ -125,6 +154,21 @@ export default function EscalasIndex({
     const allExtraDates = useMemo(() => {
         return Array.from(new Set([...apiExtraDates, ...localExtraDates])).sort();
     }, [apiExtraDates, localExtraDates]);
+
+    const timelineEntries = useMemo(() => {
+        const saturdayEntries = saturdays.map((d, idx) => ({
+            kind: 'saturday' as const,
+            date: d,
+            dateKey: formatDateKey(d),
+            saturdayNumber: idx + 1,
+        }));
+        const extraEntries = allExtraDates.map((scheduleDate) => ({
+            kind: 'extra' as const,
+            scheduleDate,
+            dateKey: scheduleDate,
+        }));
+        return [...saturdayEntries, ...extraEntries].sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+    }, [saturdays, allExtraDates]);
 
     const reload = (m: number, y: number) => {
         router.get(route('escalas.index'), { month: m, year: y, ministry_id: ministryId ?? undefined }, { preserveState: false });
@@ -185,8 +229,13 @@ export default function EscalasIndex({
         );
     };
 
-    const handleCheckin = (assignmentId: number) => {
-        router.post(route('escalas.checkin'), { assignment_id: assignmentId }, inertiaScrollOpts);
+    const handleCheckin = (assignmentId: number, scheduleDate: string) => {
+        // Nesta tela, check-in é uma ação de gestão (líder/admin). O backend já faz toggle (marcar/desmarcar).
+        router.post(
+            route('escalas.checkin'),
+            { assignment_id: assignmentId, schedule_date: scheduleDate },
+            { ...inertiaScrollOpts, preserveState: false },
+        );
     };
 
     const handleRemove = async (a: Assignment) => {
@@ -305,170 +354,229 @@ export default function EscalasIndex({
                     </button>
                 </div>
 
-                <div className="grid grid-cols-5 gap-2">
-                    {[1, 2, 3, 4, 5].map((n) => {
-                        const exists = n <= saturdays.length;
-                        return (
-                            <button
-                                key={n}
-                                type="button"
-                                disabled={!exists}
-                                title={exists ? `Ir ao ${n}º sábado` : 'Este mês não tem este sábado'}
-                                onClick={() => {
-                                    if (!exists) return;
-                                    document.getElementById(`escala-sabado-${n}`)?.scrollIntoView({
-                                        behavior: 'smooth',
-                                        block: 'start',
-                                    });
-                                }}
-                                className={`rounded-2xl py-3 text-sm font-bold transition ${
-                                    !exists
-                                        ? 'cursor-not-allowed border border-zinc-100 bg-zinc-50 text-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-600'
-                                        : 'border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800'
-                                }`}
-                            >
-                                {n}º
-                            </button>
-                        );
-                    })}
+                <div className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-3 shadow-sm dark:border-zinc-700 dark:bg-zinc-800/40">
+                    <p className="mb-2 text-center text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                        Ir ao sábado
+                    </p>
+                    <div className="grid grid-cols-5 gap-2 sm:gap-3">
+                        {[1, 2, 3, 4, 5].map((n) => {
+                            const exists = n <= saturdays.length;
+                            const selected = exists && n === highlightedSaturday;
+                            return (
+                                <button
+                                    key={n}
+                                    type="button"
+                                    disabled={!exists}
+                                    title={exists ? `Ir ao ${n}º sábado` : 'Este mês não tem este sábado'}
+                                    onClick={() => {
+                                        if (!exists) return;
+                                        setHighlightedSaturday(n);
+                                        document.getElementById(`escala-sabado-${n}`)?.scrollIntoView({
+                                            behavior: 'smooth',
+                                            block: 'start',
+                                        });
+                                    }}
+                                    className={`flex min-h-[3.75rem] items-center justify-center rounded-2xl text-xl font-bold tabular-nums transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 sm:min-h-[4.5rem] sm:text-2xl md:text-3xl ${
+                                        !exists
+                                            ? 'cursor-not-allowed border border-zinc-200/80 bg-zinc-100 text-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-600'
+                                            : selected
+                                              ? 'cursor-pointer border-2 border-brand-700 bg-brand-600 text-white shadow-md hover:border-brand-800 hover:bg-brand-700 focus-visible:ring-brand-500 active:scale-[0.98] dark:border-brand-500 dark:bg-brand-600 dark:hover:border-brand-400 dark:hover:bg-brand-500'
+                                              : 'cursor-pointer border-2 border-zinc-200 bg-white text-zinc-900 shadow-sm hover:border-zinc-400 hover:bg-zinc-50 focus-visible:ring-zinc-400 active:scale-[0.98] dark:border-zinc-600 dark:bg-zinc-900 dark:text-white dark:hover:border-zinc-500 dark:hover:bg-zinc-800'
+                                    }`}
+                                >
+                                    {n}º
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
 
                 <div className="space-y-8">
-                    {saturdays.map((saturday, idx) => {
-                        const saturdayNumber = idx + 1;
-                        const dayAssignments = assignments.filter((a) => a.saturdayNumber === saturdayNumber);
+                    {timelineEntries.map((entry) => {
+                        if (entry.kind === 'saturday') {
+                            const saturday = entry.date;
+                            const saturdayNumber = entry.saturdayNumber;
+                            const saturdayKey = entry.dateKey;
+                            const isPast = saturdayKey < todayKey;
+                            const dayAssignments = assignments.filter((a) => a.saturdayNumber === saturdayNumber);
+                            const confirmedCount = dayAssignments.filter((a) => a.status === 'confirmed').length;
+                            const totalCount = dayAssignments.length;
+                            const progressPct = totalCount > 0 ? Math.round((confirmedCount / totalCount) * 100) : 0;
+                            const checkinOpen = isCheckinEnabled(saturday);
+                            const canEditThisDay = canEdit && !isPast;
+                            const formatted = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' }).format(
+                                saturday,
+                            );
+
+                            return (
+                                <section
+                                    id={`escala-sabado-${saturdayNumber}`}
+                                    key={`sat-${saturdayKey}`}
+                                    className={`scroll-mt-24 overflow-hidden rounded-xl border p-4 ${
+                                        isPast
+                                            ? 'border-zinc-200 bg-zinc-50/70 ring-1 ring-zinc-200/60 dark:border-zinc-800 dark:bg-zinc-900/60 dark:ring-zinc-900/60'
+                                            : checkinOpen
+                                              ? 'border-brand-300 bg-white ring-1 ring-brand-400/20 dark:border-brand-700 dark:bg-zinc-900 dark:ring-brand-500/20'
+                                              : 'border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900'
+                                    }`}
+                                >
+                                    <div
+                                        className={`-m-4 mb-4 flex items-center justify-between gap-2 border-b px-4 py-3 ${
+                                            isPast
+                                                ? 'border-zinc-200 bg-zinc-100/70 dark:border-zinc-800 dark:bg-zinc-900'
+                                                : checkinOpen
+                                                  ? 'border-brand-200 bg-brand-50/70 dark:border-brand-900/40 dark:bg-brand-950/25'
+                                                  : 'border-zinc-100 bg-zinc-50/60 dark:border-zinc-800 dark:bg-zinc-900'
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <h3 className="font-semibold text-zinc-900 dark:text-white">
+                                                {saturdayNumber}º Sábado - {formatted}
+                                            </h3>
+                                            <span
+                                                className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold tabular-nums tracking-wide ${
+                                                    isPast
+                                                        ? 'border border-zinc-200 bg-white text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400'
+                                                        : 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900'
+                                                }`}
+                                            >
+                                                Confirmados {confirmedCount}/{totalCount}
+                                            </span>
+                                            {checkinOpen && (
+                                                <span className="inline-flex items-center rounded-full bg-brand-600 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white dark:bg-brand-500">
+                                                    Check-in aberto
+                                                </span>
+                                            )}
+                                        </div>
+                                        {canEditThisDay && (
+                                            <div className="flex items-center gap-1.5 shrink-0">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleToggleCheckin(saturday, checkinOpen)}
+                                                    className={`${scheduleIconButtonClass} ${
+                                                        checkinOpen ? checkinActiveIconClass : ''
+                                                    }`}
+                                                    title={checkinOpen ? 'Check-in aberto' : 'Liberar check-in'}
+                                                    aria-label={
+                                                        checkinOpen
+                                                            ? 'Check-in aberto para este dia'
+                                                            : 'Liberar check-in para este dia'
+                                                    }
+                                                >
+                                                    {checkinOpen ? (
+                                                        <CheckCircleIcon className="h-5 w-5" />
+                                                    ) : (
+                                                        <ClipboardDocumentCheckIcon className="h-5 w-5" />
+                                                    )}
+                                                </button>
+                                                <VolunteerAddPopover
+                                                    scheduleVolunteers={scheduleVolunteers}
+                                                    existingParticipantKeys={dayAssignments.map((a) => a.participantKey)}
+                                                    canEdit={canEditThisDay}
+                                                    saturdayNumber={saturdayNumber}
+                                                    month={month}
+                                                    year={year}
+                                                    scheduleRoles={scheduleRoles}
+                                                    onPick={(volunteerId, options) => {
+                                                        router.post(
+                                                            route('escalas.store'),
+                                                            {
+                                                                ministry_id: ministryId,
+                                                                volunteer_id: volunteerId,
+                                                                schedule_role_id: options?.schedule_role_id ?? null,
+                                                                saturday_number: saturdayNumber,
+                                                                schedule_date: null,
+                                                                recurring: options?.recurring ?? true,
+                                                                assignment_month: options?.assignment_month ?? null,
+                                                                assignment_year: options?.assignment_year ?? null,
+                                                                status: 'pending',
+                                                            },
+                                                            { ...inertiaScrollOpts, preserveState: false },
+                                                        );
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                    <EscalaGrid
+                                        assignments={dayAssignments}
+                                        checkinEnabled={checkinOpen}
+                                        canEdit={canEditThisDay}
+                                        currentUserId={currentUserId}
+                                        onCheckin={(id) => handleCheckin(id, saturdayKey)}
+                                        onRemove={handleRemove}
+                                        onEditRole={(a) => setRoleModalAssignment(a)}
+                                    />
+                                </section>
+                            );
+                        }
+
+                        const scheduleDate = entry.scheduleDate;
+                        const date = new Date(scheduleDate + 'T12:00:00');
+                        const isPast = scheduleDate < todayKey;
+                        const dayAssignments = assignments.filter(
+                            (a) => a.saturdayNumber === null && a.scheduleDate === scheduleDate,
+                        );
                         const confirmedCount = dayAssignments.filter((a) => a.status === 'confirmed').length;
                         const totalCount = dayAssignments.length;
-                        const progressPct = totalCount > 0 ? Math.round((confirmedCount / totalCount) * 100) : 0;
-                        return (
-                            <section
-                                id={`escala-sabado-${saturdayNumber}`}
-                                key={saturday.toISOString()}
-                                className="scroll-mt-24 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900"
-                            >
-                                <div className="mb-4 flex items-center justify-between gap-2">
-                                    <h3 className="font-semibold text-zinc-900 dark:text-white">{saturdayNumber}º SÁBADO</h3>
-                                    {canEdit && (
-                                        <div className="flex items-center gap-1.5 shrink-0">
-                                            <button
-                                                type="button"
-                                                onClick={() => handleToggleCheckin(saturday, isCheckinEnabled(saturday))}
-                                                className={`${scheduleIconButtonClass} ${
-                                                    isCheckinEnabled(saturday) ? checkinActiveIconClass : ''
-                                                }`}
-                                                title={isCheckinEnabled(saturday) ? 'Check-in aberto' : 'Liberar check-in'}
-                                                aria-label={
-                                                    isCheckinEnabled(saturday)
-                                                        ? 'Check-in aberto para este dia'
-                                                        : 'Liberar check-in para este dia'
-                                                }
-                                            >
-                                                {isCheckinEnabled(saturday) ? (
-                                                    <CheckCircleIcon className="h-5 w-5" />
-                                                ) : (
-                                                    <ClipboardDocumentCheckIcon className="h-5 w-5" />
-                                                )}
-                                            </button>
-                                            <VolunteerAddPopover
-                                                scheduleVolunteers={scheduleVolunteers}
-                                                existingParticipantKeys={dayAssignments.map((a) => a.participantKey)}
-                                                canEdit={canEdit}
-                                                saturdayNumber={saturdayNumber}
-                                                month={month}
-                                                year={year}
-                                                scheduleRoles={scheduleRoles}
-                                                onPick={(volunteerId, options) => {
-                                                    router.post(
-                                                        route('escalas.store'),
-                                                        {
-                                                            ministry_id: ministryId,
-                                                            volunteer_id: volunteerId,
-                                                            schedule_role_id: options?.schedule_role_id ?? null,
-                                                            saturday_number: saturdayNumber,
-                                                            schedule_date: null,
-                                                            recurring: options?.recurring ?? true,
-                                                            assignment_month: options?.assignment_month ?? null,
-                                                            assignment_year: options?.assignment_year ?? null,
-                                                            status: 'pending',
-                                                        },
-                                                        inertiaScrollOpts,
-                                                    );
-                                                }}
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="mb-4 rounded-2xl border border-zinc-100 bg-zinc-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-800/40">
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className="min-w-0">
-                                            <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-700 dark:text-brand-400">
-                                                Status da escala
-                                            </p>
-                                            <h4 className="mt-1 text-lg font-bold capitalize tracking-tight text-zinc-900 dark:text-white">
-                                                {saturdayNumber}º sábado
-                                            </h4>
-                                        </div>
-                                        <div className="shrink-0 text-right">
-                                            <p className="text-2xl font-bold tabular-nums leading-none text-zinc-900 dark:text-white">
-                                                {confirmedCount}
-                                                <span className="text-base font-semibold text-zinc-400 dark:text-zinc-500">
-                                                    /{totalCount}
-                                                </span>
-                                            </p>
-                                            <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                                                Confirmados
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-900">
-                                        <div
-                                            className="h-full rounded-full bg-brand-600 transition-all duration-500 ease-out dark:bg-brand-500"
-                                            style={{ width: `${progressPct}%` }}
-                                        />
-                                    </div>
-                                </div>
-                                <EscalaGrid
-                                    assignments={dayAssignments}
-                                    checkinEnabled={isCheckinEnabled(saturday)}
-                                    canEdit={canEdit}
-                                    onCheckin={handleCheckin}
-                                    onRemove={handleRemove}
-                                    onEditRole={(a) => setRoleModalAssignment(a)}
-                                />
-                            </section>
-                        );
-                    })}
-
-                    {allExtraDates.map((scheduleDate) => {
-                        const date = new Date(scheduleDate + 'T12:00:00');
-                        const dayAssignments = assignments.filter(
-                            (a) => a.saturdayNumber === null && a.scheduleDate === scheduleDate
-                        );
                         const formatted = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' }).format(date);
+                        const checkinOpen = isCheckinEnabled(date);
+                        const canEditThisDay = canEdit && !isPast;
+
                         return (
                             <section
                                 id={`escala-extra-${scheduleDate}`}
-                                key={scheduleDate}
-                                className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 scroll-mt-24"
+                                key={`extra-${scheduleDate}`}
+                                className={`scroll-mt-24 overflow-hidden rounded-xl border p-4 ${
+                                    isPast
+                                        ? 'border-zinc-200 bg-zinc-50/70 ring-1 ring-zinc-200/60 dark:border-zinc-800 dark:bg-zinc-900/60 dark:ring-zinc-900/60'
+                                        : checkinOpen
+                                          ? 'border-brand-300 bg-white ring-1 ring-brand-400/20 dark:border-brand-700 dark:bg-zinc-900 dark:ring-brand-500/20'
+                                          : 'border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900'
+                                }`}
                             >
-                                <div className="flex items-center justify-between gap-2 mb-6">
-                                    <h3 className="font-semibold text-zinc-900 dark:text-white">{formatted} — Escala extra</h3>
-                                    {canEdit && (
+                                <div
+                                    className={`-m-4 mb-6 flex items-center justify-between gap-2 border-b px-4 py-3 ${
+                                        isPast
+                                            ? 'border-zinc-200 bg-zinc-100/70 dark:border-zinc-800 dark:bg-zinc-900'
+                                            : checkinOpen
+                                              ? 'border-brand-200 bg-brand-50/70 dark:border-brand-900/40 dark:bg-brand-950/25'
+                                              : 'border-zinc-100 bg-zinc-50/60 dark:border-zinc-800 dark:bg-zinc-900'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <h3 className="font-semibold text-zinc-900 dark:text-white">Escala extra - {formatted}</h3>
+                                        <span
+                                            className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold tabular-nums tracking-wide ${
+                                                isPast
+                                                    ? 'border border-zinc-200 bg-white text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400'
+                                                    : 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900'
+                                            }`}
+                                        >
+                                            Confirmados {confirmedCount}/{totalCount}
+                                        </span>
+                                        {checkinOpen && (
+                                            <span className="inline-flex items-center rounded-full bg-brand-600 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white dark:bg-brand-500">
+                                                Check-in aberto
+                                            </span>
+                                        )}
+                                    </div>
+                                    {canEditThisDay && (
                                         <div className="flex items-center gap-1.5 shrink-0">
                                             <button
                                                 type="button"
-                                                onClick={() => handleToggleCheckin(date, isCheckinEnabled(date))}
+                                                onClick={() => handleToggleCheckin(date, checkinOpen)}
                                                 className={`${scheduleIconButtonClass} ${
-                                                    isCheckinEnabled(date) ? checkinActiveIconClass : ''
+                                                    checkinOpen ? checkinActiveIconClass : ''
                                                 }`}
-                                                title={isCheckinEnabled(date) ? 'Check-in aberto' : 'Liberar check-in'}
+                                                title={checkinOpen ? 'Check-in aberto' : 'Liberar check-in'}
                                                 aria-label={
-                                                    isCheckinEnabled(date)
+                                                    checkinOpen
                                                         ? 'Check-in aberto para este dia'
                                                         : 'Liberar check-in para este dia'
                                                 }
                                             >
-                                                {isCheckinEnabled(date) ? (
+                                                {checkinOpen ? (
                                                     <CheckCircleIcon className="h-5 w-5" />
                                                 ) : (
                                                     <ClipboardDocumentCheckIcon className="h-5 w-5" />
@@ -477,7 +585,7 @@ export default function EscalasIndex({
                                             <VolunteerAddPopover
                                                 scheduleVolunteers={scheduleVolunteers}
                                                 existingParticipantKeys={dayAssignments.map((a) => a.participantKey)}
-                                                canEdit={canEdit}
+                                                canEdit={canEditThisDay}
                                                 scheduleRoles={scheduleRoles}
                                                 onPick={(volunteerId, options) => {
                                                     router.post(
@@ -490,7 +598,7 @@ export default function EscalasIndex({
                                                             schedule_date: scheduleDate,
                                                             status: 'pending',
                                                         },
-                                                        inertiaScrollOpts,
+                                                        { ...inertiaScrollOpts, preserveState: false },
                                                     );
                                                 }}
                                             />
@@ -499,9 +607,10 @@ export default function EscalasIndex({
                                 </div>
                                 <EscalaGrid
                                     assignments={dayAssignments}
-                                    checkinEnabled={isCheckinEnabled(date)}
-                                    canEdit={canEdit}
-                                    onCheckin={handleCheckin}
+                                    checkinEnabled={checkinOpen}
+                                    canEdit={canEditThisDay}
+                                    currentUserId={currentUserId}
+                                    onCheckin={(id) => handleCheckin(id, scheduleDate)}
                                     onRemove={handleRemove}
                                     onEditRole={(a) => setRoleModalAssignment(a)}
                                 />
@@ -622,6 +731,13 @@ export default function EscalasIndex({
                             </form>
                         </div>
                     )}
+
+                    <Link
+                        href={route('mobile.schedule', { month, year })}
+                        className="block w-full rounded-2xl border border-zinc-200 bg-white px-4 py-4 text-center text-sm font-extrabold uppercase tracking-wider text-zinc-900 shadow-sm hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-white dark:hover:bg-zinc-800"
+                    >
+                        Voltar para Minha Escala
+                    </Link>
                 </div>
                 </>
                 )}
@@ -645,7 +761,7 @@ export default function EscalasIndex({
                                         schedule_role_id: rid !== null && !Number.isNaN(rid) ? rid : null,
                                     };
                                     if (roleModalAssignment.recurringSeries) {
-                                        payload.scope = roleScope === 'occurrence' ? 'single' : 'all';
+                                        payload.scope = roleScope;
                                         if (roleScope === 'occurrence' && roleModalAssignment.scheduleDate) {
                                             payload.occurrence_date = roleModalAssignment.scheduleDate;
                                         }
@@ -681,6 +797,63 @@ export default function EscalasIndex({
                         </header>
 
                         <div className="space-y-6">
+                            {canEdit && roleModalAssignment.scheduleDate && (
+                                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/80 dark:bg-zinc-800/40 p-5">
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                        Check-in
+                                    </p>
+                                    <div className="mt-3 flex items-center justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-medium text-zinc-900 dark:text-white">
+                                                {roleModalAssignment.checkedInAt ? 'Presença confirmada' : 'Presença não registrada'}
+                                            </p>
+                                            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                                                {new Date(roleModalAssignment.scheduleDate + 'T12:00:00').toLocaleDateString('pt-BR')}
+                                            </p>
+                                        </div>
+                                        {checkinEnabledDates.includes(roleModalAssignment.scheduleDate) ? (
+                                            <button
+                                                type="button"
+                                                onClick={async () => {
+                                                    if (!roleModalAssignment?.scheduleDate) return;
+                                                    const ok = await confirmAction({
+                                                        title: roleModalAssignment.checkedInAt ? 'Desfazer check-in?' : 'Fazer check-in?',
+                                                        text: roleModalAssignment.checkedInAt
+                                                            ? 'Isso desmarcará a presença desta pessoa.'
+                                                            : 'Isso marcará a presença desta pessoa.',
+                                                        confirmButtonText: roleModalAssignment.checkedInAt ? 'Desfazer' : 'Confirmar',
+                                                        danger: !!roleModalAssignment.checkedInAt,
+                                                        icon: roleModalAssignment.checkedInAt ? 'warning' : 'question',
+                                                    });
+                                                    if (!ok) return;
+                                                    handleCheckin(roleModalAssignment.id, roleModalAssignment.scheduleDate);
+                                                }}
+                                                className={`shrink-0 rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                                                    roleModalAssignment.checkedInAt
+                                                        ? 'bg-zinc-200 text-zinc-900 hover:bg-zinc-300 dark:bg-zinc-700 dark:text-white dark:hover:bg-zinc-600'
+                                                        : 'bg-brand-600 text-white hover:bg-brand-700 dark:bg-brand-600 dark:hover:bg-brand-500'
+                                                }`}
+                                                title={roleModalAssignment.checkedInAt ? 'Desfazer check-in' : 'Fazer check-in'}
+                                            >
+                                                {roleModalAssignment.checkedInAt ? 'Desfazer' : 'Check-in'}
+                                            </button>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (!roleModalAssignment?.scheduleDate) return;
+                                                    const d = new Date(roleModalAssignment.scheduleDate + 'T12:00:00');
+                                                    handleToggleCheckin(d, false);
+                                                }}
+                                                className="shrink-0 rounded-xl px-4 py-2 text-sm font-semibold transition bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+                                                title="Liberar check-in para esta data"
+                                            >
+                                                Check-in
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                             <div>
                                 <InputLabel htmlFor="modal_schedule_role" value="Função" />
                                 <select
@@ -827,6 +1000,7 @@ function EscalaGrid({
     assignments,
     checkinEnabled,
     canEdit,
+    currentUserId,
     onCheckin,
     onRemove,
     onEditRole,
@@ -834,14 +1008,17 @@ function EscalaGrid({
     assignments: Assignment[];
     checkinEnabled: boolean;
     canEdit: boolean;
+    currentUserId: number | null;
     onCheckin: (id: number) => void;
     onRemove: (a: Assignment) => void;
     onEditRole: (a: Assignment) => void;
 }) {
     return (
         <div className="grid grid-cols-1 sm:flex sm:flex-wrap gap-3">
-            {assignments.map((a) => (
-                <div
+            {assignments.map((a) => {
+                const isSelf = currentUserId != null && a.memberId != null && a.memberId === currentUserId;
+                return (
+                    <div
                     key={a.id}
                     role={canEdit ? 'button' : undefined}
                     tabIndex={canEdit ? 0 : undefined}
@@ -881,44 +1058,71 @@ function EscalaGrid({
                     ) : (
                         <span className="text-[10px] text-zinc-400 dark:text-zinc-500">Sem função</span>
                     )}
-                    {a.status === 'confirmed' && (
+                    {a.checkedInAt ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-1 text-xs font-semibold text-green-700 ring-1 ring-green-200 whitespace-nowrap dark:bg-green-950/30 dark:text-green-200 dark:ring-green-900/50">
+                            <CheckCircleIcon className="w-3.5 h-3.5 shrink-0" /> Presente
+                        </span>
+                    ) : a.status === 'confirmed' ? (
                         <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
                             <CheckCircleIcon className="w-3.5 h-3.5" /> Confirmado
                         </span>
-                    )}
-                    {a.status === 'pending' && (
+                    ) : a.status === 'pending' ? (
                         <span className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
                             <ClockIcon className="w-3.5 h-3.5" /> Pendente
                         </span>
-                    )}
-                    {a.status === 'refused' && (
+                    ) : a.status === 'refused' ? (
                         <span className="inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
                             <XCircleIcon className="w-3.5 h-3.5" /> Não pode
                         </span>
-                    )}
-                    {(checkinEnabled || canEdit) && (
+                    ) : null}
+                    {((checkinEnabled && (canEdit || isSelf || a.checkedInAt)) || canEdit) && (
                         <div
-                            className={`mt-auto flex w-full flex-row items-center gap-2 pt-1 ${
+                            className={`mt-auto flex w-full flex-row flex-wrap items-center gap-2 pt-1 ${
                                 !checkinEnabled && canEdit ? 'justify-center' : 'justify-between'
                             }`}
                             onClick={(e) => e.stopPropagation()}
                         >
                             {checkinEnabled && (
                                 <div className="flex min-w-0 flex-1 items-center justify-center">
-                                    {a.checkedInAt ? (
-                                        <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
-                                            <CheckCircleIcon className="w-3.5 h-3.5" /> Presente
-                                        </span>
-                                    ) : (
+                                    {!a.checkedInAt && (canEdit || isSelf) ? (
                                         <button
                                             type="button"
-                                            onClick={() => onCheckin(a.id)}
+                                            onClick={async () => {
+                                                const ok = await confirmAction({
+                                                    title: 'Fazer check-in?',
+                                                    text: 'Confirme para marcar a presença desta pessoa.',
+                                                    confirmButtonText: 'Confirmar',
+                                                    icon: 'question',
+                                                });
+                                                if (!ok) return;
+                                                onCheckin(a.id);
+                                            }}
                                             className="text-xs px-2 py-1 rounded-lg bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600"
                                         >
                                             Check-in
                                         </button>
-                                    )}
+                                    ) : null}
                                 </div>
+                            )}
+                            {checkinEnabled && (canEdit || isSelf) && a.checkedInAt && (
+                                <button
+                                    type="button"
+                                    onClick={async () => {
+                                        const ok = await confirmAction({
+                                            title: 'Desfazer check-in?',
+                                            text: 'Confirme para desmarcar a presença desta pessoa.',
+                                            confirmButtonText: 'Desfazer',
+                                            danger: true,
+                                            icon: 'warning',
+                                        });
+                                        if (!ok) return;
+                                        onCheckin(a.id);
+                                    }}
+                                    className="text-xs px-2 py-1 rounded-lg bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600"
+                                    aria-label="Desfazer check-in"
+                                >
+                                    Desfazer
+                                </button>
                             )}
                             {canEdit && (
                                 <button
@@ -936,7 +1140,8 @@ function EscalaGrid({
                         </div>
                     )}
                 </div>
-            ))}
+                );
+            })}
         </div>
     );
 }

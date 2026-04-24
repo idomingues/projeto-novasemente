@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\AppNotification;
 use App\Models\Church;
+use App\Models\PushToken;
+use App\Models\User;
+use App\Services\FcmMessaging;
 use Illuminate\Http\Request;
 
 class AppNotificationController extends Controller
@@ -31,12 +34,14 @@ class AppNotificationController extends Controller
 
         $churchId = $this->currentChurchId();
 
-        AppNotification::create([
+        $notification = AppNotification::create([
             'church_id' => $churchId,
             'title' => $data['title'],
             'body' => $data['body'],
             'created_by' => $request->user()?->id,
         ]);
+
+        $this->dispatchNativePushForNotification($notification);
 
         return redirect()->back()->with('success', 'Notificação enviada para todos os utilizadores do app.');
     }
@@ -55,5 +60,54 @@ class AppNotificationController extends Controller
         $notification->delete();
 
         return redirect()->back()->with('success', 'Notificação excluída.');
+    }
+
+    private function dispatchNativePushForNotification(AppNotification $notification): void
+    {
+        if (! FcmMessaging::enabled()) {
+            return;
+        }
+
+        $churchId = $notification->church_id;
+
+        $userIds = User::query()
+            ->where('notify_via_app', true)
+            ->whereHas('pushTokens')
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', (int) $churchId))
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+
+        if ($userIds === []) {
+            return;
+        }
+
+        $tokens = PushToken::query()
+            ->whereIn('user_id', $userIds)
+            ->get(['platform', 'token']);
+
+        if ($tokens->isEmpty()) {
+            return;
+        }
+
+        $fcm = new FcmMessaging;
+        $title = (string) $notification->title;
+        $body = (string) $notification->body;
+        $payload = [
+            'type' => 'app_notification',
+            'id' => (string) $notification->id,
+            'title' => $title,
+            'body' => $body,
+        ];
+
+        foreach ($tokens as $row) {
+            $token = (string) $row->token;
+            if ($token === '') {
+                continue;
+            }
+
+            $fcm->sendVisibleNotification($token, $title, $body, $payload);
+        }
     }
 }

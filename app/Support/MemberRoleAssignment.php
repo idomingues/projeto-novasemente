@@ -20,7 +20,6 @@ final class MemberRoleAssignment
             'pastor' => 'Pastor',
             'membro' => 'Membro (app)',
             'lider_ministerio' => 'Líder de ministério',
-            'financeiro' => 'Financeiro',
             default => $name,
         };
     }
@@ -42,6 +41,9 @@ final class MemberRoleAssignment
             ->map(fn ($n) => (string) $n)
             ->values()
             ->all();
+
+        // Perfil financeiro foi removido do produto.
+        $all = array_values(array_filter($all, fn (string $n) => $n !== 'financeiro'));
 
         // Usar `checkPermissionTo` (Spatie), não `can()` / Gate: `AppServiceProvider::Gate::before` devolve true
         // para admin/super_admin e invalidaria `can('roles.manage')` como critério de permissão real.

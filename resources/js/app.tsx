@@ -9,10 +9,11 @@ import { createRoot } from 'react-dom/client';
 
 import AppHead from './Components/AppHead';
 import OfflineBanner from './Components/OfflineBanner';
+import PushNotificationsSync from './Components/PushNotificationsSync';
 import ProgressIndicator from './Components/ProgressIndicator';
 import { ThemeProvider } from './Contexts/ThemeContext';
 
-const defaultAppName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const defaultAppName = import.meta.env.VITE_APP_NAME || '';
 
 type SharedPageProps = { csrf_token?: string; appName?: string };
 
@@ -41,7 +42,8 @@ createInertiaApp({
     title: (title) => {
         const page = (window as unknown as { __inertia?: { page?: { props?: SharedPageProps } } }).__inertia?.page;
         const currentName = page?.props?.appName || defaultAppName;
-        return `${title} - ${currentName}`;
+        // Evita sufixos tipo " - Laravel" no título da aba.
+        return title || currentName || '';
     },
         resolve: (name) =>
         resolvePageComponent(
@@ -77,6 +79,7 @@ createInertiaApp({
         root.render(
             <ThemeProvider>
                 <OfflineBanner />
+                <PushNotificationsSync />
                 <ProgressIndicator />
                 <App {...props} />
             </ThemeProvider>

@@ -23,10 +23,10 @@ export default function AppHead() {
 
     useEffect(() => {
         const updateTitle = () => {
-            const name = appName || 'Laravel';
+            // Mantém o título da página sem adicionar sufixo do app ("Laravel", etc).
             const parts = document.title.split(/\s*[‑–—-]\s*/);
             const pageTitle = parts[0]?.trim() || '';
-            document.title = pageTitle ? `${pageTitle} – ${name}` : name;
+            document.title = pageTitle || (appName ?? '');
         };
         const id = setTimeout(updateTitle, 0);
         return () => clearTimeout(id);

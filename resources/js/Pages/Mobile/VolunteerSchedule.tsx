@@ -1,7 +1,7 @@
 import AdminLayout from '@/Layouts/MobileLayout';
 import ScheduleLoginGate from '@/Components/ScheduleLoginGate';
 import { Head, router } from '@inertiajs/react';
-import { ChevronLeftIcon, ChevronRightIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { CalendarDaysIcon, CheckCircleIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { getMinistryIcon } from '@/lib/ministryIcons';
 
 type Teammate = {
@@ -22,6 +22,7 @@ type ScheduleEvent = {
     myAssignmentId: number;
     myRoleName: string | null;
     checkinEnabled: boolean;
+    myCheckedInAt?: string | null;
     teammates: Teammate[];
 };
 
@@ -80,8 +81,8 @@ export default function VolunteerSchedule({
         new Date(year, month - 1, 1),
     );
 
-    const doCheckin = (assignmentId: number) => {
-        router.post(route('escalas.checkin'), { assignment_id: assignmentId }, inertiaScroll);
+    const doCheckin = (assignmentId: number, dateYmd: string) => {
+        router.post(route('escalas.checkin'), { assignment_id: assignmentId, schedule_date: dateYmd }, inertiaScroll);
     };
 
     const formatDay = (ymd: string) => {
@@ -92,31 +93,44 @@ export default function VolunteerSchedule({
     return (
         <AdminLayout>
             <Head title="Minha escala" />
-            <div className="space-y-6 max-w-3xl mx-auto">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div>
-                        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Minha escala</h1>
-                        <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
-                            Os seus serviços como voluntário e quem está na equipe consigo.
-                        </p>
-                    </div>
-                    {canViewSchedule && memberName && (
-                        <div className="flex items-center gap-3">
-                            {memberPhotoUrl ? (
-                                <img
-                                    src={memberPhotoUrl}
-                                    alt=""
-                                    className="h-12 w-12 rounded-full object-cover ring-2 ring-zinc-200 dark:ring-zinc-600"
-                                />
-                            ) : (
-                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-200 text-lg font-semibold text-zinc-700 ring-2 ring-zinc-200 dark:bg-zinc-600 dark:text-zinc-200 dark:ring-zinc-600">
-                                    {memberName.charAt(0).toUpperCase()}
-                                </div>
-                            )}
-                            <span className="font-medium text-zinc-900 dark:text-white">{memberName}</span>
+            <div className="mx-auto w-full max-w-3xl space-y-6 lg:max-w-6xl">
+                <header className="rounded-3xl border border-zinc-200 bg-white/80 p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/60">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex items-start gap-4">
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-200">
+                                <CalendarDaysIcon className="h-6 w-6" aria-hidden />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                    Meu perfil
+                                </p>
+                                <h1 className="mt-1 text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
+                                    Minha escala
+                                </h1>
+                                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                                    Os seus serviços como voluntário e quem está na equipe consigo.
+                                </p>
+                            </div>
                         </div>
-                    )}
-                </div>
+
+                        {canViewSchedule && memberName ? (
+                            <div className="flex items-center gap-3 self-start">
+                                {memberPhotoUrl ? (
+                                    <img
+                                        src={memberPhotoUrl}
+                                        alt=""
+                                        className="h-12 w-12 rounded-full object-cover ring-2 ring-zinc-200 dark:ring-zinc-600"
+                                    />
+                                ) : (
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-200 text-lg font-semibold text-zinc-700 ring-2 ring-zinc-200 dark:bg-zinc-600 dark:text-zinc-200 dark:ring-zinc-600">
+                                        {memberName.charAt(0).toUpperCase()}
+                                    </div>
+                                )}
+                                <span className="font-medium text-zinc-900 dark:text-white">{memberName}</span>
+                            </div>
+                        ) : null}
+                    </div>
+                </header>
 
                 {!canViewSchedule && <ScheduleLoginGate />}
 
@@ -129,66 +143,73 @@ export default function VolunteerSchedule({
 
                 {canViewSchedule && !needsMember && volunteerOverview && (
                     <>
-                        {volunteerOverview.departments.length > 0 && (
-                            <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
-                                <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-2">
-                                    Os meus departamentos
-                                </p>
-                                <div className="flex flex-wrap gap-2">
-                                    {volunteerOverview.departments.map((d) => {
-                                        const Icon = getMinistryIcon(d.name);
-                                        return (
-                                            <span
-                                                key={d.id}
-                                                className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 dark:border-zinc-600 px-3 py-1.5 text-sm text-zinc-800 dark:text-zinc-200"
-                                            >
-                                                <Icon className="w-4 h-4 text-zinc-500" />
-                                                {d.name}
-                                            </span>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
+                        <div className="grid gap-6 lg:grid-cols-12 lg:items-start">
+                            <div className="space-y-4 lg:col-span-4">
+                                {volunteerOverview.departments.length > 0 && (
+                                    <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+                                        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                            Os meus departamentos
+                                        </p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {volunteerOverview.departments.map((d) => {
+                                                const Icon = getMinistryIcon(d.name);
+                                                return (
+                                                    <span
+                                                        key={d.id}
+                                                        className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 px-3 py-1.5 text-sm text-zinc-800 dark:border-zinc-600 dark:text-zinc-200"
+                                                    >
+                                                        <Icon className="h-4 w-4 text-zinc-500" />
+                                                        {d.name}
+                                                    </span>
+                                                );
+                                            })}
+                                        </div>
+                                    </section>
+                                )}
 
-                        <div className="flex items-center justify-between gap-4">
-                            <button
-                                type="button"
-                                onClick={prevMonth}
-                                className="p-2 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800"
-                                aria-label="Mês anterior"
-                            >
-                                <ChevronLeftIcon className="w-5 h-5" />
-                            </button>
-                            <span className="font-semibold text-zinc-900 dark:text-white capitalize">{monthLabel}</span>
-                            <button
-                                type="button"
-                                onClick={nextMonth}
-                                className="p-2 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800"
-                                aria-label="Próximo mês"
-                            >
-                                <ChevronRightIcon className="w-5 h-5" />
-                            </button>
-                        </div>
+                                <section className="rounded-2xl border border-zinc-200 bg-white px-2 py-2 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={prevMonth}
+                                            className="rounded-xl p-2 text-zinc-600 transition hover:bg-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/50 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:focus-visible:ring-brand-400/40"
+                                            aria-label="Mês anterior"
+                                        >
+                                            <ChevronLeftIcon className="h-5 w-5" />
+                                        </button>
+                                        <span className="px-2 text-center text-sm font-semibold capitalize text-zinc-900 dark:text-white">
+                                            {monthLabel}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={nextMonth}
+                                            className="rounded-xl p-2 text-zinc-600 transition hover:bg-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/50 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:focus-visible:ring-brand-400/40"
+                                            aria-label="Próximo mês"
+                                        >
+                                            <ChevronRightIcon className="h-5 w-5" />
+                                        </button>
+                                    </div>
+                                </section>
+                            </div>
 
                         {!volunteerOverview.hasVolunteerProfile && (
-                            <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 p-6 text-center text-sm text-zinc-600 dark:text-zinc-400">
+                            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-6 text-center text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-400 lg:col-span-8">
                                 Ainda não há cadastro de voluntário associado ao seu membro. Quando a secretaria o
                                 inscrever num departamento, a escala aparecerá aqui.
                             </div>
                         )}
 
                         {volunteerOverview.hasVolunteerProfile && volunteerOverview.events.length === 0 && (
-                            <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
+                            <div className="rounded-2xl border border-zinc-200 bg-white p-8 text-center text-sm text-zinc-500 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 lg:col-span-8">
                                 Nenhuma escala sua neste mês nos departamentos em que participa.
                             </div>
                         )}
 
-                        <div className="space-y-4">
+                        <div className="space-y-4 lg:col-span-8">
                             {volunteerOverview.events.map((ev) => (
                                 <section
                                     key={`${ev.dateYmd}-${ev.ministryId}`}
-                                    className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden"
+                                    className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
                                 >
                                     <div className="px-4 py-3 bg-zinc-100 dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700">
                                         <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 capitalize">
@@ -271,20 +292,17 @@ export default function VolunteerSchedule({
                                                 <div className="flex items-center gap-2 shrink-0">
                                                     {t.isMe && ev.checkinEnabled && (
                                                         <>
-                                                            {t.checkedInAt ? (
-                                                                <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
-                                                                    <CheckCircleIcon className="w-4 h-4" /> Check-in
-                                                                    feito
-                                                                </span>
-                                                            ) : (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => doCheckin(t.assignmentId)}
-                                                                    className="text-xs px-3 py-1.5 rounded-lg bg-primary-600 text-white hover:bg-primary-700"
-                                                                >
-                                                                    Check-in
-                                                                </button>
-                                                            )}
+                                                            <button
+                                                                type="button"
+                                                                    onClick={() => doCheckin(t.assignmentId, ev.dateYmd)}
+                                                                className={`inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-xs font-semibold shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                                                                    t.checkedInAt
+                                                                        ? 'bg-brand-700 text-white hover:bg-brand-800 focus-visible:ring-brand-500 dark:bg-brand-600 dark:hover:bg-brand-500'
+                                                                        : 'bg-brand-600 text-white hover:bg-brand-700 focus-visible:ring-brand-500 dark:bg-brand-500 dark:hover:bg-brand-400'
+                                                                }`}
+                                                            >
+                                                                {t.checkedInAt ? 'Desfazer check-in' : 'Check-in'}
+                                                            </button>
                                                         </>
                                                     )}
                                                 </div>
@@ -293,6 +311,7 @@ export default function VolunteerSchedule({
                                     </ul>
                                 </section>
                             ))}
+                        </div>
                         </div>
                     </>
                 )}

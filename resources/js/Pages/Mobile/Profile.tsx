@@ -17,6 +17,14 @@ import {
 interface Props {
     church: { name: string } | null;
     user: { name: string; email: string };
+    profileCounts: {
+        /** Pedidos em aberto no painel Atendimento (null se o utilizador não vê o painel). */
+        atendimento_open: number | null;
+        /** Compromissos na agenda do perfil ligado (null se não há pastor ligado à conta). */
+        pastoral_agenda: number | null;
+        /** Total no feed de notificações (igreja + caixa pessoal). */
+        notifications: number;
+    };
 }
 
 type Row = {
@@ -26,7 +34,20 @@ type Row = {
     href?: string;
     onClick?: 'logout';
     tone?: 'member' | 'public' | 'critical';
+    /** Contagem no canto do card; `null` omite o badge. */
+    badgeCount?: number | null;
 };
+
+function countBadgeClass(tone: Row['tone']): string {
+    if (tone === 'critical') {
+        return 'bg-rose-600 text-white dark:bg-rose-500';
+    }
+    if (tone === 'member') {
+        // Mesmo contraste dos cards PAINEL (rose): `primary` sobre fundo primary-50 pode ficar ilegível.
+        return 'bg-rose-600 text-white shadow-sm ring-2 ring-white dark:bg-rose-500 dark:ring-zinc-900';
+    }
+    return 'bg-zinc-700 text-white dark:bg-zinc-600';
+}
 
 function RowItem({ row }: { row: Row }) {
     const Icon = row.icon;
@@ -82,7 +103,7 @@ function RowItem({ row }: { row: Row }) {
                     <Icon className={iconClass} />
                 </div>
                 <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         <div className="font-semibold text-zinc-900 dark:text-white">{row.title}</div>
                         {tone === 'critical' ? (
                             <span className="shrink-0 rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-900 dark:bg-amber-900/50 dark:text-amber-200">
@@ -92,12 +113,21 @@ function RowItem({ row }: { row: Row }) {
                     </div>
                     <div className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">{row.description}</div>
                 </div>
+                {typeof row.badgeCount === 'number' ? (
+                    <span
+                        className={`ml-auto shrink-0 inline-flex min-h-8 min-w-8 items-center justify-center rounded-full px-2.5 py-1 text-sm font-bold tabular-nums ${countBadgeClass(tone)}`}
+                        title={`${row.badgeCount} ${row.badgeCount === 1 ? 'item' : 'itens'}`}
+                        aria-label={`${row.badgeCount} ${row.badgeCount === 1 ? 'item' : 'itens'}`}
+                    >
+                        {row.badgeCount > 99 ? '99+' : row.badgeCount}
+                    </span>
+                ) : null}
             </div>
         </Link>
     );
 }
 
-export default function MobileProfile({ church, user }: Props) {
+export default function MobileProfile({ church, user, profileCounts }: Props) {
     const page = usePage();
     const auth = (page.props as {
         auth?: {
@@ -124,11 +154,12 @@ export default function MobileProfile({ church, user }: Props) {
 
     const memberRows: Row[] = [
         {
-            title: 'Notificações',
+            title: 'Minhas Notificações',
             description: 'Avisos de eventos e notícias',
             icon: InboxIcon,
             href: route('mobile.notifications'),
             tone: 'member',
+            badgeCount: profileCounts.notifications,
         },
         {
             title: 'Minha Escala',
@@ -178,6 +209,10 @@ export default function MobileProfile({ church, user }: Props) {
                       icon: InboxIcon,
                       href: route('solicitations.index'),
                       tone: 'critical',
+                      badgeCount:
+                            typeof profileCounts.atendimento_open === 'number'
+                                ? profileCounts.atendimento_open
+                                : null,
                   },
               ] as Row[])
             : []),
@@ -191,6 +226,8 @@ export default function MobileProfile({ church, user }: Props) {
                       icon: ClockIcon,
                       href: linkedPastor ? route('pastoral-agenda.index', { mine: 1 }) : route('pastoral-agenda.index'),
                       tone: 'critical',
+                      badgeCount:
+                            typeof profileCounts.pastoral_agenda === 'number' ? profileCounts.pastoral_agenda : null,
                   },
               ] as Row[])
             : []),

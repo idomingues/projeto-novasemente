@@ -41,4 +41,18 @@ return [
         'fallback_playlists' => [],
     ],
 
+    /**
+     * Firebase Cloud Messaging (HTTP v1) — push nativo iOS/Android via tokens FCM.
+     *
+     * Conta de serviço do Firebase (JSON):
+     * - FCM_PROJECT_ID
+     * - FCM_CLIENT_EMAIL
+     * - FCM_PRIVATE_KEY (numa linha, com `\n` no lugar das quebras)
+     */
+    'fcm' => [
+        'project_id' => env('FCM_PROJECT_ID'),
+        'client_email' => env('FCM_CLIENT_EMAIL'),
+        'private_key' => env('FCM_PRIVATE_KEY'),
+    ],
+
 ];

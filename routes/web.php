@@ -25,6 +25,7 @@ use App\Http\Controllers\PastorController;
 use App\Http\Controllers\PrayerRequestController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicDiskFileController;
+use App\Http\Controllers\PushTokenController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\RoomBookingController;
 use App\Http\Controllers\SettingsController;
@@ -88,6 +89,7 @@ Route::get('/mobile/news', [MobileController::class, 'news'])->name('mobile.news
 Route::get('/mobile/news/{news:slug}', [MobileController::class, 'newsShow'])->name('mobile.news.show');
 Route::get('/mobile/events', [MobileController::class, 'events'])->name('mobile.events');
 Route::get('/mobile/schedule', [MobileController::class, 'schedule'])->name('mobile.schedule');
+Route::get('/mobile/schedule/full', [MobileController::class, 'scheduleFull'])->name('mobile.schedule.full');
 Route::get('/mobile/more', [MobileController::class, 'more'])->name('mobile.more');
 Route::get('/mobile/crencas', [MobileController::class, 'beliefs'])->name('mobile.beliefs');
 Route::get('/mobile/quem-somos', [MobileController::class, 'quemSomos'])->name('mobile.quem-somos');
@@ -160,6 +162,10 @@ Route::get('/mobile/solicitacoes', [MobileChurchSolicitationController::class, '
 
 Route::middleware('auth')->group(function () {
     Route::post('/working-church', [\App\Http\Controllers\SetWorkingChurchController::class, '__invoke'])->name('working-church.store');
+
+    // Tokens para Push Notifications nativas (Capacitor iOS/Android)
+    Route::post('/mobile/push-tokens', [PushTokenController::class, 'store'])->name('mobile.push-tokens.store');
+    Route::delete('/mobile/push-tokens', [PushTokenController::class, 'destroy'])->name('mobile.push-tokens.destroy');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

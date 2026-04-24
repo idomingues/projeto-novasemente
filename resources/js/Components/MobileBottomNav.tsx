@@ -76,6 +76,7 @@ const navItems = [
             'pastors.weekly-schedule.update',
             'volunteers.public-signup.page',
             'mobile.schedule',
+            'escalas.index',
             'mobile.culto',
             'mobile.offerings',
         ] as const,
@@ -93,8 +94,8 @@ interface MobileBottomNavProps {
 export default function MobileBottomNav({ insetForSidebar = false }: MobileBottomNavProps) {
     return (
         <nav
-            className={`fixed bottom-0 right-0 z-40 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 ${
-                insetForSidebar ? 'left-0 md:left-72' : 'left-0'
+            className={`fixed bottom-0 right-0 z-40 border-t border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 ${
+                insetForSidebar ? 'left-0 md:left-72 md:hidden' : 'left-0'
             }`}
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
             aria-label="Menu principal"

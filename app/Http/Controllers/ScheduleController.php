@@ -8,10 +8,12 @@ use App\Models\ScheduleOccurrenceRoleOverride;
 use App\Models\ScheduleOccurrenceSkip;
 use App\Models\ScheduleRole;
 use App\Models\User;
+use App\Models\UserInboxNotification;
 use App\Models\Volunteer;
 use App\Services\ScheduleAssignmentPresenter;
 use App\Services\ScheduleCheckinNotifier;
 use App\Support\ScheduleBoardViewData;
+use App\Support\UserMessagingPreferences;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -206,7 +208,8 @@ class ScheduleController extends Controller
                     'user_id' => $assignment->user_id,
                     'volunteer_id' => $assignment->volunteer_id,
                     'schedule_role_id' => $roleId,
-                    'saturday_number' => null,
+                    // Override de uma ocorrência da série: mantém o sábado-alvo.
+                    'saturday_number' => $assignment->saturday_number,
                     'schedule_date' => $od->format('Y-m-d'),
                     'recurring' => false,
                     'assignment_month' => (int) $od->month,
@@ -359,6 +362,7 @@ class ScheduleController extends Controller
     {
         $valid = $request->validate([
             'assignment_id' => 'required|exists:schedule_assignments,id',
+            'schedule_date' => 'nullable|date_format:Y-m-d',
         ]);
 
         $assignment = ScheduleAssignment::findOrFail($valid['assignment_id']);
@@ -376,15 +380,25 @@ class ScheduleController extends Controller
             return back()->withErrors(['assignment_id' => 'Sem permissão para este check-in.']);
         }
 
-        $date = $assignment->schedule_date
-            ? Carbon::parse($assignment->schedule_date)
-            : null;
+        $date = $assignment->schedule_date ? Carbon::parse($assignment->schedule_date) : null;
 
-        if (! $date && $assignment->saturday_number) {
-            $now = now();
-            $saturdays = $this->getSaturdays($now->year, $now->month);
+        if (! $date && ! empty($valid['schedule_date'])) {
+            $date = Carbon::parse($valid['schedule_date']);
+        }
+
+        if ($date && $assignment->schedule_date && $date->format('Y-m-d') !== Carbon::parse($assignment->schedule_date)->format('Y-m-d')) {
+            // Se a escala é "extra" (schedule_date preenchido), a data é fixa.
+            $date = Carbon::parse($assignment->schedule_date);
+        }
+
+        if ($date && $assignment->saturday_number && $assignment->schedule_date === null) {
+            // Escala recorrente por sábado do mês: a data informada precisa bater com o sábado da ocorrência.
+            $saturdays = $this->getSaturdays($date->year, $date->month);
             $idx = $assignment->saturday_number - 1;
-            $date = $saturdays[$idx] ?? null;
+            $expected = $saturdays[$idx] ?? null;
+            if (! $expected || ! $expected->isSameDay($date)) {
+                return back()->withErrors(['assignment_id' => 'Data da escala inválida para este check-in.']);
+            }
         }
 
         if (! $date) {
@@ -396,9 +410,86 @@ class ScheduleController extends Controller
             return back()->withErrors(['assignment_id' => 'Check-in não está habilitado para esta data.']);
         }
 
+        $actionUrl = route('escalas.index', [
+            'month' => (int) $date->month,
+            'year' => (int) $date->year,
+            'ministry_id' => (int) $assignment->ministry_id,
+        ], true);
+
+        if ($assignment->checked_in_at) {
+            $assignment->update(['checked_in_at' => null]);
+
+            $this->notifyCheckinChange($request, $assignment, $date, false, $actionUrl);
+
+            return back()->with('success', 'Check-in desfeito.');
+        }
+
         $assignment->update(['checked_in_at' => now()]);
 
+        $this->notifyCheckinChange($request, $assignment, $date, true, $actionUrl);
+
         return back()->with('success', 'Check-in realizado.');
+    }
+
+    private function notifyCheckinChange(Request $request, ScheduleAssignment $assignment, Carbon $date, bool $checkedIn, string $actionUrl): void
+    {
+        $actor = $request->user();
+        $targetUserId = $assignment->user_id;
+        if (! $targetUserId && $assignment->volunteer_id) {
+            $targetUserId = Volunteer::query()->whereKey($assignment->volunteer_id)->value('user_id');
+        }
+
+        $targetUser = $targetUserId ? User::query()->find((int) $targetUserId) : null;
+        $label = $date->translatedFormat('d/m/Y');
+        $targetName = $targetUser?->name ?: ($assignment->volunteer?->display_name ?? 'Voluntário');
+        $actorName = $actor?->name ?: 'Sistema';
+
+        $title = $checkedIn ? 'Check-in realizado' : 'Check-in desfeito';
+
+        // Notifica o usuário escalado (quando a ação foi feita por outra pessoa).
+        if ($targetUser && $actor && (int) $targetUser->id !== (int) $actor->id && UserMessagingPreferences::acceptsInbox($targetUser)) {
+            $body = $checkedIn
+                ? $actorName.' marcou o seu check-in em '.$label.'.'
+                : $actorName.' desfez o seu check-in em '.$label.'.';
+            UserInboxNotification::create([
+                'user_id' => $targetUser->id,
+                'title' => $title,
+                'body' => $body,
+                'action_url' => $actionUrl,
+            ]);
+        }
+
+        // Notifica líderes do departamento e admins quando o voluntário marcar/desmarcar (ou quando um líder marcar para alguém).
+        $leaderIds = User::role('lider_ministerio')
+            ->whereHas('ministries', fn ($q) => $q->where('ministries.id', (int) $assignment->ministry_id))
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+        $adminIds = User::role(['admin', 'super_admin'])->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $manageIds = User::permission('escalas.manage')->pluck('id')->map(fn ($id) => (int) $id)->all();
+
+        $notifyIds = array_values(array_unique(array_merge($leaderIds, $adminIds, $manageIds)));
+        if ($notifyIds === []) {
+            return;
+        }
+
+        foreach (User::query()->whereIn('id', $notifyIds)->get(['id', 'name', 'notify_via_app']) as $u) {
+            if ($actor && (int) $u->id === (int) $actor->id) {
+                continue;
+            }
+            if (! UserMessagingPreferences::acceptsInbox($u)) {
+                continue;
+            }
+            $body = $checkedIn
+                ? $targetName.' teve check-in marcado em '.$label.' (por '.$actorName.').'
+                : $targetName.' teve check-in desfeito em '.$label.' (por '.$actorName.').';
+            UserInboxNotification::create([
+                'user_id' => $u->id,
+                'title' => $title,
+                'body' => $body,
+                'action_url' => $actionUrl,
+            ]);
+        }
     }
 
     private function userCanManageEscalas(User $user, ScheduleAssignment $assignment): bool

@@ -158,7 +158,7 @@ class User extends Authenticatable
             return false;
         }
 
-        if ($this->hasAnyRole(['admin', 'super_admin', 'pastor', 'secretaria', 'lider_ministerio', 'financeiro'])) {
+        if ($this->hasAnyRole(['admin', 'super_admin', 'pastor', 'secretaria', 'lider_ministerio'])) {
             return false;
         }
 
@@ -176,6 +176,11 @@ class User extends Authenticatable
     public function inboxNotifications(): HasMany
     {
         return $this->hasMany(UserInboxNotification::class);
+    }
+
+    public function pushTokens(): HasMany
+    {
+        return $this->hasMany(PushToken::class);
     }
 
     /**

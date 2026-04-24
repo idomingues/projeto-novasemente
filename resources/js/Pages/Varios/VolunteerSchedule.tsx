@@ -80,8 +80,8 @@ export default function VolunteerSchedule({
         new Date(year, month - 1, 1),
     );
 
-    const doCheckin = (assignmentId: number) => {
-        router.post(route('escalas.checkin'), { assignment_id: assignmentId }, inertiaScroll);
+    const doCheckin = (assignmentId: number, dateYmd: string) => {
+        router.post(route('escalas.checkin'), { assignment_id: assignmentId, schedule_date: dateYmd }, inertiaScroll);
     };
 
     const formatDay = (ymd: string) => {
@@ -253,7 +253,7 @@ export default function VolunteerSchedule({
                                                             ) : (
                                                                 <button
                                                                     type="button"
-                                                                    onClick={() => doCheckin(t.assignmentId)}
+                                                                    onClick={() => doCheckin(t.assignmentId, ev.dateYmd)}
                                                                     className="text-xs px-3 py-1.5 rounded-lg bg-primary-600 text-white hover:bg-primary-700"
                                                                 >
                                                                     Check-in

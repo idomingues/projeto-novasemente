@@ -30,6 +30,7 @@ class RoleController extends Controller
             ->with('permissions')
             ->withCount('users')
             ->where('name', '!=', 'super_admin')
+            ->where('name', '!=', 'financeiro')
             ->orderByRaw("CASE WHEN name = 'admin' THEN 0 ELSE 1 END")
             ->orderBy('name')
             ->get()

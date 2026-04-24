@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\AppNotification;
 use App\Models\UserInboxNotification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class NotificationFeed
 {
@@ -65,6 +66,33 @@ class NotificationFeed
         }
 
         return $app->concat($inbox)->sortByDesc('created_at')->take($limit)->values()->all();
+    }
+
+    /**
+     * Total de entradas que entram no feed (igreja + globais + caixa pessoal), para badges no perfil móvel.
+     */
+    public static function mergedTotalCountForUser(Request $request, ?int $churchId): int
+    {
+        $appCount = 0;
+        if (Schema::hasTable('app_notifications')) {
+            $appCount = (int) AppNotification::query()
+                ->where(function ($q) use ($churchId) {
+                    $q->whereNull('church_id');
+                    if ($churchId !== null) {
+                        $q->orWhere('church_id', $churchId);
+                    }
+                })
+                ->count();
+        }
+
+        $inboxCount = 0;
+        if ($request->user() && Schema::hasTable('user_inbox_notifications')) {
+            $inboxCount = (int) UserInboxNotification::query()
+                ->where('user_id', $request->user()->id)
+                ->count();
+        }
+
+        return $appCount + $inboxCount;
     }
 
     public static function unreadInboxCount(Request $request): int
