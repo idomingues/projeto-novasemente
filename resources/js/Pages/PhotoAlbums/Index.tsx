@@ -11,6 +11,7 @@ import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
 import { FormEventHandler, useMemo, useState } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
+import { compressImageForUpload, ImageCompressError } from '@/utils/compressImageForUpload';
 
 interface PhotoAlbumRow {
     id: number;
@@ -45,6 +46,8 @@ export default function PhotoAlbumsIndex({ albums, canManage, hasDriveApiKey }: 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
+    const [coverCompressing, setCoverCompressing] = useState(false);
+    const [coverCompressError, setCoverCompressError] = useState<string | null>(null);
 
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
         title: '',
@@ -59,6 +62,8 @@ export default function PhotoAlbumsIndex({ albums, canManage, hasDriveApiKey }: 
         setEditingId(null);
         reset();
         clearErrors();
+        setCoverCompressing(false);
+        setCoverCompressError(null);
         setIsModalOpen(true);
     };
 
@@ -73,6 +78,8 @@ export default function PhotoAlbumsIndex({ albums, canManage, hasDriveApiKey }: 
             published_at: a.published_at ? a.published_at.substring(0, 16) : '',
         });
         clearErrors();
+        setCoverCompressing(false);
+        setCoverCompressError(null);
         setIsModalOpen(true);
     };
 
@@ -80,6 +87,8 @@ export default function PhotoAlbumsIndex({ albums, canManage, hasDriveApiKey }: 
         setIsModalOpen(false);
         reset();
         setEditingId(null);
+        setCoverCompressing(false);
+        setCoverCompressError(null);
     };
 
     const submit: FormEventHandler = (e) => {
@@ -268,12 +277,41 @@ export default function PhotoAlbumsIndex({ albums, canManage, hasDriveApiKey }: 
                                         type="file"
                                         accept="image/*"
                                         className="mt-1 block w-full text-sm text-zinc-700 dark:text-zinc-200 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-900 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-zinc-800 dark:file:bg-white dark:file:text-black dark:hover:file:bg-zinc-100"
-                                        onChange={(e) => {
-                                            const f = e.currentTarget.files?.[0] ?? null;
-                                            setData('cover_image_file', f);
+                                        onChange={async (e) => {
+                                            const raw = e.currentTarget.files?.[0] ?? null;
+                                            if (!raw) {
+                                                setData('cover_image_file', null);
+                                                setCoverCompressError(null);
+                                                return;
+                                            }
+                                            setCoverCompressing(true);
+                                            setCoverCompressError(null);
+                                            try {
+                                                const prepared = await compressImageForUpload(raw);
+                                                setData('cover_image_file', prepared);
+                                            } catch (err) {
+                                                setData('cover_image_file', null);
+                                                if (err instanceof ImageCompressError) {
+                                                    setCoverCompressError(err.message);
+                                                } else {
+                                                    setCoverCompressError('Não foi possível processar esta imagem. Tente outra foto.');
+                                                }
+                                            } finally {
+                                                setCoverCompressing(false);
+                                            }
                                         }}
                                     />
                                     <InputError message={(errors as Record<string, string | undefined>).cover_image_file} className="mt-1" />
+                                    {coverCompressing ? (
+                                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                            Otimizando imagem…
+                                        </p>
+                                    ) : null}
+                                    {coverCompressError ? (
+                                        <p className="mt-1 text-xs font-medium text-red-600 dark:text-red-400">
+                                            {coverCompressError}
+                                        </p>
+                                    ) : null}
                                     {data.cover_image_file ? (
                                         <button
                                             type="button"
@@ -302,7 +340,7 @@ export default function PhotoAlbumsIndex({ albums, canManage, hasDriveApiKey }: 
                             <SecondaryButton type="button" onClick={closeModal}>
                                 Cancelar
                             </SecondaryButton>
-                            <PrimaryButton type="submit" disabled={processing}>
+                            <PrimaryButton type="submit" disabled={processing || coverCompressing}>
                                 {isEditing ? 'Salvar' : 'Publicar'}
                             </PrimaryButton>
                         </div>
