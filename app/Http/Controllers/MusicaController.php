@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Church;
 use App\Models\Musica;
+use App\Services\YoutubePlaylistImportService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -20,6 +22,7 @@ class MusicaController extends Controller
                 return (int) $church->id;
             }
         }
+
         return Church::where('active', true)->orderBy('name')->value('id');
     }
 
@@ -44,7 +47,7 @@ class MusicaController extends Controller
                 'author' => $m->author ? ['name' => $m->author->name] : null,
             ]);
 
-        $canManage = ($request->user()?->can('music.manage') ?? false) && app()->environment('local');
+        $canManage = $request->user()?->can('music.manage') ?? false;
 
         return Inertia::render('Music/Index', [
             'musicas' => $musicas,
@@ -124,6 +127,105 @@ class MusicaController extends Controller
         return redirect()->route('musica.index')->with('success', 'Música removida com sucesso.');
     }
 
+    public function importPlaylist(Request $request)
+    {
+        $this->authorize('music.manage');
+
+        if ($request->input('published_at') === '') {
+            $request->merge(['published_at' => null]);
+        }
+
+        $data = $request->validate([
+            'playlist_url' => ['required', 'string', 'max:1024'],
+            'published_at' => ['nullable', 'date'],
+        ]);
+
+        $playlistId = Musica::youtubePlaylistIdFromUrl($data['playlist_url']);
+        if ($playlistId === null) {
+            return redirect()->back()->withErrors([
+                'playlist_url' => 'Cole um link com list=… (página da playlist ou vídeo com playlist).',
+            ])->withInput();
+        }
+
+        if (! filled(config('services.youtube.api_key'))) {
+            return redirect()->back()->with(
+                'error',
+                'Configure YOUTUBE_API_KEY no .env para importar playlists.'
+            );
+        }
+
+        $fetched = YoutubePlaylistImportService::fetchPlaylistVideos($playlistId);
+        if (! $fetched['ok']) {
+            $msg = $fetched['message'];
+
+            return redirect()->back()
+                ->withErrors(['playlist_url' => $msg])
+                ->with('error', $msg)
+                ->withInput();
+        }
+
+        $videos = $fetched['items'];
+        if (count($videos) === 0) {
+            return redirect()->back()->with(
+                'error',
+                'A playlist não devolveu vídeos (vazia, privada ou indisponível para a API).'
+            );
+        }
+
+        $churchId = $this->currentChurchId();
+        if ($churchId === null) {
+            return redirect()->route('musica.index')->with('error', 'Nenhuma igreja ativa. Associe uma igreja primeiro.');
+        }
+
+        $existingVideoIds = Musica::query()
+            ->where('church_id', $churchId)
+            ->pluck('youtube_url')
+            ->map(fn ($url) => Musica::youtubeVideoId(is_string($url) ? $url : ''))
+            ->filter()
+            ->all();
+        $seen = array_flip($existingVideoIds);
+
+        $publishedAt = $data['published_at'] ?? null;
+        $userId = $request->user()?->id;
+
+        $imported = 0;
+        $skipped = 0;
+
+        DB::transaction(function () use ($videos, $churchId, $publishedAt, $userId, &$seen, &$imported, &$skipped): void {
+            foreach ($videos as $row) {
+                $videoId = $row['video_id'];
+                if (isset($seen[$videoId])) {
+                    $skipped++;
+
+                    continue;
+                }
+                Musica::create([
+                    'church_id' => $churchId,
+                    'title' => $row['title'],
+                    'youtube_url' => Musica::canonicalYoutubeWatchUrl($videoId),
+                    'published_at' => $publishedAt,
+                    'created_by' => $userId,
+                ]);
+                $seen[$videoId] = true;
+                $imported++;
+            }
+        });
+
+        if ($imported === 0) {
+            return redirect()->route('musica.index')->with(
+                'success',
+                'Nenhuma música nova: todos os vídeos desta playlist já estavam cadastrados.'
+            );
+        }
+
+        $msg = "Importação concluída: {$imported} música(s) adicionada(s).";
+        if ($skipped > 0) {
+            $msg .= " {$skipped} ignorada(s) (já existiam).";
+        }
+
+        return redirect()->route('musica.index')->with('success', $msg);
+    }
+
     private function fetchYoutubeTitle(string $youtubeUrl): ?string
     {
         try {
@@ -144,6 +246,7 @@ class MusicaController extends Controller
             return $title !== '' ? $title : null;
         } catch (\Throwable $e) {
             report($e);
+
             return null;
         }
     }

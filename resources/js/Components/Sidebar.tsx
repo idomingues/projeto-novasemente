@@ -23,6 +23,7 @@ import {
     SparklesIcon,
     ChevronDownIcon,
     ChartBarSquareIcon,
+    MusicalNoteIcon,
 } from '@heroicons/react/24/outline';
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 import { useMemo, useState } from 'react';
@@ -76,6 +77,7 @@ const ICON_MAP: Record<string, MenuIcon> = {
     'chat-bubble': ChatBubbleLeftRightIcon,
     sparkles: SparklesIcon,
     'chart-bar-square': ChartBarSquareIcon,
+    'musical-note': MusicalNoteIcon,
 };
 
 /**
@@ -94,6 +96,7 @@ const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'News', route: 'news.index', icon: NewspaperIcon },
     { name: 'Eventos', route: 'events.index', icon: CalendarDaysIcon },
     { name: 'Acervo', route: 'acervo.index', icon: PlayCircleIcon },
+    { name: 'Música', route: 'musica.index', icon: MusicalNoteIcon },
     { name: 'Culto', route: 'culto.index', icon: FilmIcon },
     { name: 'Notificações', route: 'notifications.manage', icon: BellAlertIcon },
     { name: 'Salas', route: 'rooms.index', icon: BuildingOfficeIcon },
@@ -151,13 +154,16 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
     const openSolicitationsCount =
         typeof auth?.openSolicitationsCount === 'number' ? auth.openSolicitationsCount : 0;
 
-    const publicationRoutes = new Set(['news.index', 'culto.index', 'events.index', 'acervo.index', 'notifications.manage']);
+    const publicationRoutes = new Set([
+        'news.index',
+        'culto.index',
+        'events.index',
+        'acervo.index',
+        'musica.index',
+        'notifications.manage',
+    ]);
     const cadastroRoutes = new Set(['rooms.index', 'departments.index', 'pastors.index']);
 
-    const [isPublicationOpen, setIsPublicationOpen] = useState(() => {
-        const current = route().current();
-        return typeof current === 'string' ? publicationRoutes.has(current) : true;
-    });
     const [isCadastroOpen, setIsCadastroOpen] = useState(() => {
         const current = route().current();
         return typeof current === 'string' ? cadastroRoutes.has(current) : true;
@@ -406,54 +412,42 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
 
                     {publicationMenuItems.length > 0 ? (
                         <>
-                            <button
-                                type="button"
-                                onClick={() => setIsPublicationOpen((v) => !v)}
-                                className="mt-8 mb-2 w-full px-4 flex items-center justify-between text-left"
-                            >
+                            <div className="mt-8 mb-2 w-full px-4">
                                 <span className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
                                     Publicação
                                 </span>
-                                <ChevronDownIcon
-                                    className={`h-4 w-4 text-zinc-400 dark:text-zinc-500 transition-transform ${
-                                        isPublicationOpen ? 'rotate-180' : ''
-                                    }`}
-                                    aria-hidden
-                                />
-                            </button>
-                            {isPublicationOpen ? (
-                                <ul className="space-y-2">
-                                    {publicationMenuItems.map((item) => {
-                                        const routeExists = route().has(item.route);
-                                        const href = routeExists ? route(item.route) : '#';
-                                        const isActive = routeExists && isMenuItemActive(item.route);
-                                        const Icon = item.icon;
+                            </div>
+                            <ul className="space-y-2">
+                                {publicationMenuItems.map((item) => {
+                                    const routeExists = route().has(item.route);
+                                    const href = routeExists ? route(item.route) : '#';
+                                    const isActive = routeExists && isMenuItemActive(item.route);
+                                    const Icon = item.icon;
 
-                                        return (
-                                            <li key={item.route}>
-                                                <Link
-                                                    href={href}
-                                                    onClick={onMobileClose}
-                                                    className={`flex items-center px-4 py-3.5 rounded-2xl transition-all duration-200 group ${
+                                    return (
+                                        <li key={item.route}>
+                                            <Link
+                                                href={href}
+                                                onClick={onMobileClose}
+                                                className={`flex items-center px-4 py-3.5 rounded-2xl transition-all duration-200 group ${
+                                                    isActive
+                                                        ? 'bg-zinc-900 text-white shadow-lg shadow-zinc-900/10 dark:bg-white dark:text-black dark:shadow-white/10'
+                                                        : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-white'
+                                                }`}
+                                            >
+                                                <Icon
+                                                    className={`w-6 h-6 mr-3 ${
                                                         isActive
-                                                            ? 'bg-zinc-900 text-white shadow-lg shadow-zinc-900/10 dark:bg-white dark:text-black dark:shadow-white/10'
-                                                            : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-white'
+                                                            ? 'text-white dark:text-black'
+                                                            : 'text-zinc-400 group-hover:text-zinc-900 dark:text-zinc-500 dark:group-hover:text-white'
                                                     }`}
-                                                >
-                                                    <Icon
-                                                        className={`w-6 h-6 mr-3 ${
-                                                            isActive
-                                                                ? 'text-white dark:text-black'
-                                                                : 'text-zinc-400 group-hover:text-zinc-900 dark:text-zinc-500 dark:group-hover:text-white'
-                                                        }`}
-                                                    />
-                                                    <span className="font-medium text-sm">{item.name}</span>
-                                                </Link>
-                                            </li>
-                                        );
-                                    })}
-                                </ul>
-                            ) : null}
+                                                />
+                                                <span className="font-medium text-sm">{item.name}</span>
+                                            </Link>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
                         </>
                     ) : null}
 

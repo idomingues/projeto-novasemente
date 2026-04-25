@@ -118,9 +118,11 @@ export default function MusicIndex({ musicas, canManage }: Props) {
                         <p className="text-zinc-600 dark:text-zinc-400 font-medium">Nenhum vídeo de música cadastrado</p>
                         <p className="text-sm text-zinc-500 dark:text-zinc-500 mt-1">Os vídeos do YouTube aparecerão aqui.</p>
                         {canManage && (
-                            <AddButton variant="icon" onClick={openCreateModal} className="mt-4" title="Nova música">
-                                Nova música
-                            </AddButton>
+                            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                                <AddButton variant="icon" onClick={openCreateModal} title="Nova música">
+                                    Nova música
+                                </AddButton>
+                            </div>
                         )}
                     </div>
                 ) : (

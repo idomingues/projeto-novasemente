@@ -25,6 +25,7 @@ return [
         ['name' => 'News', 'route' => 'news.index', 'icon' => 'newspaper'],
         ['name' => 'Eventos', 'route' => 'events.index', 'icon' => 'calendar-days'],
         ['name' => 'Acervo', 'route' => 'acervo.index', 'icon' => 'play-circle'],
+        ['name' => 'Música', 'route' => 'musica.index', 'icon' => 'musical-note'],
         ['name' => 'Culto', 'route' => 'culto.index', 'icon' => 'film'],
         ['name' => 'Notificações', 'route' => 'notifications.manage', 'icon' => 'bell-alert'],
         // Cadastro
