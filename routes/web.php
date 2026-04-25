@@ -26,6 +26,7 @@ use App\Http\Controllers\PrayerRequestController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicDiskFileController;
 use App\Http\Controllers\PushTokenController;
+use App\Http\Controllers\PhotoAlbumController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\RoomBookingController;
 use App\Http\Controllers\SettingsController;
@@ -102,7 +103,8 @@ Route::get('/mobile/classe-comecos', [MobileController::class, 'classeComecos'])
 Route::get('/mobile/acervo', [MobileController::class, 'acervo'])->name('mobile.acervo');
 Route::get('/mobile/musica', [MobileController::class, 'musica'])->name('mobile.musica');
 Route::get('/mobile/services', [MobileController::class, 'services'])->name('mobile.services');
-Route::get('/mobile/fotos', [MobileController::class, 'fotosComingSoon'])->name('mobile.fotos');
+Route::get('/mobile/fotos', [MobileController::class, 'fotos'])->name('mobile.fotos');
+Route::get('/mobile/fotos/{album}', [MobileController::class, 'fotosShow'])->name('mobile.fotos.show');
 Route::get('/mobile/localizacao', [MobileController::class, 'location'])->name('mobile.location');
 Route::get('/mobile/pastores', [MobileController::class, 'pastors'])->name('mobile.pastors');
 Route::get('/mobile/offerings', [MobileController::class, 'offerings'])->name('mobile.offerings');
@@ -319,6 +321,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/musica/import-playlist', [MusicaController::class, 'importPlaylist'])->name('musica.import-playlist')->middleware('permission:music.manage');
     Route::put('/musica/{musica}', [MusicaController::class, 'update'])->name('musica.update')->middleware('permission:music.manage');
     Route::delete('/musica/{musica}', [MusicaController::class, 'destroy'])->name('musica.destroy')->middleware('permission:music.manage');
+    Route::get('/fotos', [PhotoAlbumController::class, 'index'])->name('photo-albums.index')->middleware('permission:photos.manage');
+    Route::post('/fotos', [PhotoAlbumController::class, 'store'])->name('photo-albums.store')->middleware('permission:photos.manage');
+    Route::put('/fotos/{album}', [PhotoAlbumController::class, 'update'])->name('photo-albums.update')->middleware('permission:photos.manage');
+    Route::delete('/fotos/{album}', [PhotoAlbumController::class, 'destroy'])->name('photo-albums.destroy')->middleware('permission:photos.manage');
     Route::get('/services', function () {
         return Inertia::render('Dashboard');
     })->name('services.index');

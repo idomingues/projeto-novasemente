@@ -26,6 +26,7 @@ return [
         ['name' => 'Eventos', 'route' => 'events.index', 'icon' => 'calendar-days'],
         ['name' => 'Acervo', 'route' => 'acervo.index', 'icon' => 'play-circle'],
         ['name' => 'Música', 'route' => 'musica.index', 'icon' => 'musical-note'],
+        ['name' => 'Fotos', 'route' => 'photo-albums.index', 'icon' => 'camera'],
         ['name' => 'Culto', 'route' => 'culto.index', 'icon' => 'film'],
         ['name' => 'Notificações', 'route' => 'notifications.manage', 'icon' => 'bell-alert'],
         // Cadastro

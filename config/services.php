@@ -41,6 +41,16 @@ return [
         'fallback_playlists' => [],
     ],
 
+    'google' => [
+        /**
+         * Google Drive API v3 (somente leitura) — usado para tentar obter capa automática
+         * (primeira imagem) de pastas públicas quando `cover_image_url` não for informada.
+         *
+         * Não usa OAuth do utilizador; somente API key (opcional).
+         */
+        'drive_api_key' => env('GOOGLE_DRIVE_API_KEY'),
+    ],
+
     /**
      * Firebase Cloud Messaging (HTTP v1) — push nativo iOS/Android via tokens FCM.
      *

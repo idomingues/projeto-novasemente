@@ -14,7 +14,6 @@ import {
     FilmIcon,
     HandRaisedIcon,
 } from '@heroicons/react/24/outline';
-import { PHOTOS_DRIVE_FOLDER_URL } from '@/constants/externalLinks';
 import type { ComponentType, SVGProps } from 'react';
 
 type MenuIcon = ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
@@ -35,8 +34,8 @@ const items: MoreMenuItem[] = [
     { name: 'Cultos e horários', description: 'Dias e horários dos cultos', route: 'mobile.services', icon: ClockIcon },
     {
         name: 'Fotos',
-        description: 'Álbum de fotos (Google Drive)',
-        externalHref: PHOTOS_DRIVE_FOLDER_URL,
+        description: 'Álbum de fotos',
+        route: 'mobile.fotos',
         icon: PhotoIcon,
     },
     { name: 'Localização', description: 'Endereço e mapa da igreja', route: 'mobile.location', icon: MapPinIcon },

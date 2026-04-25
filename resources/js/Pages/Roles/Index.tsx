@@ -44,6 +44,7 @@ const GROUP_LABELS: Record<string, string> = {
     escalas: 'Escalas',
     roles: 'Perfis',
     music: 'Acervo e músicas',
+    photos: 'Fotos',
     culto: 'Culto',
     notifications: 'Notificações',
     pastors: 'Pastores',
@@ -58,6 +59,7 @@ function groupTitle(group: string): string {
 function permissionLineLabel(perm: string): string {
     const custom: Record<string, string> = {
         'music.manage': 'Gerenciar (acervo, músicas e playlists)',
+        'photos.manage': 'Gerenciar (álbuns de fotos)',
         'rooms.view': 'Ver salas (lista e cadastro no menu Salas)',
         'rooms.manage': 'Gerir salas (criar, editar e remover salas)',
         'rooms.schedule':

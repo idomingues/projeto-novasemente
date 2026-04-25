@@ -13,10 +13,12 @@ use App\Models\Musica;
 use App\Models\News;
 use App\Models\Pastor;
 use App\Models\PastoralAppointment;
+use App\Models\PhotoAlbum;
 use App\Models\ScheduleCheckinDate;
 use App\Models\User;
 use App\Models\UserInboxNotification;
 use App\Models\Volunteer;
+use App\Services\DriveFolderCoverService;
 use App\Services\ScheduleAssignmentPresenter;
 use App\Services\SolicitationChatNotifier;
 use App\Services\VolunteerScheduleOverview;
@@ -467,11 +469,58 @@ class MobileController extends Controller
         return Inertia::render('Mobile/QuemSomos');
     }
 
-    public function fotosComingSoon(): RedirectResponse
+    public function fotos(DriveFolderCoverService $cover): Response
     {
-        return redirect()->away(
-            'https://drive.google.com/drive/folders/1AfwOOlfQhITwltHy0BUTT3TfkT-soDUQ',
-        );
+        $churchId = $this->currentChurch()?->id;
+
+        $albums = PhotoAlbum::query()
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
+            ->visibleInApp()
+            ->orderByDesc('published_at')
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(function (PhotoAlbum $a) use ($cover) {
+                $autoCoverUrl = null;
+                if (! $a->cover_image_url && $a->drive_folder_id) {
+                    $autoCoverUrl = $cover->coverUrlForPublicFolder($a->drive_folder_id);
+                }
+
+                return [
+                    'id' => $a->id,
+                    'title' => $a->title,
+                    'published_at' => $a->published_at?->toIso8601String(),
+                    'cover_image_url' => $a->cover_image_url,
+                    'auto_cover_url' => $autoCoverUrl,
+                ];
+            })
+            ->values()
+            ->all();
+
+        return Inertia::render('Mobile/PhotoAlbums', [
+            'albums' => $albums,
+        ]);
+    }
+
+    public function fotosShow(PhotoAlbum $album): Response
+    {
+        $churchId = $this->currentChurch()?->id;
+        if ($churchId === null || (int) $album->church_id !== (int) $churchId) {
+            abort(404);
+        }
+        if ($album->published_at !== null && $album->published_at->isFuture()) {
+            abort(404);
+        }
+
+        $embedUrl = $album->drive_folder_embed_url;
+        $folderUrl = $album->drive_folder_view_url;
+        abort_unless($embedUrl && $folderUrl, 404);
+
+        return Inertia::render('Mobile/Photos', [
+            'title' => $album->title,
+            'embedUrl' => $embedUrl,
+            'folderUrl' => $folderUrl,
+        ]);
     }
 
     public function location(): Response

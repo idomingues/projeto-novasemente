@@ -28,6 +28,7 @@ export const adminSidebarRoutePermissions: Record<string, string[]> = {
     'events.index': ['events.view', 'events.manage'],
     'culto.index': ['culto.manage'],
     'musica.index': ['music.manage'],
+    'photo-albums.index': ['photos.manage'],
     'services.index': [],
     /** Visibilidade real: só `super_admin` via auth.canManageSettings no Sidebar (bloco ADM). */
     'settings.index': [],

@@ -53,6 +53,7 @@ const navItems = [
             'mobile.leader-solicitations.show',
             'mobile.leader-solicitations.messages.store',
             'mobile.fotos',
+            'mobile.fotos.show',
             'mobile.location',
             'varios.schedule',
             'varios.classe-comecos',
