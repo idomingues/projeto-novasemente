@@ -19,6 +19,7 @@ use App\Models\User;
 use App\Models\UserInboxNotification;
 use App\Models\Volunteer;
 use App\Services\DriveFolderCoverService;
+use App\Services\DriveFolderImagesService;
 use App\Services\ScheduleAssignmentPresenter;
 use App\Services\SolicitationChatNotifier;
 use App\Services\VolunteerScheduleOverview;
@@ -502,7 +503,7 @@ class MobileController extends Controller
         ]);
     }
 
-    public function fotosShow(PhotoAlbum $album): Response
+    public function fotosShow(PhotoAlbum $album, DriveFolderImagesService $driveImages): Response
     {
         $churchId = $this->currentChurch()?->id;
         if ($churchId === null || (int) $album->church_id !== (int) $churchId) {
@@ -516,10 +517,16 @@ class MobileController extends Controller
         $folderUrl = $album->drive_folder_view_url;
         abort_unless($embedUrl && $folderUrl, 404);
 
+        $images = [];
+        if ($album->drive_folder_id) {
+            $images = $driveImages->listPublicFolderImages($album->drive_folder_id);
+        }
+
         return Inertia::render('Mobile/Photos', [
             'title' => $album->title,
             'embedUrl' => $embedUrl,
             'folderUrl' => $folderUrl,
+            'images' => $images,
         ]);
     }
 
