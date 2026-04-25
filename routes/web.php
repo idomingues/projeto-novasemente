@@ -74,12 +74,17 @@ Route::get('/mobile/oracao', [PrayerRequestController::class, 'mobile'])->name('
 // Splash (vídeo) ao abrir a app
 Route::get('/media/ns.mp4', function () {
     $path = base_path('assets/NS.MP4');
+    if (! file_exists($path)) {
+        // fallback: alguns deploys só enviam ficheiros em /public
+        $path = public_path('ns.mp4');
+    }
     abort_unless(file_exists($path), 404);
 
     return response()
         ->file($path, [
             'Content-Type' => 'video/mp4',
             'Cache-Control' => 'public, max-age=86400',
+            'Accept-Ranges' => 'bytes',
         ]);
 })->name('media.ns-splash');
 

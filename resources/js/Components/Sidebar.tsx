@@ -151,8 +151,17 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
     const openSolicitationsCount =
         typeof auth?.openSolicitationsCount === 'number' ? auth.openSolicitationsCount : 0;
 
-    const [isPublicationOpen, setIsPublicationOpen] = useState(false);
-    const [isCadastroOpen, setIsCadastroOpen] = useState(false);
+    const publicationRoutes = new Set(['news.index', 'culto.index', 'events.index', 'acervo.index', 'notifications.manage']);
+    const cadastroRoutes = new Set(['rooms.index', 'departments.index', 'pastors.index']);
+
+    const [isPublicationOpen, setIsPublicationOpen] = useState(() => {
+        const current = route().current();
+        return typeof current === 'string' ? publicationRoutes.has(current) : true;
+    });
+    const [isCadastroOpen, setIsCadastroOpen] = useState(() => {
+        const current = route().current();
+        return typeof current === 'string' ? cadastroRoutes.has(current) : true;
+    });
 
     const isRouteActive = (routeName: string) => route().current(routeName + '*');
 
@@ -228,8 +237,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
                 return item;
             });
 
-    const publicationRoutes = new Set(['news.index', 'culto.index', 'events.index', 'acervo.index', 'notifications.manage']);
-    const cadastroRoutes = new Set(['rooms.index', 'departments.index', 'pastors.index']);
+    // (publicationRoutes/cadastroRoutes) definidos acima para permitir default open inteligente
     /** Ordem fixa do bloco ADM — só visível para `super_admin` (sem acordeão). */
     const admRouteOrder = [
         'churches.index',

@@ -10,6 +10,7 @@ export default function MobileSplash({ videoSrc, nextUrl }: Props) {
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const [canPlay, setCanPlay] = useState(false);
     const [finished, setFinished] = useState(false);
+    const [loadError, setLoadError] = useState(false);
 
     useEffect(() => {
         const v = videoRef.current;
@@ -39,13 +40,24 @@ export default function MobileSplash({ videoSrc, nextUrl }: Props) {
         };
     }, []);
 
+    const requestPlay = async () => {
+        const v = videoRef.current;
+        if (!v) return;
+        try {
+            await v.play();
+            setCanPlay(true);
+        } catch {
+            setCanPlay(false);
+        }
+    };
+
     useEffect(() => {
         if (!finished) return;
         router.visit(nextUrl, { replace: true });
     }, [finished, nextUrl]);
 
     return (
-        <div className="fixed inset-0 bg-black">
+        <div className="fixed inset-0 bg-black" onClick={() => void requestPlay()}>
             <Head title="Nova Semente" />
 
             <button
@@ -61,18 +73,24 @@ export default function MobileSplash({ videoSrc, nextUrl }: Props) {
                     ref={videoRef}
                     src={videoSrc}
                     className="h-full w-full object-cover"
+                    autoPlay
                     muted
                     playsInline
                     preload="auto"
                     onCanPlay={() => setCanPlay(true)}
                     onEnded={() => setFinished(true)}
+                    onError={() => {
+                        setLoadError(true);
+                        // se o vídeo falhar (404/mime/etc), não prende o utilizador aqui.
+                        window.setTimeout(() => setFinished(true), 600);
+                    }}
                 />
             </div>
 
-            {!canPlay && (
+            {(!canPlay || loadError) && (
                 <div className="pointer-events-none absolute inset-x-0 bottom-8 flex justify-center">
                     <div className="rounded-full bg-black/40 px-4 py-2 text-xs font-medium text-white backdrop-blur">
-                        Toque para continuar
+                        {loadError ? 'Não foi possível carregar o vídeo. A continuar…' : 'Toque para continuar'}
                     </div>
                 </div>
             )}
