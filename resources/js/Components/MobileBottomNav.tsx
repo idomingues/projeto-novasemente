@@ -31,7 +31,7 @@ const navItems = [
     },
     { name: 'Eventos', route: 'mobile.events' as const, activeRoutes: ['mobile.events'] as const, icon: CalendarDaysIcon, iconActive: CalendarDaysIconSolid },
     {
-        name: 'Cadastro',
+        name: 'Voluntário',
         route: 'volunteers.public-signup.page' as const,
         activeRoutes: ['volunteers.public-signup.page'] as const,
         icon: UserPlusIcon,
