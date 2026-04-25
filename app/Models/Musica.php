@@ -33,6 +33,17 @@ class Musica extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    /**
+     * Sem data de publicação, ou data no passado ou presente. Exclui agendados para o futuro.
+     */
+    public function scopeVisibleInApp($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('published_at')
+                ->orWhere('published_at', '<=', now());
+        });
+    }
+
     public static function youtubeVideoId(string $url): ?string
     {
         if (preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/', $url, $m)) {

@@ -15,8 +15,10 @@ interface Props {
     musicas: MusicaItem[];
 }
 
-function formatDate(iso: string | null): string {
-    if (!iso) return '';
+function formatPublishedLabel(iso: string | null): string {
+    if (!iso) {
+        return 'Sem data';
+    }
     return new Date(iso).toLocaleDateString('pt-BR', {
         day: '2-digit',
         month: 'short',
@@ -35,7 +37,9 @@ export default function MobileMusic({ musicas }: Props) {
                             <MusicalNoteIcon className="w-8 h-8 text-zinc-400 dark:text-zinc-500" />
                         </div>
                         <p className="text-zinc-600 dark:text-zinc-400 font-medium">Nenhum vídeo de música publicado</p>
-                        <p className="text-sm text-zinc-500 dark:text-zinc-500 mt-1">Os vídeos aparecerão aqui.</p>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-500 mt-1 max-w-sm mx-auto">
+                            Vídeos com data de publicação futura só aparecem a partir dessa data.
+                        </p>
                     </div>
                 ) : (
                     <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -61,7 +65,7 @@ export default function MobileMusic({ musicas }: Props) {
                                                 <PlayCircleIcon className="w-16 h-16 text-white drop-shadow-lg" />
                                             </div>
                                             <span className="absolute bottom-2 left-3 px-2.5 py-1 rounded-lg bg-black/60 text-white text-xs font-medium backdrop-blur-sm">
-                                                {formatDate(m.published_at)}
+                                                {formatPublishedLabel(m.published_at)}
                                             </span>
                                         </div>
                                     ) : (
@@ -74,7 +78,7 @@ export default function MobileMusic({ musicas }: Props) {
                                             {m.title}
                                         </h2>
                                         <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1.5">
-                                            {formatDate(m.published_at)}
+                                            {formatPublishedLabel(m.published_at)}
                                         </p>
                                     </div>
                                 </a>

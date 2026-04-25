@@ -79,11 +79,16 @@ class MusicaController extends Controller
             return redirect()->route('musica.index')->with('error', 'Nenhuma igreja ativa. Associe uma igreja primeiro.');
         }
 
+        $publishedAt = $data['published_at'] ?? null;
+        if (! filled($publishedAt)) {
+            $publishedAt = now();
+        }
+
         Musica::create([
             'church_id' => $churchId,
             'title' => $title,
             'youtube_url' => $data['youtube_url'],
-            'published_at' => $data['published_at'] ?? null,
+            'published_at' => $publishedAt,
             'created_by' => $request->user()?->id,
         ]);
 

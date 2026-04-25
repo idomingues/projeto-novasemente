@@ -149,9 +149,8 @@ class MobileController extends Controller
         $musicas = Musica::query()
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
-            ->whereNotNull('published_at')
-            ->where('published_at', '<=', now())
-            ->orderByDesc('published_at')
+            ->visibleInApp()
+            ->orderByRaw('COALESCE(published_at, created_at) DESC')
             ->get()
             ->map(fn (Musica $m) => [
                 'id' => $m->id,
