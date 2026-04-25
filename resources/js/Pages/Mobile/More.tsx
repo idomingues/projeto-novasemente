@@ -14,6 +14,7 @@ import {
     FilmIcon,
     HandRaisedIcon,
 } from '@heroicons/react/24/outline';
+import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 import type { ComponentType, SVGProps } from 'react';
 
 type MenuIcon = ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
@@ -28,6 +29,7 @@ interface Props {
 }
 
 const items: MoreMenuItem[] = [
+    { name: 'Oração', description: 'Pedidos de oração', route: 'mobile.prayer', icon: PrayingHandsIcon },
     { name: 'Dízimos e Ofertas', description: 'Contribuições e ofertas', route: 'mobile.offerings', icon: HandRaisedIcon },
     { name: 'Culto', description: 'Vídeos do culto online', route: 'mobile.culto', icon: FilmIcon },
     { name: 'Música', description: 'Vídeos de música no YouTube', route: 'mobile.musica', icon: MusicalNoteIcon },

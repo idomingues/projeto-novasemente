@@ -4,14 +4,15 @@ import {
     CalendarDaysIcon,
     SparklesIcon,
     Squares2X2Icon,
+    UserPlusIcon,
 } from '@heroicons/react/24/outline';
 import {
     NewspaperIcon as NewspaperIconSolid,
     CalendarDaysIcon as CalendarDaysIconSolid,
     SparklesIcon as SparklesIconSolid,
     Squares2X2Icon as Squares2X2IconSolid,
+    UserPlusIcon as UserPlusIconSolid,
 } from '@heroicons/react/24/solid';
-import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 
 const navItems = [
     {
@@ -30,11 +31,11 @@ const navItems = [
     },
     { name: 'Eventos', route: 'mobile.events' as const, activeRoutes: ['mobile.events'] as const, icon: CalendarDaysIcon, iconActive: CalendarDaysIconSolid },
     {
-        name: 'Oração',
-        route: 'mobile.prayer' as const,
-        activeRoutes: ['mobile.prayer', 'prayer.index'] as const,
-        icon: PrayingHandsIcon,
-        iconActive: PrayingHandsIcon,
+        name: 'Cadastro',
+        route: 'volunteers.public-signup.page' as const,
+        activeRoutes: ['volunteers.public-signup.page'] as const,
+        icon: UserPlusIcon,
+        iconActive: UserPlusIconSolid,
     },
     {
         name: 'Mais',
@@ -55,6 +56,8 @@ const navItems = [
             'mobile.fotos',
             'mobile.fotos.show',
             'mobile.location',
+            'mobile.prayer',
+            'prayer.index',
             'varios.schedule',
             'varios.classe-comecos',
             'mobile.classe-comecos',
@@ -91,7 +94,7 @@ interface MobileBottomNavProps {
     insetForSidebar?: boolean;
 }
 
-/** Barra inferior: News, Batismo, Eventos, Oração, Mais (Culto e Dízimos em Mais). */
+/** Barra inferior: News, Batismo, Eventos, Cadastro, Mais (Oração entra em Mais). */
 export default function MobileBottomNav({ insetForSidebar = false }: MobileBottomNavProps) {
     return (
         <nav
