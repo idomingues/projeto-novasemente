@@ -69,6 +69,53 @@ class PhotoAlbum extends Model
         return null;
     }
 
+    /**
+     * Extrai o ID de um ficheiro do Google Drive a partir de links comuns.
+     *
+     * Aceita: https://drive.google.com/file/d/<id>/view
+     *         https://drive.google.com/file/d/<id>/edit
+     *         https://drive.google.com/open?id=<id>
+     */
+    public static function driveFileIdFromUrl(string $url): ?string
+    {
+        $trimmed = trim($url);
+        if ($trimmed === '') {
+            return null;
+        }
+
+        if (preg_match('~drive\.google\.com/file/d/([a-zA-Z0-9_-]+)~', $trimmed, $m)) {
+            return $m[1] ?: null;
+        }
+
+        if (preg_match('~[?&]id=([a-zA-Z0-9_-]+)~', $trimmed, $m)) {
+            return $m[1] ?: null;
+        }
+
+        return null;
+    }
+
+    /**
+     * Normaliza links do Drive para um URL de thumbnail/preview que funciona como capa.
+     * Para links normais, devolve o URL trimado.
+     */
+    public static function normalizeCoverUrl(?string $url): ?string
+    {
+        if (! is_string($url)) {
+            return null;
+        }
+        $t = trim($url);
+        if ($t === '') {
+            return null;
+        }
+
+        $fileId = self::driveFileIdFromUrl($t);
+        if ($fileId) {
+            return "https://drive.google.com/thumbnail?id={$fileId}&sz=w1000";
+        }
+
+        return $t;
+    }
+
     public function getDriveFolderIdAttribute(): ?string
     {
         return self::driveFolderIdFromUrl((string) ($this->drive_folder_url ?? ''));

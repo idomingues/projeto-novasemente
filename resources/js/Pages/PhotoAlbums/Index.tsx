@@ -50,6 +50,7 @@ export default function PhotoAlbumsIndex({ albums, canManage, hasDriveApiKey }: 
         title: '',
         drive_folder_url: '',
         cover_image_url: '',
+        cover_image_file: null as File | null,
         published_at: '',
     });
 
@@ -68,6 +69,7 @@ export default function PhotoAlbumsIndex({ albums, canManage, hasDriveApiKey }: 
             title: a.title,
             drive_folder_url: a.drive_folder_url,
             cover_image_url: a.cover_image_url ?? '',
+            cover_image_file: null,
             published_at: a.published_at ? a.published_at.substring(0, 16) : '',
         });
         clearErrors();
@@ -83,9 +85,9 @@ export default function PhotoAlbumsIndex({ albums, canManage, hasDriveApiKey }: 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         if (isEditing && editingId) {
-            put(route('photo-albums.update', editingId), { onSuccess: () => closeModal() });
+            put(route('photo-albums.update', editingId), { onSuccess: () => closeModal(), forceFormData: true });
         } else {
-            post(route('photo-albums.store'), { onSuccess: () => closeModal() });
+            post(route('photo-albums.store'), { onSuccess: () => closeModal(), forceFormData: true });
         }
     };
 
@@ -259,6 +261,29 @@ export default function PhotoAlbumsIndex({ albums, canManage, hasDriveApiKey }: 
                                     placeholder="https://... (deixe vazio para tentar capa automática)"
                                 />
                                 <InputError message={errors.cover_image_url} className="mt-1" />
+                                <div className="mt-3">
+                                    <InputLabel htmlFor="cover_image_file" value="Ou envie uma imagem (upload)" />
+                                    <input
+                                        id="cover_image_file"
+                                        type="file"
+                                        accept="image/*"
+                                        className="mt-1 block w-full text-sm text-zinc-700 dark:text-zinc-200 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-900 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-zinc-800 dark:file:bg-white dark:file:text-black dark:hover:file:bg-zinc-100"
+                                        onChange={(e) => {
+                                            const f = e.currentTarget.files?.[0] ?? null;
+                                            setData('cover_image_file', f);
+                                        }}
+                                    />
+                                    <InputError message={(errors as Record<string, string | undefined>).cover_image_file} className="mt-1" />
+                                    {data.cover_image_file ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => setData('cover_image_file', null)}
+                                            className="mt-2 text-xs font-semibold text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white underline underline-offset-4"
+                                        >
+                                            Remover upload selecionado
+                                        </button>
+                                    ) : null}
+                                </div>
                             </div>
 
                             <div>

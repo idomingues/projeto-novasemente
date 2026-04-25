@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Church;
 use App\Models\PhotoAlbum;
 use App\Services\DriveFolderCoverService;
+use App\Support\StorageUrl;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -72,7 +73,8 @@ class PhotoAlbumController extends Controller
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'drive_folder_url' => ['required', 'string', 'max:1024'],
-            'cover_image_url' => ['nullable', 'url', 'max:1024'],
+            'cover_image_url' => ['nullable', 'string', 'max:1024'],
+            'cover_image_file' => ['nullable', 'image', 'max:4096'],
             'published_at' => ['nullable', 'date'],
         ]);
 
@@ -93,11 +95,17 @@ class PhotoAlbumController extends Controller
             $publishedAt = now();
         }
 
+        $coverUrl = PhotoAlbum::normalizeCoverUrl($data['cover_image_url'] ?? null);
+        if ($request->hasFile('cover_image_file')) {
+            $path = $request->file('cover_image_file')->store('photos/covers', 'public');
+            $coverUrl = StorageUrl::publicMediaUrl($path);
+        }
+
         PhotoAlbum::create([
             'church_id' => $churchId,
             'title' => $data['title'],
             'drive_folder_url' => $data['drive_folder_url'],
-            'cover_image_url' => $data['cover_image_url'] ?? null,
+            'cover_image_url' => $coverUrl,
             'published_at' => $publishedAt,
             'created_by' => $request->user()?->id,
         ]);
@@ -112,7 +120,8 @@ class PhotoAlbumController extends Controller
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'drive_folder_url' => ['required', 'string', 'max:1024'],
-            'cover_image_url' => ['nullable', 'url', 'max:1024'],
+            'cover_image_url' => ['nullable', 'string', 'max:1024'],
+            'cover_image_file' => ['nullable', 'image', 'max:4096'],
             'published_at' => ['nullable', 'date'],
         ]);
 
@@ -123,10 +132,16 @@ class PhotoAlbumController extends Controller
                 ->withInput();
         }
 
+        $coverUrl = PhotoAlbum::normalizeCoverUrl($data['cover_image_url'] ?? null);
+        if ($request->hasFile('cover_image_file')) {
+            $path = $request->file('cover_image_file')->store('photos/covers', 'public');
+            $coverUrl = StorageUrl::publicMediaUrl($path);
+        }
+
         $album->update([
             'title' => $data['title'],
             'drive_folder_url' => $data['drive_folder_url'],
-            'cover_image_url' => $data['cover_image_url'] ?? null,
+            'cover_image_url' => $coverUrl,
             'published_at' => $data['published_at'] ?? null,
         ]);
 
