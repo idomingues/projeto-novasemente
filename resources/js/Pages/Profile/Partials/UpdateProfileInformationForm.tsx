@@ -36,7 +36,12 @@ export default function UpdateProfileInformation({
     const { ministryOptions = [], volunteerMinistryIds = [] } = (page.props as {
         ministryOptions?: MinistryOption[];
         volunteerMinistryIds?: number[];
+        profileRedirectTo?: string;
     }) || {};
+    const profileRedirectTo =
+        typeof (page.props as { profileRedirectTo?: string }).profileRedirectTo === 'string'
+            ? (page.props as { profileRedirectTo?: string }).profileRedirectTo
+            : 'profile.edit';
 
     const { data, setData, patch, errors, processing, recentlySuccessful } =
         useForm({
@@ -47,6 +52,7 @@ export default function UpdateProfileInformation({
             notify_via_email: user.notify_via_email !== false,
             notify_via_whatsapp: user.notify_via_whatsapp === true,
             volunteer_ministry_ids: [] as number[],
+            redirect_to: profileRedirectTo,
         });
 
     useEffect(() => {

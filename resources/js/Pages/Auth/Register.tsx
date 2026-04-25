@@ -4,8 +4,9 @@ import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import MobileLayout from '@/Layouts/MobileLayout';
+import { compressImageForUpload, ImageCompressError } from '@/utils/compressImageForUpload';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import { FormEventHandler, useMemo } from 'react';
+import { FormEventHandler, useMemo, useState } from 'react';
 
 interface InvitationProps {
     email: string | null;
@@ -48,6 +49,7 @@ export default function Register({ invitation, ministryOptions = [] }: Props) {
     const { data, setData, post, processing, errors: formErrors, reset } = useForm({
         name: invitation?.name ?? '',
         email: invitation?.email ?? '',
+        photo_file: null as File | null,
         password: '',
         password_confirmation: '',
         invitation_token: invitation?.token ?? '',
@@ -72,6 +74,7 @@ export default function Register({ invitation, ministryOptions = [] }: Props) {
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         post(route('register'), {
+            forceFormData: true,
             preserveScroll: true,
             onFinish: () => reset('password', 'password_confirmation'),
         });
@@ -81,6 +84,8 @@ export default function Register({ invitation, ministryOptions = [] }: Props) {
 
     const showVolunteerDepartments = !invitation && data.already_volunteer && ministryOptions.length > 0;
     const showVolunteerNoMinistriesHint = !invitation && data.already_volunteer && ministryOptions.length === 0;
+    const [photoPreparing, setPhotoPreparing] = useState(false);
+    const [photoClientError, setPhotoClientError] = useState<string | null>(null);
 
     return (
         <MobileLayout>
@@ -116,6 +121,60 @@ export default function Register({ invitation, ministryOptions = [] }: Props) {
                 ) : null}
 
                 <form noValidate onSubmit={submit} className="space-y-5 pb-6 sm:pb-8">
+                    <div>
+                        <InputLabel htmlFor="photo_file" value="Foto *" />
+                        <div className="mt-2 flex items-center gap-4">
+                            <div className="h-14 w-14 rounded-full overflow-hidden bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-sm font-semibold text-zinc-600 dark:text-zinc-300">
+                                {data.photo_file ? (
+                                    <span>OK</span>
+                                ) : (
+                                    (data.name?.charAt(0)?.toUpperCase() ?? '?')
+                                )}
+                            </div>
+                            <input
+                                id="photo_file"
+                                type="file"
+                                accept="image/*"
+                                required
+                                disabled={photoPreparing}
+                                onChange={async (e) => {
+                                    const input = e.currentTarget;
+                                    const raw = input.files?.[0] ?? null;
+                                    setPhotoClientError(null);
+                                    if (!raw) {
+                                        setData('photo_file', null);
+                                        return;
+                                    }
+                                    setPhotoPreparing(true);
+                                    try {
+                                        const prepared = await compressImageForUpload(raw);
+                                        setData('photo_file', prepared);
+                                    } catch (err) {
+                                        setData('photo_file', null);
+                                        input.value = '';
+                                        const msg =
+                                            err instanceof ImageCompressError
+                                                ? err.message
+                                                : 'Não foi possível preparar a imagem para envio.';
+                                        setPhotoClientError(msg);
+                                    } finally {
+                                        setPhotoPreparing(false);
+                                    }
+                                }}
+                                className={`block w-full text-sm text-zinc-600 dark:text-zinc-300 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-100 dark:file:bg-zinc-800 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-zinc-700 dark:file:text-zinc-100 hover:file:bg-zinc-200 dark:hover:file:bg-zinc-700 disabled:opacity-60 ${errClass('photo_file')}`}
+                                aria-invalid={fieldError('photo_file') ? 'true' : undefined}
+                            />
+                        </div>
+                        {photoPreparing ? (
+                            <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">A preparar a imagem…</p>
+                        ) : (
+                            <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                                A imagem é comprimida automaticamente para não estourar o envio.
+                            </p>
+                        )}
+                        <InputError message={photoClientError ?? fieldError('photo_file')} className="mt-2" />
+                    </div>
+
                     <div>
                         <InputLabel htmlFor="name" value="Nome completo" />
 

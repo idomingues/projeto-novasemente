@@ -41,6 +41,7 @@ class ProfileUpdateRequest extends FormRequest
         }
 
         return [
+            'redirect_to' => ['nullable', 'string', 'max:120'],
             'name' => ['required', 'string', 'max:255'],
             'email' => [
                 'required',

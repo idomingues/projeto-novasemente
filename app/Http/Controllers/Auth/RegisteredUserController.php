@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Domain\Users\Actions\SyncUserChurchFromRegistration;
 use App\Domain\Volunteers\Actions\SyncVolunteerMinistryAttachments;
 use App\Http\Controllers\Controller;
+use App\Support\StorageUrl;
 use App\Models\Church;
 use App\Models\Invitation;
 use App\Models\Ministry;
@@ -13,7 +14,9 @@ use App\Models\Volunteer;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
@@ -23,6 +26,13 @@ use Spatie\Permission\Models\Role;
 
 class RegisteredUserController extends Controller
 {
+    private function storeUserPhoto(UploadedFile $file): string
+    {
+        $path = $file->store('users/photos', 'public');
+
+        return StorageUrl::publicMediaUrl($path);
+    }
+
     /**
      * Display the registration view.
      */
@@ -86,6 +96,7 @@ class RegisteredUserController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
+            'photo_file' => ['required', 'image', 'max:4096'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'invitation_token' => ['nullable', 'string'],
             'already_volunteer' => ['sometimes', 'boolean'],
@@ -102,6 +113,7 @@ class RegisteredUserController extends Controller
                 'name' => $request->name,
                 'email' => $request->email,
                 'password' => $request->password,
+                'photo_url' => $request->hasFile('photo_file') ? $this->storeUserPhoto($request->file('photo_file')) : null,
                 'notify_via_app' => $request->boolean('notify_via_app'),
                 'notify_via_email' => $request->boolean('notify_via_email'),
                 'notify_via_whatsapp' => $request->boolean('notify_via_whatsapp'),
@@ -275,6 +287,7 @@ class RegisteredUserController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'photo_file' => ['required', 'image', 'max:4096'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'notify_via_app' => ['required', 'boolean'],
             'notify_via_email' => ['required', 'boolean'],
@@ -285,6 +298,10 @@ class RegisteredUserController extends Controller
         $user->name = $validated['name'];
         $user->email = $validated['email'];
         $user->password = $validated['password'];
+        if ($request->hasFile('photo_file')) {
+            // Não tentamos apagar o anterior aqui: em convites, geralmente é null.
+            $user->photo_url = $this->storeUserPhoto($request->file('photo_file'));
+        }
         $user->notify_via_app = $request->boolean('notify_via_app');
         $user->notify_via_email = $request->boolean('notify_via_email');
         $user->notify_via_whatsapp = $request->boolean('notify_via_whatsapp');

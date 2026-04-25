@@ -23,6 +23,7 @@ class RegistrationCreatesMemberTest extends TestCase
         $response = $this->post('/register', [
             'name' => 'Utilizador Registo',
             'email' => 'registo.usuario@example.com',
+            'photo_file' => \Illuminate\Http\UploadedFile::fake()->image('avatar.jpg', 800, 800)->size(250),
             'password' => 'Password1!xx',
             'password_confirmation' => 'Password1!xx',
             'notify_via_app' => true,
@@ -51,6 +52,7 @@ class RegistrationCreatesMemberTest extends TestCase
         $this->post('/register', [
             'name' => 'Vol Registo',
             'email' => 'vol.registo@example.com',
+            'photo_file' => \Illuminate\Http\UploadedFile::fake()->image('avatar.jpg', 800, 800)->size(250),
             'password' => 'Password1!xx',
             'password_confirmation' => 'Password1!xx',
             'already_volunteer' => true,
@@ -80,6 +82,7 @@ class RegistrationCreatesMemberTest extends TestCase
             ->post('/register', [
                 'name' => 'Vol Sem Depto',
                 'email' => 'vol.sem.depto@example.com',
+                'photo_file' => \Illuminate\Http\UploadedFile::fake()->image('avatar.jpg', 800, 800)->size(250),
                 'password' => 'Password1!xx',
                 'password_confirmation' => 'Password1!xx',
                 'already_volunteer' => true,
@@ -97,6 +100,7 @@ class RegistrationCreatesMemberTest extends TestCase
             ->post('/register', [
                 'name' => 'Vol Com Depto',
                 'email' => 'vol.com.depto@example.com',
+                'photo_file' => \Illuminate\Http\UploadedFile::fake()->image('avatar.jpg', 800, 800)->size(250),
                 'password' => 'Password1!xx',
                 'password_confirmation' => 'Password1!xx',
                 'already_volunteer' => true,

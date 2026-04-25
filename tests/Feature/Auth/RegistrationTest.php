@@ -21,6 +21,7 @@ class RegistrationTest extends TestCase
         $response = $this->post('/register', [
             'name' => 'Test User',
             'email' => 'test@example.com',
+            'photo_file' => \Illuminate\Http\UploadedFile::fake()->image('avatar.jpg', 800, 800)->size(250),
             'password' => 'password',
             'password_confirmation' => 'password',
             'notify_via_app' => true,

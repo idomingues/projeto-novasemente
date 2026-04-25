@@ -809,6 +809,7 @@ class MobileController extends Controller
             'status' => session('status'),
             'ministryOptions' => $ministryOptions,
             'volunteerMinistryIds' => $volunteerMinistryIds,
+            'profileRedirectTo' => 'mobile.profile.edit',
         ]);
     }
 }

@@ -13,12 +13,24 @@ use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class ProfileController extends Controller
 {
+    private function resolveRedirectRoute(Request $request): string
+    {
+        $candidate = trim((string) $request->input('redirect_to', ''));
+        $allowed = ['profile.edit', 'mobile.profile.edit'];
+        if ($candidate !== '' && in_array($candidate, $allowed, true) && Route::has($candidate)) {
+            return $candidate;
+        }
+
+        return 'profile.edit';
+    }
+
     /**
      * Display the user's profile form.
      */
@@ -47,6 +59,7 @@ class ProfileController extends Controller
             'status' => session('status'),
             'ministryOptions' => $ministryOptions,
             'volunteerMinistryIds' => $volunteerMinistryIds,
+            'profileRedirectTo' => 'profile.edit',
         ]);
     }
 
@@ -56,8 +69,9 @@ class ProfileController extends Controller
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
         $validated = $request->validated();
+        $redirectTo = $this->resolveRedirectRoute($request);
         $user = $request->user();
-        $user->fill(collect($validated)->except('photo_file', 'volunteer_ministry_ids')->all());
+        $user->fill(collect($validated)->except('photo_file', 'volunteer_ministry_ids', 'redirect_to')->all());
 
         if ($user->isDirty('email')) {
             $user->email_verified_at = null;
@@ -104,7 +118,7 @@ class ProfileController extends Controller
                     ->values()
                     ->all();
                 if (count($allowed) !== count($ids)) {
-                    return Redirect::route('profile.edit')->withErrors([
+                    return Redirect::route($redirectTo)->withErrors([
                         'volunteer_ministry_ids' => 'Um ou mais departamentos são inválidos para a sua igreja.',
                     ]);
                 }
@@ -116,7 +130,7 @@ class ProfileController extends Controller
             $user->forceFill(['is_volunteer' => $hasMinistries])->save();
         }
 
-        return Redirect::route('profile.edit');
+        return Redirect::route($redirectTo);
     }
 
     private function storeUserPhoto(UploadedFile $file): string

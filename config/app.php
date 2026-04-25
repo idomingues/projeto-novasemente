@@ -78,11 +78,12 @@ return [
     |
     */
 
-    'locale' => env('APP_LOCALE', 'pt_BR'),
+    // Sistema inteiro em PT-BR (mensagens de validação, datas, etc.).
+    'locale' => 'pt_BR',
 
-    'fallback_locale' => env('APP_FALLBACK_LOCALE', 'pt_BR'),
+    'fallback_locale' => 'pt_BR',
 
-    'faker_locale' => env('APP_FAKER_LOCALE', 'pt_BR'),
+    'faker_locale' => 'pt_BR',
 
     /*
     |--------------------------------------------------------------------------
