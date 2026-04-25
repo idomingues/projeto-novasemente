@@ -25,6 +25,16 @@ function formatPublishedLabel(iso: string | null): string {
     });
 }
 
+function formatBigDate(iso: string | null): string {
+    if (!iso) {
+        return 'Sem data';
+    }
+    return new Date(iso).toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+    });
+}
+
 export default function MobilePhotoAlbums({ albums }: Props) {
     return (
         <MobileLayout>
@@ -65,10 +75,13 @@ export default function MobilePhotoAlbums({ albums }: Props) {
                                             </div>
                                         )}
                                         <div className="p-4">
-                                            <h2 className="font-semibold text-zinc-900 dark:text-white text-lg leading-snug line-clamp-2">
-                                                {a.title}
-                                            </h2>
-                                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1.5">
+                                            <p className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
+                                                {formatBigDate(a.published_at)}
+                                            </p>
+                                            <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-200 mt-1">
+                                                {a.title || 'Culto'}
+                                            </p>
+                                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
                                                 {formatPublishedLabel(a.published_at)}
                                             </p>
                                         </div>

@@ -61,6 +61,7 @@ export default function PhotoAlbumsIndex({ albums, canManage, hasDriveApiKey }: 
         setIsEditing(false);
         setEditingId(null);
         reset();
+        setData((prev) => ({ ...prev, title: 'Culto' }));
         clearErrors();
         setCoverCompressing(false);
         setCoverCompressError(null);
@@ -174,14 +175,19 @@ export default function PhotoAlbumsIndex({ albums, canManage, hasDriveApiKey }: 
 
                                 <div className="flex-1 min-w-0 flex flex-col justify-between">
                                     <div>
-                                        <h2 className="font-semibold text-zinc-900 dark:text-white text-lg leading-snug line-clamp-2">
-                                            {a.title}
-                                        </h2>
-                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                                            <span className="inline-flex items-center gap-1.5">
-                                                <CalendarDaysIcon className="w-4 h-4" />
-                                                {publishedLabel}
-                                            </span>
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <p className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
+                                                    {publishedLabel}
+                                                </p>
+                                                <h2 className="mt-1 font-semibold text-zinc-800 dark:text-zinc-200 text-sm leading-snug line-clamp-2">
+                                                    {a.title}
+                                                </h2>
+                                            </div>
+                                            <CalendarDaysIcon className="w-6 h-6 text-zinc-400 dark:text-zinc-500 flex-shrink-0" />
+                                        </div>
+
+                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400 mt-2">
                                             {a.author?.name ? <span>• {a.author.name}</span> : null}
                                             {a.drive_view_url ? (
                                                 <a
