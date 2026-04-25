@@ -244,6 +244,15 @@ export default function Pipeline({
     };
 
     const currentStageFilter = filters.pipeline_stage_id ?? '';
+    const activeFiltersCount = useMemo(() => {
+        const entries = Object.entries(filters) as [string, unknown][];
+        return entries.filter(([k, v]) => {
+            if (k === 'pipeline_stage_id') return false;
+            return v !== '' && v !== null && v !== undefined;
+        }).length;
+    }, [filters]);
+
+    const visibleStages = useMemo(() => stages.filter((s) => s.volunteer_count > 0 || String(s.id) === String(currentStageFilter)), [stages, currentStageFilter]);
 
     return (
         <AdminLayout>
@@ -305,15 +314,18 @@ export default function Pipeline({
                                     <span>Todos</span>
                                 </button>
                             </li>
-                            {stages.map((s) => (
+                            {visibleStages.map((s) => (
                                 <li key={s.id}>
                                     <button
                                         type="button"
                                         onClick={() => pickStage(s.id)}
+                                        disabled={s.volunteer_count === 0}
                                         className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm ${
                                             currentStageFilter === String(s.id)
                                                 ? 'bg-primary-600 text-white'
-                                                : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-100'
+                                                : s.volunteer_count === 0
+                                                  ? 'text-zinc-400 dark:text-zinc-600 cursor-not-allowed'
+                                                  : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-100'
                                         }`}
                                     >
                                         <span className="truncate pr-2">{s.name}</span>
@@ -322,6 +334,11 @@ export default function Pipeline({
                                 </li>
                             ))}
                         </ul>
+                        {stages.some((s) => s.volunteer_count === 0) ? (
+                            <p className="mt-3 text-[11px] text-zinc-500 dark:text-zinc-400">
+                                Fases sem voluntários ficam ocultas automaticamente.
+                            </p>
+                        ) : null}
                     </Card>
                     {canPipelineMutate ? (
                         <Card className="p-4">
@@ -357,6 +374,11 @@ export default function Pipeline({
                         <span className="flex items-center gap-2">
                             <AdjustmentsHorizontalIcon className="h-5 w-5 text-zinc-500" aria-hidden />
                             Filtros do cadastro
+                            {activeFiltersCount > 0 ? (
+                                <span className="ml-1 inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+                                    {activeFiltersCount}
+                                </span>
+                            ) : null}
                         </span>
                         {filtersOpen ? <ChevronUpIcon className="h-5 w-5" /> : <ChevronDownIcon className="h-5 w-5" />}
                     </button>
@@ -641,7 +663,7 @@ export default function Pipeline({
 
                     <Card>
                         <div className="overflow-x-auto">
-                            <table className="min-w-full text-sm">
+                            <table className="min-w-full text-sm hidden md:table">
                                 <thead>
                                     <tr className="border-b border-zinc-200 text-left dark:border-zinc-700">
                                         <th className="pb-2 pr-3 font-semibold">Nome</th>
@@ -677,6 +699,54 @@ export default function Pipeline({
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* Mobile cards */}
+                        <div className="md:hidden space-y-3">
+                            {volunteers.data.map((v) => (
+                                <button
+                                    key={v.id}
+                                    type="button"
+                                    onClick={() => void openVolunteer(v.id)}
+                                    className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-left shadow-sm transition hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-900/60"
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <div className="truncate font-semibold text-zinc-900 dark:text-white">{v.name ?? '—'}</div>
+                                            <div className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                                                {v.stageName} · {formatShortDate(v.createdAt)}
+                                            </div>
+                                        </div>
+                                        <div className="shrink-0 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                                            Abrir
+                                        </div>
+                                    </div>
+                                    <div className="mt-2 text-xs text-zinc-600 dark:text-zinc-300 space-y-1">
+                                        {v.email ? <div className="truncate">{v.email}</div> : null}
+                                        {v.phone ? <div className="truncate">{v.phone}</div> : null}
+                                        {v.interestPreview ? (
+                                            <div className="text-zinc-500 dark:text-zinc-400 line-clamp-2">{v.interestPreview}</div>
+                                        ) : null}
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+
+                        {volunteers.data.length === 0 ? (
+                            <div className="mt-4 rounded-2xl border border-dashed border-zinc-200 p-6 text-center text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
+                                <div className="font-semibold text-zinc-900 dark:text-white">Nenhum voluntário encontrado</div>
+                                <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                    Ajuste a fase selecionada ou limpe os filtros para ver mais resultados.
+                                </div>
+                                <div className="mt-4 flex justify-center gap-2">
+                                    <SecondaryButton type="button" onClick={clearFilters}>
+                                        Limpar filtros
+                                    </SecondaryButton>
+                                    <SecondaryButton type="button" onClick={() => pickStage('')}>
+                                        Ver todos
+                                    </SecondaryButton>
+                                </div>
+                            </div>
+                        ) : null}
                         {volunteers.links.length > 3 ? (
                             <nav className="mt-4 flex flex-wrap gap-1">
                                 {volunteers.links.map((l, i) =>
