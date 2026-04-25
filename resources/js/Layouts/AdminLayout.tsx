@@ -44,7 +44,7 @@ export default function AdminLayout({
                     </div>
                 </main>
 
-                {/* Barra inferior: sempre visível (visitantes + logados), para o admin pré-visualizar o app; no md+ com sidebar, só na coluna principal */}
+                {/* Barra inferior: igual em mobile e desktop; com sidebar, alinhada à coluna de conteúdo (md:left-72). */}
                 <MobileBottomNav insetForSidebar={isAuthenticated && canAccessAdminMenu} />
 
                 <FlashMessages />

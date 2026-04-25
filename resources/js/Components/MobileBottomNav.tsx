@@ -86,7 +86,7 @@ const navItems = [
 ] as const;
 
 interface MobileBottomNavProps {
-    /** Com sidebar admin (md+): a barra fica só sobre a coluna de conteúdo, como pré-visualização do app. */
+    /** Com sidebar admin (md+): alinha à coluna de conteúdo (`md:left-72`). */
     insetForSidebar?: boolean;
 }
 
@@ -95,7 +95,7 @@ export default function MobileBottomNav({ insetForSidebar = false }: MobileBotto
     return (
         <nav
             className={`fixed bottom-0 right-0 z-40 border-t border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 ${
-                insetForSidebar ? 'left-0 md:left-72 md:hidden' : 'left-0'
+                insetForSidebar ? 'left-0 md:left-72' : 'left-0'
             }`}
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
             aria-label="Menu principal"

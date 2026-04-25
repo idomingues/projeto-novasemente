@@ -1,19 +1,9 @@
 import { Link, usePage } from '@inertiajs/react';
 import { notificationLinkHref } from '@/utils/notificationLinkHref';
-import {
-    BellIcon,
-    SunIcon,
-    MoonIcon,
-    NewspaperIcon,
-    CalendarDaysIcon,
-    Squares2X2Icon,
-    ChevronRightIcon,
-    SparklesIcon,
-} from '@heroicons/react/24/outline';
+import { BellIcon, SunIcon, MoonIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import Dropdown from '@/Components/Dropdown';
 import MarkInboxNotificationReadButton from '@/Components/MarkInboxNotificationReadButton';
 import AppVersionTrigger from '@/Components/AppVersionTrigger';
-import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 import { useTheme } from '@/Contexts/ThemeContext';
 
 interface NotificationItem {
@@ -38,14 +28,6 @@ function formatTimeAgo(iso: string): string {
     if (sec < 2592000) return `${Math.floor(sec / 86400)} dias`;
     return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
 }
-
-const appNavItems = [
-    { name: 'News', route: 'mobile.news', icon: NewspaperIcon },
-    { name: 'Batismo', route: 'mobile.baptism', icon: SparklesIcon },
-    { name: 'Eventos', route: 'mobile.events', icon: CalendarDaysIcon },
-    { name: 'Oração', route: 'mobile.prayer', icon: PrayingHandsIcon },
-    { name: 'Mais', route: 'more.index', icon: Squares2X2Icon },
-] as const;
 
 interface TopbarProps {
     onMenuClick?: () => void;
@@ -99,19 +81,7 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
                             </svg>
                         </button>
                     ) : null}
-                    <div className="hidden">
-                        {appNavItems.map(({ name, route: routeName, icon: Icon }) => (
-                            <Link
-                                key={routeName}
-                                href={route(routeName)}
-                                className="flex items-center gap-2 px-4 py-2 rounded-xl text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                            >
-                                <Icon className="w-5 h-5 flex-shrink-0" />
-                                <span className="text-sm font-medium">{name}</span>
-                            </Link>
-                        ))}
-                    </div>
-                    <div className="md:hidden flex-1 min-w-0" />
+                    <div className="flex-1 min-w-0" />
                 </div>
 
                 {/* Right Actions */}
