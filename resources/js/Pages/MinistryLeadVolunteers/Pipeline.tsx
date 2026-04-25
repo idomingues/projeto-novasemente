@@ -44,14 +44,25 @@ type BoardFilters = {
     has_whatsapp: string;
     has_social_networks: string;
     is_official_member: string;
+    member_record_at_nova_semente: string;
     has_previous_ministry_volunteer_experience: string;
     needs_pastoral_guidance: string;
     lgpd_data_consent: string;
     active: string;
     app_access_only: string;
+    role: string;
+    has_email: string;
+    has_phone: string;
+    has_birth_date: string;
     attendance_duration: string;
+    attendance_duration_text: string;
     created_from: string;
     created_to: string;
+    birth_date_from: string;
+    birth_date_to: string;
+    member_record_church: string;
+    professional_area: string;
+    ministry_ids: string;
     text_interest: string;
     pipeline_stage_id: string;
 };
@@ -78,6 +89,7 @@ interface Props {
     stages: StageRow[];
     volunteers: Paginated<VolunteerListRow>;
     filters: BoardFilters;
+    ministries: { id: number; name: string }[];
     storeStageUrl: string;
     canVolunteerManage: boolean;
     canPipelineMutate: boolean;
@@ -120,6 +132,7 @@ export default function Pipeline({
     stages,
     volunteers,
     filters,
+    ministries,
     storeStageUrl,
     canVolunteerManage,
     canPipelineMutate,
@@ -150,6 +163,14 @@ export default function Pipeline({
 
     const noteForm = useForm({ body: '' });
     const stageMoveForm = useForm({ stage_id: '' as string | number });
+
+    const attendanceOptions: { value: string; label: string }[] = [
+        { value: 'less_than_3_months', label: 'Menos de 3 meses' },
+        { value: 'months_3_6', label: '3–6 meses' },
+        { value: 'months_6_12', label: '6–12 meses' },
+        { value: 'years_1_3', label: '1–3 anos' },
+        { value: 'more_than_3_years', label: '+ 3 anos' },
+    ];
 
     const openVolunteer = async (id: number, tab: 'ficha' | 'notas' = 'ficha') => {
         setSelectedId(id);
@@ -382,6 +403,16 @@ export default function Pipeline({
                                         </SelectInput>
                                     </div>
                                     <div>
+                                        <InputLabel value="Registo na Nova Semente" />
+                                        <SelectInput
+                                            className="mt-1"
+                                            value={filterForm.data.member_record_at_nova_semente}
+                                            onChange={(e) => filterForm.setData('member_record_at_nova_semente', e.target.value)}
+                                        >
+                                            {tri}
+                                        </SelectInput>
+                                    </div>
+                                    <div>
                                         <InputLabel value="Experiência em ministério" />
                                         <SelectInput
                                             className="mt-1"
@@ -432,11 +463,66 @@ export default function Pipeline({
                                         </SelectInput>
                                     </div>
                                     <div>
-                                        <InputLabel value="Tempo na igreja (texto)" />
+                                        <InputLabel value="Cargo (texto)" />
                                         <TextInput
+                                            className="mt-1"
+                                            value={filterForm.data.role}
+                                            onChange={(e) => filterForm.setData('role', e.target.value)}
+                                            placeholder="Ex.: Diácono, Líder…"
+                                        />
+                                    </div>
+                                    <div>
+                                        <InputLabel value="Tem e-mail" />
+                                        <SelectInput
+                                            className="mt-1"
+                                            value={filterForm.data.has_email}
+                                            onChange={(e) => filterForm.setData('has_email', e.target.value)}
+                                        >
+                                            {tri}
+                                        </SelectInput>
+                                    </div>
+                                    <div>
+                                        <InputLabel value="Tem telefone" />
+                                        <SelectInput
+                                            className="mt-1"
+                                            value={filterForm.data.has_phone}
+                                            onChange={(e) => filterForm.setData('has_phone', e.target.value)}
+                                        >
+                                            {tri}
+                                        </SelectInput>
+                                    </div>
+                                    <div>
+                                        <InputLabel value="Tem data de nascimento" />
+                                        <SelectInput
+                                            className="mt-1"
+                                            value={filterForm.data.has_birth_date}
+                                            onChange={(e) => filterForm.setData('has_birth_date', e.target.value)}
+                                        >
+                                            {tri}
+                                        </SelectInput>
+                                    </div>
+                                    <div>
+                                        <InputLabel value="Tempo na igreja (cadastro novo)" />
+                                        <SelectInput
                                             className="mt-1"
                                             value={filterForm.data.attendance_duration}
                                             onChange={(e) => filterForm.setData('attendance_duration', e.target.value)}
+                                        >
+                                            <option value="">Qualquer</option>
+                                            {attendanceOptions.map((o) => (
+                                                <option key={o.value} value={o.value}>
+                                                    {o.label}
+                                                </option>
+                                            ))}
+                                        </SelectInput>
+                                    </div>
+                                    <div>
+                                        <InputLabel value="Tempo como voluntário (recadastro) — texto" />
+                                        <TextInput
+                                            className="mt-1"
+                                            value={filterForm.data.attendance_duration_text}
+                                            onChange={(e) => filterForm.setData('attendance_duration_text', e.target.value)}
+                                            placeholder="Ex.: 1 ano, 6 meses, desde 2020…"
                                         />
                                     </div>
                                     <div>
@@ -456,6 +542,80 @@ export default function Pipeline({
                                             value={filterForm.data.created_to}
                                             onChange={(e) => filterForm.setData('created_to', e.target.value)}
                                         />
+                                    </div>
+                                    <div>
+                                        <InputLabel value="Nascimento desde" />
+                                        <TextInput
+                                            type="date"
+                                            className="mt-1"
+                                            value={filterForm.data.birth_date_from}
+                                            onChange={(e) => filterForm.setData('birth_date_from', e.target.value)}
+                                        />
+                                    </div>
+                                    <div>
+                                        <InputLabel value="Nascimento até" />
+                                        <TextInput
+                                            type="date"
+                                            className="mt-1"
+                                            value={filterForm.data.birth_date_to}
+                                            onChange={(e) => filterForm.setData('birth_date_to', e.target.value)}
+                                        />
+                                    </div>
+                                    <div>
+                                        <InputLabel value="Área profissional" />
+                                        <TextInput
+                                            className="mt-1"
+                                            value={filterForm.data.professional_area}
+                                            onChange={(e) => filterForm.setData('professional_area', e.target.value)}
+                                            placeholder="Ex.: Saúde, TI, Educação…"
+                                        />
+                                    </div>
+                                    <div className="sm:col-span-2 xl:col-span-2">
+                                        <InputLabel value="Registo em qual igreja (texto)" />
+                                        <TextInput
+                                            className="mt-1"
+                                            value={filterForm.data.member_record_church}
+                                            onChange={(e) => filterForm.setData('member_record_church', e.target.value)}
+                                            placeholder="Ex.: Central, Paulista…"
+                                        />
+                                    </div>
+                                    <div className="sm:col-span-2 xl:col-span-3">
+                                        <InputLabel value="Departamentos (seleção múltipla)" />
+                                        <div className="mt-2 rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-900/50">
+                                            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                                                {ministries.map((m) => {
+                                                    const selected = (filterForm.data.ministry_ids || '')
+                                                        .split(',')
+                                                        .map((x) => x.trim())
+                                                        .filter(Boolean)
+                                                        .includes(String(m.id));
+                                                    return (
+                                                        <label key={m.id} className="flex items-center gap-2">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selected}
+                                                                onChange={(e) => {
+                                                                    const cur = (filterForm.data.ministry_ids || '')
+                                                                        .split(',')
+                                                                        .map((x) => x.trim())
+                                                                        .filter(Boolean);
+                                                                    const id = String(m.id);
+                                                                    const next = e.target.checked
+                                                                        ? Array.from(new Set([...cur, id]))
+                                                                        : cur.filter((x) => x !== id);
+                                                                    filterForm.setData('ministry_ids', next.join(','));
+                                                                }}
+                                                                className="rounded border-zinc-300 dark:border-zinc-600 text-zinc-900 focus:ring-zinc-500"
+                                                            />
+                                                            <span className="text-sm text-zinc-900 dark:text-zinc-100">{m.name}</span>
+                                                        </label>
+                                                    );
+                                                })}
+                                            </div>
+                                            {ministries.length === 0 ? (
+                                                <div className="text-xs text-zinc-500 dark:text-zinc-400">Nenhum departamento disponível.</div>
+                                            ) : null}
+                                        </div>
                                     </div>
                                     <div className="sm:col-span-2 xl:col-span-3">
                                         <InputLabel value="Palavras nos textos (interesses, dons…)" />

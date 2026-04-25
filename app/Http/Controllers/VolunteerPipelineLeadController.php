@@ -8,6 +8,7 @@ use App\Models\VolunteerChurchPipeline;
 use App\Models\VolunteerLeaderNote;
 use App\Models\VolunteerPipelineStage;
 use App\Models\VolunteerSelfSignupToken;
+use App\Models\Ministry;
 use App\Support\VolunteerLeadRosterFilters;
 use App\Support\VolunteerPipelineBootstrap;
 use App\Support\VolunteerRosterSignals;
@@ -183,6 +184,13 @@ class VolunteerPipelineLeadController extends Controller
             'stages' => $stages,
             'volunteers' => $volunteers,
             'filters' => VolunteerLeadRosterFilters::filterState($request),
+            'ministries' => Ministry::query()
+                ->where('church_id', $churchId)
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(fn (Ministry $m) => ['id' => $m->id, 'name' => $m->name])
+                ->values()
+                ->all(),
             'storeStageUrl' => route('ministry-lead.volunteers.pipeline.stages.store'),
             'canVolunteerManage' => $user && $user->can('volunteers.manage'),
             'canPipelineMutate' => $user && ($user->can('volunteers.manage') || $user->can('volunteers.ministry_operate')),
