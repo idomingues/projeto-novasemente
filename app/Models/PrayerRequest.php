@@ -16,6 +16,11 @@ class PrayerRequest extends Model
         'name_or_nickname',
         'request',
         'prayer_amen_count',
+        'active',
+    ];
+
+    protected $casts = [
+        'active' => 'boolean',
     ];
 
     public function church(): BelongsTo

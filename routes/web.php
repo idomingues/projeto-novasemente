@@ -67,6 +67,15 @@ Route::get('/notificacoes', [VariosController::class, 'manageNotifications'])
     ->name('notifications.manage');
 Route::get('/pedidos-oracao', [PrayerRequestController::class, 'index'])->name('prayer.index');
 Route::post('/pedidos-oracao', [PrayerRequestController::class, 'store'])->name('prayer.store');
+Route::put('/pedidos-oracao/{prayer}', [PrayerRequestController::class, 'update'])
+    ->middleware(['auth', 'permission:prayer.manage'])
+    ->name('prayer.update');
+Route::patch('/pedidos-oracao/{prayer}/active', [PrayerRequestController::class, 'setActive'])
+    ->middleware(['auth', 'permission:prayer.manage'])
+    ->name('prayer.set-active');
+Route::delete('/pedidos-oracao/{prayer}', [PrayerRequestController::class, 'destroy'])
+    ->middleware(['auth', 'permission:prayer.manage'])
+    ->name('prayer.destroy');
 Route::post('/pedidos-oracao/{prayer}/orou', [PrayerRequestController::class, 'amen'])
     ->middleware('throttle:60,1')
     ->name('prayer.amen');

@@ -1,5 +1,5 @@
 import AdminLayout from '@/Layouts/AdminLayout';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import AddButton from '@/Components/AddButton';
 import PageHeader from '@/Components/PageHeader';
 import PrayerAmenButton from '@/Components/PrayerAmenButton';
@@ -12,6 +12,8 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
 import Modal from '@/Components/Modal';
 import { FormEventHandler, useState } from 'react';
+import { PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { confirmAction } from '@/utils/confirmDialog';
 
 interface PrayerItem {
     id: number;
@@ -20,10 +22,12 @@ interface PrayerItem {
     created_at: string;
     month_year: string;
     prayer_amen_count: number;
+    active: boolean;
 }
 
 interface Props {
     requests: PrayerItem[];
+    canManage: boolean;
 }
 
 const MONTH_NAMES: Record<string, string> = {
@@ -46,12 +50,18 @@ function groupByMonthYear(requests: PrayerItem[]): { label: string; key: string;
     });
 }
 
-export default function PrayerIndex({ requests }: Props) {
+export default function PrayerIndex({ requests, canManage }: Props) {
     const { data, setData, post, processing, errors, reset } = useForm({
         name_or_nickname: '',
         request: '',
     });
     const [createOpen, setCreateOpen] = useState(false);
+    const [editOpen, setEditOpen] = useState(false);
+    const [editingId, setEditingId] = useState<number | null>(null);
+    const editForm = useForm({
+        name_or_nickname: '',
+        request: '',
+    });
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
@@ -104,21 +114,80 @@ export default function PrayerIndex({ requests }: Props) {
                                                     key={r.id}
                                                     className="rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm"
                                                 >
-                                                    <div className="flex">
+                                                    <div className="flex gap-3">
                                                         <div className="min-w-0 flex-1">
                                                             <p className="font-semibold text-zinc-900 dark:text-white">
                                                                 {r.name_or_nickname}
                                                             </p>
+                                                            {!r.active ? (
+                                                                <p className="mt-1 inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                                                                    Desativado
+                                                                </p>
+                                                            ) : null}
                                                             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap">
                                                                 {r.request}
                                                             </p>
                                                             <div className="mt-3">
-                                                                <PrayerAmenButton
-                                                                    prayerId={r.id}
-                                                                    count={r.prayer_amen_count ?? 0}
-                                                                />
+                                                                {r.active ? (
+                                                                    <PrayerAmenButton
+                                                                        prayerId={r.id}
+                                                                        count={r.prayer_amen_count ?? 0}
+                                                                    />
+                                                                ) : null}
                                                             </div>
                                                         </div>
+                                                        {canManage ? (
+                                                            <div className="flex flex-col gap-1">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        setEditingId(r.id);
+                                                                        editForm.setData({
+                                                                            name_or_nickname: r.name_or_nickname,
+                                                                            request: r.request,
+                                                                        });
+                                                                        editForm.clearErrors();
+                                                                        setEditOpen(true);
+                                                                    }}
+                                                                    className="p-2 rounded-xl text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                                                    title="Editar"
+                                                                >
+                                                                    <PencilIcon className="w-5 h-5" />
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={async () => {
+                                                                        if (r.active) {
+                                                                            const ok = await confirmAction({
+                                                                                title: 'Desativar pedido?',
+                                                                                text: 'Ele não será mais exibido para usuários, mas ficará disponível no painel.',
+                                                                                confirmButtonText: 'Desativar',
+                                                                                danger: true,
+                                                                                icon: 'warning',
+                                                                            });
+                                                                            if (ok) {
+                                                                                router.delete(route('prayer.destroy', r.id), { preserveScroll: true });
+                                                                            }
+                                                                            return;
+                                                                        }
+
+                                                                        router.patch(
+                                                                            route('prayer.set-active', r.id),
+                                                                            { active: true },
+                                                                            { preserveScroll: true },
+                                                                        );
+                                                                    }}
+                                                                    className="p-2 rounded-xl text-zinc-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                                                    title={r.active ? 'Desativar' : 'Reativar'}
+                                                                >
+                                                                    {r.active ? (
+                                                                        <TrashIcon className="w-5 h-5" />
+                                                                    ) : (
+                                                                        <span className="text-xs font-bold px-1">ON</span>
+                                                                    )}
+                                                                </button>
+                                                            </div>
+                                                        ) : null}
                                                     </div>
                                                 </li>
                                             ))}
@@ -175,6 +244,57 @@ export default function PrayerIndex({ requests }: Props) {
                         </div>
                     </form>
                 </Modal>
+
+                {canManage ? (
+                    <Modal show={editOpen} onClose={() => !editForm.processing && setEditOpen(false)}>
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                if (!editingId) return;
+                                editForm.put(route('prayer.update', editingId), {
+                                    preserveScroll: true,
+                                    onSuccess: () => setEditOpen(false),
+                                });
+                            }}
+                            className="p-6"
+                        >
+                            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-5">Editar pedido</h2>
+                            <div className="space-y-4">
+                                <div>
+                                    <InputLabel htmlFor="edit_prayer_name" value="Nome, apelido ou codinome" />
+                                    <TextInput
+                                        id="edit_prayer_name"
+                                        value={editForm.data.name_or_nickname}
+                                        onChange={(e) => editForm.setData('name_or_nickname', e.target.value)}
+                                        className="mt-1 block w-full"
+                                        maxLength={255}
+                                    />
+                                    <InputError message={editForm.errors.name_or_nickname} className="mt-1" />
+                                </div>
+                                <div>
+                                    <InputLabel htmlFor="edit_prayer_request" value="Pedido" />
+                                    <Textarea
+                                        id="edit_prayer_request"
+                                        value={editForm.data.request}
+                                        onChange={(e) => editForm.setData('request', e.target.value)}
+                                        rows={5}
+                                        className="mt-1 block w-full"
+                                        maxLength={2000}
+                                    />
+                                    <InputError message={editForm.errors.request} className="mt-1" />
+                                </div>
+                            </div>
+                            <div className="mt-6 flex justify-end gap-2">
+                                <SecondaryButton type="button" onClick={() => setEditOpen(false)} disabled={editForm.processing}>
+                                    Cancelar
+                                </SecondaryButton>
+                                <PrimaryButton type="submit" disabled={editForm.processing}>
+                                    Salvar
+                                </PrimaryButton>
+                            </div>
+                        </form>
+                    </Modal>
+                ) : null}
             </div>
         </AdminLayout>
     );

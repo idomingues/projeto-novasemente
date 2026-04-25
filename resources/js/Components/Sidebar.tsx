@@ -95,6 +95,7 @@ const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'Inventários', route: 'inventory.index', icon: ArchiveBoxIcon },
     { name: 'Voluntários', route: 'ministry-lead.volunteers.index', icon: UserGroupIcon },
     { name: 'Usuários', route: 'members.index', icon: UsersIcon },
+    { name: 'Oração', route: 'prayer.index', icon: PrayingHandsIcon },
     { name: 'News', route: 'news.index', icon: NewspaperIcon },
     { name: 'Eventos', route: 'events.index', icon: CalendarDaysIcon },
     { name: 'Acervo', route: 'acervo.index', icon: PlayCircleIcon },

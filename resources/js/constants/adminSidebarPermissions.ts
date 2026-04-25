@@ -1,6 +1,7 @@
 /** Permissões por rota do menu lateral (Sidebar só para quem tem `auth.canAccessAdminMenu`). */
 export const adminSidebarRoutePermissions: Record<string, string[]> = {
     dashboard: [],
+    'prayer.index': ['prayer.manage'],
     'members.index': ['members.view', 'members.manage'],
     'members.show': ['members.view', 'members.manage'],
     'departments.index': ['departments.view', 'departments.manage'],

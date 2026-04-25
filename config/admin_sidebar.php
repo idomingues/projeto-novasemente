@@ -21,6 +21,7 @@ return [
         ['name' => 'Inventários', 'route' => 'inventory.index', 'icon' => 'archive-box'],
         ['name' => 'Voluntários', 'route' => 'ministry-lead.volunteers.index', 'icon' => 'user-group'],
         ['name' => 'Usuários', 'route' => 'members.index', 'icon' => 'users'],
+        ['name' => 'Oração', 'route' => 'prayer.index', 'icon' => 'praying-hands'],
         // Publicação
         ['name' => 'News', 'route' => 'news.index', 'icon' => 'newspaper'],
         ['name' => 'Eventos', 'route' => 'events.index', 'icon' => 'calendar-days'],
