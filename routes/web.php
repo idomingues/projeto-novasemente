@@ -55,6 +55,8 @@ Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'verif
 // Rotas públicas (guests e autenticados): app com menu mobile/PC e Login no lugar da engrenagem
 Route::view('/politica-de-privacidade', 'privacy-policy')->name('privacy-policy');
 Route::view('/privacy-policy', 'privacy-policy')->name('privacy-policy.en');
+Route::view('/exclusao-de-conta', 'account-deletion')->name('account-deletion');
+Route::view('/account-deletion', 'account-deletion')->name('account-deletion.en');
 Route::get('/mais', [\App\Http\Controllers\MoreController::class, 'index'])->name('more.index');
 Route::get('/varios/escala', [VariosController::class, 'schedule'])->name('varios.schedule');
 Route::get('/varios/servicos', [VariosController::class, 'services'])->name('varios.services');
