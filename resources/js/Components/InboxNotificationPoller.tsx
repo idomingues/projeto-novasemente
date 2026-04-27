@@ -68,7 +68,18 @@ export default function InboxNotificationPoller() {
             return;
         }
         const id = window.setInterval(() => {
-            router.reload({ only: ['recentNotifications', 'unreadInboxNotificationsCount'] });
+            if (document.visibilityState !== 'visible') {
+                return;
+            }
+            // Inertia v2: `router.reload` não aceita preserveState/preserveScroll nos tipos (ReloadOptions omite isso).
+            // GET na URL atual com `only` equivale ao reload parcial e mantém estado/scroll.
+            const url = `${window.location.pathname}${window.location.search}`;
+            router.get(url, {}, {
+                only: ['recentNotifications', 'unreadInboxNotificationsCount'],
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+            });
         }, 45_000);
         return () => window.clearInterval(id);
     }, [isLoggedIn]);

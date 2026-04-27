@@ -8,6 +8,7 @@ use App\Models\VolunteerChurchPipeline;
 use App\Models\VolunteerLeaderNote;
 use App\Models\VolunteerPipelineStage;
 use App\Models\VolunteerSelfSignupToken;
+use App\Models\VolunteerMinistryInvitation;
 use App\Models\Ministry;
 use App\Support\VolunteerLeadRosterFilters;
 use App\Support\VolunteerPipelineBootstrap;
@@ -119,6 +120,7 @@ class VolunteerPipelineLeadController extends Controller
             ->with([
                 'ministries' => fn ($m) => $m->where('church_id', $churchId),
                 'churchPipelines' => fn ($p) => $p->where('church_id', $churchId)->with('stage'),
+                'ministryInvitations' => fn ($i) => $i->where('church_id', $churchId)->where('status', 'pending'),
             ]);
 
         VolunteerLeadRosterFilters::apply($request, $q, $churchId);
@@ -148,6 +150,7 @@ class VolunteerPipelineLeadController extends Controller
                 $stage = $pipe?->stage;
                 $mask = $this->maskForLeader($request, $v->email, $v->phone);
                 $signals = VolunteerRosterSignals::forVolunteer($v);
+                $hasPendingInvite = $v->ministryInvitations->isNotEmpty();
 
                 return [
                     'id' => $v->id,
@@ -157,7 +160,8 @@ class VolunteerPipelineLeadController extends Controller
                     'active' => (bool) $v->active,
                     'createdAt' => $v->created_at?->toIso8601String(),
                     'stageId' => $stage?->id,
-                    'stageName' => $stage?->name ?? '—',
+                    'stageName' => $hasPendingInvite ? 'Aguardando' : ($stage?->name ?? 'Não definido'),
+                    'pendingInvite' => $hasPendingInvite,
                     'ministryNames' => $v->ministries->pluck('name')->values()->all(),
                     'interestPreview' => $this->truncateInterestPreview($v),
                     'signals' => [
@@ -273,6 +277,46 @@ class VolunteerPipelineLeadController extends Controller
         ]);
 
         return redirect()->route('ministry-lead.volunteers.index')->with('success', 'Fase criada.');
+    }
+
+    public function updateStageMeta(Request $request, VolunteerPipelineStage $stage): RedirectResponse
+    {
+        $this->canUseMutate($request);
+        $churchId = $this->churchId($request);
+        abort_unless($churchId, 404);
+        abort_unless((int) $stage->church_id === (int) $churchId, 404);
+
+        $valid = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'sort_order' => ['nullable', 'integer', 'min:0', 'max:65000'],
+        ]);
+
+        $stage->forceFill([
+            'name' => $valid['name'],
+            'sort_order' => array_key_exists('sort_order', $valid) && $valid['sort_order'] !== null ? (int) $valid['sort_order'] : $stage->sort_order,
+        ])->save();
+
+        return back()->with('success', 'Fase atualizada.');
+    }
+
+    public function destroyStage(Request $request, VolunteerPipelineStage $stage): RedirectResponse
+    {
+        $this->canUseMutate($request);
+        $churchId = $this->churchId($request);
+        abort_unless($churchId, 404);
+        abort_unless((int) $stage->church_id === (int) $churchId, 404);
+
+        $fallbackStageId = VolunteerPipelineBootstrap::defaultStageIdForNewVolunteer($churchId);
+        if ($fallbackStageId && Schema::hasTable('volunteer_church_pipelines')) {
+            VolunteerChurchPipeline::query()
+                ->where('church_id', $churchId)
+                ->where('stage_id', $stage->id)
+                ->update(['stage_id' => (int) $fallbackStageId]);
+        }
+
+        $stage->delete();
+
+        return back()->with('success', 'Fase excluída.');
     }
 
     public function storeNote(Request $request, Volunteer $volunteer): RedirectResponse

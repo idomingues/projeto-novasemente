@@ -172,6 +172,16 @@ Route::post('/voluntario/cadastro/check-duplicate', [VolunteerPublicSignupContro
     ->middleware('throttle:30,1')
     ->name('volunteers.self-signup.check-duplicate');
 
+// Convite para voluntário aceitar/recusar novo departamento (link público).
+Route::get('/voluntario/convite/{token}', [\App\Http\Controllers\VolunteerMinistryInvitationPublicController::class, 'show'])
+    ->name('volunteers.ministry-invite.show');
+Route::post('/voluntario/convite/{token}/aceitar', [\App\Http\Controllers\VolunteerMinistryInvitationPublicController::class, 'accept'])
+    ->middleware('throttle:20,1')
+    ->name('volunteers.ministry-invite.accept');
+Route::post('/voluntario/convite/{token}/recusar', [\App\Http\Controllers\VolunteerMinistryInvitationPublicController::class, 'decline'])
+    ->middleware('throttle:20,1')
+    ->name('volunteers.ministry-invite.decline');
+
 // Batismo: visitantes veem tela de explicação + atalhos; logados seguem para o hub.
 Route::get('/mobile/batismo', [MobileChurchSolicitationController::class, 'baptismHub'])->name('mobile.baptism');
 
@@ -241,6 +251,15 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:volunteers.view|volunteers.manage|volunteers.ministry_operate');
     Route::post('/lideranca/voluntarios/fases', [VolunteerPipelineLeadController::class, 'storeStage'])
         ->name('ministry-lead.volunteers.pipeline.stages.store')
+        ->middleware('permission:volunteers.ministry_operate|volunteers.manage');
+    Route::put('/lideranca/voluntarios/fases/{stage}', [VolunteerPipelineLeadController::class, 'updateStageMeta'])
+        ->name('ministry-lead.volunteers.pipeline.stages.update')
+        ->middleware('permission:volunteers.ministry_operate|volunteers.manage');
+    Route::delete('/lideranca/voluntarios/fases/{stage}', [VolunteerPipelineLeadController::class, 'destroyStage'])
+        ->name('ministry-lead.volunteers.pipeline.stages.destroy')
+        ->middleware('permission:volunteers.ministry_operate|volunteers.manage');
+    Route::post('/lideranca/voluntarios/{volunteer}/encaminhar', [\App\Http\Controllers\VolunteerMinistryInvitationController::class, 'store'])
+        ->name('ministry-lead.volunteers.ministry-invite.store')
         ->middleware('permission:volunteers.ministry_operate|volunteers.manage');
     // Rotas com «ministerio/» primeiro — senão «ministerio» capturava-se como {volunteer}.
     Route::get('/lideranca/voluntarios/ministerio/{ministry}/procurar', [MinistryLeadVolunteerController::class, 'lookup'])

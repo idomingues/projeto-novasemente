@@ -84,4 +84,9 @@ class Volunteer extends Model
     {
         return $this->hasMany(VolunteerLeaderNote::class);
     }
+
+    public function ministryInvitations(): HasMany
+    {
+        return $this->hasMany(VolunteerMinistryInvitation::class);
+    }
 }

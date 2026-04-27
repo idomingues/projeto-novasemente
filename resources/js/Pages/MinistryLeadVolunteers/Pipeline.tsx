@@ -22,6 +22,7 @@ import {
     PlusIcon,
 } from '@heroicons/react/24/outline';
 import PublicVolunteerSignupShareModal from '@/Components/Volunteers/PublicVolunteerSignupShareModal';
+import VolunteerMinistryInviteShareModal from '@/Components/Volunteers/VolunteerMinistryInviteShareModal';
 
 type StageRow = { id: number; name: string; sort_order: number; volunteer_count: number };
 
@@ -34,6 +35,7 @@ type VolunteerListRow = {
     createdAt: string | null;
     stageId: number | undefined;
     stageName: string;
+    pendingInvite?: boolean;
     ministryNames: string[];
     interestPreview: string | null;
     signals: { memberNs: boolean; sixMonthsInChurchOrLetter: boolean; ministryExperienceDeclared: boolean };
@@ -143,6 +145,7 @@ export default function Pipeline({
     const csrf = (page.props as { csrf_token?: string }).csrf_token ?? '';
     const currentChurch = (page.props as { currentChurch?: { name?: string } | null }).currentChurch;
     const churchName = currentChurch?.name ?? 'Igreja';
+    const flash = (page.props as { flash?: { ministry_invite_link?: string | null } }).flash;
 
     const filterForm = useForm<BoardFilters>({ ...filters });
     const filtersKey = useMemo(() => JSON.stringify(filters), [filters]);
@@ -152,6 +155,8 @@ export default function Pipeline({
     }, [filtersKey]);
 
     const stageForm = useForm({ name: '' });
+    const [stageManageOpen, setStageManageOpen] = useState(false);
+    const [stageEdit, setStageEdit] = useState<Record<string, { name: string; sort_order: string }>>({});
 
     const [filtersOpen, setFiltersOpen] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
@@ -160,9 +165,24 @@ export default function Pipeline({
     const [selectedId, setSelectedId] = useState<number | null>(null);
     const [detailTab, setDetailTab] = useState<'ficha' | 'notas'>('ficha');
     const [publicInviteOpen, setPublicInviteOpen] = useState(false);
+    const [ministryInviteShareOpen, setMinistryInviteShareOpen] = useState(false);
+    const [ministryInviteShare, setMinistryInviteShare] = useState<{ link: string; name: string; ministryName: string } | null>(null);
+    const [inviteOpen, setInviteOpen] = useState(false);
+    const [inviteVolunteer, setInviteVolunteer] = useState<VolunteerListRow | null>(null);
+    const [inviteMinistryId, setInviteMinistryId] = useState<string>('');
+    const [inviteChannels, setInviteChannels] = useState<{ email: boolean; inbox: boolean; manual: boolean }>({ email: true, inbox: true, manual: true });
+    const [inviteSlots, setInviteSlots] = useState<Array<{ day_of_week: number; start_time: string; end_time: string }>>([]);
 
     const noteForm = useForm({ body: '' });
     const stageMoveForm = useForm({ stage_id: '' as string | number });
+
+    const openInvite = (v: VolunteerListRow) => {
+        setInviteVolunteer(v);
+        setInviteMinistryId('');
+        setInviteSlots([]);
+        setInviteChannels({ email: true, inbox: true, manual: true });
+        setInviteOpen(true);
+    };
 
     const attendanceOptions: { value: string; label: string }[] = [
         { value: 'less_than_3_months', label: 'Menos de 3 meses' },
@@ -238,10 +258,46 @@ export default function Pipeline({
             preserveScroll: true,
             onSuccess: () => {
                 if (selectedId) void openVolunteer(selectedId);
-                router.reload({ only: ['volunteers', 'stages'] });
+                const url = `${window.location.pathname}${window.location.search}`;
+                router.get(url, {}, {
+                    only: ['volunteers', 'stages'],
+                    preserveState: true,
+                    preserveScroll: true,
+                    replace: true,
+                });
             },
         });
     };
+
+    const submitInvite: FormEventHandler = (e) => {
+        e.preventDefault();
+        if (!inviteVolunteer || !inviteMinistryId) return;
+        const channels = Object.entries(inviteChannels)
+            .filter(([, v]) => v)
+            .map(([k]) => k);
+        router.post(
+            route('ministry-lead.volunteers.ministry-invite.store', inviteVolunteer.id),
+            {
+                ministry_id: Number(inviteMinistryId),
+                channels,
+                slots: inviteSlots.map((s) => ({
+                    day_of_week: s.day_of_week,
+                    start_time: s.start_time || null,
+                    end_time: s.end_time || null,
+                })),
+            },
+            { preserveScroll: true, onSuccess: () => setInviteOpen(false) },
+        );
+    };
+
+    useEffect(() => {
+        const link = flash?.ministry_invite_link;
+        if (!link || !inviteVolunteer) return;
+        const m = ministries.find((x) => String(x.id) === String(inviteMinistryId));
+        setMinistryInviteShare({ link, name: inviteVolunteer.name ?? '', ministryName: m?.name ?? '' });
+        setMinistryInviteShareOpen(true);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [flash?.ministry_invite_link]);
 
     const currentStageFilter = filters.pipeline_stage_id ?? '';
     const activeFiltersCount = useMemo(() => {
@@ -316,6 +372,9 @@ export default function Pipeline({
                             </li>
                             {visibleStages.map((s) => (
                                 <li key={s.id}>
+                                    {(() => {
+                                        const label = (s.name || '').trim() || 'Não definido';
+                                        return (
                                     <button
                                         type="button"
                                         onClick={() => pickStage(s.id)}
@@ -328,9 +387,11 @@ export default function Pipeline({
                                                   : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-100'
                                         }`}
                                     >
-                                        <span className="truncate pr-2">{s.name}</span>
+                                        <span className="truncate pr-2">{label}</span>
                                         <span className="shrink-0 text-xs opacity-80">{s.volunteer_count}</span>
                                     </button>
+                                        );
+                                    })()}
                                 </li>
                             ))}
                         </ul>
@@ -341,19 +402,12 @@ export default function Pipeline({
                         ) : null}
                     </Card>
                     {canPipelineMutate ? (
-                        <Card className="p-4">
-                            <div className="text-xs font-semibold text-zinc-700 dark:text-zinc-200 mb-2">Nova fase / pasta</div>
-                            <form onSubmit={submitNewStage} className="space-y-2">
-                                <TextInput
-                                    value={stageForm.data.name}
-                                    onChange={(e) => stageForm.setData('name', e.target.value)}
-                                    placeholder="Ex.: Entrevista agendada"
-                                />
-                                <InputError message={stageForm.errors.name} />
-                                <PrimaryButton type="submit" className="w-full" disabled={stageForm.processing}>
-                                    Criar fase
-                                </PrimaryButton>
-                            </form>
+                        <Card className="p-4 space-y-2">
+                            <div className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">Fases</div>
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400">Criar, renomear e excluir fases.</p>
+                            <PrimaryButton type="button" className="w-full" onClick={() => setStageManageOpen(true)}>
+                                Gerir fases
+                            </PrimaryButton>
                         </Card>
                     ) : null}
                     {canVolunteerManage ? (
@@ -678,7 +732,7 @@ export default function Pipeline({
                                     {volunteers.data.map((v) => (
                                         <tr
                                             key={v.id}
-                                            className="border-b border-zinc-100 cursor-pointer hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900/80"
+                                            className={`border-b border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900/80 ${v.pendingInvite ? 'bg-amber-50/40 dark:bg-amber-950/10' : ''}`}
                                             onClick={() => void openVolunteer(v.id)}
                                         >
                                             <td className="py-2 pr-3 font-medium text-zinc-900 dark:text-white">{v.name}</td>
@@ -694,6 +748,18 @@ export default function Pipeline({
                                             <td className="py-2 text-xs text-zinc-500">
                                                 {v.ministryNames.length ? v.ministryNames.join(', ') : '—'}
                                             </td>
+                                            <td className="py-2 text-right">
+                                                <button
+                                                    type="button"
+                                                    onClick={(ev) => {
+                                                        ev.stopPropagation();
+                                                        openInvite(v);
+                                                    }}
+                                                    className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-800 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                                                >
+                                                    Encaminhar
+                                                </button>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -703,22 +769,28 @@ export default function Pipeline({
                         {/* Mobile cards */}
                         <div className="md:hidden space-y-3">
                             {volunteers.data.map((v) => (
-                                <button
+                                <div
                                     key={v.id}
-                                    type="button"
-                                    onClick={() => void openVolunteer(v.id)}
-                                    className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-left shadow-sm transition hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-900/60"
+                                    className={`w-full rounded-2xl border px-4 py-3 text-left shadow-sm transition hover:bg-zinc-50 dark:hover:bg-zinc-900/60 ${
+                                        v.pendingInvite
+                                            ? 'border-amber-200 bg-amber-50/60 dark:border-amber-900/50 dark:bg-amber-950/10'
+                                            : 'border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900'
+                                    }`}
                                 >
                                     <div className="flex items-start justify-between gap-3">
-                                        <div className="min-w-0">
+                                        <button type="button" onClick={() => void openVolunteer(v.id)} className="min-w-0 text-left">
                                             <div className="truncate font-semibold text-zinc-900 dark:text-white">{v.name ?? '—'}</div>
                                             <div className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
                                                 {v.stageName} · {formatShortDate(v.createdAt)}
                                             </div>
-                                        </div>
-                                        <div className="shrink-0 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
-                                            Abrir
-                                        </div>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => openInvite(v)}
+                                            className="shrink-0 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-800 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                                        >
+                                            Encaminhar
+                                        </button>
                                     </div>
                                     <div className="mt-2 text-xs text-zinc-600 dark:text-zinc-300 space-y-1">
                                         {v.email ? <div className="truncate">{v.email}</div> : null}
@@ -727,7 +799,7 @@ export default function Pipeline({
                                             <div className="text-zinc-500 dark:text-zinc-400 line-clamp-2">{v.interestPreview}</div>
                                         ) : null}
                                     </div>
-                                </button>
+                                </div>
                             ))}
                         </div>
 
@@ -956,6 +1028,230 @@ export default function Pipeline({
                     onClose={() => setPublicInviteOpen(false)}
                 />
             ) : null}
+
+            <Modal show={inviteOpen} onClose={() => setInviteOpen(false)} maxWidth="lg">
+                <div className="p-6 space-y-4">
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Encaminhar voluntário</h2>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-300">
+                        {inviteVolunteer?.name ?? 'Voluntário'} — escolha o departamento e como deseja enviar.
+                    </p>
+                    <form onSubmit={submitInvite} className="space-y-4">
+                        <div>
+                            <InputLabel value="Departamento *" />
+                            <select
+                                value={inviteMinistryId}
+                                onChange={(e) => setInviteMinistryId(e.target.value)}
+                                className="mt-1 block h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+                                required
+                            >
+                                <option value="">Selecione…</option>
+                                {ministries.map((m) => (
+                                    <option key={m.id} value={String(m.id)}>
+                                        {m.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
+                            <p className="text-sm font-semibold text-zinc-900 dark:text-white">Canais</p>
+                            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                                {(['email', 'inbox', 'manual'] as const).map((k) => (
+                                    <label key={k} className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-200">
+                                        <input
+                                            type="checkbox"
+                                            checked={inviteChannels[k]}
+                                            onChange={(e) => setInviteChannels((cur) => ({ ...cur, [k]: e.target.checked }))}
+                                            className="rounded border-zinc-300 dark:border-zinc-600"
+                                        />
+                                        {k === 'email' ? 'E-mail' : k === 'inbox' ? 'Notificação (app)' : 'WhatsApp/manual (gera link)'}
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
+                            <p className="text-sm font-semibold text-zinc-900 dark:text-white">Dias e horário de mudança</p>
+                            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Opcional: sugira dias/horários (pode adicionar mais de um).</p>
+                            <div className="mt-3 space-y-2">
+                                {inviteSlots.map((s, idx) => (
+                                    <div key={idx} className="flex flex-wrap items-center gap-2">
+                                        <select
+                                            value={String(s.day_of_week)}
+                                            onChange={(e) =>
+                                                setInviteSlots((cur) =>
+                                                    cur.map((x, i) => (i === idx ? { ...x, day_of_week: Number(e.target.value) } : x)),
+                                                )
+                                            }
+                                            className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                                        >
+                                            {[
+                                                ['0', 'Dom'],
+                                                ['1', 'Seg'],
+                                                ['2', 'Ter'],
+                                                ['3', 'Qua'],
+                                                ['4', 'Qui'],
+                                                ['5', 'Sex'],
+                                                ['6', 'Sáb'],
+                                            ].map(([v, l]) => (
+                                                <option key={v} value={v}>
+                                                    {l}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <input
+                                            type="time"
+                                            value={s.start_time}
+                                            onChange={(e) =>
+                                                setInviteSlots((cur) => cur.map((x, i) => (i === idx ? { ...x, start_time: e.target.value } : x)))
+                                            }
+                                            className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                                        />
+                                        <span className="text-xs text-zinc-500">até</span>
+                                        <input
+                                            type="time"
+                                            value={s.end_time}
+                                            onChange={(e) =>
+                                                setInviteSlots((cur) => cur.map((x, i) => (i === idx ? { ...x, end_time: e.target.value } : x)))
+                                            }
+                                            className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setInviteSlots((cur) => cur.filter((_, i) => i !== idx))}
+                                            className="ml-auto rounded-xl px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/30"
+                                        >
+                                            Remover
+                                        </button>
+                                    </div>
+                                ))}
+                                <button
+                                    type="button"
+                                    onClick={() => setInviteSlots((cur) => [...cur, { day_of_week: 0, start_time: '', end_time: '' }])}
+                                    className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-800 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                                >
+                                    + Adicionar dia/horário
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-2">
+                            <SecondaryButton type="button" onClick={() => setInviteOpen(false)}>
+                                Cancelar
+                            </SecondaryButton>
+                            <PrimaryButton type="submit" disabled={!inviteMinistryId}>
+                                Gerar convite
+                            </PrimaryButton>
+                        </div>
+                    </form>
+                </div>
+            </Modal>
+
+            <VolunteerMinistryInviteShareModal
+                show={ministryInviteShareOpen && !!ministryInviteShare}
+                link={ministryInviteShare?.link ?? ''}
+                inviteeName={ministryInviteShare?.name}
+                ministryName={ministryInviteShare?.ministryName}
+                onClose={() => {
+                    setMinistryInviteShareOpen(false);
+                    setMinistryInviteShare(null);
+                }}
+            />
+
+            <Modal show={stageManageOpen} onClose={() => setStageManageOpen(false)} maxWidth="lg" disableBodyScroll>
+                <div className="p-6 space-y-5">
+                    <div>
+                        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Gerir fases</h2>
+                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">Renomeie, ajuste a ordem (opcional) ou exclua fases.</p>
+                    </div>
+
+                    <div className="space-y-3">
+                        {stages.map((s) => {
+                            const key = String(s.id);
+                            const st = stageEdit[key] ?? { name: s.name ?? '', sort_order: String(s.sort_order ?? '') };
+                            return (
+                                <div key={s.id} className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900/60">
+                                    <div className="grid gap-3 sm:grid-cols-12 sm:items-end">
+                                        <div className="sm:col-span-7">
+                                            <InputLabel value="Nome" />
+                                            <TextInput
+                                                value={st.name}
+                                                onChange={(e) =>
+                                                    setStageEdit((cur) => ({ ...cur, [key]: { ...st, name: e.target.value } }))
+                                                }
+                                                className="mt-1 w-full"
+                                            />
+                                        </div>
+                                        <div className="sm:col-span-3">
+                                            <InputLabel value="Ordem" />
+                                            <TextInput
+                                                value={st.sort_order}
+                                                onChange={(e) =>
+                                                    setStageEdit((cur) => ({ ...cur, [key]: { ...st, sort_order: e.target.value } }))
+                                                }
+                                                className="mt-1 w-full"
+                                                inputMode="numeric"
+                                            />
+                                        </div>
+                                        <div className="sm:col-span-2 flex gap-2 sm:justify-end">
+                                            <SecondaryButton
+                                                type="button"
+                                                onClick={() =>
+                                                    router.put(
+                                                        route('ministry-lead.volunteers.pipeline.stages.update', s.id),
+                                                        { name: st.name, sort_order: st.sort_order === '' ? null : Number(st.sort_order) },
+                                                        { preserveScroll: true },
+                                                    )
+                                                }
+                                            >
+                                                Salvar
+                                            </SecondaryButton>
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    router.delete(route('ministry-lead.volunteers.pipeline.stages.destroy', s.id), {
+                                                        preserveScroll: true,
+                                                    })
+                                                }
+                                                className="rounded-xl px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/30"
+                                            >
+                                                Excluir
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                                        Voluntários nesta fase: <span className="font-semibold">{s.volunteer_count}</span>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
+                        <div className="text-sm font-semibold text-zinc-900 dark:text-white">Criar nova fase</div>
+                        <form onSubmit={submitNewStage} className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start">
+                            <div className="flex-1">
+                                <TextInput
+                                    value={stageForm.data.name}
+                                    onChange={(e) => stageForm.setData('name', e.target.value)}
+                                    placeholder="Ex.: Entrevista agendada"
+                                    className="w-full"
+                                />
+                                <InputError message={stageForm.errors.name} className="mt-1" />
+                            </div>
+                            <PrimaryButton type="submit" disabled={stageForm.processing} className="sm:self-start">
+                                Criar
+                            </PrimaryButton>
+                        </form>
+                    </div>
+
+                    <div className="flex justify-end">
+                        <PrimaryButton type="button" onClick={() => setStageManageOpen(false)}>
+                            Fechar
+                        </PrimaryButton>
+                    </div>
+                </div>
+            </Modal>
         </AdminLayout>
     );
 }
