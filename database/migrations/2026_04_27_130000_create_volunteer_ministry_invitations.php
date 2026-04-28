@@ -27,8 +27,9 @@ return new class extends Migration
 
             $table->timestamps();
 
-            $table->index(['church_id', 'volunteer_id', 'status']);
-            $table->index(['church_id', 'ministry_id', 'status']);
+            // MySQL limita nomes de índices a 64 chars; definimos nomes curtos manualmente.
+            $table->index(['church_id', 'volunteer_id', 'status'], 'vmi_church_vol_status');
+            $table->index(['church_id', 'ministry_id', 'status'], 'vmi_church_min_status');
         });
 
         Schema::create('volunteer_ministry_invitation_slots', function (Blueprint $table) {
@@ -41,7 +42,8 @@ return new class extends Migration
             $table->time('end_time')->nullable();
             $table->timestamps();
 
-            $table->index(['invitation_id', 'day_of_week']);
+            // MySQL limita nomes de índices a 64 chars; definimos nome curto manualmente.
+            $table->index(['invitation_id', 'day_of_week'], 'vmi_slot_inv_day');
         });
     }
 

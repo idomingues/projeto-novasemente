@@ -2,6 +2,7 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { SunIcon, MoonIcon, UserCircleIcon, BuildingOfficeIcon } from '@heroicons/react/24/outline';
 import { useTheme } from '@/Contexts/ThemeContext';
+import InstalledAppVersion from '@/Components/InstalledAppVersion';
 
 interface ChurchInfo {
     name: string;
@@ -142,6 +143,16 @@ export default function MobileSettings({ church, user }: Props) {
                     >
                         Acessar painel administrativo
                     </Link>
+                </section>
+
+                <section className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+                    <h2 className="px-4 py-2 text-sm font-semibold text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
+                        Sobre
+                    </h2>
+                    <div className="flex items-center justify-between gap-3 px-4 py-3">
+                        <span className="text-zinc-900 dark:text-white">Versão instalada</span>
+                        <InstalledAppVersion className="text-sm font-medium text-zinc-500 dark:text-zinc-400" />
+                    </div>
                 </section>
             </div>
         </MobileLayout>

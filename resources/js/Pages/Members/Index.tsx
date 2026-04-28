@@ -1,6 +1,6 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm, router, Link, usePage } from '@inertiajs/react';
-import { PencilIcon, TrashIcon, EyeIcon, CameraIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, CameraIcon } from '@heroicons/react/24/outline';
 import AddButton from '@/Components/AddButton';
 import PageHeader from '@/Components/PageHeader';
 import Modal from '@/Components/Modal';
@@ -35,7 +35,9 @@ interface Member {
     address: string | null;
     status: 'active' | 'inactive';
     is_volunteer?: boolean;
+    is_ministry_leader?: boolean;
     volunteer_ministry_ids?: number[];
+    app_ministry_ids?: number[];
     photo_url?: string | null;
     notify_via_app?: boolean;
     notify_via_email?: boolean;
@@ -97,6 +99,8 @@ export default function Index({ members, ministryOptions = [], assignableRoles =
         isEditing: false,
         editingId: null,
     });
+    const departmentsSectionRef = useRef<HTMLDivElement | null>(null);
+    const lastLeaderFlagRef = useRef<boolean>(false);
     const lastSavedMemberPhotoRef = useRef<string | null>(null);
     const [avatarPreviewSrc, setAvatarPreviewSrc] = useState<string | null>(null);
     const [submitMessage, setSubmitMessage] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
@@ -108,7 +112,10 @@ export default function Index({ members, ministryOptions = [], assignableRoles =
         birth_date: '',
         status: 'active' as 'active' | 'inactive',
         is_volunteer: false as boolean,
+        is_ministry_leader: false as boolean,
+        department_ids: [] as number[],
         volunteer_ministry_ids: [] as number[],
+        app_ministry_ids: [] as number[],
         password: '',
         password_confirmation: '',
         photo: null as File | null,
@@ -125,15 +132,31 @@ export default function Index({ members, ministryOptions = [], assignableRoles =
         memberFormModeRef.current = { isEditing, editingId };
     }, [isEditing, editingId]);
 
+    useEffect(() => {
+        const prev = lastLeaderFlagRef.current;
+        const next = data.is_ministry_leader === true;
+        lastLeaderFlagRef.current = next;
+        if (!prev && next) {
+            // Aguarda um tick para o DOM renderizar a seção antes de rolar.
+            window.setTimeout(() => {
+                departmentsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 50);
+        }
+    }, [data.is_ministry_leader]);
+
     transform((form) => {
         const editing =
             memberFormModeRef.current.isEditing && memberFormModeRef.current.editingId;
         // Sem isto, `photo` (ficheiro) vem antes de `role_name` na ordem das chaves do `useForm` e o
         // multipart pode cortar o fim do pedido (post_max_size / limites) — o Laravel deixa de receber `role_name`.
         const { photo, ...rest } = form;
+        const departmentIds = Array.isArray(rest.department_ids) ? rest.department_ids : [];
+        const isVolunteer = Boolean(rest.is_volunteer);
         return {
             ...rest,
             role_name: rest.role_name ?? '',
+            volunteer_ministry_ids: isVolunteer ? departmentIds : [],
+            app_ministry_ids: departmentIds,
             inertia_member_form: editing ? 'edit' : 'create',
             inertia_member_id: editing ? memberFormModeRef.current.editingId : null,
             // PHP < 8.4 não preenche $_POST em PUT multipart; POST + _method é o padrão Laravel para uploads.
@@ -163,6 +186,9 @@ export default function Index({ members, ministryOptions = [], assignableRoles =
         const saved = member.photo_url?.trim() ? member.photo_url : null;
         lastSavedMemberPhotoRef.current = saved;
         setAvatarPreviewSrc(saved);
+        const volunteerIds = [...(member.volunteer_ministry_ids ?? [])];
+        const leaderIds = [...(member.app_ministry_ids ?? [])];
+        const departmentIds = Array.from(new Set([...volunteerIds, ...leaderIds]));
         setData({
             name: member.name,
             email: member.email || '',
@@ -170,7 +196,10 @@ export default function Index({ members, ministryOptions = [], assignableRoles =
             birth_date: member.birth_date ? member.birth_date.split('T')[0] : '',
             status: member.status,
             is_volunteer: Boolean(member.is_volunteer),
+            is_ministry_leader: Boolean(member.is_ministry_leader),
+            department_ids: departmentIds,
             volunteer_ministry_ids: [...(member.volunteer_ministry_ids ?? [])],
+            app_ministry_ids: [...(member.app_ministry_ids ?? [])],
             password: '',
             password_confirmation: '',
             photo: null,
@@ -466,12 +495,6 @@ export default function Index({ members, ministryOptions = [], assignableRoles =
                                     </td>
                                     <td className="px-4 py-4 sm:px-6 sm:py-6 whitespace-nowrap text-right text-sm font-medium">
                                         <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Link
-                                    href={route('members.show', member.id)}
-                                    className="p-2 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
-                                >
-                                    <EyeIcon className="w-5 h-5" />
-                                </Link>
                                 <button
                                     type="button"
                                     onClick={() => openEditModal(member)}
@@ -854,9 +877,6 @@ export default function Index({ members, ministryOptions = [], assignableRoles =
                                     onChange={(e) => {
                                         const on = e.target.checked;
                                         setData('is_volunteer', on);
-                                        if (!on) {
-                                            setData('volunteer_ministry_ids', []);
-                                        }
                                     }}
                                 />
                                 <span className="text-sm leading-snug text-zinc-700 dark:text-zinc-200">
@@ -866,46 +886,83 @@ export default function Index({ members, ministryOptions = [], assignableRoles =
                                 </span>
                             </label>
                             <InputError message={errors.is_volunteer} className="mt-2" />
-                            {data.is_volunteer && ministryOptions.length > 0 ? (
-                                <div className="border-t border-zinc-200 pt-3 dark:border-zinc-600 space-y-2">
-                                    <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">Departamentos</p>
-                                    <div className="space-y-2 pr-1 sm:max-h-48 sm:overflow-y-auto">
-                                        {ministryOptions.map((m) => (
-                                            <label key={m.id} className="flex cursor-pointer items-start gap-3">
-                                                <Checkbox
-                                                    name={`volunteer_ministry_${m.id}`}
-                                                    checked={data.volunteer_ministry_ids.includes(m.id)}
-                                                    onChange={(e) => {
-                                                        const checked = e.target.checked;
-                                                        const next = new Set(data.volunteer_ministry_ids);
-                                                        if (checked) {
-                                                            next.add(m.id);
-                                                        } else {
-                                                            next.delete(m.id);
-                                                        }
-                                                        setData('volunteer_ministry_ids', [...next]);
-                                                    }}
-                                                />
-                                                <span className="text-sm text-zinc-700 dark:text-zinc-200">{m.name}</span>
-                                            </label>
-                                        ))}
-                                    </div>
-                                    <InputError message={errors.volunteer_ministry_ids} className="!mt-1" />
-                                </div>
-                            ) : null}
-                            {data.is_volunteer && ministryOptions.length === 0 ? (
-                                <p className="text-xs text-amber-800 dark:text-amber-200 border-t border-zinc-200 pt-3 dark:border-zinc-600">
-                                    Ainda não há departamentos (ministérios) configurados para esta igreja. Crie-os nas definições
-                                    ou em Voluntários para associar esta pessoa às escalas.
-                                </p>
-                            ) : null}
                         </div>
+
+                        <div className="rounded-xl border border-zinc-200 bg-zinc-50/90 p-4 dark:border-zinc-700 dark:bg-zinc-800/40 space-y-3">
+                            <label className="flex cursor-pointer items-start gap-3">
+                                <Checkbox
+                                    name="is_ministry_leader"
+                                    checked={data.is_ministry_leader}
+                                    onChange={(e) => setData('is_ministry_leader', e.target.checked)}
+                                />
+                                <span className="text-sm leading-snug text-zinc-700 dark:text-zinc-200">
+                                    <span className="font-semibold text-zinc-900 dark:text-white">Líder</span> — habilita a opção{' '}
+                                    <span className="font-medium">Meus voluntários</span> (no menu “Mais”) para gerir o status dos encaminhados.
+                                </span>
+                            </label>
+                            <InputError message={errors.is_ministry_leader} className="mt-2" />
+                        </div>
+
+                        {(ministryOptions.length > 0) ? (
+                            <div
+                                ref={departmentsSectionRef}
+                                className="rounded-xl border border-zinc-200 bg-zinc-50/90 p-4 dark:border-zinc-700 dark:bg-zinc-800/40 space-y-3"
+                            >
+                                <p className="text-sm font-semibold text-zinc-900 dark:text-white">Departamentos</p>
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                    Selecione os departamentos que este usuário lidera e/ou em que serve.
+                                </p>
+                                {ministryOptions.length > 0 ? (
+                                    <div className="border-t border-zinc-200 pt-3 dark:border-zinc-600 space-y-2">
+                                        <div className="space-y-2 pr-1 sm:max-h-48 sm:overflow-y-auto">
+                                            {ministryOptions.map((m) => (
+                                                <label key={m.id} className="flex cursor-pointer items-start gap-3">
+                                                    <Checkbox
+                                                        name={`department_${m.id}`}
+                                                        checked={data.department_ids.includes(m.id)}
+                                                        onChange={(e) => {
+                                                            const checked = e.target.checked;
+                                                            const next = new Set(data.department_ids);
+                                                            if (checked) {
+                                                                next.add(m.id);
+                                                            } else {
+                                                                next.delete(m.id);
+                                                            }
+                                                            setData('department_ids', [...next]);
+
+                                                            // Se começou a escolher departamentos, assumimos que este usuário
+                                                            // também deve ser marcado como voluntário (serve/irá servir).
+                                                            if (next.size > 0 && !data.is_volunteer) {
+                                                                setData('is_volunteer', true);
+                                                            }
+                                                        }}
+                                                    />
+                                                    <span className="text-sm text-zinc-700 dark:text-zinc-200">{m.name}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                        <InputError message={errors.volunteer_ministry_ids} className="!mt-1" />
+                                        <InputError message={errors.app_ministry_ids} className="!mt-1" />
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-amber-800 dark:text-amber-200 border-t border-zinc-200 pt-3 dark:border-zinc-600">
+                                        Ainda não há departamentos (ministérios) configurados para esta igreja.
+                                    </p>
+                                )}
+                            </div>
+                        ) : null}
 
                         <div className="sticky bottom-0 z-10 -mx-4 mt-2 flex flex-col-reverse gap-3 border-t border-zinc-100 bg-white/95 px-4 pb-2 pt-4 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-900/95 sm:-mx-6 sm:flex-row sm:justify-end sm:px-6 sm:pb-0 sm:pt-5">
                             <SecondaryButton type="button" onClick={closeModal} className="justify-center sm:w-auto">
                                 Cancelar
                             </SecondaryButton>
-                            <PrimaryButton disabled={processing} className="justify-center sm:w-auto">
+                            <PrimaryButton
+                                disabled={
+                                    processing ||
+                                    (data.is_ministry_leader && (data.department_ids?.length ?? 0) < 1)
+                                }
+                                className="justify-center sm:w-auto"
+                            >
                                 {isEditing ? 'Atualizar' : 'Salvar'}
                             </PrimaryButton>
                         </div>

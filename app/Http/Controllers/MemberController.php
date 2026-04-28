@@ -39,7 +39,7 @@ class MemberController extends Controller
         $churchId = $this->currentChurchId($request);
 
         $query = User::query()
-            ->with(['volunteerProfile.ministries', 'roles'])
+            ->with(['volunteerProfile.ministries', 'roles', 'ministries'])
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId));
 
@@ -74,6 +74,7 @@ class MemberController extends Controller
                 $volunteerMinistryIds = $user->volunteerProfile
                     ? $user->volunteerProfile->ministries()->pluck('ministries.id')->map(fn ($id) => (int) $id)->values()->all()
                     : [];
+                $appMinistryIds = $user->ministries()->pluck('ministries.id')->map(fn ($id) => (int) $id)->values()->all();
 
                 $roleName = $user->getRoleNames()->first();
 
@@ -85,8 +86,11 @@ class MemberController extends Controller
                     'birth_date' => $user->birth_date?->toIso8601String(),
                     'address' => $user->address,
                     'status' => $user->status ?? 'active',
-                    'is_volunteer' => (bool) ($user->is_volunteer ?? false),
+                    // Se já há departamentos no perfil de voluntário, tratamos como voluntário para a UI vir marcada.
+                    'is_volunteer' => (bool) ($user->is_volunteer ?? false) || count($volunteerMinistryIds) > 0,
+                    'is_ministry_leader' => (bool) ($user->is_ministry_leader ?? false),
                     'volunteer_ministry_ids' => $volunteerMinistryIds,
+                    'app_ministry_ids' => $appMinistryIds,
                     'photo_url' => $user->photo_url,
                     'notify_via_app' => (bool) ($user->notify_via_app ?? true),
                     'notify_via_email' => (bool) ($user->notify_via_email ?? true),
@@ -130,6 +134,9 @@ class MemberController extends Controller
             MemberRoleAssignment::syncUserRole($request->user(), $user, (string) $roleName);
         }
 
+        // Líder não é mais perfil; departamentos liderados vêm sempre de `app_ministry_ids`.
+        $user->ministries()->sync($request->input('app_ministry_ids', []));
+
         return redirect()->route('members.index')->with('success', 'Usuário criado com sucesso!');
     }
 
@@ -149,6 +156,7 @@ class MemberController extends Controller
                 'address' => $user->address,
                 'status' => $user->status ?? 'active',
                 'is_volunteer' => (bool) ($user->is_volunteer ?? false),
+                'is_ministry_leader' => (bool) ($user->is_ministry_leader ?? false),
                 'photo_url' => $user->photo_url,
                 'notify_via_app' => (bool) ($user->notify_via_app ?? true),
                 'notify_via_email' => (bool) ($user->notify_via_email ?? true),
@@ -209,6 +217,10 @@ class MemberController extends Controller
                 MemberRoleAssignment::syncUserRole($request->user(), $user->fresh(), $next);
             }
         }
+
+        // Sincronizar departamentos que o usuário lidera (ministry_user) quando for líder de ministério.
+        // Líder não é mais perfil; departamentos liderados vêm sempre de `app_ministry_ids`.
+        $user->ministries()->sync($request->input('app_ministry_ids', []));
 
         return redirect()->route('members.index')->with('success', 'Usuário atualizado com sucesso!');
     }

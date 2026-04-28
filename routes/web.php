@@ -35,6 +35,7 @@ use App\Http\Controllers\SupportAdminController;
 use App\Http\Controllers\VariosController;
 use App\Http\Controllers\VolunteerController;
 use App\Http\Controllers\VolunteerPipelineLeadController;
+use App\Http\Controllers\MyMinistryVolunteersController;
 use App\Http\Controllers\VolunteerPublicSignupController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -249,6 +250,16 @@ Route::middleware('auth')->group(function () {
     Route::get('/lideranca/voluntarios', [VolunteerPipelineLeadController::class, 'index'])
         ->name('ministry-lead.volunteers.index')
         ->middleware('permission:volunteers.view|volunteers.manage|volunteers.ministry_operate');
+    // Voluntários — página do líder de ministério (somente voluntários encaminhados aos seus departamentos)
+    Route::get('/lideranca/meus-voluntarios', [MyMinistryVolunteersController::class, 'index'])
+        ->name('ministry-lead.my-volunteers.index')
+        ->middleware('auth');
+    Route::patch('/lideranca/meus-voluntarios/{invitation}', [MyMinistryVolunteersController::class, 'update'])
+        ->name('ministry-lead.my-volunteers.update')
+        ->middleware('auth');
+    Route::get('/lideranca/meus-voluntarios/{invitation}/historico', [MyMinistryVolunteersController::class, 'history'])
+        ->name('ministry-lead.my-volunteers.history')
+        ->middleware('auth');
     Route::post('/lideranca/voluntarios/fases', [VolunteerPipelineLeadController::class, 'storeStage'])
         ->name('ministry-lead.volunteers.pipeline.stages.store')
         ->middleware('permission:volunteers.ministry_operate|volunteers.manage');

@@ -65,7 +65,8 @@ class HandleInertiaRequests extends Middleware
         $canAccessAdminMenu = false;
         if ($request->user()) {
             $roleNames = $request->user()->getRoleNames()->toArray();
-            $adminRoles = ['admin', 'super_admin', 'pastor', 'secretaria', 'lider_ministerio'];
+            // Líder de ministério NÃO é mais perfil do painel (sem menu esquerdo).
+            $adminRoles = ['admin', 'super_admin', 'pastor', 'secretaria'];
             $canAccessAdminMenu = ! empty(array_intersect($roleNames, $adminRoles));
         }
 
@@ -76,10 +77,9 @@ class HandleInertiaRequests extends Middleware
             $roleLabel = match ($first) {
                 'super_admin' => 'Super Admin',
                 'admin' => 'Administrador',
-                'lider_ministerio' => 'Líder de ministério',
                 'secretaria' => 'Secretaria',
                 'pastor' => 'Pastor',
-                'membro' => 'Usuário',
+                'membro' => 'Membro',
                 default => $first ? ucfirst(str_replace('_', ' ', $first)) : null,
             };
         }
@@ -222,6 +222,7 @@ class HandleInertiaRequests extends Middleware
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
+                'ministry_invite_link' => fn () => $request->session()->get('ministry_invite_link'),
                 'invitation_link' => fn () => $request->session()->get('invitation_link'),
                 'invitation_for_name' => fn () => $request->session()->get('invitation_for_name'),
                 'public_volunteer_signup_url' => fn () => $request->session()->get('public_volunteer_signup_url'),

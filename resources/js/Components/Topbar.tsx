@@ -36,6 +36,7 @@ interface TopbarProps {
 
 interface AuthUser {
     name: string;
+    is_ministry_leader?: boolean;
 }
 
 type PageProps = {
@@ -59,7 +60,8 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
     /** Número no sino: notificações de caixa por ler (servidor). */
     const badgeCount = unread > 0 ? Math.min(99, unread) : 0;
     const showRecentDot = badgeCount === 0 && notifications.length > 0;
-    const roleLabel = auth?.roleLabel ?? 'Utilizador';
+    const roleLabel = auth?.roleLabel ?? 'Membro';
+    const isMinistryLeader = user?.is_ministry_leader === true;
     const { theme, toggleTheme } = useTheme();
     /** Hub de perfil (opções); evita ir direto ao formulário Breeze no PC. */
     const profileHref = route().has('mobile.profile') ? route('mobile.profile') : route('profile.edit');
@@ -215,7 +217,16 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
                             >
                                 <div className="text-right hidden sm:block">
                                     <p className="text-sm font-medium text-zinc-900 dark:text-white group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors">{user.name}</p>
-                                    <p className="text-xs text-zinc-500">{roleLabel}</p>
+                                    <div className="mt-0.5 flex items-center justify-end gap-1.5">
+                                        <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-700 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:text-zinc-200 dark:ring-zinc-800">
+                                            {roleLabel}
+                                        </span>
+                                        {isMinistryLeader ? (
+                                            <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/30">
+                                                Líder de ministério
+                                            </span>
+                                        ) : null}
+                                    </div>
                                 </div>
                                 <div className="w-10 h-10 rounded-full bg-zinc-900 dark:bg-white flex items-center justify-center text-white dark:text-black font-bold text-sm ring-4 ring-zinc-100 dark:ring-zinc-900 group-hover:ring-zinc-200 dark:group-hover:ring-zinc-800 transition-all">
                                     {user.name.charAt(0).toUpperCase()}

@@ -10,6 +10,7 @@ use App\Models\VolunteerMinistryInvitation;
 use App\Models\VolunteerMinistryInvitationSlot;
 use App\Mail\VolunteerMinistryInvitationMail;
 use App\Support\UserMessagingPreferences;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -30,7 +31,7 @@ class VolunteerMinistryInvitationController extends Controller
         abort_unless($u->can('volunteers.ministry_operate') || $u->can('volunteers.manage'), 403);
     }
 
-    public function store(Request $request, Volunteer $volunteer): RedirectResponse
+    public function store(Request $request, Volunteer $volunteer): RedirectResponse|JsonResponse
     {
         $this->canMutate($request);
         $churchId = $this->churchId($request);
@@ -109,6 +110,13 @@ class VolunteerMinistryInvitationController extends Controller
 
         if ($sent) {
             $inv->forceFill(['sent_at' => now()])->save();
+        }
+
+        if ($request->expectsJson() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'link' => $inviteUrl,
+            ]);
         }
 
         return back()

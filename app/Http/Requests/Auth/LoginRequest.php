@@ -85,13 +85,23 @@ class LoginRequest extends FormRequest
             })
             ->first();
 
-        if (! $user || ! Hash::check($password, $user->password)) {
+        if (! $user) {
             RateLimiter::hit($this->throttleKey(), $this->identityDecaySeconds());
             RateLimiter::hit($this->ipThrottleKey(), $this->ipDecaySeconds());
             AuthLoginEvent::record(AuthLoginEvent::OUTCOME_FAILED, null, $login, $ip, $ua);
 
             throw ValidationException::withMessages([
-                'login' => trans('auth.failed'),
+                'login' => trans('auth.user'),
+            ]);
+        }
+
+        if (! Hash::check($password, (string) $user->password)) {
+            RateLimiter::hit($this->throttleKey(), $this->identityDecaySeconds());
+            RateLimiter::hit($this->ipThrottleKey(), $this->ipDecaySeconds());
+            AuthLoginEvent::record(AuthLoginEvent::OUTCOME_FAILED, null, $login, $ip, $ua);
+
+            throw ValidationException::withMessages([
+                'password' => trans('auth.password'),
             ]);
         }
 

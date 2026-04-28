@@ -2,11 +2,8 @@
 	"appId": "br.org.novasemente.app",
 	"appName": "Nova Semente",
 	"webDir": "capacitor-www",
-	"server": {
-		"url": "http://10.0.2.2:8000",
-		"cleartext": true
-	},
 	"packageClassList": [
+		"AppPlugin",
 		"DevicePlugin",
 		"CAPNetworkPlugin",
 		"PushNotificationsPlugin"

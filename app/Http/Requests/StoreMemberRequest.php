@@ -20,6 +20,7 @@ class StoreMemberRequest extends FormRequest
     {
         $this->merge([
             'is_volunteer' => $this->boolean('is_volunteer'),
+            'is_ministry_leader' => $this->boolean('is_ministry_leader'),
             'notify_via_app' => $this->boolean('notify_via_app'),
             'notify_via_email' => $this->boolean('notify_via_email'),
             'notify_via_whatsapp' => $this->boolean('notify_via_whatsapp'),
@@ -53,8 +54,11 @@ class StoreMemberRequest extends FormRequest
             'address' => ['nullable', 'string', 'max:1000'],
             'status' => ['required', 'in:active,inactive'],
             'is_volunteer' => ['sometimes', 'boolean'],
+            'is_ministry_leader' => ['sometimes', 'boolean'],
             'volunteer_ministry_ids' => ['nullable', 'array'],
             'volunteer_ministry_ids.*' => $ministryItemRules,
+            'app_ministry_ids' => ['nullable', 'array'],
+            'app_ministry_ids.*' => $ministryItemRules,
             'password' => ['required', 'string', 'confirmed', Password::defaults()],
             'photo' => ['nullable', 'image', 'max:4096'],
             'notify_via_app' => ['required', 'boolean'],
@@ -68,6 +72,18 @@ class StoreMemberRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator): void {
+            // Líder (checkbox): precisa escolher ao menos um departamento para ver “Meus voluntários”.
+            if ($this->boolean('is_ministry_leader')) {
+                $cid = Church::resolveWorkingId($this);
+                if ($cid !== null && Ministry::query()->where('church_id', $cid)->exists()) {
+                    $ids = $this->input('app_ministry_ids', []);
+                    $n = is_array($ids) ? count(array_filter($ids, fn ($v) => (int) $v > 0)) : 0;
+                    if ($n < 1) {
+                        $validator->errors()->add('app_ministry_ids', 'Selecione pelo menos um departamento que o líder irá gerir.');
+                    }
+                }
+            }
+
             if (! $this->boolean('is_volunteer')) {
                 return;
             }

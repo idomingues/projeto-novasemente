@@ -22,6 +22,11 @@ class VolunteerMinistryInvitation extends Model
         'declined_at',
         'decline_reason',
         'expires_at',
+        // Status interno do líder do ministério (não é a resposta do convidado ao link público).
+        'leader_status',
+        'leader_note',
+        'leader_status_set_by_user_id',
+        'leader_status_set_at',
     ];
 
     protected $casts = [
@@ -29,6 +34,7 @@ class VolunteerMinistryInvitation extends Model
         'accepted_at' => 'datetime',
         'declined_at' => 'datetime',
         'expires_at' => 'datetime',
+        'leader_status_set_at' => 'datetime',
     ];
 
     public function church(): BelongsTo
@@ -54,6 +60,13 @@ class VolunteerMinistryInvitation extends Model
     public function slots(): HasMany
     {
         return $this->hasMany(VolunteerMinistryInvitationSlot::class, 'invitation_id');
+    }
+
+    public function leaderStatusHistory(): HasMany
+    {
+        return $this->hasMany(VolunteerMinistryInvitationStatusHistory::class, 'invitation_id')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
     }
 
     public function isExpired(): bool

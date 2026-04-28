@@ -11,7 +11,7 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import SelectInput from '@/Components/SelectInput';
 import InputError from '@/Components/InputError';
-import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage, useRemember } from '@inertiajs/react';
 import { FormEventHandler, useEffect, useMemo, useState } from 'react';
 import {
     AdjustmentsHorizontalIcon,
@@ -145,7 +145,6 @@ export default function Pipeline({
     const csrf = (page.props as { csrf_token?: string }).csrf_token ?? '';
     const currentChurch = (page.props as { currentChurch?: { name?: string } | null }).currentChurch;
     const churchName = currentChurch?.name ?? 'Igreja';
-    const flash = (page.props as { flash?: { ministry_invite_link?: string | null } }).flash;
 
     const filterForm = useForm<BoardFilters>({ ...filters });
     const filtersKey = useMemo(() => JSON.stringify(filters), [filters]);
@@ -167,20 +166,23 @@ export default function Pipeline({
     const [publicInviteOpen, setPublicInviteOpen] = useState(false);
     const [ministryInviteShareOpen, setMinistryInviteShareOpen] = useState(false);
     const [ministryInviteShare, setMinistryInviteShare] = useState<{ link: string; name: string; ministryName: string } | null>(null);
-    const [inviteOpen, setInviteOpen] = useState(false);
-    const [inviteVolunteer, setInviteVolunteer] = useState<VolunteerListRow | null>(null);
-    const [inviteMinistryId, setInviteMinistryId] = useState<string>('');
-    const [inviteChannels, setInviteChannels] = useState<{ email: boolean; inbox: boolean; manual: boolean }>({ email: true, inbox: true, manual: true });
-    const [inviteSlots, setInviteSlots] = useState<Array<{ day_of_week: number; start_time: string; end_time: string }>>([]);
+    const [inviteOpen, setInviteOpen] = useRemember(false, 'pipeline.inviteOpen');
+    const [inviteVolunteer, setInviteVolunteer] = useRemember<VolunteerListRow | null>(null, 'pipeline.inviteVolunteer');
+    const [inviteMinistryId, setInviteMinistryId] = useRemember<string>('', 'pipeline.inviteMinistryId');
+    const [inviteChannels, setInviteChannels] = useRemember<{ email: boolean; inbox: boolean }>(
+        { email: true, inbox: true },
+        'pipeline.inviteChannels',
+    );
+    const [manualLink, setManualLink] = useState<string>('');
+    const [manualLinkCopied, setManualLinkCopied] = useState(false);
 
     const noteForm = useForm({ body: '' });
     const stageMoveForm = useForm({ stage_id: '' as string | number });
 
     const openInvite = (v: VolunteerListRow) => {
         setInviteVolunteer(v);
-        setInviteMinistryId('');
-        setInviteSlots([]);
-        setInviteChannels({ email: true, inbox: true, manual: true });
+        // Não resetamos automaticamente os campos do formulário.
+        // O estado é "remembered" para sobreviver a reloads parciais do Inertia enquanto o modal está aberto.
         setInviteOpen(true);
     };
 
@@ -269,35 +271,72 @@ export default function Pipeline({
         });
     };
 
+    const postInvite = (channels: string[], closeOnSuccess: boolean) => {
+        if (!inviteVolunteer || !inviteMinistryId) return;
+        router.post(
+            route('ministry-lead.volunteers.ministry-invite.store', inviteVolunteer.id),
+            { ministry_id: Number(inviteMinistryId), channels },
+            {
+                preserveScroll: true,
+                onSuccess: (p) => {
+                    const nextFlash = (p.props as { flash?: { ministry_invite_link?: string | null } }).flash;
+                    const link = nextFlash?.ministry_invite_link ?? '';
+                    const m = ministries.find((x) => String(x.id) === String(inviteMinistryId));
+
+                    if (channels.includes('manual') && link) {
+                        setManualLink(link);
+                        setManualLinkCopied(false);
+                    } else if (link) {
+                        setMinistryInviteShare({ link, name: inviteVolunteer?.name ?? '', ministryName: m?.name ?? '' });
+                        setMinistryInviteShareOpen(true);
+                    }
+
+                    if (closeOnSuccess) {
+                        setInviteOpen(false);
+                        setInviteVolunteer(null);
+                        setInviteMinistryId('');
+                        setInviteChannels({ email: true, inbox: true });
+                    }
+                },
+            },
+        );
+    };
+
+    const generateManualLink = async () => {
+        if (!inviteVolunteer || !inviteMinistryId) return;
+        try {
+            const url = route('ministry-lead.volunteers.ministry-invite.store', inviteVolunteer.id);
+            const r = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrf,
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ ministry_id: Number(inviteMinistryId), channels: ['manual'] }),
+            });
+            if (!r.ok) return;
+            const j = (await r.json()) as { link?: string };
+            if (j.link) {
+                setManualLink(j.link);
+                setManualLinkCopied(false);
+            }
+        } catch {
+            // silêncio: usuário ainda pode usar "Enviar convite" ou tentar novamente
+        }
+    };
+
     const submitInvite: FormEventHandler = (e) => {
         e.preventDefault();
         if (!inviteVolunteer || !inviteMinistryId) return;
         const channels = Object.entries(inviteChannels)
             .filter(([, v]) => v)
             .map(([k]) => k);
-        router.post(
-            route('ministry-lead.volunteers.ministry-invite.store', inviteVolunteer.id),
-            {
-                ministry_id: Number(inviteMinistryId),
-                channels,
-                slots: inviteSlots.map((s) => ({
-                    day_of_week: s.day_of_week,
-                    start_time: s.start_time || null,
-                    end_time: s.end_time || null,
-                })),
-            },
-            { preserveScroll: true, onSuccess: () => setInviteOpen(false) },
-        );
+        if (channels.length === 0) return;
+        postInvite(channels, true);
     };
-
-    useEffect(() => {
-        const link = flash?.ministry_invite_link;
-        if (!link || !inviteVolunteer) return;
-        const m = ministries.find((x) => String(x.id) === String(inviteMinistryId));
-        setMinistryInviteShare({ link, name: inviteVolunteer.name ?? '', ministryName: m?.name ?? '' });
-        setMinistryInviteShareOpen(true);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [flash?.ministry_invite_link]);
 
     const currentStageFilter = filters.pipeline_stage_id ?? '';
     const activeFiltersCount = useMemo(() => {
@@ -1029,7 +1068,16 @@ export default function Pipeline({
                 />
             ) : null}
 
-            <Modal show={inviteOpen} onClose={() => setInviteOpen(false)} maxWidth="lg">
+            <Modal
+                show={inviteOpen}
+                onClose={() => {
+                    setInviteOpen(false);
+                    setInviteVolunteer(null);
+                    setInviteMinistryId('');
+                    setInviteChannels({ email: true, inbox: true });
+                }}
+                maxWidth="lg"
+            >
                 <div className="p-6 space-y-4">
                     <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Encaminhar voluntário</h2>
                     <p className="text-sm text-zinc-600 dark:text-zinc-300">
@@ -1055,8 +1103,8 @@ export default function Pipeline({
 
                         <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
                             <p className="text-sm font-semibold text-zinc-900 dark:text-white">Canais</p>
-                            <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                                {(['email', 'inbox', 'manual'] as const).map((k) => (
+                            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                                {(['email', 'inbox'] as const).map((k) => (
                                     <label key={k} className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-200">
                                         <input
                                             type="checkbox"
@@ -1064,85 +1112,74 @@ export default function Pipeline({
                                             onChange={(e) => setInviteChannels((cur) => ({ ...cur, [k]: e.target.checked }))}
                                             className="rounded border-zinc-300 dark:border-zinc-600"
                                         />
-                                        {k === 'email' ? 'E-mail' : k === 'inbox' ? 'Notificação (app)' : 'WhatsApp/manual (gera link)'}
+                                        {k === 'email' ? 'E-mail' : 'Notificação (app)'}
                                     </label>
                                 ))}
                             </div>
                         </div>
 
-                        <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
-                            <p className="text-sm font-semibold text-zinc-900 dark:text-white">Dias e horário de mudança</p>
-                            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Opcional: sugira dias/horários (pode adicionar mais de um).</p>
-                            <div className="mt-3 space-y-2">
-                                {inviteSlots.map((s, idx) => (
-                                    <div key={idx} className="flex flex-wrap items-center gap-2">
-                                        <select
-                                            value={String(s.day_of_week)}
-                                            onChange={(e) =>
-                                                setInviteSlots((cur) =>
-                                                    cur.map((x, i) => (i === idx ? { ...x, day_of_week: Number(e.target.value) } : x)),
-                                                )
-                                            }
-                                            className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-                                        >
-                                            {[
-                                                ['0', 'Dom'],
-                                                ['1', 'Seg'],
-                                                ['2', 'Ter'],
-                                                ['3', 'Qua'],
-                                                ['4', 'Qui'],
-                                                ['5', 'Sex'],
-                                                ['6', 'Sáb'],
-                                            ].map(([v, l]) => (
-                                                <option key={v} value={v}>
-                                                    {l}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <input
-                                            type="time"
-                                            value={s.start_time}
-                                            onChange={(e) =>
-                                                setInviteSlots((cur) => cur.map((x, i) => (i === idx ? { ...x, start_time: e.target.value } : x)))
-                                            }
-                                            className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-                                        />
-                                        <span className="text-xs text-zinc-500">até</span>
-                                        <input
-                                            type="time"
-                                            value={s.end_time}
-                                            onChange={(e) =>
-                                                setInviteSlots((cur) => cur.map((x, i) => (i === idx ? { ...x, end_time: e.target.value } : x)))
-                                            }
-                                            className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => setInviteSlots((cur) => cur.filter((_, i) => i !== idx))}
-                                            className="ml-auto rounded-xl px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/30"
-                                        >
-                                            Remover
-                                        </button>
-                                    </div>
-                                ))}
-                                <button
-                                    type="button"
-                                    onClick={() => setInviteSlots((cur) => [...cur, { day_of_week: 0, start_time: '', end_time: '' }])}
-                                    className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-800 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
-                                >
-                                    + Adicionar dia/horário
-                                </button>
-                            </div>
-                        </div>
-
                         <div className="flex justify-end gap-2">
-                            <SecondaryButton type="button" onClick={() => setInviteOpen(false)}>
+                            <SecondaryButton
+                                type="button"
+                                onClick={() => {
+                                    setInviteOpen(false);
+                                    setInviteVolunteer(null);
+                                    setInviteMinistryId('');
+                                    setInviteChannels({ email: true, inbox: true });
+                                    setManualLink('');
+                                    setManualLinkCopied(false);
+                                }}
+                            >
                                 Cancelar
                             </SecondaryButton>
-                            <PrimaryButton type="submit" disabled={!inviteMinistryId}>
-                                Gerar convite
+                            <SecondaryButton
+                                type="button"
+                                disabled={!inviteMinistryId}
+                                onClick={() => {
+                                    setManualLink('');
+                                    setManualLinkCopied(false);
+                                    void generateManualLink();
+                                }}
+                            >
+                                Gerar link (WhatsApp)
+                            </SecondaryButton>
+                            <PrimaryButton
+                                type="submit"
+                                disabled={!inviteMinistryId || (!inviteChannels.email && !inviteChannels.inbox)}
+                            >
+                                Enviar convite
                             </PrimaryButton>
                         </div>
+
+                        {manualLink ? (
+                            <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
+                                <p className="text-sm font-semibold text-zinc-900 dark:text-white">Link gerado</p>
+                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                    Copie e envie no WhatsApp.
+                                </p>
+                                <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                                    <input
+                                        value={manualLink}
+                                        readOnly
+                                        className="h-11 w-full flex-1 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white"
+                                    />
+                                    <SecondaryButton
+                                        type="button"
+                                        onClick={async () => {
+                                            try {
+                                                await navigator.clipboard.writeText(manualLink);
+                                                setManualLinkCopied(true);
+                                                window.setTimeout(() => setManualLinkCopied(false), 1500);
+                                            } catch {
+                                                // noop: se clipboard não estiver disponível, o usuário ainda pode selecionar/copiar manualmente
+                                            }
+                                        }}
+                                    >
+                                        {manualLinkCopied ? 'Copiado' : 'Copiar'}
+                                    </SecondaryButton>
+                                </div>
+                            </div>
+                        ) : null}
                     </form>
                 </div>
             </Modal>

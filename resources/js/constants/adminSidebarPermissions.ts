@@ -9,6 +9,9 @@ export const adminSidebarRoutePermissions: Record<string, string[]> = {
     'volunteers.index': ['volunteers.view', 'volunteers.manage'],
     'volunteers.show': ['volunteers.view', 'volunteers.manage'],
     'ministry-lead.volunteers.index': ['volunteers.view', 'volunteers.manage', 'volunteers.ministry_operate'],
+    // “Meus voluntários” é filtrado por role no backend (lider_ministerio|admin|super_admin).
+    // Mantemos sem permissão para aparecer no menu desses perfis.
+    'ministry-lead.my-volunteers.index': [],
     'ministry-lead.volunteers.pipeline.stages.store': ['volunteers.ministry_operate', 'volunteers.manage'],
     'ministry-lead.volunteers.pipeline.detail': ['volunteers.ministry_operate', 'volunteers.manage'],
     'ministry-lead.volunteers.pipeline.notes.store': ['volunteers.ministry_operate', 'volunteers.manage'],

@@ -12,6 +12,7 @@ import {
     UserCircleIcon,
     ChevronDownIcon,
     PencilSquareIcon,
+    UserGroupIcon,
 } from '@heroicons/react/24/outline';
 
 interface Props {
@@ -135,7 +136,7 @@ export default function MobileProfile({ church, user, profileCounts }: Props) {
             canAccessAdminMenu?: boolean;
             pastoralAgendaMenuVisible?: boolean;
             linkedPastor?: { id: number } | null;
-            user?: { is_volunteer?: boolean };
+            user?: { is_volunteer?: boolean; is_ministry_leader?: boolean };
         };
     }).auth;
     const linkedPastor = auth?.linkedPastor ?? null;
@@ -151,6 +152,7 @@ export default function MobileProfile({ church, user, profileCounts }: Props) {
 
     const canAccessSolicitationsAdmin =
         canAccessAdminMenu || permissions.includes('solicitations.view') || permissions.includes('solicitations.manage');
+    const isMinistryLeader = auth?.user?.is_ministry_leader === true;
 
     const memberRows: Row[] = [
         {
@@ -168,6 +170,17 @@ export default function MobileProfile({ church, user, profileCounts }: Props) {
             href: route('mobile.schedule'),
             tone: 'member',
         },
+        ...(isMinistryLeader
+            ? ([
+                  {
+                      title: 'Meus voluntários',
+                      description: 'Voluntários encaminhados para você',
+                      icon: UserGroupIcon,
+                      href: route('ministry-lead.my-volunteers.index'),
+                      tone: 'member',
+                  },
+              ] as Row[])
+            : []),
         {
             title: 'Falar com um Líder',
             description: 'Conversa com líder de ministério (membro logado)',

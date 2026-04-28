@@ -38,6 +38,7 @@
         "vite": "^7.0.7"
     },
     "dependencies": {
+        "@capacitor/app": "^8.1.0",
         "@capacitor/device": "^8.0.2",
         "@capacitor/network": "^8.0.1",
         "@capacitor/push-notifications": "^8.0.3",

@@ -31,6 +31,9 @@ class UpdateChurchUserProfile
                 ->all()
             : [];
 
+        // Se já selecionou departamentos (no cadastro), consideramos voluntário automaticamente.
+        $isVolunteer = (bool) ($data['is_volunteer'] ?? false) || count($allowedMinistryIds) > 0;
+
         $payload = [
             'name' => $data['name'],
             'email' => $data['email'],
@@ -38,7 +41,8 @@ class UpdateChurchUserProfile
             'birth_date' => $data['birth_date'] ?? null,
             'address' => $data['address'] ?? null,
             'status' => $data['status'] ?? 'active',
-            'is_volunteer' => (bool) ($data['is_volunteer'] ?? false),
+            'is_volunteer' => $isVolunteer,
+            'is_ministry_leader' => (bool) ($data['is_ministry_leader'] ?? false),
         ];
         if (array_key_exists('photo_url', $data)) {
             $payload['photo_url'] = $data['photo_url'];
@@ -56,7 +60,7 @@ class UpdateChurchUserProfile
 
         $volunteer = $user->fresh()->volunteerProfile;
         if ($volunteer !== null) {
-            $syncIds = ($user->is_volunteer) ? $allowedMinistryIds : [];
+            $syncIds = $isVolunteer ? $allowedMinistryIds : [];
             app(SyncVolunteerMinistryAttachments::class)($volunteer, $syncIds);
         }
 

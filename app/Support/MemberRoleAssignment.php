@@ -19,7 +19,6 @@ final class MemberRoleAssignment
             'secretaria' => 'Secretaria',
             'pastor' => 'Pastor',
             'membro' => 'Membro (app)',
-            'lider_ministerio' => 'Líder de ministério',
             default => $name,
         };
     }
@@ -44,6 +43,9 @@ final class MemberRoleAssignment
 
         // Perfil financeiro foi removido do produto.
         $all = array_values(array_filter($all, fn (string $n) => $n !== 'financeiro'));
+
+        // Líder de ministério deixou de ser perfil (role): agora é definido por vínculo `ministry_user`.
+        $all = array_values(array_filter($all, fn (string $n) => $n !== 'lider_ministerio'));
 
         // Usar `checkPermissionTo` (Spatie), não `can()` / Gate: `AppServiceProvider::Gate::before` devolve true
         // para admin/super_admin e invalidaria `can('roles.manage')` como critério de permissão real.
