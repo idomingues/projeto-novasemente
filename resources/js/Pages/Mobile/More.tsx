@@ -15,6 +15,7 @@ import {
     HandRaisedIcon,
 } from '@heroicons/react/24/outline';
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
+import InstalledAppVersion from '@/Components/InstalledAppVersion';
 import type { ComponentType, SVGProps } from 'react';
 
 type MenuIcon = ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
@@ -29,6 +30,7 @@ interface Props {
 }
 
 type PageProps = {
+    appVersion?: string | null;
     auth?: {
         user?: unknown | null;
         permissions?: string[];
@@ -63,7 +65,7 @@ const items: MoreMenuItem[] = [
 ];
 
 export default function MobileMore(_: Props) {
-    const { auth } = usePage().props as unknown as PageProps;
+    const { auth, appVersion } = usePage().props as unknown as PageProps;
     const isAuthenticated = !!auth?.user;
     const permissions = auth?.permissions ?? [];
     const unrestricted = auth?.adminSidebarUnrestricted === true;
@@ -164,6 +166,25 @@ export default function MobileMore(_: Props) {
                             </Link>
                         );
                     })}
+
+                    <div className="flex items-center gap-4 p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                        <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-zinc-100 dark:bg-zinc-800">
+                            <BookOpenIcon className="w-6 h-6 text-zinc-600 dark:text-zinc-400" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <span className="font-semibold text-zinc-900 dark:text-white block">Versão</span>
+                            <div className="mt-1 space-y-0.5">
+                                <div className="flex items-baseline justify-between gap-3">
+                                    <span className="text-xs text-zinc-500 dark:text-zinc-400">Web</span>
+                                    <span className="text-xs font-medium text-zinc-700 dark:text-zinc-200">{appVersion ?? '—'}</span>
+                                </div>
+                                <div className="flex items-baseline justify-between gap-3">
+                                    <span className="text-xs text-zinc-500 dark:text-zinc-400">Instalada</span>
+                                    <InstalledAppVersion className="text-xs font-medium text-zinc-700 dark:text-zinc-200" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </MobileLayout>

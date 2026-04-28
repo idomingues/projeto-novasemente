@@ -28,6 +28,10 @@ jobs:
             npm ci
             npm run build
             php artisan migrate --force
+            # Registar versão web automaticamente (para aparecer no card "Versão").
+            RELEASE_SHA="$(git rev-parse --short HEAD)"
+            RELEASE_VER="v2.${{ github.run_number }}"
+            php artisan app:release --version="${RELEASE_VER}" --released_at="$(date -Iseconds)"
             # php artisan db:seed --force  # só se quiser repopular
             php artisan optimize:clear
             php artisan config:cache

@@ -114,7 +114,16 @@ class HandleInertiaRequests extends Middleware
         }
 
         $linkedPastor = null;
-        if ($request->user() && Schema::hasTable('pastors') && Schema::hasColumn('pastors', 'user_id')) {
+        /**
+         * "Minha Agenda" é uma área específica do perfil de pastor.
+         * Mesmo que exista um registro em `pastors`, só consideramos "ligado" quando a conta tem o papel `pastor`.
+         */
+        if (
+            $request->user()
+            && $request->user()->hasRole('pastor')
+            && Schema::hasTable('pastors')
+            && Schema::hasColumn('pastors', 'user_id')
+        ) {
             $churchId = Church::resolveWorkingId($request);
             if ($churchId !== null) {
                 $pid = Pastor::query()

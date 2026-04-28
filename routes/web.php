@@ -463,11 +463,11 @@ Route::middleware('auth')->group(function () {
         ->name('solicitations.messages.store')
         ->middleware('role_or_permission:super_admin|admin|solicitations.view|solicitations.manage');
 
-    // Versões do App (Admin) — só super admin
-    Route::get('/app-versions', [AppVersionController::class, 'index'])->name('app-versions.index')->middleware('role:super_admin');
-    Route::post('/app-versions', [AppVersionController::class, 'store'])->name('app-versions.store')->middleware('role:super_admin');
-    Route::put('/app-versions/{appVersion}', [AppVersionController::class, 'update'])->name('app-versions.update')->middleware('role:super_admin');
-    Route::delete('/app-versions/{appVersion}', [AppVersionController::class, 'destroy'])->name('app-versions.destroy')->middleware('role:super_admin');
+    // Versões do App (Admin) — admin/super_admin (admin pode complementar notas pós-deploy)
+    Route::get('/app-versions', [AppVersionController::class, 'index'])->name('app-versions.index')->middleware('role:admin|super_admin');
+    Route::post('/app-versions', [AppVersionController::class, 'store'])->name('app-versions.store')->middleware('role:admin|super_admin');
+    Route::put('/app-versions/{appVersion}', [AppVersionController::class, 'update'])->name('app-versions.update')->middleware('role:admin|super_admin');
+    Route::delete('/app-versions/{appVersion}', [AppVersionController::class, 'destroy'])->name('app-versions.destroy')->middleware('role:admin|super_admin');
 
     // Operações / métricas / auditoria de login — apenas super admin
     Route::get('/operacoes', [OperationsDashboardController::class, 'index'])
