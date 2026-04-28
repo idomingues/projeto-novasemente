@@ -6,7 +6,7 @@ import TextInput from '@/Components/TextInput';
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import { FormEventHandler, useEffect } from 'react';
+import { FormEventHandler, useEffect, useState } from 'react';
 
 /** Evita zoom bloqueado e faz o Chrome redimensionar a área útil quando o teclado/autofill abre (melhor que sobrepor o formulário). */
 const LOGIN_VIEWPORT =
@@ -22,15 +22,49 @@ export default function Login({
     redirectTo?: string | null;
 }) {
     const appLogoUrl = (usePage().props as { appLogoUrl?: string | null }).appLogoUrl ?? null;
+    const csrfToken =
+        (usePage().props as { csrf_token?: string | null }).csrf_token ??
+        document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ??
+        '';
 
     const { data, setData, post, processing, errors, reset } = useForm({
         login: '',
         password: '',
         remember: false as boolean,
         redirect: redirectTo ?? '',
+        _token: csrfToken,
         /** Honeypot (deixar vazio): bots preenchem; o servidor rejeita. */
         website: '',
     });
+
+    // Versão "debug" que funcionou: mantém erros mesmo se a tela remonta durante o POST.
+    const [submitErrors, setSubmitErrors] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        const w = window as unknown as { __loginSubmitErrors?: Record<string, string> };
+        if (w.__loginSubmitErrors && Object.keys(w.__loginSubmitErrors).length > 0) {
+            setSubmitErrors(w.__loginSubmitErrors);
+            delete w.__loginSubmitErrors;
+        }
+    }, []);
+
+    const loginMessageFromServer =
+        typeof (errors as { login?: unknown }).login === 'string' && (errors as { login?: string }).login?.trim()
+            ? ((errors as { login?: string }).login as string)
+            : submitErrors.login;
+    const passwordMessageFromServer =
+        typeof (errors as { password?: unknown }).password === 'string' && (errors as { password?: string }).password?.trim()
+            ? ((errors as { password?: string }).password as string)
+            : submitErrors.password;
+
+    // UX: senha incorreta aparece no banner + embaixo da senha (não embaixo do e-mail).
+    const loginErrorMessage = passwordMessageFromServer ? undefined : loginMessageFromServer;
+    const passwordErrorMessage = passwordMessageFromServer;
+
+    const bannerMessage =
+        passwordMessageFromServer ||
+        loginMessageFromServer ||
+        (Object.keys(submitErrors).length > 0 ? 'Não foi possível entrar. Verifique seus dados.' : '');
 
     useEffect(() => {
         const meta = document.querySelector('meta[name="viewport"]');
@@ -44,8 +78,26 @@ export default function Login({
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
+        // Garante CSRF mesmo em ambientes onde o header/cookie não esteja chegando no POST.
+        if (csrfToken) {
+            setData('_token', csrfToken);
+        }
+        setSubmitErrors({});
         post(route('login'), {
-            onFinish: () => reset('password'),
+            onError: (errs) => {
+                const normalized: Record<string, string> = {};
+                Object.entries(errs ?? {}).forEach(([key, val]) => {
+                    if (typeof val === 'string' && val.trim() !== '') {
+                        normalized[key] = val;
+                    }
+                });
+                // Persistir caso a página remonte durante o POST.
+                (window as unknown as { __loginSubmitErrors?: Record<string, string> }).__loginSubmitErrors = normalized;
+                setSubmitErrors(normalized);
+            },
+            onFinish: () => {
+                reset('password');
+            },
         });
     };
 
@@ -119,6 +171,12 @@ export default function Login({
                             Acesse sua conta para acompanhar a gestão da igreja.
                         </p>
 
+                        {bannerMessage ? (
+                            <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800">
+                                {bannerMessage}
+                            </div>
+                        ) : null}
+
                         <form onSubmit={submit} className="mt-6 space-y-5">
                             <input
                                 type="text"
@@ -143,7 +201,7 @@ export default function Login({
                                     onChange={(e) => setData('login', e.target.value)}
                                     required
                                 />
-                                <InputError message={errors.login} className="mt-2" />
+                                <InputError message={loginErrorMessage} className="mt-2" />
                             </div>
 
                             <div>
@@ -158,7 +216,7 @@ export default function Login({
                                     onChange={(e) => setData('password', e.target.value)}
                                     required
                                 />
-                                <InputError message={errors.password} className="mt-2" />
+                                <InputError message={passwordErrorMessage} className="mt-2" />
                             </div>
 
                             {/* Ação principal logo após as credenciais — mais espaço para o dropdown de autofill sem tapar o botão */}
