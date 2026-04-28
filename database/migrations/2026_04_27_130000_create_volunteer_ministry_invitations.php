@@ -8,43 +8,63 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('volunteer_ministry_invitations', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('church_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('volunteer_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('ministry_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('invited_by_user_id')->nullable()->constrained('users')->nullOnDelete();
+        // Idempotência para ambientes onde a tabela existe, mas a migration não foi registrada
+        // (ex.: banco restaurado/manual). Evita quebrar deploy.
+        if (! Schema::hasTable('volunteer_ministry_invitations')) {
+            Schema::create('volunteer_ministry_invitations', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('church_id')->constrained()->cascadeOnDelete();
+                $table->foreignId('volunteer_id')->constrained()->cascadeOnDelete();
+                $table->foreignId('ministry_id')->constrained()->cascadeOnDelete();
+                $table->foreignId('invited_by_user_id')->nullable()->constrained('users')->nullOnDelete();
 
-            $table->string('token', 64)->unique();
-            $table->string('status', 24)->default('pending'); // pending|accepted|declined
+                $table->string('token', 64)->unique();
+                $table->string('status', 24)->default('pending'); // pending|accepted|declined
 
-            $table->string('channel', 24)->nullable(); // email|inbox|manual (registrado por último)
-            $table->timestamp('sent_at')->nullable();
-            $table->timestamp('accepted_at')->nullable();
-            $table->timestamp('declined_at')->nullable();
-            $table->text('decline_reason')->nullable();
-            $table->timestamp('expires_at')->nullable();
+                $table->string('channel', 24)->nullable(); // email|inbox|manual (registrado por último)
+                $table->timestamp('sent_at')->nullable();
+                $table->timestamp('accepted_at')->nullable();
+                $table->timestamp('declined_at')->nullable();
+                $table->text('decline_reason')->nullable();
+                $table->timestamp('expires_at')->nullable();
 
-            $table->timestamps();
+                $table->timestamps();
+            });
+        }
 
-            // MySQL limita nomes de índices a 64 chars; definimos nomes curtos manualmente.
-            $table->index(['church_id', 'volunteer_id', 'status'], 'vmi_church_vol_status');
-            $table->index(['church_id', 'ministry_id', 'status'], 'vmi_church_min_status');
-        });
+        // Índices (tentamos criar; se já existirem, ignoramos)
+        try {
+            Schema::table('volunteer_ministry_invitations', function (Blueprint $table) {
+                $table->index(['church_id', 'volunteer_id', 'status'], 'vmi_church_vol_status');
+            });
+        } catch (\Throwable) {
+        }
+        try {
+            Schema::table('volunteer_ministry_invitations', function (Blueprint $table) {
+                $table->index(['church_id', 'ministry_id', 'status'], 'vmi_church_min_status');
+            });
+        } catch (\Throwable) {
+        }
 
-        Schema::create('volunteer_ministry_invitation_slots', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('invitation_id')
-                ->constrained('volunteer_ministry_invitations')
-                ->cascadeOnDelete();
-            $table->unsignedTinyInteger('day_of_week'); // 0=Dom ... 6=Sab
-            $table->time('start_time')->nullable();
-            $table->time('end_time')->nullable();
-            $table->timestamps();
+        if (! Schema::hasTable('volunteer_ministry_invitation_slots')) {
+            Schema::create('volunteer_ministry_invitation_slots', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('invitation_id')
+                    ->constrained('volunteer_ministry_invitations')
+                    ->cascadeOnDelete();
+                $table->unsignedTinyInteger('day_of_week'); // 0=Dom ... 6=Sab
+                $table->time('start_time')->nullable();
+                $table->time('end_time')->nullable();
+                $table->timestamps();
+            });
+        }
 
-            // MySQL limita nomes de índices a 64 chars; definimos nome curto manualmente.
-            $table->index(['invitation_id', 'day_of_week'], 'vmi_slot_inv_day');
-        });
+        try {
+            Schema::table('volunteer_ministry_invitation_slots', function (Blueprint $table) {
+                $table->index(['invitation_id', 'day_of_week'], 'vmi_slot_inv_day');
+            });
+        } catch (\Throwable) {
+        }
     }
 
     public function down(): void

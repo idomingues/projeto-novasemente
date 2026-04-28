@@ -134,7 +134,6 @@ export default function MobileProfile({ church, user, profileCounts }: Props) {
         auth?: {
             permissions?: string[];
             canAccessAdminMenu?: boolean;
-            pastoralAgendaMenuVisible?: boolean;
             linkedPastor?: { id: number } | null;
             user?: { is_volunteer?: boolean; is_ministry_leader?: boolean };
         };
@@ -143,12 +142,11 @@ export default function MobileProfile({ church, user, profileCounts }: Props) {
     const permissions = auth?.permissions ?? [];
     const canAccessAdminMenu = auth?.canAccessAdminMenu === true;
     const isVolunteer = auth?.user?.is_volunteer === true;
-    const pastoralAgendaMenuVisible =
-        auth?.pastoralAgendaMenuVisible === true ||
-        canAccessAdminMenu ||
-        permissions.includes('pastors.view') ||
-        permissions.includes('pastors.manage') ||
-        permissions.includes('pastoral_appointments.manage');
+    /**
+     * "Minha Agenda" é um item específico do perfil de pastor.
+     * Portanto, só deve aparecer quando a conta tiver um registro de pastor ligado na igreja em contexto.
+     */
+    const showMyPastoralAgenda = linkedPastor !== null;
 
     const canAccessSolicitationsAdmin =
         canAccessAdminMenu || permissions.includes('solicitations.view') || permissions.includes('solicitations.manage');
@@ -229,15 +227,13 @@ export default function MobileProfile({ church, user, profileCounts }: Props) {
                   },
               ] as Row[])
             : []),
-        ...(pastoralAgendaMenuVisible
+        ...(showMyPastoralAgenda
             ? ([
                   {
-                      title: linkedPastor ? 'Minha Agenda' : 'Agenda Pastoral',
-                      description: linkedPastor
-                          ? 'Compromissos e disponibilidade do seu perfil (painel)'
-                          : 'Disponibilidade dos perfis de pastor (painel)',
+                      title: 'Minha Agenda',
+                      description: 'Compromissos e disponibilidade do seu perfil (painel)',
                       icon: ClockIcon,
-                      href: linkedPastor ? route('pastoral-agenda.index', { mine: 1 }) : route('pastoral-agenda.index'),
+                      href: route('pastoral-agenda.index', { mine: 1 }),
                       tone: 'critical',
                       badgeCount:
                             typeof profileCounts.pastoral_agenda === 'number' ? profileCounts.pastoral_agenda : null,
