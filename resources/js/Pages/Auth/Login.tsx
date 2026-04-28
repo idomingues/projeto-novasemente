@@ -6,7 +6,7 @@ import TextInput from '@/Components/TextInput';
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import { FormEventHandler, useEffect, useState } from 'react';
+import { FormEventHandler, useEffect } from 'react';
 
 /** Evita zoom bloqueado e faz o Chrome redimensionar a área útil quando o teclado/autofill abre (melhor que sobrepor o formulário). */
 const LOGIN_VIEWPORT =
@@ -27,7 +27,7 @@ export default function Login({
         document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ??
         '';
 
-    const { data, setData, post, processing, errors, reset } = useForm({
+    const { data, setData, post, processing, errors, reset, setError, clearErrors } = useForm({
         login: '',
         password: '',
         remember: false as boolean,
@@ -37,34 +37,19 @@ export default function Login({
         website: '',
     });
 
-    // Versão "debug" que funcionou: mantém erros mesmo se a tela remonta durante o POST.
-    const [submitErrors, setSubmitErrors] = useState<Record<string, string>>({});
-
-    useEffect(() => {
-        const w = window as unknown as { __loginSubmitErrors?: Record<string, string> };
-        if (w.__loginSubmitErrors && Object.keys(w.__loginSubmitErrors).length > 0) {
-            setSubmitErrors(w.__loginSubmitErrors);
-            delete w.__loginSubmitErrors;
-        }
-    }, []);
-
-    const loginMessageFromServer =
-        typeof (errors as { login?: unknown }).login === 'string' && (errors as { login?: string }).login?.trim()
+    const loginError =
+        typeof (errors as { login?: unknown }).login === 'string'
             ? ((errors as { login?: string }).login as string)
-            : submitErrors.login;
-    const passwordMessageFromServer =
-        typeof (errors as { password?: unknown }).password === 'string' && (errors as { password?: string }).password?.trim()
+            : undefined;
+    const passwordError =
+        typeof (errors as { password?: unknown }).password === 'string'
             ? ((errors as { password?: string }).password as string)
-            : submitErrors.password;
+            : undefined;
 
-    // UX: senha incorreta aparece no banner + embaixo da senha (não embaixo do e-mail).
-    const loginErrorMessage = passwordMessageFromServer ? undefined : loginMessageFromServer;
-    const passwordErrorMessage = passwordMessageFromServer;
-
-    const bannerMessage =
-        passwordMessageFromServer ||
-        loginMessageFromServer ||
-        (Object.keys(submitErrors).length > 0 ? 'Não foi possível entrar. Verifique seus dados.' : '');
+    // UX: se a senha estiver errada, não repetir mensagem embaixo do e-mail.
+    const loginErrorMessage = passwordError ? undefined : loginError;
+    const passwordErrorMessage = passwordError;
+    const bannerMessage = passwordError || loginError;
 
     useEffect(() => {
         const meta = document.querySelector('meta[name="viewport"]');
@@ -82,18 +67,12 @@ export default function Login({
         if (csrfToken) {
             setData('_token', csrfToken);
         }
-        setSubmitErrors({});
+        clearErrors();
         post(route('login'), {
+            preserveState: true,
             onError: (errs) => {
-                const normalized: Record<string, string> = {};
-                Object.entries(errs ?? {}).forEach(([key, val]) => {
-                    if (typeof val === 'string' && val.trim() !== '') {
-                        normalized[key] = val;
-                    }
-                });
-                // Persistir caso a página remonte durante o POST.
-                (window as unknown as { __loginSubmitErrors?: Record<string, string> }).__loginSubmitErrors = normalized;
-                setSubmitErrors(normalized);
+                // Caminho correto Inertia: atualiza `errors` imediatamente.
+                setError(errs);
             },
             onFinish: () => {
                 reset('password');

@@ -78,11 +78,16 @@ class LoginRequest extends FormRequest
 
         $password = (string) $this->input('password');
 
+        // Se tem "cara de e-mail" (contém @), pesquisar só por e-mail — mesmo que esteja "mal digitado".
+        // Isso evita cair na busca por nome e trocar o tipo de mensagem (login vs senha).
+        $looksLikeEmail = str_contains($login, '@');
+
         $user = User::query()
-            ->where(function ($q) use ($login) {
-                $q->where('email', $login)
-                    ->orWhereRaw('LOWER(name) = ?', [mb_strtolower($login, 'UTF-8')]);
-            })
+            ->when(
+                $looksLikeEmail,
+                fn ($q) => $q->whereRaw('LOWER(email) = ?', [mb_strtolower($login, 'UTF-8')]),
+                fn ($q) => $q->whereRaw('LOWER(name) = ?', [mb_strtolower($login, 'UTF-8')]),
+            )
             ->first();
 
         if (! $user) {
