@@ -72,6 +72,15 @@ class StoreMemberRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator): void {
+            $targetRole = $this->input('role_name');
+            $targetRole = is_string($targetRole) ? trim($targetRole) : null;
+            $isAdminLikeTarget = in_array($targetRole, ['admin', 'super_admin'], true);
+
+            // Admin/super_admin não precisam estar vinculados a departamentos (regra de negócio).
+            if ($isAdminLikeTarget) {
+                return;
+            }
+
             // Líder (checkbox): precisa escolher ao menos um departamento para ver “Meus voluntários”.
             if ($this->boolean('is_ministry_leader')) {
                 $cid = Church::resolveWorkingId($this);

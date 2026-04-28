@@ -104,6 +104,17 @@ class UpdateMemberRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator): void {
+            $target = $this->route('user');
+            $roleFromForm = $this->input('role_name');
+            $roleFromTarget = $target instanceof User ? $target->getRoleNames()->first() : null;
+            $targetRole = is_string($roleFromForm) && trim($roleFromForm) !== '' ? trim($roleFromForm) : (is_string($roleFromTarget) ? $roleFromTarget : null);
+            $isAdminLikeTarget = in_array($targetRole, ['admin', 'super_admin'], true);
+
+            // Admin/super_admin não precisam estar vinculados a departamentos (regra de negócio).
+            if ($isAdminLikeTarget) {
+                return;
+            }
+
             // Líder (checkbox): precisa escolher ao menos um departamento para ver “Meus voluntários”.
             if ($this->boolean('is_ministry_leader')) {
                 $cid = Church::resolveWorkingId($this);
