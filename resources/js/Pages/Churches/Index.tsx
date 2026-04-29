@@ -411,12 +411,12 @@ export default function Index({ churches }: Props) {
                                 value={data.youtube_live_url}
                                 onChange={(e) => setData('youtube_live_url', e.target.value)}
                                 className="mt-1 block w-full"
-                                placeholder="https://www.youtube.com/watch?v=… ou youtu.be/…"
+                                placeholder="https://www.youtube.com/live/… ou watch?v=…"
                             />
                             <InputError message={errors.youtube_live_url} className="mt-1" />
                             <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                Aparece como primeiro cartão «AO VIVO» na página Culto do app. Use o link do vídeo ou
-                                transmissão ao vivo (mesmo formato dos vídeos de culto).
+                                Aparece como primeiro cartão «AO VIVO» na página Culto do app (watch, youtu.be, /live/ ou
+                                embed).
                             </p>
                         </div>
                     </div>

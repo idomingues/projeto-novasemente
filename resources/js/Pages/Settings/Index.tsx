@@ -5,30 +5,46 @@ import InputLabel from '@/Components/InputLabel';
 import PageHeader from '@/Components/PageHeader';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SelectInput from '@/Components/SelectInput';
+import TextInput from '@/Components/TextInput';
 import { Head, useForm } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
 
 type HandlerOption = { value: number; label: string };
 
 type Props = {
+    churchName: string;
     solicitationsHandlerVolunteerId: number | null;
     solicitationsHandlerOptions: HandlerOption[];
     updateSolicitationsHandlerUrl: string;
+    youtubeLiveUrl: string | null;
+    updateYoutubeLiveUrl: string;
 };
 
 export default function SettingsIndex({
+    churchName,
     solicitationsHandlerVolunteerId,
     solicitationsHandlerOptions,
     updateSolicitationsHandlerUrl,
+    youtubeLiveUrl,
+    updateYoutubeLiveUrl,
 }: Props) {
     const form = useForm({
         solicitations_handler_volunteer_id:
             solicitationsHandlerVolunteerId != null ? String(solicitationsHandlerVolunteerId) : '',
     });
 
+    const liveForm = useForm({
+        youtube_live_url: youtubeLiveUrl ?? '',
+    });
+
     const submitHandler: FormEventHandler = (e) => {
         e.preventDefault();
         form.put(updateSolicitationsHandlerUrl, { preserveScroll: true });
+    };
+
+    const submitLive: FormEventHandler = (e) => {
+        e.preventDefault();
+        liveForm.put(updateYoutubeLiveUrl, { preserveScroll: true });
     };
 
     return (
@@ -76,6 +92,41 @@ export default function SettingsIndex({
                         </div>
                         <div className="flex justify-end">
                             <PrimaryButton type="submit" disabled={form.processing}>
+                                Salvar
+                            </PrimaryButton>
+                        </div>
+                    </form>
+                </section>
+
+                <section className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6 shadow-sm">
+                    <h2 className="text-base font-semibold text-zinc-900 dark:text-white">App mobile — Culto ao vivo</h2>
+                    <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                        Igreja ativa no selector acima: <strong className="text-zinc-900 dark:text-white">{churchName}</strong>.
+                        O primeiro cartão na página <strong className="text-zinc-900 dark:text-white">Assistir culto</strong> do
+                        app será <strong className="text-zinc-900 dark:text-white">AO VIVO</strong> e abre este link no
+                        YouTube (vídeo ou transmissão).
+                    </p>
+                    <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-500">
+                        Formato: link de vídeo ou live (<code className="text-xs">watch?v=…</code>, <code className="text-xs">youtu.be/…</code>,{' '}
+                        <code className="text-xs">youtube.com/live/…</code> ou <code className="text-xs">embed/…</code>). Deixe em branco para
+                        ocultar o cartão AO VIVO.
+                    </p>
+
+                    <form onSubmit={submitLive} className="mt-6 space-y-4">
+                        <div>
+                            <InputLabel htmlFor="youtube_live_url" value="URL do culto ao vivo (YouTube)" />
+                            <TextInput
+                                id="youtube_live_url"
+                                type="url"
+                                className="mt-1 block w-full"
+                                value={liveForm.data.youtube_live_url}
+                                onChange={(e) => liveForm.setData('youtube_live_url', e.target.value)}
+                                placeholder="https://www.youtube.com/watch?v=…"
+                            />
+                            <InputError message={liveForm.errors.youtube_live_url} className="mt-1" />
+                        </div>
+                        <div className="flex justify-end">
+                            <PrimaryButton type="submit" disabled={liveForm.processing}>
                                 Salvar
                             </PrimaryButton>
                         </div>

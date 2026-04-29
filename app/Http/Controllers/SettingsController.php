@@ -19,9 +19,12 @@ class SettingsController extends Controller
         $church = Church::query()->findOrFail($churchId);
 
         return Inertia::render('Settings/Index', [
+            'churchName' => $church->name,
             'solicitationsHandlerVolunteerId' => $church->solicitations_handler_volunteer_id,
             'solicitationsHandlerOptions' => SolicitationHandlerAssignee::volunteerOptionsForChurch($churchId),
             'updateSolicitationsHandlerUrl' => route('settings.solicitations-handler.update'),
+            'youtubeLiveUrl' => $church->youtube_live_url,
+            'updateYoutubeLiveUrl' => route('settings.youtube-live.update'),
         ]);
     }
 
@@ -57,5 +60,23 @@ class SettingsController extends Controller
         $church->save();
 
         return redirect()->route('settings.index')->with('success', 'Responsável pelas solicitações atualizado.');
+    }
+
+    public function updateYoutubeLive(Request $request): RedirectResponse
+    {
+        $churchId = Church::resolveWorkingId($request);
+        abort_unless($churchId, 404, 'Nenhuma igreja ativa.');
+
+        $church = Church::query()->findOrFail($churchId);
+
+        $validated = $request->validate([
+            'youtube_live_url' => ['nullable', 'string', 'max:512'],
+        ]);
+        $raw = trim((string) ($validated['youtube_live_url'] ?? ''));
+        $church->update([
+            'youtube_live_url' => $raw !== '' ? $raw : null,
+        ]);
+
+        return redirect()->route('settings.index')->with('success', 'Link do culto ao vivo atualizado.');
     }
 }

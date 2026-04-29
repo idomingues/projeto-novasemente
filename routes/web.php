@@ -399,6 +399,9 @@ Route::middleware('auth')->group(function () {
     Route::put('/settings/solicitations-handler', [SettingsController::class, 'updateSolicitationsHandler'])
         ->name('settings.solicitations-handler.update')
         ->middleware('role:super_admin');
+    Route::put('/settings/youtube-live', [SettingsController::class, 'updateYoutubeLive'])
+        ->name('settings.youtube-live.update')
+        ->middleware('role:super_admin');
     Route::post('/acervo', [AcervoController::class, 'store'])->name('acervo.store')->middleware('permission:music.manage');
     Route::put('/acervo/{acervo}', [AcervoController::class, 'update'])->name('acervo.update')->middleware('permission:music.manage');
     Route::delete('/acervo/{acervo}', [AcervoController::class, 'destroy'])->name('acervo.destroy')->middleware('permission:music.manage');
