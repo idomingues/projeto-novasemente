@@ -285,6 +285,27 @@ class MobileController extends Controller
         ]);
     }
 
+    public function musicaShow(Request $request, Musica $musica): Response
+    {
+        $churchId = $this->currentChurch()?->id;
+        if ($churchId === null || $musica->church_id !== $churchId) {
+            abort(404);
+        }
+        if ($musica->published_at !== null && $musica->published_at->isFuture()) {
+            abort(404);
+        }
+
+        return Inertia::render('Mobile/MusicShow', [
+            'musica' => [
+                'id' => $musica->id,
+                'title' => $musica->title,
+                'youtube_url' => $musica->youtube_url,
+                'youtube_embed_url' => $musica->youtube_embed_url,
+                'published_at' => $musica->published_at?->toIso8601String(),
+            ],
+        ]);
+    }
+
     public function news(Request $request): Response
     {
         $churchId = $this->currentChurch()?->id;

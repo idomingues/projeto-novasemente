@@ -1,5 +1,5 @@
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { MusicalNoteIcon, PlayCircleIcon } from '@heroicons/react/24/outline';
 
 interface MusicaItem {
@@ -48,12 +48,7 @@ export default function MobileMusic({ musicas }: Props) {
                                 key={m.id}
                                 className="rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm hover:shadow-md hover:border-zinc-300 dark:hover:border-zinc-700 active:scale-[0.99] transition-all"
                             >
-                                <a
-                                    href={m.youtube_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="block"
-                                >
+                                <Link href={route('mobile.musica.show', m.id)} className="block">
                                     {m.youtube_thumb_url ? (
                                         <div className="relative aspect-video overflow-hidden bg-zinc-200 dark:bg-zinc-800">
                                             <img
@@ -81,7 +76,7 @@ export default function MobileMusic({ musicas }: Props) {
                                             {formatPublishedLabel(m.published_at)}
                                         </p>
                                     </div>
-                                </a>
+                                </Link>
                             </li>
                         ))}
                     </ul>

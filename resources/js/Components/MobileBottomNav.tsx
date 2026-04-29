@@ -62,6 +62,7 @@ const navItems = [
             'mobile.acervo',
             'musica.index',
             'mobile.musica',
+            'mobile.musica.show',
             'varios.notifications',
             'mobile.notifications',
             'mobile.inventory',

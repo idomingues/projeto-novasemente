@@ -116,6 +116,7 @@ Route::get('/mobile/quem-somos', [MobileController::class, 'quemSomos'])->name('
 Route::get('/mobile/classe-comecos', [MobileController::class, 'classeComecos'])->name('mobile.classe-comecos');
 Route::get('/mobile/acervo', [MobileController::class, 'acervo'])->name('mobile.acervo');
 Route::get('/mobile/musica', [MobileController::class, 'musica'])->name('mobile.musica');
+Route::get('/mobile/musica/{musica}', [MobileController::class, 'musicaShow'])->name('mobile.musica.show');
 Route::get('/mobile/services', [MobileController::class, 'services'])->name('mobile.services');
 Route::get('/mobile/fotos', [MobileController::class, 'fotos'])->name('mobile.fotos');
 Route::get('/mobile/fotos/{album}', [MobileController::class, 'fotosShow'])->name('mobile.fotos.show');
