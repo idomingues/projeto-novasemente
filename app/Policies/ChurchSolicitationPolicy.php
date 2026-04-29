@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Http\Controllers\MobileChurchSolicitationController;
 use App\Models\ChurchSolicitation;
 use App\Models\User;
 use App\Models\Volunteer;
@@ -132,5 +133,64 @@ class ChurchSolicitationPolicy
     public function hideFromLeaderApp(User $user, ChurchSolicitation $solicitation): bool
     {
         return $this->isAssignedLeader($user, $solicitation);
+    }
+
+    /** O requerente (líder) envia mensagens no chat enquanto o pedido estiver aberto. */
+    public function chatVolunteerRequestAsSubmitter(User $user, ChurchSolicitation $solicitation): bool
+    {
+        if ($solicitation->type !== MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST) {
+            return false;
+        }
+
+        if ((int) $solicitation->user_id !== (int) $user->id) {
+            return false;
+        }
+
+        return $solicitation->allowsChat();
+    }
+
+    /** Quem criou o pedido de voluntário (líder na área) altera enquanto está pendente. */
+    public function updateVolunteerRequestAsSubmitter(User $user, ChurchSolicitation $solicitation): bool
+    {
+        if ($solicitation->type !== MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST) {
+            return false;
+        }
+
+        if ((int) $solicitation->user_id !== (int) $user->id) {
+            return false;
+        }
+
+        return $solicitation->status === 'pending';
+    }
+
+    public function deleteVolunteerRequestAsSubmitter(User $user, ChurchSolicitation $solicitation): bool
+    {
+        return $this->updateVolunteerRequestAsSubmitter($user, $solicitation);
+    }
+
+    /** Secretaria / admin com `solicitations.manage` gere pedidos de voluntário da igreja. */
+    public function manageVolunteerRequestAsStaff(User $user, ChurchSolicitation $solicitation): bool
+    {
+        if ($solicitation->type !== MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST) {
+            return false;
+        }
+
+        if ($user->hasAnyRole(['super_admin', 'admin'])) {
+            return true;
+        }
+
+        if (! $user->hasPermissionTo('solicitations.manage')) {
+            return false;
+        }
+
+        if ($solicitation->church_id === null) {
+            return false;
+        }
+
+        if ($user->church_id !== null && (int) $user->church_id !== (int) $solicitation->church_id) {
+            return false;
+        }
+
+        return true;
     }
 }

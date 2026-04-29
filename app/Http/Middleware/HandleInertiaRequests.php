@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Http\Controllers\MobileChurchSolicitationController;
 use App\Models\AppVersion;
 use App\Models\Church;
 use App\Models\ChurchSolicitation;
@@ -80,6 +81,7 @@ class HandleInertiaRequests extends Middleware
                 'secretaria' => 'Secretaria',
                 'pastor' => 'Pastor',
                 'membro' => 'Membro',
+                'lider_ministerio' => 'Líder de ministério',
                 default => $first ? ucfirst(str_replace('_', ' ', $first)) : null,
             };
         }
@@ -175,17 +177,41 @@ class HandleInertiaRequests extends Middleware
         $openSolicitationsCount = 0;
         if ($request->user()) {
             $u = $request->user();
-            $canViewSolicitations = $u->hasAnyRole(['super_admin', 'admin'])
-                || $u->hasAnyPermission(['solicitations.view', 'solicitations.manage']);
+            $atendimentoStaff = $u->hasAnyRole(['super_admin', 'admin', 'pastor', 'secretaria']);
+            $canViewSolicitations = $atendimentoStaff && (
+                $u->hasAnyRole(['super_admin', 'admin'])
+                || $u->hasAnyPermission(['solicitations.view', 'solicitations.manage'])
+            );
             $cid = Church::resolveWorkingId($request);
             if ($canViewSolicitations && $cid !== null) {
                 try {
                     $openSolicitationsCount = (int) ChurchSolicitation::query()
                         ->where('church_id', (int) $cid)
+                        ->where('type', '!=', MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST)
                         ->whereIn('status', ['pending', 'in_progress'])
                         ->count();
                 } catch (\Throwable) {
                     $openSolicitationsCount = 0;
+                }
+            }
+        }
+
+        /** Pedidos de voluntário (menu lateral), alinhado a `VolunteerRequestSolicitationController::canManageSolicitations`. */
+        $openVolunteerRequestsCount = 0;
+        if ($request->user()) {
+            $u = $request->user();
+            $canManageVolunteerRequestsStaff = $u->hasAnyRole(['super_admin', 'admin'])
+                || $u->can('solicitations.manage');
+            $cidVr = Church::resolveWorkingId($request);
+            if ($canManageVolunteerRequestsStaff && $cidVr !== null) {
+                try {
+                    $openVolunteerRequestsCount = (int) ChurchSolicitation::query()
+                        ->where('church_id', (int) $cidVr)
+                        ->where('type', MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST)
+                        ->whereIn('status', ['pending', 'in_progress'])
+                        ->count();
+                } catch (\Throwable) {
+                    $openVolunteerRequestsCount = 0;
                 }
             }
         }
@@ -230,8 +256,10 @@ class HandleInertiaRequests extends Middleware
                 'linkedPastor' => $linkedPastor,
                 /** Mostrar «Agenda Pastoral» no menu (pastor ligado, papel pastor, ou quem gere pastores). */
                 'pastoralAgendaMenuVisible' => $pastoralAgendaMenuVisible,
-                /** Badge no menu lateral para alertas (Atendimento). */
+                /** Badge no menu lateral para alertas (Atendimento Pastoral). */
                 'openSolicitationsCount' => $openSolicitationsCount,
+                /** Badge no menu lateral — pedidos de voluntário em aberto (secretaria / quem gere `solicitations.manage`). */
+                'openVolunteerRequestsCount' => $openVolunteerRequestsCount,
             ],
             'currentChurch' => $currentChurch,
             'churchesForSwitch' => $churchesForSwitch,

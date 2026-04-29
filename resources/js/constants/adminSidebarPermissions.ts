@@ -20,6 +20,21 @@ export const adminSidebarRoutePermissions: Record<string, string[]> = {
     // “Meus voluntários” é filtrado por role no backend (lider_ministerio|admin|super_admin).
     // Mantemos sem permissão para aparecer no menu desses perfis.
     'ministry-lead.my-volunteers.index': [],
+    'ministry-lead.volunteer-requests.index': [],
+    'ministry-lead.volunteer-requests.store': [],
+    'ministry-lead.volunteer-requests.update': [],
+    'ministry-lead.volunteer-requests.destroy': [],
+    /** Criação alinhada à rota: `solicitations.manage` (ou admin/super_admin no middleware). */
+    'volunteer-requests.staff.index': ['solicitations.manage'],
+    'volunteer-requests.staff.store': ['solicitations.manage'],
+    'volunteer-requests.staff.update': ['solicitations.manage'],
+    'volunteer-requests.staff.destroy': ['solicitations.manage'],
+    'volunteer-requests.staff.attach-volunteer': ['solicitations.manage'],
+    'volunteer-requests.staff.attach-picker-volunteers': ['solicitations.manage'],
+    'volunteer-requests.staff.panel': ['solicitations.manage'],
+    'volunteer-requests.staff.messages.store': ['solicitations.manage'],
+    'ministry-lead.volunteer-requests.panel': [],
+    'ministry-lead.volunteer-requests.messages.store': [],
     'ministry-lead.volunteers.pipeline.stages.store': ['volunteers.ministry_operate', 'volunteers.manage'],
     'ministry-lead.volunteers.pipeline.detail': ['volunteers.ministry_operate', 'volunteers.manage'],
     'ministry-lead.volunteers.pipeline.notes.store': ['volunteers.ministry_operate', 'volunteers.manage'],

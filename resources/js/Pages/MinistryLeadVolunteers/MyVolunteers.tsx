@@ -8,7 +8,7 @@ import PageHeader from '@/Components/PageHeader';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import Textarea from '@/Components/Textarea';
-import { Head, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 
 type InvitationRow = {
@@ -118,6 +118,11 @@ export default function MyVolunteers() {
             <PageHeader
                 title="Meus voluntários"
                 subtitle="Voluntários encaminhados para os seus departamentos. Atualize o status interno (Recusar/Treinamento/Atuante)."
+                actions={
+                    <Link href={route('ministry-lead.volunteer-requests.index')}>
+                        <SecondaryButton type="button">Pedidos de voluntário</SecondaryButton>
+                    </Link>
+                }
             />
 
             <Card className="p-4">

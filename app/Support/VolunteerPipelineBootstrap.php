@@ -94,4 +94,40 @@ class VolunteerPipelineBootstrap
             ],
         );
     }
+
+    /**
+     * Move o voluntário para uma fase existente (nome comparado em minúsculas), ex.: «em treinamento».
+     * Ignora se não existir tabela ou fase com esse nome.
+     */
+    public static function moveVolunteerToStageByNormalizedName(Volunteer $volunteer, int $churchId, string $normalizedName): void
+    {
+        if (! Schema::hasTable('volunteer_pipeline_stages') || ! Schema::hasTable('volunteer_church_pipelines')) {
+            return;
+        }
+
+        self::seedDefaultStagesForChurch($churchId);
+
+        $needle = mb_strtolower(trim($normalizedName));
+        if ($needle === '') {
+            return;
+        }
+
+        $stageId = VolunteerPipelineStage::query()
+            ->where('church_id', $churchId)
+            ->whereRaw('LOWER(TRIM(name)) = ?', [$needle])
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->value('id');
+
+        if ($stageId === null) {
+            return;
+        }
+
+        self::ensureRowForVolunteerInChurch($volunteer, $churchId);
+
+        VolunteerChurchPipeline::query()
+            ->where('volunteer_id', $volunteer->id)
+            ->where('church_id', $churchId)
+            ->update(['stage_id' => (int) $stageId]);
+    }
 }

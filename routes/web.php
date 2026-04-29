@@ -37,6 +37,7 @@ use App\Http\Controllers\VariosController;
 use App\Http\Controllers\VolunteerController;
 use App\Http\Controllers\VolunteerPipelineLeadController;
 use App\Http\Controllers\VolunteerPublicSignupController;
+use App\Http\Controllers\VolunteerRequestSolicitationController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -268,6 +269,18 @@ Route::middleware('auth')->group(function () {
     Route::get('/lideranca/meus-voluntarios/{invitation}/historico', [MyMinistryVolunteersController::class, 'history'])
         ->name('ministry-lead.my-volunteers.history')
         ->middleware('auth');
+    Route::get('/lideranca/solicitar-voluntario', [VolunteerRequestSolicitationController::class, 'indexLeader'])
+        ->name('ministry-lead.volunteer-requests.index');
+    Route::post('/lideranca/solicitar-voluntario', [VolunteerRequestSolicitationController::class, 'storeLeader'])
+        ->name('ministry-lead.volunteer-requests.store');
+    Route::patch('/lideranca/solicitar-voluntario/{solicitation}', [VolunteerRequestSolicitationController::class, 'updateLeader'])
+        ->name('ministry-lead.volunteer-requests.update');
+    Route::delete('/lideranca/solicitar-voluntario/{solicitation}', [VolunteerRequestSolicitationController::class, 'destroyLeader'])
+        ->name('ministry-lead.volunteer-requests.destroy');
+    Route::get('/lideranca/solicitar-voluntario/{solicitation}/painel', [VolunteerRequestSolicitationController::class, 'solicitationPanelJson'])
+        ->name('ministry-lead.volunteer-requests.panel');
+    Route::post('/lideranca/solicitar-voluntario/{solicitation}/mensagens', [VolunteerRequestSolicitationController::class, 'storeChatMessageLeader'])
+        ->name('ministry-lead.volunteer-requests.messages.store');
     Route::post('/lideranca/voluntarios/fases', [VolunteerPipelineLeadController::class, 'storeStage'])
         ->name('ministry-lead.volunteers.pipeline.stages.store')
         ->middleware('permission:volunteers.ministry_operate|volunteers.manage');
@@ -404,7 +417,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/pastores/{pastor}/disponibilidades/{availability}', [\App\Http\Controllers\PastoralAvailabilityController::class, 'destroy'])
         ->name('pastors.pastoral-availabilities.destroy');
 
-    /** Agendamentos pastor: gestão em Atendimento; mantém URL antiga. */
+    /** Agendamentos pastor: gestão em Atendimento Pastoral; mantém URL antiga. */
     Route::get('/pastoral-appointments', function (\Illuminate\Http\Request $request) {
         abort_unless($request->user()?->can('pastoral_appointments.manage'), 403);
 
@@ -473,6 +486,30 @@ Route::middleware('auth')->group(function () {
     Route::post('/solicitacoes/{solicitation}/messages', [SolicitationAdminController::class, 'sendMessage'])
         ->name('solicitations.messages.store')
         ->middleware('role_or_permission:super_admin|admin|solicitations.view|solicitations.manage');
+    Route::get('/solicitar-voluntario', [VolunteerRequestSolicitationController::class, 'indexStaff'])
+        ->name('volunteer-requests.staff.index')
+        ->middleware('role_or_permission:super_admin|admin|solicitations.manage');
+    Route::get('/solicitar-voluntario/picker-voluntarios', [VolunteerRequestSolicitationController::class, 'attachVolunteerPicker'])
+        ->name('volunteer-requests.staff.attach-picker-volunteers')
+        ->middleware('role_or_permission:super_admin|admin|solicitations.manage');
+    Route::get('/solicitar-voluntario/{solicitation}/painel', [VolunteerRequestSolicitationController::class, 'solicitationPanelJson'])
+        ->name('volunteer-requests.staff.panel')
+        ->middleware('role_or_permission:super_admin|admin|solicitations.manage');
+    Route::post('/solicitar-voluntario/{solicitation}/mensagens', [VolunteerRequestSolicitationController::class, 'storeChatMessageStaff'])
+        ->name('volunteer-requests.staff.messages.store')
+        ->middleware('role_or_permission:super_admin|admin|solicitations.manage');
+    Route::post('/solicitar-voluntario', [VolunteerRequestSolicitationController::class, 'storeStaff'])
+        ->name('volunteer-requests.staff.store')
+        ->middleware('role_or_permission:super_admin|admin|solicitations.manage');
+    Route::patch('/solicitar-voluntario/{solicitation}', [VolunteerRequestSolicitationController::class, 'updateStaff'])
+        ->name('volunteer-requests.staff.update')
+        ->middleware('role_or_permission:super_admin|admin|solicitations.manage');
+    Route::delete('/solicitar-voluntario/{solicitation}', [VolunteerRequestSolicitationController::class, 'destroyStaff'])
+        ->name('volunteer-requests.staff.destroy')
+        ->middleware('role_or_permission:super_admin|admin|solicitations.manage');
+    Route::post('/solicitar-voluntario/{solicitation}/anexar-voluntario', [VolunteerRequestSolicitationController::class, 'attachVolunteerStaff'])
+        ->name('volunteer-requests.staff.attach-volunteer')
+        ->middleware('role_or_permission:super_admin|admin|solicitations.manage');
 
     // Versões do App (Admin) — admin/super_admin (admin pode complementar notas pós-deploy)
     Route::get('/app-versions', [AppVersionController::class, 'index'])->name('app-versions.index')->middleware('role:admin|super_admin');

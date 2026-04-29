@@ -8,6 +8,7 @@ use App\Models\ChurchSolicitationMessage;
 use App\Models\PastoralAppointment;
 use App\Models\User;
 use App\Services\SolicitationChatNotifier;
+use App\Support\ChurchSolicitationModalPayloadPresenter;
 use App\Support\SolicitationAssignees;
 use App\Support\SupportTicketAdminPresenter;
 use Illuminate\Http\RedirectResponse;
@@ -41,57 +42,13 @@ class SolicitationAdminController extends Controller
     private function solicitationModalPayload(ChurchSolicitation $s, ?User $user = null): array
     {
         $user = $user ?? request()->user();
-        $s->loadMissing([
-            'assignedPastor:id,name',
-            'assignedVolunteer.user:id,name',
-        ]);
-        $messages = ChurchSolicitationMessage::query()
-            ->where('church_solicitation_id', $s->id)
-            ->with('senderUser:id,name')
-            ->orderBy('created_at')
-            ->get()
-            ->map(fn (ChurchSolicitationMessage $m) => [
-                'id' => $m->id,
-                'senderType' => $m->sender_type,
-                'senderUserId' => $m->sender_user_id,
-                'senderName' => $m->senderUser?->name,
-                'content' => $m->content,
-                'createdAt' => $m->created_at?->toIso8601String(),
-            ])
-            ->values()
-            ->all();
 
-        $churchId = Church::resolveWorkingId(request());
-
-        return [
-            'solicitation' => [
-                'id' => $s->id,
-                'type' => $s->type,
-                'typeLabel' => MobileChurchSolicitationController::typeLabel($s->type),
-                'status' => $s->status,
-                'statusLabel' => $s->type === 'leader_chat'
-                    ? MobileChurchSolicitationController::leaderChatStatusLabel($s->status)
-                    : MobileChurchSolicitationController::statusLabel($s->status),
-                'subject' => $s->subject,
-                'message' => $s->message,
-                'meta' => $s->meta,
-                'internalNotes' => $s->internal_notes,
-                'preferredDate' => $s->preferred_date?->format('Y-m-d'),
-                'assignedPastorId' => $s->assigned_pastor_id,
-                'assignedVolunteerId' => $s->assigned_volunteer_id,
-                'assignedPastorName' => $s->assignedPastor?->name,
-                'assignedVolunteerName' => $s->assignedVolunteer?->display_name,
-                'createdAt' => $s->created_at?->toIso8601String(),
-                'completedAt' => $s->completed_at?->toIso8601String(),
-                'memberLabel' => $s->user?->name ?? 'Usuário #'.$s->user_id,
-            ],
-            'messages' => $messages,
-            'updateUrl' => route('solicitations.update', $s),
-            'messageStoreUrl' => route('solicitations.messages.store', $s),
-            'canManage' => $user ? $this->canManage($user) : false,
-            'staffCanReply' => $user && $this->canView($user) && $s->allowsChat(),
-            'canChat' => $s->allowsChat(),
-        ];
+        return ChurchSolicitationModalPayloadPresenter::forSolicitationsAdmin(
+            $s,
+            $user,
+            $user ? $this->canManage($user) : false,
+            $user ? $this->canView($user) : false,
+        );
     }
 
     private function canViewPastoral(User $user): bool
@@ -137,6 +94,8 @@ class SolicitationAdminController extends Controller
             if ($churchId !== null) {
                 $query->where('church_id', $churchId);
             }
+
+            $query->where('type', '!=', MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST);
 
             if (is_string($type) && $type !== '') {
                 $query->where('type', $type);
@@ -251,7 +210,7 @@ class SolicitationAdminController extends Controller
                     $modalQuery->where('church_id', $churchId);
                 }
                 $modal = $modalQuery->find((int) $modalId);
-                if ($modal) {
+                if ($modal && $modal->type !== MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST) {
                     $modalDetail = [
                         'kind' => 'solicitation',
                         'payload' => $this->solicitationModalPayload($modal, $user),
@@ -268,7 +227,7 @@ class SolicitationAdminController extends Controller
                     $modalQuery->where('church_id', $churchId);
                 }
                 $modal = $modalQuery->find((int) $legacyModal);
-                if ($modal) {
+                if ($modal && $modal->type !== MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST) {
                     $modalDetail = [
                         'kind' => 'solicitation',
                         'payload' => $this->solicitationModalPayload($modal, $user),
@@ -335,16 +294,20 @@ class SolicitationAdminController extends Controller
         $churchId = Church::resolveWorkingId($request);
         SolicitationAssignees::normalizeAssignmentRequest($request);
 
+        $messageRules = $solicitation->type === 'volunteer_request'
+            ? ['sometimes', 'nullable', 'string', 'max:5000']
+            : ['sometimes', 'required', 'string', 'max:5000'];
+
         $valid = $request->validate(array_merge([
             'status' => ['sometimes', 'in:pending,in_progress,completed,cancelled'],
             'internal_notes' => ['nullable', 'string', 'max:10000'],
-            'message' => ['sometimes', 'required', 'string', 'max:5000'],
+            'message' => $messageRules,
         ], SolicitationAssignees::assignmentRules($churchId)));
 
         SolicitationAssignees::assertSingleAssignee($valid);
 
         if (array_key_exists('message', $valid)) {
-            $solicitation->message = $valid['message'];
+            $solicitation->message = trim((string) ($valid['message'] ?? ''));
         }
         if (array_key_exists('internal_notes', $valid)) {
             $solicitation->internal_notes = $valid['internal_notes'];
@@ -370,6 +333,10 @@ class SolicitationAdminController extends Controller
         }
 
         $solicitation->save();
+
+        if ($solicitation->type === MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST) {
+            return redirect()->route('volunteer-requests.staff.index')->with('success', 'Pedido atualizado.');
+        }
 
         return $this->staffSolicitationModalRedirect($request, $solicitation);
     }
@@ -407,6 +374,10 @@ class SolicitationAdminController extends Controller
             );
         }
 
-        return redirect()->back(fallback: $this->staffSolicitationModalUrl($request, $solicitation));
+        $fallback = $solicitation->type === MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST
+            ? route('volunteer-requests.staff.index')
+            : $this->staffSolicitationModalUrl($request, $solicitation);
+
+        return redirect()->back(fallback: $fallback);
     }
 }

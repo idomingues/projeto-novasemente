@@ -14,7 +14,8 @@ return [
     'items' => [
         // Menu principal (ordem fixa pedida pela equipa)
         ['name' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'home'],
-        ['name' => 'Atendimento', 'route' => 'solicitations.index', 'icon' => 'inbox'],
+        ['name' => 'Atendimento Pastoral', 'route' => 'solicitations.index', 'icon' => 'inbox'],
+        ['name' => 'Pedido de voluntários', 'route' => 'volunteer-requests.staff.index', 'icon' => 'user-plus'],
         ['name' => 'Agenda Pastoral', 'route' => 'pastoral-agenda.index', 'icon' => 'clock'],
         ['name' => 'Agendamento de Salas', 'route' => 'room-bookings.index', 'icon' => 'rectangle-stack'],
         ['name' => 'Escalas', 'route' => 'escalas.index', 'icon' => 'calendar'],

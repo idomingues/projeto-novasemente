@@ -25,6 +25,7 @@ import {
     ChartBarSquareIcon,
     MusicalNoteIcon,
     CameraIcon,
+    UserPlusIcon,
 } from '@heroicons/react/24/outline';
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 import { useMemo, useState } from 'react';
@@ -80,6 +81,7 @@ const ICON_MAP: Record<string, MenuIcon> = {
     'chart-bar-square': ChartBarSquareIcon,
     'musical-note': MusicalNoteIcon,
     camera: CameraIcon,
+    'user-plus': UserPlusIcon,
 };
 
 /**
@@ -88,7 +90,8 @@ const ICON_MAP: Record<string, MenuIcon> = {
  */
 const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'Dashboard', route: 'dashboard', icon: HomeIcon },
-    { name: 'Atendimento', route: 'solicitations.index', icon: InboxIcon },
+    { name: 'Atendimento Pastoral', route: 'solicitations.index', icon: InboxIcon },
+    { name: 'Pedido de voluntários', route: 'volunteer-requests.staff.index', icon: UserPlusIcon },
     { name: 'Agenda Pastoral', route: 'pastoral-agenda.index', icon: ClockIcon },
     { name: 'Agendamento de Salas', route: 'room-bookings.index', icon: RectangleStackIcon },
     { name: 'Escalas', route: 'escalas.index', icon: CalendarIcon },
@@ -145,6 +148,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
         linkedPastor?: { id: number } | null;
         pastoralAgendaMenuVisible?: boolean;
         openSolicitationsCount?: number;
+        openVolunteerRequestsCount?: number;
     };
     const currentChurch = (props as { currentChurch?: ChurchInfo | null }).currentChurch ?? null;
     const churchesForSwitch = (props as { churchesForSwitch?: ChurchForSwitch[] }).churchesForSwitch ?? [];
@@ -158,6 +162,8 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
     const canAccessSupportAdmin = permissions.includes('support.view') || permissions.includes('support.manage');
     const openSolicitationsCount =
         typeof auth?.openSolicitationsCount === 'number' ? auth.openSolicitationsCount : 0;
+    const openVolunteerRequestsCount =
+        typeof auth?.openVolunteerRequestsCount === 'number' ? auth.openVolunteerRequestsCount : 0;
 
     const publicationRoutes = new Set([
         'news.index',
@@ -372,6 +378,12 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
                                     const href = routeExists ? route(item.route) : '#';
                                     const isActive = routeExists && isMenuItemActive(item.route);
                                     const Icon = item.icon;
+                                    const sidebarBadgeCount =
+                                        item.route === 'solicitations.index'
+                                            ? openSolicitationsCount
+                                            : item.route === 'volunteer-requests.staff.index'
+                                              ? openVolunteerRequestsCount
+                                              : 0;
 
                                     return (
                                         <li key={item.route}>
@@ -392,17 +404,17 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
                                                     }`}
                                                 />
                                                 <span className="font-medium text-sm">{item.name}</span>
-                                                {item.route === 'solicitations.index' && openSolicitationsCount > 0 ? (
+                                                {sidebarBadgeCount > 0 ? (
                                                     <span
                                                         className={`ml-auto inline-flex min-w-6 items-center justify-center rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${
                                                             isActive
                                                                 ? 'bg-white/20 text-white dark:bg-black/10 dark:text-black'
                                                                 : 'bg-rose-600 text-white'
                                                         }`}
-                                                        title={`${openSolicitationsCount} em aberto`}
-                                                        aria-label={`${openSolicitationsCount} em aberto`}
+                                                        title={`${sidebarBadgeCount} em aberto`}
+                                                        aria-label={`${sidebarBadgeCount} em aberto`}
                                                     >
-                                                        {openSolicitationsCount > 99 ? '99+' : openSolicitationsCount}
+                                                        {sidebarBadgeCount > 99 ? '99+' : sidebarBadgeCount}
                                                     </span>
                                                 ) : null}
                                             </Link>

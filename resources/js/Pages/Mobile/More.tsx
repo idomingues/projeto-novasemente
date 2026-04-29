@@ -35,6 +35,7 @@ type PageProps = {
         user?: unknown | null;
         permissions?: string[];
         adminSidebarUnrestricted?: boolean;
+        canAccessAdminMenu?: boolean;
         isMinistryLeaderAccount?: boolean;
     };
 };
@@ -72,13 +73,16 @@ export default function MobileMore(_: Props) {
     const unrestricted = auth?.adminSidebarUnrestricted === true;
 
     const can = (perm: string) => unrestricted || permissions.includes(perm);
+    const canAccessAdminMenu = auth?.canAccessAdminMenu === true;
     const showMyVolunteers =
         isAuthenticated &&
         route().has('ministry-lead.my-volunteers.index') &&
         auth?.isMinistryLeaderAccount === true;
+    /** «Atendimento Pastoral» abre o painel web completo — só equipa pastoral/secretaria/admin. */
     const showMySolicitations =
         isAuthenticated &&
         route().has('solicitations.index') &&
+        canAccessAdminMenu &&
         (can('solicitations.view') || can('solicitations.manage'));
 
     return (
@@ -110,8 +114,8 @@ export default function MobileMore(_: Props) {
                                         <UserCircleIcon className="w-6 h-6 text-zinc-600 dark:text-zinc-400" />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <span className="font-semibold text-zinc-900 dark:text-white block">Meus Atendimentos</span>
-                                        <span className="text-sm text-zinc-500 dark:text-zinc-400">Conversas e pedidos atribuídos a você</span>
+                                        <span className="font-semibold text-zinc-900 dark:text-white block">Atendimento Pastoral</span>
+                                        <span className="text-sm text-zinc-500 dark:text-zinc-400">Solicitações e conversas no painel web</span>
                                     </div>
                                 </Link>
                             ) : null}

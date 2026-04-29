@@ -63,6 +63,8 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
     const showRecentDot = badgeCount === 0 && notifications.length > 0;
     const roleLabel = auth?.roleLabel ?? 'Membro';
     const isMinistryLeader = auth?.isMinistryLeaderAccount === true || user?.is_ministry_leader === true;
+    /** Evita duplicar com o pill cinza quando o papel principal já é «Líder de ministério». */
+    const showMinistryLeaderAccentBadge = isMinistryLeader && roleLabel !== 'Líder de ministério';
     const { theme, toggleTheme } = useTheme();
     /** Hub de perfil (opções); evita ir direto ao formulário Breeze no PC. */
     const profileHref = route().has('mobile.profile') ? route('mobile.profile') : route('profile.edit');
@@ -222,7 +224,7 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
                                         <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-700 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:text-zinc-200 dark:ring-zinc-800">
                                             {roleLabel}
                                         </span>
-                                        {isMinistryLeader ? (
+                                        {showMinistryLeaderAccentBadge ? (
                                             <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/30">
                                                 Líder de ministério
                                             </span>

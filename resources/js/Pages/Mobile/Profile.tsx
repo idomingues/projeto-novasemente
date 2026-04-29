@@ -13,13 +13,14 @@ import {
     ChevronDownIcon,
     PencilSquareIcon,
     UserGroupIcon,
+    UserPlusIcon,
 } from '@heroicons/react/24/outline';
 
 interface Props {
     church: { name: string } | null;
     user: { name: string; email: string };
     profileCounts: {
-        /** Pedidos em aberto no painel Atendimento (null se o utilizador não vê o painel). */
+        /** Pedidos em aberto no painel Atendimento Pastoral (null se o utilizador não vê o painel). */
         atendimento_open: number | null;
         /** Compromissos na agenda do perfil ligado (null se não há pastor ligado à conta). */
         pastoral_agenda: number | null;
@@ -134,6 +135,7 @@ export default function MobileProfile({ church, user, profileCounts }: Props) {
         auth?: {
             permissions?: string[];
             canAccessAdminMenu?: boolean;
+            adminSidebarUnrestricted?: boolean;
             linkedPastor?: { id: number } | null;
             user?: { is_volunteer?: boolean; is_ministry_leader?: boolean };
             /** Spatie `lider_ministerio` ou `is_ministry_leader` na conta. */
@@ -150,8 +152,16 @@ export default function MobileProfile({ church, user, profileCounts }: Props) {
      */
     const showMyPastoralAgenda = linkedPastor !== null;
 
-    const canAccessSolicitationsAdmin =
-        canAccessAdminMenu || permissions.includes('solicitations.view') || permissions.includes('solicitations.manage');
+    /**
+     * Painel web «Atendimento Pastoral» (solicitations.index): equipa pastoral/secretaria/admin,
+     * não líderes de ministério (estes usam «Meus voluntários» / rotas móveis de líder).
+     */
+    const adminUnrestricted = auth?.adminSidebarUnrestricted === true;
+    const canShowAtendimentoPainel =
+        canAccessAdminMenu &&
+        (adminUnrestricted ||
+            permissions.includes('solicitations.view') ||
+            permissions.includes('solicitations.manage'));
     const isMinistryLeader = auth?.isMinistryLeaderAccount === true;
 
     const memberRows: Row[] = [
@@ -177,6 +187,13 @@ export default function MobileProfile({ church, user, profileCounts }: Props) {
                       description: 'Voluntários encaminhados para você',
                       icon: UserGroupIcon,
                       href: route('ministry-lead.my-volunteers.index'),
+                      tone: 'member',
+                  },
+                  {
+                      title: 'Solicitar voluntário',
+                      description: 'Quantidade, departamento e observações; função na escala opcional (pedido à secretaria)',
+                      icon: UserPlusIcon,
+                      href: route('ministry-lead.volunteer-requests.index'),
                       tone: 'member',
                   },
               ] as Row[])
@@ -218,11 +235,11 @@ export default function MobileProfile({ church, user, profileCounts }: Props) {
     const publicRows: Row[] = [];
 
     const adminRows: Row[] = [
-        ...(canAccessSolicitationsAdmin
+        ...(canShowAtendimentoPainel
             ? ([
                   {
-                      title: 'Atendimento',
-                      description: 'Solicitações e pedidos de batismo (painel)',
+                      title: 'Atendimento Pastoral',
+                      description: 'Solicitações da igreja, batismo e visitas (painel)',
                       icon: InboxIcon,
                       href: route('solicitations.index'),
                       tone: 'critical',

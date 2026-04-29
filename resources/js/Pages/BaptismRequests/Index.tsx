@@ -120,7 +120,7 @@ export default function BaptismRequestsIndex({
                 <p className="text-sm text-zinc-500 dark:text-zinc-400">
                     O botão + abre o formulário como no app do membro. Para outros tipos de pedido, use{' '}
                     <Link href={route('solicitations.index', { kind: 'solicitation' })} className="font-semibold text-brand-700 underline dark:text-brand-400">
-                        Atendimento
+                        Atendimento Pastoral
                     </Link>
                     .
                 </p>

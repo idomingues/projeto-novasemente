@@ -6,6 +6,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * Pedidos formais à igreja. Tipos em {@see \App\Http\Controllers\MobileChurchSolicitationController}.
+ *
+ * `volunteer_request`: líder ou staff pede reforço de voluntários; `meta` com `ministry_id`,
+ * `schedule_role_id` (opcional), `source` (`leader`|`staff`). Vários pedidos por quantidade:
+ * `batch_key`, `batch_index`, `batch_total`; cumprimento: `fulfilled_*`.
+ */
 class ChurchSolicitation extends Model
 {
     protected $fillable = [

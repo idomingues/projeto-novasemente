@@ -25,6 +25,9 @@ class MobileChurchSolicitationController extends Controller
 
     private const TYPES = ['baptism', 'bible_study', 'baby_presentation', 'pastor_visit', 'other', 'leader_chat'];
 
+    /** Criado só via fluxo dedicado (líder/admin), não pelo hub móvel de membros. */
+    public const TYPE_VOLUNTEER_REQUEST = 'volunteer_request';
+
     private function currentChurchId(Request $request): ?int
     {
         return Church::resolveWorkingId($request);
@@ -38,6 +41,7 @@ class MobileChurchSolicitationController extends Controller
             'baby_presentation' => 'Apresentação de bebé',
             'pastor_visit' => 'Visita aos pastores',
             'leader_chat' => 'Conversa com líder de ministério',
+            'volunteer_request' => 'Pedido de voluntário',
             'other' => 'Outros',
             default => $type,
         };
@@ -140,7 +144,7 @@ class MobileChurchSolicitationController extends Controller
                 ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
                 ->where('user_id', $user->id)
                 ->whereNull('member_hidden_at')
-                ->whereIn('type', self::HUB_TYPES)
+                ->whereIn('type', array_merge(self::HUB_TYPES, [self::TYPE_VOLUNTEER_REQUEST]))
                 ->with(['assignedPastor:id,name', 'assignedVolunteer.user:id,name'])
                 ->orderByDesc('updated_at')
                 ->limit(40)
@@ -605,6 +609,21 @@ class MobileChurchSolicitationController extends Controller
                     'painel' => 'detalhes',
                 ])->with('success', 'Pedido atualizado.');
             }
+
+            return redirect()->route('mobile.solicitations.hub', [
+                'solicitacao' => $solicitation->id,
+                'painel' => 'detalhes',
+            ])->with('success', 'Pedido atualizado.');
+        }
+
+        if ($solicitation->type === self::TYPE_VOLUNTEER_REQUEST) {
+            $valid = $request->validate([
+                'message' => ['nullable', 'string', 'max:5000'],
+                'return_to' => ['nullable', 'string', Rule::in(['hub'])],
+            ]);
+            $solicitation->update([
+                'message' => trim((string) ($valid['message'] ?? '')),
+            ]);
 
             return redirect()->route('mobile.solicitations.hub', [
                 'solicitacao' => $solicitation->id,

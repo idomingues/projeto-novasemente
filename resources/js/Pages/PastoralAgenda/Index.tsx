@@ -230,7 +230,7 @@ export default function PastoralAgendaIndex({
                                     })}
                                     className="text-center text-sm font-semibold text-emerald-700 underline decoration-emerald-600/40 underline-offset-2 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300 sm:text-left"
                                 >
-                                    Abrir em Atendimento (chat e estado)
+                                    Abrir em Atendimento Pastoral (chat e estado)
                                 </Link>
                             ) : null}
                             <SecondaryButton type="button" className="w-full sm:w-auto" onClick={() => setOpenedDetail(null)}>

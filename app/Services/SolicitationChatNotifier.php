@@ -141,16 +141,20 @@ class SolicitationChatNotifier
             $member->id,
         );
 
+        $isVolunteerRequest = $solicitation->type === MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST;
+        $staffRoute = $isVolunteerRequest ? 'volunteer-requests.staff.index' : 'solicitations.index';
+        $staffParams = $isVolunteerRequest ? [] : [
+            'modal_kind' => 'solicitation',
+            'modal_id' => $solicitation->id,
+        ];
+
         foreach ($staffUsers as $user) {
             $this->pushInboxForUser(
                 (int) $user->id,
                 $title,
                 $body,
-                'solicitations.index',
-                [
-                    'modal_kind' => 'solicitation',
-                    'modal_id' => $solicitation->id,
-                ],
+                $staffRoute,
+                $staffParams,
             );
         }
     }
@@ -204,11 +208,18 @@ class SolicitationChatNotifier
     /**
      * Responsável configurado em Definições da igreja (pedidos gerais, não «Falar com líder»).
      */
-    public function notifyChurchSolicitationsHandlerOfNewRequest(ChurchSolicitation $solicitation, int $churchId): void
+    public function notifyChurchSolicitationsHandlerOfNewRequest(ChurchSolicitation $solicitation, int $churchId, ?int $batchCount = null): void
     {
         if ($solicitation->type === 'leader_chat') {
             return;
         }
+
+        $isVolunteerRequest = $solicitation->type === MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST;
+        $staffInboxRoute = $isVolunteerRequest ? 'volunteer-requests.staff.index' : 'solicitations.index';
+        $staffInboxParams = $isVolunteerRequest ? [] : [
+            'modal_kind' => 'solicitation',
+            'modal_id' => $solicitation->id,
+        ];
 
         $church = Church::query()->find($churchId);
         $handlerVolunteerId = $church?->solicitations_handler_volunteer_id;
@@ -229,18 +240,19 @@ class SolicitationChatNotifier
         $memberName = $member?->name ?? 'Um membro';
         $typeLabel = MobileChurchSolicitationController::typeLabel($solicitation->type);
 
+        $batchSuffix = ($batchCount !== null && $batchCount > 1)
+            ? sprintf(' Foram criados %d pedidos em sequência (uma linha por pessoa a anexar na secretaria).', $batchCount)
+            : '';
+
         $this->pushInboxForUser(
             (int) $volunteer->user_id,
             'Novo pedido na app',
-            $memberName.' enviou: '.$typeLabel.'.',
-            'solicitations.index',
-            [
-                'modal_kind' => 'solicitation',
-                'modal_id' => $solicitation->id,
-            ],
+            $memberName.' enviou: '.$typeLabel.'.'.$batchSuffix,
+            $staffInboxRoute,
+            $staffInboxParams,
         );
 
-        // Também notifica a equipe do painel com acesso ao Atendimento (na mesma igreja).
+        // Também notifica a equipe com acesso ao painel (Atendimento Pastoral ou Pedidos de voluntário).
         $staffUsers = $this->staffRecipientsForChurch($churchId, $solicitation->user_id);
         foreach ($staffUsers as $user) {
             // Evita duplicar a mesma notificação para o responsável, se ele também for staff.
@@ -250,26 +262,24 @@ class SolicitationChatNotifier
             $this->pushInboxForUser(
                 (int) $user->id,
                 'Novo pedido na app',
-                $memberName.' enviou: '.$typeLabel.'.',
-                'solicitations.index',
-                [
-                    'modal_kind' => 'solicitation',
-                    'modal_id' => $solicitation->id,
-                ],
+                $memberName.' enviou: '.$typeLabel.'.'.$batchSuffix,
+                $staffInboxRoute,
+                $staffInboxParams,
             );
         }
 
         if (UserMessagingPreferences::acceptsEmailForVolunteerContact($volunteer)) {
             $email = $this->resolveVolunteerContactEmail($volunteer);
             if ($email !== null) {
-                $inboxUrl = route('solicitations.index', [
-                    'modal_kind' => 'solicitation',
-                    'modal_id' => $solicitation->id,
-                ], absolute: true);
+                $inboxUrl = route($staffInboxRoute, $staffInboxParams, absolute: true);
+                $emailBody = $memberName.' enviou um pedido do tipo «'.$typeLabel.'».';
+                if ($batchCount !== null && $batchCount > 1) {
+                    $emailBody .= sprintf(' Foram abertas %d linhas de pedido (quantidade pedida).', $batchCount);
+                }
                 Mail::to($email)->send(new SolicitationNewRequestMail(
                     'Novo pedido — '.$typeLabel,
                     'Novo pedido na app',
-                    $memberName.' enviou um pedido do tipo «'.$typeLabel.'».',
+                    $emailBody,
                     $this->solicitationMessagePreview($solicitation),
                     $inboxUrl,
                 ));

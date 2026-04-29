@@ -797,13 +797,21 @@ class MobileController extends Controller
         /** Igual ao `currentChurch` do HandleInertiaRequests (feed do sino); evita divergir de `resolveWorkingId`. */
         $churchId = $church !== null ? (int) $church->id : Church::resolveWorkingId($request);
 
+        /** Igual ao perfil móvel: contagem só para equipa do painel, não `lider_ministerio` só com permissões soltas. */
+        $atendimentoStaff = $user->hasAnyRole(['super_admin', 'admin', 'pastor', 'secretaria']);
         $atendimentoOpen = null;
-        if ($user->hasAnyRole(['super_admin', 'admin'])
-            || $user->can('solicitations.view')
-            || $user->can('solicitations.manage')) {
+        if (
+            $atendimentoStaff
+            && (
+                $user->hasAnyRole(['super_admin', 'admin'])
+                || $user->can('solicitations.view')
+                || $user->can('solicitations.manage')
+            )
+        ) {
             if ($churchId !== null) {
                 $atendimentoOpen = (int) ChurchSolicitation::query()
                     ->where('church_id', $churchId)
+                    ->where('type', '!=', MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST)
                     ->whereIn('status', ['pending', 'in_progress'])
                     ->count();
             }

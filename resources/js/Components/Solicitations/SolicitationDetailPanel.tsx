@@ -1,5 +1,5 @@
 import { router, useForm } from '@inertiajs/react';
-import { FormEventHandler, useEffect, useMemo } from 'react';
+import { FormEventHandler, useEffect, useMemo, type ReactNode } from 'react';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
@@ -102,6 +102,18 @@ export type SolicitationDetailPanelProps = {
     leaderHideConversationUrl?: string | null;
     /** Corpo POST `return_to` ao ocultar como membro (batismo / hub / contacto líder). */
     hideConversationReturnTo?: 'hub' | 'leader_contact' | 'baptism_hub';
+    /**
+     * Quando true, POST do chat e PATCH administrativo preservam o estado React do ecrã pai
+     * (ex.: modal «Detalhes / Chat» em Pedidos de voluntário).
+     */
+    preserveStateOnPanelActions?: boolean;
+    /** Chamado após enviar chat ou guardar alterações administrativas com sucesso. */
+    onPanelActionSuccess?: () => void;
+    /**
+     * Conteúdo extra no separador Detalhes, imediatamente antes de «Gestão interna»
+     * (ex.: alterar pedido + anexar voluntário no fluxo unificado de voluntários).
+     */
+    detailsBeforeAdminFooter?: ReactNode;
 };
 
 function formatTime(iso: string): string {
@@ -162,6 +174,9 @@ export default function SolicitationDetailPanel({
     memberHideConversationUrl = null,
     leaderHideConversationUrl = null,
     hideConversationReturnTo = 'hub',
+    preserveStateOnPanelActions = false,
+    onPanelActionSuccess,
+    detailsBeforeAdminFooter,
 }: SolicitationDetailPanelProps) {
     const inertiaScrollOpts = { preserveScroll: true };
     const isModal = variant === 'modal';
@@ -238,6 +253,8 @@ export default function SolicitationDetailPanel({
         e.preventDefault();
         if (!msgForm.data.content.trim()) return;
         msgForm.post(messageStoreUrl, {
+            preserveState: preserveStateOnPanelActions,
+            ...inertiaScrollOpts,
             onSuccess: () => {
                 msgForm.reset('content');
                 msgForm.setData(
@@ -248,8 +265,8 @@ export default function SolicitationDetailPanel({
                           ? 'leader_contact'
                           : '',
                 );
+                onPanelActionSuccess?.();
             },
-            ...inertiaScrollOpts,
         });
     };
 
@@ -292,12 +309,22 @@ export default function SolicitationDetailPanel({
     const saveAdmin: FormEventHandler = (e) => {
         e.preventDefault();
         if (!updateUrl) return;
-        adminForm.patch(updateUrl, inertiaScrollOpts);
+        adminForm.patch(updateUrl, {
+            preserveState: preserveStateOnPanelActions,
+            preserveScroll: true,
+            onSuccess: () => {
+                onPanelActionSuccess?.();
+            },
+        });
     };
 
     const isStaffBubble = (senderType: string) => senderType === 'staff';
 
     const isModalChatOnly = isModal && sectionProp === 'chat';
+    const isVolunteerRequest = solicitation.type === 'volunteer_request';
+    /** Equipa: cabeçalho do modal + gestão + formulário de alteração tornam o cartão redundante. Líder: mantém-se para ler o pedido quando não edita. */
+    const hideVolunteerRequestPedidoCard =
+        isVolunteerRequest && isModal && composerRole === 'staff';
 
     /** Membro a editar pedido pendente: o cartão «Pedido» repete mensagem/data — mostramos só o formulário com cabeçalho compacto. */
     const memberEditsOwnPending =
@@ -311,7 +338,7 @@ export default function SolicitationDetailPanel({
                     : `${isModal ? 'space-y-5 pb-1' : 'space-y-6'}`
             }
         >
-            {showDetails && !memberEditsOwnPending && (
+            {showDetails && !memberEditsOwnPending && !hideVolunteerRequestPedidoCard && (
                 <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 shadow-sm sm:p-5 space-y-3">
                     <div className="flex items-start justify-between gap-3">
                         <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
@@ -554,6 +581,10 @@ export default function SolicitationDetailPanel({
                 </form>
             )}
 
+            {showDetails && detailsBeforeAdminFooter ? (
+                <div className="space-y-8">{detailsBeforeAdminFooter}</div>
+            ) : null}
+
             {showDetails && canManage && updateUrl && (
                 <form
                     onSubmit={saveAdmin}
@@ -565,7 +596,7 @@ export default function SolicitationDetailPanel({
                             Estado e notas só para a equipe. Responda ao membro no separador <strong className="font-semibold">Chat</strong>.
                         </p>
                     </div>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className={`grid grid-cols-1 gap-4 ${isVolunteerRequest ? '' : 'sm:grid-cols-2'}`}>
                         <div>
                             <InputLabel htmlFor="sol_status" value="Estado do pedido" />
                             <SelectInput
@@ -581,30 +612,34 @@ export default function SolicitationDetailPanel({
                             </SelectInput>
                             <InputError message={adminForm.errors.status} className="mt-1" />
                         </div>
+                        {!isVolunteerRequest ? (
+                            <div>
+                                <InputLabel htmlFor="sol_pref_date" value="Data preferida ou agendada" />
+                                <input
+                                    id="sol_pref_date"
+                                    type="date"
+                                    value={adminForm.data.preferred_date}
+                                    onChange={(e) => adminForm.setData('preferred_date', e.target.value)}
+                                    className="mt-1 block h-11 w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 text-sm text-zinc-900 dark:text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/25 dark:focus:border-indigo-400 dark:focus:ring-indigo-400/30"
+                                />
+                                <InputError message={adminForm.errors.preferred_date} className="mt-1" />
+                            </div>
+                        ) : null}
+                    </div>
+                    {!isVolunteerRequest ? (
                         <div>
-                            <InputLabel htmlFor="sol_pref_date" value="Data preferida ou agendada" />
-                            <input
-                                id="sol_pref_date"
-                                type="date"
-                                value={adminForm.data.preferred_date}
-                                onChange={(e) => adminForm.setData('preferred_date', e.target.value)}
-                                className="mt-1 block h-11 w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 text-sm text-zinc-900 dark:text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/25 dark:focus:border-indigo-400 dark:focus:ring-indigo-400/30"
+                            <InputLabel htmlFor="sol_internal" value="Notas internas (confidenciais)" />
+                            <Textarea
+                                id="sol_internal"
+                                value={adminForm.data.internal_notes}
+                                onChange={(e) => adminForm.setData('internal_notes', e.target.value)}
+                                rows={isModal ? 3 : 4}
+                                placeholder="Lembretes para a equipe, acordos telefónicos, etc."
+                                className="mt-1 block w-full rounded-xl border-zinc-200 dark:border-zinc-700"
                             />
-                            <InputError message={adminForm.errors.preferred_date} className="mt-1" />
+                            <InputError message={adminForm.errors.internal_notes} className="mt-1" />
                         </div>
-                    </div>
-                    <div>
-                        <InputLabel htmlFor="sol_internal" value="Notas internas (confidenciais)" />
-                        <Textarea
-                            id="sol_internal"
-                            value={adminForm.data.internal_notes}
-                            onChange={(e) => adminForm.setData('internal_notes', e.target.value)}
-                            rows={isModal ? 3 : 4}
-                            placeholder="Lembretes para a equipe, acordos telefónicos, etc."
-                            className="mt-1 block w-full rounded-xl border-zinc-200 dark:border-zinc-700"
-                        />
-                        <InputError message={adminForm.errors.internal_notes} className="mt-1" />
-                    </div>
+                    ) : null}
                     <div className="flex justify-end pt-1">
                         <PrimaryButton type="submit" disabled={adminForm.processing} className="min-w-[10rem] justify-center">
                             Guardar gestão

@@ -1,0 +1,16 @@
+---
+description: Padrão UI para novos formulários de gestão (lista + modal)
+alwaysApply: true
+---
+
+# Formulários de criação: lista, botão + e modal
+
+Ao adicionar **novos ecrãs de gestão** onde o utilizador cria registos (pedidos, itens, configurações simples, etc.):
+
+1. **Preferir** a página principal como **lista** do que já existe (ou estado vazio com mensagem clara).
+2. Colocar um botão **+** (`AddButton` com `variant="icon"` ao lado do título, alinhado ao padrão de Acervo / Culto) que abre um **modal** com o formulário de criação.
+3. **Evitar** uma rota/página dedicada só ao formulário de criação em ecrã completo, salvo razão forte (fluxo muito longo, vários passos, ou requisito explícito de produto).
+
+Após sucesso do `POST`, fechar o modal, repor o formulário e **voltar à lista** (redirect Inertia ou `onSuccess` com dados atualizados).
+
+Referência no projeto: `resources/js/Pages/VolunteerRequests/Index.tsx` (pedidos de voluntário).

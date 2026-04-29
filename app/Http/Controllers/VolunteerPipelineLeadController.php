@@ -8,13 +8,9 @@ use App\Models\VolunteerChurchPipeline;
 use App\Models\VolunteerLeaderNote;
 use App\Models\VolunteerPipelineStage;
 use App\Models\VolunteerSelfSignupToken;
-use App\Models\VolunteerMinistryInvitation;
-use App\Models\Ministry;
-use App\Support\VolunteerLeadRosterFilters;
+use App\Support\VolunteerChurchRosterBuilder;
 use App\Support\VolunteerPipelineBootstrap;
-use App\Support\VolunteerRosterSignals;
 use App\Support\VolunteerSignupDetailPresenter;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -47,67 +43,11 @@ class VolunteerPipelineLeadController extends Controller
         abort_unless($u->can('volunteers.ministry_operate') || $u->can('volunteers.manage'), 403);
     }
 
-    /**
-     * @param  Builder<Volunteer>  $q
-     */
-    private function volunteersVisibleInChurchQuery(int $churchId): Builder
-    {
-        return Volunteer::query()
-            ->where(function ($q2) use ($churchId) {
-                $q2->whereDoesntHave('ministries')
-                    ->orWhereHas('ministries', fn ($mq) => $mq->where('church_id', $churchId));
-            });
-    }
-
     private function volunteerVisibleInChurch(Volunteer $volunteer, int $churchId): bool
     {
-        return $this->volunteersVisibleInChurchQuery($churchId)
+        return VolunteerChurchRosterBuilder::volunteersVisibleInChurchQuery($churchId)
             ->whereKey($volunteer->getKey())
             ->exists();
-    }
-
-    private function maskForLeader(Request $request, ?string $email, ?string $phone): array
-    {
-        if ($request->user()?->can('volunteers.manage')) {
-            return [
-                'email' => $email,
-                'phone' => $phone,
-                'piiMasked' => false,
-            ];
-        }
-
-        $e = is_string($email) && $email !== '' ? $email : null;
-        $maskedEmail = $e !== null && str_contains($e, '@')
-            ? (mb_substr($e, 0, 1).'***@'.explode('@', $e, 2)[1])
-            : ($e !== null ? '***' : null);
-
-        $p = is_string($phone) && trim($phone) !== '' ? preg_replace('/\D+/', '', $phone) : '';
-        $maskedPhone = $p !== '' && strlen($p) >= 4
-            ? '***'.substr($p, -4)
-            : ($phone !== null && trim((string) $phone) !== '' ? '***' : null);
-
-        return [
-            'email' => $maskedEmail,
-            'phone' => $maskedPhone,
-            'piiMasked' => true,
-        ];
-    }
-
-    private function truncateInterestPreview(Volunteer $v): ?string
-    {
-        $parts = array_filter([
-            $v->other_ministry_interest,
-            $v->ministry_involvement,
-            $v->gifts_to_develop,
-        ], fn ($t) => is_string($t) && trim($t) !== '');
-
-        if ($parts === []) {
-            return null;
-        }
-
-        $text = implode(' · ', array_map(fn ($p) => trim((string) $p), $parts));
-
-        return mb_strlen($text) > 120 ? mb_substr($text, 0, 117).'…' : $text;
     }
 
     public function index(Request $request): Response
@@ -116,62 +56,12 @@ class VolunteerPipelineLeadController extends Controller
         $churchId = $this->churchId($request);
         abort_unless($churchId, 404, 'Nenhuma igreja ativa.');
 
-        $q = $this->volunteersVisibleInChurchQuery($churchId)
-            ->with([
-                'ministries' => fn ($m) => $m->where('church_id', $churchId),
-                'churchPipelines' => fn ($p) => $p->where('church_id', $churchId)->with('stage'),
-                'ministryInvitations' => fn ($i) => $i->where('church_id', $churchId)->where('status', 'pending'),
-            ]);
-
-        VolunteerLeadRosterFilters::apply($request, $q, $churchId);
-
-        $volunteers = $q->orderByDesc('volunteers.created_at')->paginate(25)->withQueryString();
-
-        $stages = VolunteerPipelineStage::query()
-            ->where('church_id', $churchId)
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->withCount([
-                'churchPipelines as volunteer_count' => fn ($sq) => $sq->where('church_id', $churchId),
-            ])
-            ->get()
-            ->map(fn (VolunteerPipelineStage $s) => [
-                'id' => $s->id,
-                'name' => $s->name,
-                'sort_order' => $s->sort_order,
-                'volunteer_count' => (int) $s->volunteer_count,
-            ])
-            ->values()
-            ->all();
-
-        $volunteers->setCollection(
-            $volunteers->getCollection()->map(function (Volunteer $v) use ($request, $churchId) {
-                $pipe = $v->churchPipelines->firstWhere('church_id', $churchId);
-                $stage = $pipe?->stage;
-                $mask = $this->maskForLeader($request, $v->email, $v->phone);
-                $signals = VolunteerRosterSignals::forVolunteer($v);
-                $hasPendingInvite = $v->ministryInvitations->isNotEmpty();
-
-                return [
-                    'id' => $v->id,
-                    'name' => $v->name,
-                    'email' => $mask['email'],
-                    'phone' => $mask['phone'],
-                    'active' => (bool) $v->active,
-                    'createdAt' => $v->created_at?->toIso8601String(),
-                    'stageId' => $stage?->id,
-                    'stageName' => $hasPendingInvite ? 'Aguardando' : ($stage?->name ?? 'Não definido'),
-                    'pendingInvite' => $hasPendingInvite,
-                    'ministryNames' => $v->ministries->pluck('name')->values()->all(),
-                    'interestPreview' => $this->truncateInterestPreview($v),
-                    'signals' => [
-                        'memberNs' => $signals['memberNs'],
-                        'sixMonthsInChurchOrLetter' => $signals['sixMonthsInChurchOrLetter'],
-                        'ministryExperienceDeclared' => $signals['ministryExperienceDeclared'],
-                    ],
-                ];
-            }),
-        );
+        $user = $request->user();
+        $roster = VolunteerChurchRosterBuilder::paginated($request, (int) $churchId, $user, 25, false);
+        $stages = $roster['stages'];
+        $volunteers = $roster['volunteers'];
+        $ministries = $roster['ministries'];
+        $filters = $roster['filters'];
 
         $publicVolunteerSignupUrl = null;
         if ($churchId !== null && Schema::hasTable('volunteer_self_signup_tokens')) {
@@ -182,19 +72,11 @@ class VolunteerPipelineLeadController extends Controller
             }
         }
 
-        $user = $request->user();
-
         return Inertia::render('MinistryLeadVolunteers/Pipeline', [
             'stages' => $stages,
             'volunteers' => $volunteers,
-            'filters' => VolunteerLeadRosterFilters::filterState($request),
-            'ministries' => Ministry::query()
-                ->where('church_id', $churchId)
-                ->orderBy('name')
-                ->get(['id', 'name'])
-                ->map(fn (Ministry $m) => ['id' => $m->id, 'name' => $m->name])
-                ->values()
-                ->all(),
+            'filters' => $filters,
+            'ministries' => $ministries,
             'storeStageUrl' => route('ministry-lead.volunteers.pipeline.stages.store'),
             'canVolunteerManage' => $user && $user->can('volunteers.manage'),
             'canPipelineMutate' => $user && ($user->can('volunteers.manage') || $user->can('volunteers.ministry_operate')),
