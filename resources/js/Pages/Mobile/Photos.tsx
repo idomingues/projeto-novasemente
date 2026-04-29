@@ -5,6 +5,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 interface Props {
     title?: string;
+    publishedAt?: string | null;
+    photographerName?: string | null;
     embedUrl: string;
     folderUrl: string;
     images?: {
@@ -18,7 +20,21 @@ interface Props {
     }[];
 }
 
-export default function MobilePhotos({ title = 'Fotos', embedUrl, folderUrl, images: imagesProp = [] }: Props) {
+function formatAlbumDate(iso: string | null | undefined): string | null {
+    if (!iso) return null;
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+export default function MobilePhotos({
+    title = 'Fotos',
+    publishedAt = null,
+    photographerName = null,
+    embedUrl,
+    folderUrl,
+    images: imagesProp = [],
+}: Props) {
     const images = useMemo(() => (Array.isArray(imagesProp) ? imagesProp : []), [imagesProp]);
     const [open, setOpen] = useState(false);
     const [idx, setIdx] = useState(0);
@@ -60,9 +76,17 @@ export default function MobilePhotos({ title = 'Fotos', embedUrl, folderUrl, ima
 
             <div className="space-y-3">
                 <div className="flex items-end justify-between gap-3">
-                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
-                        {title}
-                    </h1>
+                    <div className="min-w-0">
+                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
+                            {title}
+                        </h1>
+                        {formatAlbumDate(publishedAt) ? (
+                            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{formatAlbumDate(publishedAt)}</p>
+                        ) : null}
+                        {photographerName?.trim() ? (
+                            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Fotógrafo: {photographerName.trim()}</p>
+                        ) : null}
+                    </div>
 
                     <a
                         href={folderUrl}
@@ -99,11 +123,11 @@ export default function MobilePhotos({ title = 'Fotos', embedUrl, folderUrl, ima
 
                         {open && current ? (
                             <div className="fixed inset-0 z-[100] bg-black/90">
-                                <div className="absolute inset-x-0 top-0 p-4 flex items-center justify-between gap-3">
+                                <div className="absolute inset-x-0 top-0 z-30 p-4 flex items-center justify-between gap-3 pointer-events-none">
                                     <button
                                         type="button"
                                         onClick={() => setOpen(false)}
-                                        className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/10 text-white hover:bg-white/15"
+                                        className="pointer-events-auto inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/10 text-white hover:bg-white/15"
                                         aria-label="Fechar"
                                     >
                                         <XMarkIcon className="w-6 h-6" />
@@ -113,7 +137,7 @@ export default function MobilePhotos({ title = 'Fotos', embedUrl, folderUrl, ima
                                         href={current.download_url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 text-white hover:bg-white/15 text-sm font-semibold"
+                                        className="pointer-events-auto inline-flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 text-white hover:bg-white/15 text-sm font-semibold"
                                         title="Download"
                                     >
                                         <ArrowDownTrayIcon className="w-5 h-5" />
@@ -122,7 +146,7 @@ export default function MobilePhotos({ title = 'Fotos', embedUrl, folderUrl, ima
                                 </div>
 
                                 <div
-                                    className="absolute inset-0 pt-16 pb-16 px-3 sm:px-4 flex items-center justify-center"
+                                    className="absolute inset-0 z-10 pt-16 pb-16 px-3 sm:px-4 flex items-center justify-center"
                                     onTouchStart={(e) => (touchStartX.current = e.touches[0]?.clientX ?? null)}
                                     onTouchEnd={(e) => {
                                         const start = touchStartX.current;
@@ -156,11 +180,11 @@ export default function MobilePhotos({ title = 'Fotos', embedUrl, folderUrl, ima
                                     </div>
                                 </div>
 
-                                <div className="absolute inset-x-0 bottom-0 p-4 flex items-center justify-between gap-3">
+                                <div className="absolute inset-x-0 bottom-0 z-30 p-4 flex items-center justify-between gap-3 pointer-events-none">
                                     <button
                                         type="button"
                                         onClick={prev}
-                                        className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 text-white hover:bg-white/15 text-sm font-semibold"
+                                        className="pointer-events-auto inline-flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 text-white hover:bg-white/15 text-sm font-semibold"
                                     >
                                         <ChevronLeftIcon className="w-5 h-5" />
                                         Anterior
@@ -171,7 +195,7 @@ export default function MobilePhotos({ title = 'Fotos', embedUrl, folderUrl, ima
                                     <button
                                         type="button"
                                         onClick={next}
-                                        className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 text-white hover:bg-white/15 text-sm font-semibold"
+                                        className="pointer-events-auto inline-flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 text-white hover:bg-white/15 text-sm font-semibold"
                                     >
                                         Próxima
                                         <ChevronRightIcon className="w-5 h-5" />

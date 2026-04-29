@@ -45,6 +45,7 @@ class PhotoAlbumController extends Controller
                 return [
                     'id' => $a->id,
                     'title' => $a->title,
+                    'photographer_name' => $a->photographer_name,
                     'drive_folder_url' => $a->drive_folder_url,
                     'drive_folder_id' => $a->drive_folder_id,
                     'drive_embed_url' => $a->drive_folder_embed_url,
@@ -72,6 +73,7 @@ class PhotoAlbumController extends Controller
 
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
+            'photographer_name' => ['nullable', 'string', 'max:255'],
             'drive_folder_url' => ['required', 'string', 'max:1024'],
             'cover_image_url' => ['nullable', 'string', 'max:1024'],
             'cover_image_file' => ['nullable', 'image', 'max:4096'],
@@ -104,6 +106,7 @@ class PhotoAlbumController extends Controller
         PhotoAlbum::create([
             'church_id' => $churchId,
             'title' => $data['title'],
+            'photographer_name' => $data['photographer_name'] ?? null,
             'drive_folder_url' => $data['drive_folder_url'],
             'cover_image_url' => $coverUrl,
             'published_at' => $publishedAt,
@@ -119,6 +122,7 @@ class PhotoAlbumController extends Controller
 
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
+            'photographer_name' => ['nullable', 'string', 'max:255'],
             'drive_folder_url' => ['required', 'string', 'max:1024'],
             'cover_image_url' => ['nullable', 'string', 'max:1024'],
             'cover_image_file' => ['nullable', 'image', 'max:4096'],
@@ -140,6 +144,7 @@ class PhotoAlbumController extends Controller
 
         $album->update([
             'title' => $data['title'],
+            'photographer_name' => $data['photographer_name'] ?? null,
             'drive_folder_url' => $data['drive_folder_url'],
             'cover_image_url' => $coverUrl,
             'published_at' => $data['published_at'] ?? null,
@@ -157,4 +162,3 @@ class PhotoAlbumController extends Controller
         return redirect()->route('photo-albums.index')->with('success', 'Álbum removido com sucesso.');
     }
 }
-

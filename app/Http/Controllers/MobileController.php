@@ -629,6 +629,7 @@ class MobileController extends Controller
                 return [
                     'id' => $a->id,
                     'title' => $a->title,
+                    'photographer_name' => $a->photographer_name,
                     'published_at' => $a->published_at?->toIso8601String(),
                     'cover_image_url' => $a->cover_image_url,
                     'auto_cover_url' => $autoCoverUrl,
@@ -711,6 +712,8 @@ class MobileController extends Controller
 
         return Inertia::render('Mobile/Photos', [
             'title' => $album->title,
+            'publishedAt' => $album->published_at?->toIso8601String(),
+            'photographerName' => $album->photographer_name,
             'embedUrl' => $embedUrl,
             'folderUrl' => $folderUrl,
             'images' => $images,

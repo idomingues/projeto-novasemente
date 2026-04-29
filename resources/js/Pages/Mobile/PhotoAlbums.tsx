@@ -5,6 +5,7 @@ import { CameraIcon, CalendarDaysIcon } from '@heroicons/react/24/outline';
 interface AlbumRow {
     id: number;
     title: string;
+    photographer_name?: string | null;
     published_at: string | null;
     cover_image_url: string | null;
     auto_cover_url: string | null;
@@ -81,6 +82,9 @@ export default function MobilePhotoAlbums({ albums }: Props) {
                                             <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-200 mt-1">
                                                 {a.title || 'Culto'}
                                             </p>
+                                            {a.photographer_name ? (
+                                                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{a.photographer_name}</p>
+                                            ) : null}
                                             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
                                                 {formatPublishedLabel(a.published_at)}
                                             </p>

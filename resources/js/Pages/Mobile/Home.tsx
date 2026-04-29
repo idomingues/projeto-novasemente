@@ -3,6 +3,8 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import { formatWhenLine, getDayMonth, type MobileEventListItem } from '@/utils/mobileEventDisplay';
 import {
     ArchiveBoxIcon,
+    BanknotesIcon,
+    BellIcon,
     HeartIcon,
     MusicalNoteIcon,
     PhotoIcon,
@@ -46,6 +48,21 @@ function firstName(fullName: string): string {
     const t = fullName.trim();
     if (!t) return '';
     return t.split(/\s+/)[0] ?? t;
+}
+
+function timeAgoPtBr(iso: string | null): string {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    const diffMs = Date.now() - d.getTime();
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) return 'Agora';
+    if (diffMin < 60) return `Há ${diffMin} min`;
+    const diffH = Math.floor(diffMin / 60);
+    if (diffH < 24) return `Há ${diffH} ${diffH === 1 ? 'hora' : 'horas'}`;
+    const diffD = Math.floor(diffH / 24);
+    if (diffD < 7) return `Há ${diffD} ${diffD === 1 ? 'dia' : 'dias'}`;
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
 }
 
 function cardSnippet(n: NewsCard): string {
@@ -99,7 +116,7 @@ type QuickAction = {
 };
 
 function QuickActionGlyph({ icon: Icon }: { icon: MenuIcon }) {
-    return <Icon className="h-6 w-6" aria-hidden />;
+    return <Icon className="h-7 w-7" aria-hidden strokeWidth={2.4} />;
 }
 
 const quickActions: QuickAction[] = [
@@ -137,7 +154,7 @@ const quickActions: QuickAction[] = [
     },
     {
         label: 'Fotos',
-        subtitle: 'Veja o que nossos fotógrafos deixaram para você',
+        subtitle: 'Veja o que nosso fotógrafos prepararam para você.',
         route: 'mobile.fotos',
         icon: PhotoIcon,
         cardClass: 'border-rose-200/90 bg-rose-50 dark:border-rose-800/40 dark:bg-rose-950/35',
@@ -147,7 +164,7 @@ const quickActions: QuickAction[] = [
         label: 'Oferta',
         subtitle: 'Faça sua oferta de forma simples',
         route: 'mobile.offerings',
-        icon: HeartIcon,
+        icon: BanknotesIcon,
         cardClass: 'border-orange-200/90 bg-orange-50/90 dark:border-orange-800/40 dark:bg-orange-950/35',
         iconWrapClass: 'bg-orange-100/95 text-orange-950 dark:bg-orange-900/50 dark:text-orange-100',
     },
@@ -162,38 +179,44 @@ export default function MobileHome({ latestNews, upcomingEvents }: Props) {
     return (
         <MobileLayout>
             <Head title="Home" />
-            <div className="mx-auto w-full max-w-lg space-y-8 pb-4 sm:max-w-xl md:max-w-2xl md:space-y-10 lg:max-w-none">
-                <header className="min-w-0 space-y-1 lg:flex lg:items-end lg:justify-between lg:gap-8 lg:space-y-0">
+            <div className="mx-auto w-full max-w-lg space-y-7 pb-4 sm:max-w-xl md:max-w-2xl lg:max-w-none">
+                <header className="flex items-center justify-between gap-4">
                     <div className="min-w-0">
                         <p className="truncate text-lg font-bold leading-snug text-zinc-900 dark:text-white lg:text-2xl lg:font-semibold">
-                            {user ? (
-                                <>Bem-vindo, {displayName}! 👋</>
-                            ) : (
-                                <>Bem-vindo! 👋</>
-                            )}
+                            {user ? <>Bem-vindo, {displayName}! 👋</> : <>Bem-vindo! 👋</>}
                         </p>
                         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400 lg:mt-2 lg:max-w-2xl lg:text-base">
                             Fique por dentro de tudo que acontece na Nova Semente.
                         </p>
                     </div>
+
+                    {user ? (
+                        <Link
+                            href={route('mobile.notifications')}
+                            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-zinc-700 shadow-sm ring-1 ring-zinc-200 hover:bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-200 dark:ring-zinc-800 dark:hover:bg-zinc-800"
+                            aria-label="Notificações"
+                        >
+                            <BellIcon className="h-5 w-5" aria-hidden />
+                        </Link>
+                    ) : null}
                 </header>
 
                 <section aria-label="Atalhos">
-                    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 lg:gap-5">
+                    <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-3">
                         {quickActions.map(({ label, subtitle, route: routeName, icon, cardClass, iconWrapClass }) => (
                             <Link
                                 key={routeName}
                                 href={route(routeName)}
-                                className={`flex flex-col items-start gap-3 rounded-2xl border p-4 text-left shadow-sm transition hover:brightness-[0.98] dark:hover:brightness-110 lg:min-h-[9.5rem] lg:p-5 lg:rounded-3xl ${cardClass}`}
+                                className="flex flex-col rounded-3xl bg-white p-4 text-left shadow-sm ring-1 ring-zinc-200 transition hover:bg-zinc-50 dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60"
                             >
-                                <span
-                                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full shadow-sm ${iconWrapClass}`}
-                                >
+                                <div className="text-[#49AD3D]">
                                     <QuickActionGlyph icon={icon} />
-                                </span>
-                                <div className="min-w-0">
-                                    <span className="block font-bold leading-tight text-zinc-900 dark:text-white">{label}</span>
-                                    <p className="mt-1 text-sm leading-snug text-zinc-600 dark:text-zinc-300">{subtitle}</p>
+                                </div>
+                                <div className="mt-3 min-w-0">
+                                    <p className="text-base font-extrabold leading-tight text-zinc-900 dark:text-white">{label}</p>
+                                    <p className="mt-1 text-[11px] font-medium leading-snug text-zinc-500 dark:text-zinc-400">
+                                        {subtitle}
+                                    </p>
                                 </div>
                             </Link>
                         ))}
@@ -203,11 +226,11 @@ export default function MobileHome({ latestNews, upcomingEvents }: Props) {
                 <div className="space-y-8 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-10 lg:gap-y-0 lg:space-y-0 xl:gap-x-12">
                     <section className="space-y-3">
                         <div className="flex items-center justify-between gap-2">
-                            <h2 className="text-base font-bold text-zinc-900 dark:text-white lg:text-lg">Últimas notícias</h2>
+                            <h2 className="text-base font-extrabold text-zinc-900 dark:text-white lg:text-lg">Últimas Notícias</h2>
                             {latestNews.length > 0 ? (
                                 <Link
                                     href={route('mobile.news')}
-                                    className="text-sm font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                                    className="text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200"
                                 >
                                     Ver todas
                                 </Link>
@@ -223,14 +246,14 @@ export default function MobileHome({ latestNews, upcomingEvents }: Props) {
                                     const thumb = n.cover_url || n.image_url;
                                     const src = imageSrc(thumb, appUrl);
                                     const snippet = cardSnippet(n);
-                                    const whenLine = formatNewsWhen(n.published_at);
+                                    const whenLine = timeAgoPtBr(n.published_at) || formatNewsWhen(n.published_at);
                                     return (
                                         <li key={n.id}>
                                             <Link
                                                 href={route('mobile.news.show', n.slug)}
-                                                className="flex gap-3 rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm transition hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-zinc-600"
+                                                className="flex items-center gap-3 rounded-3xl bg-white p-3 shadow-sm ring-1 ring-zinc-200 transition hover:bg-zinc-50 dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60"
                                             >
-                                                <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800">
+                                                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800">
                                                     {src ? (
                                                         <img src={src} alt="" className="h-full w-full object-cover" />
                                                     ) : (
@@ -239,16 +262,15 @@ export default function MobileHome({ latestNews, upcomingEvents }: Props) {
                                                         </div>
                                                     )}
                                                 </div>
-                                                <div className="min-w-0 flex-1 py-0.5">
-                                                    <p className="line-clamp-2 font-semibold leading-snug text-zinc-900 dark:text-white">
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+                                                        {n.type_label || 'COMUNIDADE'}
+                                                    </p>
+                                                    <p className="mt-0.5 line-clamp-2 text-sm font-semibold leading-snug text-zinc-900 dark:text-white">
                                                         {n.title}
                                                     </p>
-                                                    {snippet ? (
-                                                        <p className="mt-1 line-clamp-2 text-sm text-zinc-500 dark:text-zinc-400">{snippet}</p>
-                                                    ) : null}
-                                                    {whenLine ? (
-                                                        <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">{whenLine}</p>
-                                                    ) : null}
+                                                    {snippet ? <p className="mt-1 line-clamp-1 text-xs text-zinc-500 dark:text-zinc-400">{snippet}</p> : null}
+                                                    <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">{whenLine}</p>
                                                 </div>
                                             </Link>
                                         </li>
@@ -260,11 +282,11 @@ export default function MobileHome({ latestNews, upcomingEvents }: Props) {
 
                     <section className="space-y-3">
                         <div className="flex items-center justify-between gap-2">
-                            <h2 className="text-base font-bold text-zinc-900 dark:text-white lg:text-lg">Próximos Eventos</h2>
+                            <h2 className="text-base font-extrabold text-zinc-900 dark:text-white lg:text-lg">Próximos Eventos</h2>
                             {upcomingEvents.length > 0 ? (
                                 <Link
                                     href={route('mobile.events')}
-                                    className="text-sm font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                                    className="text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200"
                                 >
                                     Ver todas
                                 </Link>
@@ -285,9 +307,9 @@ export default function MobileHome({ latestNews, upcomingEvents }: Props) {
                                         <li key={ev.id}>
                                             <Link
                                                 href={route('mobile.events')}
-                                                className="flex gap-3 rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm transition hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-zinc-600"
+                                                className="flex items-center gap-3 rounded-3xl bg-white p-3 shadow-sm ring-1 ring-zinc-200 transition hover:bg-zinc-50 dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60"
                                             >
-                                                <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800">
+                                                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800">
                                                     {src ? (
                                                         <img src={src} alt="" className="h-full w-full object-cover" />
                                                     ) : (
@@ -295,23 +317,17 @@ export default function MobileHome({ latestNews, upcomingEvents }: Props) {
                                                             className="flex h-full w-full flex-col items-center justify-center px-1 text-center text-white"
                                                             style={{ backgroundColor: ev.color || '#059669' }}
                                                         >
-                                                            <span className="text-xl font-bold tabular-nums leading-none">{day}</span>
-                                                            <span className="mt-1 text-[0.65rem] font-semibold uppercase leading-tight opacity-95">
+                                                            <span className="text-lg font-extrabold tabular-nums leading-none">{day}</span>
+                                                            <span className="mt-0.5 text-[0.65rem] font-semibold uppercase leading-tight opacity-95">
                                                                 {month}
                                                             </span>
                                                         </div>
                                                     )}
                                                 </div>
-                                                <div className="min-w-0 flex-1 py-0.5">
-                                                    <p className="line-clamp-2 font-semibold leading-snug text-zinc-900 dark:text-white">
-                                                        {ev.title}
-                                                    </p>
-                                                    {snippet ? (
-                                                        <p className="mt-1 line-clamp-2 text-sm text-zinc-500 dark:text-zinc-400">{snippet}</p>
-                                                    ) : null}
-                                                    {whenLine ? (
-                                                        <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">{whenLine}</p>
-                                                    ) : null}
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="line-clamp-2 text-sm font-semibold leading-snug text-zinc-900 dark:text-white">{ev.title}</p>
+                                                    {snippet ? <p className="mt-1 line-clamp-1 text-xs text-zinc-500 dark:text-zinc-400">{snippet}</p> : null}
+                                                    {whenLine ? <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">{whenLine}</p> : null}
                                                 </div>
                                             </Link>
                                         </li>

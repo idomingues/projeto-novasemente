@@ -16,6 +16,7 @@ import { compressImageForUpload, ImageCompressError } from '@/utils/compressImag
 interface PhotoAlbumRow {
     id: number;
     title: string;
+    photographer_name: string | null;
     drive_folder_url: string;
     drive_folder_id: string | null;
     drive_embed_url: string | null;
@@ -51,6 +52,7 @@ export default function PhotoAlbumsIndex({ albums, canManage, hasDriveApiKey }: 
 
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
         title: '',
+        photographer_name: '',
         drive_folder_url: '',
         cover_image_url: '',
         cover_image_file: null as File | null,
@@ -73,6 +75,7 @@ export default function PhotoAlbumsIndex({ albums, canManage, hasDriveApiKey }: 
         setEditingId(a.id);
         setData({
             title: a.title,
+            photographer_name: a.photographer_name ?? '',
             drive_folder_url: a.drive_folder_url,
             cover_image_url: a.cover_image_url ?? '',
             cover_image_file: null,
@@ -189,6 +192,7 @@ export default function PhotoAlbumsIndex({ albums, canManage, hasDriveApiKey }: 
 
                                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400 mt-2">
                                             {a.author?.name ? <span>• {a.author.name}</span> : null}
+                                            {a.photographer_name ? <span>• {a.photographer_name}</span> : null}
                                             {a.drive_view_url ? (
                                                 <a
                                                     href={a.drive_view_url}
@@ -249,6 +253,18 @@ export default function PhotoAlbumsIndex({ albums, canManage, hasDriveApiKey }: 
                                     placeholder="Ex.: Culto Jovem — 03/01"
                                 />
                                 <InputError message={errors.title} className="mt-1" />
+                            </div>
+
+                            <div>
+                                <InputLabel htmlFor="album_photographer_name" value="Nome do fotógrafo (opcional)" />
+                                <TextInput
+                                    id="album_photographer_name"
+                                    value={data.photographer_name}
+                                    onChange={(e) => setData('photographer_name', e.target.value)}
+                                    className="mt-1 block w-full"
+                                    placeholder="Ex.: João Silva"
+                                />
+                                <InputError message={(errors as Record<string, string | undefined>).photographer_name} className="mt-1" />
                             </div>
 
                             <div>

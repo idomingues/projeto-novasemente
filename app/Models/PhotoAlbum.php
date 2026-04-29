@@ -12,6 +12,7 @@ class PhotoAlbum extends Model
     protected $fillable = [
         'church_id',
         'title',
+        'photographer_name',
         'drive_folder_url',
         'cover_image_url',
         'published_at',
@@ -141,4 +142,3 @@ class PhotoAlbum extends Model
         return "https://drive.google.com/drive/folders/{$id}";
     }
 }
-
