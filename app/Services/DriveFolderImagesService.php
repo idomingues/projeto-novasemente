@@ -7,6 +7,28 @@ use Illuminate\Support\Facades\Http;
 
 class DriveFolderImagesService
 {
+    private function debugLog(string $runId, string $hypothesisId, string $message, array $data = []): void
+    {
+        try {
+            $payload = [
+                'sessionId' => 'cadcbe',
+                'runId' => $runId,
+                'hypothesisId' => $hypothesisId,
+                'location' => 'app/Services/DriveFolderImagesService.php',
+                'message' => $message,
+                'data' => $data,
+                'timestamp' => (int) round(microtime(true) * 1000),
+            ];
+            file_put_contents(
+                '/Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente/.cursor/debug-cadcbe.log',
+                json_encode($payload, JSON_UNESCAPED_UNICODE)."\n",
+                FILE_APPEND
+            );
+        } catch (\Throwable) {
+            // ignore
+        }
+    }
+
     /**
      * Lista imagens de uma pasta pública do Google Drive.
      *
@@ -18,11 +40,23 @@ class DriveFolderImagesService
     public function listPublicFolderImages(string $folderId, int $pageSize = 200): array
     {
         $apiKey = (string) config('services.google.drive_api_key');
+        $runId = 'pre-fix';
+        $cacheKey = 'drive_folder_images:list:v1:'.$folderId.':'.$pageSize;
+        $this->debugLog($runId, 'H1', 'listPublicFolderImages called', [
+            'folderId' => $folderId,
+            'pageSize' => $pageSize,
+            'apiKeyPresent' => trim($apiKey) !== '',
+            'cacheKey' => $cacheKey,
+            'cacheHas' => Cache::has($cacheKey),
+        ]);
+
         if (trim($apiKey) === '') {
+            $this->debugLog($runId, 'H1', 'Missing GOOGLE_DRIVE_API_KEY (config services.google.drive_api_key)', [
+                'folderId' => $folderId,
+            ]);
+
             return [];
         }
-
-        $cacheKey = 'drive_folder_images:list:v1:'.$folderId.':'.$pageSize;
 
         return Cache::remember($cacheKey, now()->addMinutes(30), function () use ($folderId, $apiKey, $pageSize) {
             try {
@@ -46,6 +80,12 @@ class DriveFolderImagesService
                     ], fn ($v) => $v !== null && $v !== ''));
 
                     if (! $response->successful()) {
+                        $this->debugLog('pre-fix', 'H2', 'Drive API request failed', [
+                            'folderId' => $folderId,
+                            'httpStatus' => $response->status(),
+                            'bodyPrefix' => substr((string) $response->body(), 0, 300),
+                        ]);
+
                         return [];
                     }
 
@@ -83,12 +123,23 @@ class DriveFolderImagesService
                     ];
                 }
 
+                $this->debugLog('pre-fix', 'H3', 'Drive API request ok', [
+                    'folderId' => $folderId,
+                    'filesCount' => count($files),
+                    'outCount' => count($out),
+                ]);
+
                 return $out;
             } catch (\Throwable $e) {
+                $this->debugLog('pre-fix', 'H4', 'Exception while listing Drive images', [
+                    'folderId' => $folderId,
+                    'exception' => get_class($e),
+                    'messagePrefix' => substr((string) $e->getMessage(), 0, 200),
+                ]);
                 report($e);
+
                 return [];
             }
         });
     }
 }
-

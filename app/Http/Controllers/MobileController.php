@@ -656,9 +656,57 @@ class MobileController extends Controller
         $folderUrl = $album->drive_folder_view_url;
         abort_unless($embedUrl && $folderUrl, 404);
 
+        try {
+            $payload = [
+                'sessionId' => 'cadcbe',
+                'runId' => 'pre-fix',
+                'hypothesisId' => 'H5',
+                'location' => 'app/Http/Controllers/MobileController.php:fotosShow',
+                'message' => 'Entering fotosShow',
+                'data' => [
+                    'albumId' => $album->id,
+                    'albumTitle' => $album->title,
+                    'driveFolderIdPresent' => (bool) $album->drive_folder_id,
+                    'driveFolderId' => $album->drive_folder_id ? substr((string) $album->drive_folder_id, 0, 12) : null,
+                    'hasEmbedUrl' => (bool) $embedUrl,
+                    'hasFolderUrl' => (bool) $folderUrl,
+                ],
+                'timestamp' => (int) round(microtime(true) * 1000),
+            ];
+            file_put_contents(
+                '/Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente/.cursor/debug-cadcbe.log',
+                json_encode($payload, JSON_UNESCAPED_UNICODE)."\n",
+                FILE_APPEND
+            );
+        } catch (\Throwable) {
+            // ignore
+        }
+
         $images = [];
         if ($album->drive_folder_id) {
             $images = $driveImages->listPublicFolderImages($album->drive_folder_id);
+        }
+
+        try {
+            $payload = [
+                'sessionId' => 'cadcbe',
+                'runId' => 'pre-fix',
+                'hypothesisId' => 'H6',
+                'location' => 'app/Http/Controllers/MobileController.php:fotosShow',
+                'message' => 'Exiting fotosShow',
+                'data' => [
+                    'albumId' => $album->id,
+                    'imagesCount' => is_array($images) ? count($images) : null,
+                ],
+                'timestamp' => (int) round(microtime(true) * 1000),
+            ];
+            file_put_contents(
+                '/Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente/.cursor/debug-cadcbe.log',
+                json_encode($payload, JSON_UNESCAPED_UNICODE)."\n",
+                FILE_APPEND
+            );
+        } catch (\Throwable) {
+            // ignore
         }
 
         return Inertia::render('Mobile/Photos', [
