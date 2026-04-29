@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class DriveFolderImagesService
 {
@@ -41,7 +42,8 @@ class DriveFolderImagesService
     {
         $apiKey = (string) config('services.google.drive_api_key');
         $runId = 'pre-fix';
-        $cacheKey = 'drive_folder_images:list:v1:'.$folderId.':'.$pageSize;
+        // v2: invalida caches antigos (incluindo listas vazias) após ajustes em produção.
+        $cacheKey = 'drive_folder_images:list:v2:'.$folderId.':'.$pageSize;
         $this->debugLog($runId, 'H1', 'listPublicFolderImages called', [
             'folderId' => $folderId,
             'pageSize' => $pageSize,
@@ -49,10 +51,19 @@ class DriveFolderImagesService
             'cacheKey' => $cacheKey,
             'cacheHas' => Cache::has($cacheKey),
         ]);
+        Log::info('DriveFolderImagesService.listPublicFolderImages called', [
+            'folderIdPrefix' => substr($folderId, 0, 12),
+            'pageSize' => $pageSize,
+            'apiKeyPresent' => trim($apiKey) !== '',
+            'cacheHas' => Cache::has($cacheKey),
+        ]);
 
         if (trim($apiKey) === '') {
             $this->debugLog($runId, 'H1', 'Missing GOOGLE_DRIVE_API_KEY (config services.google.drive_api_key)', [
                 'folderId' => $folderId,
+            ]);
+            Log::warning('DriveFolderImagesService missing GOOGLE_DRIVE_API_KEY', [
+                'folderIdPrefix' => substr($folderId, 0, 12),
             ]);
 
             return [];
@@ -84,6 +95,11 @@ class DriveFolderImagesService
                             'folderId' => $folderId,
                             'httpStatus' => $response->status(),
                             'bodyPrefix' => substr((string) $response->body(), 0, 300),
+                        ]);
+                        Log::warning('DriveFolderImagesService Drive API request failed', [
+                            'folderIdPrefix' => substr($folderId, 0, 12),
+                            'httpStatus' => $response->status(),
+                            'bodyPrefix' => substr((string) $response->body(), 0, 200),
                         ]);
 
                         return [];
@@ -128,11 +144,21 @@ class DriveFolderImagesService
                     'filesCount' => count($files),
                     'outCount' => count($out),
                 ]);
+                Log::info('DriveFolderImagesService Drive API request ok', [
+                    'folderIdPrefix' => substr($folderId, 0, 12),
+                    'filesCount' => count($files),
+                    'outCount' => count($out),
+                ]);
 
                 return $out;
             } catch (\Throwable $e) {
                 $this->debugLog('pre-fix', 'H4', 'Exception while listing Drive images', [
                     'folderId' => $folderId,
+                    'exception' => get_class($e),
+                    'messagePrefix' => substr((string) $e->getMessage(), 0, 200),
+                ]);
+                Log::error('DriveFolderImagesService exception while listing Drive images', [
+                    'folderIdPrefix' => substr($folderId, 0, 12),
                     'exception' => get_class($e),
                     'messagePrefix' => substr((string) $e->getMessage(), 0, 200),
                 ]);
