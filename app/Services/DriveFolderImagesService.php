@@ -133,6 +133,8 @@ class DriveFolderImagesService
                         // thumbnails que geralmente funcionam para arquivos públicos sem token
                         'thumb_url' => "https://drive.google.com/thumbnail?id={$id}&sz=w600",
                         'full_url' => "https://drive.google.com/thumbnail?id={$id}&sz=w2000",
+                        // alternativa que em alguns ambientes carrega melhor no <img> (sem UI do Drive)
+                        'view_image_url' => "https://drive.google.com/uc?export=view&id={$id}",
                         // download direto (pode abrir em nova aba e salvar)
                         'download_url' => "https://drive.google.com/uc?export=download&id={$id}",
                         'view_url' => "https://drive.google.com/file/d/{$id}/view",

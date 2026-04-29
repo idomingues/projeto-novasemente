@@ -1,7 +1,7 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head } from '@inertiajs/react';
 import { ArrowDownTrayIcon, ChevronLeftIcon, ChevronRightIcon, XMarkIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 interface Props {
     title?: string;
@@ -12,6 +12,7 @@ interface Props {
         name: string | null;
         thumb_url: string;
         full_url: string;
+        view_image_url: string;
         download_url: string;
         view_url: string;
     }[];
@@ -26,6 +27,16 @@ export default function MobilePhotos({ title = 'Fotos', embedUrl, folderUrl, ima
 
     const canUseGallery = images.length > 0;
     const current = canUseGallery ? images[Math.min(idx, images.length - 1)] : null;
+    const [viewerSrcIndex, setViewerSrcIndex] = useState(0);
+
+    const viewerSrcs = useMemo(() => {
+        if (!current) return [];
+        return [current.full_url, current.view_image_url, current.thumb_url].filter(Boolean);
+    }, [current]);
+
+    useEffect(() => {
+        setViewerSrcIndex(0);
+    }, [idx, open]);
 
     const openAt = (i: number) => {
         setIdx(i);
@@ -67,7 +78,7 @@ export default function MobilePhotos({ title = 'Fotos', embedUrl, folderUrl, ima
 
                 {canUseGallery ? (
                     <>
-                        <div className="grid grid-cols-1 gap-3 sm:gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
                             {images.map((img, i) => (
                                 <button
                                     key={img.id}
@@ -131,12 +142,16 @@ export default function MobilePhotos({ title = 'Fotos', embedUrl, folderUrl, ima
                                         onClick={() => setZoomed((v) => !v)}
                                     >
                                         <img
-                                            src={current.full_url}
+                                            src={viewerSrcs[viewerSrcIndex] ?? current.full_url}
                                             alt={current.name ?? ''}
                                             className={`w-full h-full object-contain select-none ${
                                                 zoomed ? 'scale-150 origin-center' : 'scale-100'
                                             } transition-transform duration-200`}
                                             draggable={false}
+                                            referrerPolicy="no-referrer"
+                                            onError={() => {
+                                                setViewerSrcIndex((v) => Math.min(v + 1, Math.max(0, viewerSrcs.length - 1)));
+                                            }}
                                         />
                                     </div>
                                 </div>
