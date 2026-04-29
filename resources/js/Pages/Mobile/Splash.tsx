@@ -53,7 +53,16 @@ export default function MobileSplash({ videoSrc, nextUrl }: Props) {
 
     useEffect(() => {
         if (!finished) return;
-        router.visit(nextUrl, { replace: true });
+        // Inertia pode falhar em alguns contextos (cache agressivo/PWA). Garanta fallback.
+        try {
+            router.visit(nextUrl, { replace: true });
+        } catch {
+            // ignore
+        }
+        const fallback = window.setTimeout(() => {
+            window.location.replace(nextUrl);
+        }, 1200);
+        return () => window.clearTimeout(fallback);
     }, [finished, nextUrl]);
 
     return (

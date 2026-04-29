@@ -4,7 +4,6 @@ import { formatWhenLine, getDayMonth, type MobileEventListItem } from '@/utils/m
 import {
     ArchiveBoxIcon,
     BanknotesIcon,
-    BellIcon,
     HeartIcon,
     MusicalNoteIcon,
     PhotoIcon,
@@ -190,15 +189,6 @@ export default function MobileHome({ latestNews, upcomingEvents }: Props) {
                         </p>
                     </div>
 
-                    {user ? (
-                        <Link
-                            href={route('mobile.notifications')}
-                            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-zinc-700 shadow-sm ring-1 ring-zinc-200 hover:bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-200 dark:ring-zinc-800 dark:hover:bg-zinc-800"
-                            aria-label="Notificações"
-                        >
-                            <BellIcon className="h-5 w-5" aria-hidden />
-                        </Link>
-                    ) : null}
                 </header>
 
                 <section aria-label="Atalhos">
@@ -207,7 +197,7 @@ export default function MobileHome({ latestNews, upcomingEvents }: Props) {
                             <Link
                                 key={routeName}
                                 href={route(routeName)}
-                                className="flex flex-col rounded-3xl bg-white p-4 text-left shadow-sm ring-1 ring-zinc-200 transition hover:bg-zinc-50 dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60"
+                                className="flex flex-col rounded-2xl bg-white p-4 text-left shadow-sm ring-1 ring-zinc-200 transition hover:bg-zinc-50 dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60"
                             >
                                 <div className="text-[#49AD3D]">
                                     <QuickActionGlyph icon={icon} />
@@ -251,7 +241,7 @@ export default function MobileHome({ latestNews, upcomingEvents }: Props) {
                                         <li key={n.id}>
                                             <Link
                                                 href={route('mobile.news.show', n.slug)}
-                                                className="flex items-center gap-3 rounded-3xl bg-white p-3 shadow-sm ring-1 ring-zinc-200 transition hover:bg-zinc-50 dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60"
+                                                className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-zinc-200 transition hover:bg-zinc-50 dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60"
                                             >
                                                 <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800">
                                                     {src ? (
@@ -307,7 +297,7 @@ export default function MobileHome({ latestNews, upcomingEvents }: Props) {
                                         <li key={ev.id}>
                                             <Link
                                                 href={route('mobile.events')}
-                                                className="flex items-center gap-3 rounded-3xl bg-white p-3 shadow-sm ring-1 ring-zinc-200 transition hover:bg-zinc-50 dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60"
+                                                className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-zinc-200 transition hover:bg-zinc-50 dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60"
                                             >
                                                 <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800">
                                                     {src ? (
