@@ -85,7 +85,7 @@ Route::post('/pedidos-oracao/{prayer}/orou', [PrayerRequestController::class, 'a
     ->name('prayer.amen');
 Route::get('/mobile/oracao', [PrayerRequestController::class, 'mobile'])->name('mobile.prayer');
 
-// Splash (vídeo) ao abrir a app
+// Splash (vídeo) ao abrir a app (desativado: a app abre direto no /mobile/inicio)
 Route::get('/media/ns.mp4', function () {
     $path = base_path('assets/NS.MP4');
     if (! file_exists($path)) {
@@ -102,7 +102,7 @@ Route::get('/media/ns.mp4', function () {
         ]);
 })->name('media.ns-splash');
 
-Route::get('/mobile', [MobileController::class, 'splash'])->name('mobile.index');
+Route::get('/mobile', [MobileController::class, 'home'])->name('mobile.index');
 Route::get('/mobile/inicio', [MobileController::class, 'home'])->name('mobile.home');
 Route::get('/mobile/culto', [MobileController::class, 'culto'])->name('mobile.culto');
 Route::get('/mobile/news', [MobileController::class, 'news'])->name('mobile.news');
