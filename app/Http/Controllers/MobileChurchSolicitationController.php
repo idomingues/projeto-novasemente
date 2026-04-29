@@ -128,7 +128,7 @@ class MobileChurchSolicitationController extends Controller
             return Inertia::render('Mobile/Solicitations/GuestGate', [
                 'registerUrl' => route('register'),
                 'redirectAfterLogin' => route('mobile.solicitations.hub', [], false),
-                'continueUrl' => route('mobile.news', [], false),
+                'continueUrl' => route('mobile.home', [], false),
             ]);
         }
 

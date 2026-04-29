@@ -12,8 +12,17 @@ interface CultoItem {
     published_at: string | null;
 }
 
+/** Cartão fixo «AO VIVO» (URL configurada na igreja). */
+interface LiveCultoItem {
+    title: string;
+    youtube_url: string;
+    youtube_embed_url: string | null;
+    youtube_thumb_url: string | null;
+}
+
 interface Props {
     cultos: CultoItem[];
+    liveCulto?: LiveCultoItem | null;
     showPostRegistrationBanner?: boolean;
 }
 
@@ -26,7 +35,63 @@ function formatDate(iso: string | null): string {
     });
 }
 
-export default function MobileCulto({ cultos, showPostRegistrationBanner = false }: Props) {
+function CultoVideoCard({
+    title,
+    youtube_url,
+    youtube_thumb_url,
+    published_at,
+    isLive,
+}: Pick<CultoItem, 'title' | 'youtube_url' | 'youtube_thumb_url' | 'published_at'> & { isLive?: boolean }) {
+    return (
+        <li
+            className={`rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 border shadow-sm hover:shadow-md active:scale-[0.99] transition-all ${
+                isLive
+                    ? 'border-rose-400 ring-2 ring-rose-500/40 dark:border-rose-700 dark:ring-rose-600/30'
+                    : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
+            }`}
+        >
+            <a href={youtube_url} target="_blank" rel="noopener noreferrer" className="block">
+                {youtube_thumb_url ? (
+                    <div className="relative aspect-video overflow-hidden bg-zinc-200 dark:bg-zinc-800">
+                        <img src={youtube_thumb_url} alt="" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                            <PlayCircleIcon className="w-16 h-16 text-white drop-shadow-lg" />
+                        </div>
+                        {isLive ? (
+                            <span className="absolute top-2 left-2 rounded-md bg-rose-600 px-2 py-1 text-xs font-bold uppercase tracking-wide text-white shadow-md">
+                                AO VIVO
+                            </span>
+                        ) : null}
+                        {!isLive && published_at ? (
+                            <span className="absolute bottom-2 left-3 px-2.5 py-1 rounded-lg bg-black/60 text-white text-xs font-medium backdrop-blur-sm">
+                                {formatDate(published_at)}
+                            </span>
+                        ) : null}
+                    </div>
+                ) : (
+                    <div className="aspect-video bg-gradient-to-br from-zinc-200 to-zinc-300 dark:from-zinc-700 dark:to-zinc-800 flex items-center justify-center relative">
+                        <FilmIcon className="w-12 h-12 text-zinc-400 dark:text-zinc-500" />
+                        {isLive ? (
+                            <span className="absolute top-2 left-2 rounded-md bg-rose-600 px-2 py-1 text-xs font-bold uppercase tracking-wide text-white shadow-md">
+                                AO VIVO
+                            </span>
+                        ) : null}
+                    </div>
+                )}
+                <div className="p-4">
+                    <h2 className="font-semibold text-zinc-900 dark:text-white text-lg leading-snug line-clamp-2">{title}</h2>
+                    {!isLive && published_at ? (
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1.5">{formatDate(published_at)}</p>
+                    ) : isLive ? (
+                        <p className="text-xs text-rose-600 dark:text-rose-400 mt-1.5 font-medium">Transmissão em direto no YouTube</p>
+                    ) : null}
+                </div>
+            </a>
+        </li>
+    );
+}
+
+export default function MobileCulto({ cultos, liveCulto = null, showPostRegistrationBanner = false }: Props) {
     useEffect(() => {
         if (!showPostRegistrationBanner || typeof window === 'undefined') {
             return;
@@ -57,7 +122,7 @@ export default function MobileCulto({ cultos, showPostRegistrationBanner = false
                         </p>
                     </div>
                 ) : null}
-                {cultos.length === 0 ? (
+                {cultos.length === 0 && !liveCulto ? (
                     <div className="py-12 lg:py-20 text-center">
                         <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-4">
                             <FilmIcon className="w-8 h-8 text-zinc-400 dark:text-zinc-500" />
@@ -67,46 +132,24 @@ export default function MobileCulto({ cultos, showPostRegistrationBanner = false
                     </div>
                 ) : (
                     <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {liveCulto ? (
+                            <CultoVideoCard
+                                key="live-youtube"
+                                title={liveCulto.title}
+                                youtube_url={liveCulto.youtube_url}
+                                youtube_thumb_url={liveCulto.youtube_thumb_url}
+                                published_at={null}
+                                isLive
+                            />
+                        ) : null}
                         {cultos.map((c) => (
-                            <li
+                            <CultoVideoCard
                                 key={c.id}
-                                className="rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm hover:shadow-md hover:border-zinc-300 dark:hover:border-zinc-700 active:scale-[0.99] transition-all"
-                            >
-                                <a
-                                    href={c.youtube_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="block"
-                                >
-                                    {c.youtube_thumb_url ? (
-                                        <div className="relative aspect-video overflow-hidden bg-zinc-200 dark:bg-zinc-800">
-                                            <img
-                                                src={c.youtube_thumb_url}
-                                                alt=""
-                                                className="w-full h-full object-cover"
-                                            />
-                                            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                                                <PlayCircleIcon className="w-16 h-16 text-white drop-shadow-lg" />
-                                            </div>
-                                            <span className="absolute bottom-2 left-3 px-2.5 py-1 rounded-lg bg-black/60 text-white text-xs font-medium backdrop-blur-sm">
-                                                {formatDate(c.published_at)}
-                                            </span>
-                                        </div>
-                                    ) : (
-                                        <div className="aspect-video bg-gradient-to-br from-zinc-200 to-zinc-300 dark:from-zinc-700 dark:to-zinc-800 flex items-center justify-center">
-                                            <FilmIcon className="w-12 h-12 text-zinc-400 dark:text-zinc-500" />
-                                        </div>
-                                    )}
-                                    <div className="p-4">
-                                        <h2 className="font-semibold text-zinc-900 dark:text-white text-lg leading-snug line-clamp-2">
-                                            {c.title}
-                                        </h2>
-                                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1.5">
-                                            {formatDate(c.published_at)}
-                                        </p>
-                                    </div>
-                                </a>
-                            </li>
+                                title={c.title}
+                                youtube_url={c.youtube_url}
+                                youtube_thumb_url={c.youtube_thumb_url}
+                                published_at={c.published_at}
+                            />
                         ))}
                     </ul>
                 )}

@@ -1,41 +1,41 @@
 import { Link } from '@inertiajs/react';
 import {
-    NewspaperIcon,
+    HomeIcon,
     CalendarDaysIcon,
-    SparklesIcon,
+    HandRaisedIcon,
+    PlayCircleIcon,
     Squares2X2Icon,
-    UserPlusIcon,
 } from '@heroicons/react/24/outline';
 import {
-    NewspaperIcon as NewspaperIconSolid,
+    HomeIcon as HomeIconSolid,
     CalendarDaysIcon as CalendarDaysIconSolid,
-    SparklesIcon as SparklesIconSolid,
+    HandRaisedIcon as HandRaisedIconSolid,
+    PlayCircleIcon as PlayCircleIconSolid,
     Squares2X2Icon as Squares2X2IconSolid,
-    UserPlusIcon as UserPlusIconSolid,
 } from '@heroicons/react/24/solid';
 
 const navItems = [
     {
-        name: 'News',
-        route: 'mobile.news' as const,
-        activeRoutes: ['mobile.news', 'mobile.news.show'] as const,
-        icon: NewspaperIcon,
-        iconActive: NewspaperIconSolid,
+        name: 'Home',
+        route: 'mobile.home' as const,
+        activeRoutes: ['mobile.home', 'volunteers.public-signup.page', 'mobile.baptism'] as const,
+        icon: HomeIcon,
+        iconActive: HomeIconSolid,
     },
     {
-        name: 'Batismo',
-        route: 'mobile.baptism' as const,
-        activeRoutes: ['mobile.baptism'] as const,
-        icon: SparklesIcon,
-        iconActive: SparklesIconSolid,
+        name: 'Assistir culto',
+        route: 'mobile.culto' as const,
+        activeRoutes: ['mobile.culto'] as const,
+        icon: PlayCircleIcon,
+        iconActive: PlayCircleIconSolid,
     },
     { name: 'Eventos', route: 'mobile.events' as const, activeRoutes: ['mobile.events'] as const, icon: CalendarDaysIcon, iconActive: CalendarDaysIconSolid },
     {
-        name: 'Voluntário',
-        route: 'volunteers.public-signup.page' as const,
-        activeRoutes: ['volunteers.public-signup.page'] as const,
-        icon: UserPlusIcon,
-        iconActive: UserPlusIconSolid,
+        name: 'Oração',
+        route: 'mobile.prayer' as const,
+        activeRoutes: ['mobile.prayer', 'prayer.index'] as const,
+        icon: HandRaisedIcon,
+        iconActive: HandRaisedIconSolid,
     },
     {
         name: 'Mais',
@@ -56,8 +56,6 @@ const navItems = [
             'mobile.fotos',
             'mobile.fotos.show',
             'mobile.location',
-            'mobile.prayer',
-            'prayer.index',
             'varios.schedule',
             'varios.classe-comecos',
             'mobile.classe-comecos',
@@ -78,11 +76,11 @@ const navItems = [
             'mobile.pastor-availability',
             'pastoral-agenda.index',
             'pastors.weekly-schedule.update',
-            'volunteers.public-signup.page',
             'mobile.schedule',
             'escalas.index',
-            'mobile.culto',
             'mobile.offerings',
+            'mobile.news',
+            'mobile.news.show',
         ] as const,
         icon: Squares2X2Icon,
         iconActive: Squares2X2IconSolid,
@@ -94,7 +92,7 @@ interface MobileBottomNavProps {
     insetForSidebar?: boolean;
 }
 
-/** Barra inferior: News, Batismo, Eventos, Cadastro, Mais (Oração entra em Mais). */
+/** Barra inferior: Home, Assistir culto, Eventos, Oração, Mais (batismo e voluntário nos cartões do Início). */
 export default function MobileBottomNav({ insetForSidebar = false }: MobileBottomNavProps) {
     return (
         <nav

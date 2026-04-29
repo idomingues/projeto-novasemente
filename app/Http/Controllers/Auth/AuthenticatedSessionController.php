@@ -70,7 +70,7 @@ class AuthenticatedSessionController extends Controller
             return redirect()->to($afterLogin);
         }
 
-        return redirect()->intended(route('mobile.news'));
+        return redirect()->intended(route('mobile.home'));
     }
 
     /**
@@ -84,6 +84,6 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerateToken();
 
-        return redirect()->route('mobile.news');
+        return redirect()->route('mobile.home');
     }
 }

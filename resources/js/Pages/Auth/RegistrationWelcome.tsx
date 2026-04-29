@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 const REDIRECT_MS = 5000;
 
 function cultoAfterRegistrationUrl(): string {
-    const base = route('mobile.news');
+    const base = route('mobile.home');
     const join = base.includes('?') ? '&' : '?';
 
     return `${base}${join}reg_ok=1`;

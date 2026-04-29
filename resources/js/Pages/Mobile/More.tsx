@@ -13,6 +13,7 @@ import {
     UserPlusIcon,
     FilmIcon,
     HandRaisedIcon,
+    NewspaperIcon,
 } from '@heroicons/react/24/outline';
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 import InstalledAppVersion from '@/Components/InstalledAppVersion';
@@ -41,6 +42,7 @@ type PageProps = {
 };
 
 const items: MoreMenuItem[] = [
+    { name: 'Notícias', description: 'Notícias e comunicados da igreja', route: 'mobile.news', icon: NewspaperIcon },
     { name: 'Oração', description: 'Pedidos de oração', route: 'mobile.prayer', icon: PrayingHandsIcon },
     { name: 'Dízimos e Ofertas', description: 'Contribuições e ofertas', route: 'mobile.offerings', icon: HandRaisedIcon },
     { name: 'Culto', description: 'Vídeos do culto online', route: 'mobile.culto', icon: FilmIcon },

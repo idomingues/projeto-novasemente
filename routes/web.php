@@ -103,6 +103,7 @@ Route::get('/media/ns.mp4', function () {
 })->name('media.ns-splash');
 
 Route::get('/mobile', [MobileController::class, 'splash'])->name('mobile.index');
+Route::get('/mobile/inicio', [MobileController::class, 'home'])->name('mobile.home');
 Route::get('/mobile/culto', [MobileController::class, 'culto'])->name('mobile.culto');
 Route::get('/mobile/news', [MobileController::class, 'news'])->name('mobile.news');
 Route::get('/mobile/news/{news:slug}', [MobileController::class, 'newsShow'])->name('mobile.news.show');

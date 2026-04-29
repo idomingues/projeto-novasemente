@@ -157,22 +157,22 @@ class VolunteerPublicSignupController extends Controller
     public function create(Request $request): RedirectResponse|Response
     {
         if (! Schema::hasTable('volunteer_self_signup_tokens')) {
-            return redirect()->route('mobile.news')->with('error', 'Cadastro público de voluntários ainda não está disponível. Contacte a equipe.');
+            return redirect()->route('mobile.home')->with('error', 'Cadastro público de voluntários ainda não está disponível. Contacte a equipe.');
         }
 
         $token = (string) $request->query('token', '');
         if ($token === '') {
-            return redirect()->route('mobile.news')->with('error', 'Link de cadastro inválido.');
+            return redirect()->route('mobile.home')->with('error', 'Link de cadastro inválido.');
         }
 
         $record = VolunteerSelfSignupToken::query()->where('token', $token)->first();
         if (! $record) {
-            return redirect()->route('mobile.news')->with('error', 'Link de cadastro inválido ou desatualizado.');
+            return redirect()->route('mobile.home')->with('error', 'Link de cadastro inválido ou desatualizado.');
         }
 
         $church = Church::query()->find($record->church_id);
         if (! $church) {
-            return redirect()->route('mobile.news')->with('error', 'Igreja não encontrada.');
+            return redirect()->route('mobile.home')->with('error', 'Igreja não encontrada.');
         }
 
         $ministries = Ministry::query()
@@ -190,7 +190,7 @@ class VolunteerPublicSignupController extends Controller
     public function store(Request $request): RedirectResponse
     {
         if (! Schema::hasTable('volunteer_self_signup_tokens')) {
-            return redirect()->route('mobile.news')->with('error', 'Cadastro público indisponível.');
+            return redirect()->route('mobile.home')->with('error', 'Cadastro público indisponível.');
         }
 
         $validated = $request->validate([

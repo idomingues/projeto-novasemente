@@ -124,7 +124,7 @@ export default function MobileIndex({ church, latestNews, upcomingEvents }: Prop
                                 News
                             </h2>
                             <Link
-                                href={route('mobile.news')}
+                                href={route('mobile.home')}
                                 className="text-sm text-primary-600 dark:text-primary-400 font-medium"
                             >
                                 Ver todas

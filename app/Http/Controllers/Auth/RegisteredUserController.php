@@ -5,18 +5,17 @@ namespace App\Http\Controllers\Auth;
 use App\Domain\Users\Actions\SyncUserChurchFromRegistration;
 use App\Domain\Volunteers\Actions\SyncVolunteerMinistryAttachments;
 use App\Http\Controllers\Controller;
-use App\Support\StorageUrl;
 use App\Models\Church;
 use App\Models\Invitation;
 use App\Models\Ministry;
 use App\Models\User;
 use App\Models\Volunteer;
+use App\Support\StorageUrl;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
@@ -341,7 +340,7 @@ class RegisteredUserController extends Controller
     public function welcome(Request $request): RedirectResponse|Response
     {
         if (! $request->session()->pull('registration_success', false)) {
-            return redirect()->route('mobile.news');
+            return redirect()->route('mobile.home');
         }
 
         return Inertia::render('Auth/RegistrationWelcome');

@@ -27,6 +27,7 @@ use App\Support\NotificationFeed;
 use App\Support\ScheduleBoardViewData;
 use App\Support\SolicitationAssignees;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -45,6 +46,25 @@ class MobileController extends Controller
         }
 
         return Church::where('active', true)->orderBy('name')->first();
+    }
+
+    /**
+     * Exclui eventos já terminados: com `ends_at` no passado, ou sem `ends_at` e início antes do dia atual.
+     *
+     * @param  Builder<Event>  $query
+     * @return Builder<Event>
+     */
+    private function whereEventNotPast(Builder $query): Builder
+    {
+        $now = now();
+
+        return $query->where(function ($q) use ($now) {
+            $q->where(function ($inner) use ($now) {
+                $inner->whereNotNull('ends_at')->where('ends_at', '>=', $now);
+            })->orWhere(function ($inner) use ($now) {
+                $inner->whereNull('ends_at')->where('starts_at', '>=', $now->copy()->startOfDay());
+            });
+        });
     }
 
     public function index(Request $request): Response
@@ -79,10 +99,11 @@ class MobileController extends Controller
                 ];
             });
 
-        $upcomingEvents = Event::query()
-            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
-            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
-            ->where('starts_at', '>=', now()->startOfDay())
+        $upcomingEvents = $this->whereEventNotPast(
+            Event::query()
+                ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+                ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
+        )
             ->orderBy('starts_at')
             ->limit(5)
             ->get()
@@ -116,7 +137,89 @@ class MobileController extends Controller
     {
         return Inertia::render('Mobile/Splash', [
             'videoSrc' => route('media.ns-splash'),
-            'nextUrl' => route('mobile.news', [], false),
+            'nextUrl' => route('mobile.home', [], false),
+        ]);
+    }
+
+    /**
+     * Início da app (substitui News como ecrã principal): atalhos + últimas notícias.
+     */
+    public function home(Request $request): Response
+    {
+        $church = $this->currentChurch();
+        $churchId = $church?->id;
+        $baseUrl = $request->getSchemeAndHttpHost();
+
+        $latestNews = News::query()
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
+            ->whereNotNull('published_at')
+            ->where('published_at', '<=', now())
+            ->orderByDesc('published_at')
+            ->limit(5)
+            ->get()
+            ->map(function (News $n) use ($baseUrl) {
+                $imageUrl = $n->image_url;
+                if ($imageUrl && ! str_starts_with($imageUrl, 'http')) {
+                    $imageUrl = $baseUrl.$imageUrl;
+                }
+                $type = $n->content_type ?? News::TYPE_ARTICLE;
+                $typeLabel = match ($type) {
+                    News::TYPE_YOUTUBE => 'VÍDEO',
+                    News::TYPE_PDF => 'PDF',
+                    News::TYPE_IMAGE => 'IMAGEM',
+                    default => 'NOTÍCIA',
+                };
+
+                return [
+                    'id' => $n->id,
+                    'title' => $n->title,
+                    'slug' => $n->slug,
+                    'excerpt' => $n->excerpt,
+                    'content_type' => $type,
+                    'type_label' => $typeLabel,
+                    'image_url' => $imageUrl,
+                    'cover_url' => $n->resolvedCoverUrl($baseUrl),
+                    'published_at' => $n->published_at?->toIso8601String(),
+                ];
+            });
+
+        $upcomingEvents = $this->whereEventNotPast(
+            Event::query()
+                ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+                ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
+        )
+            ->orderBy('starts_at')
+            ->limit(5)
+            ->get()
+            ->map(function (Event $e) use ($baseUrl) {
+                $imageUrl = $e->image_url;
+                if ($imageUrl && ! str_starts_with($imageUrl, 'http')) {
+                    $imageUrl = $baseUrl.$imageUrl;
+                }
+
+                return [
+                    'id' => $e->id,
+                    'title' => $e->title,
+                    'description' => $e->description,
+                    'starts_at' => $e->starts_at->toIso8601String(),
+                    'ends_at' => $e->ends_at?->toIso8601String(),
+                    'all_day' => $e->all_day,
+                    'location' => $e->location,
+                    'price' => $e->price,
+                    'purchase_url' => $e->purchase_url,
+                    'image_url' => $imageUrl,
+                    'color' => $e->color,
+                ];
+            });
+
+        return Inertia::render('Mobile/Home', [
+            'church' => $church ? [
+                'name' => $church->name,
+                'logo_url' => $church->logo_url,
+            ] : null,
+            'latestNews' => $latestNews,
+            'upcomingEvents' => $upcomingEvents,
         ]);
     }
 
@@ -140,8 +243,25 @@ class MobileController extends Controller
                 'published_at' => $c->published_at?->toIso8601String(),
             ]);
 
+        $liveCulto = null;
+        if ($church) {
+            $raw = trim((string) ($church->youtube_live_url ?? ''));
+            if ($raw !== '') {
+                $videoId = Culto::youtubeVideoId($raw);
+                if ($videoId) {
+                    $liveCulto = [
+                        'title' => 'AO VIVO',
+                        'youtube_url' => str_contains($raw, 'http') ? $raw : "https://www.youtube.com/watch?v={$videoId}",
+                        'youtube_embed_url' => "https://www.youtube.com/embed/{$videoId}",
+                        'youtube_thumb_url' => "https://img.youtube.com/vi/{$videoId}/mqdefault.jpg",
+                    ];
+                }
+            }
+        }
+
         return Inertia::render('Mobile/Culto', [
             'cultos' => $cultos,
+            'liveCulto' => $liveCulto,
             'showPostRegistrationBanner' => $request->boolean('reg_ok') && $request->user() !== null,
         ]);
     }
@@ -245,9 +365,11 @@ class MobileController extends Controller
     public function events(Request $request): Response
     {
         $churchId = $this->currentChurch()?->id;
-        $events = Event::query()
-            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
-            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
+        $events = $this->whereEventNotPast(
+            Event::query()
+                ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+                ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
+        )
             ->orderBy('starts_at')
             ->get()
             ->map(function (Event $e) {

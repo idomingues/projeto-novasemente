@@ -945,7 +945,7 @@ export default function PublicSignup({ token, churchName, ministries }: Props) {
                             <span className="opacity-40" aria-hidden>
                                 ·
                             </span>
-                            <Link href={route('mobile.news')} className="underline">
+                            <Link href={route('mobile.home')} className="underline">
                                 App
                             </Link>
                         </div>

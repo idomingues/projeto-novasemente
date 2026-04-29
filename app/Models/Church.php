@@ -27,6 +27,7 @@ class Church extends Model
         'pix_key',
         'donation_url',
         'youtube_playlist_url',
+        'youtube_live_url',
         'solicitations_handler_volunteer_id',
     ];
 
