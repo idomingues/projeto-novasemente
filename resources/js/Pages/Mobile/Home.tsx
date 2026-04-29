@@ -13,8 +13,6 @@ import type { ComponentType, SVGProps } from 'react';
 
 type MenuIcon = ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
 
-type ChurchLite = { name: string; logo_url: string | null } | null;
-
 type NewsCard = {
     id: number;
     title: string;
@@ -28,7 +26,6 @@ type NewsCard = {
 };
 
 interface Props {
-    church: ChurchLite;
     latestNews: NewsCard[];
     upcomingEvents: MobileEventListItem[];
 }
@@ -156,7 +153,7 @@ const quickActions: QuickAction[] = [
     },
 ];
 
-export default function MobileHome({ church, latestNews, upcomingEvents }: Props) {
+export default function MobileHome({ latestNews, upcomingEvents }: Props) {
     const page = usePage();
     const { appUrl = '', auth } = page.props as unknown as PageProps;
     const user = auth?.user ?? null;
@@ -165,40 +162,29 @@ export default function MobileHome({ church, latestNews, upcomingEvents }: Props
     return (
         <MobileLayout>
             <Head title="Home" />
-            <div className="mx-auto w-full max-w-lg space-y-8 pb-4 lg:max-w-2xl">
-                <header className="flex items-start gap-3">
-                    <div className="flex min-w-0 flex-1 items-center gap-3">
-                        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border border-zinc-200 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800">
-                            {user?.photo_url ? (
-                                <img src={imageSrc(user.photo_url, appUrl)} alt="" className="h-full w-full object-cover" />
-                            ) : church?.logo_url ? (
-                                <img src={church.logo_url} alt="" className="h-full w-full object-cover" />
+            <div className="mx-auto w-full max-w-lg space-y-8 pb-4 sm:max-w-xl md:max-w-2xl md:space-y-10 lg:max-w-none">
+                <header className="min-w-0 space-y-1 lg:flex lg:items-end lg:justify-between lg:gap-8 lg:space-y-0">
+                    <div className="min-w-0">
+                        <p className="truncate text-lg font-bold leading-snug text-zinc-900 dark:text-white lg:text-2xl lg:font-semibold">
+                            {user ? (
+                                <>Bem-vindo, {displayName}! 👋</>
                             ) : (
-                                <div className="flex h-full w-full items-center justify-center bg-primary-100 text-sm font-bold text-primary-700 dark:bg-primary-900/40 dark:text-primary-200">
-                                    {(displayName || church?.name || '?').charAt(0).toUpperCase()}
-                                </div>
+                                <>Bem-vindo! 👋</>
                             )}
-                        </div>
-                        <div className="min-w-0 space-y-1">
-                            <p className="truncate text-lg font-bold leading-snug text-zinc-900 dark:text-white">
-                                {user ? (
-                                    <>Bem-vindo, {displayName}! 👋</>
-                                ) : (
-                                    <>Bem-vindo! 👋</>
-                                )}
-                            </p>
-                            <p className="text-sm text-zinc-500 dark:text-zinc-400">Fique por dentro de tudo que acontece na Nova Semente.</p>
-                        </div>
+                        </p>
+                        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400 lg:mt-2 lg:max-w-2xl lg:text-base">
+                            Fique por dentro de tudo que acontece na Nova Semente.
+                        </p>
                     </div>
                 </header>
 
-                <section>
-                    <div className="grid grid-cols-2 gap-3">
+                <section aria-label="Atalhos">
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 lg:gap-5">
                         {quickActions.map(({ label, subtitle, route: routeName, icon, cardClass, iconWrapClass }) => (
                             <Link
                                 key={routeName}
                                 href={route(routeName)}
-                                className={`flex flex-col items-start gap-3 rounded-2xl border p-4 text-left shadow-sm transition hover:brightness-[0.98] dark:hover:brightness-110 ${cardClass}`}
+                                className={`flex flex-col items-start gap-3 rounded-2xl border p-4 text-left shadow-sm transition hover:brightness-[0.98] dark:hover:brightness-110 lg:min-h-[9.5rem] lg:p-5 lg:rounded-3xl ${cardClass}`}
                             >
                                 <span
                                     className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full shadow-sm ${iconWrapClass}`}
@@ -214,125 +200,127 @@ export default function MobileHome({ church, latestNews, upcomingEvents }: Props
                     </div>
                 </section>
 
-                <section className="space-y-3">
-                    <div className="flex items-center justify-between gap-2">
-                        <h2 className="text-base font-bold text-zinc-900 dark:text-white">Últimas notícias</h2>
-                        {latestNews.length > 0 ? (
-                            <Link
-                                href={route('mobile.news')}
-                                className="text-sm font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
-                            >
-                                Ver todas
-                            </Link>
-                        ) : null}
-                    </div>
-                    {latestNews.length === 0 ? (
-                        <p className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-400">
-                            Ainda não há notícias publicadas.
-                        </p>
-                    ) : (
-                        <ul className="space-y-3">
-                            {latestNews.map((n) => {
-                                const thumb = n.cover_url || n.image_url;
-                                const src = imageSrc(thumb, appUrl);
-                                const snippet = cardSnippet(n);
-                                const whenLine = formatNewsWhen(n.published_at);
-                                return (
-                                    <li key={n.id}>
-                                        <Link
-                                            href={route('mobile.news.show', n.slug)}
-                                            className="flex gap-3 rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm transition hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-zinc-600"
-                                        >
-                                            <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800">
-                                                {src ? (
-                                                    <img src={src} alt="" className="h-full w-full object-cover" />
-                                                ) : (
-                                                    <div className="flex h-full w-full items-center justify-center text-[10px] font-medium text-zinc-400">
-                                                        Nova Semente
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="min-w-0 flex-1 py-0.5">
-                                                <p className="line-clamp-2 font-semibold leading-snug text-zinc-900 dark:text-white">
-                                                    {n.title}
-                                                </p>
-                                                {snippet ? (
-                                                    <p className="mt-1 line-clamp-2 text-sm text-zinc-500 dark:text-zinc-400">{snippet}</p>
-                                                ) : null}
-                                                {whenLine ? (
-                                                    <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">{whenLine}</p>
-                                                ) : null}
-                                            </div>
-                                        </Link>
-                                    </li>
-                                );
-                            })}
-                        </ul>
-                    )}
-                </section>
+                <div className="space-y-8 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-10 lg:gap-y-0 lg:space-y-0 xl:gap-x-12">
+                    <section className="space-y-3">
+                        <div className="flex items-center justify-between gap-2">
+                            <h2 className="text-base font-bold text-zinc-900 dark:text-white lg:text-lg">Últimas notícias</h2>
+                            {latestNews.length > 0 ? (
+                                <Link
+                                    href={route('mobile.news')}
+                                    className="text-sm font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                                >
+                                    Ver todas
+                                </Link>
+                            ) : null}
+                        </div>
+                        {latestNews.length === 0 ? (
+                            <p className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-400">
+                                Ainda não há notícias publicadas.
+                            </p>
+                        ) : (
+                            <ul className="space-y-3">
+                                {latestNews.map((n) => {
+                                    const thumb = n.cover_url || n.image_url;
+                                    const src = imageSrc(thumb, appUrl);
+                                    const snippet = cardSnippet(n);
+                                    const whenLine = formatNewsWhen(n.published_at);
+                                    return (
+                                        <li key={n.id}>
+                                            <Link
+                                                href={route('mobile.news.show', n.slug)}
+                                                className="flex gap-3 rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm transition hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-zinc-600"
+                                            >
+                                                <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800">
+                                                    {src ? (
+                                                        <img src={src} alt="" className="h-full w-full object-cover" />
+                                                    ) : (
+                                                        <div className="flex h-full w-full items-center justify-center text-[10px] font-medium text-zinc-400">
+                                                            Nova Semente
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="min-w-0 flex-1 py-0.5">
+                                                    <p className="line-clamp-2 font-semibold leading-snug text-zinc-900 dark:text-white">
+                                                        {n.title}
+                                                    </p>
+                                                    {snippet ? (
+                                                        <p className="mt-1 line-clamp-2 text-sm text-zinc-500 dark:text-zinc-400">{snippet}</p>
+                                                    ) : null}
+                                                    {whenLine ? (
+                                                        <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">{whenLine}</p>
+                                                    ) : null}
+                                                </div>
+                                            </Link>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        )}
+                    </section>
 
-                <section className="space-y-3">
-                    <div className="flex items-center justify-between gap-2">
-                        <h2 className="text-base font-bold text-zinc-900 dark:text-white">Próximos Eventos</h2>
-                        {upcomingEvents.length > 0 ? (
-                            <Link
-                                href={route('mobile.events')}
-                                className="text-sm font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
-                            >
-                                Ver todas
-                            </Link>
-                        ) : null}
-                    </div>
-                    {upcomingEvents.length === 0 ? (
-                        <p className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-400">
-                            Nenhum evento agendado por enquanto.
-                        </p>
-                    ) : (
-                        <ul className="space-y-3">
-                            {upcomingEvents.map((ev) => {
-                                const src = imageSrc(ev.image_url, appUrl);
-                                const { day, month } = getDayMonth(ev.starts_at);
-                                const snippet = eventCardSnippet(ev);
-                                const whenLine = formatWhenLine(ev);
-                                return (
-                                    <li key={ev.id}>
-                                        <Link
-                                            href={route('mobile.events')}
-                                            className="flex gap-3 rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm transition hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-zinc-600"
-                                        >
-                                            <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800">
-                                                {src ? (
-                                                    <img src={src} alt="" className="h-full w-full object-cover" />
-                                                ) : (
-                                                    <div
-                                                        className="flex h-full w-full flex-col items-center justify-center px-1 text-center text-white"
-                                                        style={{ backgroundColor: ev.color || '#059669' }}
-                                                    >
-                                                        <span className="text-xl font-bold tabular-nums leading-none">{day}</span>
-                                                        <span className="mt-1 text-[0.65rem] font-semibold uppercase leading-tight opacity-95">
-                                                            {month}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="min-w-0 flex-1 py-0.5">
-                                                <p className="line-clamp-2 font-semibold leading-snug text-zinc-900 dark:text-white">
-                                                    {ev.title}
-                                                </p>
-                                                {snippet ? (
-                                                    <p className="mt-1 line-clamp-2 text-sm text-zinc-500 dark:text-zinc-400">{snippet}</p>
-                                                ) : null}
-                                                {whenLine ? (
-                                                    <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">{whenLine}</p>
-                                                ) : null}
-                                            </div>
-                                        </Link>
-                                    </li>
-                                );
-                            })}
-                        </ul>
-                    )}
-                </section>
+                    <section className="space-y-3">
+                        <div className="flex items-center justify-between gap-2">
+                            <h2 className="text-base font-bold text-zinc-900 dark:text-white lg:text-lg">Próximos Eventos</h2>
+                            {upcomingEvents.length > 0 ? (
+                                <Link
+                                    href={route('mobile.events')}
+                                    className="text-sm font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                                >
+                                    Ver todas
+                                </Link>
+                            ) : null}
+                        </div>
+                        {upcomingEvents.length === 0 ? (
+                            <p className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-400">
+                                Nenhum evento agendado por enquanto.
+                            </p>
+                        ) : (
+                            <ul className="space-y-3">
+                                {upcomingEvents.map((ev) => {
+                                    const src = imageSrc(ev.image_url, appUrl);
+                                    const { day, month } = getDayMonth(ev.starts_at);
+                                    const snippet = eventCardSnippet(ev);
+                                    const whenLine = formatWhenLine(ev);
+                                    return (
+                                        <li key={ev.id}>
+                                            <Link
+                                                href={route('mobile.events')}
+                                                className="flex gap-3 rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm transition hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-zinc-600"
+                                            >
+                                                <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800">
+                                                    {src ? (
+                                                        <img src={src} alt="" className="h-full w-full object-cover" />
+                                                    ) : (
+                                                        <div
+                                                            className="flex h-full w-full flex-col items-center justify-center px-1 text-center text-white"
+                                                            style={{ backgroundColor: ev.color || '#059669' }}
+                                                        >
+                                                            <span className="text-xl font-bold tabular-nums leading-none">{day}</span>
+                                                            <span className="mt-1 text-[0.65rem] font-semibold uppercase leading-tight opacity-95">
+                                                                {month}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="min-w-0 flex-1 py-0.5">
+                                                    <p className="line-clamp-2 font-semibold leading-snug text-zinc-900 dark:text-white">
+                                                        {ev.title}
+                                                    </p>
+                                                    {snippet ? (
+                                                        <p className="mt-1 line-clamp-2 text-sm text-zinc-500 dark:text-zinc-400">{snippet}</p>
+                                                    ) : null}
+                                                    {whenLine ? (
+                                                        <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">{whenLine}</p>
+                                                    ) : null}
+                                                </div>
+                                            </Link>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        )}
+                    </section>
+                </div>
             </div>
         </MobileLayout>
     );

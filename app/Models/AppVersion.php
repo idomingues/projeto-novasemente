@@ -32,7 +32,7 @@ class AppVersion extends Model
             }
 
             return static::query()
-                ->orderByDesc('released_at')
+                ->orderByRaw('COALESCE(released_at, created_at) DESC')
                 ->orderByDesc('id')
                 ->value('version');
         } catch (Throwable) {

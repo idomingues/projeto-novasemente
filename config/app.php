@@ -56,6 +56,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Versão exibida no UI (fallback)
+    |--------------------------------------------------------------------------
+    |
+    | Quando a tabela app_versions não tem linhas (ou falha), o badge «v…» no
+    | header usa este valor. No deploy mobile, defina o mesmo que versionName
+    | em android/app/build.gradle até passar a registar versões na BD.
+    |
+    */
+
+    'display_version' => env('APP_DISPLAY_VERSION'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

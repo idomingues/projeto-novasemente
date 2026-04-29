@@ -1,6 +1,8 @@
 import Modal from '@/Components/Modal';
+import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
 import { usePage } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 export type AppVersionHistoryItem = {
     version: string;
@@ -31,14 +33,36 @@ export default function AppVersionTrigger({ className = '' }: { className?: stri
         appVersionHistory?: AppVersionHistoryItem[];
     };
     const [open, setOpen] = useState(false);
+    /** Em app nativa (Capacitor), prioridade ao versionName do pacote instalado. */
+    const [nativeVersion, setNativeVersion] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!Capacitor.isNativePlatform()) {
+            return;
+        }
+        let cancelled = false;
+        App.getInfo()
+            .then((i) => {
+                if (!cancelled && i.version) {
+                    setNativeVersion(i.version);
+                }
+            })
+            .catch(() => {});
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     const displayLabel = useMemo(() => {
+        if (nativeVersion) {
+            return nativeVersion;
+        }
         if (appVersion) {
             return appVersion;
         }
         const first = appVersionHistory[0];
         return first?.version ?? null;
-    }, [appVersion, appVersionHistory]);
+    }, [appVersion, appVersionHistory, nativeVersion]);
 
     if (!displayLabel && appVersionHistory.length === 0) {
         return null;

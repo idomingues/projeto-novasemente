@@ -214,10 +214,6 @@ class MobileController extends Controller
             });
 
         return Inertia::render('Mobile/Home', [
-            'church' => $church ? [
-                'name' => $church->name,
-                'logo_url' => $church->logo_url,
-            ] : null,
             'latestNews' => $latestNews,
             'upcomingEvents' => $upcomingEvents,
         ]);

@@ -115,6 +115,11 @@ class HandleInertiaRequests extends Middleware
             }
         }
 
+        $appVersionFromDb = AppVersion::latestLabel();
+        $appVersionShared = ($appVersionFromDb !== null && $appVersionFromDb !== '')
+            ? $appVersionFromDb
+            : (config('app.display_version') ?: null);
+
         $linkedPastor = null;
         /**
          * "Minha Agenda" é uma área específica do perfil de pastor.
@@ -228,7 +233,7 @@ class HandleInertiaRequests extends Middleware
             ),
             /** Token atual para o axios do Inertia (evita 419 em DELETE/PUT após navegação SPA) */
             'csrf_token' => fn () => csrf_token(),
-            'appVersion' => AppVersion::latestLabel(),
+            'appVersion' => $appVersionShared,
             'appVersionHistory' => $appVersionHistory,
             'appUrl' => $request->getSchemeAndHttpHost(),
             'appLogoUrl' => $appLogoUrl,
