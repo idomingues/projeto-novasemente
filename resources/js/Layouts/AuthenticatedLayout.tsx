@@ -9,8 +9,12 @@ export default function Authenticated({
     header,
     children,
 }: PropsWithChildren<{ header?: ReactNode }>) {
-    const { auth, currentChurch } = usePage().props as { auth: { user: { name: string; email?: string } }; currentChurch?: { logo_url?: string | null } | null };
+    const { auth, currentChurch } = usePage().props as {
+        auth: { user: { name: string; email?: string }; canAccessAdminMenu?: boolean };
+        currentChurch?: { logo_url?: string | null } | null;
+    };
     const user = auth.user;
+    const canAccessAdminMenu = auth?.canAccessAdminMenu === true;
     const logoUrl = currentChurch?.logo_url ?? (usePage().props as { appLogoUrl?: string | null }).appLogoUrl;
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
@@ -28,14 +32,16 @@ export default function Authenticated({
                                 </Link>
                             </div>
 
-                            <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                <NavLink
-                                    href={route('dashboard')}
-                                    active={route().current('dashboard')}
-                                >
-                                    Dashboard
-                                </NavLink>
-                            </div>
+                            {canAccessAdminMenu && (
+                                <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                                    <NavLink
+                                        href={route('dashboard')}
+                                        active={route().current('dashboard')}
+                                    >
+                                        Dashboard
+                                    </NavLink>
+                                </div>
+                            )}
                         </div>
 
                         <div className="hidden sm:ms-6 sm:flex sm:items-center">
@@ -132,14 +138,16 @@ export default function Authenticated({
                         ' sm:hidden'
                     }
                 >
-                    <div className="space-y-1 pb-3 pt-2">
-                        <ResponsiveNavLink
-                            href={route('dashboard')}
-                            active={route().current('dashboard')}
-                        >
-                            Dashboard
-                        </ResponsiveNavLink>
-                    </div>
+                    {canAccessAdminMenu && (
+                        <div className="space-y-1 pb-3 pt-2">
+                            <ResponsiveNavLink
+                                href={route('dashboard')}
+                                active={route().current('dashboard')}
+                            >
+                                Dashboard
+                            </ResponsiveNavLink>
+                        </div>
+                    )}
 
                     <div className="border-t border-gray-200 dark:border-zinc-700 pb-1 pt-4">
                         <div className="px-4">

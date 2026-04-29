@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\AuthLoginEvent;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -31,6 +32,25 @@ class AuthenticatedSessionController extends Controller
         }
 
         return $path;
+    }
+
+    /**
+     * Evita `redirect()->intended('/dashboard')` para membros (URL fica na sessão após 401/redirect ao login).
+     */
+    private function forgetDashboardIntendedIfUserLacksStaffAccess(Request $request): void
+    {
+        $intended = $request->session()->get('url.intended');
+        if (! is_string($intended) || $intended === '') {
+            return;
+        }
+        $path = parse_url($intended, PHP_URL_PATH);
+        if (! is_string($path) || ! preg_match('#/dashboard/?$#', $path)) {
+            return;
+        }
+        $user = $request->user();
+        if ($user instanceof User && ! $user->canAccessAdminMenu()) {
+            $request->session()->forget('url.intended');
+        }
     }
 
     /**
@@ -69,6 +89,8 @@ class AuthenticatedSessionController extends Controller
         if ($afterLogin !== null) {
             return redirect()->to($afterLogin);
         }
+
+        $this->forgetDashboardIntendedIfUserLacksStaffAccess($request);
 
         return redirect()->intended(route('mobile.home'));
     }

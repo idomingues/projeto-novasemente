@@ -30,7 +30,7 @@ class RoomBookingController extends Controller
     private function redirectIfRoomBookingsMissing(): ?RedirectResponse
     {
         if (! Schema::hasTable('room_bookings')) {
-            return redirect()->route('dashboard')->with(
+            return redirect()->route('mobile.home')->with(
                 'error',
                 'O agendamento de salas ainda não está disponível. Execute na raiz do projeto: php artisan migrate'
             );

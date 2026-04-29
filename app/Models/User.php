@@ -94,6 +94,17 @@ class User extends Authenticatable
         }
     }
 
+    /**
+     * Painel web com menu lateral (admin, super admin, pastor, secretaria).
+     * Exclui `membro`, `lider_ministerio` e contas sem papéis de equipa.
+     */
+    public function canAccessAdminMenu(): bool
+    {
+        $adminRoles = ['admin', 'super_admin', 'pastor', 'secretaria'];
+
+        return ! empty(array_intersect($this->getRoleNames()->map(fn ($n) => (string) $n)->all(), $adminRoles));
+    }
+
     public function volunteerProfile(): HasOne
     {
         return $this->hasOne(\App\Models\Volunteer::class);

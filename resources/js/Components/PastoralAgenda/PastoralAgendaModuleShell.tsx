@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { ClockIcon } from '@heroicons/react/24/outline';
 import type { ReactNode } from 'react';
 
@@ -24,8 +24,11 @@ export default function PastoralAgendaModuleShell({
     headerFab,
     children,
 }: PastoralAgendaModuleShellProps) {
-    const backHref = pastoralModuleNavUrl ?? route('dashboard');
-    const backLabel = pastoralModuleNavUrl ? '← Pastores' : '← Painel';
+    const canAccessAdminMenu =
+        (usePage().props as { auth?: { canAccessAdminMenu?: boolean } }).auth?.canAccessAdminMenu === true;
+    const panelFallback = canAccessAdminMenu ? route('dashboard') : route('mobile.home');
+    const backHref = pastoralModuleNavUrl ?? panelFallback;
+    const backLabel = pastoralModuleNavUrl ? '← Pastores' : canAccessAdminMenu ? '← Painel' : '← Início';
 
     return (
         <div className="min-w-0 space-y-8 pb-4">

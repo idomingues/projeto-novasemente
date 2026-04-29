@@ -2,6 +2,7 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, Link } from '@inertiajs/react';
 import { FilmIcon, PlayCircleIcon } from '@heroicons/react/24/outline';
 import { useEffect } from 'react';
+import type React from 'react';
 
 interface CultoItem {
     id: number;
@@ -36,12 +37,24 @@ function formatDate(iso: string | null): string {
 }
 
 function CultoVideoCard({
+    id,
     title,
     youtube_url,
     youtube_thumb_url,
     published_at,
     isLive,
-}: Pick<CultoItem, 'title' | 'youtube_url' | 'youtube_thumb_url' | 'published_at'> & { isLive?: boolean }) {
+}: Pick<CultoItem, 'id' | 'title' | 'youtube_url' | 'youtube_thumb_url' | 'published_at'> & { isLive?: boolean }) {
+    const Wrapper = ({ children }: { children: React.ReactNode }) =>
+        isLive ? (
+            <a href={youtube_url} target="_blank" rel="noopener noreferrer" className="block">
+                {children}
+            </a>
+        ) : (
+            <Link href={route('mobile.culto.show', id)} className="block">
+                {children}
+            </Link>
+        );
+
     return (
         <li
             className={`rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 border shadow-sm hover:shadow-md active:scale-[0.99] transition-all ${
@@ -50,7 +63,7 @@ function CultoVideoCard({
                     : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
             }`}
         >
-            <a href={youtube_url} target="_blank" rel="noopener noreferrer" className="block">
+            <Wrapper>
                 {youtube_thumb_url ? (
                     <div className="relative aspect-video overflow-hidden bg-zinc-200 dark:bg-zinc-800">
                         <img src={youtube_thumb_url} alt="" className="w-full h-full object-cover" />
@@ -86,7 +99,7 @@ function CultoVideoCard({
                         <p className="text-xs text-rose-600 dark:text-rose-400 mt-1.5 font-medium">Transmissão em direto no YouTube</p>
                     ) : null}
                 </div>
-            </a>
+            </Wrapper>
         </li>
     );
 }
@@ -135,6 +148,7 @@ export default function MobileCulto({ cultos, liveCulto = null, showPostRegistra
                         {liveCulto ? (
                             <CultoVideoCard
                                 key="live-youtube"
+                                id={0}
                                 title={liveCulto.title}
                                 youtube_url={liveCulto.youtube_url}
                                 youtube_thumb_url={liveCulto.youtube_thumb_url}
@@ -145,6 +159,7 @@ export default function MobileCulto({ cultos, liveCulto = null, showPostRegistra
                         {cultos.map((c) => (
                             <CultoVideoCard
                                 key={c.id}
+                                id={c.id}
                                 title={c.title}
                                 youtube_url={c.youtube_url}
                                 youtube_thumb_url={c.youtube_thumb_url}

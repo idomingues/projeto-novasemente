@@ -149,11 +149,9 @@ export default function MobileAcervoIndex({ items, playlistsUrl, canManage }: Pr
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                         {filteredItems.map((item) => (
                             <div key={item.id} className="group relative">
-                                <a
-                                    href={item.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    title={`${item.title} (abre em nova aba)`}
+                                <Link
+                                    href={route('mobile.acervo.show', item.id)}
+                                    title={item.title}
                                     className="block rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 overflow-hidden active:scale-[0.98] transition-transform"
                                 >
                                     <div className="relative aspect-video bg-zinc-200 dark:bg-zinc-800">
@@ -180,11 +178,10 @@ export default function MobileAcervoIndex({ items, playlistsUrl, canManage }: Pr
                                             {item.title}
                                         </h2>
                                         <span className="inline-flex items-center gap-0.5 mt-0.5 text-[10px] text-zinc-500 dark:text-zinc-400">
-                                            Ver playlist
-                                            <ArrowTopRightOnSquareIcon className="w-3 h-3" />
+                                            Abrir
                                         </span>
                                     </div>
-                                </a>
+                                </Link>
                                 {canManage && (
                                     <div className="absolute top-2 right-2 flex gap-1">
                                         <button

@@ -52,7 +52,7 @@ Route::get('/', function () {
     return redirect()->route('mobile.index');
 });
 
-Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'verified', 'can_access_admin_menu'])->name('dashboard');
 
 // Rotas públicas (guests e autenticados): app com menu mobile/PC e Login no lugar da engrenagem
 Route::view('/politica-de-privacidade', 'privacy-policy')->name('privacy-policy');
@@ -105,6 +105,7 @@ Route::get('/media/ns.mp4', function () {
 Route::get('/mobile', [MobileController::class, 'home'])->name('mobile.index');
 Route::get('/mobile/inicio', [MobileController::class, 'home'])->name('mobile.home');
 Route::get('/mobile/culto', [MobileController::class, 'culto'])->name('mobile.culto');
+Route::get('/mobile/culto/{culto}', [MobileController::class, 'cultoShow'])->name('mobile.culto.show');
 Route::get('/mobile/news', [MobileController::class, 'news'])->name('mobile.news');
 Route::get('/mobile/news/{news:slug}', [MobileController::class, 'newsShow'])->name('mobile.news.show');
 Route::get('/mobile/events', [MobileController::class, 'events'])->name('mobile.events');
@@ -115,6 +116,7 @@ Route::get('/mobile/crencas', [MobileController::class, 'beliefs'])->name('mobil
 Route::get('/mobile/quem-somos', [MobileController::class, 'quemSomos'])->name('mobile.quem-somos');
 Route::get('/mobile/classe-comecos', [MobileController::class, 'classeComecos'])->name('mobile.classe-comecos');
 Route::get('/mobile/acervo', [MobileController::class, 'acervo'])->name('mobile.acervo');
+Route::get('/mobile/acervo/{acervoItem}', [MobileController::class, 'acervoShow'])->name('mobile.acervo.show');
 Route::get('/mobile/musica', [MobileController::class, 'musica'])->name('mobile.musica');
 Route::get('/mobile/musica/{musica}', [MobileController::class, 'musicaShow'])->name('mobile.musica.show');
 Route::get('/mobile/services', [MobileController::class, 'services'])->name('mobile.services');

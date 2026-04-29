@@ -121,7 +121,7 @@ function QuickActionGlyph({ icon: Icon }: { icon: MenuIcon }) {
 const quickActions: QuickAction[] = [
     {
         label: 'Batismo',
-        subtitle: 'Ainda não é batizado? Faça parte da família NS.',
+        subtitle: 'Ainda não é batizado? Faça parte da família NS',
         route: 'mobile.baptism',
         icon: SparklesIcon,
         cardClass: 'border-amber-200/90 bg-amber-50 dark:border-amber-800/45 dark:bg-amber-950/40',
@@ -129,7 +129,7 @@ const quickActions: QuickAction[] = [
     },
     {
         label: 'Seja um voluntário',
-        subtitle: 'Venha servir na Nova Semente.',
+        subtitle: 'Venha servir na Nova Semente',
         route: 'volunteers.public-signup.page',
         icon: UserPlusIcon,
         cardClass: 'border-emerald-200/90 bg-emerald-50 dark:border-emerald-800/45 dark:bg-emerald-950/40',
@@ -153,7 +153,7 @@ const quickActions: QuickAction[] = [
     },
     {
         label: 'Fotos',
-        subtitle: 'Veja o que nosso fotógrafos prepararam para você.',
+        subtitle: 'Veja o que nosso fotógrafos prepararam para você',
         route: 'mobile.fotos',
         icon: PhotoIcon,
         cardClass: 'border-rose-200/90 bg-rose-50 dark:border-rose-800/40 dark:bg-rose-950/35',

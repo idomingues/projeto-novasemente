@@ -262,6 +262,27 @@ class MobileController extends Controller
         ]);
     }
 
+    public function cultoShow(Request $request, Culto $culto): Response
+    {
+        $churchId = $this->currentChurch()?->id;
+        if ($churchId === null || (int) $culto->church_id !== (int) $churchId) {
+            abort(404);
+        }
+        if ($culto->published_at === null || $culto->published_at->isFuture()) {
+            abort(404);
+        }
+
+        return Inertia::render('Mobile/CultoShow', [
+            'culto' => [
+                'id' => $culto->id,
+                'title' => $culto->title,
+                'youtube_url' => $culto->youtube_url,
+                'youtube_embed_url' => $culto->youtube_embed_url,
+                'published_at' => $culto->published_at?->toIso8601String(),
+            ],
+        ]);
+    }
+
     public function musica(Request $request): Response
     {
         $churchId = $this->currentChurch()?->id;
@@ -897,6 +918,33 @@ class MobileController extends Controller
             'playlistsUrl' => 'https://www.youtube.com/@advnovasemente/playlists',
             // No app (Mais) o acervo é apenas leitura; gestão fica no painel (acervo.index).
             'canManage' => false,
+        ]);
+    }
+
+    public function acervoShow(Request $request, AcervoItem $acervoItem): Response
+    {
+        $url = trim((string) $acervoItem->url);
+        $title = trim((string) $acervoItem->title);
+
+        $embedUrl = null;
+        $videoId = Musica::youtubeVideoId($url);
+        if ($videoId) {
+            $embedUrl = "https://www.youtube.com/embed/{$videoId}";
+        } elseif (preg_match('/[?&]list=([a-zA-Z0-9_-]+)/', $url, $m)) {
+            $listId = $m[1] ?? null;
+            if (is_string($listId) && $listId !== '') {
+                $embedUrl = "https://www.youtube.com/embed/videoseries?list={$listId}";
+            }
+        }
+
+        return Inertia::render('Mobile/AcervoShow', [
+            'item' => [
+                'id' => $acervoItem->id,
+                'title' => $title !== '' ? $title : 'Acervo',
+                'url' => $url,
+                'embed_url' => $embedUrl,
+                'videoCount' => $acervoItem->video_count,
+            ],
         ]);
     }
 

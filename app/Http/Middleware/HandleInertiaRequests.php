@@ -63,13 +63,7 @@ class HandleInertiaRequests extends Middleware
             $churchesForSwitch = Church::where('active', true)->orderBy('name')->get(['id', 'name'])->toArray();
         }
 
-        $canAccessAdminMenu = false;
-        if ($request->user()) {
-            $roleNames = $request->user()->getRoleNames()->toArray();
-            // Líder de ministério NÃO é mais perfil do painel (sem menu esquerdo).
-            $adminRoles = ['admin', 'super_admin', 'pastor', 'secretaria'];
-            $canAccessAdminMenu = ! empty(array_intersect($roleNames, $adminRoles));
-        }
+        $canAccessAdminMenu = (bool) ($request->user()?->canAccessAdminMenu());
 
         $roleLabel = null;
         if ($request->user()) {

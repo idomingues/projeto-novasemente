@@ -25,7 +25,7 @@ const navItems = [
     {
         name: 'Assistir culto',
         route: 'mobile.culto' as const,
-        activeRoutes: ['mobile.culto'] as const,
+        activeRoutes: ['mobile.culto', 'mobile.culto.show'] as const,
         icon: PlayCircleIcon,
         iconActive: PlayCircleIconSolid,
     },
@@ -60,6 +60,7 @@ const navItems = [
             'varios.classe-comecos',
             'mobile.classe-comecos',
             'mobile.acervo',
+            'mobile.acervo.show',
             'musica.index',
             'mobile.musica',
             'mobile.musica.show',
