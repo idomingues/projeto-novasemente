@@ -1,6 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
-import { Head, useForm, router } from '@inertiajs/react';
-import { PencilIcon, TrashIcon, EnvelopeIcon, DevicePhoneMobileIcon, LinkIcon } from '@heroicons/react/24/outline';
+import { Head, useForm, router, usePage } from '@inertiajs/react';
+import { PencilIcon, TrashIcon, EnvelopeIcon, DevicePhoneMobileIcon, LinkIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+import LeaderPublicSignupShareModal from '@/Components/Leaders/LeaderPublicSignupShareModal';
 import AddButton from '@/Components/AddButton';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
@@ -43,13 +44,36 @@ interface Props {
     filters?: {
         search?: string;
     };
+    canManageUsers?: boolean;
+    leaderSelfSignupUrl?: string | null;
+    leaderSelfSignupChurch?: string | null;
 }
 
-export default function Index({ users, invitations, roles, ministries, filters }: Props) {
+export default function Index({
+    users,
+    invitations,
+    roles,
+    ministries,
+    filters,
+    canManageUsers = false,
+    leaderSelfSignupUrl = null,
+    leaderSelfSignupChurch = null,
+}: Props) {
+    const { flash } = usePage().props as {
+        flash?: {
+            leader_self_signup_url?: string | null;
+            leader_self_signup_church?: string | null;
+        };
+    };
+
     const [userModalOpen, setUserModalOpen] = useState(false);
     const [inviteModalOpen, setInviteModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<UserRow | null>(null);
     const [search, setSearch] = useState(filters?.search ?? '');
+    const [leaderShareOpen, setLeaderShareOpen] = useState(false);
+    const [leaderShareUrl, setLeaderShareUrl] = useState<string | null>(null);
+    const [leaderShareChurch, setLeaderShareChurch] = useState<string>('');
+    const [leaderLinkRotating, setLeaderLinkRotating] = useState(false);
 
     const userForm = useForm({
         name: '',
@@ -160,6 +184,30 @@ export default function Index({ users, invitations, roles, ministries, filters }
         return () => clearTimeout(timeout);
     }, [search, filters?.search]);
 
+    useEffect(() => {
+        const u = flash?.leader_self_signup_url;
+        if (typeof u === 'string' && u.length > 0) {
+            setLeaderShareUrl(u);
+            setLeaderShareChurch(typeof flash?.leader_self_signup_church === 'string' ? flash.leader_self_signup_church : '');
+            setLeaderShareOpen(true);
+        }
+    }, [flash?.leader_self_signup_url, flash?.leader_self_signup_church]);
+
+    const leaderLinkForModal = leaderShareUrl ?? leaderSelfSignupUrl ?? '';
+    const leaderChurchForModal = leaderShareChurch || leaderSelfSignupChurch || '';
+
+    const rotateLeaderLink = () => {
+        setLeaderLinkRotating(true);
+        router.post(
+            route('leaders.self-signup.rotate'),
+            {},
+            {
+                preserveScroll: true,
+                onFinish: () => setLeaderLinkRotating(false),
+            },
+        );
+    };
+
     return (
         <AdminLayout>
             <Head title="Usuários" />
@@ -178,12 +226,43 @@ export default function Index({ users, invitations, roles, ministries, filters }
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
-                    <SecondaryButton type="button" onClick={() => setInviteModalOpen(true)} className="gap-2 justify-center sm:w-auto">
-                        <EnvelopeIcon className="w-5 h-5" />
-                        Convidar
-                    </SecondaryButton>
+                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
+                        {canManageUsers && leaderLinkForModal ? (
+                            <SecondaryButton
+                                type="button"
+                                onClick={() => {
+                                    setLeaderShareUrl(null);
+                                    setLeaderShareChurch('');
+                                    setLeaderShareOpen(true);
+                                }}
+                                className="gap-2 justify-center"
+                            >
+                                <UserGroupIcon className="w-5 h-5" />
+                                Link para líderes (WhatsApp)
+                            </SecondaryButton>
+                        ) : null}
+                        <SecondaryButton type="button" onClick={() => setInviteModalOpen(true)} className="gap-2 justify-center">
+                            <EnvelopeIcon className="w-5 h-5" />
+                            Convidar
+                        </SecondaryButton>
+                    </div>
                 </div>
             </PageHeader>
+
+            {canManageUsers && leaderLinkForModal ? (
+                <LeaderPublicSignupShareModal
+                    show={leaderShareOpen}
+                    link={leaderLinkForModal}
+                    churchName={leaderChurchForModal || 'Igreja'}
+                    onClose={() => {
+                        setLeaderShareOpen(false);
+                        setLeaderShareUrl(null);
+                        setLeaderShareChurch('');
+                    }}
+                    onRotate={rotateLeaderLink}
+                    rotating={leaderLinkRotating}
+                />
+            ) : null}
 
             <div className="space-y-8">
                 <section className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden">

@@ -8,12 +8,14 @@ use App\Domain\Users\Actions\UpdateChurchUserProfile;
 use App\Http\Requests\StoreMemberRequest;
 use App\Http\Requests\UpdateMemberRequest;
 use App\Models\Church;
+use App\Models\LeaderSelfSignupToken;
 use App\Models\Ministry;
 use App\Models\User;
 use App\Support\MemberRoleAssignment;
 use App\Support\StorageUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Spatie\Permission\PermissionRegistrar;
@@ -69,7 +71,20 @@ class MemberController extends Controller
             ->values()
             ->all();
 
+        $canManageLeaderSignupLink = $request->user() !== null
+            && ($request->user()->can('members.manage') || $request->user()->can('users.manage'));
+
+        $leaderSelfSignupUrl = null;
+        $leaderSelfSignupChurch = null;
+        if ($churchId !== null && Schema::hasTable('leader_self_signup_tokens')) {
+            $leaderSelfSignupUrl = LeaderSelfSignupToken::ensureSignupUrl($churchId);
+            $leaderSelfSignupChurch = Church::query()->whereKey($churchId)->value('name');
+        }
+
         return Inertia::render('Members/Index', [
+            'canManageLeaderSignupLink' => $canManageLeaderSignupLink,
+            'leaderSelfSignupUrl' => $leaderSelfSignupUrl,
+            'leaderSelfSignupChurch' => $leaderSelfSignupChurch,
             'members' => $users->through(function (User $user) {
                 $volunteerMinistryIds = $user->volunteerProfile
                     ? $user->volunteerProfile->ministries()->pluck('ministries.id')->map(fn ($id) => (int) $id)->values()->all()

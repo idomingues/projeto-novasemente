@@ -34,6 +34,7 @@ return [
         ['name' => 'Salas', 'route' => 'rooms.index', 'icon' => 'building-office'],
         ['name' => 'Departamentos', 'route' => 'departments.index', 'icon' => 'building-office-2'],
         ['name' => 'Pastores', 'route' => 'pastors.index', 'icon' => 'user-circle'],
+        ['name' => 'Contas do app', 'route' => 'users.index', 'icon' => 'sparkles'],
         // ADM (ordem fixa em Sidebar.tsx — admRouteOrder)
         ['name' => 'Igrejas', 'route' => 'churches.index', 'icon' => 'building-office'],
         ['name' => 'Operações', 'route' => 'operations.index', 'icon' => 'chart-bar-square'],

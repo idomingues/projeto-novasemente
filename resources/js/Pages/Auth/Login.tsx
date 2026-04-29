@@ -12,6 +12,24 @@ import { FormEventHandler, useEffect } from 'react';
 const LOGIN_VIEWPORT =
     'width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content';
 
+/** Laravel/Inertia podem expor erros como string ou array; o `useForm` só recebe objeto em 422. */
+function firstErrorMessage(
+    bag: Record<string, string | string[] | undefined> | undefined,
+    key: string,
+): string | undefined {
+    if (!bag) {
+        return undefined;
+    }
+    const v = bag[key];
+    if (typeof v === 'string' && v.trim() !== '') {
+        return v;
+    }
+    if (Array.isArray(v) && v.length > 0 && typeof v[0] === 'string') {
+        return v[0];
+    }
+    return undefined;
+}
+
 export default function Login({
     status,
     canResetPassword,
@@ -21,11 +39,14 @@ export default function Login({
     canResetPassword: boolean;
     redirectTo?: string | null;
 }) {
-    const appLogoUrl = (usePage().props as { appLogoUrl?: string | null }).appLogoUrl ?? null;
+    const page = usePage();
+    const appLogoUrl = (page.props as { appLogoUrl?: string | null }).appLogoUrl ?? null;
     const csrfToken =
-        (usePage().props as { csrf_token?: string | null }).csrf_token ??
+        (page.props as { csrf_token?: string | null }).csrf_token ??
         document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ??
         '';
+
+    const sharedErrors = (page.props as { errors?: Record<string, string | string[] | undefined> }).errors;
 
     const { data, setData, post, processing, errors, reset, setError, clearErrors } = useForm({
         login: '',
@@ -37,14 +58,18 @@ export default function Login({
         website: '',
     });
 
+    /**
+     * Validação com Inertia neste projeto usa redirect 303 + erros na sessão (`page.props.errors`),
+     * não 422 no POST. O `useForm` limpa `errors` no `onSuccess` desse GET — por isso precisamos
+     * mesclar com `sharedErrors`. Enquanto `processing`, não usamos `sharedErrors` (evita mensagem antiga).
+     */
+    const formErrBag = errors as Record<string, string | string[] | undefined>;
     const loginError =
-        typeof (errors as { login?: unknown }).login === 'string'
-            ? ((errors as { login?: string }).login as string)
-            : undefined;
+        firstErrorMessage(formErrBag, 'login') ??
+        (!processing ? firstErrorMessage(sharedErrors, 'login') : undefined);
     const passwordError =
-        typeof (errors as { password?: unknown }).password === 'string'
-            ? ((errors as { password?: string }).password as string)
-            : undefined;
+        firstErrorMessage(formErrBag, 'password') ??
+        (!processing ? firstErrorMessage(sharedErrors, 'password') : undefined);
 
     // UX: se a senha estiver errada, não repetir mensagem embaixo do e-mail.
     const loginErrorMessage = passwordError ? undefined : loginError;

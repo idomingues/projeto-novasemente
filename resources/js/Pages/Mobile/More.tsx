@@ -35,6 +35,7 @@ type PageProps = {
         user?: unknown | null;
         permissions?: string[];
         adminSidebarUnrestricted?: boolean;
+        isMinistryLeaderAccount?: boolean;
     };
 };
 
@@ -74,7 +75,7 @@ export default function MobileMore(_: Props) {
     const showMyVolunteers =
         isAuthenticated &&
         route().has('ministry-lead.my-volunteers.index') &&
-        Boolean((auth as { user?: { is_ministry_leader?: boolean } | null } | undefined)?.user?.is_ministry_leader);
+        auth?.isMinistryLeaderAccount === true;
     const showMySolicitations =
         isAuthenticated &&
         route().has('solicitations.index') &&

@@ -18,15 +18,16 @@ use App\Http\Controllers\MobileLeaderSolicitationController;
 use App\Http\Controllers\MobilePastoralAppointmentController;
 use App\Http\Controllers\MobileSupportController;
 use App\Http\Controllers\MusicaController;
+use App\Http\Controllers\MyMinistryVolunteersController;
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\OperationsDashboardController;
 use App\Http\Controllers\PastoralAgendaController;
 use App\Http\Controllers\PastorController;
+use App\Http\Controllers\PhotoAlbumController;
 use App\Http\Controllers\PrayerRequestController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicDiskFileController;
 use App\Http\Controllers\PushTokenController;
-use App\Http\Controllers\PhotoAlbumController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\RoomBookingController;
 use App\Http\Controllers\SettingsController;
@@ -35,7 +36,6 @@ use App\Http\Controllers\SupportAdminController;
 use App\Http\Controllers\VariosController;
 use App\Http\Controllers\VolunteerController;
 use App\Http\Controllers\VolunteerPipelineLeadController;
-use App\Http\Controllers\MyMinistryVolunteersController;
 use App\Http\Controllers\VolunteerPublicSignupController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -172,6 +172,14 @@ Route::post('/voluntario/cadastro', [VolunteerPublicSignupController::class, 'st
 Route::post('/voluntario/cadastro/check-duplicate', [VolunteerPublicSignupController::class, 'checkDuplicate'])
     ->middleware('throttle:30,1')
     ->name('volunteers.self-signup.check-duplicate');
+
+Route::get('/lider/cadastro', [\App\Http\Controllers\LeaderPublicSignupController::class, 'create'])->name('leaders.self-signup');
+Route::post('/lider/cadastro', [\App\Http\Controllers\LeaderPublicSignupController::class, 'store'])
+    ->middleware('throttle:10,1')
+    ->name('leaders.self-signup.store');
+Route::post('/lider/cadastro/check-email', [\App\Http\Controllers\LeaderPublicSignupController::class, 'checkEmail'])
+    ->middleware('throttle:30,1')
+    ->name('leaders.self-signup.check-email');
 
 // Convite para voluntário aceitar/recusar novo departamento (link público).
 Route::get('/voluntario/convite/{token}', [\App\Http\Controllers\VolunteerMinistryInvitationPublicController::class, 'show'])
@@ -330,6 +338,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/mobile/inventario', [InventoryController::class, 'mobile'])->name('mobile.inventory')->middleware('permission:inventory.view|inventory.manage');
     // Usuários e convites
     Route::get('/users', [\App\Http\Controllers\UserController::class, 'index'])->name('users.index')->middleware('permission:users.view|users.manage');
+    Route::post('/users/leader-signup-link/rotate', [\App\Http\Controllers\LeaderPublicSignupController::class, 'rotateToken'])
+        ->name('leaders.self-signup.rotate')
+        ->middleware('permission:members.manage|users.manage');
     Route::post('/users', [\App\Http\Controllers\UserController::class, 'store'])->name('users.store')->middleware('permission:users.manage');
     Route::post('/users/{user}/invite', [\App\Http\Controllers\UserController::class, 'invite'])->name('users.invite')->middleware('permission:users.manage');
     Route::put('/users/{user}', [\App\Http\Controllers\UserController::class, 'update'])->name('users.update')->middleware('permission:users.manage');

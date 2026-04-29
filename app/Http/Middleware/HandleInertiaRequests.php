@@ -211,6 +211,13 @@ class HandleInertiaRequests extends Middleware
             'faviconUrl' => $faviconUrl,
             'auth' => [
                 'user' => $request->user(),
+                /**
+                 * Papel `lider_ministerio` ou marca no perfil: esconde fluxos de membro (ex.: «Falar com líder»).
+                 * Quem só tem o papel Spatie sem `is_ministry_leader` na BD continua a ser líder para a app.
+                 */
+                'isMinistryLeaderAccount' => $request->user()
+                    ? ($request->user()->hasRole('lider_ministerio') || (bool) ($request->user()->is_ministry_leader ?? false))
+                    : false,
                 'permissions' => $permissionNames,
                 /** Bloco ADM do menu (Perfis, Suporte APP, Versão, Config. da igreja): só super admin. */
                 'isSuperAdmin' => $request->user()?->hasRole('super_admin') ?? false,
@@ -236,6 +243,8 @@ class HandleInertiaRequests extends Middleware
                 'invitation_for_name' => fn () => $request->session()->get('invitation_for_name'),
                 'public_volunteer_signup_url' => fn () => $request->session()->get('public_volunteer_signup_url'),
                 'public_volunteer_signup_church' => fn () => $request->session()->get('public_volunteer_signup_church'),
+                'leader_self_signup_url' => fn () => $request->session()->get('leader_self_signup_url'),
+                'leader_self_signup_church' => fn () => $request->session()->get('leader_self_signup_church'),
             ],
             'recentNotifications' => fn () => NotificationFeed::mergedForUser(
                 $request,

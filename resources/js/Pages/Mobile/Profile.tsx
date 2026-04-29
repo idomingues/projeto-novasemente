@@ -136,6 +136,8 @@ export default function MobileProfile({ church, user, profileCounts }: Props) {
             canAccessAdminMenu?: boolean;
             linkedPastor?: { id: number } | null;
             user?: { is_volunteer?: boolean; is_ministry_leader?: boolean };
+            /** Spatie `lider_ministerio` ou `is_ministry_leader` na conta. */
+            isMinistryLeaderAccount?: boolean;
         };
     }).auth;
     const linkedPastor = auth?.linkedPastor ?? null;
@@ -150,7 +152,7 @@ export default function MobileProfile({ church, user, profileCounts }: Props) {
 
     const canAccessSolicitationsAdmin =
         canAccessAdminMenu || permissions.includes('solicitations.view') || permissions.includes('solicitations.manage');
-    const isMinistryLeader = auth?.user?.is_ministry_leader === true;
+    const isMinistryLeader = auth?.isMinistryLeaderAccount === true;
 
     const memberRows: Row[] = [
         {
@@ -179,13 +181,17 @@ export default function MobileProfile({ church, user, profileCounts }: Props) {
                   },
               ] as Row[])
             : []),
-        {
-            title: 'Falar com um Líder',
-            description: 'Conversa com líder de ministério (membro logado)',
-            icon: ChatBubbleLeftRightIcon,
-            href: route('mobile.contact'),
-            tone: 'member',
-        },
+        ...(!isMinistryLeader
+            ? ([
+                  {
+                      title: 'Falar com um Líder',
+                      description: 'Conversa com líder de ministério (membro logado)',
+                      icon: ChatBubbleLeftRightIcon,
+                      href: route('mobile.contact'),
+                      tone: 'member',
+                  },
+              ] as Row[])
+            : []),
         {
             title: 'Solicitações',
             description: 'Batismo, apresentação, visita pastoral',

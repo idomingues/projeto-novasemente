@@ -106,6 +106,7 @@ const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'Salas', route: 'rooms.index', icon: BuildingOfficeIcon },
     { name: 'Departamentos', route: 'departments.index', icon: BuildingOffice2Icon },
     { name: 'Pastores', route: 'pastors.index', icon: UserCircleIcon },
+    { name: 'Contas do app', route: 'users.index', icon: SparklesIcon },
     { name: 'Igrejas', route: 'churches.index', icon: BuildingOfficeIcon },
     { name: 'Operações', route: 'operations.index', icon: ChartBarSquareIcon },
     { name: 'Perfis', route: 'roles.index', icon: KeyIcon },
@@ -167,12 +168,9 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
         'photo-albums.index',
         'notifications.manage',
     ]);
-    const cadastroRoutes = new Set(['rooms.index', 'departments.index', 'pastors.index']);
+    const cadastroRoutes = new Set(['rooms.index', 'departments.index', 'pastors.index', 'users.index']);
 
-    const [isCadastroOpen, setIsCadastroOpen] = useState(() => {
-        const current = route().current();
-        return typeof current === 'string' ? cadastroRoutes.has(current) : true;
-    });
+    const [isCadastroOpen, setIsCadastroOpen] = useState(true);
 
     const isRouteActive = (routeName: string) => route().current(routeName + '*');
 
@@ -248,7 +246,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
                 return item;
             });
 
-    // (publicationRoutes/cadastroRoutes) definidos acima para permitir default open inteligente
+    // publicationRoutes / cadastroRoutes: agrupamento da sidebar (bloco Cadastro aberto por defeito).
     /** Ordem fixa do bloco ADM — só visível para `super_admin` (sem acordeão). */
     const admRouteOrder = [
         'churches.index',

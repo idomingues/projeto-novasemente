@@ -17,12 +17,10 @@ import {
     AdjustmentsHorizontalIcon,
     ChevronDownIcon,
     ChevronUpIcon,
-    LinkIcon,
     MagnifyingGlassIcon,
     PlusIcon,
 } from '@heroicons/react/24/outline';
 import PublicVolunteerSignupShareModal from '@/Components/Volunteers/PublicVolunteerSignupShareModal';
-import VolunteerMinistryInviteShareModal from '@/Components/Volunteers/VolunteerMinistryInviteShareModal';
 
 type StageRow = { id: number; name: string; sort_order: number; volunteer_count: number };
 
@@ -155,7 +153,8 @@ export default function Pipeline({
 
     const stageForm = useForm({ name: '' });
     const [stageManageOpen, setStageManageOpen] = useState(false);
-    const [stageEdit, setStageEdit] = useState<Record<string, { name: string; sort_order: string }>>({});
+    const [stageEdit, setStageEdit] = useState<Record<string, { name: string }>>({});
+    const [stageOrderBusy, setStageOrderBusy] = useState(false);
 
     const [filtersOpen, setFiltersOpen] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
@@ -164,17 +163,13 @@ export default function Pipeline({
     const [selectedId, setSelectedId] = useState<number | null>(null);
     const [detailTab, setDetailTab] = useState<'ficha' | 'notas'>('ficha');
     const [publicInviteOpen, setPublicInviteOpen] = useState(false);
-    const [ministryInviteShareOpen, setMinistryInviteShareOpen] = useState(false);
-    const [ministryInviteShare, setMinistryInviteShare] = useState<{ link: string; name: string; ministryName: string } | null>(null);
     const [inviteOpen, setInviteOpen] = useRemember(false, 'pipeline.inviteOpen');
     const [inviteVolunteer, setInviteVolunteer] = useRemember<VolunteerListRow | null>(null, 'pipeline.inviteVolunteer');
     const [inviteMinistryId, setInviteMinistryId] = useRemember<string>('', 'pipeline.inviteMinistryId');
-    const [inviteChannels, setInviteChannels] = useRemember<{ email: boolean; inbox: boolean }>(
-        { email: true, inbox: true },
+    const [inviteChannels, setInviteChannels] = useRemember<{ inbox: boolean }>(
+        { inbox: true },
         'pipeline.inviteChannels',
     );
-    const [manualLink, setManualLink] = useState<string>('');
-    const [manualLinkCopied, setManualLinkCopied] = useState(false);
 
     const noteForm = useForm({ body: '' });
     const stageMoveForm = useForm({ stage_id: '' as string | number });
@@ -241,6 +236,59 @@ export default function Pipeline({
         stageForm.post(storeStageUrl, { preserveScroll: true, onSuccess: () => stageForm.reset('name') });
     };
 
+    useEffect(() => {
+        if (stageManageOpen) {
+            setStageEdit({});
+        }
+    }, [stageManageOpen]);
+
+    const swapStageNeighbors = (fromIndex: number, direction: 'up' | 'down') => {
+        if (stageOrderBusy) return;
+        const toIndex = direction === 'up' ? fromIndex - 1 : fromIndex + 1;
+        if (toIndex < 0 || toIndex >= stages.length) return;
+        const a = stages[fromIndex];
+        const b = stages[toIndex];
+        const nameA = (stageEdit[String(a.id)]?.name ?? a.name ?? '').trim();
+        const nameB = (stageEdit[String(b.id)]?.name ?? b.name ?? '').trim();
+        if (!nameA || !nameB) return;
+        setStageOrderBusy(true);
+        router.put(
+            route('ministry-lead.volunteers.pipeline.stages.update', a.id),
+            { name: nameA, sort_order: b.sort_order },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    router.put(
+                        route('ministry-lead.volunteers.pipeline.stages.update', b.id),
+                        { name: nameB, sort_order: a.sort_order },
+                        {
+                            preserveScroll: true,
+                            onFinish: () => setStageOrderBusy(false),
+                        },
+                    );
+                },
+                onError: () => setStageOrderBusy(false),
+            },
+        );
+    };
+
+    const saveStageName = (stageId: number, serverName: string) => {
+        const key = String(stageId);
+        const name = (stageEdit[key]?.name ?? serverName).trim();
+        if (!name) return;
+        router.put(route('ministry-lead.volunteers.pipeline.stages.update', stageId), { name }, { preserveScroll: true });
+    };
+
+    const requestDeleteStage = (stageId: number, stageName: string, count: number) => {
+        const label = stageName.trim() || 'esta fase';
+        const msg =
+            count > 0
+                ? `Eliminar a fase «${label}»? Os ${count} voluntários nesta fase passam para a fase padrão (Interessado).`
+                : `Eliminar a fase «${label}»?`;
+        if (!window.confirm(msg)) return;
+        router.delete(route('ministry-lead.volunteers.pipeline.stages.destroy', stageId), { preserveScroll: true });
+    };
+
     const submitNote: FormEventHandler = (e) => {
         e.preventDefault();
         if (!detail) return;
@@ -279,61 +327,22 @@ export default function Pipeline({
             {
                 preserveScroll: true,
                 onSuccess: (p) => {
-                    const nextFlash = (p.props as { flash?: { ministry_invite_link?: string | null } }).flash;
-                    const link = nextFlash?.ministry_invite_link ?? '';
-                    const m = ministries.find((x) => String(x.id) === String(inviteMinistryId));
-
-                    if (channels.includes('manual') && link) {
-                        setManualLink(link);
-                        setManualLinkCopied(false);
-                    } else if (link) {
-                        setMinistryInviteShare({ link, name: inviteVolunteer?.name ?? '', ministryName: m?.name ?? '' });
-                        setMinistryInviteShareOpen(true);
-                    }
-
                     if (closeOnSuccess) {
                         setInviteOpen(false);
                         setInviteVolunteer(null);
                         setInviteMinistryId('');
-                        setInviteChannels({ email: true, inbox: true });
+                        setInviteChannels({ inbox: true });
                     }
                 },
             },
         );
     };
 
-    const generateManualLink = async () => {
-        if (!inviteVolunteer || !inviteMinistryId) return;
-        try {
-            const url = route('ministry-lead.volunteers.ministry-invite.store', inviteVolunteer.id);
-            const r = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': csrf,
-                },
-                credentials: 'same-origin',
-                body: JSON.stringify({ ministry_id: Number(inviteMinistryId), channels: ['manual'] }),
-            });
-            if (!r.ok) return;
-            const j = (await r.json()) as { link?: string };
-            if (j.link) {
-                setManualLink(j.link);
-                setManualLinkCopied(false);
-            }
-        } catch {
-            // silêncio: usuário ainda pode usar "Enviar convite" ou tentar novamente
-        }
-    };
-
     const submitInvite: FormEventHandler = (e) => {
         e.preventDefault();
         if (!inviteVolunteer || !inviteMinistryId) return;
-        const channels = Object.entries(inviteChannels)
-            .filter(([, v]) => v)
-            .map(([k]) => k);
+        // Email é o canal principal (sempre). Notificação é opcional.
+        const channels = ['email', ...(inviteChannels.inbox ? ['inbox'] : [])];
         if (channels.length === 0) return;
         postInvite(channels, true);
     };
@@ -347,7 +356,7 @@ export default function Pipeline({
         }).length;
     }, [filters]);
 
-    const visibleStages = useMemo(() => stages.filter((s) => s.volunteer_count > 0 || String(s.id) === String(currentStageFilter)), [stages, currentStageFilter]);
+    const pipelineTotalCount = useMemo(() => stages.reduce((acc, s) => acc + s.volunteer_count, 0), [stages]);
 
     return (
         <AdminLayout>
@@ -384,7 +393,6 @@ export default function Pipeline({
                             onClick={() => setPublicInviteOpen(true)}
                             className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
                         >
-                            <LinkIcon className="h-4 w-4" aria-hidden />
                             Link cadastro público
                         </button>
                     ) : null}
@@ -400,45 +408,60 @@ export default function Pipeline({
                                 <button
                                     type="button"
                                     onClick={() => pickStage('')}
-                                    className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm ${
+                                    aria-pressed={currentStageFilter === ''}
+                                    className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium ${
                                         currentStageFilter === ''
-                                            ? 'bg-primary-600 text-white'
-                                            : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-100'
+                                            ? 'bg-brand-600 text-white shadow-sm ring-2 ring-brand-800/40 dark:bg-brand-500 dark:ring-brand-300/35'
+                                            : 'text-zinc-800 ring-1 ring-transparent hover:bg-zinc-100 hover:ring-zinc-200 dark:text-zinc-100 dark:hover:bg-zinc-800 dark:hover:ring-zinc-600'
                                     }`}
                                 >
-                                    <span>Todos</span>
-                                </button>
-                            </li>
-                            {visibleStages.map((s) => (
-                                <li key={s.id}>
-                                    {(() => {
-                                        const label = (s.name || '').trim() || 'Não definido';
-                                        return (
-                                    <button
-                                        type="button"
-                                        onClick={() => pickStage(s.id)}
-                                        disabled={s.volunteer_count === 0}
-                                        className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm ${
-                                            currentStageFilter === String(s.id)
-                                                ? 'bg-primary-600 text-white'
-                                                : s.volunteer_count === 0
-                                                  ? 'text-zinc-400 dark:text-zinc-600 cursor-not-allowed'
-                                                  : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-100'
+                                    <span className="truncate">Todos</span>
+                                    <span
+                                        className={`shrink-0 tabular-nums text-xs ${
+                                            currentStageFilter === '' ? 'text-white/90' : 'text-zinc-500 dark:text-zinc-400'
                                         }`}
                                     >
-                                        <span className="truncate pr-2">{label}</span>
-                                        <span className="shrink-0 text-xs opacity-80">{s.volunteer_count}</span>
-                                    </button>
-                                        );
-                                    })()}
-                                </li>
-                            ))}
+                                        {pipelineTotalCount}
+                                    </span>
+                                </button>
+                            </li>
+                            {stages.map((s) => {
+                                const label = (s.name || '').trim() || 'Não definido';
+                                const selected = currentStageFilter === String(s.id);
+                                return (
+                                    <li key={s.id}>
+                                        <button
+                                            type="button"
+                                            onClick={() => pickStage(s.id)}
+                                            aria-pressed={selected}
+                                            title={
+                                                s.volunteer_count === 0
+                                                    ? 'Sem voluntários nesta fase — pode filtrar na mesma'
+                                                    : undefined
+                                            }
+                                            className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm ${
+                                                selected
+                                                    ? 'bg-brand-600 font-medium text-white shadow-sm ring-2 ring-brand-800/40 dark:bg-brand-500 dark:ring-brand-300/35'
+                                                    : 'text-zinc-800 ring-1 ring-transparent hover:bg-zinc-100 hover:ring-zinc-200 dark:text-zinc-100 dark:hover:bg-zinc-800 dark:hover:ring-zinc-600'
+                                            }`}
+                                        >
+                                            <span className="truncate pr-2">{label}</span>
+                                            <span
+                                                className={`shrink-0 tabular-nums text-xs ${
+                                                    selected
+                                                        ? 'text-white/90'
+                                                        : s.volunteer_count === 0
+                                                          ? 'text-zinc-400 dark:text-zinc-500'
+                                                          : 'text-zinc-500 dark:text-zinc-400'
+                                                }`}
+                                            >
+                                                {s.volunteer_count}
+                                            </span>
+                                        </button>
+                                    </li>
+                                );
+                            })}
                         </ul>
-                        {stages.some((s) => s.volunteer_count === 0) ? (
-                            <p className="mt-3 text-[11px] text-zinc-500 dark:text-zinc-400">
-                                Fases sem voluntários ficam ocultas automaticamente.
-                            </p>
-                        ) : null}
                     </Card>
                     {canPipelineMutate ? (
                         <Card className="p-4 space-y-2">
@@ -1074,7 +1097,7 @@ export default function Pipeline({
                     setInviteOpen(false);
                     setInviteVolunteer(null);
                     setInviteMinistryId('');
-                    setInviteChannels({ email: true, inbox: true });
+                    setInviteChannels({ inbox: true });
                 }}
                 maxWidth="lg"
             >
@@ -1103,18 +1126,20 @@ export default function Pipeline({
 
                         <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
                             <p className="text-sm font-semibold text-zinc-900 dark:text-white">Canais</p>
-                            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                                {(['email', 'inbox'] as const).map((k) => (
-                                    <label key={k} className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-200">
-                                        <input
-                                            type="checkbox"
-                                            checked={inviteChannels[k]}
-                                            onChange={(e) => setInviteChannels((cur) => ({ ...cur, [k]: e.target.checked }))}
-                                            className="rounded border-zinc-300 dark:border-zinc-600"
-                                        />
-                                        {k === 'email' ? 'E-mail' : 'Notificação (app)'}
-                                    </label>
-                                ))}
+                            <div className="mt-3 space-y-2">
+                                <div className="flex items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900">
+                                    <span className="text-zinc-700 dark:text-zinc-200">E-mail (principal)</span>
+                                    <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">Sempre</span>
+                                </div>
+                                <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-200">
+                                    <input
+                                        type="checkbox"
+                                        checked={inviteChannels.inbox}
+                                        onChange={(e) => setInviteChannels({ inbox: e.target.checked })}
+                                        className="rounded border-zinc-300 dark:border-zinc-600"
+                                    />
+                                    Notificação (app) — opcional
+                                </label>
                             </div>
                         </div>
 
@@ -1125,147 +1150,122 @@ export default function Pipeline({
                                     setInviteOpen(false);
                                     setInviteVolunteer(null);
                                     setInviteMinistryId('');
-                                    setInviteChannels({ email: true, inbox: true });
-                                    setManualLink('');
-                                    setManualLinkCopied(false);
+                                    setInviteChannels({ inbox: true });
                                 }}
                             >
                                 Cancelar
                             </SecondaryButton>
-                            <SecondaryButton
-                                type="button"
-                                disabled={!inviteMinistryId}
-                                onClick={() => {
-                                    setManualLink('');
-                                    setManualLinkCopied(false);
-                                    void generateManualLink();
-                                }}
-                            >
-                                Gerar link (WhatsApp)
-                            </SecondaryButton>
                             <PrimaryButton
                                 type="submit"
-                                disabled={!inviteMinistryId || (!inviteChannels.email && !inviteChannels.inbox)}
+                                disabled={!inviteMinistryId}
                             >
                                 Enviar convite
                             </PrimaryButton>
                         </div>
-
-                        {manualLink ? (
-                            <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
-                                <p className="text-sm font-semibold text-zinc-900 dark:text-white">Link gerado</p>
-                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                    Copie e envie no WhatsApp.
-                                </p>
-                                <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-                                    <input
-                                        value={manualLink}
-                                        readOnly
-                                        className="h-11 w-full flex-1 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white"
-                                    />
-                                    <SecondaryButton
-                                        type="button"
-                                        onClick={async () => {
-                                            try {
-                                                await navigator.clipboard.writeText(manualLink);
-                                                setManualLinkCopied(true);
-                                                window.setTimeout(() => setManualLinkCopied(false), 1500);
-                                            } catch {
-                                                // noop: se clipboard não estiver disponível, o usuário ainda pode selecionar/copiar manualmente
-                                            }
-                                        }}
-                                    >
-                                        {manualLinkCopied ? 'Copiado' : 'Copiar'}
-                                    </SecondaryButton>
-                                </div>
-                            </div>
-                        ) : null}
                     </form>
                 </div>
             </Modal>
 
-            <VolunteerMinistryInviteShareModal
-                show={ministryInviteShareOpen && !!ministryInviteShare}
-                link={ministryInviteShare?.link ?? ''}
-                inviteeName={ministryInviteShare?.name}
-                ministryName={ministryInviteShare?.ministryName}
-                onClose={() => {
-                    setMinistryInviteShareOpen(false);
-                    setMinistryInviteShare(null);
-                }}
-            />
-
             <Modal show={stageManageOpen} onClose={() => setStageManageOpen(false)} maxWidth="lg" disableBodyScroll>
                 <div className="p-6 space-y-5">
-                    <div>
+                    <div className="pr-10">
                         <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Gerir fases</h2>
-                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">Renomeie, ajuste a ordem (opcional) ou exclua fases.</p>
+                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+                            A ordem das colunas no quadro segue a lista abaixo. Use as setas para mover uma fase; guarde o nome
+                            só depois de o editar.
+                        </p>
                     </div>
 
-                    <div className="space-y-3">
-                        {stages.map((s) => {
+                    <ol className="max-h-[min(55vh,420px)] space-y-2 overflow-y-auto pr-1">
+                        {stages.map((s, index) => {
                             const key = String(s.id);
-                            const st = stageEdit[key] ?? { name: s.name ?? '', sort_order: String(s.sort_order ?? '') };
+                            const st = stageEdit[key] ?? { name: s.name ?? '' };
+                            const serverName = s.name ?? '';
+                            const nameDirty = st.name.trim() !== serverName.trim();
                             return (
-                                <div key={s.id} className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900/60">
-                                    <div className="grid gap-3 sm:grid-cols-12 sm:items-end">
-                                        <div className="sm:col-span-7">
-                                            <InputLabel value="Nome" />
+                                <li key={s.id}>
+                                    <div className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/60 sm:flex-row sm:items-center sm:gap-3">
+                                        <div className="flex items-center gap-2 sm:w-28 sm:shrink-0">
+                                            <span
+                                                className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-100 text-xs font-bold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                                                title="Posição no quadro"
+                                            >
+                                                {index + 1}
+                                            </span>
+                                            <div className="flex rounded-lg border border-zinc-200 dark:border-zinc-600">
+                                                <button
+                                                    type="button"
+                                                    disabled={index === 0 || stageOrderBusy}
+                                                    onClick={() => swapStageNeighbors(index, 'up')}
+                                                    className="p-2 text-zinc-600 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-30 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                                                    aria-label="Mover fase para cima"
+                                                    title="Mover para cima"
+                                                >
+                                                    <ChevronUpIcon className="h-4 w-4" />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    disabled={index >= stages.length - 1 || stageOrderBusy}
+                                                    onClick={() => swapStageNeighbors(index, 'down')}
+                                                    className="border-l border-zinc-200 p-2 text-zinc-600 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-30 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                                                    aria-label="Mover fase para baixo"
+                                                    title="Mover para baixo"
+                                                >
+                                                    <ChevronDownIcon className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <label htmlFor={`stage-name-${s.id}`} className="sr-only">
+                                                Nome da fase {index + 1}
+                                            </label>
                                             <TextInput
+                                                id={`stage-name-${s.id}`}
                                                 value={st.name}
                                                 onChange={(e) =>
-                                                    setStageEdit((cur) => ({ ...cur, [key]: { ...st, name: e.target.value } }))
+                                                    setStageEdit((cur) => ({ ...cur, [key]: { name: e.target.value } }))
                                                 }
-                                                className="mt-1 w-full"
+                                                className="w-full"
+                                                placeholder="Nome da fase"
                                             />
                                         </div>
-                                        <div className="sm:col-span-3">
-                                            <InputLabel value="Ordem" />
-                                            <TextInput
-                                                value={st.sort_order}
-                                                onChange={(e) =>
-                                                    setStageEdit((cur) => ({ ...cur, [key]: { ...st, sort_order: e.target.value } }))
-                                                }
-                                                className="mt-1 w-full"
-                                                inputMode="numeric"
-                                            />
-                                        </div>
-                                        <div className="sm:col-span-2 flex gap-2 sm:justify-end">
-                                            <SecondaryButton
-                                                type="button"
-                                                onClick={() =>
-                                                    router.put(
-                                                        route('ministry-lead.volunteers.pipeline.stages.update', s.id),
-                                                        { name: st.name, sort_order: st.sort_order === '' ? null : Number(st.sort_order) },
-                                                        { preserveScroll: true },
-                                                    )
-                                                }
-                                            >
-                                                Salvar
-                                            </SecondaryButton>
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    router.delete(route('ministry-lead.volunteers.pipeline.stages.destroy', s.id), {
-                                                        preserveScroll: true,
-                                                    })
-                                                }
-                                                className="rounded-xl px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/30"
-                                            >
-                                                Excluir
-                                            </button>
+                                        <div className="flex flex-wrap items-center justify-between gap-2 sm:justify-end sm:gap-2">
+                                            <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                                                <span className="font-semibold tabular-nums text-zinc-700 dark:text-zinc-300">
+                                                    {s.volunteer_count}
+                                                </span>{' '}
+                                                voluntário{s.volunteer_count === 1 ? '' : 's'}
+                                            </span>
+                                            <div className="flex items-center gap-2">
+                                                {nameDirty ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => saveStageName(s.id, serverName)}
+                                                        className="rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 dark:bg-brand-500 dark:hover:bg-brand-400 dark:focus:ring-brand-400 dark:focus:ring-offset-zinc-900"
+                                                    >
+                                                        Guardar nome
+                                                    </button>
+                                                ) : null}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => requestDeleteStage(s.id, st.name, s.volunteer_count)}
+                                                    className="rounded-lg px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/40"
+                                                >
+                                                    Excluir
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                                        Voluntários nesta fase: <span className="font-semibold">{s.volunteer_count}</span>
-                                    </div>
-                                </div>
+                                </li>
                             );
                         })}
-                    </div>
+                    </ol>
 
-                    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
-                        <div className="text-sm font-semibold text-zinc-900 dark:text-white">Criar nova fase</div>
+                    <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
+                        <div className="text-sm font-semibold text-zinc-900 dark:text-white">Nova fase</div>
+                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                            A nova fase aparece no fim do quadro; depois pode reordená-la com as setas.
+                        </p>
                         <form onSubmit={submitNewStage} className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start">
                             <div className="flex-1">
                                 <TextInput
@@ -1277,15 +1277,15 @@ export default function Pipeline({
                                 <InputError message={stageForm.errors.name} className="mt-1" />
                             </div>
                             <PrimaryButton type="submit" disabled={stageForm.processing} className="sm:self-start">
-                                Criar
+                                Adicionar fase
                             </PrimaryButton>
                         </form>
                     </div>
 
-                    <div className="flex justify-end">
-                        <PrimaryButton type="button" onClick={() => setStageManageOpen(false)}>
+                    <div className="flex justify-end border-t border-zinc-200 pt-4 dark:border-zinc-700">
+                        <SecondaryButton type="button" onClick={() => setStageManageOpen(false)}>
                             Fechar
-                        </PrimaryButton>
+                        </SecondaryButton>
                     </div>
                 </div>
             </Modal>

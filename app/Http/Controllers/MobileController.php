@@ -561,10 +561,16 @@ class MobileController extends Controller
         ]);
     }
 
-    public function leaderContact(Request $request): Response
+    public function leaderContact(Request $request): Response|RedirectResponse
     {
         $user = $request->user();
         abort_unless($user, 401);
+        if ($user->hasRole('lider_ministerio') || (bool) ($user->is_ministry_leader ?? false)) {
+            return redirect()->route('mobile.profile')->with(
+                'error',
+                'Esta área é para membros contactarem líderes. Como líder de ministério, use as outras opções do perfil.'
+            );
+        }
         $churchId = Church::resolveWorkingId($request);
 
         $contactUrl = route('mobile.contact');
@@ -607,6 +613,12 @@ class MobileController extends Controller
     {
         $user = $request->user();
         abort_unless($user, 401);
+        if ($user->hasRole('lider_ministerio') || (bool) ($user->is_ministry_leader ?? false)) {
+            return redirect()->route('mobile.profile')->with(
+                'error',
+                'Esta área é para membros contactarem líderes.'
+            );
+        }
         $churchId = Church::resolveWorkingId($request);
         abort_unless($churchId, 404, 'Nenhuma igreja ativa.');
 

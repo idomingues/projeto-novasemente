@@ -45,6 +45,7 @@ type PageProps = {
         roleLabel?: string;
         permissions?: string[];
         adminSidebarUnrestricted?: boolean;
+        isMinistryLeaderAccount?: boolean;
     };
     recentNotifications?: NotificationItem[];
     unreadInboxNotificationsCount?: number;
@@ -61,7 +62,7 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
     const badgeCount = unread > 0 ? Math.min(99, unread) : 0;
     const showRecentDot = badgeCount === 0 && notifications.length > 0;
     const roleLabel = auth?.roleLabel ?? 'Membro';
-    const isMinistryLeader = user?.is_ministry_leader === true;
+    const isMinistryLeader = auth?.isMinistryLeaderAccount === true || user?.is_ministry_leader === true;
     const { theme, toggleTheme } = useTheme();
     /** Hub de perfil (opções); evita ir direto ao formulário Breeze no PC. */
     const profileHref = route().has('mobile.profile') ? route('mobile.profile') : route('profile.edit');

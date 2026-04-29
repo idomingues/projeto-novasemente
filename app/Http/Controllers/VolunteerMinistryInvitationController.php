@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\VolunteerMinistryInvitationMail;
 use App\Models\Church;
 use App\Models\Ministry;
 use App\Models\UserInboxNotification;
 use App\Models\Volunteer;
 use App\Models\VolunteerMinistryInvitation;
 use App\Models\VolunteerMinistryInvitationSlot;
-use App\Mail\VolunteerMinistryInvitationMail;
 use App\Support\UserMessagingPreferences;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -40,7 +40,7 @@ class VolunteerMinistryInvitationController extends Controller
         $valid = $request->validate([
             'ministry_id' => ['required', 'integer', Rule::exists('ministries', 'id')->where('church_id', $churchId)],
             'channels' => ['array'],
-            'channels.*' => ['string', Rule::in(['email', 'inbox', 'manual'])],
+            'channels.*' => ['string', Rule::in(['email', 'inbox'])],
             'slots' => ['array'],
             'slots.*.day_of_week' => ['required_with:slots', 'integer', 'min:0', 'max:6'],
             'slots.*.start_time' => ['nullable', 'date_format:H:i'],
@@ -73,7 +73,7 @@ class VolunteerMinistryInvitationController extends Controller
 
         $channels = array_values(array_unique(array_filter($valid['channels'] ?? [], fn ($c) => is_string($c) && $c !== '')));
         if ($channels === []) {
-            $channels = ['manual'];
+            $channels = ['email'];
         }
 
         $inviteUrl = route('volunteers.ministry-invite.show', ['token' => $inv->token], true);
@@ -112,16 +112,6 @@ class VolunteerMinistryInvitationController extends Controller
             $inv->forceFill(['sent_at' => now()])->save();
         }
 
-        if ($request->expectsJson() || $request->wantsJson()) {
-            return response()->json([
-                'success' => true,
-                'link' => $inviteUrl,
-            ]);
-        }
-
-        return back()
-            ->with('success', 'Convite criado.')
-            ->with('ministry_invite_link', $inviteUrl);
+        return back()->with('success', 'Convite criado.');
     }
 }
-
