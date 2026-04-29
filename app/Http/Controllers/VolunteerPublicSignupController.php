@@ -211,6 +211,7 @@ class VolunteerPublicSignupController extends Controller
             'ministry_involvement' => ['nullable', 'string', 'max:5000'],
             'other_ministry_interest' => ['required', 'string', 'max:5000'],
             'gifts_to_develop' => ['nullable', 'string', 'max:5000'],
+            'professional_area' => ['nullable', 'string', 'max:5000'],
             'needs_pastoral_guidance' => ['required', 'boolean'],
             'lgpd_data_consent' => ['required', 'boolean'],
             'password' => ['required', 'confirmed', Password::defaults()],
@@ -314,6 +315,7 @@ class VolunteerPublicSignupController extends Controller
                     'ministry_involvement' => $validated['ministry_involvement'] ?? null,
                     'other_ministry_interest' => $validated['other_ministry_interest'] ?? null,
                     'gifts_to_develop' => $validated['gifts_to_develop'] ?? null,
+                    'professional_area' => $validated['professional_area'] ?? null,
                     'needs_pastoral_guidance' => (bool) $validated['needs_pastoral_guidance'],
                     'lgpd_data_consent' => (bool) $validated['lgpd_data_consent'],
                 ])->save();

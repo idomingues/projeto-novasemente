@@ -108,6 +108,7 @@ export default function PublicSignup({ token, churchName, ministries }: Props) {
         ministry_involvement: '',
         other_ministry_interest: '',
         gifts_to_develop: '',
+        professional_area: '',
         needs_pastoral_guidance: null as boolean | null,
         lgpd_data_consent: null as boolean | null,
         password: '',
@@ -766,6 +767,25 @@ export default function PublicSignup({ token, churchName, ministries }: Props) {
                                             />
                                             <InputError
                                                 message={(errors as Record<string, string | undefined>).gifts_to_develop || clientErrors.gifts_to_develop}
+                                                className="mt-1"
+                                            />
+                                        </div>
+
+                                        <div className="mt-4">
+                                            <InputLabel htmlFor="professional_area" value="Qual sua área de atuação profissional? (opcional)" />
+                                            <TextInput
+                                                id="professional_area"
+                                                value={data.professional_area}
+                                                className="mt-1 block w-full"
+                                                onChange={(e) => {
+                                                    setData('professional_area', e.target.value);
+                                                    clearClientError('professional_area');
+                                                }}
+                                            />
+                                            <InputError
+                                                message={
+                                                    (errors as Record<string, string | undefined>).professional_area || clientErrors.professional_area
+                                                }
                                                 className="mt-1"
                                             />
                                         </div>

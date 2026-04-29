@@ -1,6 +1,6 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head } from '@inertiajs/react';
-import { ArrowDownTrayIcon, ChevronLeftIcon, ChevronRightIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { ArrowDownTrayIcon, ChevronLeftIcon, ChevronRightIcon, XMarkIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 import { useMemo, useRef, useState } from 'react';
 
 interface Props {
@@ -57,26 +57,28 @@ export default function MobilePhotos({ title = 'Fotos', embedUrl, folderUrl, ima
                         href={folderUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm font-semibold text-zinc-700 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white underline underline-offset-4"
+                        className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-zinc-100 text-zinc-700 hover:bg-zinc-200 hover:text-zinc-900 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                        title="Abrir no Drive"
+                        aria-label="Abrir no Drive"
                     >
-                        Abrir no Drive
+                        <ArrowTopRightOnSquareIcon className="w-5 h-5" aria-hidden />
                     </a>
                 </div>
 
                 {canUseGallery ? (
                     <>
-                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                        <div className="grid grid-cols-1 gap-3 sm:gap-4">
                             {images.map((img, i) => (
                                 <button
                                     key={img.id}
                                     type="button"
                                     onClick={() => openAt(i)}
-                                    className="relative aspect-square overflow-hidden rounded-2xl bg-zinc-200 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 active:scale-[0.99] transition"
-                                    title={img.name ?? 'Foto'}
+                                    className="relative aspect-[4/5] sm:aspect-[16/10] w-full overflow-hidden rounded-3xl bg-zinc-200 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 shadow-sm active:scale-[0.99] transition"
+                                    aria-label={`Abrir foto ${i + 1} de ${images.length}`}
                                 >
                                     <img
                                         src={img.thumb_url}
-                                        alt={img.name ?? ''}
+                                        alt=""
                                         className="w-full h-full object-cover"
                                         loading="lazy"
                                     />
@@ -109,7 +111,7 @@ export default function MobilePhotos({ title = 'Fotos', embedUrl, folderUrl, ima
                                 </div>
 
                                 <div
-                                    className="absolute inset-0 pt-16 pb-16 px-4 flex items-center justify-center"
+                                    className="absolute inset-0 pt-16 pb-16 px-3 sm:px-4 flex items-center justify-center"
                                     onTouchStart={(e) => (touchStartX.current = e.touches[0]?.clientX ?? null)}
                                     onTouchEnd={(e) => {
                                         const start = touchStartX.current;
@@ -123,7 +125,7 @@ export default function MobilePhotos({ title = 'Fotos', embedUrl, folderUrl, ima
                                     }}
                                 >
                                     <div
-                                        className={`max-w-[min(96vw,1100px)] max-h-[72dvh] overflow-auto rounded-2xl ${
+                                        className={`w-[calc(100vw-1.5rem)] sm:w-[calc(100vw-2rem)] max-w-[1100px] h-[calc(100dvh-8.5rem)] max-h-[calc(100dvh-8.5rem)] ${
                                             zoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'
                                         }`}
                                         onClick={() => setZoomed((v) => !v)}
@@ -131,7 +133,7 @@ export default function MobilePhotos({ title = 'Fotos', embedUrl, folderUrl, ima
                                         <img
                                             src={current.full_url}
                                             alt={current.name ?? ''}
-                                            className={`w-auto h-auto max-w-full max-h-[72dvh] object-contain select-none ${
+                                            className={`w-full h-full object-contain select-none ${
                                                 zoomed ? 'scale-150 origin-center' : 'scale-100'
                                             } transition-transform duration-200`}
                                             draggable={false}
@@ -165,10 +167,15 @@ export default function MobilePhotos({ title = 'Fotos', embedUrl, folderUrl, ima
                     </>
                 ) : (
                     <div className="rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+                        <div className="px-4 py-3 border-b border-zinc-100 dark:border-zinc-800">
+                            <p className="text-sm text-zinc-600 dark:text-zinc-300">
+                                Visualização básica do Drive (pode exibir nomes de ficheiro).
+                            </p>
+                        </div>
                         <iframe
                             title="Álbum de fotos (Google Drive)"
                             src={embedUrl}
-                            className="w-full h-[70dvh] min-h-[520px] bg-white"
+                            className="w-full h-[78dvh] min-h-[620px] bg-white"
                             referrerPolicy="no-referrer"
                             loading="lazy"
                             allowFullScreen
