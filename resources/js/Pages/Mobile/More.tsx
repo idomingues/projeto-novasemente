@@ -1,4 +1,5 @@
 import MobileLayout from '@/Layouts/MobileLayout';
+import SobreOAppNavItem from '@/Components/Mobile/SobreOAppNavItem';
 import { Head, Link, usePage } from '@inertiajs/react';
 import {
     ClockIcon,
@@ -172,17 +173,7 @@ export default function MobileMore(_: Props) {
                         );
                     })}
 
-                    <Link
-                        href={route('mobile.sobre-o-app')}
-                        className="flex items-center gap-4 p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 active:bg-zinc-50 dark:active:bg-zinc-800 transition-colors"
-                    >
-                        <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-zinc-100 dark:bg-zinc-800">
-                            <BookOpenIcon className="w-6 h-6 text-zinc-600 dark:text-zinc-400" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                            <span className="font-semibold text-zinc-900 dark:text-white block">Sobre o APP</span>
-                        </div>
-                    </Link>
+                    <SobreOAppNavItem variant="more" />
                 </div>
             </div>
         </MobileLayout>

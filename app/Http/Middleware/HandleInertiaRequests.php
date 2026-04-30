@@ -235,6 +235,8 @@ class HandleInertiaRequests extends Middleware
             'appVersion' => $appVersionShared,
             'appVersionHistory' => $appVersionHistory,
             'appUrl' => $request->getSchemeAndHttpHost(),
+            /** URL raiz desta instalação (scheme + host + path base), para ecrã «Sobre o APP». */
+            'appRootUrl' => rtrim($request->root(), '/'),
             'appLogoUrl' => $appLogoUrl,
             'defaultBrandLogoUrl' => $defaultBrandLogoUrl,
             'appName' => $appName,

@@ -1,4 +1,5 @@
 import MobileLayout from '@/Layouts/MobileLayout';
+import SobreOAppNavItem from '@/Components/Mobile/SobreOAppNavItem';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { SunIcon, MoonIcon, UserCircleIcon, BuildingOfficeIcon } from '@heroicons/react/24/outline';
 import { useTheme } from '@/Contexts/ThemeContext';
@@ -153,12 +154,7 @@ export default function MobileSettings({ church, user }: Props) {
                     <h2 className="px-4 py-2 text-sm font-semibold text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
                         Sobre
                     </h2>
-                    <Link
-                        href={route('mobile.sobre-o-app', { from: 'settings' })}
-                        className="block px-4 py-3 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 active:bg-zinc-100 dark:active:bg-zinc-800"
-                    >
-                        Sobre o APP
-                    </Link>
+                    <SobreOAppNavItem variant="settings" from="settings" />
                 </section>
             </div>
         </MobileLayout>
