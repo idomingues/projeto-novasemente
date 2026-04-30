@@ -2,7 +2,6 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { SunIcon, MoonIcon, UserCircleIcon, BuildingOfficeIcon } from '@heroicons/react/24/outline';
 import { useTheme } from '@/Contexts/ThemeContext';
-import InstalledAppVersion from '@/Components/InstalledAppVersion';
 
 interface ChurchInfo {
     name: string;
@@ -30,7 +29,9 @@ function canAccessPastorsCadastro(permissions: string[] | undefined): boolean {
 
 export default function MobileSettings({ church, user }: Props) {
     const { theme, toggleTheme } = useTheme();
-    const { auth } = usePage().props as { auth?: { permissions?: string[]; canAccessAdminMenu?: boolean } };
+    const { auth } = usePage().props as {
+        auth?: { permissions?: string[]; canAccessAdminMenu?: boolean };
+    };
     const showPastorsCadastro = canAccessPastorsCadastro(auth?.permissions);
     const showAdminPanelLink = auth?.canAccessAdminMenu === true;
 
@@ -152,10 +153,12 @@ export default function MobileSettings({ church, user }: Props) {
                     <h2 className="px-4 py-2 text-sm font-semibold text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
                         Sobre
                     </h2>
-                    <div className="flex items-center justify-between gap-3 px-4 py-3">
-                        <span className="text-zinc-900 dark:text-white">Versão instalada</span>
-                        <InstalledAppVersion className="text-sm font-medium text-zinc-500 dark:text-zinc-400" />
-                    </div>
+                    <Link
+                        href={route('mobile.sobre-o-app', { from: 'settings' })}
+                        className="block px-4 py-3 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 active:bg-zinc-100 dark:active:bg-zinc-800"
+                    >
+                        Sobre o APP
+                    </Link>
                 </section>
             </div>
         </MobileLayout>

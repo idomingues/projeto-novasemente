@@ -112,6 +112,7 @@ Route::get('/mobile/events', [MobileController::class, 'events'])->name('mobile.
 Route::get('/mobile/schedule', [MobileController::class, 'schedule'])->name('mobile.schedule');
 Route::get('/mobile/schedule/full', [MobileController::class, 'scheduleFull'])->name('mobile.schedule.full');
 Route::get('/mobile/more', [MobileController::class, 'more'])->name('mobile.more');
+Route::get('/mobile/sobre-o-app', [MobileController::class, 'sobreOApp'])->name('mobile.sobre-o-app');
 Route::get('/mobile/crencas', [MobileController::class, 'beliefs'])->name('mobile.beliefs');
 Route::get('/mobile/quem-somos', [MobileController::class, 'quemSomos'])->name('mobile.quem-somos');
 Route::get('/mobile/classe-comecos', [MobileController::class, 'classeComecos'])->name('mobile.classe-comecos');

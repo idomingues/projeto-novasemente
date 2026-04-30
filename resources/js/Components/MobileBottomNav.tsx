@@ -42,6 +42,8 @@ const navItems = [
         route: 'mobile.more' as const,
         activeRoutes: [
             'mobile.more',
+            'mobile.sobre-o-app',
+            'mobile.settings',
             'more.index',
             'mobile.beliefs',
             'mobile.quem-somos',

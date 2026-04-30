@@ -153,7 +153,7 @@ const quickActions: QuickAction[] = [
     },
     {
         label: 'Fotos',
-        subtitle: 'Veja o que nosso fotógrafos prepararam para você',
+        subtitle: 'Veja o que nossos fotógrafos prepararam para você',
         route: 'mobile.fotos',
         icon: PhotoIcon,
         cardClass: 'border-rose-200/90 bg-rose-50 dark:border-rose-800/40 dark:bg-rose-950/35',

@@ -620,6 +620,18 @@ class MobileController extends Controller
         return Inertia::render('Mobile/More', $data);
     }
 
+    public function sobreOApp(Request $request): Response
+    {
+        $from = $request->string('from')->toString();
+        $backRoute = $from === 'settings' ? 'mobile.settings' : 'mobile.more';
+        $backLabel = $from === 'settings' ? 'Configurações' : 'Mais';
+
+        return Inertia::render('Mobile/SobreOApp', [
+            'backRoute' => $backRoute,
+            'backLabel' => $backLabel,
+        ]);
+    }
+
     public function beliefs(): Response
     {
         return Inertia::render('Mobile/Beliefs');
