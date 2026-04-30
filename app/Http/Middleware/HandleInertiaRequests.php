@@ -7,6 +7,7 @@ use App\Models\AppVersion;
 use App\Models\Church;
 use App\Models\ChurchSolicitation;
 use App\Models\Pastor;
+use App\Support\MobileProjectVersionHint;
 use App\Support\NotificationFeed;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -113,6 +114,10 @@ class HandleInertiaRequests extends Middleware
         $appVersionShared = ($appVersionFromDb !== null && $appVersionFromDb !== '')
             ? $appVersionFromDb
             : (config('app.display_version') ?: null);
+        if ($appVersionShared === null || $appVersionShared === '') {
+            $hint = MobileProjectVersionHint::detect();
+            $appVersionShared = ($hint !== null && $hint !== '') ? $hint : null;
+        }
 
         $linkedPastor = null;
         /**

@@ -32,6 +32,7 @@ interface Props {
 
 type PageProps = {
     appVersion?: string | null;
+    appVersionHistory?: { version: string }[];
     auth?: {
         user?: unknown | null;
         permissions?: string[];
@@ -68,8 +69,19 @@ const items: MoreMenuItem[] = [
     { name: 'Classe Começos', description: 'Estudo bíblico presencial ou on-line', route: 'varios.classe-comecos', icon: AcademicCapIcon },
 ];
 
+function formatVersionLabel(raw: string | null | undefined): string {
+    const t = (raw ?? '').trim();
+    if (!t) {
+        return '—';
+    }
+    return t.startsWith('v') || t.startsWith('V') ? t : `v${t}`;
+}
+
 export default function MobileMore(_: Props) {
-    const { auth, appVersion } = usePage().props as unknown as PageProps;
+    const { auth, appVersion, appVersionHistory = [] } = usePage().props as unknown as PageProps;
+    const bundleHint = typeof __APP_FRONT_BUNDLE_VERSION__ === 'string' ? __APP_FRONT_BUNDLE_VERSION__.trim() : '';
+    const historyHead = appVersionHistory[0]?.version?.trim() || '';
+    const webVersionRaw = (appVersion ?? '').trim() || historyHead || bundleHint;
     const isAuthenticated = !!auth?.user;
     const permissions = auth?.permissions ?? [];
     const unrestricted = auth?.adminSidebarUnrestricted === true;
@@ -183,11 +195,16 @@ export default function MobileMore(_: Props) {
                             <div className="mt-1 space-y-0.5">
                                 <div className="flex items-baseline justify-between gap-3">
                                     <span className="text-xs text-zinc-500 dark:text-zinc-400">Web</span>
-                                    <span className="text-xs font-medium text-zinc-700 dark:text-zinc-200">{appVersion ?? '—'}</span>
+                                    <span className="text-xs font-medium text-zinc-700 dark:text-zinc-200">
+                                        {formatVersionLabel(webVersionRaw || null)}
+                                    </span>
                                 </div>
                                 <div className="flex items-baseline justify-between gap-3">
                                     <span className="text-xs text-zinc-500 dark:text-zinc-400">Instalada</span>
-                                    <InstalledAppVersion className="text-xs font-medium text-zinc-700 dark:text-zinc-200" />
+                                    <InstalledAppVersion
+                                        className="text-xs font-medium text-zinc-700 dark:text-zinc-200"
+                                        fallbackLabel={webVersionRaw || null}
+                                    />
                                 </div>
                             </div>
                         </div>

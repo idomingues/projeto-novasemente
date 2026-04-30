@@ -65,7 +65,7 @@ return [
     |
     */
 
-    'display_version' => env('APP_DISPLAY_VERSION'),
+    'display_version' => env('APP_DISPLAY_VERSION', env('APP_VERSION')),
 
     /*
     |--------------------------------------------------------------------------
