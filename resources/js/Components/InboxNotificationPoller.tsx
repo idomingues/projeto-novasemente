@@ -71,13 +71,9 @@ export default function InboxNotificationPoller() {
             if (document.visibilityState !== 'visible') {
                 return;
             }
-            // Inertia v2: `router.reload` não aceita preserveState/preserveScroll nos tipos (ReloadOptions omite isso).
-            // GET na URL atual com `only` equivale ao reload parcial e mantém estado/scroll.
-            const url = `${window.location.pathname}${window.location.search}`;
-            router.get(url, {}, {
+            // `router.reload` em Inertia v2 usa visita `async` (sem barra de progresso nem overlay global).
+            router.reload({
                 only: ['recentNotifications', 'unreadInboxNotificationsCount'],
-                preserveState: true,
-                preserveScroll: true,
                 replace: true,
             });
         }, 45_000);

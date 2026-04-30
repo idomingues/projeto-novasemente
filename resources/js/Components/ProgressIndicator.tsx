@@ -1,21 +1,52 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { router } from '@inertiajs/react';
+
+type VisitLike = { showProgress?: boolean };
+
+function visitFromStartEvent(event: Event): VisitLike | null {
+    const e = event as CustomEvent<{ visit?: VisitLike }>;
+    return e.detail?.visit ?? null;
+}
+
+function visitFromFinishEvent(event: Event): VisitLike | null {
+    const e = event as CustomEvent<{ visit?: VisitLike }>;
+    return e.detail?.visit ?? null;
+}
 
 /** Indicador de carregamento (spinner) visível durante navegação Inertia. */
 export default function ProgressIndicator() {
     const [loading, setLoading] = useState(false);
+    /** Visitas com `showProgress: false` (ex.: reload parcial async) não incrementam — evita overlay a cada poll. */
+    const blockingDepth = useRef(0);
 
     useEffect(() => {
-        const handleStart = () => setLoading(true);
-        const handleFinish = () => setLoading(false);
+        const handleStart = (event: Event) => {
+            const visit = visitFromStartEvent(event);
+            if (visit?.showProgress === false) {
+                return;
+            }
+            blockingDepth.current += 1;
+            setLoading(true);
+        };
+        const handleFinish = (event: Event) => {
+            const visit = visitFromFinishEvent(event);
+            if (visit?.showProgress !== false) {
+                blockingDepth.current = Math.max(0, blockingDepth.current - 1);
+            }
+            setLoading(blockingDepth.current > 0);
+        };
+        const handleResetOverlay = () => {
+            blockingDepth.current = 0;
+            setLoading(false);
+        };
 
         const unstart = router.on('start', handleStart);
         const unfinish = router.on('finish', handleFinish);
-        const uncancel = router.on('cancel', handleFinish);
+        const uncancel = router.on('cancel', handleResetOverlay);
         // Respostas não-Inertia (403 HTML, erro de servidor) ou exceções podem não disparar `finish`;
         // sem isto o overlay a “A carregar…” fica preso em cima de tudo (parece que não muda de ecrã).
-        const uninvalid = router.on('invalid', handleFinish);
-        const unexception = router.on('exception', handleFinish);
+        const uninvalid = router.on('invalid', handleResetOverlay);
+        const unexception = router.on('exception', handleResetOverlay);
 
         return () => {
             unstart();
