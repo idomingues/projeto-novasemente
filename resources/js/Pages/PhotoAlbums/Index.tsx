@@ -127,7 +127,7 @@ export default function PhotoAlbumsIndex({ albums, canManage, hasDriveApiKey }: 
                 title="Fotos (álbuns)"
                 subtitle={
                     hasDriveApiKey
-                        ? 'Capa automática disponível (best-effort) quando a pasta do Drive é pública.'
+                        ? 'Cadastre aqui link do Google Drive, capa, fotógrafo e data para publicação das fotos para os usuários do App.'
                         : undefined
                 }
                 actions={
@@ -147,7 +147,7 @@ export default function PhotoAlbumsIndex({ albums, canManage, hasDriveApiKey }: 
                         </div>
                         <p className="text-zinc-600 dark:text-zinc-400 font-medium">Nenhum álbum cadastrado</p>
                         <p className="text-sm text-zinc-500 dark:text-zinc-500 mt-1">
-                            Cadastre um link de pasta do Google Drive para exibir no app.
+                            Cadastre aqui link do Google Drive, capa, fotógrafo e data para publicação das fotos para os usuários do App.
                         </p>
                         {canManage && (
                             <div className="mt-4 flex flex-wrap items-center justify-center gap-2">

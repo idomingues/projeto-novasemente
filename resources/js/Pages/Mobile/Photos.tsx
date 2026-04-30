@@ -84,7 +84,7 @@ export default function MobilePhotos({
                             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{formatAlbumDate(publishedAt)}</p>
                         ) : null}
                         {photographerName?.trim() ? (
-                            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Fotógrafo: {photographerName.trim()}</p>
+                            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Fotógrafo(a): {photographerName.trim()}</p>
                         ) : null}
                     </div>
 

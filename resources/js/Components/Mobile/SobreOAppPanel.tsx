@@ -5,7 +5,6 @@ import { useMemo } from 'react';
 const OFFICIAL_LINKS: { title: string; href: string }[] = [
     { title: 'Site institucional (Brasil)', href: 'https://novasemente.org.br/' },
     { title: 'Aplicação web', href: 'https://app.novasemente.com.br/' },
-    { title: 'Site / links', href: 'https://novasemente.org/' },
 ];
 
 function formatVersionLabel(raw: string | null | undefined): string {

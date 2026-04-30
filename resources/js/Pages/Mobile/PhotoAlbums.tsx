@@ -1,6 +1,6 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, Link } from '@inertiajs/react';
-import { CameraIcon, CalendarDaysIcon } from '@heroicons/react/24/outline';
+import { ArrowTopRightOnSquareIcon, CameraIcon, CalendarDaysIcon } from '@heroicons/react/24/outline';
 
 interface AlbumRow {
     id: number;
@@ -9,6 +9,7 @@ interface AlbumRow {
     published_at: string | null;
     cover_image_url: string | null;
     auto_cover_url: string | null;
+    drive_view_url?: string | null;
 }
 
 interface Props {
@@ -69,6 +70,19 @@ export default function MobilePhotoAlbums({ albums }: Props) {
                                                     <CalendarDaysIcon className="w-4 h-4" />
                                                     {formatPublishedLabel(a.published_at)}
                                                 </span>
+                                                {a.drive_view_url ? (
+                                                    <a
+                                                        href={a.drive_view_url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="absolute top-2 right-2 inline-flex items-center justify-center w-10 h-10 rounded-full bg-black/60 text-white backdrop-blur-sm hover:bg-black/70"
+                                                        title="Abrir no Drive"
+                                                        aria-label="Abrir no Drive"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        <ArrowTopRightOnSquareIcon className="w-5 h-5" aria-hidden />
+                                                    </a>
+                                                ) : null}
                                             </div>
                                         ) : (
                                             <div className="aspect-video bg-gradient-to-br from-zinc-200 to-zinc-300 dark:from-zinc-700 dark:to-zinc-800 flex items-center justify-center">

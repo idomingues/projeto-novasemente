@@ -666,6 +666,7 @@ class MobileController extends Controller
                     'published_at' => $a->published_at?->toIso8601String(),
                     'cover_image_url' => $a->cover_image_url,
                     'auto_cover_url' => $autoCoverUrl,
+                    'drive_view_url' => $a->drive_folder_view_url,
                 ];
             })
             ->values()
