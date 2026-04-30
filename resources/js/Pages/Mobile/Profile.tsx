@@ -153,11 +153,12 @@ export default function MobileProfile({ church, user, profileCounts }: Props) {
     const showMyPastoralAgenda = linkedPastor !== null;
 
     /**
-     * Painel web «Atendimento Pastoral» (solicitations.index): equipa pastoral/secretaria/admin,
-     * não líderes de ministério (estes usam «Meus voluntários» / rotas móveis de líder).
+     * Painel web «Atendimento Pastoral» (solicitations.index): apenas pastores.
+     * Mesmo que a conta seja admin/secretaria, não deve aparecer no Profile se não houver pastor ligado.
      */
     const adminUnrestricted = auth?.adminSidebarUnrestricted === true;
     const canShowAtendimentoPainel =
+        linkedPastor !== null &&
         canAccessAdminMenu &&
         (adminUnrestricted ||
             permissions.includes('solicitations.view') ||
