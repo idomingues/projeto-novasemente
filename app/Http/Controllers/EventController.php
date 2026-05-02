@@ -13,7 +13,7 @@ class EventController extends Controller
 {
     private function currentChurchId(): ?int
     {
-        return Church::where('active', true)->orderBy('name')->value('id');
+        return Church::resolveWorkingId(request());
     }
 
     public function index(Request $request): Response

@@ -41,6 +41,7 @@ const items: MoreMenuItem[] = [
         externalHref: PHOTOS_DRIVE_FOLDER_URL,
         icon: PhotoIcon,
     },
+    { name: 'Biblioteca', description: 'Livros e PDFs no app', route: 'mobile.biblioteca', icon: BookOpenIcon },
     { name: 'Localização', description: 'Endereço e mapa da igreja', route: 'mobile.location', icon: MapPinIcon },
     { name: 'Nossos pastores', description: 'Conheça a equipe pastoral', route: 'mobile.pastors', icon: UserCircleIcon },
     { name: 'Quem somos', description: 'História e significado do nome', route: 'mobile.quem-somos', icon: UserGroupIcon },

@@ -11,6 +11,7 @@ use App\Models\Ministry;
 use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerSelfSignupToken;
+use App\Support\VolunteerChurchRosterBuilder;
 use App\Support\VolunteerPipelineBootstrap;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -195,14 +196,10 @@ class VolunteerController extends Controller
         $search = (string) $request->input('search', '');
         $churchId = $this->currentChurchId($request);
 
-        $volunteersQuery = Volunteer::with(['ministries', 'user:id,email', 'user.roles:id,name', 'user.ministries:id,name'])
-            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
-            ->when($churchId !== null, function ($q) use ($churchId) {
-                $q->where(function ($q2) use ($churchId) {
-                    $q2->whereDoesntHave('ministries')
-                        ->orWhereHas('ministries', fn ($mq) => $mq->where('church_id', $churchId));
-                });
-            });
+        $volunteersQuery = ($churchId === null
+            ? Volunteer::query()->whereRaw('1 = 0')
+            : VolunteerChurchRosterBuilder::volunteersVisibleInChurchQuery((int) $churchId)
+        )->with(['ministries', 'user:id,email', 'user.roles:id,name', 'user.ministries:id,name']);
 
         if ($search !== '') {
             $volunteersQuery->where(function ($q) use ($search) {
@@ -286,12 +283,8 @@ class VolunteerController extends Controller
             return false;
         }
 
-        return Volunteer::query()
+        return VolunteerChurchRosterBuilder::volunteersVisibleInChurchQuery((int) $churchId)
             ->whereKey($volunteer->getKey())
-            ->where(function ($q2) use ($churchId) {
-                $q2->whereDoesntHave('ministries')
-                    ->orWhereHas('ministries', fn ($mq) => $mq->where('church_id', $churchId));
-            })
             ->exists();
     }
 

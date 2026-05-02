@@ -16,8 +16,7 @@ class RoomBookingController extends Controller
 {
     private function churchId(Request $request): ?int
     {
-        return Church::resolveWorkingId($request)
-            ?? Church::where('active', true)->orderBy('name')->value('id');
+        return Church::resolveWorkingId($request);
     }
 
     private function canViewBookings(Request $request): bool

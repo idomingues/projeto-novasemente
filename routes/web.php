@@ -9,6 +9,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\FaviconController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\LibraryBookController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\MinistryController;
 use App\Http\Controllers\MinistryLeadVolunteerController;
@@ -123,6 +124,8 @@ Route::get('/mobile/musica/{musica}', [MobileController::class, 'musicaShow'])->
 Route::get('/mobile/services', [MobileController::class, 'services'])->name('mobile.services');
 Route::get('/mobile/fotos', [MobileController::class, 'fotos'])->name('mobile.fotos');
 Route::get('/mobile/fotos/{album}', [MobileController::class, 'fotosShow'])->name('mobile.fotos.show');
+Route::get('/mobile/biblioteca', [MobileController::class, 'biblioteca'])->name('mobile.biblioteca');
+Route::get('/mobile/biblioteca/{libraryBook}', [MobileController::class, 'bibliotecaShow'])->name('mobile.biblioteca.show');
 Route::get('/mobile/localizacao', [MobileController::class, 'location'])->name('mobile.location');
 Route::get('/mobile/pastores', [MobileController::class, 'pastors'])->name('mobile.pastors');
 Route::get('/mobile/offerings', [MobileController::class, 'offerings'])->name('mobile.offerings');
@@ -395,6 +398,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/fotos', [PhotoAlbumController::class, 'store'])->name('photo-albums.store')->middleware('permission:photos.manage');
     Route::put('/fotos/{album}', [PhotoAlbumController::class, 'update'])->name('photo-albums.update')->middleware('permission:photos.manage');
     Route::delete('/fotos/{album}', [PhotoAlbumController::class, 'destroy'])->name('photo-albums.destroy')->middleware('permission:photos.manage');
+    Route::get('/biblioteca', [LibraryBookController::class, 'index'])->name('library-books.index')->middleware('permission:library.manage');
+    Route::post('/biblioteca', [LibraryBookController::class, 'store'])->name('library-books.store')->middleware('permission:library.manage');
+    Route::put('/biblioteca/{libraryBook}', [LibraryBookController::class, 'update'])->name('library-books.update')->middleware('permission:library.manage');
+    Route::delete('/biblioteca/{libraryBook}', [LibraryBookController::class, 'destroy'])->name('library-books.destroy')->middleware('permission:library.manage');
     Route::get('/services', function () {
         return Inertia::render('Dashboard');
     })->name('services.index');

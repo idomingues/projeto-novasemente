@@ -32,7 +32,7 @@ export default function FlashMessages() {
  
     
     return (
-        <div className="fixed bottom-6 right-6 z-[300] pointer-events-none">
+        <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] right-4 z-[500] max-md:left-4 max-md:right-4 md:bottom-8 md:right-6 pointer-events-none">
             <div
                 className={`rounded-2xl px-4 py-3 shadow-lg border text-sm flex items-center gap-3 max-w-md ${
                     isSuccess

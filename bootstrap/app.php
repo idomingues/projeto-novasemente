@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\ReportsDatabaseConnectionFailure;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -54,5 +55,25 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->withErrors($e->errors(), $e->errorBag)
                 ->withInput(Arr::except($request->input(), ['password', 'password_confirmation']))
                 ->setStatusCode(303);
+        });
+
+        /*
+         * Falha de ligação à BD: sem isto, em produção (APP_DEBUG=false) o utilizador vê só «500» ou página genérica.
+         * Resposta em HTML simples (sem Inertia / sem novas queries) para pedidos web e JSON para API.
+         */
+        $exceptions->render(function (\Throwable $e, Request $request) {
+            if (! ReportsDatabaseConnectionFailure::matches($e)) {
+                return null;
+            }
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Não foi possível ligar à base de dados. Verifique o servidor e o ficheiro .env.',
+                ], 503);
+            }
+
+            return response()
+                ->view('errors.database-unavailable', [], 503)
+                ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
         });
     })->create();

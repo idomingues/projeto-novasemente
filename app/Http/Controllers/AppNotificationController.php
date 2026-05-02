@@ -13,14 +13,7 @@ class AppNotificationController extends Controller
 {
     private function currentChurchId(): ?int
     {
-        $workingChurchId = request()->session()->get('working_church_id');
-        if ($workingChurchId) {
-            $church = Church::where('id', $workingChurchId)->where('active', true)->first();
-            if ($church) {
-                return (int) $church->id;
-            }
-        }
-        return Church::where('active', true)->orderBy('name')->value('id');
+        return Church::resolveWorkingId(request());
     }
 
     public function store(Request $request)
@@ -86,9 +79,10 @@ class AppNotificationController extends Controller
                         'notification_id' => (string) $notification->id,
                     ],
                     'timestamp' => (int) round(microtime(true) * 1000),
-                ], JSON_UNESCAPED_SLASHES) . "\n",
+                ], JSON_UNESCAPED_SLASHES)."\n",
                 FILE_APPEND
             );
+
             // #endregion agent log
             return;
         }
@@ -128,9 +122,10 @@ class AppNotificationController extends Controller
                         'church_id' => $churchId === null ? null : (int) $churchId,
                     ],
                     'timestamp' => (int) round(microtime(true) * 1000),
-                ], JSON_UNESCAPED_SLASHES) . "\n",
+                ], JSON_UNESCAPED_SLASHES)."\n",
                 FILE_APPEND
             );
+
             // #endregion agent log
             return;
         }
@@ -163,9 +158,10 @@ class AppNotificationController extends Controller
                         'user_ids_count' => count($userIds),
                     ],
                     'timestamp' => (int) round(microtime(true) * 1000),
-                ], JSON_UNESCAPED_SLASHES) . "\n",
+                ], JSON_UNESCAPED_SLASHES)."\n",
                 FILE_APPEND
             );
+
             // #endregion agent log
             return;
         }
@@ -209,7 +205,7 @@ class AppNotificationController extends Controller
                     'platform_counts' => $tokens->groupBy('platform')->map->count()->all(),
                 ],
                 'timestamp' => (int) round(microtime(true) * 1000),
-            ], JSON_UNESCAPED_SLASHES) . "\n",
+            ], JSON_UNESCAPED_SLASHES)."\n",
             FILE_APPEND
         );
         // #endregion agent log

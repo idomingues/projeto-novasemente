@@ -163,6 +163,8 @@ return [
     ],
 
     'attributes' => [
+        'pdf_file' => 'PDF',
+        'cover_image_file' => 'imagem da capa',
         'name' => 'nome',
         'email' => 'e-mail',
         'password' => 'senha',

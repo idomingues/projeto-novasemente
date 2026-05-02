@@ -18,6 +18,7 @@
 /.ci-toolcache
 /public/build
 /public/hot
+/public/php.info.php
 /public/storage
 /storage/*.key
 /storage/pail

@@ -7,26 +7,17 @@ use App\Models\PrayerRequest;
 use App\Models\User;
 use App\Models\UserInboxNotification;
 use App\Support\UserMessagingPreferences;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Http\RedirectResponse;
 
 class PrayerRequestController extends Controller
 {
     private function currentChurchId(): ?int
     {
-        $workingChurchId = request()->session()->get('working_church_id');
-        if ($workingChurchId) {
-            $church = Church::where('id', $workingChurchId)->where('active', true)->first();
-            if ($church) {
-                return (int) $church->id;
-            }
-        }
-        $first = Church::where('active', true)->orderBy('name')->first();
-
-        return $first?->id;
+        return Church::resolveWorkingId(request());
     }
 
     private function getRequests(bool $includeInactive = false): \Illuminate\Support\Collection

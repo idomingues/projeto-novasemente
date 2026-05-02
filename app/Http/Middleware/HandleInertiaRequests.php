@@ -40,15 +40,16 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $currentChurch = null;
-        $church = null;
-        if ($request->user()) {
-            $workingChurchId = $request->session()->get('working_church_id');
-            if ($workingChurchId) {
-                $church = Church::where('id', $workingChurchId)->where('active', true)->first();
-            }
-        }
+        // Igual a VolunteerController / VolunteerRequestSolicitationController::churchId (resolveWorkingId).
+        $resolvedId = Church::resolveWorkingId($request);
+        $church = $resolvedId !== null
+            ? Church::query()->whereKey($resolvedId)->first()
+            : null;
         if ($church === null) {
             $church = Church::where('active', true)->orderBy('name')->first();
+        }
+        if ($church === null) {
+            $church = Church::query()->orderBy('id')->first();
         }
         if ($church) {
             $currentChurch = [

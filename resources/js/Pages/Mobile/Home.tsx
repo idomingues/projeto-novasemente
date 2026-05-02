@@ -4,7 +4,6 @@ import { formatWhenLine, getDayMonth, type MobileEventListItem } from '@/utils/m
 import {
     ArchiveBoxIcon,
     BanknotesIcon,
-    HeartIcon,
     MusicalNoteIcon,
     PhotoIcon,
     SparklesIcon,

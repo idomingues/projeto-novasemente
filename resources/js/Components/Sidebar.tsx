@@ -25,6 +25,7 @@ import {
     ChartBarSquareIcon,
     MusicalNoteIcon,
     CameraIcon,
+    BookOpenIcon,
     UserPlusIcon,
 } from '@heroicons/react/24/outline';
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
@@ -81,6 +82,7 @@ const ICON_MAP: Record<string, MenuIcon> = {
     'chart-bar-square': ChartBarSquareIcon,
     'musical-note': MusicalNoteIcon,
     camera: CameraIcon,
+    'book-open': BookOpenIcon,
     'user-plus': UserPlusIcon,
 };
 
@@ -104,6 +106,7 @@ const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'Acervo', route: 'acervo.index', icon: PlayCircleIcon },
     { name: 'Música', route: 'musica.index', icon: MusicalNoteIcon },
     { name: 'Fotos', route: 'photo-albums.index', icon: CameraIcon },
+    { name: 'Biblioteca', route: 'library-books.index', icon: BookOpenIcon },
     { name: 'Culto', route: 'culto.index', icon: FilmIcon },
     { name: 'Notificações', route: 'notifications.manage', icon: BellAlertIcon },
     { name: 'Salas', route: 'rooms.index', icon: BuildingOfficeIcon },
@@ -174,6 +177,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
         'acervo.index',
         'musica.index',
         'photo-albums.index',
+        'library-books.index',
         'notifications.manage',
     ]);
     const cadastroRoutes = new Set(['rooms.index', 'departments.index', 'pastors.index', 'users.index']);

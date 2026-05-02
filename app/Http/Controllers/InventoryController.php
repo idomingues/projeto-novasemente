@@ -17,7 +17,7 @@ class InventoryController extends Controller
 {
     private function currentChurchId(): ?int
     {
-        return Church::where('active', true)->orderBy('name')->value('id');
+        return Church::resolveWorkingId(request());
     }
 
     public function index(Request $request): Response
@@ -32,9 +32,9 @@ class InventoryController extends Controller
         if ($search && is_string($search)) {
             $term = trim($search);
             $query->where(function ($q) use ($term) {
-                $q->where('barcode', 'like', '%' . $term . '%')
-                    ->orWhere('name', 'like', '%' . $term . '%')
-                    ->orWhere('serial_number', 'like', '%' . $term . '%');
+                $q->where('barcode', 'like', '%'.$term.'%')
+                    ->orWhere('name', 'like', '%'.$term.'%')
+                    ->orWhere('serial_number', 'like', '%'.$term.'%');
             });
         }
 
@@ -175,6 +175,7 @@ class InventoryController extends Controller
     public function history(InventoryItem $item)
     {
         $item->load(['movements' => fn ($q) => $q->with('user:id,name')]);
+
         return response()->json([
             'item' => $item->only(['id', 'barcode', 'name', 'location']),
             'movements' => $item->movements->map(fn ($m) => [

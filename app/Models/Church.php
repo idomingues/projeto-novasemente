@@ -60,10 +60,36 @@ class Church extends Model
 
     /**
      * Igreja ativa no painel: sessão "trabalhando em" ou primeira igreja ativa por nome.
+     *
+     * Após import de outro ambiente, `working_church_id` na sessão pode apontar para um id que já
+     * não existe ou, com uma só igreja na BD, divergir do único registo — nesse caso os dados
+     * (todos com outro church_id) deixam de aparecer. Por isso limpamos a sessão e tratamos o caso
+     * de uma única igreja de forma determinística.
      */
     public static function resolveWorkingId(Request $request): ?int
     {
+        $count = static::query()->count();
+        if ($count === 0) {
+            $request->session()->forget('working_church_id');
+
+            return null;
+        }
+
+        if ($count === 1) {
+            $soleId = (int) static::query()->orderBy('id')->value('id');
+            if ((int) $request->session()->get('working_church_id') !== $soleId) {
+                $request->session()->forget('working_church_id');
+            }
+
+            return $soleId;
+        }
+
         $workingChurchId = $request->session()->get('working_church_id');
+        if ($workingChurchId && ! static::query()->whereKey($workingChurchId)->exists()) {
+            $request->session()->forget('working_church_id');
+            $workingChurchId = null;
+        }
+
         if ($workingChurchId) {
             $church = static::where('id', $workingChurchId)->where('active', true)->first();
             if ($church) {

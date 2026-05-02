@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Church;
-use App\Models\Room;
 use App\Http\Requests\StoreRoomRequest;
 use App\Http\Requests\UpdateRoomRequest;
+use App\Models\Church;
+use App\Models\Room;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -14,7 +14,7 @@ class RoomController extends Controller
 {
     private function currentChurchId(): ?int
     {
-        return Church::where('active', true)->orderBy('name')->value('id');
+        return Church::resolveWorkingId(request());
     }
 
     public function index(Request $request): Response
@@ -53,18 +53,21 @@ class RoomController extends Controller
         Room::create(array_merge($request->validated(), [
             'church_id' => $churchId,
         ]));
+
         return redirect()->route('rooms.index')->with('success', 'Sala criada com sucesso!');
     }
 
     public function update(UpdateRoomRequest $request, Room $room)
     {
         $room->update($request->validated());
+
         return redirect()->route('rooms.index')->with('success', 'Sala atualizada com sucesso!');
     }
 
     public function destroy(Room $room)
     {
         $room->delete();
+
         return redirect()->route('rooms.index')->with('success', 'Sala removida com sucesso!');
     }
 }

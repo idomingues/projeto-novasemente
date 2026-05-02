@@ -29,6 +29,7 @@ return [
         ['name' => 'Acervo', 'route' => 'acervo.index', 'icon' => 'play-circle'],
         ['name' => 'Música', 'route' => 'musica.index', 'icon' => 'musical-note'],
         ['name' => 'Fotos', 'route' => 'photo-albums.index', 'icon' => 'camera'],
+        ['name' => 'Biblioteca', 'route' => 'library-books.index', 'icon' => 'book-open'],
         ['name' => 'Culto', 'route' => 'culto.index', 'icon' => 'film'],
         ['name' => 'Notificações', 'route' => 'notifications.manage', 'icon' => 'bell-alert'],
         // Cadastro

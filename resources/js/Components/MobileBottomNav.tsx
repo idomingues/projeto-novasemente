@@ -85,6 +85,8 @@ const navItems = [
             'mobile.offerings',
             'mobile.news',
             'mobile.news.show',
+            'mobile.biblioteca',
+            'mobile.biblioteca.show',
         ] as const,
         icon: Squares2X2Icon,
         iconActive: Squares2X2IconSolid,

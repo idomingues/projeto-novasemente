@@ -19,6 +19,7 @@ class PasswordResetLinkController extends Controller
     {
         return Inertia::render('Auth/ForgotPassword', [
             'status' => session('status'),
+            'showMailLogHint' => config('mail.default') === 'log',
         ]);
     }
 
@@ -41,7 +42,8 @@ class PasswordResetLinkController extends Controller
         );
 
         if ($status == Password::RESET_LINK_SENT) {
-            return back()->with('status', __($status));
+            // Inertia: 303 após POST alinha com o tratamento de validação (evita resposta “muda” sem flash).
+            return back()->with('status', __($status))->setStatusCode(303);
         }
 
         throw ValidationException::withMessages([

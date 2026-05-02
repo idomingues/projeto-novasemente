@@ -1,0 +1,563 @@
+import AdminLayout from '@/Layouts/AdminLayout';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { BookOpenIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import AddButton from '@/Components/AddButton';
+import PageHeader from '@/Components/PageHeader';
+import PrimaryButton from '@/Components/PrimaryButton';
+import SecondaryButton from '@/Components/SecondaryButton';
+import Modal from '@/Components/Modal';
+import InputLabel from '@/Components/InputLabel';
+import TextInput from '@/Components/TextInput';
+import InputError from '@/Components/InputError';
+import { FormEventHandler, useEffect, useMemo, useRef, useState } from 'react';
+import { confirmAction } from '@/utils/confirmDialog';
+import { compressImageForUpload, ImageCompressError } from '@/utils/compressImageForUpload';
+
+interface CategoryOption {
+    value: string;
+    label: string;
+}
+
+interface LibraryBookRow {
+    id: number;
+    title: string;
+    subtitle: string | null;
+    category: string;
+    cover_url: string | null;
+    pdf_url: string | null;
+    published_at: string | null;
+    created_at: string;
+    author?: { name: string } | null;
+}
+
+interface FormOldPayload {
+    title?: string;
+    subtitle?: string;
+    category?: string;
+    published_at?: string;
+}
+
+interface Props {
+    books: LibraryBookRow[];
+    canManage: boolean;
+    categories: CategoryOption[];
+    formOld?: FormOldPayload;
+    /** Biblioteca indisponível (ex.: base de dados ainda não preparada). */
+    librarySetupMessage?: string | null;
+}
+
+const LIBRARY_FORM_KEYS = ['title', 'subtitle', 'category', 'cover_image_file', 'pdf_file', 'published_at'] as const;
+
+const LIBRARY_EDITING_KEY = 'library_editing_id';
+
+function formatPublicationMonthYear(iso: string | null): string {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('pt-PT', { month: 'short', year: 'numeric' });
+}
+
+/** Valor `YYYY-MM` para o campo mês (a partir de old input ou ISO da BD). */
+function publishedMonthFromStored(raw: string | undefined | null): string {
+    if (typeof raw !== 'string' || raw.trim() === '') return '';
+    const s = raw.trim();
+    if (/^\d{4}-\d{2}$/.test(s)) return s;
+    if (s.length >= 7 && /^\d{4}-\d{2}/.test(s)) return s.substring(0, 7);
+    return '';
+}
+
+function categoryLabel(categories: CategoryOption[], value: string): string {
+    return categories.find((c) => c.value === value)?.label ?? value;
+}
+
+export default function LibraryBooksIndex({
+    books,
+    canManage,
+    categories,
+    formOld = {},
+    librarySetupMessage = null,
+}: Props) {
+    const page = usePage();
+    const pageErrors = (page.props as { errors?: Record<string, string> }).errors ?? {};
+    const hasLibraryValidationErrors = LIBRARY_FORM_KEYS.some((k) => Boolean(pageErrors[k]));
+
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editingId, setEditingId] = useState<number | null>(null);
+    const [coverCompressing, setCoverCompressing] = useState(false);
+    const [coverCompressError, setCoverCompressError] = useState<string | null>(null);
+
+    const defaultCategory = categories[0]?.value ?? 'books';
+    const initialCategory =
+        typeof formOld.category === 'string' && categories.some((c) => c.value === formOld.category)
+            ? formOld.category
+            : defaultCategory;
+    const initialPublished = publishedMonthFromStored(formOld.published_at);
+
+    const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
+        title: typeof formOld.title === 'string' ? formOld.title : '',
+        subtitle: typeof formOld.subtitle === 'string' ? formOld.subtitle : '',
+        category: initialCategory,
+        cover_image_file: null as File | null,
+        pdf_file: null as File | null,
+        published_at: initialPublished,
+    });
+
+    const formOldJson = JSON.stringify(formOld ?? {});
+    const lastSyncedFormOld = useRef('');
+    useEffect(() => {
+        if (formOldJson === '{}' || formOldJson === lastSyncedFormOld.current) {
+            if (formOldJson === '{}') {
+                lastSyncedFormOld.current = '';
+            }
+            return;
+        }
+        lastSyncedFormOld.current = formOldJson;
+        const o = formOld ?? {};
+        setData((prev) => ({
+            ...prev,
+            title: typeof o.title === 'string' ? o.title : prev.title,
+            subtitle: typeof o.subtitle === 'string' ? o.subtitle : prev.subtitle,
+            category:
+                typeof o.category === 'string' && categories.some((c) => c.value === o.category)
+                    ? o.category
+                    : prev.category,
+            published_at:
+                typeof o.published_at === 'string' && o.published_at !== ''
+                    ? publishedMonthFromStored(o.published_at)
+                    : prev.published_at,
+            cover_image_file: null,
+            pdf_file: null,
+        }));
+    }, [formOldJson, formOld, categories, setData]);
+
+    const appliedValidationUi = useRef(false);
+    useEffect(() => {
+        if (!hasLibraryValidationErrors) {
+            appliedValidationUi.current = false;
+            return;
+        }
+        if (appliedValidationUi.current) {
+            return;
+        }
+        appliedValidationUi.current = true;
+        setIsModalOpen(true);
+        const raw = sessionStorage.getItem(LIBRARY_EDITING_KEY);
+        if (!raw) {
+            return;
+        }
+        const id = parseInt(raw, 10);
+        if (Number.isNaN(id)) {
+            sessionStorage.removeItem(LIBRARY_EDITING_KEY);
+            return;
+        }
+        const row = books.find((b) => b.id === id);
+        if (row) {
+            const o = formOld ?? {};
+            setIsEditing(true);
+            setEditingId(id);
+            setData({
+                title: typeof o.title === 'string' ? o.title : row.title,
+                subtitle: typeof o.subtitle === 'string' ? o.subtitle : (row.subtitle ?? ''),
+                category:
+                    typeof o.category === 'string' && categories.some((c) => c.value === o.category)
+                        ? o.category
+                        : row.category,
+                cover_image_file: null,
+                pdf_file: null,
+                published_at:
+                    typeof o.published_at === 'string' && o.published_at !== ''
+                        ? publishedMonthFromStored(o.published_at)
+                        : publishedMonthFromStored(row.published_at),
+            });
+        }
+    }, [hasLibraryValidationErrors, books, categories, formOld, setData]);
+
+    const openCreateModal = () => {
+        sessionStorage.removeItem(LIBRARY_EDITING_KEY);
+        setIsEditing(false);
+        setEditingId(null);
+        reset();
+        setData((prev) => ({
+            ...prev,
+            title: '',
+            subtitle: '',
+            category: categories[0]?.value ?? 'books',
+            cover_image_file: null,
+            pdf_file: null,
+            published_at: '',
+        }));
+        clearErrors();
+        setCoverCompressing(false);
+        setCoverCompressError(null);
+        setIsModalOpen(true);
+    };
+
+    const openEditModal = (b: LibraryBookRow) => {
+        setIsEditing(true);
+        setEditingId(b.id);
+        setData({
+            title: b.title,
+            subtitle: b.subtitle ?? '',
+            category: b.category,
+            cover_image_file: null,
+            pdf_file: null,
+            published_at: publishedMonthFromStored(b.published_at),
+        });
+        clearErrors();
+        setCoverCompressing(false);
+        setCoverCompressError(null);
+        setIsModalOpen(true);
+    };
+
+    const closeModal = () => {
+        sessionStorage.removeItem(LIBRARY_EDITING_KEY);
+        setIsModalOpen(false);
+        setIsEditing(false);
+        reset();
+        setEditingId(null);
+        setCoverCompressing(false);
+        setCoverCompressError(null);
+    };
+
+    const finishSubmit = () => {
+        closeModal();
+    };
+
+    const submit: FormEventHandler = (e) => {
+        e.preventDefault();
+        if (isEditing && editingId) {
+            sessionStorage.setItem(LIBRARY_EDITING_KEY, String(editingId));
+            put(route('library-books.update', editingId), {
+                onSuccess: finishSubmit,
+                forceFormData: true,
+                preserveScroll: true,
+            });
+        } else {
+            sessionStorage.removeItem(LIBRARY_EDITING_KEY);
+            post(route('library-books.store'), {
+                onSuccess: finishSubmit,
+                forceFormData: true,
+                preserveScroll: true,
+            });
+        }
+    };
+
+    const libraryErrorMessages = useMemo(() => {
+        const out: string[] = [];
+        for (const k of LIBRARY_FORM_KEYS) {
+            const m = pageErrors[k];
+            if (m && !out.includes(m)) {
+                out.push(m);
+            }
+        }
+        return out;
+    }, [pageErrors]);
+
+    const handleDelete = async (id: number) => {
+        const ok = await confirmAction({
+            title: 'Remover publicação?',
+            text: 'O PDF e a capa serão removidos do armazenamento.',
+            confirmButtonText: 'Remover',
+            danger: true,
+            icon: 'warning',
+        });
+        if (ok) {
+            router.delete(route('library-books.destroy', id));
+        }
+    };
+
+    const items = useMemo(() => books, [books]);
+
+    return (
+        <AdminLayout>
+            <Head title="Biblioteca" />
+
+            <PageHeader
+                title="Biblioteca"
+                subtitle={
+                    <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-3">
+                        <span
+                            className="inline-flex w-fit shrink-0 items-center rounded-md bg-brand-600 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white"
+                            title="Sem custo para quem usa a app"
+                        >
+                            Grátis
+                        </span>
+                        <p className="min-w-0 text-[15px] leading-relaxed text-zinc-600 dark:text-zinc-400">
+                            Publique aqui livros, revistas e materiais em PDF que ficarão disponíveis para toda a comunidade
+                            no app.
+                        </p>
+                    </div>
+                }
+                actions={
+                    canManage && !librarySetupMessage ? (
+                        <AddButton variant="icon" onClick={openCreateModal} title="Nova publicação">
+                            Nova publicação
+                        </AddButton>
+                    ) : undefined
+                }
+            />
+
+            {librarySetupMessage ? (
+                <div
+                    role="alert"
+                    className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800/80 dark:bg-amber-950/40 dark:text-amber-100"
+                >
+                    <p className="font-semibold">Biblioteca ainda não disponível</p>
+                    <p className="mt-2 leading-relaxed">{librarySetupMessage}</p>
+                </div>
+            ) : null}
+
+            {hasLibraryValidationErrors && libraryErrorMessages.length > 0 ? (
+                <div
+                    role="alert"
+                    className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-100"
+                >
+                    <p className="font-semibold">Não foi possível guardar. Corrija os campos abaixo e tente de novo.</p>
+                    <ul className="mt-2 list-disc space-y-1 pl-5">
+                        {libraryErrorMessages.map((msg, idx) => (
+                            <li key={`${idx}-${msg}`}>{msg}</li>
+                        ))}
+                    </ul>
+                    <p className="mt-2 text-xs text-red-800/90 dark:text-red-200/80">
+                        O modal foi reaberto: em caso de erro, volte a escolher capa e PDF (o browser não guarda ficheiros após o envio).
+                    </p>
+                </div>
+            ) : null}
+
+            <div className="w-full space-y-5">
+                {items.length === 0 ? (
+                    <div className="py-12 text-center rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                        <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-4">
+                            <BookOpenIcon className="w-8 h-8 text-zinc-400 dark:text-zinc-500" />
+                        </div>
+                        <p className="text-zinc-600 dark:text-zinc-400 font-medium">
+                            {librarySetupMessage ? 'Configuração pendente' : 'Nenhuma publicação na biblioteca'}
+                        </p>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-500 mt-1 max-w-md mx-auto">
+                            {librarySetupMessage
+                                ? librarySetupMessage
+                                : 'Adicione o nome, a capa e o ficheiro PDF. Os membros acedem em Mais → Biblioteca.'}
+                        </p>
+                        {canManage && !librarySetupMessage && (
+                            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                                <AddButton variant="icon" onClick={openCreateModal} title="Nova publicação">
+                                    Nova publicação
+                                </AddButton>
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    items.map((b) => {
+                        const publishedLabel = b.published_at ? formatPublicationMonthYear(b.published_at) : 'Rascunho';
+                        return (
+                            <div
+                                key={b.id}
+                                className="flex flex-col gap-4 overflow-hidden rounded-2xl border border-zinc-200/90 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:flex-row"
+                            >
+                                {b.cover_url ? (
+                                    <div className="w-full sm:w-36 flex-shrink-0 aspect-[3/4] sm:aspect-[3/4] max-h-48 sm:max-h-none rounded-xl overflow-hidden bg-zinc-200 dark:bg-zinc-800">
+                                        {b.pdf_url ? (
+                                            <a
+                                                href={b.pdf_url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="block h-full w-full cursor-pointer"
+                                                title="Abrir PDF"
+                                            >
+                                                <img src={b.cover_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                                            </a>
+                                        ) : (
+                                            <img src={b.cover_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="w-full sm:w-36 h-40 sm:h-auto rounded-xl bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center flex-shrink-0">
+                                        <BookOpenIcon className="w-10 h-10 text-zinc-400" />
+                                    </div>
+                                )}
+
+                                <div className="flex-1 min-w-0 flex flex-col justify-between">
+                                    <div>
+                                        <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+                                            <span className="rounded-full bg-primary-100 px-2 py-0.5 font-semibold text-primary-800 dark:bg-primary-900/40 dark:text-primary-200">
+                                                {categoryLabel(categories, b.category)}
+                                            </span>
+                                            <span>{publishedLabel}</span>
+                                            {b.author?.name ? <span>• {b.author.name}</span> : null}
+                                        </div>
+                                        <h2 className="mt-2 text-lg font-bold text-zinc-900 dark:text-white leading-snug">{b.title}</h2>
+                                        {b.subtitle ? (
+                                            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 line-clamp-2">{b.subtitle}</p>
+                                        ) : null}
+                                        {b.pdf_url ? (
+                                            <a
+                                                href={b.pdf_url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="mt-2 inline-block text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline"
+                                            >
+                                                Abrir PDF
+                                            </a>
+                                        ) : null}
+                                    </div>
+
+                                    {canManage && (
+                                        <div className="flex items-center gap-1 mt-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => openEditModal(b)}
+                                                className="p-2.5 rounded-xl text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                                title="Editar"
+                                            >
+                                                <PencilIcon className="w-5 h-5" />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDelete(b.id)}
+                                                className="p-2.5 rounded-xl text-zinc-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                                title="Excluir"
+                                            >
+                                                <TrashIcon className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })
+                )}
+            </div>
+
+            {canManage && !librarySetupMessage && (
+                <Modal show={isModalOpen} onClose={closeModal}>
+                    <form onSubmit={submit} className="p-6 max-h-[85vh] overflow-y-auto">
+                        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-6">
+                            {isEditing ? 'Editar publicação' : 'Nova publicação'}
+                        </h2>
+                        <div className="space-y-5">
+                            <div>
+                                <InputLabel htmlFor="lib_title" value="Nome do livro / título" />
+                                <TextInput
+                                    id="lib_title"
+                                    value={data.title}
+                                    onChange={(e) => setData('title', e.target.value)}
+                                    className="mt-1 block w-full"
+                                    placeholder="Ex.: Fundamentos do estudo bíblico"
+                                />
+                                <InputError message={errors.title} className="mt-1" />
+                            </div>
+
+                            <div>
+                                <InputLabel htmlFor="lib_subtitle" value="Subtítulo ou detalhe (opcional)" />
+                                <TextInput
+                                    id="lib_subtitle"
+                                    value={data.subtitle}
+                                    onChange={(e) => setData('subtitle', e.target.value)}
+                                    className="mt-1 block w-full"
+                                    placeholder="Ex.: Volume 1 • série adultos"
+                                />
+                                <InputError message={errors.subtitle} className="mt-1" />
+                            </div>
+
+                            <div>
+                                <InputLabel htmlFor="lib_category" value="Categoria" />
+                                <select
+                                    id="lib_category"
+                                    value={data.category}
+                                    onChange={(e) => setData('category', e.target.value)}
+                                    className="mt-1 block h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-base text-zinc-900 shadow-sm focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900/20 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-white dark:focus:ring-white/20 sm:text-sm"
+                                >
+                                    {categories.map((c) => (
+                                        <option key={c.value} value={c.value}>
+                                            {c.label}
+                                        </option>
+                                    ))}
+                                </select>
+                                <InputError message={errors.category} className="mt-1" />
+                            </div>
+
+                            <div>
+                                <InputLabel htmlFor="lib_cover" value={isEditing ? 'Capa (substituir — opcional)' : 'Capa (imagem)'} />
+                                <input
+                                    id="lib_cover"
+                                    type="file"
+                                    accept="image/*"
+                                    className="mt-1 block w-full text-sm text-zinc-700 dark:text-zinc-200 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-900 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-zinc-800 dark:file:bg-white dark:file:text-black dark:hover:file:bg-zinc-100"
+                                    onChange={async (e) => {
+                                        const raw = e.currentTarget.files?.[0] ?? null;
+                                        if (!raw) {
+                                            setData('cover_image_file', null);
+                                            setCoverCompressError(null);
+                                            return;
+                                        }
+                                        setCoverCompressing(true);
+                                        setCoverCompressError(null);
+                                        try {
+                                            const prepared = await compressImageForUpload(raw);
+                                            setData('cover_image_file', prepared);
+                                        } catch (err) {
+                                            setData('cover_image_file', null);
+                                            if (err instanceof ImageCompressError) {
+                                                setCoverCompressError(err.message);
+                                            } else {
+                                                setCoverCompressError('Não foi possível processar esta imagem.');
+                                            }
+                                        } finally {
+                                            setCoverCompressing(false);
+                                        }
+                                    }}
+                                />
+                                <InputError message={(errors as Record<string, string | undefined>).cover_image_file} className="mt-1" />
+                                {coverCompressing ? (
+                                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Otimizando imagem…</p>
+                                ) : null}
+                                {coverCompressError ? (
+                                    <p className="mt-1 text-xs font-medium text-red-600 dark:text-red-400">{coverCompressError}</p>
+                                ) : null}
+                            </div>
+
+                            <div>
+                                <InputLabel htmlFor="lib_pdf" value={isEditing ? 'PDF (substituir — opcional)' : 'Ficheiro PDF'} />
+                                <input
+                                    id="lib_pdf"
+                                    type="file"
+                                    accept="application/pdf,.pdf"
+                                    className="mt-1 block w-full text-sm text-zinc-700 dark:text-zinc-200 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-900 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-zinc-800 dark:file:bg-white dark:file:text-black dark:hover:file:bg-zinc-100"
+                                    onChange={(e) => {
+                                        const f = e.currentTarget.files?.[0] ?? null;
+                                        setData('pdf_file', f);
+                                    }}
+                                />
+                                <InputError message={(errors as Record<string, string | undefined>).pdf_file} className="mt-1" />
+                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                    Capa até 4 MB; PDF até 20 MB.
+                                </p>
+                            </div>
+
+                            <div>
+                                <InputLabel htmlFor="lib_published_at" value="Mês e ano de publicação (vazio = rascunho)" />
+                                <TextInput
+                                    id="lib_published_at"
+                                    type="month"
+                                    value={data.published_at}
+                                    onChange={(e) => setData('published_at', e.target.value)}
+                                    className="mt-1 block w-full"
+                                />
+                                <InputError message={errors.published_at} className="mt-1" />
+                            </div>
+                        </div>
+                        <div className="mt-6 flex justify-end gap-2">
+                            <SecondaryButton type="button" onClick={closeModal}>
+                                Cancelar
+                            </SecondaryButton>
+                            <PrimaryButton type="submit" disabled={processing || coverCompressing}>
+                                {isEditing ? 'Salvar' : 'Publicar'}
+                            </PrimaryButton>
+                        </div>
+                    </form>
+                </Modal>
+            )}
+        </AdminLayout>
+    );
+}

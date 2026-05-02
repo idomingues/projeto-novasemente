@@ -6,7 +6,13 @@ import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
 
-export default function ForgotPassword({ status }: { status?: string }) {
+export default function ForgotPassword({
+    status,
+    showMailLogHint = false,
+}: {
+    status?: string;
+    showMailLogHint?: boolean;
+}) {
     const { data, setData, post, processing, errors } = useForm({
         email: '',
     });
@@ -34,6 +40,18 @@ export default function ForgotPassword({ status }: { status?: string }) {
                 {status ? (
                     <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-100">
                         {status}
+                    </div>
+                ) : null}
+
+                {showMailLogHint ? (
+                    <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
+                        <p className="font-medium">Ambiente de desenvolvimento</p>
+                        <p className="mt-1 leading-relaxed">
+                            O envio está em <code className="rounded bg-amber-100/80 px-1 py-0.5 text-xs dark:bg-amber-900/60">MAIL_MAILER=log</code>: não
+                            chega e-mail à caixa de entrada. Abra <code className="rounded bg-amber-100/80 px-1 py-0.5 text-xs dark:bg-amber-900/60">storage/logs/laravel.log</code> após
+                            enviar — o link de redefinição fica registado lá. Para testar e-mail real, configure SMTP no{' '}
+                            <code className="rounded bg-amber-100/80 px-1 py-0.5 text-xs dark:bg-amber-900/60">.env</code>.
+                        </p>
                     </div>
                 ) : null}
 

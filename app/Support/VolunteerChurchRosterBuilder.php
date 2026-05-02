@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\Church;
 use App\Models\Ministry;
 use App\Models\User;
 use App\Models\Volunteer;
@@ -22,10 +23,17 @@ class VolunteerChurchRosterBuilder
      */
     public static function volunteersVisibleInChurchQuery(int $churchId): Builder
     {
+        // Uma só igreja na BD (comum em local / restore): não filtrar por ministério — evita lista vazia
+        // quando `ministries.church_id` ficou desalinhado do `churches.id` após import.
+        if (Church::query()->count() <= 1) {
+            return Volunteer::query();
+        }
+
         return Volunteer::query()
             ->where(function ($q2) use ($churchId) {
                 $q2->whereDoesntHave('ministries')
-                    ->orWhereHas('ministries', fn ($mq) => $mq->where('church_id', $churchId));
+                    ->orWhereHas('ministries', fn ($mq) => $mq->where('church_id', $churchId))
+                    ->orWhereHas('churchPipelines', fn ($p) => $p->where('church_id', $churchId));
             });
     }
 

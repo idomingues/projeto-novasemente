@@ -38,6 +38,27 @@ Se o banco `ns` não existir, crie no MySQL:
 CREATE DATABASE ns CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
+### Restaurar um backup de produção no Mac (recria o `ns`)
+
+1. No `.env`: `DB_CONNECTION=mysql`, `DB_DATABASE=ns`, `DB_USERNAME=root`, `DB_PASSWORD=` (vazio no XAMPP), `DB_HOST=127.0.0.1`, `DB_PORT=3306`.
+2. Arranque o MySQL no XAMPP.
+3. Na pasta do projeto (substitua o caminho do ficheiro):
+
+```bash
+cd /Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente
+./scripts/import-prod-backup-to-local.sh --force ~/Downloads/seu_backup.sql
+```
+
+Ficheiro `.sql.gz`: use o mesmo comando com o caminho que termina em `.gz`.
+
+Se o dump da produção usar **outro nome de base** (aparece `USE \`...\`;` ou tabelas com prefixo de BD), indique o nome antigo para renomear no fluxo para o `DB_DATABASE` do `.env`:
+
+```bash
+./scripts/import-prod-backup-to-local.sh --force --source-db sistema_igreja ~/Downloads/backup.sql
+```
+
+**Atenção:** `--force` apaga a base local com o nome `DB_DATABASE` e volta a criá-la antes de importar.
+
 ## 2. Subir a aplicação
 
 **Opção A – Um comando (recomendado)**  

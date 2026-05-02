@@ -8,6 +8,7 @@ use App\Models\ChurchService;
 use App\Models\ChurchSolicitation;
 use App\Models\Culto;
 use App\Models\Event;
+use App\Models\LibraryBook;
 use App\Models\Ministry;
 use App\Models\Musica;
 use App\Models\News;
@@ -30,6 +31,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -37,15 +39,9 @@ class MobileController extends Controller
 {
     private function currentChurch(): ?Church
     {
-        $workingChurchId = request()->session()->get('working_church_id');
-        if ($workingChurchId) {
-            $church = Church::where('id', $workingChurchId)->where('active', true)->first();
-            if ($church) {
-                return $church;
-            }
-        }
+        $id = Church::resolveWorkingId(request());
 
-        return Church::where('active', true)->orderBy('name')->first();
+        return $id !== null ? Church::query()->whereKey($id)->first() : null;
     }
 
     /**
@@ -691,57 +687,9 @@ class MobileController extends Controller
         $folderUrl = $album->drive_folder_view_url;
         abort_unless($embedUrl && $folderUrl, 404);
 
-        try {
-            $payload = [
-                'sessionId' => 'cadcbe',
-                'runId' => 'pre-fix',
-                'hypothesisId' => 'H5',
-                'location' => 'app/Http/Controllers/MobileController.php:fotosShow',
-                'message' => 'Entering fotosShow',
-                'data' => [
-                    'albumId' => $album->id,
-                    'albumTitle' => $album->title,
-                    'driveFolderIdPresent' => (bool) $album->drive_folder_id,
-                    'driveFolderId' => $album->drive_folder_id ? substr((string) $album->drive_folder_id, 0, 12) : null,
-                    'hasEmbedUrl' => (bool) $embedUrl,
-                    'hasFolderUrl' => (bool) $folderUrl,
-                ],
-                'timestamp' => (int) round(microtime(true) * 1000),
-            ];
-            file_put_contents(
-                '/Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente/.cursor/debug-cadcbe.log',
-                json_encode($payload, JSON_UNESCAPED_UNICODE)."\n",
-                FILE_APPEND
-            );
-        } catch (\Throwable) {
-            // ignore
-        }
-
         $images = [];
         if ($album->drive_folder_id) {
             $images = $driveImages->listPublicFolderImages($album->drive_folder_id);
-        }
-
-        try {
-            $payload = [
-                'sessionId' => 'cadcbe',
-                'runId' => 'pre-fix',
-                'hypothesisId' => 'H6',
-                'location' => 'app/Http/Controllers/MobileController.php:fotosShow',
-                'message' => 'Exiting fotosShow',
-                'data' => [
-                    'albumId' => $album->id,
-                    'imagesCount' => is_array($images) ? count($images) : null,
-                ],
-                'timestamp' => (int) round(microtime(true) * 1000),
-            ];
-            file_put_contents(
-                '/Applications/XAMPP/xamppfiles/htdocs/projeto-novasemente/.cursor/debug-cadcbe.log',
-                json_encode($payload, JSON_UNESCAPED_UNICODE)."\n",
-                FILE_APPEND
-            );
-        } catch (\Throwable) {
-            // ignore
         }
 
         return Inertia::render('Mobile/Photos', [
@@ -751,6 +699,78 @@ class MobileController extends Controller
             'embedUrl' => $embedUrl,
             'folderUrl' => $folderUrl,
             'images' => $images,
+        ]);
+    }
+
+    public function biblioteca(Request $request): Response
+    {
+        $churchId = $this->currentChurch()?->id;
+        $baseUrl = $request->getSchemeAndHttpHost();
+
+        if (! Schema::hasTable('library_books')) {
+            return Inertia::render('Mobile/Library', [
+                'books' => [],
+                'categories' => [
+                    ['value' => LibraryBook::CATEGORY_BOOKS, 'label' => 'Livros'],
+                    ['value' => LibraryBook::CATEGORY_MAGAZINES, 'label' => 'Revistas'],
+                    ['value' => LibraryBook::CATEGORY_MEDITATION, 'label' => 'Meditação'],
+                ],
+                'librarySetupMessage' => 'A biblioteca ainda não está disponível. Peça ao responsável técnico para concluir a atualização da base de dados.',
+            ]);
+        }
+
+        $books = LibraryBook::query()
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
+            ->visibleInApp()
+            ->orderByDesc('order')
+            ->orderByDesc('published_at')
+            ->orderBy('title')
+            ->get()
+            ->map(fn (LibraryBook $b) => [
+                'id' => $b->id,
+                'title' => $b->title,
+                'subtitle' => $b->subtitle,
+                'category' => $b->category,
+                'cover_url' => $b->resolvedCoverUrl($baseUrl),
+                'pdf_url' => $b->resolvedPdfUrl($baseUrl),
+            ])
+            ->values()
+            ->all();
+
+        return Inertia::render('Mobile/Library', [
+            'books' => $books,
+            'categories' => [
+                ['value' => LibraryBook::CATEGORY_BOOKS, 'label' => 'Livros'],
+                ['value' => LibraryBook::CATEGORY_MAGAZINES, 'label' => 'Revistas'],
+                ['value' => LibraryBook::CATEGORY_MEDITATION, 'label' => 'Meditação'],
+            ],
+            'librarySetupMessage' => null,
+        ]);
+    }
+
+    public function bibliotecaShow(Request $request, LibraryBook $libraryBook): Response
+    {
+        $churchId = $this->currentChurch()?->id;
+        if ($churchId === null || (int) $libraryBook->church_id !== (int) $churchId) {
+            abort(404);
+        }
+        if ($libraryBook->published_at === null || $libraryBook->published_at->isFuture()) {
+            abort(404);
+        }
+
+        $baseUrl = $request->getSchemeAndHttpHost();
+
+        return Inertia::render('Mobile/LibraryShow', [
+            'book' => [
+                'id' => $libraryBook->id,
+                'title' => $libraryBook->title,
+                'subtitle' => $libraryBook->subtitle,
+                'category' => $libraryBook->category,
+                'cover_url' => $libraryBook->resolvedCoverUrl($baseUrl),
+                'pdf_url' => $libraryBook->resolvedPdfUrl($baseUrl),
+                'published_at' => $libraryBook->published_at?->toIso8601String(),
+            ],
         ]);
     }
 
