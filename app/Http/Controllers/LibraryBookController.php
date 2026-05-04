@@ -99,6 +99,11 @@ class LibraryBookController extends Controller
             $request->merge(['published_at' => null]);
         }
 
+        $uploadRedirect = $this->redirectIfInvalidLibraryUpload($request);
+        if ($uploadRedirect !== null) {
+            return $uploadRedirect;
+        }
+
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'subtitle' => ['nullable', 'string', 'max:500'],
@@ -152,6 +157,11 @@ class LibraryBookController extends Controller
 
         if ($request->input('published_at') === '') {
             $request->merge(['published_at' => null]);
+        }
+
+        $uploadRedirect = $this->redirectIfInvalidLibraryUpload($request);
+        if ($uploadRedirect !== null) {
+            return $uploadRedirect;
         }
 
         $data = $request->validate([
@@ -222,13 +232,58 @@ class LibraryBookController extends Controller
     }
 
     /**
+     * Antes da validação Laravel: se o PHP marcou o upload como inválido, devolve mensagem útil
+     * (limites PHP/Nginx, envio parcial) em vez da mensagem genérica da regra "uploaded".
+     *
+     * @return \Illuminate\Http\RedirectResponse|null
+     */
+    private function redirectIfInvalidLibraryUpload(Request $request): ?\Illuminate\Http\RedirectResponse
+    {
+        $exceptFiles = ['cover_image_file', 'pdf_file'];
+
+        foreach (['cover_image_file', 'pdf_file'] as $field) {
+            if (! $request->hasFile($field)) {
+                continue;
+            }
+            $file = $request->file($field);
+            if (! $file instanceof \Illuminate\Http\UploadedFile || $file->isValid()) {
+                continue;
+            }
+            $isPdf = $field === 'pdf_file';
+            $message = $this->messageForPhpUploadError($file->getError(), $isPdf);
+
+            return redirect()->route('library-books.index')
+                ->withErrors([$field => $message])
+                ->withInput($request->except($exceptFiles));
+        }
+
+        return null;
+    }
+
+    private function messageForPhpUploadError(int $code, bool $isPdf): string
+    {
+        $subject = $isPdf ? 'O PDF' : 'A imagem da capa';
+
+        return match ($code) {
+            \UPLOAD_ERR_INI_SIZE => $subject.' ultrapassa o limite upload_max_filesize do PHP neste servidor. Peça ao apoio técnico para aumentar upload_max_filesize e post_max_size (por exemplo 32M). A aplicação aceita PDF até 20 MB.',
+            \UPLOAD_ERR_FORM_SIZE => $subject.' ultrapassa o limite definido no formulário no servidor.',
+            \UPLOAD_ERR_PARTIAL => $subject.' não foi recebido por completo (muito comum quando o Nginx corta o pedido: configure client_max_body_size com margem, ex. 32M, e recarregue o Nginx). Tente outra rede ou um ficheiro mais pequeno.',
+            \UPLOAD_ERR_NO_FILE => $isPdf ? 'Não foi enviado nenhum PDF.' : 'Não foi enviada nenhuma imagem de capa.',
+            \UPLOAD_ERR_NO_TMP_DIR => 'Falta pasta temporária no servidor para receber o ficheiro. Contacte o apoio técnico.',
+            \UPLOAD_ERR_CANT_WRITE => 'O servidor não conseguiu gravar o ficheiro enviado. Contacte o apoio técnico.',
+            \UPLOAD_ERR_EXTENSION => 'Uma extensão do PHP bloqueou o envio. Contacte o apoio técnico.',
+            default => $subject.' não chegou ao servidor por completo. Peça ao apoio técnico para rever limites de upload (Nginx: client_max_body_size; PHP: upload_max_filesize e post_max_size).',
+        };
+    }
+
+    /**
      * @return array<string, string>
      */
     private function libraryBookValidationMessages(): array
     {
         return [
-            'pdf_file.uploaded' => 'O PDF não chegou ao servidor por completo. Tente um ficheiro mais pequeno ou outra rede. Se continuar a falhar, contacte o apoio técnico.',
-            'cover_image_file.uploaded' => 'A imagem da capa não chegou ao servidor por completo. Tente outra imagem ou mais tarde. Se continuar a falhar, contacte o apoio técnico.',
+            'pdf_file.uploaded' => 'O PDF não chegou ao servidor por completo. Peça ao apoio técnico para rever limites de upload (Nginx e PHP) ou tente outra rede.',
+            'cover_image_file.uploaded' => 'A imagem da capa não chegou ao servidor por completo. Peça ao apoio técnico para rever limites de upload (Nginx e PHP) ou tente outra rede.',
             'published_at.date_format' => 'Escolha um mês e ano válidos para a publicação.',
         ];
     }
