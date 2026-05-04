@@ -3,6 +3,7 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import {
     BookOpenIcon,
     ArrowDownTrayIcon,
+    ArrowTopRightOnSquareIcon,
     MagnifyingGlassIcon,
     XMarkIcon,
 } from '@heroicons/react/24/outline';
@@ -29,6 +30,7 @@ interface BookItem {
     category: string;
     cover_url: string | null;
     pdf_url: string | null;
+    external_url?: string | null;
 }
 
 interface Props {
@@ -156,6 +158,9 @@ export default function MobileLibrary({ books, categories, librarySetupMessage =
                         {filtered.map((b) => {
                             const cover = imageSrc(b.cover_url, appUrl);
                             const pdf = b.pdf_url ? imageSrc(b.pdf_url, appUrl) : '';
+                            const extRaw = (b.external_url ?? '').trim();
+                            const ext = extRaw ? extRaw : '';
+                            const directOpen = pdf !== '' ? pdf : ext;
                             const showUrl = route('mobile.biblioteca.show', b.id);
                             const description = (b.description ?? '').trim();
                             const maxDesc = 180;
@@ -175,14 +180,16 @@ export default function MobileLibrary({ books, categories, librarySetupMessage =
                                 'relative block aspect-[3/4] w-[8.75rem] shrink-0 overflow-hidden rounded-lg bg-zinc-100 touch-manipulation transition active:opacity-90 dark:bg-zinc-800 sm:w-36';
 
                             const coverBlock =
-                                pdf !== '' ? (
+                                directOpen !== '' ? (
                                     <a
-                                        href={pdf}
+                                        href={directOpen}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className={coverShellClass}
-                                        aria-label={`Abrir PDF: ${b.title}`}
-                                        title="Abrir PDF"
+                                        aria-label={
+                                            pdf !== '' ? `Abrir PDF: ${b.title}` : `Abrir no site: ${b.title}`
+                                        }
+                                        title={pdf !== '' ? 'Abrir PDF' : 'Abrir no site'}
                                     >
                                         {coverVisual}
                                     </a>
@@ -227,6 +234,19 @@ export default function MobileLibrary({ books, categories, librarySetupMessage =
                                                             aria-hidden
                                                         />
                                                         Download
+                                                    </a>
+                                                ) : ext !== '' ? (
+                                                    <a
+                                                        href={ext}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-zinc-900 bg-white px-3 py-2 text-xs font-medium text-zinc-900 transition hover:bg-zinc-50 dark:border-zinc-300 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                                                    >
+                                                        <ArrowTopRightOnSquareIcon
+                                                            className="h-4 w-4 shrink-0 text-zinc-900 dark:text-zinc-100"
+                                                            aria-hidden
+                                                        />
+                                                        Abrir site
                                                     </a>
                                                 ) : null}
                                             </div>

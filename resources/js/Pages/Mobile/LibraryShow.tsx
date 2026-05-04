@@ -1,8 +1,14 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
-import { ArrowLeftIcon, ArrowDownTrayIcon, DocumentTextIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import {
+    ArrowLeftIcon,
+    ArrowDownTrayIcon,
+    ArrowTopRightOnSquareIcon,
+    DocumentTextIcon,
+    XMarkIcon,
+} from '@heroicons/react/24/outline';
 import Modal from '@/Components/Modal';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 function imageSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
@@ -19,6 +25,7 @@ interface Book {
     category: string;
     cover_url: string | null;
     pdf_url: string | null;
+    external_url?: string | null;
     published_at: string | null;
 }
 
@@ -27,6 +34,12 @@ interface Props {
 }
 
 type PageProps = { appUrl?: string };
+
+function externalOpenLabel(category: string): string {
+    if (category === 'meditation') return 'Abrir meditação';
+    if (category === 'lesson') return 'Abrir lição';
+    return 'Abrir no site';
+}
 
 function formatDate(iso: string | null): string {
     if (!iso) return '';
@@ -41,7 +54,12 @@ export default function MobileLibraryShow({ book }: Props) {
     const appUrl = (usePage().props as PageProps).appUrl ?? '';
     const cover = imageSrc(book.cover_url, appUrl);
     const pdf = book.pdf_url ? imageSrc(book.pdf_url, appUrl) : '';
+    const extRaw = (book.external_url ?? '').trim();
+    const ext = extRaw ? extRaw : '';
     const [detailsOpen, setDetailsOpen] = useState(false);
+    const [extractStatus, setExtractStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
+    const [extractHtml, setExtractHtml] = useState<string | null>(null);
+    const [extractError, setExtractError] = useState<string | null>(null);
 
     const description = (book.description ?? '').trim();
     const shortDescription = useMemo(() => {
@@ -51,6 +69,50 @@ export default function MobileLibraryShow({ book }: Props) {
         return description.slice(0, max).trimEnd();
     }, [description]);
     const hasMore = description !== '' && shortDescription !== '' && description.length > shortDescription.length;
+
+    const tryExternalReader =
+        (book.category === 'lesson' || book.category === 'meditation') && !pdf && ext !== '';
+
+    useEffect(() => {
+        if (!tryExternalReader) {
+            setExtractStatus('idle');
+            setExtractHtml(null);
+            setExtractError(null);
+            return;
+        }
+
+        let cancelled = false;
+        setExtractStatus('loading');
+        setExtractHtml(null);
+        setExtractError(null);
+
+        fetch(route('mobile.biblioteca.external-content', book.id), {
+            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin',
+        })
+            .then(async (r) => {
+                const data: { ok?: boolean; html?: string; error?: string } = await r.json();
+                if (cancelled) return;
+                if (data.ok && typeof data.html === 'string' && data.html.trim() !== '') {
+                    setExtractHtml(data.html);
+                    setExtractStatus('ok');
+                } else {
+                    setExtractError(
+                        typeof data.error === 'string' ? data.error : 'Não foi possível mostrar o texto aqui.',
+                    );
+                    setExtractStatus('error');
+                }
+            })
+            .catch(() => {
+                if (cancelled) return;
+                setExtractError('Não foi possível mostrar o texto aqui.');
+                setExtractStatus('error');
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [tryExternalReader, book.id, book.category, pdf, ext]);
 
     return (
         <MobileLayout>
@@ -141,8 +203,64 @@ export default function MobileLibraryShow({ book }: Props) {
                                     />
                                 </div>
                             </div>
+                        ) : ext ? (
+                            <div className="mt-6 space-y-3">
+                                {tryExternalReader && extractStatus === 'loading' ? (
+                                    <p className="text-sm text-zinc-500 dark:text-zinc-400">A carregar texto…</p>
+                                ) : null}
+
+                                {tryExternalReader && extractStatus === 'ok' && extractHtml ? (
+                                    <div
+                                        className="library-external-html space-y-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm leading-relaxed text-zinc-800 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 [&_a]:font-medium [&_a]:text-primary-600 [&_a]:underline dark:[&_a]:text-primary-400 [&_blockquote]:border-l-4 [&_blockquote]:border-zinc-300 [&_blockquote]:pl-3 dark:[&_blockquote]:border-zinc-600 [&_h2]:mt-4 [&_h2]:text-lg [&_h2]:font-bold [&_h3]:mt-3 [&_h3]:text-base [&_h3]:font-semibold [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5"
+                                        /* HTML sanitizado no servidor */
+                                        dangerouslySetInnerHTML={{ __html: extractHtml }}
+                                    />
+                                ) : null}
+
+                                {tryExternalReader && extractStatus === 'error' && extractError ? (
+                                    <p className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100">
+                                        {extractError}
+                                    </p>
+                                ) : null}
+
+                                <a
+                                    href={ext}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+                                >
+                                    <ArrowTopRightOnSquareIcon className="h-5 w-5 shrink-0" />
+                                    {externalOpenLabel(book.category)}
+                                </a>
+
+                                {description ? (
+                                    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-950">
+                                        <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+                                            {shortDescription}
+                                            {hasMore ? (
+                                                <>
+                                                    {' '}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setDetailsOpen(true)}
+                                                        className="font-semibold text-primary-700 underline-offset-2 hover:underline dark:text-primary-300"
+                                                    >
+                                                        .. e mais
+                                                    </button>
+                                                </>
+                                            ) : null}
+                                        </p>
+                                    </div>
+                                ) : null}
+
+                                <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+                                    {tryExternalReader && extractStatus === 'ok'
+                                        ? 'Texto obtido no servidor a partir do link (melhor esforço). Se algo faltar, use o botão acima para abrir a página original.'
+                                        : `Este conteúdo está num site externo. Toque em «${externalOpenLabel(book.category)}» para ler no browser.`}
+                                </p>
+                            </div>
                         ) : (
-                            <p className="mt-6 text-sm text-zinc-500 dark:text-zinc-400">PDF indisponível.</p>
+                            <p className="mt-6 text-sm text-zinc-500 dark:text-zinc-400">Conteúdo indisponível.</p>
                         )}
                     </div>
                 </article>

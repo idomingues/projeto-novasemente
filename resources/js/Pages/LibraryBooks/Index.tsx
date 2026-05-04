@@ -14,6 +14,10 @@ import { FormEventHandler, useEffect, useMemo, useRef, useState } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
 import { compressImageForUpload, ImageCompressError } from '@/utils/compressImageForUpload';
 
+function libraryCategoryUsesExternalUrl(category: string): boolean {
+    return category === 'meditation' || category === 'lesson';
+}
+
 interface CategoryOption {
     value: string;
     label: string;
@@ -27,6 +31,7 @@ interface LibraryBookRow {
     category: string;
     cover_url: string | null;
     pdf_url: string | null;
+    external_url?: string | null;
     published_at: string | null;
     created_at: string;
     author?: { name: string } | null;
@@ -37,6 +42,7 @@ interface FormOldPayload {
     subtitle?: string;
     description?: string;
     category?: string;
+    external_url?: string;
     published_at?: string;
 }
 
@@ -54,6 +60,7 @@ const LIBRARY_FORM_KEYS = [
     'subtitle',
     'description',
     'category',
+    'external_url',
     'cover_image_file',
     'pdf_file',
     'published_at',
@@ -110,6 +117,7 @@ export default function LibraryBooksIndex({
         subtitle: typeof formOld.subtitle === 'string' ? formOld.subtitle : '',
         description: typeof formOld.description === 'string' ? formOld.description : '',
         category: initialCategory,
+        external_url: typeof formOld.external_url === 'string' ? formOld.external_url : '',
         cover_image_file: null as File | null,
         pdf_file: null as File | null,
         published_at: initialPublished,
@@ -135,6 +143,7 @@ export default function LibraryBooksIndex({
                 typeof o.category === 'string' && categories.some((c) => c.value === o.category)
                     ? o.category
                     : prev.category,
+            external_url: typeof o.external_url === 'string' ? o.external_url : prev.external_url,
             published_at:
                 typeof o.published_at === 'string' && o.published_at !== ''
                     ? publishedMonthFromStored(o.published_at)
@@ -143,6 +152,12 @@ export default function LibraryBooksIndex({
             pdf_file: null,
         }));
     }, [formOldJson, formOld, categories, setData]);
+
+    useEffect(() => {
+        if (!libraryCategoryUsesExternalUrl(data.category) && data.external_url.trim() !== '') {
+            setData('external_url', '');
+        }
+    }, [data.category, data.external_url, setData]);
 
     /** Fecha o modal quando o envio falha (validação, rede, etc.) para o alerta na página ficar visível. */
     const dismissModalOnFormError = () => {
@@ -165,6 +180,7 @@ export default function LibraryBooksIndex({
             subtitle: '',
             description: '',
             category: categories[0]?.value ?? 'books',
+            external_url: '',
             cover_image_file: null,
             pdf_file: null,
             published_at: '',
@@ -183,6 +199,7 @@ export default function LibraryBooksIndex({
             subtitle: b.subtitle ?? '',
             description: b.description ?? '',
             category: b.category,
+            external_url: b.external_url ?? '',
             cover_image_file: null,
             pdf_file: null,
             published_at: publishedMonthFromStored(b.published_at),
@@ -305,7 +322,7 @@ export default function LibraryBooksIndex({
                         ))}
                     </ul>
                     <p className="mt-2 text-xs text-red-800/90 dark:text-red-200/80">
-                        Volte a escolher capa e PDF se precisar de alterar os ficheiros (o browser não os mantém após o envio).
+                        Volte a escolher capa e PDF (se aplicável) se precisar de alterar os ficheiros (o browser não os mantém após o envio).
                     </p>
                 </div>
             ) : null}
@@ -322,7 +339,7 @@ export default function LibraryBooksIndex({
                         <p className="text-sm text-zinc-500 dark:text-zinc-500 mt-1 max-w-md mx-auto">
                             {librarySetupMessage
                                 ? librarySetupMessage
-                                : 'Adicione o nome, a capa e o ficheiro PDF. Os membros acedem em Mais → Biblioteca.'}
+                                : 'Adicione o nome, a capa e o conteúdo (PDF ou, em Meditação, um link externo). Os membros acedem em Mais → Biblioteca.'}
                         </p>
                         {canManage && !librarySetupMessage && (
                             <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
@@ -335,6 +352,8 @@ export default function LibraryBooksIndex({
                 ) : (
                     items.map((b) => {
                         const publishedLabel = b.published_at ? formatPublicationMonthYear(b.published_at) : 'Rascunho';
+                        const openHref = b.pdf_url ?? b.external_url ?? null;
+                        const openTitle = b.pdf_url ? 'Abrir PDF' : b.external_url ? 'Abrir link' : null;
                         return (
                             <div
                                 key={b.id}
@@ -342,13 +361,13 @@ export default function LibraryBooksIndex({
                             >
                                 {b.cover_url ? (
                                     <div className="w-full sm:w-36 flex-shrink-0 aspect-[3/4] sm:aspect-[3/4] max-h-48 sm:max-h-none rounded-xl overflow-hidden bg-zinc-200 dark:bg-zinc-800">
-                                        {b.pdf_url ? (
+                                        {openHref ? (
                                             <a
-                                                href={b.pdf_url}
+                                                href={openHref}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="block h-full w-full cursor-pointer"
-                                                title="Abrir PDF"
+                                                title={openTitle ?? undefined}
                                             >
                                                 <img src={b.cover_url} alt="" className="w-full h-full object-cover" loading="lazy" />
                                             </a>
@@ -375,14 +394,14 @@ export default function LibraryBooksIndex({
                                         {b.subtitle ? (
                                             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 line-clamp-2">{b.subtitle}</p>
                                         ) : null}
-                                        {b.pdf_url ? (
+                                        {openHref ? (
                                             <a
-                                                href={b.pdf_url}
+                                                href={openHref}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="mt-2 inline-block text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline"
                                             >
-                                                Abrir PDF
+                                                {b.pdf_url ? 'Abrir PDF' : 'Abrir link'}
                                             </a>
                                         ) : null}
                                     </div>
@@ -476,6 +495,25 @@ export default function LibraryBooksIndex({
                                 <InputError message={errors.category} className="mt-1" />
                             </div>
 
+                            {libraryCategoryUsesExternalUrl(data.category) ? (
+                                <div>
+                                    <InputLabel htmlFor="lib_external_url" value="Link externo (opcional se enviar PDF)" />
+                                    <TextInput
+                                        id="lib_external_url"
+                                        type="url"
+                                        value={data.external_url}
+                                        onChange={(e) => setData('external_url', e.target.value)}
+                                        className="mt-1 block w-full"
+                                        placeholder="https://…"
+                                    />
+                                    <InputError message={(errors as Record<string, string | undefined>).external_url} className="mt-1" />
+                                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                        Para conteúdo noutro site (ex.: lição ou meditação na CPB), cole o URL completo. Deixe em branco
+                                        se preferir enviar um PDF.
+                                    </p>
+                                </div>
+                            ) : null}
+
                             <div>
                                 <InputLabel htmlFor="lib_cover" value={isEditing ? 'Capa (substituir — opcional)' : 'Capa (imagem)'} />
                                 <input
@@ -517,7 +555,18 @@ export default function LibraryBooksIndex({
                             </div>
 
                             <div>
-                                <InputLabel htmlFor="lib_pdf" value={isEditing ? 'PDF (substituir — opcional)' : 'Ficheiro PDF'} />
+                                <InputLabel
+                                    htmlFor="lib_pdf"
+                                    value={
+                                        libraryCategoryUsesExternalUrl(data.category)
+                                            ? isEditing
+                                                ? 'PDF (substituir — opcional)'
+                                                : 'Ficheiro PDF (opcional se usar link)'
+                                            : isEditing
+                                              ? 'PDF (substituir — opcional)'
+                                              : 'Ficheiro PDF'
+                                    }
+                                />
                                 <input
                                     id="lib_pdf"
                                     type="file"
@@ -530,7 +579,8 @@ export default function LibraryBooksIndex({
                                 />
                                 <InputError message={(errors as Record<string, string | undefined>).pdf_file} className="mt-1" />
                                 <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                    Capa até 4 MB; PDF até 20 MB.
+                                    Capa até 4 MB; PDF até 20 MB
+                                    {libraryCategoryUsesExternalUrl(data.category) ? ' (ou use apenas o link acima).' : '.'}
                                 </p>
                             </div>
 

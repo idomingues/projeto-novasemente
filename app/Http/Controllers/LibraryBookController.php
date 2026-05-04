@@ -43,6 +43,7 @@ class LibraryBookController extends Controller
                     ['value' => LibraryBook::CATEGORY_BOOKS, 'label' => 'Livros'],
                     ['value' => LibraryBook::CATEGORY_MAGAZINES, 'label' => 'Revistas'],
                     ['value' => LibraryBook::CATEGORY_MEDITATION, 'label' => 'Meditação'],
+                    ['value' => LibraryBook::CATEGORY_LESSON, 'label' => 'Lição'],
                 ],
                 'librarySetupMessage' => 'A biblioteca ainda não está disponível neste ambiente. Peça ao responsável técnico para concluir a atualização da base de dados.',
             ]);
@@ -65,6 +66,7 @@ class LibraryBookController extends Controller
                 'category' => $b->category,
                 'cover_url' => $b->resolvedCoverUrl($baseUrl),
                 'pdf_url' => $b->resolvedPdfUrl($baseUrl),
+                'external_url' => $this->normalizedExternalUrl($b->external_url),
                 'published_at' => $b->published_at?->toIso8601String(),
                 'created_at' => $b->created_at->toIso8601String(),
                 'author' => $b->author ? ['name' => $b->author->name] : null,
@@ -75,11 +77,12 @@ class LibraryBookController extends Controller
         return Inertia::render('LibraryBooks/Index', [
             'books' => $books,
             'canManage' => $canManage,
-            'formOld' => ! empty($oldInput) ? Arr::only($oldInput, ['title', 'subtitle', 'description', 'category', 'published_at']) : [],
+            'formOld' => ! empty($oldInput) ? Arr::only($oldInput, ['title', 'subtitle', 'description', 'category', 'external_url', 'published_at']) : [],
             'categories' => [
                 ['value' => LibraryBook::CATEGORY_BOOKS, 'label' => 'Livros'],
                 ['value' => LibraryBook::CATEGORY_MAGAZINES, 'label' => 'Revistas'],
                 ['value' => LibraryBook::CATEGORY_MEDITATION, 'label' => 'Meditação'],
+                ['value' => LibraryBook::CATEGORY_LESSON, 'label' => 'Lição'],
             ],
             'librarySetupMessage' => null,
         ]);
@@ -111,9 +114,18 @@ class LibraryBookController extends Controller
             'description' => ['nullable', 'string', 'max:5000'],
             'category' => ['required', 'string', Rule::in(LibraryBook::categories())],
             'cover_image_file' => ['required', 'image', 'max:4096'],
-            'pdf_file' => ['required', 'file', 'max:20480', $this->pdfFileRule()],
+            'external_url' => ['nullable', 'string', 'max:2048', 'active_url'],
+            'pdf_file' => [
+                Rule::requiredIf(fn () => ! LibraryBook::categoryAllowsExternalUrl((string) $request->input('category'))),
+                'nullable',
+                'file',
+                'max:20480',
+                $this->pdfFileRule(),
+            ],
             'published_at' => ['nullable', 'date_format:Y-m'],
         ], $this->libraryBookValidationMessages());
+
+        $this->assertLibraryBookPdfOrExternalUrl($data['category'], $data['external_url'] ?? null, $request->hasFile('pdf_file'));
 
         $churchId = $this->currentChurchId($request);
         if ($churchId === null) {
@@ -121,7 +133,13 @@ class LibraryBookController extends Controller
         }
 
         $coverPath = $request->file('cover_image_file')->store('library/covers', 'public');
-        $pdfPath = $request->file('pdf_file')->store('library/pdfs', 'public');
+        $externalUrl = LibraryBook::categoryAllowsExternalUrl($data['category'])
+            ? $this->normalizedExternalUrl($data['external_url'] ?? null)
+            : null;
+        $pdfPath = null;
+        if ($request->hasFile('pdf_file')) {
+            $pdfPath = $request->file('pdf_file')->store('library/pdfs', 'public');
+        }
 
         $publishedAt = $this->publishedAtFromYearMonth($data['published_at'] ?? null);
         $maxOrder = LibraryBook::where('church_id', $churchId)->max('order') ?? 0;
@@ -134,6 +152,7 @@ class LibraryBookController extends Controller
             'category' => $data['category'],
             'cover_path' => $coverPath,
             'pdf_path' => $pdfPath,
+            'external_url' => $externalUrl,
             'published_at' => $publishedAt,
             'order' => $maxOrder + 1,
             'created_by' => $request->user()?->id,
@@ -173,9 +192,26 @@ class LibraryBookController extends Controller
             'description' => ['nullable', 'string', 'max:5000'],
             'category' => ['required', 'string', Rule::in(LibraryBook::categories())],
             'cover_image_file' => ['nullable', 'image', 'max:4096'],
-            'pdf_file' => ['nullable', 'file', 'max:20480', $this->pdfFileRule()],
+            'external_url' => ['nullable', 'string', 'max:2048', 'active_url'],
+            'pdf_file' => [
+                Rule::requiredIf(fn () => ! LibraryBook::categoryAllowsExternalUrl((string) $request->input('category')) && empty($libraryBook->pdf_path)),
+                'nullable',
+                'file',
+                'max:20480',
+                $this->pdfFileRule(),
+            ],
             'published_at' => ['nullable', 'date_format:Y-m'],
         ], $this->libraryBookValidationMessages());
+
+        $externalUrlForCheck = LibraryBook::categoryAllowsExternalUrl($data['category'])
+            ? $this->normalizedExternalUrl($data['external_url'] ?? null)
+            : null;
+        $this->assertLibraryBookPdfOrExternalUrlForUpdate(
+            $data['category'],
+            $externalUrlForCheck,
+            $request->hasFile('pdf_file'),
+            (string) ($libraryBook->pdf_path ?? ''),
+        );
 
         $coverPath = $libraryBook->cover_path;
         if ($request->hasFile('cover_image_file')) {
@@ -184,9 +220,19 @@ class LibraryBookController extends Controller
         }
 
         $pdfPath = $libraryBook->pdf_path;
+        $externalUrl = LibraryBook::categoryAllowsExternalUrl($data['category'])
+            ? $externalUrlForCheck
+            : null;
+
         if ($request->hasFile('pdf_file')) {
             $this->deletePublicFile($pdfPath);
             $pdfPath = $request->file('pdf_file')->store('library/pdfs', 'public');
+            $externalUrl = null;
+        } elseif (LibraryBook::categoryAllowsExternalUrl($data['category']) && $externalUrl !== null) {
+            if (is_string($pdfPath) && $pdfPath !== '') {
+                $this->deletePublicFile($pdfPath);
+                $pdfPath = null;
+            }
         }
 
         $publishedAt = $this->publishedAtFromYearMonth($data['published_at'] ?? null);
@@ -198,6 +244,7 @@ class LibraryBookController extends Controller
             'category' => $data['category'],
             'cover_path' => $coverPath,
             'pdf_path' => $pdfPath,
+            'external_url' => $externalUrl,
             'published_at' => $publishedAt,
         ]);
 
@@ -234,6 +281,57 @@ class LibraryBookController extends Controller
         }
 
         return Carbon::createFromFormat('Y-m', $value)->startOfMonth();
+    }
+
+    private function normalizedExternalUrl(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+        $trimmed = trim($value);
+
+        return $trimmed === '' ? null : $trimmed;
+    }
+
+    private function assertLibraryBookPdfOrExternalUrl(string $category, ?string $externalUrl, bool $hasPdfUpload): void
+    {
+        if (! LibraryBook::categoryAllowsExternalUrl($category)) {
+            return;
+        }
+        if ($externalUrl === null && ! $hasPdfUpload) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'pdf_file' => 'Para Meditação ou Lição, envie um PDF ou preencha o link externo.',
+            ]);
+        }
+        if ($externalUrl !== null && $hasPdfUpload) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'external_url' => 'Para Meditação ou Lição, use PDF ou link externo — não os dois ao mesmo tempo.',
+                'pdf_file' => 'Para Meditação ou Lição, use PDF ou link externo — não os dois ao mesmo tempo.',
+            ]);
+        }
+    }
+
+    private function assertLibraryBookPdfOrExternalUrlForUpdate(
+        string $category,
+        ?string $externalUrl,
+        bool $hasPdfUpload,
+        string $existingPdfPath,
+    ): void {
+        if (! LibraryBook::categoryAllowsExternalUrl($category)) {
+            return;
+        }
+        $hasPdf = $hasPdfUpload || $existingPdfPath !== '';
+        if ($externalUrl === null && ! $hasPdf) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'pdf_file' => 'Para Meditação ou Lição, envie um PDF ou preencha o link externo.',
+            ]);
+        }
+        if ($externalUrl !== null && $hasPdfUpload) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'external_url' => 'Para Meditação ou Lição, use PDF ou link externo — não os dois ao mesmo tempo.',
+                'pdf_file' => 'Para Meditação ou Lição, use PDF ou link externo — não os dois ao mesmo tempo.',
+            ]);
+        }
     }
 
     /**

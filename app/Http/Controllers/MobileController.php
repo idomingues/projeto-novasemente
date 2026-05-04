@@ -44,6 +44,16 @@ class MobileController extends Controller
         return $id !== null ? Church::query()->whereKey($id)->first() : null;
     }
 
+    private function normalizedLibraryExternalUrl(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+        $trimmed = trim($value);
+
+        return $trimmed === '' ? null : $trimmed;
+    }
+
     /**
      * Exclui eventos já terminados: com `ends_at` no passado, ou sem `ends_at` e início antes do dia atual.
      *
@@ -714,6 +724,7 @@ class MobileController extends Controller
                     ['value' => LibraryBook::CATEGORY_BOOKS, 'label' => 'Livros'],
                     ['value' => LibraryBook::CATEGORY_MAGAZINES, 'label' => 'Revistas'],
                     ['value' => LibraryBook::CATEGORY_MEDITATION, 'label' => 'Meditação'],
+                    ['value' => LibraryBook::CATEGORY_LESSON, 'label' => 'Lição'],
                 ],
                 'librarySetupMessage' => 'A biblioteca ainda não está disponível. Peça ao responsável técnico para concluir a atualização da base de dados.',
             ]);
@@ -735,6 +746,7 @@ class MobileController extends Controller
                 'category' => $b->category,
                 'cover_url' => $b->resolvedCoverUrl($baseUrl),
                 'pdf_url' => $b->resolvedPdfUrl($baseUrl),
+                'external_url' => $this->normalizedLibraryExternalUrl($b->external_url),
             ])
             ->values()
             ->all();
@@ -745,6 +757,7 @@ class MobileController extends Controller
                 ['value' => LibraryBook::CATEGORY_BOOKS, 'label' => 'Livros'],
                 ['value' => LibraryBook::CATEGORY_MAGAZINES, 'label' => 'Revistas'],
                 ['value' => LibraryBook::CATEGORY_MEDITATION, 'label' => 'Meditação'],
+                ['value' => LibraryBook::CATEGORY_LESSON, 'label' => 'Lição'],
             ],
             'librarySetupMessage' => null,
         ]);
@@ -771,6 +784,7 @@ class MobileController extends Controller
                 'category' => $libraryBook->category,
                 'cover_url' => $libraryBook->resolvedCoverUrl($baseUrl),
                 'pdf_url' => $libraryBook->resolvedPdfUrl($baseUrl),
+                'external_url' => $this->normalizedLibraryExternalUrl($libraryBook->external_url),
                 'published_at' => $libraryBook->published_at?->toIso8601String(),
             ],
         ]);

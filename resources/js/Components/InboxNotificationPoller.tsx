@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { router, usePage } from '@inertiajs/react';
-import axios from 'axios';
 
 type InboxFeedItem = {
     id?: string;
@@ -69,29 +68,17 @@ export default function InboxNotificationPoller() {
         if (!isLoggedIn) {
             return;
         }
-        const id = window.setInterval(() => {
-            if (document.visibilityState !== 'visible') {
-                return;
-            }
-            void (async () => {
-                try {
-                    const { data } = await axios.get<{
-                        recentNotifications: InboxFeedItem[];
-                        unreadInboxNotificationsCount: number;
-                    }>(route('notifications.feed'));
+        const poll = router.poll(
+            45_000,
+            {
+                only: ['recentNotifications', 'unreadInboxNotificationsCount'],
+                replace: true,
+                async: true,
+            },
+            { keepAlive: true, autoStart: true },
+        );
 
-                    if (!data || typeof data.unreadInboxNotificationsCount !== 'number' || !Array.isArray(data.recentNotifications)) {
-                        return;
-                    }
-
-                    router.replaceProp('recentNotifications', data.recentNotifications);
-                    router.replaceProp('unreadInboxNotificationsCount', data.unreadInboxNotificationsCount);
-                } catch {
-                    // Silencioso: rede momentânea / sessão expirada não deve “derrubar” o painel.
-                }
-            })();
-        }, 45_000);
-        return () => window.clearInterval(id);
+        return () => poll.stop();
     }, [isLoggedIn]);
 
     if (!isLoggedIn || !toast || !visible) {

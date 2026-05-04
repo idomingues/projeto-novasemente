@@ -10,6 +10,7 @@ use App\Http\Controllers\EventController;
 use App\Http\Controllers\FaviconController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\LibraryBookController;
+use App\Http\Controllers\LibraryBookExternalContentController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\MinistryController;
 use App\Http\Controllers\MinistryLeadVolunteerController;
@@ -125,6 +126,9 @@ Route::get('/mobile/services', [MobileController::class, 'services'])->name('mob
 Route::get('/mobile/fotos', [MobileController::class, 'fotos'])->name('mobile.fotos');
 Route::get('/mobile/fotos/{album}', [MobileController::class, 'fotosShow'])->name('mobile.fotos.show');
 Route::get('/mobile/biblioteca', [MobileController::class, 'biblioteca'])->name('mobile.biblioteca');
+Route::get('/mobile/biblioteca/{libraryBook}/conteudo-externo', [LibraryBookExternalContentController::class, 'show'])
+    ->middleware('throttle:40,1')
+    ->name('mobile.biblioteca.external-content');
 Route::get('/mobile/biblioteca/{libraryBook}', [MobileController::class, 'bibliotecaShow'])->name('mobile.biblioteca.show');
 Route::get('/mobile/localizacao', [MobileController::class, 'location'])->name('mobile.location');
 Route::get('/mobile/pastores', [MobileController::class, 'pastors'])->name('mobile.pastors');

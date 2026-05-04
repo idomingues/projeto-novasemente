@@ -14,6 +14,8 @@ class LibraryBook extends Model
 
     public const CATEGORY_MEDITATION = 'meditation';
 
+    public const CATEGORY_LESSON = 'lesson';
+
     protected $fillable = [
         'church_id',
         'title',
@@ -22,6 +24,7 @@ class LibraryBook extends Model
         'category',
         'cover_path',
         'pdf_path',
+        'external_url',
         'published_at',
         'order',
         'created_by',
@@ -83,6 +86,16 @@ class LibraryBook extends Model
             self::CATEGORY_BOOKS,
             self::CATEGORY_MAGAZINES,
             self::CATEGORY_MEDITATION,
+            self::CATEGORY_LESSON,
         ];
+    }
+
+    /** Categorias em que a publicação pode ser PDF ou link externo (um dos dois). */
+    public static function categoryAllowsExternalUrl(string $category): bool
+    {
+        return in_array($category, [
+            self::CATEGORY_MEDITATION,
+            self::CATEGORY_LESSON,
+        ], true);
     }
 }
