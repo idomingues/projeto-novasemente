@@ -131,47 +131,15 @@ export default function LibraryBooksIndex({
         }));
     }, [formOldJson, formOld, categories, setData]);
 
-    const appliedValidationUi = useRef(false);
-    useEffect(() => {
-        if (!hasLibraryValidationErrors) {
-            appliedValidationUi.current = false;
-            return;
-        }
-        if (appliedValidationUi.current) {
-            return;
-        }
-        appliedValidationUi.current = true;
-        setIsModalOpen(true);
-        const raw = sessionStorage.getItem(LIBRARY_EDITING_KEY);
-        if (!raw) {
-            return;
-        }
-        const id = parseInt(raw, 10);
-        if (Number.isNaN(id)) {
-            sessionStorage.removeItem(LIBRARY_EDITING_KEY);
-            return;
-        }
-        const row = books.find((b) => b.id === id);
-        if (row) {
-            const o = formOld ?? {};
-            setIsEditing(true);
-            setEditingId(id);
-            setData({
-                title: typeof o.title === 'string' ? o.title : row.title,
-                subtitle: typeof o.subtitle === 'string' ? o.subtitle : (row.subtitle ?? ''),
-                category:
-                    typeof o.category === 'string' && categories.some((c) => c.value === o.category)
-                        ? o.category
-                        : row.category,
-                cover_image_file: null,
-                pdf_file: null,
-                published_at:
-                    typeof o.published_at === 'string' && o.published_at !== ''
-                        ? publishedMonthFromStored(o.published_at)
-                        : publishedMonthFromStored(row.published_at),
-            });
-        }
-    }, [hasLibraryValidationErrors, books, categories, formOld, setData]);
+    /** Fecha o modal quando o envio falha (validação, rede, etc.) para o alerta na página ficar visível. */
+    const dismissModalOnFormError = () => {
+        sessionStorage.removeItem(LIBRARY_EDITING_KEY);
+        setIsModalOpen(false);
+        setIsEditing(false);
+        setEditingId(null);
+        setCoverCompressing(false);
+        setCoverCompressError(null);
+    };
 
     const openCreateModal = () => {
         sessionStorage.removeItem(LIBRARY_EDITING_KEY);
@@ -230,6 +198,7 @@ export default function LibraryBooksIndex({
             sessionStorage.setItem(LIBRARY_EDITING_KEY, String(editingId));
             put(route('library-books.update', editingId), {
                 onSuccess: finishSubmit,
+                onError: dismissModalOnFormError,
                 forceFormData: true,
                 preserveScroll: true,
             });
@@ -237,6 +206,7 @@ export default function LibraryBooksIndex({
             sessionStorage.removeItem(LIBRARY_EDITING_KEY);
             post(route('library-books.store'), {
                 onSuccess: finishSubmit,
+                onError: dismissModalOnFormError,
                 forceFormData: true,
                 preserveScroll: true,
             });
@@ -320,7 +290,7 @@ export default function LibraryBooksIndex({
                         ))}
                     </ul>
                     <p className="mt-2 text-xs text-red-800/90 dark:text-red-200/80">
-                        O modal foi reaberto: em caso de erro, volte a escolher capa e PDF (o browser não guarda ficheiros após o envio).
+                        Volte a escolher capa e PDF se precisar de alterar os ficheiros (o browser não os mantém após o envio).
                     </p>
                 </div>
             ) : null}
