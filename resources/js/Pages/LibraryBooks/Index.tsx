@@ -181,7 +181,7 @@ export default function LibraryBooksIndex({
         setData({
             title: b.title,
             subtitle: b.subtitle ?? '',
-            description: (b as unknown as { description?: string | null }).description ?? '',
+            description: b.description ?? '',
             category: b.category,
             cover_image_file: null,
             pdf_file: null,

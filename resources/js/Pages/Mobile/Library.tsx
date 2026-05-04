@@ -4,7 +4,9 @@ import {
     BookOpenIcon,
     ArrowDownTrayIcon,
     MagnifyingGlassIcon,
+    XMarkIcon,
 } from '@heroicons/react/24/outline';
+import Modal from '@/Components/Modal';
 import { useMemo, useState } from 'react';
 
 function imageSrc(url: string | null, appUrl: string): string {
@@ -23,6 +25,7 @@ interface BookItem {
     id: number;
     title: string;
     subtitle: string | null;
+    description?: string | null;
     category: string;
     cover_url: string | null;
     pdf_url: string | null;
@@ -58,6 +61,7 @@ export default function MobileLibrary({ books, categories, librarySetupMessage =
     const appUrl = (usePage().props as PageProps).appUrl ?? '';
     const [tab, setTab] = useState<string>(categories[0]?.value ?? 'books');
     const [search, setSearch] = useState('');
+    const [selectedDetails, setSelectedDetails] = useState<BookItem | null>(null);
 
     const filtered = useMemo(() => {
         const q = normalizeSearch(search);
@@ -78,6 +82,8 @@ export default function MobileLibrary({ books, categories, librarySetupMessage =
         if (filtered.length === 0) return 'Nenhum resultado para a pesquisa.';
         return '';
     }, [books, tab, filtered.length, librarySetupMessage]);
+
+    const closeDetails = () => setSelectedDetails(null);
 
     return (
         <MobileLayout>
@@ -151,6 +157,11 @@ export default function MobileLibrary({ books, categories, librarySetupMessage =
                             const cover = imageSrc(b.cover_url, appUrl);
                             const pdf = b.pdf_url ? imageSrc(b.pdf_url, appUrl) : '';
                             const showUrl = route('mobile.biblioteca.show', b.id);
+                            const description = (b.description ?? '').trim();
+                            const maxDesc = 180;
+                            const shortDesc =
+                                description.length > maxDesc ? description.slice(0, maxDesc).trimEnd() : description;
+                            const hasMore = description.length > shortDesc.length;
 
                             const coverVisual = cover ? (
                                 <img src={cover} alt="" className="h-full w-full object-cover" loading="lazy" />
@@ -219,6 +230,24 @@ export default function MobileLibrary({ books, categories, librarySetupMessage =
                                                     </a>
                                                 ) : null}
                                             </div>
+
+                                            {description ? (
+                                                <p className="mt-3 whitespace-pre-wrap text-[13px] leading-relaxed text-zinc-600 dark:text-zinc-300">
+                                                    {shortDesc}
+                                                    {hasMore ? (
+                                                        <>
+                                                            {' '}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setSelectedDetails(b)}
+                                                                className="font-semibold text-primary-700 underline-offset-2 hover:underline dark:text-primary-300"
+                                                            >
+                                                                .. e mais
+                                                            </button>
+                                                        </>
+                                                    ) : null}
+                                                </p>
+                                            ) : null}
                                         </div>
                                     </div>
                                 </li>
@@ -227,6 +256,56 @@ export default function MobileLibrary({ books, categories, librarySetupMessage =
                     </ul>
                 )}
             </div>
+
+            <Modal show={selectedDetails !== null} onClose={closeDetails} maxWidth="lg">
+                {selectedDetails && (
+                    <>
+                        <div className="relative">
+                            {selectedDetails.cover_url ? (
+                                <img
+                                    src={imageSrc(selectedDetails.cover_url, appUrl)}
+                                    alt=""
+                                    className="max-h-52 w-full object-cover sm:max-h-64"
+                                />
+                            ) : null}
+                            <button
+                                type="button"
+                                onClick={closeDetails}
+                                className="absolute right-3 top-3 rounded-full bg-black/50 p-2 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
+                                aria-label="Fechar"
+                            >
+                                <XMarkIcon className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="space-y-3 p-5 sm:p-6">
+                            <div>
+                                <h2 className="text-xl font-bold text-zinc-900 dark:text-white sm:text-2xl">
+                                    {selectedDetails.title}
+                                </h2>
+                                {selectedDetails.subtitle ? (
+                                    <p className="mt-1 text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                        {selectedDetails.subtitle}
+                                    </p>
+                                ) : null}
+                            </div>
+                            {String(selectedDetails.description ?? '').trim() ? (
+                                <div className="border-t border-zinc-100 pt-4 dark:border-zinc-800">
+                                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+                                        {String(selectedDetails.description ?? '').trim()}
+                                    </p>
+                                </div>
+                            ) : null}
+                            <button
+                                type="button"
+                                onClick={closeDetails}
+                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3 text-sm font-semibold text-zinc-800 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 sm:w-auto sm:px-8"
+                            >
+                                Fechar
+                            </button>
+                        </div>
+                    </>
+                )}
+            </Modal>
         </MobileLayout>
     );
 }

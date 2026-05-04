@@ -61,6 +61,7 @@ class LibraryBookController extends Controller
                 'id' => $b->id,
                 'title' => $b->title,
                 'subtitle' => $b->subtitle,
+                'description' => $b->description,
                 'category' => $b->category,
                 'cover_url' => $b->resolvedCoverUrl($baseUrl),
                 'pdf_url' => $b->resolvedPdfUrl($baseUrl),
