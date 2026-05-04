@@ -19,6 +19,8 @@ jobs:
             cd /var/www/projeto-novasemente
             # Full: descarta alterações locais no servidor e puxa exatamente o main
             git fetch origin main && git reset --hard origin/main
+            # Aplicar limites de upload para PDF/capa da Biblioteca em produção.
+            bash deployment/apply-upload-limits.sh
             # Limpar caches/views antigas para forçar uso do código novo (header, etc.)
             php artisan optimize:clear 2>/dev/null || true
             find storage/framework/views -name '*.php' -delete 2>/dev/null || true
