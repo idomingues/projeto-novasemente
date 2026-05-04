@@ -11,6 +11,11 @@ use Illuminate\Http\Request;
 
 class Church extends Model
 {
+    /** URLs de referência CPB quando a igreja ainda não gravou links próprios em Configurações. */
+    public const DEFAULT_LIBRARY_MEDITATION_URL = 'https://mais.cpb.com.br/?post_type=meditacao&p=66895';
+
+    public const DEFAULT_LIBRARY_LESSON_URL = 'https://mais.cpb.com.br/licao/vida-de-oracao-2o-trimestre-2026/';
+
     protected $fillable = [
         'name',
         'slug',
@@ -108,5 +113,19 @@ class Church extends Model
         $anyId = static::orderBy('id')->value('id');
 
         return $anyId ? (int) $anyId : null;
+    }
+
+    public function resolvedLibraryMeditationUrl(): string
+    {
+        $v = trim((string) ($this->library_meditation_url ?? ''));
+
+        return $v !== '' ? $v : self::DEFAULT_LIBRARY_MEDITATION_URL;
+    }
+
+    public function resolvedLibraryLessonUrl(): string
+    {
+        $v = trim((string) ($this->library_lesson_url ?? ''));
+
+        return $v !== '' ? $v : self::DEFAULT_LIBRARY_LESSON_URL;
     }
 }

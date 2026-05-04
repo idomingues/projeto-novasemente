@@ -760,8 +760,8 @@ class MobileController extends Controller
                 ['value' => LibraryBook::CATEGORY_MEDITATION, 'label' => 'Meditação'],
                 ['value' => LibraryBook::CATEGORY_LESSON, 'label' => 'Lição'],
             ],
-            'meditationUrl' => $church?->library_meditation_url,
-            'lessonUrl' => $church?->library_lesson_url,
+            'meditationUrl' => $church !== null ? $church->resolvedLibraryMeditationUrl() : null,
+            'lessonUrl' => $church !== null ? $church->resolvedLibraryLessonUrl() : null,
             'librarySetupMessage' => null,
         ]);
     }

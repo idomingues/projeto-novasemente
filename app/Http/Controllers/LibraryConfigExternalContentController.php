@@ -18,8 +18,8 @@ class LibraryConfigExternalContentController extends Controller
 
         $type = trim(strtolower($type));
         $url = match ($type) {
-            'meditation' => (string) ($church->library_meditation_url ?? ''),
-            'lesson' => (string) ($church->library_lesson_url ?? ''),
+            'meditation' => $church->resolvedLibraryMeditationUrl(),
+            'lesson' => $church->resolvedLibraryLessonUrl(),
             default => '',
         };
 
@@ -30,7 +30,7 @@ class LibraryConfigExternalContentController extends Controller
 
         /** @var LibraryExternalPageExtractService $svc */
         $svc = app(LibraryExternalPageExtractService::class);
-        $result = $svc->fetchAndExtract($url);
+        $result = $svc->fetchAndExtract($url, $type);
 
         if (empty($result['ok'])) {
             return response()->json([
@@ -39,9 +39,19 @@ class LibraryConfigExternalContentController extends Controller
             ]);
         }
 
+        $html = (string) ($result['html'] ?? '');
+        $segments = isset($result['segments']) && is_array($result['segments']) ? $result['segments'] : null;
+        if ($segments === null && $type === 'lesson') {
+            $split = $svc->segmentLessonHtmlByWeekday($html);
+            if (count($split) > 1) {
+                $segments = $split;
+            }
+        }
+
         return response()->json([
             'ok' => true,
-            'html' => (string) ($result['html'] ?? ''),
+            'html' => $html,
+            'segments' => $segments,
             'source_url' => $url,
         ]);
     }

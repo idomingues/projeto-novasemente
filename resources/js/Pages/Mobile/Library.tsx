@@ -8,7 +8,7 @@ import {
     XMarkIcon,
 } from '@heroicons/react/24/outline';
 import Modal from '@/Components/Modal';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 function imageSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
@@ -43,6 +43,12 @@ interface Props {
 
 type PageProps = { appUrl?: string };
 
+interface ReaderSegment {
+    slug: string;
+    label: string;
+    html: string;
+}
+
 function normalizeSearch(s: string): string {
     return s
         .trim()
@@ -72,6 +78,12 @@ export default function MobileLibrary({
     const [tab, setTab] = useState<string>(categories[0]?.value ?? 'books');
     const [search, setSearch] = useState('');
     const [selectedDetails, setSelectedDetails] = useState<BookItem | null>(null);
+    const [readerStatus, setReaderStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
+    const [readerHtml, setReaderHtml] = useState('');
+    const [readerSegments, setReaderSegments] = useState<ReaderSegment[] | null>(null);
+    const [readerError, setReaderError] = useState<string | null>(null);
+    const [readerSourceUrl, setReaderSourceUrl] = useState<string | null>(null);
+    const [dayIdx, setDayIdx] = useState(0);
 
     const meditationUrl = String(meditationUrlProp ?? '').trim();
     const lessonUrl = String(lessonUrlProp ?? '').trim();
@@ -104,11 +116,68 @@ export default function MobileLibrary({
 
     const closeDetails = () => setSelectedDetails(null);
 
-    function openConfiguredExternal(tabValue: 'meditation' | 'lesson'): void {
-        const url = tabValue === 'meditation' ? meditationUrl : lessonUrl;
-        if (!url) return;
-        window.open(url, '_blank', 'noopener,noreferrer');
-    }
+    useEffect(() => {
+        if (!isConfiguredExternalTab || !configuredUrl) {
+            setReaderStatus('idle');
+            setReaderHtml('');
+            setReaderSegments(null);
+            setReaderError(null);
+            setReaderSourceUrl(null);
+            setDayIdx(0);
+            return;
+        }
+
+        let cancelled = false;
+        setReaderStatus('loading');
+        setReaderHtml('');
+        setReaderSegments(null);
+        setReaderError(null);
+        setReaderSourceUrl(null);
+        setDayIdx(0);
+
+        fetch(route('mobile.biblioteca.config-external-content', tab), {
+            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin',
+        })
+            .then(async (r) => {
+                const data: {
+                    ok?: boolean;
+                    html?: string;
+                    segments?: ReaderSegment[] | null;
+                    error?: string;
+                    source_url?: string;
+                } = await r.json();
+                if (cancelled) return;
+                if (data.ok && typeof data.html === 'string' && data.html.trim() !== '') {
+                    setReaderHtml(data.html);
+                    const segs = Array.isArray(data.segments) ? data.segments : null;
+                    setReaderSegments(segs && segs.length > 1 ? segs : null);
+                    setReaderSourceUrl(typeof data.source_url === 'string' ? data.source_url : configuredUrl);
+                    setReaderStatus('ok');
+                } else {
+                    setReaderError(typeof data.error === 'string' ? data.error : 'Não foi possível carregar o texto.');
+                    setReaderSourceUrl(typeof data.source_url === 'string' ? data.source_url : configuredUrl);
+                    setReaderStatus('error');
+                }
+            })
+            .catch(() => {
+                if (cancelled) return;
+                setReaderError('Não foi possível carregar o texto.');
+                setReaderSourceUrl(configuredUrl);
+                setReaderStatus('error');
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [tab, configuredUrl, isConfiguredExternalTab]);
+
+    const readerDisplayHtml = useMemo(() => {
+        if (readerSegments && readerSegments.length > 1) {
+            return readerSegments[dayIdx]?.html ?? '';
+        }
+        return readerHtml;
+    }, [readerSegments, readerHtml, dayIdx]);
 
     return (
         <MobileLayout>
@@ -158,19 +227,7 @@ export default function MobileLibrary({
                                 type="button"
                                 role="tab"
                                 aria-selected={active}
-                                onClick={() => {
-                                    if (c.value === 'meditation') {
-                                        openConfiguredExternal('meditation');
-                                        setTab('meditation');
-                                        return;
-                                    }
-                                    if (c.value === 'lesson') {
-                                        openConfiguredExternal('lesson');
-                                        setTab('lesson');
-                                        return;
-                                    }
-                                    setTab(c.value);
-                                }}
+                                onClick={() => setTab(c.value)}
                                 className={`shrink-0 rounded-lg px-3.5 py-2 text-sm font-medium transition ${
                                     active
                                         ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900'
@@ -184,22 +241,74 @@ export default function MobileLibrary({
                 </div>
 
                 {isConfiguredExternalTab ? (
-                    <div className="rounded-2xl border border-zinc-200/90 bg-white px-4 py-10 text-center dark:border-zinc-800 dark:bg-zinc-900">
-                        <BookOpenIcon className="mx-auto h-9 w-9 text-zinc-400 dark:text-zinc-500" aria-hidden />
-                        <p className="mt-3 text-sm font-medium text-zinc-600 dark:text-zinc-400">
-                            {configuredUrl
-                                ? 'O link foi aberto num novo separador. Se não abriu, verifique se o popup foi bloqueado.'
-                                : emptyMessage}
-                        </p>
-                        {configuredUrl ? (
-                            <button
-                                type="button"
-                                onClick={() => openConfiguredExternal(tab === 'lesson' ? 'lesson' : 'meditation')}
-                                className="mt-4 inline-flex items-center gap-2 rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
-                            >
-                                <ArrowTopRightOnSquareIcon className="h-4 w-4 shrink-0" aria-hidden />
-                                Abrir de novo
-                            </button>
+                    <div className="rounded-2xl border border-zinc-200/90 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:p-5">
+                        {!configuredUrl ? (
+                            <p className="text-center text-sm text-zinc-600 dark:text-zinc-400">{emptyMessage}</p>
+                        ) : readerStatus === 'loading' ? (
+                            <p className="text-center text-sm text-zinc-500 dark:text-zinc-400">A carregar leitura…</p>
+                        ) : readerStatus === 'error' ? (
+                            <div className="space-y-3 text-center">
+                                <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100">
+                                    {readerError}
+                                </p>
+                                {readerSourceUrl ? (
+                                    <a
+                                        href={readerSourceUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-2 text-sm font-semibold text-primary-700 underline-offset-2 hover:underline dark:text-primary-300"
+                                    >
+                                        <ArrowTopRightOnSquareIcon className="h-4 w-4 shrink-0" aria-hidden />
+                                        Abrir no site original
+                                    </a>
+                                ) : null}
+                            </div>
+                        ) : readerStatus === 'ok' ? (
+                            <div className="space-y-4">
+                                {readerSegments && readerSegments.length > 1 ? (
+                                    <div
+                                        className="-mx-1 flex gap-1 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] px-1 [&::-webkit-scrollbar]:hidden"
+                                        role="tablist"
+                                        aria-label="Dias da semana"
+                                    >
+                                        {readerSegments.map((s, i) => {
+                                            const active = dayIdx === i;
+                                            return (
+                                                <button
+                                                    key={s.slug}
+                                                    type="button"
+                                                    role="tab"
+                                                    aria-selected={active}
+                                                    onClick={() => setDayIdx(i)}
+                                                    className={`shrink-0 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide transition sm:text-sm ${
+                                                        active
+                                                            ? 'border-b-2 border-primary-600 text-primary-700 dark:border-primary-400 dark:text-primary-300'
+                                                            : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
+                                                    }`}
+                                                >
+                                                    {s.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                ) : null}
+                                <div
+                                    className="max-h-[70vh] overflow-y-auto rounded-xl border border-zinc-100 bg-zinc-50 p-4 text-sm leading-relaxed text-zinc-800 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 [&_a]:font-medium [&_a]:text-primary-600 [&_a]:underline dark:[&_a]:text-primary-400 [&_blockquote]:border-l-4 [&_blockquote]:border-zinc-300 [&_blockquote]:pl-3 dark:[&_blockquote]:border-zinc-600 [&_h2]:mt-3 [&_h2]:text-lg [&_h2]:font-bold [&_h3]:mt-2 [&_h3]:text-base [&_h3]:font-semibold [&_ol]:list-decimal [&_ol]:pl-5 [&_p+p]:mt-5 [&_p+p]:border-t [&_p+p]:border-zinc-200 [&_p+p]:pt-5 dark:[&_p+p]:border-zinc-700 [&_ul]:list-disc [&_ul]:pl-5"
+                                    dangerouslySetInnerHTML={{ __html: readerDisplayHtml }}
+                                />
+                                {readerSourceUrl ? (
+                                    <p className="text-center text-xs text-zinc-500 dark:text-zinc-400">
+                                        <a
+                                            href={readerSourceUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="font-medium text-primary-600 underline-offset-2 hover:underline dark:text-primary-400"
+                                        >
+                                            Abrir no site original
+                                        </a>
+                                    </p>
+                                ) : null}
+                            </div>
                         ) : null}
                     </div>
                 ) : filtered.length === 0 ? (
