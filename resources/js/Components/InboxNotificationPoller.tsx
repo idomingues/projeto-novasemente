@@ -71,10 +71,12 @@ export default function InboxNotificationPoller() {
             if (document.visibilityState !== 'visible') {
                 return;
             }
-            // `router.reload` em Inertia v2 usa visita `async` (sem barra de progresso nem overlay global).
-            router.reload({
+            // Evita "refresh" que feche modais: visita com preserveState.
+            router.visit(window.location.href, {
                 only: ['recentNotifications', 'unreadInboxNotificationsCount'],
                 replace: true,
+                preserveState: true,
+                preserveScroll: true,
             });
         }, 45_000);
         return () => window.clearInterval(id);
