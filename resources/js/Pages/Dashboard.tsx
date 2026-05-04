@@ -1,6 +1,6 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, Link } from '@inertiajs/react';
-import { UsersIcon, UserGroupIcon, EllipsisHorizontalIcon } from '@heroicons/react/24/outline';
+import { UsersIcon, UserGroupIcon, EllipsisHorizontalIcon, ChartBarIcon } from '@heroicons/react/24/outline';
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 import Card from '@/Components/Card';
 import PageHeader from '@/Components/PageHeader';
@@ -18,6 +18,12 @@ interface DashboardStats {
     members: number;
     volunteers: number;
     prayerRequests: number;
+}
+
+interface TopPageRow {
+    routeName: string;
+    label: string;
+    views: number;
 }
 
 function formatEventDayLabel(iso: string): { weekday: string; day: string } {
@@ -54,10 +60,14 @@ export default function Dashboard({
     upcomingEvents = [],
     stats = defaultStats,
     churchName = null,
+    topPages = [],
+    pageViewsPeriodDays = null,
 }: {
     upcomingEvents?: UpcomingEvent[];
     stats?: DashboardStats;
     churchName?: string | null;
+    topPages?: TopPageRow[];
+    pageViewsPeriodDays?: number | null;
 }) {
     const statCards = [
         {
@@ -124,6 +134,49 @@ export default function Dashboard({
                         </Card>
                     ))}
                 </div>
+
+                {pageViewsPeriodDays !== null && (
+                    <Card>
+                        <div className="mb-4 flex items-start gap-3">
+                            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-white">
+                                <ChartBarIcon className="h-6 w-6" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Páginas mais vistas</h3>
+                                <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                                    Rotas mais abertas nos últimos {pageViewsPeriodDays} dias (app e web), por igreja em
+                                    contexto. Contagem leve (após enviar a página).
+                                </p>
+                            </div>
+                        </div>
+                        {topPages.length === 0 ? (
+                            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                                Ainda não há visualizações registadas neste período.
+                            </p>
+                        ) : (
+                            <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                                {topPages.map((row, idx) => (
+                                    <li
+                                        key={`${row.routeName}-${idx}`}
+                                        className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"
+                                    >
+                                        <div className="min-w-0">
+                                            <p className="truncate font-medium text-zinc-900 dark:text-zinc-100">
+                                                {row.label}
+                                            </p>
+                                            <p className="truncate font-mono text-xs text-zinc-500 dark:text-zinc-500">
+                                                {row.routeName}
+                                            </p>
+                                        </div>
+                                        <span className="flex-shrink-0 rounded-full bg-zinc-100 px-3 py-1 text-sm font-semibold tabular-nums text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
+                                            {row.views.toLocaleString('pt-BR')}
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </Card>
+                )}
 
                 <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
                     <Card>

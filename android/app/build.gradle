@@ -20,8 +20,8 @@ android {
         applicationId "br.org.novasemente.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 3
-        versionName "2.2"
+        versionCode 4
+        versionName "2.3"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -81,4 +81,31 @@ try {
     }
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}
+
+/**
+ * Release sem `server.url` no Capacitor = WebView pode abrir só o fallback estático (reprovação na Play).
+ * Corra `npm run cap:sync` na raiz do repo antes de `assembleRelease` / `bundleRelease`.
+ */
+afterEvaluate {
+    def mergeRelease = tasks.findByName('mergeReleaseAssets')
+    if (mergeRelease != null) {
+        mergeRelease.doFirst {
+            def capFile = file('src/main/assets/capacitor.config.json')
+            if (!capFile.exists()) {
+                throw new GradleException(
+                    "Falta android/app/src/main/assets/capacitor.config.json. " +
+                    "Na raiz do projeto corra: npm run build && npx cap sync"
+                )
+            }
+            def json = new groovy.json.JsonSlurper().parse(capFile)
+            def url = json?.server?.url
+            if (url == null || url.toString().trim().isEmpty()) {
+                throw new GradleException(
+                    "capacitor.config.json não contém server.url. " +
+                    "Corra `npx cap sync` (ou npm run cap:sync) na raiz antes do build de release."
+                )
+            }
+        }
+    }
 }
