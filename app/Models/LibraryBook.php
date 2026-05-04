@@ -18,6 +18,7 @@ class LibraryBook extends Model
         'church_id',
         'title',
         'subtitle',
+        'description',
         'category',
         'cover_path',
         'pdf_path',

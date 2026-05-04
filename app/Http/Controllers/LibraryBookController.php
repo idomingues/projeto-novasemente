@@ -74,7 +74,7 @@ class LibraryBookController extends Controller
         return Inertia::render('LibraryBooks/Index', [
             'books' => $books,
             'canManage' => $canManage,
-            'formOld' => ! empty($oldInput) ? Arr::only($oldInput, ['title', 'subtitle', 'category', 'published_at']) : [],
+            'formOld' => ! empty($oldInput) ? Arr::only($oldInput, ['title', 'subtitle', 'description', 'category', 'published_at']) : [],
             'categories' => [
                 ['value' => LibraryBook::CATEGORY_BOOKS, 'label' => 'Livros'],
                 ['value' => LibraryBook::CATEGORY_MAGAZINES, 'label' => 'Revistas'],
@@ -107,6 +107,7 @@ class LibraryBookController extends Controller
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'subtitle' => ['nullable', 'string', 'max:500'],
+            'description' => ['nullable', 'string', 'max:5000'],
             'category' => ['required', 'string', Rule::in(LibraryBook::categories())],
             'cover_image_file' => ['required', 'image', 'max:4096'],
             'pdf_file' => ['required', 'file', 'max:20480', $this->pdfFileRule()],
@@ -128,6 +129,7 @@ class LibraryBookController extends Controller
             'church_id' => $churchId,
             'title' => $data['title'],
             'subtitle' => $data['subtitle'] ?? null,
+            'description' => $data['description'] ?? null,
             'category' => $data['category'],
             'cover_path' => $coverPath,
             'pdf_path' => $pdfPath,
@@ -167,6 +169,7 @@ class LibraryBookController extends Controller
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'subtitle' => ['nullable', 'string', 'max:500'],
+            'description' => ['nullable', 'string', 'max:5000'],
             'category' => ['required', 'string', Rule::in(LibraryBook::categories())],
             'cover_image_file' => ['nullable', 'image', 'max:4096'],
             'pdf_file' => ['nullable', 'file', 'max:20480', $this->pdfFileRule()],
@@ -190,6 +193,7 @@ class LibraryBookController extends Controller
         $libraryBook->update([
             'title' => $data['title'],
             'subtitle' => $data['subtitle'] ?? null,
+            'description' => $data['description'] ?? null,
             'category' => $data['category'],
             'cover_path' => $coverPath,
             'pdf_path' => $pdfPath,

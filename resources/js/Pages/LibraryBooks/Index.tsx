@@ -8,6 +8,7 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
+import Textarea from '@/Components/Textarea';
 import InputError from '@/Components/InputError';
 import { FormEventHandler, useEffect, useMemo, useRef, useState } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
@@ -22,6 +23,7 @@ interface LibraryBookRow {
     id: number;
     title: string;
     subtitle: string | null;
+    description?: string | null;
     category: string;
     cover_url: string | null;
     pdf_url: string | null;
@@ -33,6 +35,7 @@ interface LibraryBookRow {
 interface FormOldPayload {
     title?: string;
     subtitle?: string;
+    description?: string;
     category?: string;
     published_at?: string;
 }
@@ -46,7 +49,15 @@ interface Props {
     librarySetupMessage?: string | null;
 }
 
-const LIBRARY_FORM_KEYS = ['title', 'subtitle', 'category', 'cover_image_file', 'pdf_file', 'published_at'] as const;
+const LIBRARY_FORM_KEYS = [
+    'title',
+    'subtitle',
+    'description',
+    'category',
+    'cover_image_file',
+    'pdf_file',
+    'published_at',
+] as const;
 
 const LIBRARY_EDITING_KEY = 'library_editing_id';
 
@@ -97,6 +108,7 @@ export default function LibraryBooksIndex({
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
         title: typeof formOld.title === 'string' ? formOld.title : '',
         subtitle: typeof formOld.subtitle === 'string' ? formOld.subtitle : '',
+        description: typeof formOld.description === 'string' ? formOld.description : '',
         category: initialCategory,
         cover_image_file: null as File | null,
         pdf_file: null as File | null,
@@ -118,6 +130,7 @@ export default function LibraryBooksIndex({
             ...prev,
             title: typeof o.title === 'string' ? o.title : prev.title,
             subtitle: typeof o.subtitle === 'string' ? o.subtitle : prev.subtitle,
+            description: typeof o.description === 'string' ? o.description : prev.description,
             category:
                 typeof o.category === 'string' && categories.some((c) => c.value === o.category)
                     ? o.category
@@ -150,6 +163,7 @@ export default function LibraryBooksIndex({
             ...prev,
             title: '',
             subtitle: '',
+            description: '',
             category: categories[0]?.value ?? 'books',
             cover_image_file: null,
             pdf_file: null,
@@ -167,6 +181,7 @@ export default function LibraryBooksIndex({
         setData({
             title: b.title,
             subtitle: b.subtitle ?? '',
+            description: (b as unknown as { description?: string | null }).description ?? '',
             category: b.category,
             cover_image_file: null,
             pdf_file: null,
@@ -428,6 +443,20 @@ export default function LibraryBooksIndex({
                                     placeholder="Ex.: Volume 1 • série adultos"
                                 />
                                 <InputError message={errors.subtitle} className="mt-1" />
+                            </div>
+
+                            <div>
+                                <InputLabel htmlFor="lib_description" value="Texto explicativo (opcional)" />
+                                <Textarea
+                                    id="lib_description"
+                                    value={data.description}
+                                    onChange={(e) => setData('description', e.target.value)}
+                                    rows={4}
+                                    className="mt-1 block w-full"
+                                    placeholder="Escreva um texto curto sobre o livro. Se for longo, a app mostra '… e mais'."
+                                />
+                                <InputError message={(errors as Record<string, string | undefined>).description} className="mt-1" />
+                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Até 5.000 caracteres.</p>
                             </div>
 
                             <div>
