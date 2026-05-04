@@ -53,15 +53,24 @@ class LibraryExternalPageExtractService
         }
 
         $fragment = (string) $fragment;
+        $meditationStructured = false;
+
+        if ($libraryKind === 'meditation') {
+            $rebuilt = $this->restructureCpbMeditationFragmentIfApplicable($fragment);
+            if ($rebuilt !== null) {
+                $fragment = $rebuilt;
+                $meditationStructured = true;
+            }
+        }
 
         if ($libraryKind === 'lesson') {
-            $fragment = $this->stripLessonHtmlNoise($fragment);
             $panelBlocks = $this->splitCpbLessonByTabPanels($fragment);
             if ($panelBlocks !== null && count($panelBlocks) >= 2) {
                 $segments = [];
                 foreach ($panelBlocks as $i => $block) {
-                    $sanitized = $this->sanitizeHtml($block['html']);
-                    $polished = $this->polishLibraryReaderHtml($sanitized);
+                    $cleaned = $this->stripLessonHtmlNoise($block['html']);
+                    $sanitized = $this->sanitizeHtml($cleaned);
+                    $polished = $this->polishLibraryReaderHtml($sanitized, true);
                     if (trim(strip_tags($polished)) === '') {
                         continue;
                     }
@@ -79,11 +88,15 @@ class LibraryExternalPageExtractService
                     ];
                 }
             }
+            $fragment = $this->stripLessonHtmlNoise($fragment);
         }
 
         $sanitized = $this->sanitizeHtml($fragment);
 
-        return ['ok' => true, 'html' => $this->polishLibraryReaderHtml($sanitized)];
+        return [
+            'ok' => true,
+            'html' => $this->polishLibraryReaderHtml($sanitized, ! $meditationStructured),
+        ];
     }
 
     /**
@@ -178,14 +191,109 @@ class LibraryExternalPageExtractService
     }
 
     /**
-     * Formata o fragmento para leitura na app: remove rodapés CPB, destaca data e quebra linha após o cabeçalho da data.
+     * Formata o fragmento para leitura na app: remove rodapés CPB; opcionalmente destaca data no texto corrido.
+     *
+     * @param  bool  $applyLeadingDateEmphasis  Falso quando a meditação CPB já foi reestruturada em HTML semântico.
      */
-    private function polishLibraryReaderHtml(string $html): string
+    private function polishLibraryReaderHtml(string $html, bool $applyLeadingDateEmphasis = true): string
     {
         $html = $this->stripCpbPromoFooters($html);
-        $html = $this->emphasizeWeekdayAndDateWithLineBreak($html);
+        if ($applyLeadingDateEmphasis) {
+            $html = $this->emphasizeWeekdayAndDateWithLineBreak($html);
+        }
 
         return $html;
+    }
+
+    /**
+     * Meditação CPB: data em divs separados, título e versículo em blocos próprios — evita texto corrido após strip_tags.
+     */
+    private function restructureCpbMeditationFragmentIfApplicable(string $fragment): ?string
+    {
+        if (! str_contains($fragment, 'diaMesMeditacao') || ! str_contains($fragment, 'versoBiblico')) {
+            return null;
+        }
+
+        $dom = new \DOMDocument();
+        libxml_use_internal_errors(true);
+        $wrapped = '<?xml encoding="utf-8" ?>'.$fragment;
+        if (! @$dom->loadHTML($wrapped, LIBXML_NOWARNING | LIBXML_NOERROR)) {
+            libxml_clear_errors();
+
+            return null;
+        }
+        libxml_clear_errors();
+
+        $xp = new \DOMXPath($dom);
+
+        $weekday = $this->cpbDomFirstNormalizedText($xp, '//*[contains(concat(" ", normalize-space(@class), " "), " diaSemanaMeditacao ")]');
+        $dayMonth = $this->cpbDomFirstNormalizedText($xp, '//*[contains(concat(" ", normalize-space(@class), " "), " diaMesMeditacao ")]');
+
+        $title = '';
+        $headlineNodes = $xp->query('//*[contains(concat(" ", normalize-space(@class), " "), " titleMeditacao ")]//*[contains(@class, "mdl-typography--headline")]');
+        if ($headlineNodes !== false && $headlineNodes->length > 0) {
+            $title = $this->normalizeCpbWhitespace((string) $headlineNodes->item(0)->textContent);
+        }
+        if ($title === '') {
+            $title = $this->cpbDomFirstNormalizedText($xp, '//*[contains(concat(" ", normalize-space(@class), " "), " titleMeditacao ")]');
+        }
+
+        $verse = $this->cpbDomFirstNormalizedText($xp, '//*[contains(concat(" ", normalize-space(@class), " "), " versoBiblico ")]');
+
+        $contentInner = '';
+        $contentNodes = $xp->query('//*[contains(concat(" ", normalize-space(@class), " "), " conteudoMeditacao ")]');
+        if ($contentNodes !== false && $contentNodes->length > 0) {
+            $box = $contentNodes->item(0);
+            if ($box instanceof \DOMNode) {
+                foreach ($box->childNodes as $child) {
+                    $contentInner .= $dom->saveHTML($child);
+                }
+            }
+        }
+
+        if ($weekday === '' && $dayMonth === '' && $title === '' && $verse === '' && trim(strip_tags($contentInner)) === '') {
+            return null;
+        }
+
+        $esc = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        $html = '';
+        if ($weekday !== '' || $dayMonth !== '') {
+            $html .= '<p>';
+            if ($weekday !== '') {
+                $html .= '<strong>'.$esc($weekday).'</strong>';
+            }
+            if ($dayMonth !== '') {
+                $html .= ($weekday !== '' ? ' ' : '').'<strong>'.$esc($dayMonth).'</strong>';
+            }
+            $html .= '</p>';
+        }
+        if ($title !== '') {
+            $html .= '<h2>'.$esc($title).'</h2>';
+        }
+        if ($verse !== '') {
+            $html .= '<p><em><strong>'.$esc($verse).'</strong></em></p>';
+        }
+        $html .= $contentInner;
+
+        return $html !== '' ? $html : null;
+    }
+
+    private function cpbDomFirstNormalizedText(\DOMXPath $xp, string $expr): string
+    {
+        $nodes = $xp->query($expr);
+        if ($nodes === false || $nodes->length === 0) {
+            return '';
+        }
+
+        return $this->normalizeCpbWhitespace((string) $nodes->item(0)->textContent);
+    }
+
+    private function normalizeCpbWhitespace(string $text): string
+    {
+        $t = trim(preg_replace('/\s+/u', ' ', $text) ?? $text);
+
+        return $t;
     }
 
     private function stripCpbPromoFooters(string $html): string
@@ -270,11 +378,8 @@ class LibraryExternalPageExtractService
             if (! $panel instanceof \DOMElement) {
                 continue;
             }
-            $inner = '';
-            foreach ($panel->childNodes as $child) {
-                $inner .= $dom->saveHTML($child);
-            }
-            $inner = trim($inner);
+            $serialized = $this->serializeCpbLessonPanelToReaderHtml($dom, $panel);
+            $inner = trim($serialized) !== '' ? $serialized : $this->fallbackCpbLessonPanelInnerHtml($dom, $panel);
             if ($inner === '') {
                 continue;
             }
@@ -286,6 +391,173 @@ class LibraryExternalPageExtractService
         }
 
         return count($out) >= 2 ? $out : null;
+    }
+
+    private function fallbackCpbLessonPanelInnerHtml(\DOMDocument $dom, \DOMElement $panel): string
+    {
+        $inner = '';
+        foreach ($panel->childNodes as $child) {
+            $inner .= $dom->saveHTML($child);
+        }
+
+        return trim($inner);
+    }
+
+    /**
+     * Reconstrói o HTML de leitura a partir do painel CPB (preserva blocos que sumiam com strip_tags nos divs).
+     *
+     * Padrão alinhado ao layout CPB: Sábado = lição + datas + título do trimestre + meta (subtítulo + ano) + verso + leituras + texto;
+     * demais dias = meta (data do dia + ano) + título do dia + texto (sem repetir o título do trimestre).
+     */
+    private function serializeCpbLessonPanelToReaderHtml(\DOMDocument $dom, \DOMElement $panel): string
+    {
+        $xp = new \DOMXPath($dom);
+        $esc = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        $t = fn (string $rel): string => $this->cpbXPathFirstText($xp, $panel, $rel);
+
+        $html = '';
+
+        $num = $t('.//*[contains(concat(" ", normalize-space(@class), " "), " numberLicao ")]');
+        $dateRange = $t('.//*[contains(concat(" ", normalize-space(@class), " "), " dateLicao ")]');
+        $isIntroSaturday = ($num !== '' || $dateRange !== '');
+
+        if ($isIntroSaturday) {
+            if ($num !== '' || $dateRange !== '') {
+                $html .= '<p>';
+                if ($num !== '') {
+                    $html .= '<strong>'.$esc($num).'</strong>';
+                }
+                if ($dateRange !== '') {
+                    $html .= ($num !== '' ? '<br>' : '').'<strong>'.$esc($dateRange).'</strong>';
+                }
+                $html .= '</p>';
+            }
+
+            $series = $t('.//*[contains(concat(" ", normalize-space(@class), " "), " titleLicao ")][not(contains(@class, "titleLicaoDay"))]//*[contains(@class, "mdl-typography--display-1")]');
+            if ($series !== '') {
+                $html .= '<h2>'.$esc($series).'</h2>';
+            }
+        }
+
+        $dayCal = $t('.//*[contains(concat(" ", normalize-space(@class), " "), " descriptionText ")][not(contains(@class, "numberLicao"))][not(contains(@class, "dateLicao"))][not(contains(@class, "anoBiblicoDia"))][not(contains(@class, "diaMes"))]');
+        $diaEtiqueta = $t('.//*[contains(concat(" ", normalize-space(@class), " "), " descriptionText ")][contains(@class, "dia")][contains(@class, "Licao")]');
+        $ano = $t('.//*[contains(concat(" ", normalize-space(@class), " "), " anoBiblicoDia ")]');
+
+        $metaLine = [];
+        if ($dayCal !== '') {
+            $metaLine[] = '<strong>'.$esc($dayCal).'</strong>';
+        }
+        if ($diaEtiqueta !== '' && $diaEtiqueta !== $dayCal) {
+            $metaLine[] = '<strong>'.$esc($diaEtiqueta).'</strong>';
+        }
+        if ($ano !== '') {
+            $metaLine[] = '<strong>'.$esc($ano).'</strong>';
+        }
+        if ($metaLine !== []) {
+            $html .= '<p>'.implode(' — ', $metaLine).'</p>';
+        }
+
+        $versoBox = $this->cpbXPathFirstElement($xp, $panel, './/*[contains(concat(" ", normalize-space(@class), " "), " versoMemorizarLicao ")]');
+        $html .= $this->serializeCpbVersoOuLeiturasBox($xp, $versoBox, $esc, 'versoMemorizarChamada', 'versoMemorizar', 'Verso para memorizar', true);
+
+        $leiturasBox = $this->cpbXPathFirstElement($xp, $panel, './/*[contains(concat(" ", normalize-space(@class), " "), " leiturasSemanaLicao ")]');
+        $html .= $this->serializeCpbVersoOuLeiturasBox($xp, $leiturasBox, $esc, 'leiturasSemanaChamada', 'leiturasSemana', 'Leituras da semana', false);
+
+        $dayTitle = $t('.//*[contains(concat(" ", normalize-space(@class), " "), " titleLicaoDay ")]//*[contains(@class, "mdl-typography--headline")]');
+        if ($dayTitle !== '') {
+            $html .= '<h2>'.$esc($dayTitle).'</h2>';
+        }
+
+        $conteudo = $this->cpbXPathFirstElement($xp, $panel, './/*[contains(concat(" ", normalize-space(@class), " "), " conteudoLicaoDia ")]');
+        if ($conteudo instanceof \DOMElement) {
+            foreach ($conteudo->childNodes as $child) {
+                $html .= $dom->saveHTML($child);
+            }
+        }
+
+        $rodape = $this->cpbXPathFirstElement($xp, $panel, './/*[contains(concat(" ", normalize-space(@class), " "), " rodapeBoxLicaoDia ")]');
+        if ($rodape instanceof \DOMElement) {
+            $v = $this->normalizeCpbWhitespace($rodape->textContent ?? '');
+            if ($v !== '') {
+                $html .= '<blockquote><p><em>'.$esc($v).'</em></p></blockquote>';
+            }
+        }
+
+        return trim($html);
+    }
+
+    /**
+     * @param  bool  $italicBody  verso em itálico; leituras em texto normal
+     */
+    private function serializeCpbVersoOuLeiturasBox(
+        \DOMXPath $xp,
+        ?\DOMElement $box,
+        callable $esc,
+        string $classChamada,
+        string $classCorpo,
+        string $defaultChamada,
+        bool $italicBody
+    ): string {
+        if (! $box instanceof \DOMElement) {
+            return '';
+        }
+
+        $chNode = $xp->query('.//*[contains(@class, "'.$classChamada.'")]', $box)->item(0);
+        $bodyNode = $xp->query(
+            './/*[contains(@class, "'.$classCorpo.'")][not(contains(@class, "Chamada"))]',
+            $box
+        )->item(0);
+
+        $chamada = $chNode instanceof \DOMElement
+            ? $this->normalizeCpbWhitespace($chNode->textContent ?? '')
+            : '';
+        if ($chamada === '') {
+            $chamada = $defaultChamada;
+        }
+        $chamadaOriginal = $chamada;
+        if (! str_ends_with($chamada, ':')) {
+            $chamada .= ':';
+        }
+
+        $corpo = $bodyNode instanceof \DOMElement
+            ? $this->normalizeCpbWhitespace($bodyNode->textContent ?? '')
+            : '';
+        if ($corpo === '') {
+            $whole = $this->normalizeCpbWhitespace($box->textContent ?? '');
+            $corpo = trim(preg_replace('/^\s*'.preg_quote($chamadaOriginal, '/').'\s*/iu', '', $whole) ?? $whole);
+            $corpo = trim(preg_replace('/^\s*'.preg_quote($chamada, '/').'\s*/iu', '', $corpo) ?? $corpo);
+        }
+        if ($corpo === '') {
+            return '';
+        }
+
+        $label = mb_strtoupper($chamada, 'UTF-8');
+        $openBody = $italicBody ? '<p><em>' : '<p>';
+        $closeBody = $italicBody ? '</em></p>' : '</p>';
+
+        return '<blockquote><p><strong>'.$esc($label).'</strong></p>'.$openBody.$esc($corpo).$closeBody.'</blockquote>';
+    }
+
+    private function cpbXPathFirstText(\DOMXPath $xp, \DOMElement $ctx, string $expr): string
+    {
+        $el = $this->cpbXPathFirstElement($xp, $ctx, $expr);
+        if (! $el instanceof \DOMElement) {
+            return '';
+        }
+
+        return $this->normalizeCpbWhitespace($el->textContent ?? '');
+    }
+
+    private function cpbXPathFirstElement(\DOMXPath $xp, \DOMElement $ctx, string $expr): ?\DOMElement
+    {
+        $nodes = $xp->query($expr, $ctx);
+        if ($nodes === false || $nodes->length === 0) {
+            return null;
+        }
+        $n = $nodes->item(0);
+
+        return $n instanceof \DOMElement ? $n : null;
     }
 
     /**
@@ -300,16 +572,11 @@ class LibraryExternalPageExtractService
         ) ?? $html;
         $html = preg_replace('/<button[^>]*assinatura-button[^>]*>[\s\S]*?Assine a lição[\s\S]*?<\/button>/iu', '', $html) ?? $html;
         $html = preg_replace(
-            '/<p[^>]*>\s*<strong>[\s\S]*?Garanta o conteúdo completo da Lição da Escola Sabatina[\s\S]*?<\/strong>[\s\S]*?<\/p>/iu',
+            '/<p[^>]*>\s*<strong>\s*Garanta o conteúdo completo da Lição da Escola Sabatina[\s\S]*?<\/strong>[\s\S]*?<\/p>/iu',
             '',
             $html
         ) ?? $html;
-        $html = preg_replace(
-            '/<p[^>]*>[\s\S]*?<a[^>]*>[\s\S]*?Faça aqui a sua assinatura[\s\S]*?<\/a>[\s\S]*?<\/p>/iu',
-            '',
-            $html
-        ) ?? $html;
-        $html = preg_replace('/<p[^>]*>[\s\S]*?<iframe[^>]*>[\s\S]*?<\/iframe>[\s\S]*?<\/p>/iu', '', $html) ?? $html;
+        $html = preg_replace('/<p[^>]*>\s*<iframe[^>]*>[\s\S]*?<\/iframe>\s*<\/p>/iu', '', $html) ?? $html;
         $html = preg_replace('/<iframe[^>]*>[\s\S]*?<\/iframe>/iu', '', $html) ?? $html;
         $html = preg_replace('/<div[^>]*class="[^"]*audioLicaoDia[^"]*"[^>]*>[\s\S]*?<\/div>/iu', '', $html) ?? $html;
         $html = preg_replace('/<div[^>]*class="[^"]*downloadApp[^"]*"[^>]*>[\s\S]*?<\/div>/iu', '', $html) ?? $html;
