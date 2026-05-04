@@ -10,6 +10,7 @@ use App\Http\Controllers\EventController;
 use App\Http\Controllers\FaviconController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\LibraryBookController;
+use App\Http\Controllers\LibraryConfigExternalContentController;
 use App\Http\Controllers\LibraryBookExternalContentController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\MinistryController;
@@ -126,6 +127,9 @@ Route::get('/mobile/services', [MobileController::class, 'services'])->name('mob
 Route::get('/mobile/fotos', [MobileController::class, 'fotos'])->name('mobile.fotos');
 Route::get('/mobile/fotos/{album}', [MobileController::class, 'fotosShow'])->name('mobile.fotos.show');
 Route::get('/mobile/biblioteca', [MobileController::class, 'biblioteca'])->name('mobile.biblioteca');
+Route::get('/mobile/biblioteca/conteudo-config/{type}', [LibraryConfigExternalContentController::class, 'show'])
+    ->middleware('throttle:40,1')
+    ->name('mobile.biblioteca.config-external-content');
 Route::get('/mobile/biblioteca/{libraryBook}/conteudo-externo', [LibraryBookExternalContentController::class, 'show'])
     ->middleware('throttle:40,1')
     ->name('mobile.biblioteca.external-content');
@@ -416,6 +420,12 @@ Route::middleware('auth')->group(function () {
         ->middleware('role:super_admin');
     Route::put('/settings/youtube-live', [SettingsController::class, 'updateYoutubeLive'])
         ->name('settings.youtube-live.update')
+        ->middleware('role:super_admin');
+    Route::put('/settings/library/meditation', [SettingsController::class, 'updateLibraryMeditationUrl'])
+        ->name('settings.library-meditation.update')
+        ->middleware('role:super_admin');
+    Route::put('/settings/library/lesson', [SettingsController::class, 'updateLibraryLessonUrl'])
+        ->name('settings.library-lesson.update')
         ->middleware('role:super_admin');
     Route::post('/acervo', [AcervoController::class, 'store'])->name('acervo.store')->middleware('permission:music.manage');
     Route::put('/acervo/{acervo}', [AcervoController::class, 'update'])->name('acervo.update')->middleware('permission:music.manage');

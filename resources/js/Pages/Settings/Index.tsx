@@ -18,6 +18,10 @@ type Props = {
     updateSolicitationsHandlerUrl: string;
     youtubeLiveUrl: string | null;
     updateYoutubeLiveUrl: string;
+    libraryMeditationUrl: string | null;
+    updateLibraryMeditationUrl: string;
+    libraryLessonUrl: string | null;
+    updateLibraryLessonUrl: string;
 };
 
 export default function SettingsIndex({
@@ -27,6 +31,10 @@ export default function SettingsIndex({
     updateSolicitationsHandlerUrl,
     youtubeLiveUrl,
     updateYoutubeLiveUrl,
+    libraryMeditationUrl,
+    updateLibraryMeditationUrl,
+    libraryLessonUrl,
+    updateLibraryLessonUrl,
 }: Props) {
     const form = useForm({
         solicitations_handler_volunteer_id:
@@ -37,6 +45,13 @@ export default function SettingsIndex({
         youtube_live_url: youtubeLiveUrl ?? '',
     });
 
+    const meditationForm = useForm({
+        library_meditation_url: libraryMeditationUrl ?? 'https://mais.cpb.com.br/?post_type=meditacao&p=66895',
+    });
+    const lessonForm = useForm({
+        library_lesson_url: libraryLessonUrl ?? 'https://mais.cpb.com.br/licao/vida-de-oracao-2o-trimestre-2026/',
+    });
+
     const submitHandler: FormEventHandler = (e) => {
         e.preventDefault();
         form.put(updateSolicitationsHandlerUrl, { preserveScroll: true });
@@ -45,6 +60,16 @@ export default function SettingsIndex({
     const submitLive: FormEventHandler = (e) => {
         e.preventDefault();
         liveForm.put(updateYoutubeLiveUrl, { preserveScroll: true });
+    };
+
+    const submitMeditation: FormEventHandler = (e) => {
+        e.preventDefault();
+        meditationForm.put(updateLibraryMeditationUrl, { preserveScroll: true });
+    };
+
+    const submitLesson: FormEventHandler = (e) => {
+        e.preventDefault();
+        lessonForm.put(updateLibraryLessonUrl, { preserveScroll: true });
     };
 
     return (
@@ -131,6 +156,57 @@ export default function SettingsIndex({
                             </PrimaryButton>
                         </div>
                     </form>
+                </section>
+
+                <section className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6 shadow-sm">
+                    <h2 className="text-base font-semibold text-zinc-900 dark:text-white">App mobile — Biblioteca</h2>
+                    <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                        Nos separadores <strong>Meditação</strong> e <strong>Lição</strong>, o app abre um único link configurado aqui.
+                        Se o site permitir, o app também tenta mostrar o texto dentro do nosso layout (melhor esforço) e mantém o botão
+                        para abrir a página original.
+                    </p>
+
+                    <div className="mt-6 space-y-6">
+                        <form onSubmit={submitMeditation} className="space-y-4">
+                            <div>
+                                <InputLabel htmlFor="library_meditation_url" value="URL da meditação" />
+                                <TextInput
+                                    id="library_meditation_url"
+                                    type="url"
+                                    className="mt-1 block w-full"
+                                    value={meditationForm.data.library_meditation_url}
+                                    onChange={(e) => meditationForm.setData('library_meditation_url', e.target.value)}
+                                    placeholder="https://…"
+                                />
+                                <InputError message={meditationForm.errors.library_meditation_url} className="mt-1" />
+                            </div>
+                            <div className="flex justify-end">
+                                <PrimaryButton type="submit" disabled={meditationForm.processing}>
+                                    Salvar
+                                </PrimaryButton>
+                            </div>
+                        </form>
+
+                        <form onSubmit={submitLesson} className="space-y-4">
+                            <div>
+                                <InputLabel htmlFor="library_lesson_url" value="URL da lição" />
+                                <TextInput
+                                    id="library_lesson_url"
+                                    type="url"
+                                    className="mt-1 block w-full"
+                                    value={lessonForm.data.library_lesson_url}
+                                    onChange={(e) => lessonForm.setData('library_lesson_url', e.target.value)}
+                                    placeholder="https://…"
+                                />
+                                <InputError message={lessonForm.errors.library_lesson_url} className="mt-1" />
+                            </div>
+                            <div className="flex justify-end">
+                                <PrimaryButton type="submit" disabled={lessonForm.processing}>
+                                    Salvar
+                                </PrimaryButton>
+                            </div>
+                        </form>
+                    </div>
                 </section>
             </div>
         </AdminLayout>

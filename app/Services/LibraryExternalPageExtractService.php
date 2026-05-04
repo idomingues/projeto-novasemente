@@ -109,6 +109,7 @@ class LibraryExternalPageExtractService
         $out = strip_tags($html, $allowed);
         $out = preg_replace('/\s+on\w+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/iu', '', $out) ?? $out;
         $out = preg_replace('/\s+style\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/iu', '', $out) ?? $out;
+        $out = preg_replace('/_?navigate_(before|next)_?/iu', '', $out) ?? $out;
 
         return preg_replace_callback('/<a\s+([^>]*)>/iu', function (array $m): string {
             if (preg_match('/href\s*=\s*("|\')(https?:\/\/[^"\']+)\1/iu', $m[1], $mm)) {

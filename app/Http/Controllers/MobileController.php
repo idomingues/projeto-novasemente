@@ -715,6 +715,7 @@ class MobileController extends Controller
     public function biblioteca(Request $request): Response
     {
         $churchId = $this->currentChurch()?->id;
+        $church = $this->currentChurch();
         $baseUrl = $request->getSchemeAndHttpHost();
 
         if (! Schema::hasTable('library_books')) {
@@ -759,6 +760,8 @@ class MobileController extends Controller
                 ['value' => LibraryBook::CATEGORY_MEDITATION, 'label' => 'Meditação'],
                 ['value' => LibraryBook::CATEGORY_LESSON, 'label' => 'Lição'],
             ],
+            'meditationUrl' => $church?->library_meditation_url,
+            'lessonUrl' => $church?->library_lesson_url,
             'librarySetupMessage' => null,
         ]);
     }

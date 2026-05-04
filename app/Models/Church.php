@@ -28,6 +28,8 @@ class Church extends Model
         'donation_url',
         'youtube_playlist_url',
         'youtube_live_url',
+        'library_meditation_url',
+        'library_lesson_url',
         'solicitations_handler_volunteer_id',
     ];
 

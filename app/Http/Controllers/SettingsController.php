@@ -25,6 +25,10 @@ class SettingsController extends Controller
             'updateSolicitationsHandlerUrl' => route('settings.solicitations-handler.update'),
             'youtubeLiveUrl' => $church->youtube_live_url,
             'updateYoutubeLiveUrl' => route('settings.youtube-live.update'),
+            'libraryMeditationUrl' => $church->library_meditation_url,
+            'libraryLessonUrl' => $church->library_lesson_url,
+            'updateLibraryMeditationUrl' => route('settings.library-meditation.update'),
+            'updateLibraryLessonUrl' => route('settings.library-lesson.update'),
         ]);
     }
 
@@ -78,5 +82,41 @@ class SettingsController extends Controller
         ]);
 
         return redirect()->route('settings.index')->with('success', 'Link do culto ao vivo atualizado.');
+    }
+
+    public function updateLibraryMeditationUrl(Request $request): RedirectResponse
+    {
+        $churchId = Church::resolveWorkingId($request);
+        abort_unless($churchId, 404, 'Nenhuma igreja ativa.');
+
+        $church = Church::query()->findOrFail($churchId);
+
+        $validated = $request->validate([
+            'library_meditation_url' => ['nullable', 'string', 'max:2048', 'active_url'],
+        ]);
+        $raw = trim((string) ($validated['library_meditation_url'] ?? ''));
+        $church->update([
+            'library_meditation_url' => $raw !== '' ? $raw : null,
+        ]);
+
+        return redirect()->route('settings.index')->with('success', 'Link da meditação atualizado.');
+    }
+
+    public function updateLibraryLessonUrl(Request $request): RedirectResponse
+    {
+        $churchId = Church::resolveWorkingId($request);
+        abort_unless($churchId, 404, 'Nenhuma igreja ativa.');
+
+        $church = Church::query()->findOrFail($churchId);
+
+        $validated = $request->validate([
+            'library_lesson_url' => ['nullable', 'string', 'max:2048', 'active_url'],
+        ]);
+        $raw = trim((string) ($validated['library_lesson_url'] ?? ''));
+        $church->update([
+            'library_lesson_url' => $raw !== '' ? $raw : null,
+        ]);
+
+        return redirect()->route('settings.index')->with('success', 'Link da lição atualizado.');
     }
 }

@@ -8,7 +8,7 @@ import {
     XMarkIcon,
 } from '@heroicons/react/24/outline';
 import Modal from '@/Components/Modal';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 function imageSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
@@ -36,6 +36,8 @@ interface BookItem {
 interface Props {
     books: BookItem[];
     categories: CategoryTab[];
+    meditationUrl?: string | null;
+    lessonUrl?: string | null;
     librarySetupMessage?: string | null;
 }
 
@@ -59,11 +61,27 @@ function GratisBadge({ className = '' }: { className?: string }) {
     );
 }
 
-export default function MobileLibrary({ books, categories, librarySetupMessage = null }: Props) {
+export default function MobileLibrary({
+    books,
+    categories,
+    meditationUrl: meditationUrlProp = null,
+    lessonUrl: lessonUrlProp = null,
+    librarySetupMessage = null,
+}: Props) {
     const appUrl = (usePage().props as PageProps).appUrl ?? '';
     const [tab, setTab] = useState<string>(categories[0]?.value ?? 'books');
     const [search, setSearch] = useState('');
     const [selectedDetails, setSelectedDetails] = useState<BookItem | null>(null);
+    const [externalReaderOpen, setExternalReaderOpen] = useState(false);
+    const [externalReaderStatus, setExternalReaderStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
+    const [externalReaderHtml, setExternalReaderHtml] = useState<string | null>(null);
+    const [externalReaderError, setExternalReaderError] = useState<string | null>(null);
+    const [externalReaderSourceUrl, setExternalReaderSourceUrl] = useState<string | null>(null);
+
+    const meditationUrl = String(meditationUrlProp ?? '').trim();
+    const lessonUrl = String(lessonUrlProp ?? '').trim();
+    const configuredUrl = tab === 'meditation' ? meditationUrl : tab === 'lesson' ? lessonUrl : '';
+    const isConfiguredExternalTab = tab === 'meditation' || tab === 'lesson';
 
     const filtered = useMemo(() => {
         const q = normalizeSearch(search);
@@ -79,13 +97,106 @@ export default function MobileLibrary({ books, categories, librarySetupMessage =
         if (librarySetupMessage) {
             return librarySetupMessage;
         }
+        if (isConfiguredExternalTab) {
+            if (!configuredUrl) return 'Link não configurado.';
+            return '';
+        }
         const inTab = books.filter((b) => b.category === tab);
         if (inTab.length === 0) return 'Nenhuma publicação nesta categoria.';
         if (filtered.length === 0) return 'Nenhum resultado para a pesquisa.';
         return '';
-    }, [books, tab, filtered.length, librarySetupMessage]);
+    }, [books, tab, filtered.length, librarySetupMessage, isConfiguredExternalTab, configuredUrl]);
 
     const closeDetails = () => setSelectedDetails(null);
+    const closeExternalReader = () => setExternalReaderOpen(false);
+
+    function emphasizeFirstDate(html: string): string {
+        // Procura uma data no início do texto e dá ênfase (ex.: "04 de maio").
+        return html.replace(
+            /(^|>)(\s*)(\d{1,2}\s+de\s+[A-Za-zÀ-ÿçÇ]{3,})(\s*)(<)/m,
+            (_m, p1, p2, date, p4, p5) => `${p1}${p2}<strong>${date}</strong>${p4}${p5}`,
+        );
+    }
+
+    function formatMeditationBlocks(html: string): string {
+        const days = [
+            'Segunda-feira',
+            'Terça-feira',
+            'Quarta-feira',
+            'Quinta-feira',
+            'Sexta-feira',
+            'Sábado',
+            'Domingo',
+        ];
+        const re = new RegExp(`(${days.join('|')})`, 'g');
+        const marked = html.replace(re, '[[DAY]]$1[[/DAY]]');
+        const parts = marked.split('[[DAY]]').map((s) => s.trim()).filter(Boolean);
+        if (parts.length <= 1) return html;
+        const out: string[] = [];
+        for (const p of parts) {
+            const idx = p.indexOf('[[/DAY]]');
+            if (idx === -1) {
+                out.push(`<section>${p}</section>`);
+                continue;
+            }
+            const title = p.slice(0, idx).trim();
+            const body = p.slice(idx + '[[/DAY]]'.length).trim();
+            out.push(`<section><h2>${title}</h2>${body}</section>`);
+        }
+        return out.join('');
+    }
+
+    function formatExternalHtmlForTab(tabValue: string, html: string): string {
+        const cleaned = html.replace(/_?navigate_(before|next)_?/gi, '');
+        if (tabValue === 'lesson') return emphasizeFirstDate(cleaned);
+        if (tabValue === 'meditation') return formatMeditationBlocks(cleaned);
+        return cleaned;
+    }
+
+    useEffect(() => {
+        if (!externalReaderOpen) return;
+        if (!isConfiguredExternalTab) return;
+        if (!configuredUrl) {
+            setExternalReaderStatus('error');
+            setExternalReaderHtml(null);
+            setExternalReaderError('Link não configurado.');
+            return;
+        }
+
+        let cancelled = false;
+        setExternalReaderStatus('loading');
+        setExternalReaderHtml(null);
+        setExternalReaderError(null);
+        setExternalReaderSourceUrl(null);
+
+        fetch(route('mobile.biblioteca.config-external-content', tab), {
+            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin',
+        })
+            .then(async (r) => {
+                const data: { ok?: boolean; html?: string; error?: string; source_url?: string } = await r.json();
+                if (cancelled) return;
+                if (data.ok && typeof data.html === 'string' && data.html.trim() !== '') {
+                    setExternalReaderHtml(formatExternalHtmlForTab(tab, data.html));
+                    setExternalReaderSourceUrl(typeof data.source_url === 'string' ? data.source_url : configuredUrl);
+                    setExternalReaderStatus('ok');
+                } else {
+                    setExternalReaderError(typeof data.error === 'string' ? data.error : 'Não foi possível obter o texto.');
+                    setExternalReaderSourceUrl(typeof data.source_url === 'string' ? data.source_url : configuredUrl);
+                    setExternalReaderStatus('error');
+                }
+            })
+            .catch(() => {
+                if (cancelled) return;
+                setExternalReaderError('Não foi possível obter o texto.');
+                setExternalReaderSourceUrl(configuredUrl);
+                setExternalReaderStatus('error');
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [externalReaderOpen, isConfiguredExternalTab, configuredUrl, tab]);
 
     return (
         <MobileLayout>
@@ -148,7 +259,41 @@ export default function MobileLibrary({ books, categories, librarySetupMessage =
                     })}
                 </div>
 
-                {filtered.length === 0 ? (
+                {isConfiguredExternalTab ? (
+                    <div className="rounded-2xl border border-zinc-200/90 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+                        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                            {configuredUrl
+                                ? 'Este separador abre um link único configurado nas Configurações. Pode abrir no site ou tentar ler aqui.'
+                                : 'Link não configurado. Peça ao responsável para definir o URL em Configurações.'}
+                        </p>
+
+                        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                            <a
+                                href={configuredUrl || '#'}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-disabled={!configuredUrl}
+                                className={`inline-flex flex-1 items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold shadow-sm transition ${
+                                    configuredUrl
+                                        ? 'bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100'
+                                        : 'cursor-not-allowed bg-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-500'
+                                }`}
+                            >
+                                <ArrowTopRightOnSquareIcon className="h-5 w-5 shrink-0" aria-hidden />
+                                {tab === 'meditation' ? 'Abrir meditação' : 'Abrir lição'}
+                            </a>
+                            <button
+                                type="button"
+                                onClick={() => setExternalReaderOpen(true)}
+                                disabled={!configuredUrl}
+                                className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-primary-600 px-4 py-3 text-sm font-semibold text-primary-700 transition hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-primary-500 dark:text-primary-300 dark:hover:bg-primary-950/30"
+                            >
+                                <BookOpenIcon className="h-5 w-5 shrink-0" aria-hidden />
+                                Ler aqui
+                            </button>
+                        </div>
+                    </div>
+                ) : filtered.length === 0 ? (
                     <div className="rounded-2xl border border-zinc-200/90 bg-white py-14 text-center dark:border-zinc-800 dark:bg-zinc-900">
                         <BookOpenIcon className="mx-auto h-9 w-9 text-zinc-400 dark:text-zinc-500" />
                         <p className="mt-3 text-sm font-medium text-zinc-600 dark:text-zinc-400">{emptyMessage}</p>
@@ -276,6 +421,58 @@ export default function MobileLibrary({ books, categories, librarySetupMessage =
                     </ul>
                 )}
             </div>
+
+            <Modal show={externalReaderOpen} onClose={closeExternalReader} maxWidth="lg">
+                <div className="p-5 sm:p-6 space-y-4">
+                    <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                            <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
+                                {tab === 'meditation' ? 'Meditação' : tab === 'lesson' ? 'Lição' : 'Leitura'}
+                            </h2>
+                            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                Texto obtido do link configurado (melhor esforço).
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={closeExternalReader}
+                            className="rounded-full bg-zinc-100 p-2 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                            aria-label="Fechar"
+                        >
+                            <XMarkIcon className="h-5 w-5" />
+                        </button>
+                    </div>
+
+                    {externalReaderStatus === 'loading' ? (
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400">A carregar…</p>
+                    ) : null}
+
+                    {externalReaderStatus === 'ok' && externalReaderHtml ? (
+                        <div
+                            className="space-y-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm leading-relaxed text-zinc-800 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 [&_a]:font-medium [&_a]:text-primary-600 [&_a]:underline dark:[&_a]:text-primary-400 [&_h2]:mt-4 [&_h2]:text-lg [&_h2]:font-bold [&_section]:rounded-xl [&_section]:border [&_section]:border-zinc-200 [&_section]:bg-white [&_section]:p-4 dark:[&_section]:border-zinc-800 dark:[&_section]:bg-zinc-900/40"
+                            dangerouslySetInnerHTML={{ __html: externalReaderHtml }}
+                        />
+                    ) : null}
+
+                    {externalReaderStatus === 'error' && externalReaderError ? (
+                        <p className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100">
+                            {externalReaderError}
+                        </p>
+                    ) : null}
+
+                    {externalReaderSourceUrl ? (
+                        <a
+                            href={externalReaderSourceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+                        >
+                            <ArrowTopRightOnSquareIcon className="h-5 w-5 shrink-0" aria-hidden />
+                            Abrir no site
+                        </a>
+                    ) : null}
+                </div>
+            </Modal>
 
             <Modal show={selectedDetails !== null} onClose={closeDetails} maxWidth="lg">
                 {selectedDetails && (

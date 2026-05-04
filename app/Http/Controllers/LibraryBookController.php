@@ -42,8 +42,7 @@ class LibraryBookController extends Controller
                 'categories' => [
                     ['value' => LibraryBook::CATEGORY_BOOKS, 'label' => 'Livros'],
                     ['value' => LibraryBook::CATEGORY_MAGAZINES, 'label' => 'Revistas'],
-                    ['value' => LibraryBook::CATEGORY_MEDITATION, 'label' => 'Meditação'],
-                    ['value' => LibraryBook::CATEGORY_LESSON, 'label' => 'Lição'],
+                    // Meditação e Lição agora usam links globais em Configurações.
                 ],
                 'librarySetupMessage' => 'A biblioteca ainda não está disponível neste ambiente. Peça ao responsável técnico para concluir a atualização da base de dados.',
             ]);
@@ -81,8 +80,7 @@ class LibraryBookController extends Controller
             'categories' => [
                 ['value' => LibraryBook::CATEGORY_BOOKS, 'label' => 'Livros'],
                 ['value' => LibraryBook::CATEGORY_MAGAZINES, 'label' => 'Revistas'],
-                ['value' => LibraryBook::CATEGORY_MEDITATION, 'label' => 'Meditação'],
-                ['value' => LibraryBook::CATEGORY_LESSON, 'label' => 'Lição'],
+                // Meditação e Lição agora usam links globais em Configurações.
             ],
             'librarySetupMessage' => null,
         ]);
