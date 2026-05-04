@@ -443,6 +443,9 @@ Route::middleware('auth')->group(function () {
     Route::delete('/notifications/{notification}', [AppNotificationController::class, 'destroy'])
         ->name('notifications.destroy')
         ->middleware('permission:notifications.manage');
+    /** Feed leve para o poller do sino (JSON) — evita visitas Inertia que podem “resetar” modais. */
+    Route::get('/notifications/feed', \App\Http\Controllers\NotificationFeedController::class)
+        ->name('notifications.feed');
     Route::get('/mobile/settings', [MobileController::class, 'settings'])->name('mobile.settings');
     Route::post('/notifications/inbox/read', [MobileController::class, 'markInboxNotificationRead'])
         ->name('notifications.inbox.read');

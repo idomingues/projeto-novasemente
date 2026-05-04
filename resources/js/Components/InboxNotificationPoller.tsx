@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { router, usePage } from '@inertiajs/react';
+import axios from 'axios';
 
 type InboxFeedItem = {
+    id?: string;
     title: string;
     body: string;
     created_at: string;
@@ -71,13 +73,23 @@ export default function InboxNotificationPoller() {
             if (document.visibilityState !== 'visible') {
                 return;
             }
-            // Evita "refresh" que feche modais: visita com preserveState.
-            router.visit(window.location.href, {
-                only: ['recentNotifications', 'unreadInboxNotificationsCount'],
-                replace: true,
-                preserveState: true,
-                preserveScroll: true,
-            });
+            void (async () => {
+                try {
+                    const { data } = await axios.get<{
+                        recentNotifications: InboxFeedItem[];
+                        unreadInboxNotificationsCount: number;
+                    }>(route('notifications.feed'));
+
+                    if (!data || typeof data.unreadInboxNotificationsCount !== 'number' || !Array.isArray(data.recentNotifications)) {
+                        return;
+                    }
+
+                    router.replaceProp('recentNotifications', data.recentNotifications);
+                    router.replaceProp('unreadInboxNotificationsCount', data.unreadInboxNotificationsCount);
+                } catch {
+                    // Silencioso: rede momentânea / sessão expirada não deve “derrubar” o painel.
+                }
+            })();
         }, 45_000);
         return () => window.clearInterval(id);
     }, [isLoggedIn]);
