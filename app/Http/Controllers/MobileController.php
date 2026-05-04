@@ -756,7 +756,7 @@ class MobileController extends Controller
         if ($churchId === null || (int) $libraryBook->church_id !== (int) $churchId) {
             abort(404);
         }
-        if ($libraryBook->published_at === null || $libraryBook->published_at->isFuture()) {
+        if ($libraryBook->published_at !== null && $libraryBook->published_at->isFuture()) {
             abort(404);
         }
 

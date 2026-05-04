@@ -41,12 +41,14 @@ class LibraryBook extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    /** Visível na app móvel: publicado e data não futura. */
+    /** Visível na app móvel: sem data (sempre) ou com data não futura. */
     public function scopeVisibleInApp($query)
     {
         return $query
-            ->whereNotNull('published_at')
-            ->where('published_at', '<=', now());
+            ->where(function ($q) {
+                $q->whereNull('published_at')
+                    ->orWhere('published_at', '<=', now());
+            });
     }
 
     public function resolvedCoverUrl(string $baseUrl): ?string
