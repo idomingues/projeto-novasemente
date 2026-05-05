@@ -92,6 +92,7 @@ export default function MobileBible({ books, initial }: Props) {
     const searchSeq = useRef(0);
     const searchDebounce = useRef<number | null>(null);
     const readerCardRef = useRef<HTMLDivElement | null>(null);
+    const [focusedVerse, setFocusedVerse] = useState<number | null>(null);
 
     const booksByTestament = useMemo(() => {
         const old = books.filter((b) => b.testament === 'old');
@@ -125,7 +126,17 @@ export default function MobileBible({ books, initial }: Props) {
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
-    const loadChapter = async (bookKey: string, chap: number, opts?: { scrollToReader?: boolean }) => {
+    const scrollToVerse = (verse: number) => {
+        const el = document.getElementById(`bible-verse-${verse}`);
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    const loadChapter = async (
+        bookKey: string,
+        chap: number,
+        opts?: { scrollToReader?: boolean; focusVerse?: number | null },
+    ) => {
         const seq = ++requestSeq.current;
         setStatus('loading');
         try {
@@ -148,10 +159,17 @@ export default function MobileBible({ books, initial }: Props) {
                 writeLastReading({ bookKey: book.key, chapter: Number(data.chapter ?? chap) });
             }
 
-            if (opts?.scrollToReader) {
-                // Espera o React pintar o novo capítulo antes de subir.
-                requestAnimationFrame(() => scrollToReader());
-            }
+            // Espera o React pintar o novo capítulo antes de subir/posicionar.
+            requestAnimationFrame(() => {
+                if (opts?.scrollToReader) {
+                    scrollToReader();
+                }
+                const v = typeof opts?.focusVerse === 'number' ? opts.focusVerse : null;
+                if (v && Number.isFinite(v) && v > 0) {
+                    // 2 RAFs para garantir que o DOM do map(verses) já foi montado.
+                    requestAnimationFrame(() => scrollToVerse(v));
+                }
+            });
         } catch {
             if (seq !== requestSeq.current) return;
             setStatus('error');
@@ -159,6 +177,7 @@ export default function MobileBible({ books, initial }: Props) {
     };
 
     const onSelectBook = (b: BibleBook) => {
+        setFocusedVerse(null);
         setSelectedBook(b);
         setChapter(1);
         setVerses([]);
@@ -168,6 +187,7 @@ export default function MobileBible({ books, initial }: Props) {
     const onSelectChapter = (chap: number) => {
         if (!selectedBook) return;
         if (chap === chapter) return;
+        setFocusedVerse(null);
         loadChapter(selectedBook.key, chap, { scrollToReader: true });
     };
 
@@ -215,7 +235,8 @@ export default function MobileBible({ books, initial }: Props) {
         setSearch('');
         setSearchResults([]);
         setTestament(b.testament);
-        loadChapter(b.key, r.chapter, { scrollToReader: true });
+        setFocusedVerse(r.verse);
+        loadChapter(b.key, r.chapter, { scrollToReader: true, focusVerse: r.verse });
     };
 
     const emptyBible = books.length === 0;
@@ -413,7 +434,15 @@ export default function MobileBible({ books, initial }: Props) {
                             ) : (
                                 <div className="mt-4 space-y-4">
                                     {verses.map((v) => (
-                                        <div key={v.verse} className="flex gap-3">
+                                        <div
+                                            key={v.verse}
+                                            id={`bible-verse-${v.verse}`}
+                                            className={`flex gap-3 scroll-mt-24 rounded-xl px-2 py-1.5 -mx-2 transition-colors ${
+                                                focusedVerse === v.verse
+                                                    ? 'bg-brand-50 dark:bg-brand-950/30'
+                                                    : ''
+                                            }`}
+                                        >
                                             <div className="w-8 shrink-0">
                                                 <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-zinc-100 text-[12px] font-bold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
                                                     {v.verse}
