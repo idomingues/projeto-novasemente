@@ -86,6 +86,23 @@ export default function MobileAnoBiblico(props: Props) {
         return { remaining, daysRemaining, perDay, target };
     }, [newEndDate, props, reprogramMode]);
 
+    const activeChallengeName =
+        props.needsLogin === false && props.installed === true && (props as any).challenge?.active?.name
+            ? String((props as any).challenge.active.name).trim()
+            : '';
+    const subtitle =
+        props.needsLogin === false && props.installed === true && activeChallengeName
+            ? (props as any).startDate && (props as any).endDate
+                ? `Plano: ${new Date((props as any).startDate).toLocaleDateString('pt-BR')} → ${new Date((props as any).endDate).toLocaleDateString('pt-BR')}`
+                : 'Desafio bíblico'
+            : 'Plano de leitura em 365 dias';
+    const planChipLabel =
+        props.needsLogin === false && props.installed === true && activeChallengeName
+            ? activeChallengeName
+            : (props as any).challenge?.mustChoose === true
+              ? 'Escolha um plano'
+              : '365 dias';
+
     return (
         <MobileLayout>
             <Head title="Ano Bíblico" />
@@ -94,7 +111,7 @@ export default function MobileAnoBiblico(props: Props) {
                 <div className="flex items-start justify-between gap-4">
                     <div>
                         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Ano Bíblico</h1>
-                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Plano de leitura em 365 dias</p>
+                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{subtitle}</p>
                         {props.needsLogin === false && props.installed === true ? (
                             <div className="mt-3 grid grid-cols-2 gap-2 max-w-md">
                                 <Link
@@ -131,9 +148,12 @@ export default function MobileAnoBiblico(props: Props) {
                             </div>
                         ) : null}
                     </div>
-                    <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
-                        <AcademicCapIcon className="h-4 w-4" aria-hidden />
-                        365 dias
+                    <span
+                        className="inline-flex max-w-[55%] items-center gap-2 rounded-full bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1 text-sm font-semibold text-emerald-700 dark:text-emerald-300"
+                        title={planChipLabel}
+                    >
+                        <AcademicCapIcon className="h-4 w-4 flex-shrink-0" aria-hidden />
+                        <span className="truncate">{planChipLabel}</span>
                     </span>
                 </div>
 
