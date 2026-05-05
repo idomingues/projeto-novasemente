@@ -129,12 +129,12 @@ export default function MobileAnoBiblico(props: Props) {
                         </span>
                     </div>
                     {props.needsLogin === false && props.installed === true ? (
-                        <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 sm:max-w-md">
+                        <div className="grid w-full min-w-0 grid-cols-2 gap-1.5 sm:max-w-md sm:gap-2">
                             <Link
                                 href={route('mobile.ano-biblico.history')}
-                                className="inline-flex w-full min-h-[2.75rem] items-center justify-center rounded-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2.5 text-xs font-bold text-zinc-900 dark:text-white hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors"
+                                className="inline-flex min-h-[2.5rem] w-full min-w-0 items-center justify-center rounded-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2 py-2.5 text-[11px] font-bold leading-tight text-zinc-900 dark:text-white hover:bg-zinc-50 dark:hover:bg-zinc-800/40 sm:min-h-[2.75rem] sm:px-4 sm:text-xs"
                             >
-                                Ver histórico
+                                <span className="truncate text-center">Ver histórico</span>
                             </Link>
                             <button
                                 type="button"
@@ -156,10 +156,12 @@ export default function MobileAnoBiblico(props: Props) {
                                         setChallengeLoading(false);
                                     }
                                 }}
-                                className="inline-flex w-full min-h-[2.75rem] items-center justify-center gap-2 rounded-full bg-zinc-100 dark:bg-zinc-800/50 px-4 py-2.5 text-xs font-bold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-200/70 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                className="inline-flex min-h-[2.5rem] w-full min-w-0 items-center justify-center gap-1 rounded-full bg-zinc-100 px-2 py-2.5 text-[11px] font-bold leading-tight text-zinc-700 hover:bg-zinc-200/70 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-800/50 dark:text-zinc-200 dark:hover:bg-zinc-800 sm:min-h-[2.75rem] sm:gap-2 sm:px-4 sm:text-xs"
                             >
-                                <Squares2X2Icon className="h-4 w-4 shrink-0" aria-hidden />
-                                {(props as any).challenge?.active ? 'Trocar desafio' : 'Escolher desafio'}
+                                <Squares2X2Icon className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
+                                <span className="min-w-0 truncate text-center">
+                                    {(props as any).challenge?.active ? 'Trocar desafio' : 'Escolher desafio'}
+                                </span>
                             </button>
                         </div>
                     ) : null}
