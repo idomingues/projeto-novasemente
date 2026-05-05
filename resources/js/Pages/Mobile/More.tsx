@@ -53,6 +53,7 @@ const items: MoreMenuItem[] = [
         route: 'mobile.fotos',
         icon: PhotoIcon,
     },
+    { name: 'Bíblia', description: 'Leitura e busca de versículos', route: 'mobile.bible', icon: BookOpenIcon },
     { name: 'Biblioteca', description: 'Livros e PDFs para leitura e download', route: 'mobile.biblioteca', icon: BookOpenIcon },
     { name: 'Localização', description: 'Endereço e mapa da igreja', route: 'mobile.location', icon: MapPinIcon },
     { name: 'Nossos pastores', description: 'Conheça a equipe pastoral', route: 'mobile.pastors', icon: UserCircleIcon },

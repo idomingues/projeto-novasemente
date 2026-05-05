@@ -17,6 +17,7 @@ use App\Http\Controllers\MinistryController;
 use App\Http\Controllers\MinistryLeadVolunteerController;
 use App\Http\Controllers\MobileChurchSolicitationController;
 use App\Http\Controllers\MobileController;
+use App\Http\Controllers\MobileBibleController;
 use App\Http\Controllers\MobileLeaderSolicitationController;
 use App\Http\Controllers\MobilePastoralAppointmentController;
 use App\Http\Controllers\MobileSupportController;
@@ -115,6 +116,13 @@ Route::get('/mobile/events', [MobileController::class, 'events'])->name('mobile.
 Route::get('/mobile/schedule', [MobileController::class, 'schedule'])->name('mobile.schedule');
 Route::get('/mobile/schedule/full', [MobileController::class, 'scheduleFull'])->name('mobile.schedule.full');
 Route::get('/mobile/more', [MobileController::class, 'more'])->name('mobile.more');
+Route::get('/mobile/biblia', [MobileBibleController::class, 'index'])->name('mobile.bible');
+Route::get('/mobile/biblia/chapter', [MobileBibleController::class, 'chapter'])
+    ->middleware('throttle:80,1')
+    ->name('mobile.bible.chapter');
+Route::get('/mobile/biblia/search', [MobileBibleController::class, 'search'])
+    ->middleware('throttle:80,1')
+    ->name('mobile.bible.search');
 Route::get('/mobile/sobre-o-app', [MobileController::class, 'sobreOApp'])->name('mobile.sobre-o-app');
 Route::get('/mobile/crencas', [MobileController::class, 'beliefs'])->name('mobile.beliefs');
 Route::get('/mobile/quem-somos', [MobileController::class, 'quemSomos'])->name('mobile.quem-somos');

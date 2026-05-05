@@ -87,6 +87,7 @@ const navItems = [
             'mobile.news.show',
             'mobile.biblioteca',
             'mobile.biblioteca.show',
+            'mobile.bible',
         ] as const,
         icon: Squares2X2Icon,
         iconActive: Squares2X2IconSolid,
