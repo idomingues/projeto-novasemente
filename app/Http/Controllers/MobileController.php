@@ -797,7 +797,7 @@ class MobileController extends Controller
 
     /**
      * Descarrega o PDF com Content-Disposition: attachment (evita abrir o visualizador como em «Ler»).
-     * Ficheiros em disco: apenas sob o prefixo library/pdfs/. URLs absolutas: redirecionamento (comportamento do browser).
+     * Ficheiros em disco: caminhos .pdf sob library/ (exceto library/covers/). URLs absolutas: redirecionamento (comportamento do browser).
      *
      * @return RedirectResponse|\Symfony\Component\HttpFoundation\StreamedResponse
      */
@@ -821,7 +821,7 @@ class MobileController extends Controller
         }
 
         $path = trim(str_replace('\\', '/', (string) $rawPath), '/');
-        if ($path === '' || str_contains($path, '..') || ! str_starts_with($path, 'library/pdfs/')) {
+        if (! $this->isMobileLibraryPdfStoragePath($path)) {
             abort(404);
         }
 
@@ -835,6 +835,25 @@ class MobileController extends Controller
         return Storage::disk('public')->download($path, $downloadName, [
             'Content-Type' => 'application/pdf',
         ]);
+    }
+
+    /**
+     * Caminhos de PDF em disco público (alinhado ao prefixo permitido em PublicDiskFileController).
+     * Aceita library/pdfs/… e outros .pdf sob library/ (exceto capas).
+     */
+    private function isMobileLibraryPdfStoragePath(string $path): bool
+    {
+        if ($path === '' || str_contains($path, '..')) {
+            return false;
+        }
+        if (! str_starts_with($path, 'library/')) {
+            return false;
+        }
+        if (str_starts_with($path, 'library/covers/')) {
+            return false;
+        }
+
+        return str_ends_with(strtolower($path), '.pdf');
     }
 
     public function location(): Response
