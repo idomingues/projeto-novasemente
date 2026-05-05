@@ -50,6 +50,7 @@ final class PageViewRouteLabels
         'mobile.fotos.show' => 'Fotos — álbum',
         'mobile.biblioteca' => 'Biblioteca',
         'mobile.biblioteca.show' => 'Biblioteca — livro',
+        'mobile.biblioteca.pdf-download' => 'Biblioteca — download PDF',
         'mobile.biblioteca.external-content' => 'Biblioteca — conteúdo externo',
         'mobile.biblioteca.config-external-content' => 'Biblioteca — configurar externo',
         'mobile.location' => 'Localização',

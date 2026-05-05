@@ -8,7 +8,7 @@ import {
     XMarkIcon,
 } from '@heroicons/react/24/outline';
 import Modal from '@/Components/Modal';
-import { pdfUrlWithViewerParams, stripUrlFragment, usePdfViewerFragment } from '@/lib/pdfViewerUrl';
+import { pdfUrlWithViewerParams, usePdfViewerFragment } from '@/lib/pdfViewerUrl';
 import { useEffect, useMemo, useState } from 'react';
 
 function imageSrc(url: string | null, appUrl: string): string {
@@ -424,9 +424,8 @@ export default function MobileLibrary({
                                                 )}
                                                 {pdf !== '' ? (
                                                     <a
-                                                        href={stripUrlFragment(pdf)}
-                                                        download
-                                                        className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-zinc-900 bg-white px-3 py-2 text-xs font-medium text-zinc-900 transition hover:bg-zinc-50 dark:border-zinc-300 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                                                        href={route('mobile.biblioteca.pdf-download', b.id)}
+                                                        className="inline-flex min-h-9 touch-manipulation items-center gap-1.5 rounded-lg border border-zinc-900 bg-white px-3 py-2 text-xs font-medium text-zinc-900 transition hover:bg-zinc-50 dark:border-zinc-300 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
                                                     >
                                                         <ArrowDownTrayIcon
                                                             className="h-4 w-4 shrink-0 text-zinc-900 dark:text-zinc-100"

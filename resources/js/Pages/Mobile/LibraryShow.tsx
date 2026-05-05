@@ -8,7 +8,7 @@ import {
     XMarkIcon,
 } from '@heroicons/react/24/outline';
 import Modal from '@/Components/Modal';
-import { pdfUrlWithViewerParams, stripUrlFragment, usePdfViewerFragment } from '@/lib/pdfViewerUrl';
+import { pdfUrlWithViewerParams, usePdfViewerFragment } from '@/lib/pdfViewerUrl';
 import { useEffect, useMemo, useState } from 'react';
 
 function imageSrc(url: string | null, appUrl: string): string {
@@ -180,8 +180,7 @@ export default function MobileLibraryShow({ book }: Props) {
                                         Abrir PDF
                                     </a>
                                     <a
-                                        href={stripUrlFragment(pdf)}
-                                        download
+                                        href={route('mobile.biblioteca.pdf-download', book.id)}
                                         className="inline-flex flex-1 touch-manipulation items-center justify-center gap-2 rounded-2xl border-2 border-primary-600 px-4 py-3.5 text-sm font-semibold text-primary-700 transition hover:bg-primary-50 dark:border-primary-500 dark:text-primary-300 dark:hover:bg-primary-950/30"
                                     >
                                         <ArrowDownTrayIcon className="h-5 w-5 shrink-0" />

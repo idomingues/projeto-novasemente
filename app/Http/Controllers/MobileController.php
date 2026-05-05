@@ -32,6 +32,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -790,6 +792,48 @@ class MobileController extends Controller
                 'external_url' => $this->normalizedLibraryExternalUrl($libraryBook->external_url),
                 'published_at' => $libraryBook->published_at?->toIso8601String(),
             ],
+        ]);
+    }
+
+    /**
+     * Descarrega o PDF com Content-Disposition: attachment (evita abrir o visualizador como em «Ler»).
+     * Ficheiros em disco: apenas sob o prefixo library/pdfs/. URLs absolutas: redirecionamento (comportamento do browser).
+     *
+     * @return RedirectResponse|\Symfony\Component\HttpFoundation\StreamedResponse
+     */
+    public function bibliotecaPdfDownload(LibraryBook $libraryBook)
+    {
+        $churchId = $this->currentChurch()?->id;
+        if ($churchId === null || (int) $libraryBook->church_id !== (int) $churchId) {
+            abort(404);
+        }
+        if ($libraryBook->published_at !== null && $libraryBook->published_at->isFuture()) {
+            abort(404);
+        }
+
+        $rawPath = $libraryBook->pdf_path;
+        if ($rawPath === null || trim((string) $rawPath) === '') {
+            abort(404);
+        }
+
+        if (str_starts_with($rawPath, 'http://') || str_starts_with($rawPath, 'https://')) {
+            return redirect()->away($rawPath);
+        }
+
+        $path = trim(str_replace('\\', '/', (string) $rawPath), '/');
+        if ($path === '' || str_contains($path, '..') || ! str_starts_with($path, 'library/pdfs/')) {
+            abort(404);
+        }
+
+        if (! Storage::disk('public')->exists($path)) {
+            abort(404);
+        }
+
+        $slug = Str::slug($libraryBook->title);
+        $downloadName = ($slug !== '' ? $slug : 'publicacao-'.$libraryBook->id).'.pdf';
+
+        return Storage::disk('public')->download($path, $downloadName, [
+            'Content-Type' => 'application/pdf',
         ]);
     }
 

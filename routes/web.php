@@ -133,6 +133,9 @@ Route::get('/mobile/biblioteca/conteudo-config/{type}', [LibraryConfigExternalCo
 Route::get('/mobile/biblioteca/{libraryBook}/conteudo-externo', [LibraryBookExternalContentController::class, 'show'])
     ->middleware('throttle:40,1')
     ->name('mobile.biblioteca.external-content');
+Route::get('/mobile/biblioteca/{libraryBook}/download', [MobileController::class, 'bibliotecaPdfDownload'])
+    ->middleware('throttle:60,1')
+    ->name('mobile.biblioteca.pdf-download');
 Route::get('/mobile/biblioteca/{libraryBook}', [MobileController::class, 'bibliotecaShow'])->name('mobile.biblioteca.show');
 Route::get('/mobile/localizacao', [MobileController::class, 'location'])->name('mobile.location');
 Route::get('/mobile/pastores', [MobileController::class, 'pastors'])->name('mobile.pastors');
