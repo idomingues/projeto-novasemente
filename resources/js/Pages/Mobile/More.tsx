@@ -54,7 +54,12 @@ const items: MoreMenuItem[] = [
         icon: PhotoIcon,
     },
     { name: 'Bíblia', description: 'Leitura e busca de versículos', route: 'mobile.bible', icon: BookOpenIcon },
-    { name: 'Planos de leitura', description: 'Desafios bíblicos e acompanhamento do progresso', route: 'mobile.ano-biblico', icon: AcademicCapIcon },
+    {
+        name: 'Ano Bíblico',
+        description: 'Escolha um plano de leitura e acompanhe o seu progresso.',
+        route: 'mobile.ano-biblico',
+        icon: AcademicCapIcon,
+    },
     { name: 'Biblioteca', description: 'Livros e PDFs para leitura e download', route: 'mobile.biblioteca', icon: BookOpenIcon },
     { name: 'Localização', description: 'Endereço e mapa da igreja', route: 'mobile.location', icon: MapPinIcon },
     { name: 'Nossos pastores', description: 'Conheça a equipe pastoral', route: 'mobile.pastors', icon: UserCircleIcon },

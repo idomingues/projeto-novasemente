@@ -87,6 +87,8 @@ export default function MobileAnoBiblico(props: Props) {
         return { remaining, daysRemaining, perDay, target };
     }, [newEndDate, props, reprogramMode]);
 
+    const anoBiblicoTagline = 'Escolha um plano de leitura e acompanhe o seu progresso.';
+
     const activeChallengeName =
         props.needsLogin === false && props.installed === true && (props as any).challenge?.active?.name
             ? String((props as any).challenge.active.name).trim()
@@ -97,8 +99,8 @@ export default function MobileAnoBiblico(props: Props) {
             : props.needsLogin === false && props.installed === true && activeChallengeName
               ? (props as any).startDate && (props as any).endDate
                   ? `Plano: ${new Date((props as any).startDate).toLocaleDateString('pt-BR')} → ${new Date((props as any).endDate).toLocaleDateString('pt-BR')}`
-                  : 'Desafio bíblico'
-              : 'Plano de leitura em 365 dias';
+                  : anoBiblicoTagline
+              : anoBiblicoTagline;
     const planChipLabel =
         props.needsLogin === false && props.installed === false
             ? 'Sem módulo na BD'
