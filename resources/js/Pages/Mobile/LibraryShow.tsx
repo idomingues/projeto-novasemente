@@ -8,6 +8,7 @@ import {
     XMarkIcon,
 } from '@heroicons/react/24/outline';
 import Modal from '@/Components/Modal';
+import { pdfUrlWithViewerParams, stripUrlFragment, usePdfViewerFragment } from '@/lib/pdfViewerUrl';
 import { useEffect, useMemo, useState } from 'react';
 
 function imageSrc(url: string | null, appUrl: string): string {
@@ -60,6 +61,11 @@ export default function MobileLibraryShow({ book }: Props) {
     const [extractStatus, setExtractStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
     const [extractHtml, setExtractHtml] = useState<string | null>(null);
     const [extractError, setExtractError] = useState<string | null>(null);
+    const pdfViewerFragment = usePdfViewerFragment();
+    const pdfOpenUrl = useMemo(
+        () => (pdf ? pdfUrlWithViewerParams(pdf, pdfViewerFragment) : ''),
+        [pdf, pdfViewerFragment],
+    );
 
     const description = (book.description ?? '').trim();
     const shortDescription = useMemo(() => {
@@ -158,14 +164,14 @@ export default function MobileLibraryShow({ book }: Props) {
                                 <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950">
                                     <iframe
                                         title={book.title}
-                                        src={`${pdf}#view=FitH`}
+                                        src={pdfOpenUrl}
                                         className="min-h-[min(90dvh,900px)] w-full border-0 sm:min-h-[min(88dvh,960px)]"
                                     />
                                 </div>
 
                                 <div className="flex flex-col gap-2 sm:flex-row">
                                     <a
-                                        href={pdf}
+                                        href={pdfOpenUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="inline-flex flex-1 touch-manipulation items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
@@ -174,7 +180,7 @@ export default function MobileLibraryShow({ book }: Props) {
                                         Abrir PDF
                                     </a>
                                     <a
-                                        href={pdf}
+                                        href={stripUrlFragment(pdf)}
                                         download
                                         className="inline-flex flex-1 touch-manipulation items-center justify-center gap-2 rounded-2xl border-2 border-primary-600 px-4 py-3.5 text-sm font-semibold text-primary-700 transition hover:bg-primary-50 dark:border-primary-500 dark:text-primary-300 dark:hover:bg-primary-950/30"
                                     >

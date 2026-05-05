@@ -8,6 +8,7 @@ import {
     XMarkIcon,
 } from '@heroicons/react/24/outline';
 import Modal from '@/Components/Modal';
+import { pdfUrlWithViewerParams, stripUrlFragment, usePdfViewerFragment } from '@/lib/pdfViewerUrl';
 import { useEffect, useMemo, useState } from 'react';
 
 function imageSrc(url: string | null, appUrl: string): string {
@@ -87,6 +88,7 @@ export default function MobileLibrary({
 
     const meditationUrl = String(meditationUrlProp ?? '').trim();
     const lessonUrl = String(lessonUrlProp ?? '').trim();
+    const pdfViewerFragment = usePdfViewerFragment();
     const configuredUrl = tab === 'meditation' ? meditationUrl : tab === 'lesson' ? lessonUrl : '';
     const isConfiguredExternalTab = tab === 'meditation' || tab === 'lesson';
 
@@ -323,7 +325,8 @@ export default function MobileLibrary({
                             const pdf = b.pdf_url ? imageSrc(b.pdf_url, appUrl) : '';
                             const extRaw = (b.external_url ?? '').trim();
                             const ext = extRaw ? extRaw : '';
-                            const directOpen = pdf !== '' ? pdf : ext;
+                            const pdfOpenUrl = pdf !== '' ? pdfUrlWithViewerParams(pdf, pdfViewerFragment) : '';
+                            const directOpen = pdf !== '' ? pdfOpenUrl : ext;
                             const showUrl = route('mobile.biblioteca.show', b.id);
                             const description = (b.description ?? '').trim();
                             const maxDesc = 180;
@@ -381,7 +384,7 @@ export default function MobileLibrary({
                                             <div className="mt-4 flex flex-wrap items-stretch gap-2">
                                                 {pdf !== '' ? (
                                                     <a
-                                                        href={pdf}
+                                                        href={pdfOpenUrl}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         className="inline-flex min-h-9 touch-manipulation items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
@@ -421,7 +424,7 @@ export default function MobileLibrary({
                                                 )}
                                                 {pdf !== '' ? (
                                                     <a
-                                                        href={pdf}
+                                                        href={stripUrlFragment(pdf)}
                                                         download
                                                         className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-zinc-900 bg-white px-3 py-2 text-xs font-medium text-zinc-900 transition hover:bg-zinc-50 dark:border-zinc-300 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
                                                     >
