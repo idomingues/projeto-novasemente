@@ -36,8 +36,42 @@ type SearchResult = {
     text: string;
 };
 
+type LastReading = {
+    bookKey: string;
+    chapter: number;
+    updatedAt: number;
+};
+
+const LAST_READING_STORAGE_KEY = 'ns:bible:lastReading:v1';
+
 function normalizeForSearch(s: string): string {
     return s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
+}
+
+function readLastReading(): LastReading | null {
+    if (typeof window === 'undefined') return null;
+    try {
+        const raw = window.localStorage.getItem(LAST_READING_STORAGE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as Partial<LastReading>;
+        const bookKey = typeof parsed.bookKey === 'string' ? parsed.bookKey.trim() : '';
+        const chapter = typeof parsed.chapter === 'number' ? parsed.chapter : Number(parsed.chapter);
+        const updatedAt = typeof parsed.updatedAt === 'number' ? parsed.updatedAt : Number(parsed.updatedAt);
+        if (!bookKey || !Number.isFinite(chapter) || chapter < 1) return null;
+        return { bookKey, chapter, updatedAt: Number.isFinite(updatedAt) ? updatedAt : Date.now() };
+    } catch {
+        return null;
+    }
+}
+
+function writeLastReading(value: { bookKey: string; chapter: number }) {
+    if (typeof window === 'undefined') return;
+    try {
+        const payload: LastReading = { bookKey: value.bookKey, chapter: value.chapter, updatedAt: Date.now() };
+        window.localStorage.setItem(LAST_READING_STORAGE_KEY, JSON.stringify(payload));
+    } catch {
+        // ignore (private mode / quota)
+    }
 }
 
 export default function MobileBible({ books, initial }: Props) {
@@ -57,6 +91,7 @@ export default function MobileBible({ books, initial }: Props) {
     const requestSeq = useRef(0);
     const searchSeq = useRef(0);
     const searchDebounce = useRef<number | null>(null);
+    const readerCardRef = useRef<HTMLDivElement | null>(null);
 
     const booksByTestament = useMemo(() => {
         const old = books.filter((b) => b.testament === 'old');
@@ -84,7 +119,13 @@ export default function MobileBible({ books, initial }: Props) {
         window.history.replaceState(null, '', url);
     }, [selectedBook, chapter]);
 
-    const loadChapter = async (bookKey: string, chap: number) => {
+    const scrollToReader = () => {
+        const el = readerCardRef.current;
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    const loadChapter = async (bookKey: string, chap: number, opts?: { scrollToReader?: boolean }) => {
         const seq = ++requestSeq.current;
         setStatus('loading');
         try {
@@ -102,6 +143,15 @@ export default function MobileBible({ books, initial }: Props) {
             setChapter(Number(data.chapter ?? chap));
             setVerses(data.verses);
             setStatus('idle');
+
+            if (book) {
+                writeLastReading({ bookKey: book.key, chapter: Number(data.chapter ?? chap) });
+            }
+
+            if (opts?.scrollToReader) {
+                // Espera o React pintar o novo capítulo antes de subir.
+                requestAnimationFrame(() => scrollToReader());
+            }
         } catch {
             if (seq !== requestSeq.current) return;
             setStatus('error');
@@ -112,13 +162,13 @@ export default function MobileBible({ books, initial }: Props) {
         setSelectedBook(b);
         setChapter(1);
         setVerses([]);
-        loadChapter(b.key, 1);
+        loadChapter(b.key, 1, { scrollToReader: true });
     };
 
     const onSelectChapter = (chap: number) => {
         if (!selectedBook) return;
         if (chap === chapter) return;
-        loadChapter(selectedBook.key, chap);
+        loadChapter(selectedBook.key, chap, { scrollToReader: true });
     };
 
     useEffect(() => {
@@ -165,10 +215,24 @@ export default function MobileBible({ books, initial }: Props) {
         setSearch('');
         setSearchResults([]);
         setTestament(b.testament);
-        loadChapter(b.key, r.chapter);
+        loadChapter(b.key, r.chapter, { scrollToReader: true });
     };
 
     const emptyBible = books.length === 0;
+
+    // Ao abrir a Bíblia, retomar o último livro/capítulo (se a URL não trouxe um initial).
+    useEffect(() => {
+        if (emptyBible) return;
+        if (initial?.book) return; // URL já definiu o lugar
+        if (selectedBook) return; // já estamos com algo selecionado
+        const last = readLastReading();
+        if (!last) return;
+        const b = books.find((x) => x.key === last.bookKey) ?? null;
+        if (!b) return;
+        setTestament(b.testament);
+        loadChapter(b.key, Math.min(Math.max(1, last.chapter), b.chapters_count), { scrollToReader: true });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [emptyBible, books.length]);
 
     return (
         <MobileLayout>
@@ -329,7 +393,10 @@ export default function MobileBible({ books, initial }: Props) {
                             </div>
                         </div>
 
-                        <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4">
+                        <div
+                            ref={readerCardRef}
+                            className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4"
+                        >
                             <div className="flex items-center justify-between gap-2">
                                 <p className="font-semibold text-zinc-900 dark:text-white">
                                     {selectedBook.name} {chapter}
