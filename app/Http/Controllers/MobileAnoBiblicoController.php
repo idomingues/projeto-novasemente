@@ -251,6 +251,8 @@ class MobileAnoBiblicoController extends Controller
                         'type' => (string) $activeChallenge->tipo,
                         'scope' => (string) $activeChallenge->escopo,
                     ],
+                    'mustChoose' => false,
+                    'available' => [],
                 ],
                 'progress' => [
                     'done' => $doneItems,
@@ -340,6 +342,21 @@ class MobileAnoBiblicoController extends Controller
             'challenge' => [
                 'enabled' => $this->hasChallengesTables(),
                 'active' => null,
+                'mustChoose' => $this->hasChallengesTables()
+                    ? !DB::table('ano_biblico_desafio_usuario')->where('usuario_id', $userId)->exists()
+                    : false,
+                'available' => $this->hasChallengesTables()
+                    ? DB::table('ano_biblico_desafios')->where('ativo', 1)->orderBy('id')->get(['id', 'chave', 'nome', 'descricao', 'tipo', 'duracao_dias', 'escopo'])
+                        ->map(fn ($r) => [
+                            'id' => (int) $r->id,
+                            'key' => (string) $r->chave,
+                            'name' => (string) $r->nome,
+                            'description' => (string) $r->descricao,
+                            'type' => (string) $r->tipo,
+                            'durationDays' => $r->duracao_dias !== null ? (int) $r->duracao_dias : null,
+                            'scope' => (string) $r->escopo,
+                        ])->values()->all()
+                    : [],
             ],
             'progress' => [
                 'done' => $done,
@@ -506,6 +523,88 @@ class MobileAnoBiblicoController extends Controller
 
         abort_unless(Schema::hasTable('plano_leitura') && Schema::hasTable('leitura_usuario'), 409);
         abort_unless($day >= 1 && $day <= 365, 404);
+
+        // Se houver desafio ativo, o "dia" e os checkboxes vêm do desafio.
+        $activeChallenge = $this->activeChallengeForUser((int) $userId);
+        if ($activeChallenge) {
+            $items = DB::table('ano_biblico_desafio_itens as i')
+                ->join('bible_books as b', 'b.id', '=', 'i.livro_id')
+                ->where('i.usuario_desafio_id', (int) $activeChallenge->id)
+                ->where('i.dia', $day)
+                ->orderBy('b.position')
+                ->orderBy('i.capitulo')
+                ->get([
+                    'b.key as book_key',
+                    'b.name as book_name',
+                    'b.id as book_id',
+                    'i.capitulo as chapter',
+                    'i.concluido as done',
+                    'i.data_conclusao as completed_at',
+                ])
+                ->map(fn ($r) => [
+                    'bookKey' => (string) $r->book_key,
+                    'bookName' => (string) $r->book_name,
+                    'bookId' => (int) $r->book_id,
+                    'chapter' => (int) $r->chapter,
+                    'done' => (int) $r->done === 1,
+                    'completedAt' => $r->completed_at ? (string) $r->completed_at : null,
+                ])
+                ->values()
+                ->all();
+
+            $chapters = array_map(fn ($c) => [
+                'bookKey' => (string) $c['bookKey'],
+                'bookName' => (string) $c['bookName'],
+                'bookId' => (int) $c['bookId'],
+                'chapter' => (int) $c['chapter'],
+            ], $items);
+
+            $checkedDetails = collect($items)
+                ->filter(fn ($c) => (bool) $c['done'])
+                ->map(fn ($c) => [
+                    'bookId' => (int) $c['bookId'],
+                    'chapter' => (int) $c['chapter'],
+                    'completedAt' => $c['completedAt'],
+                ])
+                ->values()
+                ->all();
+
+            $checked = collect($checkedDetails)
+                ->map(fn ($r) => ((int) $r['bookId']).':'.((int) $r['chapter']))
+                ->values()
+                ->all();
+
+            $checkedCount = count($checked);
+            $total = count($chapters);
+            $percent = $total > 0 ? (int) floor(($checkedCount / $total) * 100) : 0;
+
+            $completedAt = DB::table('ano_biblico_desafio_itens')
+                ->where('usuario_desafio_id', (int) $activeChallenge->id)
+                ->where('dia', $day)
+                ->where('concluido', 1)
+                ->max('data_conclusao');
+
+            $nextDay = (int) (DB::table('ano_biblico_desafio_itens')
+                ->where('usuario_desafio_id', (int) $activeChallenge->id)
+                ->where('dia', '>', $day)
+                ->where('concluido', 0)
+                ->min('dia') ?? 0);
+
+            return Inertia::render('Mobile/AnoBiblicoDay', [
+                'day' => $day,
+                'display' => $this->formatDisplay($chapters),
+                'chapters' => $chapters,
+                'checked' => $checked,
+                'checkedDetails' => $checkedDetails,
+                'completedAt' => $completedAt ? (string) $completedAt : null,
+                'nextDay' => $nextDay > 0 ? $nextDay : null,
+                'progress' => [
+                    'done' => $checkedCount,
+                    'total' => $total,
+                    'percent' => $percent,
+                ],
+            ]);
+        }
 
         $this->ensureUserPlan((int) $userId);
         abort_unless($this->hasUserPlanTables(), 409);
@@ -848,6 +947,30 @@ class MobileAnoBiblicoController extends Controller
         $chapter = (int) $valid['chapter'];
         $checked = (bool) $valid['checked'];
 
+        // Desafio ativo: marca/desmarca no desafio (não mexe no histórico global).
+        $activeChallenge = $this->activeChallengeForUser((int) $userId);
+        if ($activeChallenge) {
+            $existsInChallenge = DB::table('ano_biblico_desafio_itens')
+                ->where('usuario_desafio_id', (int) $activeChallenge->id)
+                ->where('dia', $day)
+                ->where('livro_id', $bookId)
+                ->where('capitulo', $chapter)
+                ->exists();
+            abort_unless($existsInChallenge, 404);
+
+            DB::table('ano_biblico_desafio_itens')
+                ->where('usuario_desafio_id', (int) $activeChallenge->id)
+                ->where('dia', $day)
+                ->where('livro_id', $bookId)
+                ->where('capitulo', $chapter)
+                ->update([
+                    'concluido' => $checked ? 1 : 0,
+                    'data_conclusao' => $checked ? now() : null,
+                ]);
+
+            return back();
+        }
+
         // Garante que este capítulo pertence ao dia no plano.
         $existsInPlan = DB::table('plano_leitura')
             ->where('dia', $day)
@@ -899,6 +1022,18 @@ class MobileAnoBiblicoController extends Controller
         ]);
 
         $day = (int) $valid['day'];
+
+        // Desafio ativo: concluir o dia no desafio.
+        $activeChallenge = $this->activeChallengeForUser((int) $userId);
+        if ($activeChallenge) {
+            DB::table('ano_biblico_desafio_itens')
+                ->where('usuario_desafio_id', (int) $activeChallenge->id)
+                ->where('dia', $day)
+                ->where('concluido', 0)
+                ->update(['concluido' => 1, 'data_conclusao' => now()]);
+
+            return redirect()->route('mobile.ano-biblico')->with('success', 'Dia marcado como concluído!');
+        }
 
         DB::transaction(function () use ($userId, $day) {
             // Se existir a tabela por capítulo, marcar tudo do dia como lido (atalho).

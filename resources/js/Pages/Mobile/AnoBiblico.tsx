@@ -1,7 +1,7 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { AcademicCapIcon, BookOpenIcon, CheckCircleIcon, CalendarDaysIcon, ArrowPathIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 type Props =
     | {
@@ -26,7 +26,12 @@ type Props =
           readDate?: string | null;
           isToday?: boolean;
           remainingChapters?: number;
-          challenge?: { enabled: boolean; active: { id: number; challengeId: number; name: string; description: string; type: string; scope: string } | null };
+          challenge?: {
+              enabled: boolean;
+              active: { id: number; challengeId: number; name: string; description: string; type: string; scope: string } | null;
+              mustChoose?: boolean;
+              available?: { id: number; key: string; name: string; description: string; type: string; durationDays: number | null; scope: string }[];
+          };
           progress: { done: number; remaining: number; percent: number; lastCompletedAt: string | null };
       };
 
@@ -45,6 +50,14 @@ export default function MobileAnoBiblico(props: Props) {
     >([]);
     const [customEnd, setCustomEnd] = useState<string>('');
     const [resetReadings, setResetReadings] = useState(false);
+    useEffect(() => {
+        const mustChoose = (props as any).challenge?.mustChoose === true;
+        const available = ((props as any).challenge?.available as any[]) ?? [];
+        if (!mustChoose) return;
+        setChallenges(Array.isArray(available) ? available : []);
+        setChallengeOpen(true);
+    }, [props]);
+
     const [reprogramMode, setReprogramMode] = useState<'keep_end' | 'new_end' | 'start_today_keep_end'>('keep_end');
     const [newEndDate, setNewEndDate] = useState<string>('');
 
@@ -95,6 +108,11 @@ export default function MobileAnoBiblico(props: Props) {
                                     disabled={challengeLoading || (props as any).challenge?.enabled !== true}
                                     onClick={async () => {
                                         if ((props as any).challenge?.enabled !== true) return;
+                                        const mustChoose = (props as any).challenge?.mustChoose === true;
+                                        if (mustChoose) {
+                                            setChallengeOpen(true);
+                                            return;
+                                        }
                                         setChallengeLoading(true);
                                         try {
                                             const res = await fetch(route('mobile.ano-biblico.challenges'));
@@ -108,7 +126,7 @@ export default function MobileAnoBiblico(props: Props) {
                                     className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-zinc-100 dark:bg-zinc-800/50 px-4 py-2.5 text-xs font-bold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-200/70 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                 >
                                     <Squares2X2Icon className="h-4 w-4" aria-hidden />
-                                    Trocar desafio
+                                    {(props as any).challenge?.active ? 'Trocar desafio' : 'Escolher desafio'}
                                 </button>
                             </div>
                         ) : null}
@@ -409,25 +427,38 @@ export default function MobileAnoBiblico(props: Props) {
 
             {challengeOpen ? (
                 <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-                    <div className="absolute inset-0 bg-black/40" onClick={() => setChallengeOpen(false)} />
+                    <div
+                        className="absolute inset-0 bg-black/40"
+                        onClick={() => {
+                            if ((props as any).challenge?.mustChoose === true) return;
+                            setChallengeOpen(false);
+                        }}
+                    />
                     <div className="relative w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
                         <div className="flex items-start justify-between gap-3">
                             <div>
                                 <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Desafios</div>
                                 <div className="mt-1 text-lg font-bold text-zinc-900 dark:text-white">Escolha um desafio</div>
+                                {(props as any).challenge?.mustChoose ? (
+                                    <div className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                                        Para começar, escolha um plano de leitura. Você pode trocar depois (o anterior fica arquivado com o histórico).
+                                    </div>
+                                ) : null}
                                 {(props as any).challenge?.active ? (
                                     <div className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                                         Atual: <span className="font-bold">{(props as any).challenge.active.name}</span>
                                     </div>
                                 ) : null}
                             </div>
-                            <button
-                                type="button"
-                                onClick={() => setChallengeOpen(false)}
-                                className="rounded-full px-3 py-1 text-sm font-bold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
-                            >
-                                Fechar
-                            </button>
+                            {(props as any).challenge?.mustChoose !== true ? (
+                                <button
+                                    type="button"
+                                    onClick={() => setChallengeOpen(false)}
+                                    className="rounded-full px-3 py-1 text-sm font-bold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+                                >
+                                    Fechar
+                                </button>
+                            ) : null}
                         </div>
 
                         <div className="mt-4 space-y-3">
