@@ -155,12 +155,20 @@ export default function MobileLibraryShow({ book }: Props) {
 
                         {pdf ? (
                             <div className="mt-6 space-y-3">
+                                <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950">
+                                    <iframe
+                                        title={book.title}
+                                        src={`${pdf}#view=FitH`}
+                                        className="min-h-[min(90dvh,900px)] w-full border-0 sm:min-h-[min(88dvh,960px)]"
+                                    />
+                                </div>
+
                                 <div className="flex flex-col gap-2 sm:flex-row">
                                     <a
                                         href={pdf}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+                                        className="inline-flex flex-1 touch-manipulation items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
                                     >
                                         <DocumentTextIcon className="h-5 w-5 shrink-0" />
                                         Abrir PDF
@@ -168,7 +176,7 @@ export default function MobileLibraryShow({ book }: Props) {
                                     <a
                                         href={pdf}
                                         download
-                                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-primary-600 px-4 py-3.5 text-sm font-semibold text-primary-700 transition hover:bg-primary-50 dark:border-primary-500 dark:text-primary-300 dark:hover:bg-primary-950/30"
+                                        className="inline-flex flex-1 touch-manipulation items-center justify-center gap-2 rounded-2xl border-2 border-primary-600 px-4 py-3.5 text-sm font-semibold text-primary-700 transition hover:bg-primary-50 dark:border-primary-500 dark:text-primary-300 dark:hover:bg-primary-950/30"
                                     >
                                         <ArrowDownTrayIcon className="h-5 w-5 shrink-0" />
                                         Download
@@ -194,14 +202,6 @@ export default function MobileLibraryShow({ book }: Props) {
                                         </p>
                                     </div>
                                 ) : null}
-
-                                <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950">
-                                    <iframe
-                                        title={book.title}
-                                        src={`${pdf}#view=FitH`}
-                                        className="aspect-[4/5] min-h-[480px] w-full sm:aspect-[3/4] sm:min-h-[560px]"
-                                    />
-                                </div>
                             </div>
                         ) : ext ? (
                             <div className="mt-6 space-y-3">

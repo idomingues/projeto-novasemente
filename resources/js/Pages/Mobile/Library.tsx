@@ -293,7 +293,7 @@ export default function MobileLibrary({
                                     </div>
                                 ) : null}
                                 <div
-                                    className="max-h-[70vh] overflow-y-auto rounded-xl border border-zinc-100 bg-zinc-50 p-4 text-sm leading-relaxed text-zinc-800 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 [&_a]:font-medium [&_a]:text-primary-600 [&_a]:underline dark:[&_a]:text-primary-400 [&_blockquote]:my-3 [&_blockquote]:rounded-xl [&_blockquote]:border [&_blockquote]:border-dashed [&_blockquote]:border-zinc-300 [&_blockquote]:bg-white/90 [&_blockquote]:px-3.5 [&_blockquote]:py-3 dark:[&_blockquote]:border-zinc-600 dark:[&_blockquote]:bg-zinc-900/50 [&_blockquote+p]:mt-4 [&_blockquote+h2]:mt-6 [&_blockquote+blockquote]:mt-3 [&_h2]:text-xl [&_h2]:font-bold [&_h2+p]:mt-3 [&_h2+p>em]:text-[15px] [&_h2+p>em]:leading-relaxed [&_h2+p>em]:text-zinc-700 dark:[&_h2+p>em]:text-zinc-300 [&_h3]:mt-2 [&_h3]:text-base [&_h3]:font-semibold [&_ol]:list-decimal [&_ol]:pl-5 [&_p:first-of-type]:text-[15px] [&_p+h2]:mt-6 [&_p+p]:mt-5 [&_p+p]:border-t [&_p+p]:border-zinc-200 [&_p+p]:pt-5 dark:[&_p+p]:border-zinc-700 [&_ul]:list-disc [&_ul]:pl-5"
+                                    className="rounded-xl border border-zinc-100 bg-zinc-50 p-4 text-sm leading-relaxed text-zinc-800 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 [&_a]:font-medium [&_a]:text-primary-600 [&_a]:underline dark:[&_a]:text-primary-400 [&_blockquote]:my-3 [&_blockquote]:rounded-xl [&_blockquote]:border [&_blockquote]:border-dashed [&_blockquote]:border-zinc-300 [&_blockquote]:bg-white/90 [&_blockquote]:px-3.5 [&_blockquote]:py-3 dark:[&_blockquote]:border-zinc-600 dark:[&_blockquote]:bg-zinc-900/50 [&_blockquote+p]:mt-4 [&_blockquote+h2]:mt-6 [&_blockquote+blockquote]:mt-3 [&_h2]:text-xl [&_h2]:font-bold [&_h2+p]:mt-3 [&_h2+p>em]:text-[15px] [&_h2+p>em]:leading-relaxed [&_h2+p>em]:text-zinc-700 dark:[&_h2+p>em]:text-zinc-300 [&_h3]:mt-2 [&_h3]:text-base [&_h3]:font-semibold [&_ol]:list-decimal [&_ol]:pl-5 [&_p:first-of-type]:text-[15px] [&_p+h2]:mt-6 [&_p+p]:mt-5 [&_p+p]:border-t [&_p+p]:border-zinc-200 [&_p+p]:pt-5 dark:[&_p+p]:border-zinc-700 [&_ul]:list-disc [&_ul]:pl-5"
                                     dangerouslySetInnerHTML={{ __html: readerDisplayHtml }}
                                 />
                                 {readerSourceUrl ? (
@@ -379,13 +379,46 @@ export default function MobileLibrary({
                                                 </p>
                                             ) : null}
                                             <div className="mt-4 flex flex-wrap items-stretch gap-2">
-                                                <Link
-                                                    href={showUrl}
-                                                    className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
-                                                >
-                                                    <BookOpenIcon className="h-4 w-4 shrink-0 text-white dark:text-zinc-900" aria-hidden />
-                                                    Ler no app
-                                                </Link>
+                                                {pdf !== '' ? (
+                                                    <a
+                                                        href={pdf}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex min-h-9 touch-manipulation items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+                                                        aria-label={`Ler PDF: ${b.title}`}
+                                                    >
+                                                        <BookOpenIcon
+                                                            className="h-4 w-4 shrink-0 text-white dark:text-zinc-900"
+                                                            aria-hidden
+                                                        />
+                                                        Ler
+                                                    </a>
+                                                ) : ext !== '' ? (
+                                                    <a
+                                                        href={ext}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex min-h-9 touch-manipulation items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+                                                        aria-label={`Ler: ${b.title}`}
+                                                    >
+                                                        <BookOpenIcon
+                                                            className="h-4 w-4 shrink-0 text-white dark:text-zinc-900"
+                                                            aria-hidden
+                                                        />
+                                                        Ler
+                                                    </a>
+                                                ) : (
+                                                    <Link
+                                                        href={showUrl}
+                                                        className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+                                                    >
+                                                        <BookOpenIcon
+                                                            className="h-4 w-4 shrink-0 text-white dark:text-zinc-900"
+                                                            aria-hidden
+                                                        />
+                                                        Ler
+                                                    </Link>
+                                                )}
                                                 {pdf !== '' ? (
                                                     <a
                                                         href={pdf}
