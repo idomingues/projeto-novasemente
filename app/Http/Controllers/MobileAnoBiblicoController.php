@@ -161,6 +161,19 @@ class MobileAnoBiblicoController extends Controller
 
         $installed = Schema::hasTable('plano_leitura') && Schema::hasTable('leitura_usuario');
         if (! $installed) {
+            $scriptBlock = <<<'TXT'
+# Na raiz do projeto (mesmo .env do Laravel: DB_HOST, DB_DATABASE, …)
+
+# 1) Tabelas do módulo — recomendado (aplica database/sql/ano_biblico.sql via PDO)
+php scripts/instalar_ano_biblico.php
+
+# 2) Plano base de 365 dias em plano_leitura (requer bible_books + bible_verses já importados)
+php scripts/gerar_plano_ano_biblico.php
+
+# Alternativa ao passo 1 — importar o SQL no cliente MySQL (ajuste host, utilizador e base)
+# mysql -h 127.0.0.1 -P 3306 -u USUARIO -p NOME_DA_BASE < database/sql/ano_biblico.sql
+TXT;
+
             return Inertia::render('Mobile/AnoBiblico', [
                 'installed' => false,
                 'needsLogin' => false,
@@ -168,6 +181,7 @@ class MobileAnoBiblicoController extends Controller
                     'sqlPath' => 'database/sql/ano_biblico.sql',
                     'installCmd' => 'php scripts/instalar_ano_biblico.php',
                     'generateCmd' => 'php scripts/gerar_plano_ano_biblico.php',
+                    'scriptBlock' => $scriptBlock,
                 ],
             ]);
         }

@@ -11,7 +11,7 @@ type Props =
     | {
           needsLogin: false;
           installed: false;
-          setup: { sqlPath: string; installCmd: string; generateCmd: string };
+          setup: { sqlPath: string; installCmd: string; generateCmd: string; scriptBlock: string };
       }
     | {
           needsLogin: false;
@@ -50,6 +50,7 @@ export default function MobileAnoBiblico(props: Props) {
     >([]);
     const [customEnd, setCustomEnd] = useState<string>('');
     const [resetReadings, setResetReadings] = useState(false);
+    const [setupCopied, setSetupCopied] = useState(false);
     useEffect(() => {
         const mustChoose = (props as any).challenge?.mustChoose === true;
         const available = ((props as any).challenge?.available as any[]) ?? [];
@@ -91,17 +92,25 @@ export default function MobileAnoBiblico(props: Props) {
             ? String((props as any).challenge.active.name).trim()
             : '';
     const subtitle =
-        props.needsLogin === false && props.installed === true && activeChallengeName
-            ? (props as any).startDate && (props as any).endDate
-                ? `Plano: ${new Date((props as any).startDate).toLocaleDateString('pt-BR')} → ${new Date((props as any).endDate).toLocaleDateString('pt-BR')}`
-                : 'Desafio bíblico'
-            : 'Plano de leitura em 365 dias';
+        props.needsLogin === false && props.installed === false
+            ? 'As tabelas deste módulo ainda não existem na base de dados — siga os passos abaixo no servidor.'
+            : props.needsLogin === false && props.installed === true && activeChallengeName
+              ? (props as any).startDate && (props as any).endDate
+                  ? `Plano: ${new Date((props as any).startDate).toLocaleDateString('pt-BR')} → ${new Date((props as any).endDate).toLocaleDateString('pt-BR')}`
+                  : 'Desafio bíblico'
+              : 'Plano de leitura em 365 dias';
     const planChipLabel =
-        props.needsLogin === false && props.installed === true && activeChallengeName
-            ? activeChallengeName
-            : (props as any).challenge?.mustChoose === true
-              ? 'Escolha um plano'
-              : '365 dias';
+        props.needsLogin === false && props.installed === false
+            ? 'Sem módulo na BD'
+            : props.needsLogin === false && props.installed === true && activeChallengeName
+              ? activeChallengeName
+              : (props as any).challenge?.mustChoose === true
+                ? 'Escolha um plano'
+                : '365 dias';
+    const planChipClass =
+        props.needsLogin === false && props.installed === false
+            ? 'inline-flex max-w-[55%] items-center gap-2 rounded-full bg-amber-100/90 dark:bg-amber-950/50 px-3 py-1 text-sm font-semibold text-amber-900 dark:text-amber-200'
+            : 'inline-flex max-w-[55%] items-center gap-2 rounded-full bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1 text-sm font-semibold text-emerald-700 dark:text-emerald-300';
 
     return (
         <MobileLayout>
@@ -148,10 +157,7 @@ export default function MobileAnoBiblico(props: Props) {
                             </div>
                         ) : null}
                     </div>
-                    <span
-                        className="inline-flex max-w-[55%] items-center gap-2 rounded-full bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1 text-sm font-semibold text-emerald-700 dark:text-emerald-300"
-                        title={planChipLabel}
-                    >
+                    <span className={planChipClass} title={planChipLabel}>
                         <AcademicCapIcon className="h-4 w-4 flex-shrink-0" aria-hidden />
                         <span className="truncate">{planChipLabel}</span>
                     </span>
@@ -197,6 +203,31 @@ export default function MobileAnoBiblico(props: Props) {
                             <p className="text-xs text-amber-900/85 dark:text-amber-100/75">
                                 Alternativa ao passo 1: importar manualmente o ficheiro SQL no MySQL (phpMyAdmin ou cliente).
                             </p>
+                            <div className="mt-4">
+                                <div className="flex items-center justify-between gap-2">
+                                    <span className="text-xs font-semibold text-amber-950 dark:text-amber-100">
+                                        Scripts (copiar para o servidor)
+                                    </span>
+                                    <button
+                                        type="button"
+                                        className="shrink-0 rounded-full border border-amber-300/80 bg-white/90 px-3 py-1 text-xs font-bold text-amber-950 hover:bg-amber-100/80 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100 dark:hover:bg-amber-900/60"
+                                        onClick={async () => {
+                                            try {
+                                                await navigator.clipboard.writeText(props.setup.scriptBlock);
+                                                setSetupCopied(true);
+                                                window.setTimeout(() => setSetupCopied(false), 2000);
+                                            } catch {
+                                                setSetupCopied(false);
+                                            }
+                                        }}
+                                    >
+                                        {setupCopied ? 'Copiado' : 'Copiar tudo'}
+                                    </button>
+                                </div>
+                                <pre className="mt-2 max-h-64 overflow-auto rounded-xl border border-amber-200/70 bg-white/80 p-3 text-[11px] leading-relaxed text-amber-950 dark:border-amber-900/50 dark:bg-zinc-950/50 dark:text-amber-50 whitespace-pre-wrap break-all font-mono">
+                                    {props.setup.scriptBlock}
+                                </pre>
+                            </div>
                         </div>
                     </div>
                 ) : (
