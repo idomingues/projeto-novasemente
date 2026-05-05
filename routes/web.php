@@ -18,6 +18,7 @@ use App\Http\Controllers\MinistryLeadVolunteerController;
 use App\Http\Controllers\MobileChurchSolicitationController;
 use App\Http\Controllers\MobileController;
 use App\Http\Controllers\MobileBibleController;
+use App\Http\Controllers\MobileAnoBiblicoController;
 use App\Http\Controllers\MobileLeaderSolicitationController;
 use App\Http\Controllers\MobilePastoralAppointmentController;
 use App\Http\Controllers\MobileSupportController;
@@ -123,6 +124,40 @@ Route::get('/mobile/biblia/chapter', [MobileBibleController::class, 'chapter'])
 Route::get('/mobile/biblia/search', [MobileBibleController::class, 'search'])
     ->middleware('throttle:80,1')
     ->name('mobile.bible.search');
+Route::get('/mobile/ano-biblico', [MobileAnoBiblicoController::class, 'index'])
+    ->middleware('auth')
+    ->name('mobile.ano-biblico');
+Route::get('/mobile/ano-biblico/dia/{day}', [MobileAnoBiblicoController::class, 'day'])
+    ->middleware('auth')
+    ->whereNumber('day')
+    ->name('mobile.ano-biblico.day');
+Route::post('/mobile/ano-biblico/toggle-capitulo', [MobileAnoBiblicoController::class, 'toggleChapter'])
+    ->middleware('auth')
+    ->name('mobile.ano-biblico.toggle-chapter');
+Route::post('/mobile/ano-biblico/concluir', [MobileAnoBiblicoController::class, 'complete'])
+    ->middleware('auth')
+    ->name('mobile.ano-biblico.complete');
+Route::get('/mobile/ano-biblico/historico', [MobileAnoBiblicoController::class, 'history'])
+    ->middleware('auth')
+    ->name('mobile.ano-biblico.history');
+Route::post('/mobile/ano-biblico/iniciar', [MobileAnoBiblicoController::class, 'start'])
+    ->middleware('auth')
+    ->name('mobile.ano-biblico.start');
+Route::post('/mobile/ano-biblico/reiniciar-hoje', [MobileAnoBiblicoController::class, 'resetToday'])
+    ->middleware('auth')
+    ->name('mobile.ano-biblico.reset-today');
+Route::post('/mobile/ano-biblico/reprogramar', [MobileAnoBiblicoController::class, 'reprogram'])
+    ->middleware('auth')
+    ->name('mobile.ano-biblico.reprogram');
+Route::post('/mobile/ano-biblico/recomecar-zero', [MobileAnoBiblicoController::class, 'restartZero'])
+    ->middleware('auth')
+    ->name('mobile.ano-biblico.restart-zero');
+Route::get('/mobile/ano-biblico/desafios', [MobileAnoBiblicoController::class, 'challenges'])
+    ->middleware('auth')
+    ->name('mobile.ano-biblico.challenges');
+Route::post('/mobile/ano-biblico/desafios/iniciar', [MobileAnoBiblicoController::class, 'startChallenge'])
+    ->middleware('auth')
+    ->name('mobile.ano-biblico.challenges.start');
 Route::get('/mobile/sobre-o-app', [MobileController::class, 'sobreOApp'])->name('mobile.sobre-o-app');
 Route::get('/mobile/crencas', [MobileController::class, 'beliefs'])->name('mobile.beliefs');
 Route::get('/mobile/quem-somos', [MobileController::class, 'quemSomos'])->name('mobile.quem-somos');

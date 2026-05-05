@@ -88,6 +88,8 @@ const navItems = [
             'mobile.biblioteca',
             'mobile.biblioteca.show',
             'mobile.bible',
+            'mobile.ano-biblico',
+            'mobile.ano-biblico.complete',
         ] as const,
         icon: Squares2X2Icon,
         iconActive: Squares2X2IconSolid,

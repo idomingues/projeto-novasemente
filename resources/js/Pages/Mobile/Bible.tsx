@@ -1,5 +1,5 @@
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { MagnifyingGlassIcon, XMarkIcon, BookOpenIcon } from '@heroicons/react/24/outline';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -241,6 +241,18 @@ export default function MobileBible({ books, initial }: Props) {
 
     const emptyBible = books.length === 0;
 
+    const anoBiblicoCtx = useMemo(() => {
+        if (typeof window === 'undefined') return { enabled: false as const, day: null as number | null };
+        const p = new URLSearchParams(window.location.search);
+        const from = (p.get('from') ?? '').trim();
+        const dayRaw = (p.get('day') ?? '').trim();
+        const day = Number(dayRaw);
+        if (from !== 'ano-biblico' || !Number.isFinite(day) || day < 1 || day > 365) {
+            return { enabled: false as const, day: null as number | null };
+        }
+        return { enabled: true as const, day };
+    }, []);
+
     // Ao abrir a Bíblia, retomar o último livro/capítulo (se a URL não trouxe um initial).
     useEffect(() => {
         if (emptyBible) return;
@@ -455,6 +467,37 @@ export default function MobileBible({ books, initial }: Props) {
                                     ))}
                                 </div>
                             )}
+
+                            {anoBiblicoCtx.enabled && selectedBook && verses.length > 0 && status !== 'loading' ? (
+                                <div className="mt-6 border-t border-zinc-200 dark:border-zinc-800 pt-4 space-y-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const day = anoBiblicoCtx.day;
+                                            if (!day) return;
+                                            router.post(
+                                                route('mobile.ano-biblico.toggle-chapter'),
+                                                { day, bookId: selectedBook.id, chapter, checked: true },
+                                                {
+                                                    preserveScroll: true,
+                                                    onSuccess: () => {
+                                                        router.visit(route('mobile.ano-biblico.day', { day }));
+                                                    },
+                                                },
+                                            );
+                                        }}
+                                        className="inline-flex w-full items-center justify-center rounded-full bg-emerald-700 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-800 active:bg-emerald-900 transition-colors"
+                                    >
+                                        Marcar capítulo como lido
+                                    </button>
+                                    <Link
+                                        href={route('mobile.ano-biblico.day', { day: anoBiblicoCtx.day ?? 1 })}
+                                        className="inline-flex w-full items-center justify-center rounded-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-4 py-3 text-sm font-bold text-zinc-800 dark:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors"
+                                    >
+                                        Voltar ao dia
+                                    </Link>
+                                </div>
+                            ) : null}
                         </div>
                     </div>
                 ) : (
