@@ -117,50 +117,52 @@ export default function MobileAnoBiblico(props: Props) {
             <Head title="Ano Bíblico" />
 
             <div className="space-y-6">
-                <div className="flex items-start justify-between gap-4">
-                    <div>
-                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Ano Bíblico</h1>
-                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{subtitle}</p>
-                        {props.needsLogin === false && props.installed === true ? (
-                            <div className="mt-3 grid grid-cols-2 gap-2 max-w-md">
-                                <Link
-                                    href={route('mobile.ano-biblico.history')}
-                                    className="inline-flex w-full items-center justify-center rounded-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2.5 text-xs font-bold text-zinc-900 dark:text-white hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors"
-                                >
-                                    Ver histórico
-                                </Link>
-                                <button
-                                    type="button"
-                                    disabled={challengeLoading || (props as any).challenge?.enabled !== true}
-                                    onClick={async () => {
-                                        if ((props as any).challenge?.enabled !== true) return;
-                                        const mustChoose = (props as any).challenge?.mustChoose === true;
-                                        if (mustChoose) {
-                                            setChallengeOpen(true);
-                                            return;
-                                        }
-                                        setChallengeLoading(true);
-                                        try {
-                                            const res = await fetch(route('mobile.ano-biblico.challenges'));
-                                            const json = await res.json();
-                                            setChallenges(Array.isArray(json?.items) ? json.items : []);
-                                            setChallengeOpen(true);
-                                        } finally {
-                                            setChallengeLoading(false);
-                                        }
-                                    }}
-                                    className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-zinc-100 dark:bg-zinc-800/50 px-4 py-2.5 text-xs font-bold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-200/70 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                >
-                                    <Squares2X2Icon className="h-4 w-4" aria-hidden />
-                                    {(props as any).challenge?.active ? 'Trocar desafio' : 'Escolher desafio'}
-                                </button>
-                            </div>
-                        ) : null}
+                <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1 pr-1">
+                            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Ano Bíblico</h1>
+                            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{subtitle}</p>
+                        </div>
+                        <span className={`${planChipClass} shrink-0`} title={planChipLabel}>
+                            <AcademicCapIcon className="h-4 w-4 flex-shrink-0" aria-hidden />
+                            <span className="truncate">{planChipLabel}</span>
+                        </span>
                     </div>
-                    <span className={planChipClass} title={planChipLabel}>
-                        <AcademicCapIcon className="h-4 w-4 flex-shrink-0" aria-hidden />
-                        <span className="truncate">{planChipLabel}</span>
-                    </span>
+                    {props.needsLogin === false && props.installed === true ? (
+                        <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 sm:max-w-md">
+                            <Link
+                                href={route('mobile.ano-biblico.history')}
+                                className="inline-flex w-full min-h-[2.75rem] items-center justify-center rounded-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2.5 text-xs font-bold text-zinc-900 dark:text-white hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors"
+                            >
+                                Ver histórico
+                            </Link>
+                            <button
+                                type="button"
+                                disabled={challengeLoading || (props as any).challenge?.enabled !== true}
+                                onClick={async () => {
+                                    if ((props as any).challenge?.enabled !== true) return;
+                                    const mustChoose = (props as any).challenge?.mustChoose === true;
+                                    if (mustChoose) {
+                                        setChallengeOpen(true);
+                                        return;
+                                    }
+                                    setChallengeLoading(true);
+                                    try {
+                                        const res = await fetch(route('mobile.ano-biblico.challenges'));
+                                        const json = await res.json();
+                                        setChallenges(Array.isArray(json?.items) ? json.items : []);
+                                        setChallengeOpen(true);
+                                    } finally {
+                                        setChallengeLoading(false);
+                                    }
+                                }}
+                                className="inline-flex w-full min-h-[2.75rem] items-center justify-center gap-2 rounded-full bg-zinc-100 dark:bg-zinc-800/50 px-4 py-2.5 text-xs font-bold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-200/70 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <Squares2X2Icon className="h-4 w-4 shrink-0" aria-hidden />
+                                {(props as any).challenge?.active ? 'Trocar desafio' : 'Escolher desafio'}
+                            </button>
+                        </div>
+                    ) : null}
                 </div>
 
                 {props.needsLogin ? (
