@@ -174,21 +174,29 @@ export default function MobileAnoBiblico(props: Props) {
                     <div className="rounded-2xl border border-amber-200/80 dark:border-amber-900/60 bg-amber-50/90 dark:bg-amber-950/30 p-4">
                         <p className="font-semibold text-amber-950 dark:text-amber-100">Configuração necessária</p>
                         <p className="mt-1 text-sm text-amber-900/90 dark:text-amber-100/80">
-                            As tabelas do módulo ainda não existem no banco.
+                            As tabelas base do módulo (por exemplo <code className="text-xs">plano_leitura</code>) ainda não
+                            existem no banco configurado no <code className="text-xs">.env</code> na raiz do projeto.
                         </p>
-                        <div className="mt-3 space-y-2 text-sm text-amber-950 dark:text-amber-100">
+                        <div className="mt-3 space-y-3 text-sm text-amber-950 dark:text-amber-100">
                             <div>
-                                <div className="font-semibold">1) Crie as tabelas</div>
-                                <code className="text-xs">{props.setup.sqlPath}</code>
+                                <div className="font-semibold">1) Instalar tabelas</div>
+                                <p className="mt-1 text-xs text-amber-900/85 dark:text-amber-100/75">
+                                    Na raiz do projeto; o script aplica automaticamente{' '}
+                                    <code className="text-xs">{props.setup.sqlPath}</code>.
+                                </p>
+                                <code className="mt-1 block text-xs">{props.setup.installCmd}</code>
                             </div>
                             <div>
-                                <div className="font-semibold">2) Instale via PHP</div>
-                                <code className="text-xs">{props.setup.installCmd}</code>
+                                <div className="font-semibold">2) Gerar o plano de 365 dias</div>
+                                <p className="mt-1 text-xs text-amber-900/85 dark:text-amber-100/75">
+                                    Requer <code className="text-xs">bible_books</code> e <code className="text-xs">bible_verses</code>{' '}
+                                    já importados.
+                                </p>
+                                <code className="mt-1 block text-xs">{props.setup.generateCmd}</code>
                             </div>
-                            <div>
-                                <div className="font-semibold">3) Gere o plano</div>
-                                <code className="text-xs">{props.setup.generateCmd}</code>
-                            </div>
+                            <p className="text-xs text-amber-900/85 dark:text-amber-100/75">
+                                Alternativa ao passo 1: importar manualmente o ficheiro SQL no MySQL (phpMyAdmin ou cliente).
+                            </p>
                         </div>
                     </div>
                 ) : (

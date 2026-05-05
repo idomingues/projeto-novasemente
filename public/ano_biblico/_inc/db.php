@@ -9,7 +9,8 @@ declare(strict_types=1);
 
 function ns_env_path(): string
 {
-    return dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . '.env';
+    // __DIR__ = .../public/ano_biblico/_inc  →  raiz do Laravel = 3 níveis acima
+    return dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . '.env';
 }
 
 /**
