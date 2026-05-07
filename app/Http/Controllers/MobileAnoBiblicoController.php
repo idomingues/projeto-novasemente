@@ -39,6 +39,111 @@ class MobileAnoBiblicoController extends Controller
             ]);
     }
 
+    /**
+     * @param list<array{book_id:int,chapter:int}> $chaptersOrdered
+     * @return array<string,int> key "bookId:chapter" => verse count
+     */
+    private function verseCountMapForChapters(array $chaptersOrdered): array
+    {
+        if ($chaptersOrdered === [] || ! Schema::hasTable('bible_verses')) {
+            return [];
+        }
+
+        $bookIds = array_values(array_unique(array_map(fn (array $c) => (int) $c['book_id'], $chaptersOrdered)));
+        if ($bookIds === []) {
+            return [];
+        }
+
+        $rows = DB::table('bible_verses')
+            ->select('book_id', 'chapter', DB::raw('COUNT(*) as c'))
+            ->whereIn('book_id', $bookIds)
+            ->groupBy('book_id', 'chapter')
+            ->get();
+
+        $map = [];
+        foreach ($rows as $r) {
+            $map[((int) $r->book_id).':'.((int) $r->chapter)] = (int) $r->c;
+        }
+
+        return $map;
+    }
+
+    /**
+     * Distribui capítulos por dias de calendário usando meta de versículos/dia (ceil(total/dias)),
+     * empacotando capítulos inteiros até atingir a meta do dia (mínimo 1 capítulo por dia com leitura).
+     *
+     * @param list<array{book_id:int,chapter:int}> $chaptersOrdered
+     * @param array<string,?string> $doneMap "livro:cap" => data_conclusao (marca concluído quando definido)
+     * @return list<array{dia:int,data_leitura:string,livro_id:int,capitulo:int,concluido:int,data_conclusao:?string}>
+     */
+    private function scheduleChaptersByVerseBudget(
+        Carbon $firstCalendarDay,
+        Carbon $end,
+        array $chaptersOrdered,
+        array $doneMap,
+        int $initialDia
+    ): array {
+        if ($chaptersOrdered === []) {
+            return [];
+        }
+
+        $verseMap = $this->verseCountMapForChapters($chaptersOrdered);
+        $verseFor = function (array $c) use ($verseMap): int {
+            return max(1, (int) ($verseMap[$c['book_id'].':'.$c['chapter']] ?? 1));
+        };
+
+        $totalVerses = 0;
+        foreach ($chaptersOrdered as $c) {
+            $totalVerses += $verseFor($c);
+        }
+
+        $days = max(1, $firstCalendarDay->diffInDays($end) + 1);
+        $versePerDay = max(1, (int) ceil($totalVerses / $days));
+
+        $rows = [];
+        $idx = 0;
+        $n = count($chaptersOrdered);
+        $diaSeq = $initialDia;
+        $calendarOffset = 0;
+
+        while ($idx < $n) {
+            $dateCarbon = $firstCalendarDay->copy()->addDays($calendarOffset);
+            if ($dateCarbon->gt($end)) {
+                $dateCarbon = $end->copy();
+            }
+            $dateStr = $dateCarbon->toDateString();
+            $dayVerses = 0;
+
+            while ($idx < $n) {
+                $c = $chaptersOrdered[$idx];
+                $vc = $verseFor($c);
+                if ($dayVerses > 0 && $dayVerses >= $versePerDay) {
+                    break;
+                }
+                $k = $c['book_id'].':'.$c['chapter'];
+                $completedAt = $doneMap[$k] ?? null;
+                $rows[] = [
+                    'dia' => $diaSeq,
+                    'data_leitura' => $dateStr,
+                    'livro_id' => $c['book_id'],
+                    'capitulo' => $c['chapter'],
+                    'concluido' => $completedAt ? 1 : 0,
+                    'data_conclusao' => $completedAt,
+                ];
+                $dayVerses += $vc;
+                $idx++;
+                if ($dayVerses >= $versePerDay) {
+                    break;
+                }
+            }
+
+            $diaSeq++;
+            $calendarOffset++;
+        }
+
+        return $rows;
+    }
+
     private function hasUserPlanTables(): bool
     {
         return Schema::hasTable('ano_biblico_usuario') && Schema::hasTable('ano_biblico_usuario_itens');
@@ -242,6 +347,8 @@ TXT;
                 ->where('concluido', 1)
                 ->max('data_conclusao');
 
+            $pendingVerses = $finished ? 0 : $this->countPendingVersesForDesafio((int) $activeChallenge->id);
+
             return Inertia::render('Mobile/AnoBiblico', [
                 'installed' => true,
                 'needsLogin' => false,
@@ -273,6 +380,7 @@ TXT;
                     'remaining' => $remainingItems,
                     'percent' => $percent,
                     'lastCompletedAt' => $lastCompletedAt ? (string) $lastCompletedAt : null,
+                    'pendingVerses' => $pendingVerses,
                 ],
             ]);
         }
@@ -340,6 +448,8 @@ TXT;
         $remaining = max(0, $total - $done);
         $percent = (int) floor(($done / $total) * 100);
 
+        $pendingVerses = $finished ? 0 : $this->countPendingVersesForUsuarioPlan((int) $userId);
+
         return Inertia::render('Mobile/AnoBiblico', [
             'installed' => true,
             'needsLogin' => false,
@@ -377,8 +487,41 @@ TXT;
                 'remaining' => $remaining,
                 'percent' => $percent,
                 'lastCompletedAt' => $lastCompletedAt ? (string) $lastCompletedAt : null,
+                'pendingVerses' => $pendingVerses,
             ],
         ]);
+    }
+
+    private function countPendingVersesForDesafio(int $userChallengeId): int
+    {
+        if (! Schema::hasTable('bible_verses')) {
+            return 0;
+        }
+
+        return (int) DB::table('bible_verses as v')
+            ->join('ano_biblico_desafio_itens as i', function ($join) {
+                $join->on('i.livro_id', '=', 'v.book_id')
+                    ->on('i.capitulo', '=', 'v.chapter');
+            })
+            ->where('i.usuario_desafio_id', $userChallengeId)
+            ->where('i.concluido', 0)
+            ->count();
+    }
+
+    private function countPendingVersesForUsuarioPlan(int $userId): int
+    {
+        if (! Schema::hasTable('bible_verses') || ! Schema::hasTable('ano_biblico_usuario_itens')) {
+            return 0;
+        }
+
+        return (int) DB::table('bible_verses as v')
+            ->join('ano_biblico_usuario_itens as i', function ($join) {
+                $join->on('i.livro_id', '=', 'v.book_id')
+                    ->on('i.capitulo', '=', 'v.chapter');
+            })
+            ->where('i.usuario_id', $userId)
+            ->where('i.concluido', 0)
+            ->count();
     }
 
     private function statusForActiveChallenge(int $userChallengeId): array
@@ -498,28 +641,19 @@ TXT;
                     });
             }
 
-            $days = max(1, $today->diffInDays($end) + 1);
-            $perDay = (int) ceil(count($chapters) / $days);
-            if ($perDay < 1) $perDay = 1;
-
+            $scheduled = $this->scheduleChaptersByVerseBudget($today, $end, $chapters, $doneMap, 1);
             $rows = [];
-            $idx = 0;
-            for ($d = 1; $d <= $days && $idx < count($chapters); $d++) {
-                $date = $today->copy()->addDays($d - 1)->toDateString();
-                for ($k = 0; $k < $perDay && $idx < count($chapters); $k++, $idx++) {
-                    $key = $chapters[$idx]['book_id'].':'.$chapters[$idx]['chapter'];
-                    $completedAt = $doneMap[$key] ?? null;
-                    $rows[] = [
-                        'usuario_desafio_id' => $userChallengeId,
-                        'usuario_id' => $userId,
-                        'dia' => $d,
-                        'data_leitura' => $date,
-                        'livro_id' => $chapters[$idx]['book_id'],
-                        'capitulo' => $chapters[$idx]['chapter'],
-                        'concluido' => $completedAt ? 1 : 0,
-                        'data_conclusao' => $completedAt,
-                    ];
-                }
+            foreach ($scheduled as $r) {
+                $rows[] = [
+                    'usuario_desafio_id' => $userChallengeId,
+                    'usuario_id' => $userId,
+                    'dia' => $r['dia'],
+                    'data_leitura' => $r['data_leitura'],
+                    'livro_id' => $r['livro_id'],
+                    'capitulo' => $r['capitulo'],
+                    'concluido' => $r['concluido'],
+                    'data_conclusao' => $r['data_conclusao'],
+                ];
             }
 
             foreach (array_chunk($rows, 500) as $chunk) {
@@ -528,6 +662,69 @@ TXT;
         });
 
         return redirect()->route('mobile.ano-biblico')->with('success', 'Desafio iniciado!');
+    }
+
+    public function recalculateActiveChallenge(Request $request)
+    {
+        $userId = $request->user()?->id;
+        abort_unless($userId, 403);
+        abort_unless($this->hasChallengesTables(), 409);
+
+        $active = $this->activeChallengeForUser((int) $userId);
+        abort_unless($active, 404);
+
+        $today = Carbon::now()->startOfDay();
+        $end = Carbon::parse((string) $active->data_fim)->startOfDay();
+        abort_unless($end->gte($today), 422);
+
+        DB::transaction(function () use ($userId, $active, $today, $end) {
+            $ucId = (int) $active->id;
+
+            $pending = DB::table('ano_biblico_desafio_itens as i')
+                ->join('bible_books as b', 'b.id', '=', 'i.livro_id')
+                ->where('i.usuario_desafio_id', $ucId)
+                ->where('i.concluido', 0)
+                ->orderBy('b.position')
+                ->orderBy('i.capitulo')
+                ->get(['i.livro_id', 'i.capitulo']);
+
+            if ($pending->isEmpty()) {
+                return;
+            }
+
+            $chaptersOrdered = $pending
+                ->map(fn ($r) => ['book_id' => (int) $r->livro_id, 'chapter' => (int) $r->capitulo])
+                ->all();
+
+            DB::table('ano_biblico_desafio_itens')
+                ->where('usuario_desafio_id', $ucId)
+                ->where('concluido', 0)
+                ->delete();
+
+            $maxDia = (int) (DB::table('ano_biblico_desafio_itens')->where('usuario_desafio_id', $ucId)->max('dia') ?? 0);
+            $startDia = max(1, $maxDia + 1);
+
+            $scheduled = $this->scheduleChaptersByVerseBudget($today, $end, $chaptersOrdered, [], $startDia);
+            $rows = [];
+            foreach ($scheduled as $r) {
+                $rows[] = [
+                    'usuario_desafio_id' => $ucId,
+                    'usuario_id' => (int) $userId,
+                    'dia' => $r['dia'],
+                    'data_leitura' => $r['data_leitura'],
+                    'livro_id' => $r['livro_id'],
+                    'capitulo' => $r['capitulo'],
+                    'concluido' => 0,
+                    'data_conclusao' => null,
+                ];
+            }
+
+            foreach (array_chunk($rows, 500) as $chunk) {
+                DB::table('ano_biblico_desafio_itens')->insert($chunk);
+            }
+        });
+
+        return redirect()->route('mobile.ano-biblico')->with('success', 'Leituras restantes recalculadas até a data final.');
     }
 
     public function day(Request $request, int $day): Response
@@ -885,42 +1082,29 @@ TXT;
                 if (!isset($done[$k])) $remaining[] = ['livro_id' => (int) $r->livro_id, 'capitulo' => (int) $r->capitulo];
             }
 
-            $daysRemaining = max(1, $today->diffInDays($targetEnd) + 1); // inclui hoje
-            $chaptersRemaining = count($remaining);
-            $perDay = (int) ceil($chaptersRemaining / $daysRemaining);
-            if ($perDay < 1) $perDay = 1;
-
             // remove itens não concluídos (mantém concluídos como histórico do próprio plano)
             DB::table('ano_biblico_usuario_itens')->where('usuario_id', $userId)->where('concluido', 0)->delete();
 
-            // dia sequencial continua 1..365 (preserva dia dos concluídos existentes)
-            $maxDia = (int) DB::table('ano_biblico_usuario_itens')->where('usuario_id', $userId)->max('dia');
+            // dia sequencial continua após o último concluído
+            $maxDia = (int) (DB::table('ano_biblico_usuario_itens')->where('usuario_id', $userId)->max('dia') ?? 0);
             $dia = max(1, $maxDia + 1);
 
+            $chaptersOrdered = array_map(
+                fn (array $x) => ['book_id' => $x['livro_id'], 'chapter' => $x['capitulo']],
+                $remaining
+            );
+            $scheduled = $this->scheduleChaptersByVerseBudget($today, $targetEnd, $chaptersOrdered, [], $dia);
             $rows = [];
-            $date = $today->copy();
-            $idx = 0;
-            while ($idx < $chaptersRemaining) {
-                $count = 0;
-                while ($idx < $chaptersRemaining && $count < $perDay) {
-                    $rows[] = [
-                        'usuario_id' => $userId,
-                        'dia' => $dia,
-                        'data_leitura' => $date->toDateString(),
-                        'livro_id' => $remaining[$idx]['livro_id'],
-                        'capitulo' => $remaining[$idx]['capitulo'],
-                        'concluido' => 0,
-                        'data_conclusao' => null,
-                    ];
-                    $idx++;
-                    $count++;
-                }
-                $dia++;
-                $date = $date->addDay();
-                if ($date->gt($targetEnd) && $idx < $chaptersRemaining) {
-                    // ultrapassou a data final; força continuar no último dia (não ideal, mas garante integridade)
-                    $date = $targetEnd->copy();
-                }
+            foreach ($scheduled as $r) {
+                $rows[] = [
+                    'usuario_id' => $userId,
+                    'dia' => $r['dia'],
+                    'data_leitura' => $r['data_leitura'],
+                    'livro_id' => $r['livro_id'],
+                    'capitulo' => $r['capitulo'],
+                    'concluido' => 0,
+                    'data_conclusao' => null,
+                ];
             }
 
             foreach (array_chunk($rows, 500) as $chunk) {

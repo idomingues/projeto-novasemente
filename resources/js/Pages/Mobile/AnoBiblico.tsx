@@ -32,7 +32,7 @@ type Props =
               mustChoose?: boolean;
               available?: { id: number; key: string; name: string; description: string; type: string; durationDays: number | null; scope: string }[];
           };
-          progress: { done: number; remaining: number; percent: number; lastCompletedAt: string | null };
+          progress: { done: number; remaining: number; percent: number; lastCompletedAt: string | null; pendingVerses: number };
       };
 
 export default function MobileAnoBiblico(props: Props) {
@@ -41,6 +41,7 @@ export default function MobileAnoBiblico(props: Props) {
     const { post: postReset, processing: resetting } = useForm({});
     const [reprogramming, setReprogramming] = useState(false);
     const { post: postRestartZero, processing: restartingZero } = useForm({});
+    const { post: postRecalculateChallenge, processing: recalculatingChallenge } = useForm({});
 
     const [reprogramOpen, setReprogramOpen] = useState(false);
     const [challengeOpen, setChallengeOpen] = useState(false);
@@ -357,6 +358,20 @@ export default function MobileAnoBiblico(props: Props) {
                             </div>
                             <div className="mt-3 grid grid-cols-2 gap-2">
                                 <div className="rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 p-3">
+                                    <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Dias atrasados</div>
+                                    <div className="mt-1 text-xl font-bold text-zinc-900 dark:text-white">
+                                        {(props as any).status?.kind === 'late' ? Number((props as any).status?.days) || 0 : 0}
+                                    </div>
+                                </div>
+                                <div className="rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 p-3">
+                                    <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Versículos restantes</div>
+                                    <div className="mt-1 text-xl font-bold text-zinc-900 dark:text-white">
+                                        {typeof props.progress.pendingVerses === 'number' ? props.progress.pendingVerses : 0}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="mt-3 grid grid-cols-2 gap-2">
+                                <div className="rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 p-3">
                                     <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Dias concluídos</div>
                                     <div className="mt-1 text-xl font-bold text-zinc-900 dark:text-white">{props.progress.done}</div>
                                 </div>
@@ -533,6 +548,36 @@ export default function MobileAnoBiblico(props: Props) {
                                     Reiniciar leituras já feitas (não aproveitar histórico)
                                 </div>
                             </label>
+
+                            {(props as any).challenge?.active ? (
+                                <div className="rounded-2xl border border-emerald-200/80 dark:border-emerald-900/50 bg-emerald-50/60 dark:bg-emerald-950/25 p-3">
+                                    <div className="text-sm font-semibold text-emerald-950 dark:text-emerald-100">Desafio atual</div>
+                                    <p className="mt-1 text-xs text-emerald-900/85 dark:text-emerald-100/80">
+                                        Redistribui só o que falta ler até a data final, mantendo capítulos já concluídos. A meta por dia
+                                        usa os versículos que ainda faltam (média por dia até o fim do prazo).
+                                    </p>
+                                    <button
+                                        type="button"
+                                        disabled={recalculatingChallenge}
+                                        onClick={() => {
+                                            if (
+                                                !confirm(
+                                                    'Recalcular o desafio atual? As leituras pendentes serão reorganizadas a partir de hoje até a data final, sem apagar o que você já leu.',
+                                                )
+                                            ) {
+                                                return;
+                                            }
+                                            postRecalculateChallenge(route('mobile.ano-biblico.challenges.recalculate'), {
+                                                preserveScroll: true,
+                                                onSuccess: () => setChallengeOpen(false),
+                                            });
+                                        }}
+                                        className="mt-3 inline-flex w-full items-center justify-center rounded-full border border-emerald-700 px-4 py-2.5 text-sm font-bold text-emerald-800 hover:bg-emerald-100/80 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-500 dark:text-emerald-100 dark:hover:bg-emerald-950/40 transition-colors"
+                                    >
+                                        {recalculatingChallenge ? 'Recalculando…' : 'Recalcular desafio atual'}
+                                    </button>
+                                </div>
+                            ) : null}
 
                             {challenges.length === 0 ? (
                                 <div className="rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 p-4 text-sm text-zinc-600 dark:text-zinc-300">

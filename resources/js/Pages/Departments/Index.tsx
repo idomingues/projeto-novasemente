@@ -74,13 +74,23 @@ export default function Index({ departments, scheduleRolesByDepartmentId, canMan
         setRolesModalNewRoleName('');
     };
 
+    const submitDepartment = () => {
+        if (isEditing && editingId) {
+            put(route('departments.update', editingId), {
+                preserveScroll: true,
+                onSuccess: () => closeModal(),
+            });
+        } else {
+            post(route('departments.store'), {
+                preserveScroll: true,
+                onSuccess: () => closeModal(),
+            });
+        }
+    };
+
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        if (isEditing && editingId) {
-            put(route('departments.update', editingId), { onSuccess: () => closeModal() });
-        } else {
-            post(route('departments.store'), { onSuccess: () => closeModal() });
-        }
+        submitDepartment();
     };
 
     const handleDelete = async (id: number) => {
@@ -243,7 +253,7 @@ export default function Index({ departments, scheduleRolesByDepartmentId, canMan
                     </div>
                     <div className="mt-6 flex justify-end gap-2">
                         <SecondaryButton type="button" onClick={closeModal}>Cancelar</SecondaryButton>
-                        <PrimaryButton type="submit" disabled={processing}>
+                        <PrimaryButton type="button" onClick={submitDepartment} disabled={processing}>
                             {isEditing ? 'Salvar' : 'Criar'}
                         </PrimaryButton>
                     </div>

@@ -72,8 +72,11 @@ export default function InboxNotificationPoller() {
             45_000,
             {
                 only: ['recentNotifications', 'unreadInboxNotificationsCount'],
+                preserveState: true,
+                preserveScroll: true,
                 replace: true,
                 async: true,
+                showProgress: false,
             },
             { keepAlive: true, autoStart: true },
         );

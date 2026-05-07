@@ -20,7 +20,7 @@ export default function MarkInboxNotificationReadButton({ notificationId, compac
                 router.post(
                     route('notifications.inbox.read'),
                     { id: notificationId },
-                    { preserveScroll: true },
+                    { preserveScroll: true, preserveState: true },
                 );
             }}
             className={

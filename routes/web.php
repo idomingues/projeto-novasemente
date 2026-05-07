@@ -158,6 +158,9 @@ Route::get('/mobile/ano-biblico/desafios', [MobileAnoBiblicoController::class, '
 Route::post('/mobile/ano-biblico/desafios/iniciar', [MobileAnoBiblicoController::class, 'startChallenge'])
     ->middleware('auth')
     ->name('mobile.ano-biblico.challenges.start');
+Route::post('/mobile/ano-biblico/desafios/recalcular-atual', [MobileAnoBiblicoController::class, 'recalculateActiveChallenge'])
+    ->middleware('auth')
+    ->name('mobile.ano-biblico.challenges.recalculate');
 Route::get('/mobile/sobre-o-app', [MobileController::class, 'sobreOApp'])->name('mobile.sobre-o-app');
 Route::get('/mobile/crencas', [MobileController::class, 'beliefs'])->name('mobile.beliefs');
 Route::get('/mobile/quem-somos', [MobileController::class, 'quemSomos'])->name('mobile.quem-somos');
