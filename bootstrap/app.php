@@ -5,6 +5,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Session\TokenMismatchException;
 use Illuminate\Support\Arr;
 use Illuminate\Validation\ValidationException;
 use Inertia\Support\Header;
@@ -56,6 +57,32 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->withErrors($e->errors(), $e->errorBag)
                 ->withInput(Arr::except($request->input(), ['password', 'password_confirmation']))
                 ->setStatusCode(303);
+        });
+
+        /*
+         * Sessão/CSRF expirado (419): em produção não devemos mostrar a página crua "Page Expired".
+         * Redireciona com mensagem amigável para o utilizador tentar novamente.
+         */
+        $exceptions->render(function (TokenMismatchException $e, Request $request) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'A sessão expirou. Atualize a página e tente novamente.',
+                ], 419);
+            }
+
+            $message = 'A sessão expirou. Atualize a página e tente novamente.';
+
+            if ($request->header(Header::INERTIA)) {
+                return redirect()->to(url()->current())
+                    ->with('error', $message)
+                    ->setStatusCode(303);
+            }
+
+            if ($request->routeIs('login')) {
+                return redirect()->route('login')->with('error', $message);
+            }
+
+            return redirect()->guest(route('login'))->with('error', $message);
         });
 
         /*
