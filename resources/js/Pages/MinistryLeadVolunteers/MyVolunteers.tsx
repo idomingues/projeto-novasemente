@@ -94,7 +94,7 @@ export default function MyVolunteers() {
     const row = useMemo(() => invitations.data.find((x) => x.id === editingId) ?? null, [editingId, invitations.data]);
     const [profileRow, setProfileRow] = useState<VolunteerRow | null>(null);
     const [tab, setTab] = useState<'status' | 'history'>('status');
-    const [screenTab, setScreenTab] = useState<'active' | 'new' | 'requests'>('new');
+    const [screenTab, setScreenTab] = useState<'active' | 'training' | 'new' | 'requests'>('new');
     const [history, setHistory] = useState<HistoryRow[] | null>(null);
     const [historyLoading, setHistoryLoading] = useState(false);
     const [requestModalOpen, setRequestModalOpen] = useState(false);
@@ -114,9 +114,13 @@ export default function MyVolunteers() {
         () => invitations.data.filter((item) => item.leaderStatus === null || item.leaderStatus === ''),
         [invitations.data],
     );
+    const trainingRows = useMemo(
+        () => invitations.data.filter((item) => item.leaderStatus === 'training'),
+        [invitations.data],
+    );
     const activeRows = useMemo(() => {
         const source = [
-            ...invitations.data.filter((item) => item.leaderStatus === 'training' || item.leaderStatus === 'active'),
+            ...invitations.data.filter((item) => item.leaderStatus === 'active'),
             ...activeVolunteers,
         ];
         const byVolunteer = new Map<number, VolunteerRow & { _ministries: Set<string> }>();
@@ -153,12 +157,16 @@ export default function MyVolunteers() {
             setScreenTab('new');
             return;
         }
+        if (trainingRows.length > 0) {
+            setScreenTab('training');
+            return;
+        }
         if (activeRows.length > 0) {
             setScreenTab('active');
             return;
         }
         setScreenTab('requests');
-    }, [newRows.length, activeRows.length]);
+    }, [newRows.length, trainingRows.length, activeRows.length]);
 
     const selectedMinistry = useMemo(
         () => requestMinistries.find((m) => m.id === Number(requestForm.data.ministry_id)),
@@ -405,6 +413,17 @@ export default function MyVolunteers() {
                     </button>
                     <button
                         type="button"
+                        onClick={() => setScreenTab('training')}
+                        className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                            screenTab === 'training'
+                                ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
+                                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+                        }`}
+                    >
+                        Em treinamento ({trainingRows.length})
+                    </button>
+                    <button
+                        type="button"
                         onClick={() => setScreenTab('requests')}
                         className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${
                             screenTab === 'requests'
@@ -431,7 +450,10 @@ export default function MyVolunteers() {
                     ? renderVolunteerTable(newRows, 'Sem novos voluntários pendentes de análise.')
                     : null}
                 {screenTab === 'active'
-                    ? renderVolunteerTable(activeRows, 'Sem voluntários em treinamento/atividade.')
+                    ? renderVolunteerTable(activeRows, 'Sem voluntários em atividade.')
+                    : null}
+                {screenTab === 'training'
+                    ? renderVolunteerTable(trainingRows, 'Sem voluntários em treinamento.')
                     : null}
                 {screenTab === 'requests' ? (
                     <div className="space-y-3">
