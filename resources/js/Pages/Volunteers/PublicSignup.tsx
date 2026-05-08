@@ -16,7 +16,6 @@ interface Ministry {
 interface Props {
     token: string;
     churchName: string;
-    ministries: Ministry[];
 }
 
 type AttendanceDuration =
@@ -88,7 +87,7 @@ function ChoiceCard<T extends string | boolean>({
     );
 }
 
-export default function PublicSignup({ token, churchName, ministries }: Props) {
+export default function PublicSignup({ token, churchName }: Props) {
     const { data, setData, post, processing, errors, reset } = useForm({
         token,
         full_name: '',
@@ -240,7 +239,6 @@ export default function PublicSignup({ token, churchName, ministries }: Props) {
             if (data.password && data.password_confirmation && data.password !== data.password_confirmation) {
                 next.password_confirmation = 'As senhas não coincidem.';
             }
-            if (data.ministry_ids.length === 0) next.ministry_ids = 'Selecione ao menos 1 departamento.';
         }
         setClientErrors(next);
         return Object.keys(next).length === 0;
@@ -266,20 +264,6 @@ export default function PublicSignup({ token, churchName, ministries }: Props) {
         post(route('volunteers.self-signup.store'));
     };
 
-    const toggleMinistry = (id: number) => {
-        const cur = data.ministry_ids;
-        if (cur.includes(id)) {
-            setData(
-                'ministry_ids',
-                cur.filter((x) => x !== id)
-            );
-        } else {
-            setData('ministry_ids', [...cur, id]);
-        }
-    };
-
-    const noMinistries = ministries.length === 0;
-
     return (
         <MobileLayout>
             <Head title={`Cadastro Voluntário — ${churchName}`} />
@@ -302,7 +286,7 @@ export default function PublicSignup({ token, churchName, ministries }: Props) {
                             </h1>
                             <p className="mt-1 text-sm font-semibold text-zinc-700 dark:text-zinc-300">{churchName}</p>
                             <p className="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                                Preencha os seus dados e, no final, escolha um ou mais departamentos em que pretende servir.
+                                Preencha seus dados para criar sua conta. A atribuição de departamentos será feita pela equipe administrativa.
                             </p>
                         </div>
                     </div>
@@ -319,11 +303,6 @@ export default function PublicSignup({ token, churchName, ministries }: Props) {
                         </Link>
                     </p>
 
-                    {noMinistries ? (
-                        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-6 text-center text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
-                            Ainda não há departamentos disponíveis nesta igreja. Contacte a equipe.
-                        </div>
-                    ) : (
                         <form
                             onSubmit={submit}
                             className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900/80"
@@ -855,9 +834,9 @@ export default function PublicSignup({ token, churchName, ministries }: Props) {
                                 {step === 4 ? (
                                     <>
                                         <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-100">
-                                            <div className="font-semibold">Conta e Departamentos</div>
+                                            <div className="font-semibold">Conta de acesso</div>
                                             <div className="mt-1 text-xs text-emerald-800/80 dark:text-emerald-200/80">
-                                                Por fim, crie sua senha e escolha onde deseja servir.
+                                                Por fim, crie sua senha para aceder ao aplicativo. O departamento será definido por um administrador.
                                             </div>
                                         </div>
 
@@ -896,32 +875,6 @@ export default function PublicSignup({ token, churchName, ministries }: Props) {
                                         </div>
                                     </div>
 
-                                    <div className="mt-4">
-                                        <InputLabel value="Departamentos *" />
-                                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Marque todos em que deseja servir.</p>
-                                        <ul className="mt-3 space-y-2 rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-700 dark:bg-zinc-950/50">
-                                            {ministries.map((m) => {
-                                                const checked = data.ministry_ids.includes(m.id);
-                                                return (
-                                                    <li key={m.id}>
-                                                        <label className="flex cursor-pointer items-start gap-3 rounded-lg px-2 py-1.5 hover:bg-white dark:hover:bg-zinc-900">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={checked}
-                                                                onChange={() => {
-                                                                    toggleMinistry(m.id);
-                                                                    clearClientError('ministry_ids');
-                                                                }}
-                                                                className="mt-0.5 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-900"
-                                                            />
-                                                            <span className="text-sm text-zinc-800 dark:text-zinc-100">{m.name}</span>
-                                                        </label>
-                                                    </li>
-                                                );
-                                            })}
-                                        </ul>
-                                        <InputError message={errors.ministry_ids || clientErrors.ministry_ids} className="mt-2" />
-                                    </div>
                                     </>
                                 ) : null}
                             </div>
@@ -952,7 +905,6 @@ export default function PublicSignup({ token, churchName, ministries }: Props) {
                                 </div>
                             </div>
                         </form>
-                    )}
                 </div>
 
                 <footer className="mx-auto mt-10 hidden w-full max-w-md pb-6 text-center text-xs text-zinc-500 dark:text-zinc-400 sm:block">

@@ -215,7 +215,7 @@ class VolunteerPublicSignupController extends Controller
             'needs_pastoral_guidance' => ['required', 'boolean'],
             'lgpd_data_consent' => ['required', 'boolean'],
             'password' => ['required', 'confirmed', Password::defaults()],
-            'ministry_ids' => ['required', 'array', 'min:1'],
+            'ministry_ids' => ['nullable', 'array'],
             'ministry_ids.*' => ['integer'],
         ]);
 
@@ -266,16 +266,21 @@ class VolunteerPublicSignupController extends Controller
             }
         }
 
-        $ministryIds = array_values(array_unique(array_map('intval', $validated['ministry_ids'])));
-        $allowedCount = Ministry::query()
-            ->where('church_id', $record->church_id)
-            ->whereIn('id', $ministryIds)
-            ->count();
+        $rawMinistryIds = $validated['ministry_ids'] ?? [];
+        $ministryIds = is_array($rawMinistryIds)
+            ? array_values(array_unique(array_map('intval', $rawMinistryIds)))
+            : [];
+        if ($ministryIds !== []) {
+            $allowedCount = Ministry::query()
+                ->where('church_id', $record->church_id)
+                ->whereIn('id', $ministryIds)
+                ->count();
 
-        if ($allowedCount !== count($ministryIds)) {
-            throw ValidationException::withMessages([
-                'ministry_ids' => ['Selecione apenas departamentos válidos desta igreja.'],
-            ]);
+            if ($allowedCount !== count($ministryIds)) {
+                throw ValidationException::withMessages([
+                    'ministry_ids' => ['Selecione apenas departamentos válidos desta igreja.'],
+                ]);
+            }
         }
 
         $name = trim($validated['first_name'].' '.$validated['last_name']);
@@ -319,10 +324,12 @@ class VolunteerPublicSignupController extends Controller
                     'needs_pastoral_guidance' => (bool) $validated['needs_pastoral_guidance'],
                     'lgpd_data_consent' => (bool) $validated['lgpd_data_consent'],
                 ])->save();
-                $volunteer->ministries()->sync($ministryIds);
-                $added = collect($ministryIds)->map(fn ($id) => (int) $id)->filter(fn ($id) => $id > 0)->values()->all();
-                if ($added !== []) {
-                    app(VolunteerMinistryRosterNotifier::class)->notifyLeadersOfNewAttachments($volunteer->fresh(), $added);
+                if ($ministryIds !== []) {
+                    $volunteer->ministries()->sync($ministryIds);
+                    $added = collect($ministryIds)->map(fn ($id) => (int) $id)->filter(fn ($id) => $id > 0)->values()->all();
+                    if ($added !== []) {
+                        app(VolunteerMinistryRosterNotifier::class)->notifyLeadersOfNewAttachments($volunteer->fresh(), $added);
+                    }
                 }
                 VolunteerPipelineBootstrap::ensureRowForVolunteerInChurch($volunteer->fresh(), (int) $record->church_id);
             }
