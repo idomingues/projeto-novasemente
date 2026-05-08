@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { router, usePage } from '@inertiajs/react';
+import { usePage } from '@inertiajs/react';
 
 type InboxFeedItem = {
     id?: string;
@@ -25,8 +25,18 @@ export default function InboxNotificationPoller() {
     const prevUnread = useRef<number | null>(null);
     const [toast, setToast] = useState<{ title: string; body: string } | null>(null);
     const [visible, setVisible] = useState(true);
+    const [liveRecentNotifications, setLiveRecentNotifications] = useState<InboxFeedItem[]>(recentNotifications);
+    const [liveUnreadInboxCount, setLiveUnreadInboxCount] = useState<number>(unreadInboxNotificationsCount);
 
     const isLoggedIn = Boolean(auth?.user);
+
+    useEffect(() => {
+        setLiveRecentNotifications(recentNotifications);
+    }, [recentNotifications]);
+
+    useEffect(() => {
+        setLiveUnreadInboxCount(unreadInboxNotificationsCount);
+    }, [unreadInboxNotificationsCount]);
 
     useEffect(() => {
         if (!isLoggedIn) {
@@ -34,12 +44,12 @@ export default function InboxNotificationPoller() {
         }
 
         if (prevUnread.current === null) {
-            prevUnread.current = unreadInboxNotificationsCount;
+            prevUnread.current = liveUnreadInboxCount;
             return;
         }
 
-        if (unreadInboxNotificationsCount > prevUnread.current) {
-            const inboxItems = recentNotifications
+        if (liveUnreadInboxCount > prevUnread.current) {
+            const inboxItems = liveRecentNotifications
                 .filter((n) => n.kind === 'inbox')
                 .sort(
                     (a, b) =>
@@ -53,8 +63,8 @@ export default function InboxNotificationPoller() {
             setVisible(true);
         }
 
-        prevUnread.current = unreadInboxNotificationsCount;
-    }, [isLoggedIn, unreadInboxNotificationsCount, recentNotifications]);
+        prevUnread.current = liveUnreadInboxCount;
+    }, [isLoggedIn, liveUnreadInboxCount, liveRecentNotifications]);
 
     useEffect(() => {
         if (!toast) {
@@ -68,20 +78,69 @@ export default function InboxNotificationPoller() {
         if (!isLoggedIn) {
             return;
         }
-        const poll = router.poll(
-            45_000,
-            {
-                only: ['recentNotifications', 'unreadInboxNotificationsCount'],
-                preserveState: true,
-                preserveScroll: true,
-                replace: true,
-                async: true,
-                showProgress: false,
-            },
-            { keepAlive: true, autoStart: true },
-        );
+        let cancelled = false;
+        let timer: number | null = null;
 
-        return () => poll.stop();
+        const dispatchFeedUpdate = (payload: {
+            recentNotifications: InboxFeedItem[];
+            unreadInboxNotificationsCount: number;
+        }) => {
+            if (typeof window === 'undefined') {
+                return;
+            }
+            window.dispatchEvent(new CustomEvent('ns:notifications-feed', { detail: payload }));
+        };
+
+        const fetchFeed = async () => {
+            try {
+                const res = await fetch(route('notifications.feed'), {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+                if (!res.ok) {
+                    return;
+                }
+                const payload = (await res.json()) as {
+                    recentNotifications?: InboxFeedItem[];
+                    unreadInboxNotificationsCount?: number;
+                };
+                if (cancelled) {
+                    return;
+                }
+
+                const nextRecent = Array.isArray(payload.recentNotifications)
+                    ? payload.recentNotifications
+                    : [];
+                const nextUnread = typeof payload.unreadInboxNotificationsCount === 'number'
+                    ? payload.unreadInboxNotificationsCount
+                    : 0;
+
+                setLiveRecentNotifications(nextRecent);
+                setLiveUnreadInboxCount(nextUnread);
+                dispatchFeedUpdate({
+                    recentNotifications: nextRecent,
+                    unreadInboxNotificationsCount: nextUnread,
+                });
+            } catch {
+                // Mantém silencioso; próxima rodada tenta novamente.
+            }
+        };
+
+        void fetchFeed();
+        timer = window.setInterval(() => {
+            void fetchFeed();
+        }, 45_000);
+
+        return () => {
+            cancelled = true;
+            if (timer !== null) {
+                window.clearInterval(timer);
+            }
+        };
     }, [isLoggedIn]);
 
     if (!isLoggedIn || !toast || !visible) {

@@ -125,7 +125,6 @@ Route::get('/mobile/biblia/search', [MobileBibleController::class, 'search'])
     ->middleware('throttle:80,1')
     ->name('mobile.bible.search');
 Route::get('/mobile/ano-biblico', [MobileAnoBiblicoController::class, 'index'])
-    ->middleware('auth')
     ->name('mobile.ano-biblico');
 Route::get('/mobile/ano-biblico/dia/{day}', [MobileAnoBiblicoController::class, 'day'])
     ->middleware('auth')

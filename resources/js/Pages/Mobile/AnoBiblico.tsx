@@ -66,6 +66,7 @@ export default function MobileAnoBiblico(props: Props) {
     const canComplete = props.needsLogin === false && props.installed === true && props.finished === false && typeof props.day === 'number';
     const canStartReading = props.needsLogin === false && props.installed === true && props.finished === false && typeof props.day === 'number';
     const isLate = props.needsLogin === false && props.installed === true && (props as any).status?.kind === 'late';
+    const loginRedirectHref = `${route('login')}?redirect=${encodeURIComponent(route('mobile.ano-biblico'))}`;
 
     const preview = useMemo(() => {
         const remaining = (props as any).remainingChapters as number | undefined;
@@ -172,11 +173,13 @@ export default function MobileAnoBiblico(props: Props) {
 
                 {props.needsLogin ? (
                     <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4">
-                        <p className="font-semibold text-zinc-900 dark:text-white">Entre para acompanhar seu progresso</p>
-                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">O Ano Bíblico salva o progresso por usuário.</p>
+                        <p className="font-semibold text-zinc-900 dark:text-white">Entre para usar o Ano Bíblico</p>
+                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                            Para acompanhar leituras, histórico e progresso diário, faça login na sua conta.
+                        </p>
                         <div className="mt-4">
                             <Link
-                                href={route('login')}
+                                href={loginRedirectHref}
                                 className="inline-flex w-full items-center justify-center rounded-full bg-emerald-700 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-800 active:bg-emerald-900 transition-colors"
                             >
                                 Fazer login

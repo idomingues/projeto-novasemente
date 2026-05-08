@@ -5,6 +5,7 @@ import Dropdown from '@/Components/Dropdown';
 import MarkInboxNotificationReadButton from '@/Components/MarkInboxNotificationReadButton';
 import AppVersionTrigger from '@/Components/AppVersionTrigger';
 import { useTheme } from '@/Contexts/ThemeContext';
+import { useEffect, useState } from 'react';
 
 interface NotificationItem {
     id: string;
@@ -53,11 +54,17 @@ type PageProps = {
 
 export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) {
     const { auth, recentNotifications = [], unreadInboxNotificationsCount = 0 } = usePage().props as PageProps;
+    const [liveNotifications, setLiveNotifications] = useState<NotificationItem[]>(
+        Array.isArray(recentNotifications) ? recentNotifications : [],
+    );
+    const [liveUnread, setLiveUnread] = useState<number>(
+        typeof unreadInboxNotificationsCount === 'number' ? unreadInboxNotificationsCount : 0,
+    );
     const user = auth?.user ?? null;
     const permissions = auth?.permissions ?? [];
     const adminSidebarUnrestricted = auth?.adminSidebarUnrestricted === true;
-    const notifications = Array.isArray(recentNotifications) ? recentNotifications : [];
-    const unread = typeof unreadInboxNotificationsCount === 'number' ? unreadInboxNotificationsCount : 0;
+    const notifications = liveNotifications;
+    const unread = liveUnread;
     /** Número no sino: notificações de caixa por ler (servidor). */
     const badgeCount = unread > 0 ? Math.min(99, unread) : 0;
     const showRecentDot = badgeCount === 0 && notifications.length > 0;
@@ -68,6 +75,38 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
     const { theme, toggleTheme } = useTheme();
     /** Hub de perfil (opções); evita ir direto ao formulário Breeze no PC. */
     const profileHref = route().has('mobile.profile') ? route('mobile.profile') : route('profile.edit');
+
+    useEffect(() => {
+        setLiveNotifications(Array.isArray(recentNotifications) ? recentNotifications : []);
+    }, [recentNotifications]);
+
+    useEffect(() => {
+        setLiveUnread(typeof unreadInboxNotificationsCount === 'number' ? unreadInboxNotificationsCount : 0);
+    }, [unreadInboxNotificationsCount]);
+
+    useEffect(() => {
+        const handleFeedUpdate = (event: Event) => {
+            const custom = event as CustomEvent<{
+                recentNotifications?: NotificationItem[];
+                unreadInboxNotificationsCount?: number;
+            }>;
+            const detail = custom.detail;
+            if (!detail) {
+                return;
+            }
+            if (Array.isArray(detail.recentNotifications)) {
+                setLiveNotifications(detail.recentNotifications);
+            }
+            if (typeof detail.unreadInboxNotificationsCount === 'number') {
+                setLiveUnread(detail.unreadInboxNotificationsCount);
+            }
+        };
+
+        window.addEventListener('ns:notifications-feed', handleFeedUpdate as EventListener);
+        return () => {
+            window.removeEventListener('ns:notifications-feed', handleFeedUpdate as EventListener);
+        };
+    }, []);
 
     return (
         <header className={`bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 h-16 md:h-24 fixed top-0 right-0 left-0 z-40 transition-all duration-300 ${hasSidebar ? 'md:left-72' : ''}`}>
