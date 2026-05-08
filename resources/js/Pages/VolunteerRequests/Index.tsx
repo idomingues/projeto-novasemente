@@ -1,6 +1,6 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { ChatBubbleLeftRightIcon, InboxIcon, PencilIcon, TrashIcon, UserPlusIcon } from '@heroicons/react/24/outline';
+import { ChatBubbleLeftRightIcon, InboxIcon, PencilIcon, TrashIcon, UserMinusIcon, UserPlusIcon } from '@heroicons/react/24/outline';
 import { FormEventHandler, useEffect, useMemo, useRef, useState } from 'react';
 import AddButton from '@/Components/AddButton';
 import Card from '@/Components/Card';
@@ -42,6 +42,33 @@ type VolunteerRequestRow = {
     created_at: string | null;
     batch_slot_label: string | null;
     requester_name: string | null;
+    attached_volunteer_name: string | null;
+    attached_volunteer_email: string | null;
+    attached_volunteer_id: number | null;
+    attached_volunteer_show_url: string | null;
+    attached_volunteer_profile: {
+        id: number;
+        name: string | null;
+        email: string | null;
+        phone: string | null;
+        birthDate: string | null;
+        hasWhatsapp: boolean | null;
+        hasSocialNetworks: boolean | null;
+        attendanceDuration: string | null;
+        isOfficialMember: boolean | null;
+        memberRecordAtNovaSemente: boolean | null;
+        memberRecordChurch: string | null;
+        hasPreviousMinistryVolunteerExperience: boolean | null;
+        previousMinistryDetails: string | null;
+        professionalArea: string | null;
+        ministryInvolvement: string | null;
+        otherMinistryInterest: string | null;
+        giftsToDevelop: string | null;
+        needsPastoralGuidance: boolean | null;
+        lgpdDataConsent: boolean | null;
+        role: string | null;
+        appAccessOnly: boolean | null;
+    } | null;
     ministry_id: number | null;
     schedule_role_id: number | null;
     can_edit: boolean;
@@ -50,6 +77,8 @@ type VolunteerRequestRow = {
     destroy_url: string | null;
     can_attach_volunteer: boolean;
     attach_volunteer_url: string | null;
+    can_detach_volunteer: boolean;
+    detach_volunteer_url: string | null;
     panel_json_url: string;
 };
 
@@ -97,6 +126,7 @@ export default function VolunteerRequestsIndex({
     const [attachPickerChoice, setAttachPickerChoice] = useState<{ id: number; name: string } | null>(null);
     const [panelOpen, setPanelOpen] = useState(false);
     const [panelRow, setPanelRow] = useState<VolunteerRequestRow | null>(null);
+    const [profileVolunteer, setProfileVolunteer] = useState<VolunteerRequestRow['attached_volunteer_profile'] | null>(null);
     const [panelLoading, setPanelLoading] = useState(false);
     const [panelPayload, setPanelPayload] = useState<VolunteerPanelPayload | null>(null);
     const [panelTab, setPanelTab] = useState<'detalhes' | 'chat'>('detalhes');
@@ -209,6 +239,20 @@ export default function VolunteerRequestsIndex({
         }
     };
 
+    const handleDetachVolunteer = async (row: VolunteerRequestRow) => {
+        if (!row.detach_volunteer_url) return;
+        const ok = await confirmAction({
+            title: 'Remover voluntário anexado?',
+            text: 'O pedido voltará para pendente e será possível anexar outro voluntário.',
+            confirmButtonText: 'Remover anexo',
+            danger: true,
+            icon: 'warning',
+        });
+        if (ok) {
+            router.post(row.detach_volunteer_url, {}, { preserveScroll: true });
+        }
+    };
+
     const submitCreate: FormEventHandler = (e) => {
         e.preventDefault();
         createForm.post(storeUrl, {
@@ -217,6 +261,28 @@ export default function VolunteerRequestsIndex({
                 closeModal();
             },
         });
+    };
+
+    const boolLabel = (v: boolean | null | undefined) => {
+        if (v === null || v === undefined) return 'Não informado';
+        return v ? 'Sim' : 'Não';
+    };
+
+    const textLabel = (v: string | null | undefined) => {
+        if (!v || v.trim() === '') return '—';
+        return v;
+    };
+
+    const attendanceLabel = (raw: string | null | undefined) => {
+        if (!raw) return '—';
+        const map: Record<string, string> = {
+            less_than_3_months: 'Menos de 3 meses',
+            months_3_6: '3 a 6 meses',
+            months_6_12: '6 meses a 1 ano',
+            years_1_3: '1 a 3 anos',
+            more_than_3_years: 'Mais de 3 anos',
+        };
+        return map[raw] ?? raw;
     };
 
     const title = mode === 'staff' ? 'Registar pedido de voluntário' : 'Solicitar voluntário';
@@ -447,6 +513,16 @@ export default function VolunteerRequestsIndex({
                                             <UserPlusIcon className="h-5 w-5" aria-hidden />
                                         </button>
                                     ) : null}
+                                    {row.can_detach_volunteer ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDetachVolunteer(row)}
+                                            title="Remover voluntário anexado"
+                                            className="rounded-lg p-2 text-zinc-500 transition hover:bg-amber-50 hover:text-amber-700 dark:hover:bg-amber-950/40 dark:hover:text-amber-300"
+                                        >
+                                            <UserMinusIcon className="h-5 w-5" aria-hidden />
+                                        </button>
+                                    ) : null}
                                     {row.can_edit ? (
                                         <button
                                             type="button"
@@ -480,11 +556,34 @@ export default function VolunteerRequestsIndex({
                             {mode === 'staff' && row.requester_name ? (
                                 <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Por {row.requester_name}</p>
                             ) : null}
-                            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{row.message_preview}</p>
+                            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                                <span className="font-medium text-zinc-700 dark:text-zinc-300">Observação:</span>{' '}
+                                {row.message_preview}
+                            </p>
                             <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
                                 <span className="font-medium text-zinc-600 dark:text-zinc-300">Data do pedido:</span>{' '}
                                 {formatCreatedAt(row.created_at)}
                             </p>
+                            {row.attached_volunteer_name ? (
+                                <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm dark:border-emerald-900/60 dark:bg-emerald-950/20">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className="font-semibold text-emerald-800 dark:text-emerald-200">Voluntário anexado:</span>
+                                        <span className="text-emerald-900 dark:text-emerald-100">{row.attached_volunteer_name}</span>
+                                        {row.attached_volunteer_email ? (
+                                            <span className="text-emerald-700 dark:text-emerald-300">{` — ${row.attached_volunteer_email}`}</span>
+                                        ) : null}
+                                        {row.attached_volunteer_profile ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => setProfileVolunteer(row.attached_volunteer_profile)}
+                                                className="ml-1 inline-flex items-center rounded-md border border-emerald-300 bg-white/80 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-emerald-800 transition hover:bg-white dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200 dark:hover:bg-emerald-950/50"
+                                            >
+                                                Ver dados
+                                            </button>
+                                        ) : null}
+                                    </div>
+                                </div>
+                            ) : null}
                         </Card>
                     ))
                 )}
@@ -968,6 +1067,112 @@ export default function VolunteerRequestsIndex({
                     }}
                 />
             ) : null}
+
+            <Modal show={!!profileVolunteer} onClose={() => setProfileVolunteer(null)} maxWidth="lg">
+                {profileVolunteer ? (
+                    <div className="space-y-4 p-6">
+                        <div className="flex items-start justify-between gap-3">
+                            <div>
+                                <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Dados do voluntário</h2>
+                                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{profileVolunteer.name ?? 'Voluntário'}</p>
+                            </div>
+                            <SecondaryButton type="button" onClick={() => setProfileVolunteer(null)}>
+                                Fechar
+                            </SecondaryButton>
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">E-mail</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{textLabel(profileVolunteer.email)}</div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Telefone</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{textLabel(profileVolunteer.phone)}</div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Data de nascimento</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{textLabel(profileVolunteer.birthDate)}</div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Área profissional</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{textLabel(profileVolunteer.professionalArea)}</div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Este número tem WhatsApp?</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{boolLabel(profileVolunteer.hasWhatsapp)}</div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Redes Sociais (Instagram, Facebook ou TikTok)</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{boolLabel(profileVolunteer.hasSocialNetworks)}</div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Há quanto tempo você frequenta a Nova Semente?</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{attendanceLabel(profileVolunteer.attendanceDuration)}</div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Você é membro oficial da igreja adventista?</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{boolLabel(profileVolunteer.isOfficialMember)}</div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Seu registro de membro está na Nova Semente?</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{boolLabel(profileVolunteer.memberRecordAtNovaSemente)}</div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Se não estiver, em qual igreja está?</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{textLabel(profileVolunteer.memberRecordChurch)}</div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Você já foi voluntário em algum ministério da igreja?</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{boolLabel(profileVolunteer.hasPreviousMinistryVolunteerExperience)}</div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Precisa de alguma orientação pastoral nesse momento?</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{boolLabel(profileVolunteer.needsPastoralGuidance)}</div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Consentimento LGPD</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{boolLabel(profileVolunteer.lgpdDataConsent)}</div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Função/cargo informado</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{textLabel(profileVolunteer.role)}</div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Acesso somente app</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{boolLabel(profileVolunteer.appAccessOnly)}</div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3">
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Detalhes da experiência anterior</div>
+                                <div className="mt-1 whitespace-pre-wrap text-sm text-zinc-900 dark:text-white">
+                                    {textLabel(profileVolunteer.previousMinistryDetails)}
+                                </div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Envolvimento em ministérios</div>
+                                <div className="mt-1 whitespace-pre-wrap text-sm text-zinc-900 dark:text-white">
+                                    {textLabel(profileVolunteer.ministryInvolvement)}
+                                </div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Outros interesses ministeriais</div>
+                                <div className="mt-1 whitespace-pre-wrap text-sm text-zinc-900 dark:text-white">
+                                    {textLabel(profileVolunteer.otherMinistryInterest)}
+                                </div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Dons a desenvolver</div>
+                                <div className="mt-1 whitespace-pre-wrap text-sm text-zinc-900 dark:text-white">
+                                    {textLabel(profileVolunteer.giftsToDevelop)}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ) : null}
+            </Modal>
         </AdminLayout>
     );
 }

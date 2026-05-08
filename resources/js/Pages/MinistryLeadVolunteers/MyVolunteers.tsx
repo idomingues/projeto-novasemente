@@ -1,4 +1,5 @@
 import AdminLayout from '@/Layouts/AdminLayout';
+import AddButton from '@/Components/AddButton';
 import Card from '@/Components/Card';
 import FlashMessages from '@/Components/FlashMessages';
 import Modal from '@/Components/Modal';
@@ -7,25 +8,69 @@ import InputLabel from '@/Components/InputLabel';
 import PageHeader from '@/Components/PageHeader';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
+import SelectInput from '@/Components/SelectInput';
 import Textarea from '@/Components/Textarea';
-import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
+import TextInput from '@/Components/TextInput';
+import { Head, useForm, usePage } from '@inertiajs/react';
+import { useEffect, useMemo, useState, type FormEventHandler } from 'react';
 
-type InvitationRow = {
-    id: number;
+type VolunteerRow = {
+    id: number | string;
+    ministryId?: number;
     createdAt: string | null;
     ministryName: string | null;
-    volunteer: { id: number; name: string | null; email: string | null; phone: string | null };
+    volunteer: {
+        id: number;
+        name: string | null;
+        email: string | null;
+        phone: string | null;
+        birthDate: string | null;
+        hasWhatsapp: boolean | null;
+        hasSocialNetworks: boolean | null;
+        attendanceDuration: string | null;
+        isOfficialMember: boolean | null;
+        memberRecordAtNovaSemente: boolean | null;
+        memberRecordChurch: string | null;
+        hasPreviousMinistryVolunteerExperience: boolean | null;
+        previousMinistryDetails: string | null;
+        professionalArea: string | null;
+        ministryInvolvement: string | null;
+        otherMinistryInterest: string | null;
+        giftsToDevelop: string | null;
+        needsPastoralGuidance: boolean | null;
+        lgpdDataConsent: boolean | null;
+        role: string | null;
+        appAccessOnly: boolean | null;
+    };
     inviteStatus: string;
     leaderStatus: string | null;
     leaderNote: string | null;
-    updateUrl: string;
+    updateUrl: string | null;
 };
 
 interface Paginated<T> {
     data: T[];
     links: { url: string | null; label: string; active: boolean }[];
 }
+
+type RequestRow = {
+    id: number;
+    subject: string;
+    status: string;
+    status_label: string;
+    message_preview: string;
+    created_at: string | null;
+    completed_at: string | null;
+    attached_volunteer_name: string | null;
+    attached_volunteer_email: string | null;
+    attached_volunteer_profile: VolunteerRow['volunteer'] | null;
+};
+
+type RequestMinistry = {
+    id: number;
+    name: string;
+    schedule_roles: Array<{ id: number; name: string }>;
+};
 
 type HistoryRow = {
     id: number;
@@ -37,20 +82,95 @@ type HistoryRow = {
 };
 
 export default function MyVolunteers() {
-    const { invitations } = usePage().props as unknown as { invitations: Paginated<InvitationRow> };
+    const { invitations, activeVolunteers, requestRows, requestMinistries, requestStoreUrl } = usePage().props as unknown as {
+        invitations: Paginated<VolunteerRow>;
+        activeVolunteers: VolunteerRow[];
+        requestRows: RequestRow[];
+        requestMinistries: RequestMinistry[];
+        requestStoreUrl: string;
+    };
 
-    const [editingId, setEditingId] = useState<number | null>(null);
+    const [editingId, setEditingId] = useState<number | string | null>(null);
     const row = useMemo(() => invitations.data.find((x) => x.id === editingId) ?? null, [editingId, invitations.data]);
+    const [profileRow, setProfileRow] = useState<VolunteerRow | null>(null);
     const [tab, setTab] = useState<'status' | 'history'>('status');
+    const [screenTab, setScreenTab] = useState<'active' | 'new' | 'requests'>('new');
     const [history, setHistory] = useState<HistoryRow[] | null>(null);
     const [historyLoading, setHistoryLoading] = useState(false);
+    const [requestModalOpen, setRequestModalOpen] = useState(false);
 
     const form = useForm({
         leader_status: '' as '' | 'denied' | 'training' | 'active',
         leader_note: '',
     });
+    const requestForm = useForm({
+        ministry_id: '' as '' | number,
+        schedule_role_id: '' as '' | number,
+        message: '',
+        quantity: 1,
+    });
 
-    const openEdit = (r: InvitationRow) => {
+    const newRows = useMemo(
+        () => invitations.data.filter((item) => item.leaderStatus === null || item.leaderStatus === ''),
+        [invitations.data],
+    );
+    const activeRows = useMemo(() => {
+        const source = [
+            ...invitations.data.filter((item) => item.leaderStatus === 'training' || item.leaderStatus === 'active'),
+            ...activeVolunteers,
+        ];
+        const byVolunteer = new Map<number, VolunteerRow & { _ministries: Set<string> }>();
+
+        source.forEach((item) => {
+            const volunteerId = item.volunteer.id;
+            const ministry = (item.ministryName ?? '').trim();
+            const current = byVolunteer.get(volunteerId);
+            if (!current) {
+                byVolunteer.set(volunteerId, {
+                    ...item,
+                    id: `active-${volunteerId}`,
+                    _ministries: new Set(ministry ? [ministry] : []),
+                });
+                return;
+            }
+            if (ministry) current._ministries.add(ministry);
+            if (!current.updateUrl && item.updateUrl) {
+                current.updateUrl = item.updateUrl;
+            }
+            if (current.leaderStatus !== 'active' && item.leaderStatus === 'active') {
+                current.leaderStatus = 'active';
+            }
+        });
+
+        return Array.from(byVolunteer.values()).map(({ _ministries, ...row }) => ({
+            ...row,
+            ministryName: _ministries.size > 0 ? Array.from(_ministries).join(', ') : row.ministryName,
+        }));
+    }, [invitations.data, activeVolunteers]);
+
+    useEffect(() => {
+        if (newRows.length > 0) {
+            setScreenTab('new');
+            return;
+        }
+        if (activeRows.length > 0) {
+            setScreenTab('active');
+            return;
+        }
+        setScreenTab('requests');
+    }, [newRows.length, activeRows.length]);
+
+    const selectedMinistry = useMemo(
+        () => requestMinistries.find((m) => m.id === Number(requestForm.data.ministry_id)),
+        [requestMinistries, requestForm.data.ministry_id],
+    );
+    const requestRoleOptions = useMemo(
+        () => (selectedMinistry?.schedule_roles ?? []).map((r) => ({ value: r.id, label: r.name })),
+        [selectedMinistry],
+    );
+
+    const openEdit = (r: VolunteerRow) => {
+        if (!r.updateUrl) return;
         setEditingId(r.id);
         setTab('status');
         setHistory(null);
@@ -71,9 +191,57 @@ export default function MyVolunteers() {
         form.clearErrors();
     };
 
+    const openProfile = (r: VolunteerRow) => {
+        setProfileRow(r);
+    };
+
+    const closeProfile = () => {
+        setProfileRow(null);
+    };
+
+    const openAttachedVolunteerProfile = (req: RequestRow) => {
+        if (!req.attached_volunteer_profile) return;
+        setProfileRow({
+            id: `request-${req.id}-attached`,
+            ministryName: 'Pedido concluído',
+            createdAt: req.completed_at,
+            volunteer: req.attached_volunteer_profile,
+            inviteStatus: 'active_roster',
+            leaderStatus: 'active',
+            leaderNote: null,
+            updateUrl: null,
+        });
+    };
+
     const submit = () => {
-        if (!row) return;
+        if (!row || !row.updateUrl) return;
         form.patch(row.updateUrl, { preserveScroll: true, onSuccess: () => closeEdit() });
+    };
+
+    const openRequestModal = () => {
+        requestForm.reset();
+        requestForm.clearErrors();
+        requestForm.setData({
+            ministry_id: '',
+            schedule_role_id: '',
+            message: '',
+            quantity: 1,
+        });
+        setRequestModalOpen(true);
+    };
+
+    const closeRequestModal = () => {
+        setRequestModalOpen(false);
+        requestForm.reset();
+        requestForm.clearErrors();
+    };
+
+    const submitRequest: FormEventHandler = (e) => {
+        e.preventDefault();
+        requestForm.post(requestStoreUrl, {
+            preserveScroll: true,
+            onSuccess: () => closeRequestModal(),
+        });
     };
 
     const loadHistory = async () => {
@@ -105,11 +273,108 @@ export default function MyVolunteers() {
     };
 
     const inviteLabel = (s: string) => {
+        if (s === 'active_roster') return 'Ativo na escala';
         if (s === 'accepted') return 'Aceito no link';
         if (s === 'declined') return 'Recusado no link';
         if (s === 'pending') return 'Aguardando resposta';
         return s || '—';
     };
+
+    const requestDateLabel = (iso: string | null) => {
+        if (!iso) return '—';
+        try {
+            return new Date(iso).toLocaleString('pt-BR');
+        } catch {
+            return iso;
+        }
+    };
+
+    const requestStatusClass = (status: string) => {
+        if (status === 'completed') {
+            return 'rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200';
+        }
+        if (status === 'in_progress') {
+            return 'rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200';
+        }
+        return 'rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200';
+    };
+
+    const boolLabel = (v: boolean | null | undefined) => {
+        if (v === null || v === undefined) return 'Não informado';
+        return v ? 'Sim' : 'Não';
+    };
+
+    const textLabel = (v: string | null | undefined) => {
+        if (!v || v.trim() === '') return '—';
+        return v;
+    };
+
+    const dateLabel = (v: string | null | undefined) => {
+        if (!v || v.trim() === '') return '—';
+        const d = new Date(v);
+        if (Number.isNaN(d.getTime())) return v;
+        return d.toLocaleDateString('pt-BR');
+    };
+
+    const attendanceLabel = (raw: string | null | undefined) => {
+        if (!raw) return '—';
+        const map: Record<string, string> = {
+            less_than_3_months: 'Menos de 3 meses',
+            months_3_6: '3 a 6 meses',
+            months_6_12: '6 meses a 1 ano',
+            years_1_3: '1 a 3 anos',
+            more_than_3_years: 'Mais de 3 anos',
+        };
+        return map[raw] ?? raw;
+    };
+
+    const renderVolunteerTable = (rows: VolunteerRow[], emptyText: string) => (
+        <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+                <thead>
+                    <tr className="border-b border-zinc-200 text-left dark:border-zinc-700">
+                        <th className="pb-2 pr-3 font-semibold">Voluntário</th>
+                        <th className="pb-2 pr-3 font-semibold">Departamento</th>
+                        <th className="pb-2 pr-3 font-semibold">Status do convite</th>
+                        <th className="pb-2 pr-3 font-semibold">Status (líder)</th>
+                        <th className="pb-2 font-semibold" />
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows.map((item) => (
+                        <tr key={item.id} className="border-b border-zinc-100 dark:border-zinc-800">
+                            <td className="py-2 pr-3">
+                                <div className="font-medium text-zinc-900 dark:text-white">{item.volunteer.name ?? '—'}</div>
+                                <div className="text-xs text-zinc-500">{item.volunteer.email ?? ''}</div>
+                            </td>
+                            <td className="py-2 pr-3 text-zinc-700 dark:text-zinc-200">{item.ministryName ?? '—'}</td>
+                            <td className="py-2 pr-3 text-zinc-600 dark:text-zinc-300">{inviteLabel(item.inviteStatus)}</td>
+                            <td className="py-2 pr-3 text-zinc-700 dark:text-zinc-200">{statusLabel(item.leaderStatus)}</td>
+                            <td className="py-2 text-right">
+                                <div className="flex flex-wrap justify-end gap-2">
+                                    <SecondaryButton type="button" onClick={() => openProfile(item)}>
+                                        Ver dados
+                                    </SecondaryButton>
+                                    {item.updateUrl ? (
+                                        <SecondaryButton type="button" onClick={() => openEdit(item)}>
+                                            Alterar status
+                                        </SecondaryButton>
+                                    ) : null}
+                                </div>
+                            </td>
+                        </tr>
+                    ))}
+                    {rows.length === 0 ? (
+                        <tr>
+                            <td colSpan={5} className="py-6 text-center text-sm text-zinc-500">
+                                {emptyText}
+                            </td>
+                        </tr>
+                    ) : null}
+                </tbody>
+            </table>
+        </div>
+    );
 
     return (
         <AdminLayout>
@@ -117,53 +382,112 @@ export default function MyVolunteers() {
             <FlashMessages />
             <PageHeader
                 title="Meus voluntários"
-                subtitle="Voluntários encaminhados para os seus departamentos. Atualize o status interno (Recusar/Treinamento/Atuante)."
+                subtitle="Fluxo único do líder: acompanhe novos voluntários, voluntários em atividade e solicitações à secretaria."
                 actions={
-                    <Link href={route('ministry-lead.volunteer-requests.index')}>
-                        <SecondaryButton type="button">Pedidos de voluntário</SecondaryButton>
-                    </Link>
+                    <AddButton variant="icon" onClick={openRequestModal} disabled={requestMinistries.length === 0}>
+                        Solicitar voluntário
+                    </AddButton>
                 }
             />
 
             <Card className="p-4">
-                <div className="overflow-x-auto">
-                    <table className="min-w-full text-sm">
-                        <thead>
-                            <tr className="border-b border-zinc-200 text-left dark:border-zinc-700">
-                                <th className="pb-2 pr-3 font-semibold">Voluntário</th>
-                                <th className="pb-2 pr-3 font-semibold">Departamento</th>
-                                <th className="pb-2 pr-3 font-semibold">Status do convite</th>
-                                <th className="pb-2 pr-3 font-semibold">Status (líder)</th>
-                                <th className="pb-2 font-semibold" />
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {invitations.data.map((r) => (
-                                <tr key={r.id} className="border-b border-zinc-100 dark:border-zinc-800">
-                                    <td className="py-2 pr-3">
-                                        <div className="font-medium text-zinc-900 dark:text-white">{r.volunteer.name ?? '—'}</div>
-                                        <div className="text-xs text-zinc-500">{r.volunteer.email ?? ''}</div>
-                                    </td>
-                                    <td className="py-2 pr-3 text-zinc-700 dark:text-zinc-200">{r.ministryName ?? '—'}</td>
-                                    <td className="py-2 pr-3 text-zinc-600 dark:text-zinc-300">{inviteLabel(r.inviteStatus)}</td>
-                                    <td className="py-2 pr-3 text-zinc-700 dark:text-zinc-200">{statusLabel(r.leaderStatus)}</td>
-                                    <td className="py-2 text-right">
-                                        <SecondaryButton type="button" onClick={() => openEdit(r)}>
-                                            Alterar status
-                                        </SecondaryButton>
-                                    </td>
-                                </tr>
-                            ))}
-                            {invitations.data.length === 0 ? (
-                                <tr>
-                                    <td colSpan={5} className="py-6 text-center text-sm text-zinc-500">
-                                        Nenhum voluntário encaminhado para os seus departamentos.
-                                    </td>
-                                </tr>
-                            ) : null}
-                        </tbody>
-                    </table>
+                <div className="mb-4 flex gap-2 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800">
+                    <button
+                        type="button"
+                        onClick={() => setScreenTab('active')}
+                        className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                            screenTab === 'active'
+                                ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
+                                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+                        }`}
+                    >
+                        Em atividade ({activeRows.length})
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setScreenTab('requests')}
+                        className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                            screenTab === 'requests'
+                                ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
+                                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+                        }`}
+                    >
+                        Solicitações ({requestRows.length})
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setScreenTab('new')}
+                        className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                            screenTab === 'new'
+                                ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
+                                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+                        }`}
+                    >
+                        Novos ({newRows.length})
+                    </button>
                 </div>
+
+                {screenTab === 'new'
+                    ? renderVolunteerTable(newRows, 'Sem novos voluntários pendentes de análise.')
+                    : null}
+                {screenTab === 'active'
+                    ? renderVolunteerTable(activeRows, 'Sem voluntários em treinamento/atividade.')
+                    : null}
+                {screenTab === 'requests' ? (
+                    <div className="space-y-3">
+                        {requestRows.length === 0 ? (
+                            <p className="py-6 text-center text-sm text-zinc-500">Ainda não há solicitações enviadas.</p>
+                        ) : (
+                            requestRows.map((req) => (
+                                <div
+                                    key={req.id}
+                                    className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900/30"
+                                >
+                                    <div className="flex flex-wrap items-start justify-between gap-2">
+                                        <div className="min-w-0 flex-1">
+                                            <div className="truncate font-medium text-zinc-900 dark:text-white">{req.subject}</div>
+                                            <div className="mt-1 text-xs text-zinc-500">{requestDateLabel(req.created_at)}</div>
+                                        </div>
+                                        <span className={requestStatusClass(req.status)}>
+                                            {req.status_label}
+                                        </span>
+                                    </div>
+                                    {req.message_preview ? (
+                                        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+                                            <span className="font-medium text-zinc-700 dark:text-zinc-300">Observação:</span>{' '}
+                                            {req.message_preview}
+                                        </p>
+                                    ) : null}
+                                    {req.attached_volunteer_name ? (
+                                        <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm dark:border-emerald-900/60 dark:bg-emerald-950/20">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className="font-semibold text-emerald-800 dark:text-emerald-200">Voluntário anexado:</span>
+                                                <span className="text-emerald-900 dark:text-emerald-100">{req.attached_volunteer_name}</span>
+                                                {req.attached_volunteer_email ? (
+                                                    <span className="text-emerald-700 dark:text-emerald-300">{` — ${req.attached_volunteer_email}`}</span>
+                                                ) : null}
+                                                {req.attached_volunteer_profile ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => openAttachedVolunteerProfile(req)}
+                                                        className="ml-1 inline-flex items-center rounded-md border border-emerald-300 bg-white/80 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-emerald-800 transition hover:bg-white dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200 dark:hover:bg-emerald-950/50"
+                                                    >
+                                                        Ver dados
+                                                    </button>
+                                                ) : null}
+                                            </div>
+                                            {req.completed_at ? (
+                                                <div className="mt-1 text-xs text-emerald-700 dark:text-emerald-300">
+                                                    Concluído em: {requestDateLabel(req.completed_at)}
+                                                </div>
+                                            ) : null}
+                                        </div>
+                                    ) : null}
+                                </div>
+                            ))
+                        )}
+                    </div>
+                ) : null}
             </Card>
 
             <Modal show={!!row} onClose={closeEdit} maxWidth="lg">
@@ -294,6 +618,227 @@ export default function MyVolunteers() {
                         )}
                     </div>
                 ) : null}
+            </Modal>
+
+            <Modal show={!!profileRow} onClose={closeProfile} maxWidth="lg">
+                {profileRow ? (
+                    <div className="space-y-4 p-6">
+                        <div className="flex items-start justify-between gap-3">
+                            <div>
+                                <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Dados do voluntário</h2>
+                                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+                                    {profileRow.volunteer.name ?? 'Voluntário'} — {profileRow.ministryName ?? 'Departamento'}
+                                </p>
+                            </div>
+                            <SecondaryButton type="button" onClick={closeProfile}>
+                                Fechar
+                            </SecondaryButton>
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">E-mail</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{textLabel(profileRow.volunteer.email)}</div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Telefone</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{textLabel(profileRow.volunteer.phone)}</div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Data de nascimento</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{dateLabel(profileRow.volunteer.birthDate)}</div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Área profissional</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{textLabel(profileRow.volunteer.professionalArea)}</div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Este número tem WhatsApp?</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{boolLabel(profileRow.volunteer.hasWhatsapp)}</div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Redes Sociais (Instagram, Facebook ou TikTok)</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{boolLabel(profileRow.volunteer.hasSocialNetworks)}</div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Há quanto tempo você frequenta a Nova Semente?</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{attendanceLabel(profileRow.volunteer.attendanceDuration)}</div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Você é membro oficial da igreja adventista?</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{boolLabel(profileRow.volunteer.isOfficialMember)}</div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Seu registro de membro está na Nova Semente?</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{boolLabel(profileRow.volunteer.memberRecordAtNovaSemente)}</div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Se não estiver, em qual igreja está?</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{textLabel(profileRow.volunteer.memberRecordChurch)}</div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Você já foi voluntário em algum ministério da igreja?</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">
+                                    {boolLabel(profileRow.volunteer.hasPreviousMinistryVolunteerExperience)}
+                                </div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Precisa de alguma orientação pastoral nesse momento?</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{boolLabel(profileRow.volunteer.needsPastoralGuidance)}</div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Consentimento LGPD</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{boolLabel(profileRow.volunteer.lgpdDataConsent)}</div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Função/cargo informado</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{textLabel(profileRow.volunteer.role)}</div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Acesso somente app</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{boolLabel(profileRow.volunteer.appAccessOnly)}</div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3">
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Detalhes da experiência anterior</div>
+                                <div className="mt-1 whitespace-pre-wrap text-sm text-zinc-900 dark:text-white">
+                                    {textLabel(profileRow.volunteer.previousMinistryDetails)}
+                                </div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Envolvimento em ministérios</div>
+                                <div className="mt-1 whitespace-pre-wrap text-sm text-zinc-900 dark:text-white">
+                                    {textLabel(profileRow.volunteer.ministryInvolvement)}
+                                </div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Outros interesses ministeriais</div>
+                                <div className="mt-1 whitespace-pre-wrap text-sm text-zinc-900 dark:text-white">
+                                    {textLabel(profileRow.volunteer.otherMinistryInterest)}
+                                </div>
+                            </div>
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Dons a desenvolver</div>
+                                <div className="mt-1 whitespace-pre-wrap text-sm text-zinc-900 dark:text-white">
+                                    {textLabel(profileRow.volunteer.giftsToDevelop)}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ) : null}
+            </Modal>
+
+            <Modal
+                show={requestModalOpen}
+                onClose={closeRequestModal}
+                maxWidth="lg"
+                footer={
+                    <div className="flex flex-wrap justify-end gap-2">
+                        <SecondaryButton type="button" onClick={closeRequestModal}>
+                            Cancelar
+                        </SecondaryButton>
+                        <PrimaryButton type="submit" form="leader-request-form" disabled={requestForm.processing}>
+                            Enviar pedido
+                        </PrimaryButton>
+                    </div>
+                }
+            >
+                <form id="leader-request-form" onSubmit={submitRequest} className="space-y-5 p-6">
+                    <div>
+                        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Solicitar voluntário</h2>
+                        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                            Informe departamento, quantidade e observações. Se quiser, selecione a função na escala.
+                        </p>
+                    </div>
+
+                    <div>
+                        <InputLabel htmlFor="request_ministry_id" value="Departamento" />
+                        <SelectInput
+                            id="request_ministry_id"
+                            name="ministry_id"
+                            value={requestForm.data.ministry_id === '' ? '' : String(requestForm.data.ministry_id)}
+                            className="mt-1 block w-full"
+                            required
+                            onChange={(e) => {
+                                const v = e.target.value;
+                                const id = v === '' ? '' : Number(v);
+                                requestForm.setData('ministry_id', id === '' || Number.isNaN(id) ? '' : id);
+                                requestForm.setData('schedule_role_id', '');
+                            }}
+                        >
+                            <option value="">Selecione…</option>
+                            {requestMinistries.map((m) => (
+                                <option key={m.id} value={String(m.id)}>
+                                    {m.name}
+                                </option>
+                            ))}
+                        </SelectInput>
+                        <InputError className="mt-2" message={requestForm.errors.ministry_id} />
+                    </div>
+
+                    <div>
+                        <InputLabel htmlFor="request_schedule_role_id" value="Função (escala) — opcional" />
+                        <SelectInput
+                            id="request_schedule_role_id"
+                            name="schedule_role_id"
+                            value={requestForm.data.schedule_role_id === '' ? '' : String(requestForm.data.schedule_role_id)}
+                            className="mt-1 block w-full"
+                            disabled={requestForm.data.ministry_id === ''}
+                            onChange={(e) => {
+                                const v = e.target.value;
+                                const id = v === '' ? '' : Number(v);
+                                requestForm.setData('schedule_role_id', id === '' || Number.isNaN(id) ? '' : id);
+                            }}
+                        >
+                            <option value="">
+                                {requestForm.data.ministry_id === ''
+                                    ? 'Escolha primeiro o departamento'
+                                    : 'Sem função específica (opcional)'}
+                            </option>
+                            {requestRoleOptions.map((o) => (
+                                <option key={o.value} value={String(o.value)}>
+                                    {o.label}
+                                </option>
+                            ))}
+                        </SelectInput>
+                        <InputError className="mt-2" message={requestForm.errors.schedule_role_id} />
+                    </div>
+
+                    <div>
+                        <InputLabel htmlFor="request_quantity" value="Quantidade" />
+                        <TextInput
+                            id="request_quantity"
+                            name="quantity"
+                            type="number"
+                            min={1}
+                            max={50}
+                            step={1}
+                            value={String(requestForm.data.quantity)}
+                            className="mt-1 block w-full max-w-xs"
+                            onChange={(e) => {
+                                const n = parseInt(e.target.value, 10);
+                                requestForm.setData('quantity', Number.isNaN(n) || n < 1 ? 1 : Math.min(50, n));
+                            }}
+                        />
+                        <InputError className="mt-2" message={requestForm.errors.quantity} />
+                    </div>
+
+                    <div>
+                        <InputLabel htmlFor="request_message" value="Observações (opcional)" />
+                        <Textarea
+                            id="request_message"
+                            name="message"
+                            value={requestForm.data.message}
+                            className="mt-1 block w-full"
+                            rows={5}
+                            placeholder="Datas, requisitos, disponibilidade, observações gerais..."
+                            onChange={(e) => requestForm.setData('message', e.target.value)}
+                        />
+                        <InputError className="mt-2" message={requestForm.errors.message} />
+                    </div>
+                </form>
             </Modal>
         </AdminLayout>
     );

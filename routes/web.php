@@ -328,7 +328,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/lideranca/meus-voluntarios/{invitation}/historico', [MyMinistryVolunteersController::class, 'history'])
         ->name('ministry-lead.my-volunteers.history')
         ->middleware('auth');
-    Route::get('/lideranca/solicitar-voluntario', [VolunteerRequestSolicitationController::class, 'indexLeader'])
+    // Compatibilidade: rota antiga agora aponta para o fluxo unificado em “Meus voluntários”.
+    Route::redirect('/lideranca/solicitar-voluntario', '/lideranca/meus-voluntarios')
         ->name('ministry-lead.volunteer-requests.index');
     Route::post('/lideranca/solicitar-voluntario', [VolunteerRequestSolicitationController::class, 'storeLeader'])
         ->name('ministry-lead.volunteer-requests.store');
@@ -584,6 +585,9 @@ Route::middleware('auth')->group(function () {
         ->middleware('role_or_permission:super_admin|admin|solicitations.manage');
     Route::post('/solicitar-voluntario/{solicitation}/anexar-voluntario', [VolunteerRequestSolicitationController::class, 'attachVolunteerStaff'])
         ->name('volunteer-requests.staff.attach-volunteer')
+        ->middleware('role_or_permission:super_admin|admin|solicitations.manage');
+    Route::post('/solicitar-voluntario/{solicitation}/desanexar-voluntario', [VolunteerRequestSolicitationController::class, 'detachVolunteerStaff'])
+        ->name('volunteer-requests.staff.detach-volunteer')
         ->middleware('role_or_permission:super_admin|admin|solicitations.manage');
 
     // Versões do App (Admin) — admin/super_admin (admin pode complementar notas pós-deploy)

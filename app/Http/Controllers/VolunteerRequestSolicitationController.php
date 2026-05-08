@@ -118,9 +118,10 @@ class VolunteerRequestSolicitationController extends Controller
         if ($includeRequesterName) {
             $q->with(['user:id,name']);
         }
+        $q->with(['assignedVolunteer:id,name,email,phone,birth_date,has_whatsapp,has_social_networks,attendance_duration,is_official_member,member_record_at_nova_semente,member_record_church,has_previous_ministry_volunteer_experience,previous_ministry_details,professional_area,ministry_involvement,other_ministry_interest,gifts_to_develop,needs_pastoral_guidance,lgpd_data_consent,role,app_access_only']);
 
         return $q
-            ->get(['id', 'subject', 'message', 'status', 'created_at', 'user_id', 'meta'])
+            ->get(['id', 'subject', 'message', 'status', 'created_at', 'user_id', 'meta', 'assigned_volunteer_id', 'completed_at'])
             ->map(function (ChurchSolicitation $s) use ($includeRequesterName, $authUser, $accessMode) {
                 $meta = $s->meta ?? [];
                 $ministryIdMeta = isset($meta['ministry_id']) ? (int) $meta['ministry_id'] : null;
@@ -147,10 +148,53 @@ class VolunteerRequestSolicitationController extends Controller
                     && $hasMinistry
                     && ! $alreadyFulfilled
                     && $authUser->can('manageVolunteerRequestAsStaff', $s);
+                $canDetach = $accessMode === 'staff'
+                    && $s->status === 'completed'
+                    && $s->assigned_volunteer_id !== null
+                    && $authUser->can('manageVolunteerRequestAsStaff', $s);
 
                 $batchTotal = isset($meta['batch_total']) ? max(1, (int) $meta['batch_total']) : 1;
                 $batchIndex = isset($meta['batch_index']) ? max(1, (int) $meta['batch_index']) : 1;
                 $batchSlotLabel = $batchTotal > 1 ? $batchIndex.' / '.$batchTotal : null;
+                $attachedVolunteerName = trim((string) ($s->assignedVolunteer?->name ?? ''));
+                if ($attachedVolunteerName === '') {
+                    $attachedVolunteerName = null;
+                }
+                $attachedVolunteerEmail = trim((string) ($s->assignedVolunteer?->email ?? ''));
+                if ($attachedVolunteerEmail === '') {
+                    $attachedVolunteerEmail = null;
+                }
+                $attachedVolunteerId = $s->assignedVolunteer?->id ? (int) $s->assignedVolunteer->id : null;
+                $attachedVolunteerShowUrl = null;
+                if ($attachedVolunteerId !== null && $accessMode === 'staff') {
+                    $attachedVolunteerShowUrl = route('volunteers.show', $attachedVolunteerId);
+                }
+                $attachedVolunteerProfile = null;
+                if ($s->assignedVolunteer) {
+                    $attachedVolunteerProfile = [
+                        'id' => (int) $s->assignedVolunteer->id,
+                        'name' => $s->assignedVolunteer->name,
+                        'email' => $s->assignedVolunteer->email,
+                        'phone' => $s->assignedVolunteer->phone,
+                        'birthDate' => $s->assignedVolunteer->birth_date?->toDateString(),
+                        'hasWhatsapp' => $s->assignedVolunteer->has_whatsapp,
+                        'hasSocialNetworks' => $s->assignedVolunteer->has_social_networks,
+                        'attendanceDuration' => $s->assignedVolunteer->attendance_duration,
+                        'isOfficialMember' => $s->assignedVolunteer->is_official_member,
+                        'memberRecordAtNovaSemente' => $s->assignedVolunteer->member_record_at_nova_semente,
+                        'memberRecordChurch' => $s->assignedVolunteer->member_record_church,
+                        'hasPreviousMinistryVolunteerExperience' => $s->assignedVolunteer->has_previous_ministry_volunteer_experience,
+                        'previousMinistryDetails' => $s->assignedVolunteer->previous_ministry_details,
+                        'professionalArea' => $s->assignedVolunteer->professional_area,
+                        'ministryInvolvement' => $s->assignedVolunteer->ministry_involvement,
+                        'otherMinistryInterest' => $s->assignedVolunteer->other_ministry_interest,
+                        'giftsToDevelop' => $s->assignedVolunteer->gifts_to_develop,
+                        'needsPastoralGuidance' => $s->assignedVolunteer->needs_pastoral_guidance,
+                        'lgpdDataConsent' => $s->assignedVolunteer->lgpd_data_consent,
+                        'role' => $s->assignedVolunteer->role,
+                        'appAccessOnly' => (bool) ($s->assignedVolunteer->app_access_only ?? false),
+                    ];
+                }
 
                 $panelRoute = $accessMode === 'leader'
                     ? 'ministry-lead.volunteer-requests.panel'
@@ -166,6 +210,11 @@ class VolunteerRequestSolicitationController extends Controller
                     'created_at' => $s->created_at?->toIso8601String(),
                     'batch_slot_label' => $batchSlotLabel,
                     'requester_name' => $includeRequesterName ? ($s->user?->name) : null,
+                    'attached_volunteer_name' => $attachedVolunteerName,
+                    'attached_volunteer_email' => $attachedVolunteerEmail,
+                    'attached_volunteer_id' => $attachedVolunteerId,
+                    'attached_volunteer_show_url' => $attachedVolunteerShowUrl,
+                    'attached_volunteer_profile' => $attachedVolunteerProfile,
                     'ministry_id' => $ministryIdMeta,
                     'schedule_role_id' => $scheduleRoleIdMeta > 0 ? $scheduleRoleIdMeta : null,
                     'can_edit' => $canMutate,
@@ -174,6 +223,8 @@ class VolunteerRequestSolicitationController extends Controller
                     'destroy_url' => $canMutate ? route($destroyRoute, $s) : null,
                     'can_attach_volunteer' => $canAttach,
                     'attach_volunteer_url' => $canAttach ? route('volunteer-requests.staff.attach-volunteer', $s) : null,
+                    'can_detach_volunteer' => $canDetach,
+                    'detach_volunteer_url' => $canDetach ? route('volunteer-requests.staff.detach-volunteer', $s) : null,
                     'panel_json_url' => route($panelRoute, $s),
                 ];
             })
@@ -418,7 +469,7 @@ class VolunteerRequestSolicitationController extends Controller
 
         $fallback = $senderType === 'staff'
             ? route('volunteer-requests.staff.index')
-            : route('ministry-lead.volunteer-requests.index');
+            : route('ministry-lead.my-volunteers.index');
 
         return redirect()->back(fallback: $fallback);
     }
@@ -472,7 +523,7 @@ class VolunteerRequestSolicitationController extends Controller
             ]);
         }
 
-        DB::transaction(function () use ($solicitation, $volunteer, $ministry, $staffUser, $churchId): void {
+        DB::transaction(function () use ($solicitation, $volunteer, $ministry, $staffUser, $churchId, $meta): void {
             $invitation = app(CreateAndNotifyVolunteerMinistryInvitation::class)(
                 (int) $churchId,
                 $volunteer,
@@ -510,6 +561,8 @@ class VolunteerRequestSolicitationController extends Controller
 
             $newMeta = array_merge($meta, [
                 'fulfilled_volunteer_id' => $volunteer->id,
+                'fulfilled_volunteer_name' => $volunteerName,
+                'fulfilled_volunteer_email' => $volunteer->email,
                 'fulfilled_invitation_id' => $invitation->id,
                 'fulfilled_at' => now()->toIso8601String(),
                 'fulfilled_by_user_id' => $staffUser->id,
@@ -526,6 +579,74 @@ class VolunteerRequestSolicitationController extends Controller
         return redirect()
             ->route('volunteer-requests.staff.index')
             ->with('success', 'Voluntário anexado: convite criado para o líder, pedido concluído e fase do voluntário atualizada.');
+    }
+
+    public function detachVolunteerStaff(Request $request, ChurchSolicitation $solicitation): RedirectResponse
+    {
+        $this->canManageSolicitations($request);
+        $churchId = $this->churchId($request);
+        abort_unless($churchId, 404, 'Nenhuma igreja ativa.');
+        $this->assertVolunteerRequest($solicitation, (int) $churchId);
+        $this->authorize('manageVolunteerRequestAsStaff', $solicitation);
+
+        $staffUser = $request->user();
+        abort_unless($staffUser instanceof User, 401);
+
+        if ($solicitation->status !== 'completed' || $solicitation->assigned_volunteer_id === null) {
+            throw ValidationException::withMessages([
+                'volunteer_id' => ['Este pedido não possui voluntário anexado para remover.'],
+            ]);
+        }
+
+        $meta = $solicitation->meta ?? [];
+        $invitationId = isset($meta['fulfilled_invitation_id']) ? (int) $meta['fulfilled_invitation_id'] : 0;
+        $volunteerName = trim((string) ($solicitation->assignedVolunteer?->name ?? '')) ?: 'Voluntário';
+
+        DB::transaction(function () use ($solicitation, $invitationId, $meta, $staffUser, $volunteerName): void {
+            if ($invitationId > 0) {
+                $invitation = VolunteerMinistryInvitation::query()->whereKey($invitationId)->first();
+                if ($invitation) {
+                    if (! in_array((string) $invitation->status, ['pending'], true)) {
+                        throw ValidationException::withMessages([
+                            'volunteer_id' => ['Não é possível remover: o convite já teve resposta do voluntário.'],
+                        ]);
+                    }
+                    VolunteerMinistryInvitationStatusHistory::query()
+                        ->where('invitation_id', $invitation->id)
+                        ->delete();
+                    $invitation->delete();
+                }
+            }
+
+            if (Schema::hasTable('church_solicitation_messages')) {
+                ChurchSolicitationMessage::create([
+                    'church_solicitation_id' => $solicitation->id,
+                    'sender_type' => 'staff',
+                    'sender_user_id' => $staffUser->id,
+                    'content' => 'Ação da secretaria: anexo do voluntário «'.$volunteerName.'» foi removido e o pedido voltou para pendente.',
+                ]);
+            }
+
+            unset(
+                $meta['fulfilled_volunteer_id'],
+                $meta['fulfilled_volunteer_name'],
+                $meta['fulfilled_volunteer_email'],
+                $meta['fulfilled_invitation_id'],
+                $meta['fulfilled_at'],
+                $meta['fulfilled_by_user_id']
+            );
+
+            $solicitation->forceFill([
+                'status' => 'pending',
+                'completed_at' => null,
+                'assigned_volunteer_id' => null,
+                'meta' => $meta,
+            ])->save();
+        });
+
+        return redirect()
+            ->route('volunteer-requests.staff.index')
+            ->with('success', 'Voluntário desanexado. O pedido voltou para pendente.');
     }
 
     /**
@@ -620,7 +741,7 @@ class VolunteerRequestSolicitationController extends Controller
         $solicitation->delete();
 
         return redirect()
-            ->route('ministry-lead.volunteer-requests.index')
+            ->route('ministry-lead.my-volunteers.index')
             ->with('success', 'Pedido removido.');
     }
 
@@ -722,7 +843,7 @@ class VolunteerRequestSolicitationController extends Controller
             : 'Pedido de voluntário enviado à secretaria.';
 
         return redirect()
-            ->route('ministry-lead.volunteer-requests.index')
+            ->route('ministry-lead.my-volunteers.index')
             ->with('success', $msg);
     }
 

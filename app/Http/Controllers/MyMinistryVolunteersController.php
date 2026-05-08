@@ -3,18 +3,209 @@
 namespace App\Http\Controllers;
 
 use App\Models\Church;
+use App\Models\ChurchSolicitation;
+use App\Models\Ministry;
+use App\Models\ScheduleRole;
+use App\Models\Volunteer;
 use App\Models\VolunteerLeaderNote;
 use App\Models\VolunteerMinistryInvitation;
 use App\Models\VolunteerMinistryInvitationStatusHistory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class MyMinistryVolunteersController extends Controller
 {
+    /**
+     * @param  list<int>  $leaderMinistryIds
+     * @return list<array<string,mixed>>
+     */
+    private function leaderActiveVolunteerRows(int $churchId, array $leaderMinistryIds): array
+    {
+        if ($leaderMinistryIds === []) {
+            return [];
+        }
+
+        return Volunteer::query()
+            ->where('active', true)
+            ->whereHas('ministries', fn ($q) => $q->where('ministries.church_id', $churchId)->whereIn('ministries.id', $leaderMinistryIds))
+            ->with([
+                'ministries' => fn ($q) => $q->where('ministries.church_id', $churchId)->whereIn('ministries.id', $leaderMinistryIds)->select('ministries.id', 'ministries.name'),
+            ])
+            ->orderBy('name')
+            ->get([
+                'id',
+                'name',
+                'email',
+                'phone',
+                'birth_date',
+                'has_whatsapp',
+                'has_social_networks',
+                'attendance_duration',
+                'is_official_member',
+                'member_record_at_nova_semente',
+                'member_record_church',
+                'has_previous_ministry_volunteer_experience',
+                'previous_ministry_details',
+                'professional_area',
+                'ministry_involvement',
+                'other_ministry_interest',
+                'gifts_to_develop',
+                'needs_pastoral_guidance',
+                'lgpd_data_consent',
+                'role',
+                'app_access_only',
+            ])
+            ->flatMap(function (Volunteer $v) {
+                return $v->ministries->map(fn (Ministry $m) => [
+                    'id' => 'active-'.$v->id.'-'.$m->id,
+                    'ministryId' => (int) $m->id,
+                    'createdAt' => null,
+                    'ministryName' => (string) $m->name,
+                    'volunteer' => [
+                        'id' => (int) $v->id,
+                        'name' => $v->name,
+                        'email' => $v->email,
+                        'phone' => $v->phone,
+                        'birthDate' => $v->birth_date?->toDateString(),
+                        'hasWhatsapp' => $v->has_whatsapp,
+                        'hasSocialNetworks' => $v->has_social_networks,
+                        'attendanceDuration' => $v->attendance_duration,
+                        'isOfficialMember' => $v->is_official_member,
+                        'memberRecordAtNovaSemente' => $v->member_record_at_nova_semente,
+                        'memberRecordChurch' => $v->member_record_church,
+                        'hasPreviousMinistryVolunteerExperience' => $v->has_previous_ministry_volunteer_experience,
+                        'previousMinistryDetails' => $v->previous_ministry_details,
+                        'professionalArea' => $v->professional_area,
+                        'ministryInvolvement' => $v->ministry_involvement,
+                        'otherMinistryInterest' => $v->other_ministry_interest,
+                        'giftsToDevelop' => $v->gifts_to_develop,
+                        'needsPastoralGuidance' => $v->needs_pastoral_guidance,
+                        'lgpdDataConsent' => $v->lgpd_data_consent,
+                        'role' => $v->role,
+                        'appAccessOnly' => (bool) ($v->app_access_only ?? false),
+                    ],
+                    'inviteStatus' => 'active_roster',
+                    'leaderStatus' => 'active',
+                    'leaderNote' => null,
+                    'updateUrl' => null,
+                ]);
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<array{id:int,name:string,schedule_roles:list<array{id:int,name:string}>}>
+     */
+    private function leaderMinistriesWithRoles(int $churchId, array $leaderMinistryIds): array
+    {
+        if ($leaderMinistryIds === []) {
+            return [];
+        }
+
+        $ministries = Ministry::query()
+            ->where('church_id', $churchId)
+            ->whereIn('id', array_map('intval', $leaderMinistryIds))
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        if ($ministries->isEmpty()) {
+            return [];
+        }
+
+        $roles = ScheduleRole::query()
+            ->whereIn('ministry_id', $ministries->pluck('id')->all())
+            ->orderBy('name')
+            ->get(['id', 'name', 'ministry_id'])
+            ->groupBy('ministry_id');
+
+        return $ministries->map(function (Ministry $m) use ($roles): array {
+            $items = $roles->get($m->id, collect());
+
+            return [
+                'id' => (int) $m->id,
+                'name' => (string) $m->name,
+                'schedule_roles' => $items->map(fn (ScheduleRole $r) => [
+                    'id' => (int) $r->id,
+                    'name' => (string) $r->name,
+                ])->values()->all(),
+            ];
+        })->values()->all();
+    }
+
+    /**
+     * @return list<array<string,mixed>>
+     */
+    private function leaderVolunteerRequestRows(int $churchId, int $leaderUserId): array
+    {
+        return ChurchSolicitation::query()
+            ->where('church_id', $churchId)
+            ->where('type', MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST)
+            ->where('user_id', $leaderUserId)
+            ->with(['assignedVolunteer:id,name,email,phone,birth_date,has_whatsapp,has_social_networks,attendance_duration,is_official_member,member_record_at_nova_semente,member_record_church,has_previous_ministry_volunteer_experience,previous_ministry_details,professional_area,ministry_involvement,other_ministry_interest,gifts_to_develop,needs_pastoral_guidance,lgpd_data_consent,role,app_access_only'])
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->limit(100)
+            ->get(['id', 'subject', 'message', 'status', 'created_at', 'completed_at', 'assigned_volunteer_id', 'meta'])
+            ->map(function (ChurchSolicitation $s): array {
+                $meta = is_array($s->meta) ? $s->meta : [];
+                $attachedVolunteerName = trim((string) ($s->assignedVolunteer?->name ?? ($meta['fulfilled_volunteer_name'] ?? '')));
+                if ($attachedVolunteerName === '') {
+                    $attachedVolunteerName = null;
+                }
+                $attachedVolunteerEmail = trim((string) ($s->assignedVolunteer?->email ?? ($meta['fulfilled_volunteer_email'] ?? '')));
+                if ($attachedVolunteerEmail === '') {
+                    $attachedVolunteerEmail = null;
+                }
+                $attachedVolunteerProfile = null;
+                if ($s->assignedVolunteer) {
+                    $attachedVolunteerProfile = [
+                        'id' => (int) $s->assignedVolunteer->id,
+                        'name' => $s->assignedVolunteer->name,
+                        'email' => $s->assignedVolunteer->email,
+                        'phone' => $s->assignedVolunteer->phone,
+                        'birthDate' => $s->assignedVolunteer->birth_date?->toDateString(),
+                        'hasWhatsapp' => $s->assignedVolunteer->has_whatsapp,
+                        'hasSocialNetworks' => $s->assignedVolunteer->has_social_networks,
+                        'attendanceDuration' => $s->assignedVolunteer->attendance_duration,
+                        'isOfficialMember' => $s->assignedVolunteer->is_official_member,
+                        'memberRecordAtNovaSemente' => $s->assignedVolunteer->member_record_at_nova_semente,
+                        'memberRecordChurch' => $s->assignedVolunteer->member_record_church,
+                        'hasPreviousMinistryVolunteerExperience' => $s->assignedVolunteer->has_previous_ministry_volunteer_experience,
+                        'previousMinistryDetails' => $s->assignedVolunteer->previous_ministry_details,
+                        'professionalArea' => $s->assignedVolunteer->professional_area,
+                        'ministryInvolvement' => $s->assignedVolunteer->ministry_involvement,
+                        'otherMinistryInterest' => $s->assignedVolunteer->other_ministry_interest,
+                        'giftsToDevelop' => $s->assignedVolunteer->gifts_to_develop,
+                        'needsPastoralGuidance' => $s->assignedVolunteer->needs_pastoral_guidance,
+                        'lgpdDataConsent' => $s->assignedVolunteer->lgpd_data_consent,
+                        'role' => $s->assignedVolunteer->role,
+                        'appAccessOnly' => (bool) ($s->assignedVolunteer->app_access_only ?? false),
+                    ];
+                }
+
+                return [
+                    'id' => (int) $s->id,
+                    'subject' => (string) $s->subject,
+                    'status' => (string) $s->status,
+                    'status_label' => MobileChurchSolicitationController::statusLabel((string) $s->status),
+                    'message_preview' => Str::limit(trim((string) $s->message), 140),
+                    'created_at' => $s->created_at?->toIso8601String(),
+                    'completed_at' => $s->completed_at?->toIso8601String(),
+                    'attached_volunteer_name' => $attachedVolunteerName,
+                    'attached_volunteer_email' => $attachedVolunteerEmail,
+                    'attached_volunteer_profile' => $attachedVolunteerProfile,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
     private function churchId(Request $request): ?int
     {
         return Church::resolveWorkingId($request);
@@ -39,18 +230,19 @@ class MyMinistryVolunteersController extends Controller
 
         $user = $request->user();
         $ministryIds = $user?->ministries()->where('church_id', $churchId)->pluck('ministries.id')->values()->all() ?? [];
+        $leaderMinistries = $this->leaderMinistriesWithRoles((int) $churchId, $ministryIds);
 
         $invites = VolunteerMinistryInvitation::query()
             ->where('church_id', $churchId)
             ->whereIn('ministry_id', $ministryIds)
-            ->with(['volunteer:id,name,email,phone', 'ministry:id,name'])
+            ->with(['volunteer:id,name,email,phone,birth_date,has_whatsapp,has_social_networks,attendance_duration,is_official_member,member_record_at_nova_semente,member_record_church,has_previous_ministry_volunteer_experience,previous_ministry_details,professional_area,ministry_involvement,other_ministry_interest,gifts_to_develop,needs_pastoral_guidance,lgpd_data_consent,role,app_access_only', 'ministry:id,name'])
             ->orderByDesc('created_at')
             ->paginate(25)
             ->withQueryString();
 
-        $invites->setCollection(
-            $invites->getCollection()->map(fn (VolunteerMinistryInvitation $i) => [
+        $inviteRows = $invites->getCollection()->map(fn (VolunteerMinistryInvitation $i) => [
                 'id' => $i->id,
+                'ministryId' => (int) $i->ministry_id,
                 'createdAt' => $i->created_at?->toIso8601String(),
                 'ministryName' => $i->ministry?->name,
                 'volunteer' => [
@@ -58,6 +250,23 @@ class MyMinistryVolunteersController extends Controller
                     'name' => $i->volunteer?->name,
                     'email' => $i->volunteer?->email,
                     'phone' => $i->volunteer?->phone,
+                    'birthDate' => $i->volunteer?->birth_date?->toDateString(),
+                    'hasWhatsapp' => $i->volunteer?->has_whatsapp,
+                    'hasSocialNetworks' => $i->volunteer?->has_social_networks,
+                    'attendanceDuration' => $i->volunteer?->attendance_duration,
+                    'isOfficialMember' => $i->volunteer?->is_official_member,
+                    'memberRecordAtNovaSemente' => $i->volunteer?->member_record_at_nova_semente,
+                    'memberRecordChurch' => $i->volunteer?->member_record_church,
+                    'hasPreviousMinistryVolunteerExperience' => $i->volunteer?->has_previous_ministry_volunteer_experience,
+                    'previousMinistryDetails' => $i->volunteer?->previous_ministry_details,
+                    'professionalArea' => $i->volunteer?->professional_area,
+                    'ministryInvolvement' => $i->volunteer?->ministry_involvement,
+                    'otherMinistryInterest' => $i->volunteer?->other_ministry_interest,
+                    'giftsToDevelop' => $i->volunteer?->gifts_to_develop,
+                    'needsPastoralGuidance' => $i->volunteer?->needs_pastoral_guidance,
+                    'lgpdDataConsent' => $i->volunteer?->lgpd_data_consent,
+                    'role' => $i->volunteer?->role,
+                    'appAccessOnly' => (bool) ($i->volunteer?->app_access_only ?? false),
                 ],
                 // status do convite (resposta do voluntário ao link público)
                 'inviteStatus' => $i->status,
@@ -65,11 +274,26 @@ class MyMinistryVolunteersController extends Controller
                 'leaderStatus' => $i->leader_status,
                 'leaderNote' => $i->leader_note,
                 'updateUrl' => route('ministry-lead.my-volunteers.update', $i),
-            ]),
-        );
+            ])->values();
+        $invites->setCollection($inviteRows);
+
+        $invitePairs = $inviteRows
+            ->map(fn (array $r) => ((int) ($r['volunteer']['id'] ?? 0)).'-'.((int) ($r['ministryId'] ?? 0)))
+            ->filter(fn (string $pair) => $pair !== '0-0')
+            ->values()
+            ->all();
+
+        $activeVolunteers = collect($this->leaderActiveVolunteerRows((int) $churchId, array_map('intval', $ministryIds)))
+            ->reject(fn (array $r) => in_array(((int) ($r['volunteer']['id'] ?? 0)).'-'.((int) ($r['ministryId'] ?? 0)), $invitePairs, true))
+            ->values()
+            ->all();
 
         return Inertia::render('MinistryLeadVolunteers/MyVolunteers', [
             'invitations' => $invites,
+            'activeVolunteers' => $activeVolunteers,
+            'requestRows' => $this->leaderVolunteerRequestRows((int) $churchId, (int) $user?->id),
+            'requestMinistries' => $leaderMinistries,
+            'requestStoreUrl' => route('ministry-lead.volunteer-requests.store'),
         ]);
     }
 

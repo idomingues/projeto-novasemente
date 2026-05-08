@@ -13,7 +13,6 @@ import {
     ChevronDownIcon,
     PencilSquareIcon,
     UserGroupIcon,
-    UserPlusIcon,
 } from '@heroicons/react/24/outline';
 
 interface Props {
@@ -184,17 +183,17 @@ export default function MobileProfile({ church, user, profileCounts }: Props) {
         ...(isMinistryLeader
             ? ([
                   {
-                      title: 'Meus voluntários',
-                      description: 'Voluntários encaminhados para você',
-                      icon: UserGroupIcon,
-                      href: route('ministry-lead.my-volunteers.index'),
+                      title: 'Gestão de Escala',
+                      description: 'Gestão de voluntários na escala dos seus departamentos',
+                      icon: CalendarDaysIcon,
+                      href: route('escalas.index'),
                       tone: 'member',
                   },
                   {
-                      title: 'Solicitar voluntário',
-                      description: 'Quantidade, departamento e observações; função na escala opcional (pedido à secretaria)',
-                      icon: UserPlusIcon,
-                      href: route('ministry-lead.volunteer-requests.index'),
+                      title: 'Meus voluntários',
+                      description: 'Fluxo completo do líder: novos, em atividade e solicitar voluntário',
+                      icon: UserGroupIcon,
+                      href: route('ministry-lead.my-volunteers.index'),
                       tone: 'member',
                   },
               ] as Row[])
