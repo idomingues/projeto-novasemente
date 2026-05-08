@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Church;
 use App\Models\Ministry;
 use App\Models\User;
-use App\Models\Volunteer;
 use App\Models\VolunteerSelfSignupToken;
 use App\Services\VolunteerMinistryRosterNotifier;
 use App\Support\VolunteerContactDuplicateChecker;
@@ -77,81 +76,26 @@ class VolunteerPublicSignupController extends Controller
             return response()->json(['duplicate' => false, 'email_taken' => false, 'phone_taken' => false, 'invalid_token' => true]);
         }
 
-        $churchId = $record->church_id;
-
+        // Recadastro permitido: não bloquear por nome já existente.
         $nameDup = false;
-        $fn = isset($validated['first_name']) ? trim((string) $validated['first_name']) : '';
-        $ln = isset($validated['last_name']) ? trim((string) $validated['last_name']) : '';
-        if ($fn !== '' && $ln !== '') {
-            $normalized = $this->normalizedFullName($fn, $ln);
-            if (mb_strlen($normalized) >= 3) {
-                $churchUserDup = User::query()
-                    ->where('church_id', $churchId)
-                    ->whereRaw('LOWER(TRIM(COALESCE(name, ""))) = ?', [$normalized])
-                    ->exists();
 
-                $userDup = User::query()
-                    ->whereRaw('LOWER(TRIM(COALESCE(name, ""))) = ?', [$normalized])
-                    ->exists();
-
-                $volunteerDup = Volunteer::query()
-                    ->where(function ($q) use ($normalized, $churchId) {
-                        $q->whereHas('user', function ($uq) use ($normalized, $churchId) {
-                            $uq->where('church_id', $churchId)
-                                ->whereRaw('LOWER(TRIM(COALESCE(users.name, ""))) = ?', [$normalized]);
-                        })->orWhere(function ($q) use ($normalized, $churchId) {
-                            $q->whereNull('user_id')
-                                ->whereHas('ministries', fn ($m) => $m->where('church_id', $churchId))
-                                ->whereRaw('LOWER(TRIM(COALESCE(volunteers.name, ""))) = ?', [$normalized]);
-                        });
-                    })
-                    ->exists();
-
-                $nameDup = $churchUserDup || $userDup || $volunteerDup;
-            }
-        }
-
+        // O recadastro deve ser permitido com o mesmo e-mail.
         $emailTaken = false;
         $emailMessage = null;
-        $emailNorm = VolunteerContactDuplicateChecker::normalizeEmail(isset($validated['email']) ? (string) $validated['email'] : null);
-        if ($emailNorm !== null) {
-            if (User::query()->whereRaw('LOWER(TRIM(COALESCE(email, ""))) = ?', [$emailNorm])->exists()) {
-                $emailTaken = true;
-                $emailMessage = 'Este e-mail já está registado.';
-            } elseif ($msg = VolunteerContactDuplicateChecker::emailConflictsMemberVolunteerForChurch($churchId, $emailNorm)) {
-                $emailTaken = true;
-                $emailMessage = $msg;
-            }
-        }
 
+        // Recadastro permitido: não bloquear por telefone já existente.
         $phoneTaken = false;
         $phoneMessage = null;
-        $phoneNorm = VolunteerContactDuplicateChecker::normalizePhone(isset($validated['phone']) ? (string) $validated['phone'] : null);
-        if ($phoneNorm !== null) {
-            if ($msg = VolunteerContactDuplicateChecker::phoneConflictsForChurch($churchId, $phoneNorm)) {
-                $phoneTaken = true;
-                $phoneMessage = $msg;
-            }
-        }
-
-        $dup = $nameDup || $emailTaken || $phoneTaken;
 
         return response()->json([
             'duplicate' => $nameDup,
             'email_taken' => $emailTaken,
             'phone_taken' => $phoneTaken,
-            'message' => $nameDup ? 'Já existe um cadastro com este nome completo nesta igreja. Verifique os dados ou contacte a secretaria.' : null,
+            'message' => null,
             'email_message' => $emailMessage,
             'phone_message' => $phoneMessage,
             'invalid_token' => false,
         ]);
-    }
-
-    private function normalizedFullName(string $first, string $last): string
-    {
-        $t = trim($first.' '.$last);
-
-        return mb_strtolower(preg_replace('/\s+/u', ' ', $t));
     }
 
     public function create(Request $request): RedirectResponse|Response
@@ -199,7 +143,7 @@ class VolunteerPublicSignupController extends Controller
             'last_name' => ['required', 'string', 'max:155'],
             'birth_date' => ['required', 'date'],
             'has_whatsapp' => ['required', 'boolean'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:50'],
             'has_social_networks' => ['required', 'boolean'],
             'attendance_duration' => ['required', 'string', 'max:50'],
@@ -253,18 +197,6 @@ class VolunteerPublicSignupController extends Controller
         $record = VolunteerSelfSignupToken::query()->where('token', $validated['token'])->firstOrFail();
 
         $emailNorm = VolunteerContactDuplicateChecker::normalizeEmail($validated['email']);
-        if ($emailNorm !== null) {
-            if ($msg = VolunteerContactDuplicateChecker::emailConflictsMemberVolunteerForChurch($record->church_id, $emailNorm)) {
-                throw ValidationException::withMessages(['email' => [$msg]]);
-            }
-        }
-
-        $phoneNorm = VolunteerContactDuplicateChecker::normalizePhone($validated['phone'] ?? null);
-        if ($phoneNorm !== null) {
-            if ($msg = VolunteerContactDuplicateChecker::phoneConflictsForChurch($record->church_id, $phoneNorm)) {
-                throw ValidationException::withMessages(['phone' => [$msg]]);
-            }
-        }
 
         $rawMinistryIds = $validated['ministry_ids'] ?? [];
         $ministryIds = is_array($rawMinistryIds)
@@ -285,8 +217,25 @@ class VolunteerPublicSignupController extends Controller
 
         $name = trim($validated['first_name'].' '.$validated['last_name']);
 
-        $user = DB::transaction(function () use ($validated, $name, $ministryIds, $record) {
-            $user = User::withoutEvents(function () use ($validated, $name, $record) {
+        $user = DB::transaction(function () use ($validated, $name, $ministryIds, $record, $emailNorm) {
+            $existingUser = $emailNorm
+                ? User::query()->whereRaw('LOWER(TRIM(COALESCE(email, ""))) = ?', [$emailNorm])->first()
+                : null;
+
+            $user = User::withoutEvents(function () use ($validated, $name, $record, $existingUser) {
+                if ($existingUser) {
+                    $existingUser->forceFill([
+                        'name' => $name,
+                        'password' => $validated['password'],
+                    ]);
+                    if (! $existingUser->church_id) {
+                        $existingUser->church_id = $record->church_id;
+                    }
+                    $existingUser->save();
+
+                    return $existingUser;
+                }
+
                 return User::create([
                     'name' => $name,
                     'email' => $validated['email'],
