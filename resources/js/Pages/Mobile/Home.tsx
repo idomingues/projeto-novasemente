@@ -109,12 +109,10 @@ type QuickAction = {
     subtitle: string;
     route: string;
     icon: MenuIcon;
-    cardClass: string;
-    iconWrapClass: string;
 };
 
 function QuickActionGlyph({ icon: Icon }: { icon: MenuIcon }) {
-    return <Icon className="h-7 w-7" aria-hidden strokeWidth={2.4} />;
+    return <Icon className="h-5 w-5" aria-hidden strokeWidth={2.05} />;
 }
 
 const quickActions: QuickAction[] = [
@@ -123,48 +121,36 @@ const quickActions: QuickAction[] = [
         subtitle: 'Ainda não é batizado? Faça parte da família NS',
         route: 'mobile.baptism',
         icon: SparklesIcon,
-        cardClass: 'border-amber-200/90 bg-amber-50 dark:border-amber-800/45 dark:bg-amber-950/40',
-        iconWrapClass: 'bg-amber-100/95 text-amber-900 dark:bg-amber-900/55 dark:text-amber-100',
     },
     {
         label: 'Seja um voluntário',
         subtitle: 'Venha servir na Nova Semente',
         route: 'volunteers.public-signup.page',
         icon: UserPlusIcon,
-        cardClass: 'border-emerald-200/90 bg-emerald-50 dark:border-emerald-800/45 dark:bg-emerald-950/40',
-        iconWrapClass: 'bg-emerald-100/95 text-emerald-900 dark:bg-emerald-900/55 dark:text-emerald-100',
     },
     {
         label: 'Acervo',
         subtitle: 'Conheça todas as nossas séries',
         route: 'mobile.acervo',
         icon: ArchiveBoxIcon,
-        cardClass: 'border-orange-200/90 bg-orange-50 dark:border-orange-800/40 dark:bg-orange-950/35',
-        iconWrapClass: 'bg-orange-100/95 text-orange-950 dark:bg-orange-900/50 dark:text-orange-100',
     },
     {
         label: 'Músicas',
         subtitle: 'Cante nossas músicas',
         route: 'mobile.musica',
         icon: MusicalNoteIcon,
-        cardClass: 'border-cyan-200/90 bg-cyan-50 dark:border-cyan-800/45 dark:bg-cyan-950/40',
-        iconWrapClass: 'bg-cyan-100/95 text-cyan-900 dark:bg-cyan-900/55 dark:text-cyan-100',
     },
     {
         label: 'Fotos',
         subtitle: 'Veja o que nossos fotógrafos prepararam para você',
         route: 'mobile.fotos',
         icon: PhotoIcon,
-        cardClass: 'border-rose-200/90 bg-rose-50 dark:border-rose-800/40 dark:bg-rose-950/35',
-        iconWrapClass: 'bg-rose-100/95 text-rose-900 dark:bg-rose-900/50 dark:text-rose-100',
     },
     {
         label: 'Oferta',
         subtitle: 'Faça sua oferta de forma simples',
         route: 'mobile.offerings',
         icon: BanknotesIcon,
-        cardClass: 'border-orange-200/90 bg-orange-50/90 dark:border-orange-800/40 dark:bg-orange-950/35',
-        iconWrapClass: 'bg-orange-100/95 text-orange-950 dark:bg-orange-900/50 dark:text-orange-100',
     },
 ];
 
@@ -192,18 +178,18 @@ export default function MobileHome({ latestNews, upcomingEvents }: Props) {
 
                 <section aria-label="Atalhos">
                     <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-3">
-                        {quickActions.map(({ label, subtitle, route: routeName, icon, cardClass, iconWrapClass }) => (
+                        {quickActions.map(({ label, subtitle, route: routeName, icon }) => (
                             <Link
                                 key={routeName}
                                 href={route(routeName)}
-                                className="flex flex-col rounded-2xl bg-white p-4 text-left shadow-sm ring-1 ring-zinc-200 transition hover:bg-zinc-50 dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60"
+                                className="group flex flex-col rounded-2xl bg-white p-3.5 text-left shadow-sm ring-1 ring-zinc-200 transition duration-200 hover:-translate-y-0.5 hover:bg-zinc-50 hover:shadow-md dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60"
                             >
-                                <div className="text-[#49AD3D]">
+                                <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200/70 dark:bg-emerald-950/45 dark:text-emerald-200 dark:ring-emerald-800/60">
                                     <QuickActionGlyph icon={icon} />
                                 </div>
                                 <div className="mt-3 min-w-0">
-                                    <p className="text-base font-extrabold leading-tight text-zinc-900 dark:text-white">{label}</p>
-                                    <p className="mt-1 text-[11px] font-medium leading-snug text-zinc-500 dark:text-zinc-400">
+                                    <p className="text-[15px] font-semibold leading-tight text-zinc-900 dark:text-white">{label}</p>
+                                    <p className="mt-1 text-[11px] font-medium leading-snug text-zinc-600 dark:text-zinc-300">
                                         {subtitle}
                                     </p>
                                 </div>
