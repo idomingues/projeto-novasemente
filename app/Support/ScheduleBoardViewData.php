@@ -15,6 +15,11 @@ use Illuminate\Support\Collection;
 
 class ScheduleBoardViewData
 {
+    private static function isMinistryLeaderAccount(User $user): bool
+    {
+        return $user->hasRole('lider_ministerio') || (bool) ($user->is_ministry_leader ?? false);
+    }
+
     public static function userPhotoPublicUrl(?User $user): ?string
     {
         if (! $user || empty($user->photo_url)) {
@@ -55,7 +60,7 @@ class ScheduleBoardViewData
         return $user->hasRole('admin')
             || $user->hasRole('super_admin')
             || $user->can('escalas.manage')
-            || $user->hasRole('lider_ministerio');
+            || self::isMinistryLeaderAccount($user);
     }
 
     /**
@@ -98,7 +103,7 @@ class ScheduleBoardViewData
             }
         }
 
-        if ($user && $user->hasRole('lider_ministerio') && ! $user->hasRole('admin') && ! $user->hasRole('super_admin')) {
+        if ($user && self::isMinistryLeaderAccount($user) && ! $user->hasRole('admin') && ! $user->hasRole('super_admin')) {
             $leaderMinistryIds = $user->ministries()->pluck('ministries.id')->toArray();
             if (count($leaderMinistryIds) > 0) {
                 $ministriesQuery->whereIn('id', $leaderMinistryIds);
@@ -161,7 +166,7 @@ class ScheduleBoardViewData
         if ($user) {
             if ($user->hasRole('admin') || $user->hasRole('super_admin') || $user->can('escalas.manage')) {
                 $canEdit = true;
-            } elseif ($user->hasRole('lider_ministerio') && $ministryId) {
+            } elseif (self::isMinistryLeaderAccount($user) && $ministryId) {
                 $canEdit = $user->ministries()->where('ministries.id', $ministryId)->exists();
             }
         }

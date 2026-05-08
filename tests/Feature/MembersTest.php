@@ -306,6 +306,45 @@ class MembersTest extends TestCase
         $this->assertNull($member->fresh()->role_id);
     }
 
+    public function test_user_cannot_change_own_role_assignment(): void
+    {
+        $this->seed();
+
+        $churchId = (int) Church::query()->value('id');
+        $guard = (string) config('auth.defaults.guard');
+        $superRole = Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => $guard]);
+        $super = User::factory()->create([
+            'church_id' => $churchId,
+            'email' => 'self-role-lock@example.com',
+        ]);
+        $super->assignRole($superRole);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $this->assertTrue($super->fresh()->hasRole('super_admin'));
+
+        $payload = [
+            'name' => $super->name,
+            'email' => $super->email,
+            'phone' => (string) ($super->phone ?? ''),
+            'birth_date' => '',
+            'status' => 'active',
+            'is_volunteer' => false,
+            'volunteer_ministry_ids' => [],
+            'notify_via_app' => true,
+            'notify_via_email' => true,
+            'notify_via_whatsapp' => false,
+            'role_name' => '',
+        ];
+
+        $this->actingAs($super)
+            ->withSession(['working_church_id' => $churchId])
+            ->from(route('members.index'))
+            ->put(route('members.update', $super), $payload)
+            ->assertRedirect(route('members.index'))
+            ->assertSessionHas('error');
+
+        $this->assertTrue($super->fresh()->hasRole('super_admin'));
+    }
+
     public function test_super_admin_can_set_new_password_when_updating_member(): void
     {
         $this->seed();

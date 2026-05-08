@@ -221,6 +221,20 @@ class MemberController extends Controller
         // Aceitar null (ex.: «Sem perfil» após ConvertEmptyStringsToNull); o código antigo exigia is_string e ignorava a actualização.
         if ($assignable !== [] && $roleFromFormProvided) {
             $next = $roleFromForm;
+            $normalizedNextRole = null;
+            if (is_string($next) && trim($next) !== '') {
+                $normalizedNextRole = trim($next);
+            }
+            $currentRole = $user->getRoleNames()->first();
+            $normalizedCurrentRole = is_string($currentRole) && trim($currentRole) !== '' ? trim($currentRole) : null;
+
+            // Evita auto-rebaixamento/acesso perdido no ecrã de membros.
+            if ((int) $request->user()->id === (int) $user->id && $normalizedCurrentRole !== $normalizedNextRole) {
+                return redirect()
+                    ->route('members.index')
+                    ->with('error', 'Não pode alterar o seu próprio perfil de acesso. Peça a outro administrador.');
+            }
+
             if ($next === null || (is_string($next) && trim($next) === '')) {
                 if ($user->hasRole('super_admin') && ! $request->user()->hasRole('super_admin')) {
                     abort(403, 'Não autorizado a alterar o perfil deste utilizador.');

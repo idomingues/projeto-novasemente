@@ -21,6 +21,25 @@ use Inertia\Response;
 
 class ScheduleController extends Controller
 {
+    private function isMinistryLeaderAccount(?User $user): bool
+    {
+        return $user !== null
+            && ($user->hasRole('lider_ministerio') || (bool) ($user->is_ministry_leader ?? false));
+    }
+
+    private function canManageMinistrySchedule(?User $user, int $ministryId): bool
+    {
+        if (! $user) {
+            return false;
+        }
+        if ($user->hasRole('admin') || $user->hasRole('super_admin') || $user->can('escalas.manage')) {
+            return true;
+        }
+
+        return $this->isMinistryLeaderAccount($user)
+            && $user->ministries()->where('ministries.id', $ministryId)->exists();
+    }
+
     /**
      * Sábados do mês (1-5).
      */
@@ -104,10 +123,8 @@ class ScheduleController extends Controller
             $userId = (int) $valid['member_id'];
         }
 
-        if ($user && $user->hasRole('lider_ministerio') && ! $user->hasRole('admin') && ! $user->hasRole('super_admin')) {
-            if (! $user->ministries()->where('ministries.id', $valid['ministry_id'])->exists()) {
-                return back()->withErrors(['ministry_id' => 'Só pode adicionar escalas nos departamentos que gere.']);
-            }
+        if (! $this->canManageMinistrySchedule($user, (int) $valid['ministry_id'])) {
+            return back()->withErrors(['ministry_id' => 'Sem permissão para editar esta escala.']);
         }
 
         $hasSaturday = ! empty($valid['saturday_number']);
@@ -143,10 +160,8 @@ class ScheduleController extends Controller
     public function update(Request $request, ScheduleAssignment $assignment)
     {
         $user = $request->user();
-        if ($user && $user->hasRole('lider_ministerio') && ! $user->hasRole('admin') && ! $user->hasRole('super_admin')) {
-            if (! $user->ministries()->where('ministries.id', $assignment->ministry_id)->exists()) {
-                return back()->withErrors(['assignment' => 'Sem permissão para esta escala.']);
-            }
+        if (! $this->canManageMinistrySchedule($user, (int) $assignment->ministry_id)) {
+            return back()->withErrors(['assignment' => 'Sem permissão para esta escala.']);
         }
 
         $valid = $request->validate([
@@ -251,10 +266,8 @@ class ScheduleController extends Controller
         ]);
 
         $user = $request->user();
-        if ($user && $user->hasRole('lider_ministerio') && ! $user->hasRole('admin') && ! $user->hasRole('super_admin')) {
-            if (! $user->ministries()->where('ministries.id', $valid['ministry_id'])->exists()) {
-                return back()->withErrors(['ministry_id' => 'Sem permissão para este departamento.']);
-            }
+        if (! $this->canManageMinistrySchedule($user, (int) $valid['ministry_id'])) {
+            return back()->withErrors(['ministry_id' => 'Sem permissão para este departamento.']);
         }
 
         ScheduleRole::create([
@@ -272,10 +285,8 @@ class ScheduleController extends Controller
         }
 
         $user = $request->user();
-        if ($user && $user->hasRole('lider_ministerio') && ! $user->hasRole('admin') && ! $user->hasRole('super_admin')) {
-            if (! $user->ministries()->where('ministries.id', $scheduleRole->ministry_id)->exists()) {
-                return back()->with('error', 'Sem permissão.');
-            }
+        if (! $this->canManageMinistrySchedule($user, (int) $scheduleRole->ministry_id)) {
+            return back()->with('error', 'Sem permissão.');
         }
 
         $scheduleRole->delete();
@@ -286,10 +297,8 @@ class ScheduleController extends Controller
     public function destroy(Request $request, ScheduleAssignment $assignment)
     {
         $user = $request->user();
-        if ($user && $user->hasRole('lider_ministerio') && ! $user->hasRole('admin') && ! $user->hasRole('super_admin')) {
-            if (! $user->ministries()->where('ministries.id', $assignment->ministry_id)->exists()) {
-                return back()->with('error', 'Só pode remover escalas dos departamentos que gere.');
-            }
+        if (! $this->canManageMinistrySchedule($user, (int) $assignment->ministry_id)) {
+            return back()->with('error', 'Só pode remover escalas dos departamentos que gere.');
         }
 
         $valid = $request->validate([
@@ -460,7 +469,11 @@ class ScheduleController extends Controller
         }
 
         // Notifica líderes do departamento e admins quando o voluntário marcar/desmarcar (ou quando um líder marcar para alguém).
-        $leaderIds = User::role('lider_ministerio')
+        $leaderIds = User::query()
+            ->where(function ($q) {
+                $q->where('is_ministry_leader', true)
+                    ->orWhereHas('roles', fn ($r) => $r->where('name', 'lider_ministerio'));
+            })
             ->whereHas('ministries', fn ($q) => $q->where('ministries.id', (int) $assignment->ministry_id))
             ->pluck('id')
             ->map(fn ($id) => (int) $id)
@@ -498,7 +511,7 @@ class ScheduleController extends Controller
             return true;
         }
 
-        return $user->hasRole('lider_ministerio')
+        return $this->isMinistryLeaderAccount($user)
             && $user->ministries()->where('ministries.id', $assignment->ministry_id)->exists();
     }
 }

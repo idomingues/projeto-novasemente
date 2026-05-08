@@ -279,23 +279,18 @@ Route::middleware('auth')->group(function () {
         ->parameters(['members' => 'user'])
         ->middleware('permission:members.view|members.manage');
 
-    // Escala semanal (qualquer usuário autenticado pode ver; edição exige escalas.manage no controller)
+    // Escala semanal (qualquer usuário autenticado pode ver; edição validada no controller).
     Route::get('/escalas', [\App\Http\Controllers\ScheduleController::class, 'index'])->name('escalas.index');
     Route::post('/escalas', [\App\Http\Controllers\ScheduleController::class, 'store'])
-        ->name('escalas.store')
-        ->middleware('permission:escalas.manage');
+        ->name('escalas.store');
     Route::patch('/escalas/{assignment}', [\App\Http\Controllers\ScheduleController::class, 'update'])
-        ->name('escalas.update')
-        ->middleware('permission:escalas.manage');
+        ->name('escalas.update');
     Route::post('/escalas/roles', [\App\Http\Controllers\ScheduleController::class, 'storeRole'])
-        ->name('escalas.roles.store')
-        ->middleware('permission:escalas.manage');
+        ->name('escalas.roles.store');
     Route::delete('/escalas/roles/{scheduleRole}', [\App\Http\Controllers\ScheduleController::class, 'destroyRole'])
-        ->name('escalas.roles.destroy')
-        ->middleware('permission:escalas.manage');
+        ->name('escalas.roles.destroy');
     Route::delete('/escalas/{assignment}', [\App\Http\Controllers\ScheduleController::class, 'destroy'])
-        ->name('escalas.destroy')
-        ->middleware('permission:escalas.manage');
+        ->name('escalas.destroy');
     Route::post('/escalas/checkin-toggle', [\App\Http\Controllers\ScheduleController::class, 'checkinToggle'])
         ->name('escalas.checkin-toggle')
         ->middleware('permission:escalas.manage');
