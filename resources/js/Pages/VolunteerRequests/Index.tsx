@@ -109,6 +109,12 @@ function formatCreatedAt(iso: string | null): string {
     }
 }
 
+function areaLabelFromSubject(subject: string): string {
+    const parts = subject.split('—').map((part) => part.trim()).filter(Boolean);
+    if (parts.length >= 2) return parts[1] ?? 'Sem área';
+    return 'Sem área';
+}
+
 export default function VolunteerRequestsIndex({
     mode,
     rows,
@@ -131,6 +137,8 @@ export default function VolunteerRequestsIndex({
     const [panelPayload, setPanelPayload] = useState<VolunteerPanelPayload | null>(null);
     const [panelTab, setPanelTab] = useState<'detalhes' | 'chat'>('detalhes');
     const [panelScrollTarget, setPanelScrollTarget] = useState<'edit' | 'attach' | null>(null);
+    const [groupByArea, setGroupByArea] = useState(false);
+    const [selectedArea, setSelectedArea] = useState<string | null>(null);
     const prevPanelSolicitationIdRef = useRef<number | null>(null);
     const panelEditSectionRef = useRef<HTMLDivElement | null>(null);
     const panelAttachSectionRef = useRef<HTMLDivElement | null>(null);
@@ -176,6 +184,42 @@ export default function VolunteerRequestsIndex({
         const roles = selectedMinistryPanel?.schedule_roles ?? [];
         return roles.map((r) => ({ value: r.id, label: r.name }));
     }, [selectedMinistryPanel]);
+
+    const ministryNameById = useMemo(() => {
+        const map = new Map<number, string>();
+        ministries.forEach((m) => map.set(m.id, m.name));
+        return map;
+    }, [ministries]);
+
+    const groupedRows = useMemo(() => {
+        const groups = new Map<string, VolunteerRequestRow[]>();
+        rows.forEach((row) => {
+            const area =
+                (row.ministry_id != null && row.ministry_id > 0 ? ministryNameById.get(row.ministry_id) : null) ??
+                areaLabelFromSubject(row.subject);
+            const key = area || 'Sem área';
+            const current = groups.get(key) ?? [];
+            current.push(row);
+            groups.set(key, current);
+        });
+
+        return Array.from(groups.entries())
+            .sort(([a], [b]) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }))
+            .map(([area, items]) => ({ area, items }));
+    }, [rows, ministryNameById]);
+
+    useEffect(() => {
+        if (!groupByArea) {
+            setSelectedArea(null);
+            return;
+        }
+
+        if (selectedArea && groupedRows.some((group) => group.area === selectedArea)) {
+            return;
+        }
+
+        setSelectedArea(groupedRows[0]?.area ?? null);
+    }, [groupByArea, groupedRows, selectedArea]);
 
     const onMinistryChangeCreate = (v: string) => {
         const id = v === '' ? '' : Number(v);
@@ -431,6 +475,108 @@ export default function VolunteerRequestsIndex({
 
     const panelComposerRole = mode === 'staff' ? 'staff' : 'member';
 
+    const renderRequestCard = (row: VolunteerRequestRow) => (
+        <Card key={row.id} className="p-4 sm:p-5">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+                <button
+                    type="button"
+                    onClick={() => void openPanel(row)}
+                    className="min-w-0 flex-1 rounded-lg text-left text-base font-semibold text-zinc-900 transition hover:text-zinc-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:text-white dark:hover:text-zinc-300 dark:focus-visible:ring-zinc-500"
+                >
+                    {row.subject}
+                </button>
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                    <button
+                        type="button"
+                        onClick={() => void openPanel(row, { tab: 'chat' })}
+                        title="Abrir painel no chat"
+                        className="rounded-lg p-2 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-white"
+                    >
+                        <ChatBubbleLeftRightIcon className="h-5 w-5" aria-hidden />
+                    </button>
+                    {row.can_attach_volunteer ? (
+                        <button
+                            type="button"
+                            onClick={() => void openPanel(row, { tab: 'detalhes', scrollTo: 'attach' })}
+                            title="Abrir painel — anexar voluntário"
+                            className="rounded-lg p-2 text-zinc-500 transition hover:bg-emerald-50 hover:text-emerald-800 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-300"
+                        >
+                            <UserPlusIcon className="h-5 w-5" aria-hidden />
+                        </button>
+                    ) : null}
+                    {row.can_detach_volunteer ? (
+                        <button
+                            type="button"
+                            onClick={() => handleDetachVolunteer(row)}
+                            title="Remover voluntário anexado"
+                            className="rounded-lg p-2 text-zinc-500 transition hover:bg-amber-50 hover:text-amber-700 dark:hover:bg-amber-950/40 dark:hover:text-amber-300"
+                        >
+                            <UserMinusIcon className="h-5 w-5" aria-hidden />
+                        </button>
+                    ) : null}
+                    {row.can_edit ? (
+                        <button
+                            type="button"
+                            onClick={() => void openPanel(row, { tab: 'detalhes', scrollTo: 'edit' })}
+                            title="Abrir painel — alterar departamento e observações"
+                            className="rounded-lg p-2 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-white"
+                        >
+                            <PencilIcon className="h-5 w-5" aria-hidden />
+                        </button>
+                    ) : null}
+                    {row.can_delete ? (
+                        <button
+                            type="button"
+                            onClick={() => handleDelete(row)}
+                            title="Excluir"
+                            className="rounded-lg p-2 text-zinc-500 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                        >
+                            <TrashIcon className="h-5 w-5" aria-hidden />
+                        </button>
+                    ) : null}
+                    <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
+                        {row.status_label}
+                    </span>
+                </div>
+            </div>
+            {row.batch_slot_label ? (
+                <p className="mt-1 text-xs font-medium text-zinc-600 dark:text-zinc-300">
+                    Lote: lugar {row.batch_slot_label}
+                </p>
+            ) : null}
+            {mode === 'staff' && row.requester_name ? (
+                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Por {row.requester_name}</p>
+            ) : null}
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                <span className="font-medium text-zinc-700 dark:text-zinc-300">Observação:</span> {row.message_preview}
+            </p>
+            <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                <span className="font-medium text-zinc-600 dark:text-zinc-300">Data do pedido:</span>{' '}
+                {formatCreatedAt(row.created_at)}
+            </p>
+            {row.attached_volunteer_name ? (
+                <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm dark:border-emerald-900/60 dark:bg-emerald-950/20">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold text-emerald-800 dark:text-emerald-200">Voluntário anexado:</span>
+                        <span className="text-emerald-900 dark:text-emerald-100">{row.attached_volunteer_name}</span>
+                        {row.attached_volunteer_email ? (
+                            <span className="text-emerald-700 dark:text-emerald-300">{` — ${row.attached_volunteer_email}`}</span>
+                        ) : null}
+                        {row.attached_volunteer_profile ? (
+                            <button
+                                type="button"
+                                onClick={() => setProfileVolunteer(row.attached_volunteer_profile)}
+                                className="ml-1 inline-flex items-center rounded-md border border-emerald-300 bg-white/80 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-emerald-800 transition hover:bg-white dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200 dark:hover:bg-emerald-950/50"
+                            >
+                                Ver dados
+                            </button>
+                        ) : null}
+                    </div>
+                </div>
+            ) : null}
+        </Card>
+    );
+
     return (
         <AdminLayout>
             <Head title={title} />
@@ -439,18 +585,33 @@ export default function VolunteerRequestsIndex({
                 title={title}
                 subtitle={subtitle}
                 actions={
-                    <AddButton
-                        variant="icon"
-                        onClick={openModal}
-                        disabled={!canAdd}
-                        title={
-                            canAdd
-                                ? 'Novo pedido'
-                                : 'Configure departamentos e funções na escala antes de criar pedidos.'
-                        }
-                    >
-                        Novo pedido
-                    </AddButton>
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() =>
+                                setGroupByArea((prev) => {
+                                    const next = !prev;
+                                    if (!next) setSelectedArea(null);
+                                    return next;
+                                })
+                            }
+                            className="inline-flex items-center rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
+                        >
+                            {groupByArea ? 'Lista única' : 'Agrupar por área'}
+                        </button>
+                        <AddButton
+                            variant="icon"
+                            onClick={openModal}
+                            disabled={!canAdd}
+                            title={
+                                canAdd
+                                    ? 'Novo pedido'
+                                    : 'Configure departamentos e funções na escala antes de criar pedidos.'
+                            }
+                        >
+                            Novo pedido
+                        </AddButton>
+                    </div>
                 }
             />
 
@@ -471,7 +632,7 @@ export default function VolunteerRequestsIndex({
                 </Card>
             ) : null}
 
-            <div className="space-y-3">
+            <div className="space-y-4">
                 {rows.length === 0 ? (
                     <Card className="p-10 text-center text-sm text-zinc-600 dark:text-zinc-400">
                         {canAdd ? (
@@ -484,108 +645,75 @@ export default function VolunteerRequestsIndex({
                         )}
                     </Card>
                 ) : (
-                    rows.map((row) => (
-                        <Card key={row.id} className="p-4 sm:p-5">
-                            <div className="flex flex-wrap items-start justify-between gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => void openPanel(row)}
-                                    className="min-w-0 flex-1 rounded-lg text-left text-base font-semibold text-zinc-900 transition hover:text-zinc-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:text-white dark:hover:text-zinc-300 dark:focus-visible:ring-zinc-500"
-                                >
-                                    {row.subject}
-                                </button>
-                                <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-                                    <button
-                                        type="button"
-                                        onClick={() => void openPanel(row, { tab: 'chat' })}
-                                        title="Abrir painel no chat"
-                                        className="rounded-lg p-2 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-white"
-                                    >
-                                        <ChatBubbleLeftRightIcon className="h-5 w-5" aria-hidden />
-                                    </button>
-                                    {row.can_attach_volunteer ? (
+                    groupByArea ? (
+                        <div className="space-y-4">
+                            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                                {groupedRows.map((group) => {
+                                    const isActive = selectedArea === group.area;
+                                    return (
                                         <button
+                                            key={group.area}
                                             type="button"
-                                            onClick={() => void openPanel(row, { tab: 'detalhes', scrollTo: 'attach' })}
-                                            title="Abrir painel — anexar voluntário"
-                                            className="rounded-lg p-2 text-zinc-500 transition hover:bg-emerald-50 hover:text-emerald-800 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-300"
+                                            onClick={() => setSelectedArea(group.area)}
+                                            className={`rounded-2xl border p-4 text-left transition ${
+                                                isActive
+                                                    ? 'border-emerald-300 bg-emerald-50 shadow-sm dark:border-emerald-800 dark:bg-emerald-950/30'
+                                                    : 'border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700 dark:hover:bg-zinc-800/70'
+                                            }`}
                                         >
-                                            <UserPlusIcon className="h-5 w-5" aria-hidden />
-                                        </button>
-                                    ) : null}
-                                    {row.can_detach_volunteer ? (
-                                        <button
-                                            type="button"
-                                            onClick={() => handleDetachVolunteer(row)}
-                                            title="Remover voluntário anexado"
-                                            className="rounded-lg p-2 text-zinc-500 transition hover:bg-amber-50 hover:text-amber-700 dark:hover:bg-amber-950/40 dark:hover:text-amber-300"
-                                        >
-                                            <UserMinusIcon className="h-5 w-5" aria-hidden />
-                                        </button>
-                                    ) : null}
-                                    {row.can_edit ? (
-                                        <button
-                                            type="button"
-                                            onClick={() => void openPanel(row, { tab: 'detalhes', scrollTo: 'edit' })}
-                                            title="Abrir painel — alterar departamento e observações"
-                                            className="rounded-lg p-2 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-white"
-                                        >
-                                            <PencilIcon className="h-5 w-5" aria-hidden />
-                                        </button>
-                                    ) : null}
-                                    {row.can_delete ? (
-                                        <button
-                                            type="button"
-                                            onClick={() => handleDelete(row)}
-                                            title="Excluir"
-                                            className="rounded-lg p-2 text-zinc-500 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
-                                        >
-                                            <TrashIcon className="h-5 w-5" aria-hidden />
-                                        </button>
-                                    ) : null}
-                                    <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
-                                        {row.status_label}
-                                    </span>
-                                </div>
-                            </div>
-                            {row.batch_slot_label ? (
-                                <p className="mt-1 text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                                    Lote: lugar {row.batch_slot_label}
-                                </p>
-                            ) : null}
-                            {mode === 'staff' && row.requester_name ? (
-                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Por {row.requester_name}</p>
-                            ) : null}
-                            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                                <span className="font-medium text-zinc-700 dark:text-zinc-300">Observação:</span>{' '}
-                                {row.message_preview}
-                            </p>
-                            <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                                <span className="font-medium text-zinc-600 dark:text-zinc-300">Data do pedido:</span>{' '}
-                                {formatCreatedAt(row.created_at)}
-                            </p>
-                            {row.attached_volunteer_name ? (
-                                <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm dark:border-emerald-900/60 dark:bg-emerald-950/20">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <span className="font-semibold text-emerald-800 dark:text-emerald-200">Voluntário anexado:</span>
-                                        <span className="text-emerald-900 dark:text-emerald-100">{row.attached_volunteer_name}</span>
-                                        {row.attached_volunteer_email ? (
-                                            <span className="text-emerald-700 dark:text-emerald-300">{` — ${row.attached_volunteer_email}`}</span>
-                                        ) : null}
-                                        {row.attached_volunteer_profile ? (
-                                            <button
-                                                type="button"
-                                                onClick={() => setProfileVolunteer(row.attached_volunteer_profile)}
-                                                className="ml-1 inline-flex items-center rounded-md border border-emerald-300 bg-white/80 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-emerald-800 transition hover:bg-white dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200 dark:hover:bg-emerald-950/50"
+                                            <p
+                                                className={`text-sm font-semibold uppercase tracking-wide ${
+                                                    isActive
+                                                        ? 'text-emerald-800 dark:text-emerald-200'
+                                                        : 'text-zinc-700 dark:text-zinc-200'
+                                                }`}
                                             >
-                                                Ver dados
-                                            </button>
-                                        ) : null}
+                                                {group.area}
+                                            </p>
+                                            <p
+                                                className={`mt-2 text-2xl font-bold leading-none ${
+                                                    isActive
+                                                        ? 'text-emerald-900 dark:text-emerald-100'
+                                                        : 'text-zinc-900 dark:text-white'
+                                                }`}
+                                            >
+                                                {group.items.length}
+                                            </p>
+                                            <p
+                                                className={`mt-1 text-xs ${
+                                                    isActive
+                                                        ? 'text-emerald-700 dark:text-emerald-300'
+                                                        : 'text-zinc-500 dark:text-zinc-400'
+                                                }`}
+                                            >
+                                                {group.items.length === 1 ? 'pedido' : 'pedidos'}
+                                            </p>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            {selectedArea ? (
+                                <section className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-sm font-semibold uppercase tracking-wide text-zinc-700 dark:text-zinc-300">
+                                            Área selecionada: {selectedArea}
+                                        </h3>
+                                        <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                                            {(groupedRows.find((group) => group.area === selectedArea)?.items.length ?? 0).toString()}
+                                        </span>
                                     </div>
-                                </div>
+                                    <div className="space-y-3">
+                                        {(groupedRows.find((group) => group.area === selectedArea)?.items ?? []).map((row) =>
+                                            renderRequestCard(row),
+                                        )}
+                                    </div>
+                                </section>
                             ) : null}
-                        </Card>
-                    ))
+                        </div>
+                    ) : (
+                        rows.map((row) => renderRequestCard(row))
+                    )
                 )}
             </div>
 
