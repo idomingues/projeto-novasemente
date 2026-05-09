@@ -64,6 +64,23 @@ class ChurchSolicitationModalPayloadPresenter
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    public static function forCommunicationRequestLeader(ChurchSolicitation $s, ?User $user): array
+    {
+        $base = self::base($s);
+        $canEditPending = $user !== null && $user->can('updateCommunicationRequestAsSubmitter', $s);
+
+        return array_merge($base, [
+            'updateUrl' => $canEditPending ? route('communication-requests.update', $s) : null,
+            'messageStoreUrl' => route('communication-requests.messages.store.leader', $s),
+            'canManage' => false,
+            'staffCanReply' => false,
+            'canChat' => $s->allowsChat(),
+        ]);
+    }
+
+    /**
      * @return array{solicitation: array<string, mixed>, messages: list<array<string, mixed>>}
      */
     private static function base(ChurchSolicitation $s): array

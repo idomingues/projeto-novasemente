@@ -34,6 +34,7 @@ type VolunteerListRow = {
     stageId: number | undefined;
     stageName: string;
     pendingInvite?: boolean;
+    pendingInviteMinistryNames?: string[];
     ministryNames: string[];
     interestPreview: string | null;
     signals: { memberNs: boolean; sixMonthsInChurchOrLetter: boolean; ministryExperienceDeclared: boolean };
@@ -857,6 +858,16 @@ export default function Pipeline({
                                     <div className="mt-2 text-xs text-zinc-600 dark:text-zinc-300 space-y-1">
                                         {v.email ? <div className="truncate">{v.email}</div> : null}
                                         {v.phone ? <div className="truncate">{v.phone}</div> : null}
+                                        {v.pendingInvite && (v.pendingInviteMinistryNames?.length ?? 0) > 0 ? (
+                                            <div className="truncate text-zinc-700 dark:text-zinc-200">
+                                                Encaminhado para: {v.pendingInviteMinistryNames?.join(', ')}
+                                            </div>
+                                        ) : null}
+                                        {!v.pendingInvite && v.ministryNames.length > 0 ? (
+                                            <div className="truncate text-zinc-700 dark:text-zinc-200">
+                                                Departamentos: {v.ministryNames.join(', ')}
+                                            </div>
+                                        ) : null}
                                         {v.interestPreview ? (
                                             <div className="text-zinc-500 dark:text-zinc-400 line-clamp-2">{v.interestPreview}</div>
                                         ) : null}

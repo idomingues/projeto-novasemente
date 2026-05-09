@@ -94,6 +94,7 @@ const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'Dashboard', route: 'dashboard', icon: HomeIcon },
     { name: 'Atendimento Pastoral', route: 'solicitations.index', icon: InboxIcon },
     { name: 'Pedido de voluntários', route: 'volunteer-requests.staff.index', icon: UserPlusIcon },
+    { name: 'Solicitações Comunicação', route: 'communication-requests.index', icon: ChatBubbleLeftRightIcon },
     { name: 'Agenda Pastoral', route: 'pastoral-agenda.index', icon: ClockIcon },
     { name: 'Agendamento de Salas', route: 'room-bookings.index', icon: RectangleStackIcon },
     { name: 'Escalas', route: 'escalas.index', icon: CalendarIcon },

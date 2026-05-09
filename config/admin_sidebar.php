@@ -16,6 +16,7 @@ return [
         ['name' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'home'],
         ['name' => 'Atendimento Pastoral', 'route' => 'solicitations.index', 'icon' => 'inbox'],
         ['name' => 'Pedido de voluntários', 'route' => 'volunteer-requests.staff.index', 'icon' => 'user-plus'],
+        ['name' => 'Solicitações Comunicação', 'route' => 'communication-requests.index', 'icon' => 'chat-bubble'],
         ['name' => 'Agenda Pastoral', 'route' => 'pastoral-agenda.index', 'icon' => 'clock'],
         ['name' => 'Agendamento de Salas', 'route' => 'room-bookings.index', 'icon' => 'rectangle-stack'],
         ['name' => 'Escalas', 'route' => 'escalas.index', 'icon' => 'calendar'],

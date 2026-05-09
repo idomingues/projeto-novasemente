@@ -142,8 +142,11 @@ class SolicitationChatNotifier
         );
 
         $isVolunteerRequest = $solicitation->type === MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST;
-        $staffRoute = $isVolunteerRequest ? 'volunteer-requests.staff.index' : 'solicitations.index';
-        $staffParams = $isVolunteerRequest ? [] : [
+        $isCommunicationRequest = $solicitation->type === MobileChurchSolicitationController::TYPE_COMMUNICATION_REQUEST;
+        $staffRoute = $isVolunteerRequest
+            ? 'volunteer-requests.staff.index'
+            : ($isCommunicationRequest ? 'communication-requests.index' : 'solicitations.index');
+        $staffParams = ($isVolunteerRequest || $isCommunicationRequest) ? [] : [
             'modal_kind' => 'solicitation',
             'modal_id' => $solicitation->id,
         ];
@@ -215,8 +218,11 @@ class SolicitationChatNotifier
         }
 
         $isVolunteerRequest = $solicitation->type === MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST;
-        $staffInboxRoute = $isVolunteerRequest ? 'volunteer-requests.staff.index' : 'solicitations.index';
-        $staffInboxParams = $isVolunteerRequest ? [] : [
+        $isCommunicationRequest = $solicitation->type === MobileChurchSolicitationController::TYPE_COMMUNICATION_REQUEST;
+        $staffInboxRoute = $isVolunteerRequest
+            ? 'volunteer-requests.staff.index'
+            : ($isCommunicationRequest ? 'communication-requests.index' : 'solicitations.index');
+        $staffInboxParams = ($isVolunteerRequest || $isCommunicationRequest) ? [] : [
             'modal_kind' => 'solicitation',
             'modal_id' => $solicitation->id,
         ];

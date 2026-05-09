@@ -168,10 +168,69 @@ class ChurchSolicitationPolicy
         return $this->updateVolunteerRequestAsSubmitter($user, $solicitation);
     }
 
+    /** O requerente (líder) envia mensagens no chat de comunicação enquanto o pedido estiver aberto. */
+    public function chatCommunicationRequestAsSubmitter(User $user, ChurchSolicitation $solicitation): bool
+    {
+        if ($solicitation->type !== MobileChurchSolicitationController::TYPE_COMMUNICATION_REQUEST) {
+            return false;
+        }
+
+        if ((int) $solicitation->user_id !== (int) $user->id) {
+            return false;
+        }
+
+        return $solicitation->allowsChat();
+    }
+
+    /** Quem criou a solicitação de comunicação altera enquanto está pendente. */
+    public function updateCommunicationRequestAsSubmitter(User $user, ChurchSolicitation $solicitation): bool
+    {
+        if ($solicitation->type !== MobileChurchSolicitationController::TYPE_COMMUNICATION_REQUEST) {
+            return false;
+        }
+
+        if ((int) $solicitation->user_id !== (int) $user->id) {
+            return false;
+        }
+
+        return $solicitation->status === 'pending';
+    }
+
+    public function deleteCommunicationRequestAsSubmitter(User $user, ChurchSolicitation $solicitation): bool
+    {
+        return $this->updateCommunicationRequestAsSubmitter($user, $solicitation);
+    }
+
     /** Secretaria / admin com `solicitations.manage` gere pedidos de voluntário da igreja. */
     public function manageVolunteerRequestAsStaff(User $user, ChurchSolicitation $solicitation): bool
     {
         if ($solicitation->type !== MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST) {
+            return false;
+        }
+
+        if ($user->hasAnyRole(['super_admin', 'admin'])) {
+            return true;
+        }
+
+        if (! $user->hasPermissionTo('solicitations.manage')) {
+            return false;
+        }
+
+        if ($solicitation->church_id === null) {
+            return false;
+        }
+
+        if ($user->church_id !== null && (int) $user->church_id !== (int) $solicitation->church_id) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /** Comunicação / staff com `solicitations.manage` gere solicitações de comunicação. */
+    public function manageCommunicationRequestAsStaff(User $user, ChurchSolicitation $solicitation): bool
+    {
+        if ($solicitation->type !== MobileChurchSolicitationController::TYPE_COMMUNICATION_REQUEST) {
             return false;
         }
 

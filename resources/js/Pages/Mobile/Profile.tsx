@@ -163,6 +163,13 @@ export default function MobileProfile({ church, user, profileCounts }: Props) {
             permissions.includes('solicitations.view') ||
             permissions.includes('solicitations.manage'));
     const isMinistryLeader = auth?.isMinistryLeaderAccount === true;
+    const canAccessCommunicationRequests =
+        route().has('communication-requests.index') &&
+        (isMinistryLeader ||
+            (canAccessAdminMenu &&
+                (adminUnrestricted ||
+                    permissions.includes('solicitations.view') ||
+                    permissions.includes('solicitations.manage'))));
 
     const memberRows: Row[] = [
         {
@@ -216,6 +223,17 @@ export default function MobileProfile({ church, user, profileCounts }: Props) {
             href: route('mobile.solicitations.hub'),
             tone: 'member',
         },
+        ...(canAccessCommunicationRequests
+            ? ([
+                  {
+                      title: 'Solicitações de Comunicação',
+                      description: 'Abrir e acompanhar pedidos da Comunicação',
+                      icon: ChatBubbleLeftRightIcon,
+                      href: route('communication-requests.index'),
+                      tone: 'member',
+                  },
+              ] as Row[])
+            : []),
         {
             title: 'Suporte do APP',
             description: 'Problema ou sugestão sobre a aplicação',

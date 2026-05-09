@@ -252,6 +252,7 @@ class SolicitationAdminController extends Controller
                 ['value' => 'baby_presentation', 'label' => 'Apresentação de bebé'],
                 ['value' => 'pastor_visit', 'label' => 'Visita aos pastores'],
                 ['value' => 'leader_chat', 'label' => 'Conversa com líder'],
+                ['value' => 'communication_request', 'label' => 'Solicitação de comunicação'],
             ],
             'statusOptions' => [
                 ['value' => '', 'label' => 'Todos os estados'],
@@ -337,6 +338,9 @@ class SolicitationAdminController extends Controller
         if ($solicitation->type === MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST) {
             return redirect()->route('volunteer-requests.staff.index')->with('success', 'Pedido atualizado.');
         }
+        if ($solicitation->type === MobileChurchSolicitationController::TYPE_COMMUNICATION_REQUEST) {
+            return redirect()->route('communication-requests.index')->with('success', 'Pedido atualizado.');
+        }
 
         return $this->staffSolicitationModalRedirect($request, $solicitation);
     }
@@ -376,7 +380,9 @@ class SolicitationAdminController extends Controller
 
         $fallback = $solicitation->type === MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST
             ? route('volunteer-requests.staff.index')
-            : $this->staffSolicitationModalUrl($request, $solicitation);
+            : ($solicitation->type === MobileChurchSolicitationController::TYPE_COMMUNICATION_REQUEST
+                ? route('communication-requests.index')
+                : $this->staffSolicitationModalUrl($request, $solicitation));
 
         return redirect()->back(fallback: $fallback);
     }

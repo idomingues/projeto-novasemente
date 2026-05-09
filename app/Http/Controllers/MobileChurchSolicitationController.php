@@ -27,6 +27,7 @@ class MobileChurchSolicitationController extends Controller
 
     /** Criado só via fluxo dedicado (líder/admin), não pelo hub móvel de membros. */
     public const TYPE_VOLUNTEER_REQUEST = 'volunteer_request';
+    public const TYPE_COMMUNICATION_REQUEST = 'communication_request';
 
     private function currentChurchId(Request $request): ?int
     {
@@ -42,6 +43,7 @@ class MobileChurchSolicitationController extends Controller
             'pastor_visit' => 'Visita aos pastores',
             'leader_chat' => 'Conversa com líder de ministério',
             'volunteer_request' => 'Pedido de voluntário',
+            'communication_request' => 'Solicitação de comunicação',
             'other' => 'Outros',
             default => $type,
         };

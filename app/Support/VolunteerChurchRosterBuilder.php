@@ -103,7 +103,7 @@ class VolunteerChurchRosterBuilder
             ->with([
                 'ministries' => fn ($m) => $m->where('church_id', $churchId),
                 'churchPipelines' => fn ($p) => $p->where('church_id', $churchId)->with('stage'),
-                'ministryInvitations' => fn ($i) => $i->where('church_id', $churchId)->where('status', 'pending'),
+                'ministryInvitations' => fn ($i) => $i->where('church_id', $churchId)->where('status', 'pending')->with('ministry:id,name'),
             ]);
 
         VolunteerLeadRosterFilters::apply($request, $q, $churchId);
@@ -136,6 +136,11 @@ class VolunteerChurchRosterBuilder
                     : self::maskContactForUser($user, $v->email, $v->phone);
                 $signals = VolunteerRosterSignals::forVolunteer($v);
                 $hasPendingInvite = $v->ministryInvitations->isNotEmpty();
+                $pendingInviteMinistryNames = $v->ministryInvitations
+                    ->map(fn ($inv) => (string) ($inv->ministry?->name ?? ''))
+                    ->filter(fn ($name) => trim($name) !== '')
+                    ->values()
+                    ->all();
 
                 return [
                     'id' => $v->id,
@@ -147,6 +152,7 @@ class VolunteerChurchRosterBuilder
                     'stageId' => $stage?->id,
                     'stageName' => $hasPendingInvite ? 'Aguardando' : ($stage?->name ?? 'Não definido'),
                     'pendingInvite' => $hasPendingInvite,
+                    'pendingInviteMinistryNames' => array_values(array_unique($pendingInviteMinistryNames)),
                     'ministryNames' => $v->ministries->pluck('name')->values()->all(),
                     'interestPreview' => self::truncateInterestPreview($v),
                     'signals' => [

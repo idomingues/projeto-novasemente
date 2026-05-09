@@ -4,6 +4,7 @@ use App\Http\Controllers\AcervoController;
 use App\Http\Controllers\AppNotificationController;
 use App\Http\Controllers\AppVersionController;
 use App\Http\Controllers\ChurchController;
+use App\Http\Controllers\CommunicationRequestController;
 use App\Http\Controllers\CultoController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EventController;
@@ -341,6 +342,24 @@ Route::middleware('auth')->group(function () {
         ->name('ministry-lead.volunteer-requests.panel');
     Route::post('/lideranca/solicitar-voluntario/{solicitation}/mensagens', [VolunteerRequestSolicitationController::class, 'storeChatMessageLeader'])
         ->name('ministry-lead.volunteer-requests.messages.store');
+    Route::get('/comunicacao/solicitacoes', [CommunicationRequestController::class, 'index'])
+        ->name('communication-requests.index')
+        ->middleware('auth');
+    Route::post('/comunicacao/solicitacoes', [CommunicationRequestController::class, 'store'])
+        ->name('communication-requests.store')
+        ->middleware('auth');
+    Route::get('/comunicacao/solicitacoes/{solicitation}/painel', [CommunicationRequestController::class, 'panelJson'])
+        ->name('communication-requests.panel')
+        ->middleware('auth');
+    Route::post('/comunicacao/solicitacoes/{solicitation}/mensagens/lider', [CommunicationRequestController::class, 'storeMessageLeader'])
+        ->name('communication-requests.messages.store.leader')
+        ->middleware('auth');
+    Route::patch('/comunicacao/solicitacoes/{solicitation}', [CommunicationRequestController::class, 'update'])
+        ->name('communication-requests.update')
+        ->middleware('auth');
+    Route::delete('/comunicacao/solicitacoes/{solicitation}', [CommunicationRequestController::class, 'destroy'])
+        ->name('communication-requests.destroy')
+        ->middleware('auth');
     Route::post('/lideranca/voluntarios/fases', [VolunteerPipelineLeadController::class, 'storeStage'])
         ->name('ministry-lead.volunteers.pipeline.stages.store')
         ->middleware('permission:volunteers.ministry_operate|volunteers.manage');
