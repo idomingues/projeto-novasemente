@@ -533,7 +533,7 @@ class VolunteerRequestSolicitationController extends Controller
                 [],
             );
 
-            VolunteerPipelineBootstrap::moveVolunteerToStageByNormalizedName($volunteer, (int) $churchId, 'em treinamento');
+            VolunteerPipelineBootstrap::moveVolunteerToStageByNormalizedName($volunteer, (int) $churchId, 'encaminhado');
 
             $volunteerName = trim((string) ($volunteer->name ?? '')) ?: 'Voluntário #'.$volunteer->id;
             $note = 'Encaminhamento criado a partir do pedido de voluntário #'.$solicitation->id.' (pedidos de voluntário).';

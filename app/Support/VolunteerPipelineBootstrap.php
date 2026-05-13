@@ -12,13 +12,14 @@ class VolunteerPipelineBootstrap
     /** Fases iniciais alinhadas com a migration `create_volunteer_pipeline_tables`. */
     private const DEFAULT_STAGES = [
         ['name' => 'Interessado', 'sort_order' => 10],
+        ['name' => 'Encaminhado', 'sort_order' => 15],
         ['name' => 'Em treinamento', 'sort_order' => 20],
         ['name' => 'Pronto para servir', 'sort_order' => 30],
         ['name' => 'A servir', 'sort_order' => 40],
     ];
 
     /**
-     * Garante as quatro fases padrão quando a igreja ainda não tem nenhuma (ex.: igreja nova).
+     * Garante as fases padrão quando a igreja ainda não tem nenhuma (ex.: igreja nova).
      */
     public static function seedDefaultStagesForChurch(int $churchId): void
     {

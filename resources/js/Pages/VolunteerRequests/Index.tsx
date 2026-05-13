@@ -1033,7 +1033,7 @@ export default function VolunteerRequestsIndex({
                                                                 Será criado o convite ao departamento indicado no pedido (como no
                                                                 encaminhamento manual). O pedido passa a{' '}
                                                                 <strong className="font-semibold">concluído</strong>, fica registo no
-                                                                histórico e o voluntário entra na fase «Em treinamento» no cadastro,
+                                                                histórico e o voluntário entra na fase «Encaminhado» no cadastro,
                                                                 quando essa fase existir.
                                                             </p>
                                                             <form

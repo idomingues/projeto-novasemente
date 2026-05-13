@@ -6,6 +6,7 @@ use App\Actions\Volunteers\CreateAndNotifyVolunteerMinistryInvitation;
 use App\Models\Church;
 use App\Models\Ministry;
 use App\Models\Volunteer;
+use App\Support\VolunteerPipelineBootstrap;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -54,6 +55,8 @@ class VolunteerMinistryInvitationController extends Controller
             $channels,
             $slots,
         );
+
+        VolunteerPipelineBootstrap::moveVolunteerToStageByNormalizedName($volunteer, (int) $churchId, 'encaminhado');
 
         return back()->with('success', 'Convite criado.');
     }
