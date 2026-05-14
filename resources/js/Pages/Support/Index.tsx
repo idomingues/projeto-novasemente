@@ -164,13 +164,6 @@ export default function SupportIndex({
         });
     };
 
-    const tabBtn = (active: boolean) =>
-        `px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors -mb-px ${
-            active
-                ? 'border-zinc-900 text-zinc-900 dark:border-white dark:text-white'
-                : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
-        }`;
-
     return (
         <AdminLayout>
             <Head title="Suporte do app" />
@@ -263,31 +256,56 @@ export default function SupportIndex({
                 )}
             </div>
 
-            <Modal show={showModal} onClose={closeSupportModal} maxWidth="lg">
-                <div className="flex min-h-0 max-h-[min(85dvh,720px)] w-full flex-col overflow-hidden">
-                    <div className="flex shrink-0 items-center gap-2 border-b border-zinc-200 px-5 py-4 dark:border-zinc-800 sm:px-6">
-                        <WrenchScrewdriverIcon className="h-6 w-6 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
-                        <h2 className="min-w-0 truncate text-lg font-semibold text-zinc-900 dark:text-white">
-                            {modalDetail ? modalDetail.ticket.typeLabel : 'Novo item a desenvolver'}
-                        </h2>
+            <Modal show={showModal} onClose={closeSupportModal} maxWidth="2xl">
+                <div className="flex min-h-0 max-h-[min(88dvh,760px)] w-full flex-col overflow-hidden">
+                    <div className="shrink-0 border-b border-zinc-200 bg-white px-5 py-4 dark:border-zinc-800 dark:bg-zinc-950 sm:px-6">
+                        <div className="flex items-center gap-2">
+                            <WrenchScrewdriverIcon className="h-6 w-6 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
+                            <h2 className="min-w-0 truncate text-lg font-semibold text-zinc-900 dark:text-white">
+                                {modalDetail ? modalDetail.ticket.typeLabel : 'Novo item a desenvolver'}
+                            </h2>
+                        </div>
+                        {modalDetail ? (
+                            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                {modalDetail.ticket.ownerLabel} · {modalDetail.ticket.statusLabel ?? modalDetail.ticket.status}
+                            </p>
+                        ) : (
+                            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                Registe com clareza o contexto para facilitar triagem da equipe.
+                            </p>
+                        )}
                     </div>
 
-                    <div className="flex shrink-0 border-b border-zinc-200 px-5 dark:border-zinc-800 sm:px-6">
-                        <button type="button" className={tabBtn(modalTab === 'detalhes')} onClick={() => setModalTab('detalhes')}>
-                            Detalhes
-                        </button>
-                        <button
-                            type="button"
-                            className={tabBtn(modalTab === 'chat')}
-                            disabled={!modalDetail}
-                            onClick={() => setModalTab('chat')}
-                            title={!modalDetail ? 'Guarde o item na aba Detalhes para usar o chat' : undefined}
-                        >
-                            Chat
-                        </button>
+                    <div className="shrink-0 border-b border-zinc-200 bg-zinc-50 px-5 py-2 dark:border-zinc-800 dark:bg-zinc-900/70 sm:px-6">
+                        <div className="inline-flex rounded-xl border border-zinc-200 bg-white p-1 dark:border-zinc-700 dark:bg-zinc-900">
+                            <button
+                                type="button"
+                                className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                                    modalTab === 'detalhes'
+                                        ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900'
+                                        : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800'
+                                }`}
+                                onClick={() => setModalTab('detalhes')}
+                            >
+                                Detalhes
+                            </button>
+                            <button
+                                type="button"
+                                className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                                    modalTab === 'chat'
+                                        ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900'
+                                        : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800'
+                                } ${!modalDetail ? 'cursor-not-allowed opacity-50' : ''}`}
+                                disabled={!modalDetail}
+                                onClick={() => setModalTab('chat')}
+                                title={!modalDetail ? 'Guarde o item na aba Detalhes para usar o chat' : undefined}
+                            >
+                                Chat
+                            </button>
+                        </div>
                     </div>
 
-                    <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6 sm:py-5">
+                    <div className="min-h-0 flex-1 overflow-y-auto bg-zinc-50 px-5 py-4 dark:bg-zinc-950 sm:px-6 sm:py-5">
                         {modalTab === 'detalhes' && createOpen && !modalDetail && (
                             <form onSubmit={submitDevItem} className="space-y-4">
                                 <p className="text-sm text-zinc-600 dark:text-zinc-400">
