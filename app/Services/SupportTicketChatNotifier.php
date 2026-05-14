@@ -60,6 +60,54 @@ class SupportTicketChatNotifier
         }
     }
 
+    /** Finalização da demanda pela equipe → notificações ao utilizador dono do ticket. */
+    public function notifyOwnerOfFinalizedTicket(AppSupportTicket $ticket, User $staff, string $solutionText): void
+    {
+        if (! $ticket->user_id) {
+            return;
+        }
+
+        $owner = User::query()->find($ticket->user_id);
+        if (! $owner) {
+            return;
+        }
+
+        $typeLabel = SupportTicketAdminPresenter::typeLabel((string) $ticket->type);
+        $statusLabel = SupportTicketAdminPresenter::statusLabel((string) $ticket->status);
+        $title = 'Atualização no seu chamado';
+        $body = 'Seu chamado "'.$typeLabel.'" foi marcado como '.$statusLabel.'.';
+
+        if (UserMessagingPreferences::acceptsInbox($owner)) {
+            $row = UserInboxNotification::create([
+                'user_id' => $owner->id,
+                'title' => $title,
+                'body' => $body,
+                'action_url' => null,
+            ]);
+
+            $row->update([
+                'action_url' => route('mobile.support.ticket', [
+                    'token' => $ticket->public_token,
+                    'inbox' => $row->id,
+                ], absolute: true),
+            ]);
+        }
+
+        $selfAction = (int) $ticket->user_id === (int) $staff->id;
+        if (! $selfAction && is_string($owner->email) && filter_var($owner->email, FILTER_VALIDATE_EMAIL)) {
+            $owner->loadMissing('church:id,name');
+            $conversationUrl = route('mobile.support.ticket', ['token' => $ticket->public_token], absolute: true);
+            Mail::to($owner->email)->send(new SupportTicketStaffMessageMail(
+                $title,
+                $typeLabel,
+                $solutionText,
+                $conversationUrl,
+                $staff->name,
+                $owner->church?->name,
+            ));
+        }
+    }
+
     /** Mensagem do membro na app → equipe de suporte (e pastoral, se aplicável). */
     public function notifyStaffOfUserMessage(AppSupportTicket $ticket, User $member): void
     {

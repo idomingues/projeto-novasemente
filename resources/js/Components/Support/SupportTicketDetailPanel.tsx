@@ -103,6 +103,7 @@ export default function SupportTicketDetailPanel({
     const [showEditModal, setShowEditModal] = useState(false);
     const [editMessage, setEditMessage] = useState(ticket.message);
     const [statusValue, setStatusValue] = useState(ticket.status);
+    const [statusSolution, setStatusSolution] = useState(ticket.solutionText ?? '');
 
     useEffect(() => {
         setEditMessage(ticket.message);
@@ -111,6 +112,10 @@ export default function SupportTicketDetailPanel({
     useEffect(() => {
         setStatusValue(ticket.status);
     }, [ticket.status]);
+
+    useEffect(() => {
+        setStatusSolution(ticket.solutionText ?? '');
+    }, [ticket.solutionText]);
 
     useEffect(() => {
         if (!showCloseModal) {
@@ -156,8 +161,14 @@ export default function SupportTicketDetailPanel({
 
     const saveStatus = () => {
         if (!statusValue || statusValue === ticket.status) return;
-        router.patch(supportUpdateUrl, { status: statusValue }, inertiaScrollOpts);
+        router.patch(
+            supportUpdateUrl,
+            { status: statusValue, solution_text: statusSolution },
+            inertiaScrollOpts,
+        );
     };
+
+    const statusWillFinalize = ['resolved', 'closed'].includes(statusValue);
 
     const deleteTicket = async () => {
         const ok = await confirmAction({
@@ -278,8 +289,25 @@ export default function SupportTicketDetailPanel({
                                     </option>
                                 ))}
                             </select>
+                            {statusWillFinalize ? (
+                                <div className="mt-3">
+                                    <InputLabel value="Solução da demanda *" />
+                                    <Textarea
+                                        value={statusSolution}
+                                        onChange={(e) => setStatusSolution(e.target.value)}
+                                        rows={4}
+                                        className="mt-1 w-full"
+                                        placeholder="Descreva a solução aplicada para o usuário..."
+                                    />
+                                    <InputError message={errors.solution_text} className="mt-1" />
+                                </div>
+                            ) : null}
                         </div>
-                        <PrimaryButton type="button" onClick={saveStatus} disabled={statusValue === ticket.status}>
+                        <PrimaryButton
+                            type="button"
+                            onClick={saveStatus}
+                            disabled={statusValue === ticket.status || (statusWillFinalize && statusSolution.trim() === '')}
+                        >
                             Salvar status
                         </PrimaryButton>
                     </div>
@@ -357,7 +385,7 @@ export default function SupportTicketDetailPanel({
                 </div>
             )}
 
-            {showDetails && ticket.status === 'closed' && ticket.solutionText && (
+            {showDetails && ['resolved', 'closed'].includes(ticket.status) && ticket.solutionText && (
                 <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
                     <div className="flex items-center gap-2 text-sm font-semibold text-zinc-700 dark:text-zinc-200">
                         <CheckCircleIcon className="w-4 h-4 text-green-600 dark:text-green-400" />

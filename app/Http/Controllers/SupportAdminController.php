@@ -126,14 +126,31 @@ class SupportAdminController extends Controller
         $valid = $request->validate([
             'message' => ['sometimes', 'required', 'string', 'max:5000'],
             'status' => ['sometimes', 'string', 'in:'.implode(',', AppSupportTicket::statuses())],
+            'solution_text' => ['nullable', 'string', 'max:5000'],
         ]);
 
         if (array_key_exists('message', $valid)) {
             $ticket->message = $valid['message'];
         }
 
+        $wasFinalStatus = AppSupportTicket::isFinalStatus((string) $ticket->status);
+        $statusChanged = false;
         if (array_key_exists('status', $valid)) {
             $nextStatus = (string) $valid['status'];
+            $statusChanged = $nextStatus !== (string) $ticket->status;
+            $solution = isset($valid['solution_text']) ? trim((string) $valid['solution_text']) : '';
+
+            if (AppSupportTicket::isFinalStatus($nextStatus)) {
+                if ($solution === '' && trim((string) ($ticket->solution_text ?? '')) === '') {
+                    return redirect()->back()->withErrors([
+                        'solution_text' => 'Informe a solução para finalizar a demanda.',
+                    ]);
+                }
+                if ($solution !== '') {
+                    $ticket->solution_text = $solution;
+                }
+            }
+
             $ticket->status = $nextStatus;
             if (AppSupportTicket::isActiveStatus($nextStatus)) {
                 $ticket->closed_at = null;
@@ -146,6 +163,14 @@ class SupportAdminController extends Controller
         }
 
         $ticket->save();
+        $isFinalStatus = AppSupportTicket::isFinalStatus((string) $ticket->status);
+        if ($statusChanged && ! $wasFinalStatus && $isFinalStatus) {
+            app(SupportTicketChatNotifier::class)->notifyOwnerOfFinalizedTicket(
+                $ticket,
+                $user,
+                (string) ($ticket->solution_text ?? '')
+            );
+        }
 
         return redirect()->route('support.index', ['status' => $ticket->status, 'modal' => $token]);
     }
@@ -217,6 +242,12 @@ class SupportAdminController extends Controller
             'closed_at' => now(),
             'solution_text' => $valid['solution_text'],
         ]);
+
+        app(SupportTicketChatNotifier::class)->notifyOwnerOfFinalizedTicket(
+            $ticket->fresh(),
+            $user,
+            (string) $valid['solution_text']
+        );
 
         return redirect()->back(fallback: route('support.show', ['token' => $token]));
     }

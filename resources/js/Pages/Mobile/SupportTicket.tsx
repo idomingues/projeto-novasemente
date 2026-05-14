@@ -203,7 +203,7 @@ export default function MobileSupportTicket({
                     </div>
                 )}
 
-                {ticket.status === 'closed' && ticket.solutionText && showMessages && (
+                {['resolved', 'closed'].includes(ticket.status) && ticket.solutionText && showMessages && (
                     <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4">
                         <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-2">Solução</div>
                         <div className="text-sm text-zinc-700 dark:text-zinc-200 whitespace-pre-wrap">{ticket.solutionText}</div>

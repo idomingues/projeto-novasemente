@@ -73,6 +73,22 @@ class AppSupportTicket extends Model
         return in_array($status, self::activeStatuses(), true);
     }
 
+    /**
+     * @return list<string>
+     */
+    public static function finalStatuses(): array
+    {
+        return [
+            self::STATUS_RESOLVED,
+            self::STATUS_CLOSED,
+        ];
+    }
+
+    public static function isFinalStatus(string $status): bool
+    {
+        return in_array($status, self::finalStatuses(), true);
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

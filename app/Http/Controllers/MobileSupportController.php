@@ -365,6 +365,14 @@ class MobileSupportController extends Controller
             'solution_text' => $solution,
         ]);
 
+        if ($staffActor && ! $isOwner) {
+            app(SupportTicketChatNotifier::class)->notifyOwnerOfFinalizedTicket(
+                $ticket->fresh(),
+                $user,
+                (string) ($solution ?? '')
+            );
+        }
+
         return redirect()->route('mobile.support.ticket', ['token' => $ticket->public_token]);
     }
 
