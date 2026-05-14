@@ -558,6 +558,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
                                     const href = routeExists ? route(item.route) : '#';
                                     const isActive = routeExists && isMenuItemActive(item.route);
                                     const Icon = item.icon;
+                                    const sidebarBadgeCount = sidebarBadgeCountForRoute(item.route);
 
                                     return (
                                         <li key={item.route}>
@@ -578,6 +579,19 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
                                                     }`}
                                                 />
                                                 <span className="font-medium text-sm">{item.name}</span>
+                                                {sidebarBadgeCount > 0 ? (
+                                                    <span
+                                                        className={`ml-auto inline-flex min-w-6 items-center justify-center rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${
+                                                            isActive
+                                                                ? 'bg-white/20 text-white dark:bg-black/10 dark:text-black'
+                                                                : 'bg-rose-600 text-white'
+                                                        }`}
+                                                        title={`${sidebarBadgeCount} em aberto`}
+                                                        aria-label={`${sidebarBadgeCount} em aberto`}
+                                                    >
+                                                        {sidebarBadgeCount > 99 ? '99+' : sidebarBadgeCount}
+                                                    </span>
+                                                ) : null}
                                             </Link>
                                         </li>
                                     );
