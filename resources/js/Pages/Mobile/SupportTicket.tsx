@@ -22,7 +22,10 @@ interface Ticket {
     publicToken: string;
     typeLabel: string;
     status: string;
+    statusLabel?: string;
     message: string;
+    screenshotUrl?: string | null;
+    screenshotExternalUrl?: string | null;
     solutionText: string | null;
     createdAt: string;
     closedAt: string | null;
@@ -66,7 +69,7 @@ export default function MobileSupportTicket({
         }
     }, [showCloseModal]);
 
-    const isClosed = ticket.status !== 'open';
+    const isClosed = !['open', 'in_progress', 'waiting_user'].includes(ticket.status);
 
     const sendMessage: FormEventHandler = (e) => {
         e.preventDefault();
@@ -95,7 +98,7 @@ export default function MobileSupportTicket({
                         <div className="min-w-0">
                             <div className="text-sm font-semibold text-zinc-900 dark:text-white">{ticket.typeLabel}</div>
                             <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                                {isClosed ? 'Encerrado' : 'Em andamento'}
+                                {ticket.statusLabel ?? (isClosed ? 'Encerrado' : 'Em andamento')}
                                 {ticket.closedAt ? ` · ${formatTime(ticket.closedAt)}` : ''}
                             </div>
                         </div>
@@ -108,6 +111,25 @@ export default function MobileSupportTicket({
                     <div className="mt-3 text-sm text-zinc-700 dark:text-zinc-200 whitespace-pre-wrap">
                         {ticket.message}
                     </div>
+                    {ticket.screenshotUrl ? (
+                        <a href={ticket.screenshotUrl} target="_blank" rel="noreferrer" className="mt-3 block">
+                            <img
+                                src={ticket.screenshotUrl}
+                                alt="Print anexado ao chamado"
+                                className="max-h-72 rounded-xl border border-zinc-200 object-contain dark:border-zinc-700"
+                            />
+                        </a>
+                    ) : null}
+                    {ticket.screenshotExternalUrl ? (
+                        <a
+                            href={ticket.screenshotExternalUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-3 inline-flex text-sm font-medium text-brand-700 underline dark:text-brand-300"
+                        >
+                            Abrir link do print
+                        </a>
+                    ) : null}
                     {hideFromMyAppUrl ? (
                         <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50/90 p-3 dark:border-zinc-700 dark:bg-zinc-800/50">
                             <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">

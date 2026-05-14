@@ -22,7 +22,10 @@ export type SupportTicketShape = {
     type?: string;
     typeLabel: string;
     status: string;
+    statusLabel?: string;
     message: string;
+    screenshotUrl?: string | null;
+    screenshotExternalUrl?: string | null;
     solutionText: string | null;
     createdAt: string;
     closedAt: string | null;
@@ -39,6 +42,7 @@ export type SupportTicketDetailPanelProps = {
     supportDestroyUrl: string;
     supportCloseUrl: string;
     supportMessageStoreUrl: string;
+    statusOptions?: Array<{ value: string; label: string }>;
     /** Responder, editar, excluir e encerrar (painel admin). Por omissão: true. */
     canManageTickets?: boolean;
     variant?: 'page' | 'modal';
@@ -51,6 +55,11 @@ function formatTime(iso: string): string {
     return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
+function formatDate(iso: string): string {
+    const d = new Date(iso);
+    return d.toLocaleString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
 export default function SupportTicketDetailPanel({
     ticket,
     messages,
@@ -58,12 +67,13 @@ export default function SupportTicketDetailPanel({
     supportDestroyUrl,
     supportCloseUrl,
     supportMessageStoreUrl,
+    statusOptions = [],
     canManageTickets = true,
     variant = 'page',
     section: sectionProp = 'full',
 }: SupportTicketDetailPanelProps) {
     const inertiaScrollOpts = { preserveScroll: true };
-    const isOpen = ticket.status === 'open';
+    const isOpen = ['open', 'in_progress', 'waiting_user'].includes(ticket.status);
     const internalCoordination = ticket.allowStaffInternalChat === true;
     const guestNoAppUser = ticket.isGuest && !internalCoordination;
     const isModal = variant === 'modal';
@@ -78,10 +88,15 @@ export default function SupportTicketDetailPanel({
     const [showCloseModal, setShowCloseModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [editMessage, setEditMessage] = useState(ticket.message);
+    const [statusValue, setStatusValue] = useState(ticket.status);
 
     useEffect(() => {
         setEditMessage(ticket.message);
     }, [ticket.message]);
+
+    useEffect(() => {
+        setStatusValue(ticket.status);
+    }, [ticket.status]);
 
     useEffect(() => {
         if (!showCloseModal) {
@@ -125,6 +140,11 @@ export default function SupportTicketDetailPanel({
         });
     };
 
+    const saveStatus = () => {
+        if (!statusValue || statusValue === ticket.status) return;
+        router.patch(supportUpdateUrl, { status: statusValue }, inertiaScrollOpts);
+    };
+
     const deleteTicket = async () => {
         const ok = await confirmAction({
             title: 'Excluir chamado?',
@@ -159,7 +179,7 @@ export default function SupportTicketDetailPanel({
                     </div>
                     <div className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
                         <span className="inline-flex items-center rounded-full border border-zinc-200 dark:border-zinc-600 bg-zinc-50 dark:bg-zinc-800/80 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:text-zinc-200">
-                            {ticket.status === 'open' ? 'Em andamento' : 'Encerrado'}
+                            {ticket.statusLabel ?? (ticket.status === 'open' ? 'Em andamento' : 'Encerrado')}
                         </span>
                         <span className="mx-2 text-zinc-300 dark:text-zinc-600">·</span>
                         {ticket.typeLabel}
@@ -199,6 +219,53 @@ export default function SupportTicketDetailPanel({
             )}
 
             {showDetails && (
+            <div className="grid gap-3 rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-900/50 sm:grid-cols-2">
+                <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Tipo</div>
+                    <div className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">{ticket.typeLabel}</div>
+                </div>
+                <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Usuário</div>
+                    <div className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">{ticket.ownerLabel}</div>
+                </div>
+                <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Criado em</div>
+                    <div className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">{formatDate(ticket.createdAt)}</div>
+                </div>
+                <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Status</div>
+                    <div className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                        {ticket.statusLabel ?? (ticket.status === 'open' ? 'Em andamento' : 'Encerrado')}
+                    </div>
+                </div>
+            </div>
+            )}
+
+            {showDetails && canManageTickets && statusOptions.length > 0 && (
+                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                        <div className="min-w-0 flex-1">
+                            <InputLabel value="Alterar status" />
+                            <select
+                                value={statusValue}
+                                onChange={(e) => setStatusValue(e.target.value)}
+                                className="mt-1 block h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+                            >
+                                {statusOptions.map((opt) => (
+                                    <option key={opt.value} value={opt.value}>
+                                        {opt.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <PrimaryButton type="button" onClick={saveStatus} disabled={statusValue === ticket.status}>
+                            Salvar status
+                        </PrimaryButton>
+                    </div>
+                </div>
+            )}
+
+            {showDetails && (
             <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
                 <div className="min-w-0">
                     <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
@@ -207,6 +274,31 @@ export default function SupportTicketDetailPanel({
                     <div className="mt-2 text-sm text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap">{ticket.message}</div>
                 </div>
             </div>
+            )}
+
+            {showDetails && (ticket.screenshotUrl || ticket.screenshotExternalUrl) && (
+                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
+                    <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Print anexado</div>
+                    {ticket.screenshotUrl ? (
+                        <a href={ticket.screenshotUrl} target="_blank" rel="noreferrer" className="mt-3 block">
+                            <img
+                                src={ticket.screenshotUrl}
+                                alt="Print anexado ao chamado"
+                                className="max-h-72 w-auto rounded-xl border border-zinc-200 object-contain dark:border-zinc-700"
+                            />
+                        </a>
+                    ) : null}
+                    {ticket.screenshotExternalUrl ? (
+                        <a
+                            href={ticket.screenshotExternalUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-3 inline-flex text-sm font-medium text-brand-700 underline dark:text-brand-300"
+                        >
+                            Abrir link do print
+                        </a>
+                    ) : null}
+                </div>
             )}
 
             {showChat && messages.length > 0 && (guestNoAppUser || !isOpen) && (

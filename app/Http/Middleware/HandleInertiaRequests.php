@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Http\Controllers\MobileChurchSolicitationController;
+use App\Models\AppSupportTicket;
 use App\Models\AppVersion;
 use App\Models\Church;
 use App\Models\ChurchSolicitation;
@@ -221,6 +222,23 @@ class HandleInertiaRequests extends Middleware
             }
         }
 
+        /** Chamados de suporte não atendidos (badge no menu ADM "Suporte APP"). */
+        $openSupportTicketsCount = 0;
+        if ($request->user()) {
+            $u = $request->user();
+            $canViewSupportTickets = $u->hasRole('super_admin')
+                || $u->hasAnyPermission(['support.view', 'support.manage']);
+            if ($canViewSupportTickets && Schema::hasTable('app_support_tickets')) {
+                try {
+                    $openSupportTicketsCount = (int) AppSupportTicket::query()
+                        ->whereIn('status', AppSupportTicket::activeStatuses())
+                        ->count();
+                } catch (\Throwable) {
+                    $openSupportTicketsCount = 0;
+                }
+            }
+        }
+
         return [
             ...parent::share($request),
             /**
@@ -267,6 +285,8 @@ class HandleInertiaRequests extends Middleware
                 'openSolicitationsCount' => $openSolicitationsCount,
                 /** Badge no menu lateral — pedidos de voluntário em aberto (secretaria / quem gere `solicitations.manage`). */
                 'openVolunteerRequestsCount' => $openVolunteerRequestsCount,
+                /** Badge no menu lateral — chamados de suporte não atendidos. */
+                'openSupportTicketsCount' => $openSupportTicketsCount,
             ],
             'currentChurch' => $currentChurch,
             'churchesForSwitch' => $churchesForSwitch,

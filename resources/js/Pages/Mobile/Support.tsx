@@ -3,7 +3,7 @@ import Modal from '@/Components/Modal';
 import AddButton from '@/Components/AddButton';
 import PageHeader from '@/Components/PageHeader';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { useState, FormEventHandler } from 'react';
+import { useMemo, useState, FormEventHandler, useEffect } from 'react';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import InputLabel from '@/Components/InputLabel';
 import Textarea from '@/Components/Textarea';
@@ -16,6 +16,7 @@ type SupportTicketListItem = {
     publicToken: string;
     typeLabel: string;
     status: string;
+    statusLabel?: string;
     message: string;
     createdAt: string;
 };
@@ -39,11 +40,27 @@ function formatWhen(iso: string): string {
     }
 }
 
+function statusTone(status: string): string {
+    switch (status) {
+        case 'waiting_user':
+            return 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200';
+        case 'resolved':
+        case 'closed':
+            return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200';
+        case 'in_progress':
+            return 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200';
+        default:
+            return 'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-200';
+    }
+}
+
 export default function MobileSupport({ tickets, isAuthenticated }: Props) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
         type: 'problem' as 'problem' | 'suggestion' | 'praise',
         message: '',
+        screenshot_file: null as File | null,
+        screenshot_url: '',
         guest_name: '',
         guest_email: '',
         guest_phone: '',
@@ -67,9 +84,21 @@ export default function MobileSupport({ tickets, isAuthenticated }: Props) {
         clearErrors();
     };
 
+    const screenshotPreview = useMemo(() => {
+        if (!data.screenshot_file) return null;
+        return URL.createObjectURL(data.screenshot_file);
+    }, [data.screenshot_file]);
+
+    useEffect(() => {
+        return () => {
+            if (screenshotPreview) URL.revokeObjectURL(screenshotPreview);
+        };
+    }, [screenshotPreview]);
+
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         post(route('mobile.support.store'), {
+            forceFormData: true,
             onSuccess: () => {
                 closeModal();
             },
@@ -138,8 +167,10 @@ export default function MobileSupport({ tickets, isAuthenticated }: Props) {
                                                     {t.message}
                                                 </p>
                                             </div>
-                                            <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                                                Aberto
+                                            <span
+                                                className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${statusTone(t.status)}`}
+                                            >
+                                                {t.statusLabel ?? 'Aberto'}
                                             </span>
                                         </div>
                                     </Link>
@@ -203,6 +234,54 @@ export default function MobileSupport({ tickets, isAuthenticated }: Props) {
                             />
                             <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{data.message.length}/5000</div>
                             <InputError message={errors.message} className="mt-1" />
+                        </div>
+
+                        <div className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-800/40">
+                            <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Print (opcional)</div>
+                            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                Pode anexar uma imagem ou colar link do print.
+                            </p>
+                            <div className="mt-3 space-y-3">
+                                <div>
+                                    <InputLabel value="Anexar imagem" />
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => setData('screenshot_file', e.target.files?.[0] ?? null)}
+                                        className="mt-1 block w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+                                    />
+                                    <InputError message={errors.screenshot_file} className="mt-1" />
+                                </div>
+                                <div>
+                                    <InputLabel value="Ou colar link do print" />
+                                    <TextInput
+                                        value={data.screenshot_url}
+                                        onChange={(e) => setData('screenshot_url', e.target.value)}
+                                        className="mt-1 block w-full"
+                                        placeholder="https://..."
+                                    />
+                                    <InputError message={errors.screenshot_url} className="mt-1" />
+                                </div>
+                                <div
+                                    onPaste={(e) => {
+                                        const file = e.clipboardData?.files?.[0];
+                                        if (file && file.type.startsWith('image/')) {
+                                            e.preventDefault();
+                                            setData('screenshot_file', file);
+                                        }
+                                    }}
+                                    className="rounded-xl border border-dashed border-zinc-300 px-3 py-2 text-xs text-zinc-600 dark:border-zinc-600 dark:text-zinc-300"
+                                >
+                                    Dica: copie um print e cole aqui (Ctrl/Cmd + V).
+                                </div>
+                                {screenshotPreview ? (
+                                    <img
+                                        src={screenshotPreview}
+                                        alt="Pré-visualização do print"
+                                        className="max-h-48 rounded-xl border border-zinc-200 object-contain dark:border-zinc-700"
+                                    />
+                                ) : null}
+                            </div>
                         </div>
 
                         {!isAuthenticated && (

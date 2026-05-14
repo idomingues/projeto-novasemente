@@ -47,18 +47,23 @@ class SupportAdminController extends Controller
             'guest_name' => null,
             'guest_email' => null,
             'guest_phone' => null,
-            'status' => 'open',
+            'status' => AppSupportTicket::STATUS_OPEN,
         ]);
 
-        return redirect()->route('support.index', ['modal' => $ticket->public_token]);
+        return redirect()->route('support.index', ['status' => AppSupportTicket::STATUS_OPEN, 'modal' => $ticket->public_token]);
     }
 
     public function index(Request $request): Response
     {
         $user = $request->user();
         abort_unless($user && $this->canViewSupport($user), 403);
+        $statusFilter = (string) ($request->query('status') ?? AppSupportTicket::STATUS_OPEN);
+        if ($statusFilter !== 'all' && ! in_array($statusFilter, AppSupportTicket::statuses(), true)) {
+            $statusFilter = AppSupportTicket::STATUS_OPEN;
+        }
         $tickets = AppSupportTicket::query()
             ->with('user:id,name')
+            ->when($statusFilter !== 'all', fn ($q) => $q->where('status', $statusFilter))
             ->orderByDesc('updated_at')
             ->limit(50)
             ->get()
@@ -67,6 +72,7 @@ class SupportAdminController extends Controller
                 'type' => $t->type,
                 'typeLabel' => SupportTicketAdminPresenter::typeLabel($t->type),
                 'status' => $t->status,
+                'statusLabel' => SupportTicketAdminPresenter::statusLabel((string) $t->status),
                 'message' => $t->message,
                 'solutionText' => $t->solution_text,
                 'createdAt' => $t->created_at?->toIso8601String(),
@@ -93,6 +99,11 @@ class SupportAdminController extends Controller
             'supportIndexUrl' => route('support.index'),
             'modalDetail' => $modalDetail,
             'canCreateDevItem' => $this->isSuperAdmin($user),
+            'statusFilter' => $statusFilter,
+            'statusOptions' => array_merge(
+                [['value' => 'all', 'label' => 'Todos']],
+                SupportTicketAdminPresenter::statusOptions()
+            ),
         ]);
     }
 
@@ -114,22 +125,29 @@ class SupportAdminController extends Controller
 
         $valid = $request->validate([
             'message' => ['sometimes', 'required', 'string', 'max:5000'],
-            'status' => ['sometimes', 'in:open'],
+            'status' => ['sometimes', 'string', 'in:'.implode(',', AppSupportTicket::statuses())],
         ]);
 
         if (array_key_exists('message', $valid)) {
             $ticket->message = $valid['message'];
         }
 
-        if (($valid['status'] ?? null) === 'open') {
-            $ticket->status = 'open';
-            $ticket->closed_at = null;
-            $ticket->solution_text = null;
+        if (array_key_exists('status', $valid)) {
+            $nextStatus = (string) $valid['status'];
+            $ticket->status = $nextStatus;
+            if (AppSupportTicket::isActiveStatus($nextStatus)) {
+                $ticket->closed_at = null;
+                if ($nextStatus === AppSupportTicket::STATUS_OPEN) {
+                    $ticket->solution_text = null;
+                }
+            } elseif ($ticket->closed_at === null) {
+                $ticket->closed_at = now();
+            }
         }
 
         $ticket->save();
 
-        return redirect()->route('support.index', ['modal' => $token]);
+        return redirect()->route('support.index', ['status' => $ticket->status, 'modal' => $token]);
     }
 
     public function destroy(Request $request, string $token): RedirectResponse
@@ -149,7 +167,7 @@ class SupportAdminController extends Controller
         abort_unless($user && $this->canManageSupport($user), 403);
 
         $ticket = AppSupportTicket::query()->where('public_token', $token)->firstOrFail();
-        abort_unless($ticket->status === 'open', 400);
+        abort_unless(AppSupportTicket::isActiveStatus((string) $ticket->status), 400);
         $staffPastoralThread = $ticket->type === 'pastoral'
             && empty($ticket->user_id)
             && ! empty($ticket->pastoral_appointment_id);
@@ -188,14 +206,14 @@ class SupportAdminController extends Controller
         abort_unless($user && $this->canManageSupport($user), 403);
 
         $ticket = AppSupportTicket::query()->where('public_token', $token)->firstOrFail();
-        abort_unless($ticket->status === 'open', 400);
+        abort_unless(AppSupportTicket::isActiveStatus((string) $ticket->status), 400);
 
         $valid = $request->validate([
             'solution_text' => ['required', 'string', 'max:5000'],
         ]);
 
         $ticket->update([
-            'status' => 'closed',
+            'status' => AppSupportTicket::STATUS_CLOSED,
             'closed_at' => now(),
             'solution_text' => $valid['solution_text'],
         ]);

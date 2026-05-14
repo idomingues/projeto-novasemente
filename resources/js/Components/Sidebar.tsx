@@ -155,6 +155,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
         pastoralAgendaMenuVisible?: boolean;
         openSolicitationsCount?: number;
         openVolunteerRequestsCount?: number;
+        openSupportTicketsCount?: number;
     };
     const currentChurch = (props as { currentChurch?: ChurchInfo | null }).currentChurch ?? null;
     const churchesForSwitch = (props as { churchesForSwitch?: ChurchForSwitch[] }).churchesForSwitch ?? [];
@@ -170,6 +171,15 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
         typeof auth?.openSolicitationsCount === 'number' ? auth.openSolicitationsCount : 0;
     const openVolunteerRequestsCount =
         typeof auth?.openVolunteerRequestsCount === 'number' ? auth.openVolunteerRequestsCount : 0;
+    const openSupportTicketsCount =
+        typeof auth?.openSupportTicketsCount === 'number' ? auth.openSupportTicketsCount : 0;
+
+    const sidebarBadgeCountForRoute = (routeName: string): number => {
+        if (routeName === 'solicitations.index') return openSolicitationsCount;
+        if (routeName === 'volunteer-requests.staff.index') return openVolunteerRequestsCount;
+        if (routeName === 'support.index' || routeName === 'mobile.support.index') return openSupportTicketsCount;
+        return 0;
+    };
 
     const publicationRoutes = new Set([
         'news.index',
@@ -385,12 +395,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
                                     const href = routeExists ? route(item.route) : '#';
                                     const isActive = routeExists && isMenuItemActive(item.route);
                                     const Icon = item.icon;
-                                    const sidebarBadgeCount =
-                                        item.route === 'solicitations.index'
-                                            ? openSolicitationsCount
-                                            : item.route === 'volunteer-requests.staff.index'
-                                              ? openVolunteerRequestsCount
-                                              : 0;
+                                    const sidebarBadgeCount = sidebarBadgeCountForRoute(item.route);
 
                                     return (
                                         <li key={item.route}>
@@ -445,6 +450,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
                                     const href = routeExists ? route(item.route) : '#';
                                     const isActive = routeExists && isMenuItemActive(item.route);
                                     const Icon = item.icon;
+                                    const sidebarBadgeCount = sidebarBadgeCountForRoute(item.route);
 
                                     return (
                                         <li key={item.route}>
@@ -465,6 +471,19 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
                                                     }`}
                                                 />
                                                 <span className="font-medium text-sm">{item.name}</span>
+                                                {sidebarBadgeCount > 0 ? (
+                                                    <span
+                                                        className={`ml-auto inline-flex min-w-6 items-center justify-center rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${
+                                                            isActive
+                                                                ? 'bg-white/20 text-white dark:bg-black/10 dark:text-black'
+                                                                : 'bg-rose-600 text-white'
+                                                        }`}
+                                                        title={`${sidebarBadgeCount} em aberto`}
+                                                        aria-label={`${sidebarBadgeCount} em aberto`}
+                                                    >
+                                                        {sidebarBadgeCount > 99 ? '99+' : sidebarBadgeCount}
+                                                    </span>
+                                                ) : null}
                                             </Link>
                                         </li>
                                     );

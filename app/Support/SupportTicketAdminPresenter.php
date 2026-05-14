@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\AppSupportMessage;
 use App\Models\AppSupportTicket;
 use App\Models\User;
+use App\Support\StorageUrl;
 
 class SupportTicketAdminPresenter
 {
@@ -18,6 +19,32 @@ class SupportTicketAdminPresenter
             'pastoral' => 'Agendamento pastoral',
             default => 'Suporte do app',
         };
+    }
+
+    public static function statusLabel(string $status): string
+    {
+        return match ($status) {
+            AppSupportTicket::STATUS_OPEN => 'Aberto',
+            AppSupportTicket::STATUS_IN_PROGRESS => 'Em andamento',
+            AppSupportTicket::STATUS_WAITING_USER => 'Aguardando usuário',
+            AppSupportTicket::STATUS_RESOLVED => 'Resolvido',
+            AppSupportTicket::STATUS_CLOSED => 'Fechado',
+            default => 'Aberto',
+        };
+    }
+
+    /**
+     * @return list<array{value: string, label: string}>
+     */
+    public static function statusOptions(): array
+    {
+        return collect(AppSupportTicket::statuses())
+            ->map(fn (string $status) => [
+                'value' => $status,
+                'label' => self::statusLabel($status),
+            ])
+            ->values()
+            ->all();
     }
 
     /**
@@ -45,7 +72,7 @@ class SupportTicketAdminPresenter
 
         $publicToken = $ticket->public_token;
 
-        $canManage = $viewer->hasPermissionTo('support.manage');
+        $canManage = $viewer->hasRole('super_admin') || $viewer->hasPermissionTo('support.manage');
 
         return [
             'ticket' => [
@@ -58,7 +85,10 @@ class SupportTicketAdminPresenter
                     && $ticket->pastoral_appointment_id
                     && $ticket->status === 'open',
                 'status' => $ticket->status,
+                'statusLabel' => self::statusLabel((string) $ticket->status),
                 'message' => $ticket->message,
+                'screenshotUrl' => $ticket->screenshot_path ? StorageUrl::publicMediaUrl($ticket->screenshot_path) : null,
+                'screenshotExternalUrl' => $ticket->screenshot_url,
                 'solutionText' => $ticket->solution_text,
                 'createdAt' => $ticket->created_at?->toIso8601String(),
                 'closedAt' => $ticket->closed_at?->toIso8601String(),
@@ -70,6 +100,7 @@ class SupportTicketAdminPresenter
             'supportCloseUrl' => route('support.close', ['token' => $publicToken]),
             'supportMessageStoreUrl' => route('support.messages.store', ['token' => $publicToken]),
             'canManageTickets' => $canManage,
+            'statusOptions' => self::statusOptions(),
         ];
     }
 }

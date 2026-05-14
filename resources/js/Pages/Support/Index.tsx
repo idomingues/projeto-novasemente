@@ -16,11 +16,17 @@ type TicketRow = {
     publicToken: string;
     typeLabel: string;
     status: string;
+    statusLabel: string;
     message: string;
     solutionText: string | null;
     createdAt: string;
     updatedAt: string;
     ownerLabel: string;
+};
+
+type StatusOption = {
+    value: string;
+    label: string;
 };
 
 type ModalPayload = Omit<SupportTicketDetailPanelProps, 'variant' | 'section'>;
@@ -31,9 +37,19 @@ interface Props {
     supportIndexUrl: string;
     modalDetail: ModalPayload | null;
     canCreateDevItem?: boolean;
+    statusFilter: string;
+    statusOptions: StatusOption[];
 }
 
-export default function SupportIndex({ tickets, devItemStoreUrl, supportIndexUrl, modalDetail, canCreateDevItem = false }: Props) {
+export default function SupportIndex({
+    tickets,
+    devItemStoreUrl,
+    supportIndexUrl,
+    modalDetail,
+    canCreateDevItem = false,
+    statusFilter,
+    statusOptions,
+}: Props) {
     const inertiaScrollOpts = { preserveScroll: true };
     const [modalTab, setModalTab] = useState<'detalhes' | 'chat'>('detalhes');
     const [createOpen, setCreateOpen] = useState(false);
@@ -75,11 +91,69 @@ export default function SupportIndex({ tickets, devItemStoreUrl, supportIndexUrl
     const closeSupportModal = () => {
         setCreateOpen(false);
         setModalTab('detalhes');
-        router.get(supportIndexUrl, {}, { preserveScroll: true, replace: true });
+        router.get(supportIndexUrl, { status: statusFilter }, { preserveScroll: true, replace: true });
     };
 
     const openTicketModal = (token: string) => {
-        router.get(supportIndexUrl, { modal: token }, { preserveScroll: true });
+        router.get(supportIndexUrl, { status: statusFilter, modal: token }, { preserveScroll: true });
+    };
+
+    const applyStatusFilter = (nextStatus: string) => {
+        const payload: Record<string, string> = { status: nextStatus };
+        if (modalDetail?.ticket.publicToken) {
+            payload.modal = modalDetail.ticket.publicToken;
+        }
+        router.get(supportIndexUrl, payload, { preserveScroll: true, replace: true });
+    };
+
+    const formatDateHighlight = (iso: string) => {
+        const date = new Date(iso);
+        return {
+            day: date.toLocaleDateString('pt-BR', { day: '2-digit' }),
+            month: date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''),
+        };
+    };
+
+    const statusTone = (status: string) => {
+        switch (status) {
+            case 'waiting_user':
+                return {
+                    chip: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
+                    border: 'border-l-amber-500',
+                };
+            case 'resolved':
+            case 'closed':
+                return {
+                    chip: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
+                    border: 'border-l-emerald-500',
+                };
+            case 'in_progress':
+                return {
+                    chip: 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200',
+                    border: 'border-l-sky-500',
+                };
+            default:
+                return {
+                    chip: 'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-200',
+                    border: 'border-l-violet-500',
+                };
+        }
+    };
+
+    const statusFilterTone = (status: string) => {
+        switch (status) {
+            case 'waiting_user':
+                return 'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-200';
+            case 'resolved':
+            case 'closed':
+                return 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200';
+            case 'in_progress':
+                return 'border-sky-300 bg-sky-50 text-sky-800 dark:border-sky-800 dark:bg-sky-900/30 dark:text-sky-200';
+            case 'open':
+                return 'border-violet-300 bg-violet-50 text-violet-800 dark:border-violet-800 dark:bg-violet-900/30 dark:text-violet-200';
+            default:
+                return 'border-zinc-300 bg-zinc-50 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-200';
+        }
     };
 
     const submitDevItem: FormEventHandler = (e) => {
@@ -113,40 +187,78 @@ export default function SupportIndex({ tickets, devItemStoreUrl, supportIndexUrl
                     }
                 />
 
+                <div className="flex flex-wrap gap-2">
+                    {statusOptions.map((opt) => {
+                        const active = statusFilter === opt.value;
+                        return (
+                            <button
+                                key={opt.value}
+                                type="button"
+                                onClick={() => applyStatusFilter(opt.value)}
+                                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                                    active
+                                        ? `${statusFilterTone(opt.value)} ring-1 ring-current/20`
+                                        : 'border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-600 dark:hover:bg-zinc-800'
+                                }`}
+                            >
+                                {opt.label}
+                            </button>
+                        );
+                    })}
+                </div>
+
                 {tickets.length === 0 ? (
                     <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-8 text-center text-zinc-600 dark:text-zinc-400">
                         Nenhum chamado encontrado.
                     </div>
                 ) : (
                     <div className="space-y-3">
-                        {tickets.map((t) => (
-                            <button
-                                key={t.publicToken}
-                                type="button"
-                                onClick={() => openTicketModal(t.publicToken)}
-                                aria-label={`Abrir chamado: ${t.typeLabel}`}
-                                className="group w-full cursor-pointer text-left rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/40 active:scale-[0.998] touch-manipulation"
-                            >
+                        {tickets.map((t) => {
+                            const tone = statusTone(t.status);
+                            return (
+                                <button
+                                    key={t.publicToken}
+                                    type="button"
+                                    onClick={() => openTicketModal(t.publicToken)}
+                                    aria-label={`Abrir chamado: ${t.typeLabel}`}
+                                    className={`group w-full cursor-pointer text-left rounded-2xl border border-zinc-200 dark:border-zinc-700 border-l-4 ${tone.border} bg-white dark:bg-zinc-900 p-4 shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/40 active:scale-[0.998] touch-manipulation`}
+                                >
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-2 text-sm">
                                             <ChatBubbleLeftRightIcon className="w-4 h-4 text-primary-500 shrink-0" />
                                             <span className="font-semibold text-zinc-900 dark:text-white">{t.typeLabel}</span>
                                         </div>
-                                        <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                                            {t.ownerLabel} · {t.status === 'open' ? 'Em andamento' : 'Encerrado'}
+                                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+                                            <span>{t.ownerLabel}</span>
+                                            <span
+                                                className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${tone.chip}`}
+                                            >
+                                                {t.statusLabel}
+                                            </span>
                                         </div>
                                         <div className="text-sm text-zinc-700 dark:text-zinc-200 mt-2 whitespace-pre-wrap line-clamp-3">
                                             {t.message}
                                         </div>
                                     </div>
-                                    <ChevronRightIcon
-                                        className="h-5 w-5 shrink-0 text-zinc-400 transition-transform group-hover:translate-x-0.5 group-hover:text-zinc-600 dark:text-zinc-500 dark:group-hover:text-zinc-300"
-                                        aria-hidden
-                                    />
+                                    <div className="flex items-start gap-2">
+                                        <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-2 py-1 text-center dark:border-zinc-700 dark:bg-zinc-800/70">
+                                            <div className="text-[11px] font-semibold uppercase text-zinc-500 dark:text-zinc-400">
+                                                {formatDateHighlight(t.createdAt).month}
+                                            </div>
+                                            <div className="text-sm font-bold leading-4 text-zinc-900 dark:text-zinc-100">
+                                                {formatDateHighlight(t.createdAt).day}
+                                            </div>
+                                        </div>
+                                        <ChevronRightIcon
+                                            className="mt-1 h-5 w-5 shrink-0 text-zinc-400 transition-transform group-hover:translate-x-0.5 group-hover:text-zinc-600 dark:text-zinc-500 dark:group-hover:text-zinc-300"
+                                            aria-hidden
+                                        />
+                                    </div>
                                 </div>
-                            </button>
-                        ))}
+                                </button>
+                            );
+                        })}
                     </div>
                 )}
             </div>

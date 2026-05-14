@@ -6,6 +6,7 @@ use App\Models\AppSupportMessage;
 use App\Models\AppSupportTicket;
 use App\Models\User;
 use App\Services\SupportTicketChatNotifier;
+use App\Support\StorageUrl;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,6 +26,18 @@ class MobileSupportController extends Controller
             'development' => 'A desenvolver',
             'pastoral' => 'Agendamento pastoral',
             default => 'Suporte do app',
+        };
+    }
+
+    private function statusLabel(string $status): string
+    {
+        return match ($status) {
+            AppSupportTicket::STATUS_OPEN => 'Aberto',
+            AppSupportTicket::STATUS_IN_PROGRESS => 'Em andamento',
+            AppSupportTicket::STATUS_WAITING_USER => 'Aguardando usuário',
+            AppSupportTicket::STATUS_RESOLVED => 'Resolvido',
+            AppSupportTicket::STATUS_CLOSED => 'Fechado',
+            default => 'Aberto',
         };
     }
 
@@ -62,7 +75,7 @@ class MobileSupportController extends Controller
 
         $tickets = [];
         if ($user) {
-            $ticketsQuery = AppSupportTicket::query()->where('status', 'open');
+            $ticketsQuery = AppSupportTicket::query()->whereIn('status', AppSupportTicket::activeStatuses());
             if (! $isAdmin) {
                 $ticketsQuery->where('type', '!=', 'development')
                     ->where('user_id', $user->id)
@@ -80,6 +93,7 @@ class MobileSupportController extends Controller
                     'type' => $t->type,
                     'typeLabel' => $this->typeLabel($t->type),
                     'status' => $t->status,
+                    'statusLabel' => $this->statusLabel((string) $t->status),
                     'message' => $t->message,
                     'createdAt' => $t->created_at?->toIso8601String(),
                     'solutionText' => $t->solution_text,
@@ -101,21 +115,32 @@ class MobileSupportController extends Controller
         $valid = $request->validate([
             'type' => ['required', 'in:problem,suggestion,praise'],
             'message' => ['required', 'string', 'max:5000'],
+            'screenshot_file' => ['nullable', 'image', 'max:5120'],
+            'screenshot_url' => ['nullable', 'url', 'max:2048'],
 
             'guest_name' => ['nullable', 'string', 'max:255'],
             'guest_email' => ['nullable', 'email', 'max:255'],
             'guest_phone' => ['nullable', 'string', 'max:50'],
         ]);
 
+        $screenshotPath = null;
+        if ($request->hasFile('screenshot_file')) {
+            $screenshotPath = $request->file('screenshot_file')?->store('support/screenshots', 'public');
+        }
+
         $ticket = AppSupportTicket::create([
             'public_token' => Str::uuid()->toString(),
             'user_id' => $user?->id,
             'type' => $valid['type'],
             'message' => $valid['message'],
+            'screenshot_path' => $screenshotPath,
+            'screenshot_url' => isset($valid['screenshot_url']) && trim((string) $valid['screenshot_url']) !== ''
+                ? trim((string) $valid['screenshot_url'])
+                : null,
             'guest_name' => $valid['guest_name'] ?? null,
             'guest_email' => $valid['guest_email'] ?? null,
             'guest_phone' => $valid['guest_phone'] ?? null,
-            'status' => 'open',
+            'status' => AppSupportTicket::STATUS_OPEN,
         ]);
 
         app(SupportTicketChatNotifier::class)->notifyStaffOfNewTicket($ticket, $user);
@@ -145,7 +170,7 @@ class MobileSupportController extends Controller
         abort_unless($canAccess, 403);
 
         $canChat = (bool) $hasOwner
-            && $ticket->status === 'open'
+            && AppSupportTicket::isActiveStatus((string) $ticket->status)
             && ($isAdmin || $isOwner || $isSupportStaff || $isPastoralStaff);
 
         $messages = $this->ticketMessagesPayload($ticket);
@@ -156,7 +181,10 @@ class MobileSupportController extends Controller
                 'type' => $ticket->type,
                 'typeLabel' => $this->typeLabel($ticket->type),
                 'status' => $ticket->status,
+                'statusLabel' => $this->statusLabel((string) $ticket->status),
                 'message' => $ticket->message,
+                'screenshotUrl' => $ticket->screenshot_path ? StorageUrl::publicMediaUrl($ticket->screenshot_path) : null,
+                'screenshotExternalUrl' => $ticket->screenshot_url,
                 'solutionText' => $ticket->solution_text,
                 'createdAt' => $ticket->created_at?->toIso8601String(),
                 'closedAt' => $ticket->closed_at?->toIso8601String(),
@@ -198,7 +226,7 @@ class MobileSupportController extends Controller
 
         $hasOwner = ! empty($ticket->user_id);
         $canChat = (bool) $hasOwner
-            && $ticket->status === 'open'
+            && AppSupportTicket::isActiveStatus((string) $ticket->status)
             && ($isAdmin || $isOwner || $isSupportStaff || $isPastoralStaff);
         $showMessages = (bool) $hasOwner && (bool) ($isAdmin || $isOwner || $isSupportStaff || $isPastoralStaff);
 
@@ -208,7 +236,10 @@ class MobileSupportController extends Controller
                 'type' => $ticket->type,
                 'typeLabel' => $this->typeLabel($ticket->type),
                 'status' => $ticket->status,
+                'statusLabel' => $this->statusLabel((string) $ticket->status),
                 'message' => $ticket->message,
+                'screenshotUrl' => $ticket->screenshot_path ? StorageUrl::publicMediaUrl($ticket->screenshot_path) : null,
+                'screenshotExternalUrl' => $ticket->screenshot_url,
                 'solutionText' => $ticket->solution_text,
                 'createdAt' => $ticket->created_at?->toIso8601String(),
                 'closedAt' => $ticket->closed_at?->toIso8601String(),
@@ -261,7 +292,7 @@ class MobileSupportController extends Controller
         $isSupportStaff = $this->canReplyAsSupportStaff($user);
         $isPastoralStaff = $this->canReplyAsPastoralStaff($user, $ticket);
         abort_unless($isAdmin || $isOwner || $isSupportStaff || $isPastoralStaff, 403);
-        abort_unless($ticket->status === 'open', 400);
+        abort_unless(AppSupportTicket::isActiveStatus((string) $ticket->status), 400);
         abort_unless(! empty($ticket->user_id), 400, 'Chat indisponível para chamados sem usuário logado.');
 
         $valid = $request->validate([
@@ -316,7 +347,7 @@ class MobileSupportController extends Controller
         $isSupportStaff = $this->canReplyAsSupportStaff($user);
         $isPastoralStaff = $this->canReplyAsPastoralStaff($user, $ticket);
         abort_unless($isAdmin || $isOwner || $isSupportStaff || $isPastoralStaff, 403);
-        abort_unless($ticket->status === 'open', 400);
+        abort_unless(AppSupportTicket::isActiveStatus((string) $ticket->status), 400);
 
         $valid = $request->validate([
             'solution_text' => ['nullable', 'string', 'max:5000'],
@@ -329,7 +360,7 @@ class MobileSupportController extends Controller
         }
 
         $ticket->update([
-            'status' => 'closed',
+            'status' => AppSupportTicket::STATUS_CLOSED,
             'closed_at' => now(),
             'solution_text' => $solution,
         ]);
