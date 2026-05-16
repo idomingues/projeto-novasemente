@@ -29,6 +29,12 @@ class MobileChurchSolicitationController extends Controller
     public const TYPE_VOLUNTEER_REQUEST = 'volunteer_request';
     public const TYPE_COMMUNICATION_REQUEST = 'communication_request';
 
+    /** Tipos com painel próprio — não listar em Atendimento Pastoral (`solicitations.index`). */
+    public const TYPES_OUTSIDE_PASTORAL_INDEX = [
+        self::TYPE_VOLUNTEER_REQUEST,
+        self::TYPE_COMMUNICATION_REQUEST,
+    ];
+
     private function currentChurchId(Request $request): ?int
     {
         return Church::resolveWorkingId($request);

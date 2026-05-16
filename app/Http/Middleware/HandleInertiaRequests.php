@@ -193,7 +193,7 @@ class HandleInertiaRequests extends Middleware
                 try {
                     $openSolicitationsCount = (int) ChurchSolicitation::query()
                         ->where('church_id', (int) $cid)
-                        ->where('type', '!=', MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST)
+                        ->whereNotIn('type', MobileChurchSolicitationController::TYPES_OUTSIDE_PASTORAL_INDEX)
                         ->whereIn('status', ['pending', 'in_progress'])
                         ->count();
                 } catch (\Throwable) {

@@ -1164,7 +1164,7 @@ class MobileController extends Controller
             if ($churchId !== null) {
                 $atendimentoOpen = (int) ChurchSolicitation::query()
                     ->where('church_id', $churchId)
-                    ->where('type', '!=', MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST)
+                    ->whereNotIn('type', MobileChurchSolicitationController::TYPES_OUTSIDE_PASTORAL_INDEX)
                     ->whereIn('status', ['pending', 'in_progress'])
                     ->count();
             }

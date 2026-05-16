@@ -95,7 +95,7 @@ class SolicitationAdminController extends Controller
                 $query->where('church_id', $churchId);
             }
 
-            $query->where('type', '!=', MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST);
+            $query->whereNotIn('type', MobileChurchSolicitationController::TYPES_OUTSIDE_PASTORAL_INDEX);
 
             if (is_string($type) && $type !== '') {
                 $query->where('type', $type);
@@ -210,7 +210,7 @@ class SolicitationAdminController extends Controller
                     $modalQuery->where('church_id', $churchId);
                 }
                 $modal = $modalQuery->find((int) $modalId);
-                if ($modal && $modal->type !== MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST) {
+                if ($modal && ! in_array($modal->type, MobileChurchSolicitationController::TYPES_OUTSIDE_PASTORAL_INDEX, true)) {
                     $modalDetail = [
                         'kind' => 'solicitation',
                         'payload' => $this->solicitationModalPayload($modal, $user),
@@ -227,7 +227,7 @@ class SolicitationAdminController extends Controller
                     $modalQuery->where('church_id', $churchId);
                 }
                 $modal = $modalQuery->find((int) $legacyModal);
-                if ($modal && $modal->type !== MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST) {
+                if ($modal && ! in_array($modal->type, MobileChurchSolicitationController::TYPES_OUTSIDE_PASTORAL_INDEX, true)) {
                     $modalDetail = [
                         'kind' => 'solicitation',
                         'payload' => $this->solicitationModalPayload($modal, $user),
@@ -252,7 +252,6 @@ class SolicitationAdminController extends Controller
                 ['value' => 'baby_presentation', 'label' => 'Apresentação de bebé'],
                 ['value' => 'pastor_visit', 'label' => 'Visita aos pastores'],
                 ['value' => 'leader_chat', 'label' => 'Conversa com líder'],
-                ['value' => 'communication_request', 'label' => 'Solicitação de comunicação'],
             ],
             'statusOptions' => [
                 ['value' => '', 'label' => 'Todos os estados'],
