@@ -16,6 +16,14 @@ interface InvitationProps {
     completes_existing_user: boolean;
 }
 
+interface MinistryVolunteerInviteProps {
+    token: string;
+    email: string;
+    name: string | null;
+    ministryName: string | null;
+    ministryId: number;
+}
+
 interface MinistryOption {
     id: number;
     name: string;
@@ -23,6 +31,7 @@ interface MinistryOption {
 
 interface Props {
     invitation: InvitationProps | null;
+    ministryVolunteerInvite: MinistryVolunteerInviteProps | null;
     ministryOptions: MinistryOption[];
 }
 
@@ -39,7 +48,7 @@ function firstError(errors: LooseErrors, field: string): string | undefined {
     return typeof v === 'string' ? v : String(v);
 }
 
-export default function Register({ invitation, ministryOptions = [] }: Props) {
+export default function Register({ invitation, ministryVolunteerInvite = null, ministryOptions = [] }: Props) {
     const page = usePage();
     const pageErrors = ((page.props as { errors?: Record<string, string | string[]> }).errors ?? {}) as Record<
         string,
@@ -47,14 +56,15 @@ export default function Register({ invitation, ministryOptions = [] }: Props) {
     >;
 
     const { data, setData, post, processing, errors: formErrors, reset } = useForm({
-        name: invitation?.name ?? '',
-        email: invitation?.email ?? '',
+        name: invitation?.name ?? ministryVolunteerInvite?.name ?? '',
+        email: invitation?.email ?? ministryVolunteerInvite?.email ?? '',
         photo_file: null as File | null,
         password: '',
         password_confirmation: '',
         invitation_token: invitation?.token ?? '',
-        already_volunteer: false as boolean,
-        volunteer_ministry_ids: [] as number[],
+        ministry_invite_token: ministryVolunteerInvite?.token ?? '',
+        already_volunteer: Boolean(ministryVolunteerInvite),
+        volunteer_ministry_ids: ministryVolunteerInvite ? [ministryVolunteerInvite.ministryId] : ([] as number[]),
         notify_via_app: true,
         notify_via_email: true,
         notify_via_whatsapp: false,
@@ -82,14 +92,16 @@ export default function Register({ invitation, ministryOptions = [] }: Props) {
 
     const errClass = (field: string) => (fieldError(field) ? 'border-red-500 focus:border-red-600 focus:ring-red-500/25' : '');
 
-    const showVolunteerDepartments = !invitation && data.already_volunteer && ministryOptions.length > 0;
-    const showVolunteerNoMinistriesHint = !invitation && data.already_volunteer && ministryOptions.length === 0;
+    const showVolunteerDepartments =
+        !invitation && !ministryVolunteerInvite && data.already_volunteer && ministryOptions.length > 0;
+    const showVolunteerNoMinistriesHint =
+        !invitation && !ministryVolunteerInvite && data.already_volunteer && ministryOptions.length === 0;
     const [photoPreparing, setPhotoPreparing] = useState(false);
     const [photoClientError, setPhotoClientError] = useState<string | null>(null);
 
     return (
         <MobileLayout>
-            <Head title={invitation ? 'Cadastro por convite' : 'Criar conta'} />
+            <Head title={invitation ? 'Cadastro por convite' : ministryVolunteerInvite ? 'Convite e cadastro' : 'Criar conta'} />
 
             <div className="mx-auto w-full max-w-md px-0 sm:max-w-lg">
 
@@ -99,6 +111,19 @@ export default function Register({ invitation, ministryOptions = [] }: Props) {
                             ? 'Finalize seu cadastro informando e-mail e senha de acesso.'
                             : 'Você foi convidado a criar sua conta. Preencha os dados abaixo.'}
                     </p>
+                ) : ministryVolunteerInvite ? (
+                    <div className="mb-6 space-y-2">
+                        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
+                            Convite e acesso ao app
+                        </h1>
+                        <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400 sm:text-base">
+                            Ao concluir o cadastro com o e-mail <strong className="text-zinc-900 dark:text-white">{ministryVolunteerInvite.email}</strong>, o convite para o departamento{' '}
+                            <strong className="text-zinc-900 dark:text-white">{ministryVolunteerInvite.ministryName ?? '—'}</strong> fica aceite e a sua conta fica pronta para usar o app. O link que abriu já traz este e-mail no endereço para o campo ser preenchido automaticamente.
+                        </p>
+                        <p className="text-xs leading-relaxed text-amber-800 dark:text-amber-200/90">
+                            Se não entrou por este link e for criar a conta doutra forma, <strong>tem de usar o mesmo e-mail</strong> que consta na ficha de voluntário ({ministryVolunteerInvite.email}). Sem isso, o convite não se associa à sua conta.
+                        </p>
+                    </div>
                 ) : (
                     <div className="mb-8 space-y-3">
                         <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
@@ -204,7 +229,7 @@ export default function Register({ invitation, ministryOptions = [] }: Props) {
                             className={`mt-1 block w-full ${errClass('email')}`}
                             autoComplete="username"
                             onChange={(e) => setData('email', e.target.value)}
-                            readOnly={!!invitation?.email}
+                            readOnly={Boolean(invitation?.email) || Boolean(ministryVolunteerInvite)}
                             aria-invalid={fieldError('email') ? 'true' : undefined}
                         />
 
@@ -295,7 +320,7 @@ export default function Register({ invitation, ministryOptions = [] }: Props) {
                         <InputError message={fieldError('lgpd_accepted')} className="mt-2" />
                     </div>
 
-                    {!invitation ? (
+                    {!invitation && !ministryVolunteerInvite ? (
                         <div className="rounded-xl border border-zinc-200 bg-zinc-50/90 p-4 dark:border-zinc-700 dark:bg-zinc-800/40 space-y-4">
                             <p className="text-sm font-semibold text-zinc-900 dark:text-white">Voluntariado</p>
                             <label className="flex cursor-pointer items-start gap-3">
@@ -359,6 +384,7 @@ export default function Register({ invitation, ministryOptions = [] }: Props) {
                     ) : null}
 
                     <input type="hidden" name="invitation_token" value={data.invitation_token} />
+                    <input type="hidden" name="ministry_invite_token" value={data.ministry_invite_token} />
 
                     <div className="flex flex-col gap-4 pt-2 sm:flex-row sm:items-center sm:justify-between">
                         <Link
@@ -372,7 +398,7 @@ export default function Register({ invitation, ministryOptions = [] }: Props) {
                             className="order-1 w-full justify-center sm:order-2 sm:w-auto sm:min-w-[11rem]"
                             disabled={processing}
                         >
-                            Fazer cadastro
+                            {invitation ? 'Fazer cadastro' : ministryVolunteerInvite ? 'Criar conta e aceitar convite' : 'Fazer cadastro'}
                         </PrimaryButton>
                     </div>
                 </form>

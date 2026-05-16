@@ -32,6 +32,7 @@ interface Church {
     donation_url?: string | null;
     youtube_playlist_url?: string | null;
     youtube_live_url?: string | null;
+    ministry_invitation_intro?: string | null;
 }
 
 interface Props {
@@ -61,6 +62,7 @@ export default function Index({ churches }: Props) {
         donation_url: string;
         youtube_playlist_url: string;
         youtube_live_url: string;
+        ministry_invitation_intro: string;
     }>({
         name: '',
         slug: '',
@@ -78,6 +80,7 @@ export default function Index({ churches }: Props) {
         donation_url: '',
         youtube_playlist_url: '',
         youtube_live_url: '',
+        ministry_invitation_intro: '',
     });
 
     const openCreateModal = () => {
@@ -112,6 +115,7 @@ export default function Index({ churches }: Props) {
             donation_url: church.donation_url ?? '',
             youtube_playlist_url: church.youtube_playlist_url ?? '',
             youtube_live_url: church.youtube_live_url ?? '',
+            ministry_invitation_intro: church.ministry_invitation_intro ?? '',
         });
         clearErrors();
         setIsModalOpen(true);
@@ -349,6 +353,21 @@ export default function Index({ churches }: Props) {
                                 className="mt-1 block w-full rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white focus:ring-2 focus:ring-zinc-500 focus:border-transparent"
                             />
                             <InputError message={errors.description} className="mt-1" />
+                        </div>
+                        <div>
+                            <InputLabel htmlFor="ministry_invitation_intro" value="Texto do convite de ministério (opcional)" />
+                            <textarea
+                                id="ministry_invitation_intro"
+                                value={data.ministry_invitation_intro}
+                                onChange={(e) => setData('ministry_invitation_intro', e.target.value)}
+                                rows={4}
+                                className="mt-1 block w-full rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white focus:ring-2 focus:ring-zinc-500 focus:border-transparent"
+                                placeholder="Parágrafo que aparece no e-mail e na página do convite (após «Olá, nome»). Vazio = texto padrão do sistema."
+                            />
+                            <InputError message={errors.ministry_invitation_intro} className="mt-1" />
+                            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                Líderes podem ainda personalizar por convite em «Meus voluntários».
+                            </p>
                         </div>
                         <div className="flex items-center gap-2">
                             <input

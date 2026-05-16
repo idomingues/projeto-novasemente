@@ -4,7 +4,7 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import Textarea from '@/Components/Textarea';
 import InputLabel from '@/Components/InputLabel';
 import InputError from '@/Components/InputError';
-import { Head, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 
 type Slot = { day_of_week: number; start_time: string | null; end_time: string | null };
@@ -15,8 +15,12 @@ type Invite = {
     expired: boolean;
     isFinal: boolean;
     volunteerName: string | null;
+    volunteerEmail: string | null;
     ministryName: string | null;
+    volunteerHasUser: boolean;
+    registerUrl: string | null;
     slots: Slot[];
+    introParagraph: string;
 };
 
 export default function MinistryInvite() {
@@ -65,9 +69,9 @@ export default function MinistryInvite() {
                                     </>
                                 ) : (
                                     <>Olá.</>
-                                )}{' '}
-                                Confirme se aceita servir neste departamento.
+                                )}
                             </p>
+                            <p className="mt-2 text-sm whitespace-pre-wrap text-zinc-600 dark:text-zinc-300">{invitation.introParagraph}</p>
                         </div>
                         <div className="shrink-0">{statusPill()}</div>
                     </div>
@@ -127,6 +131,36 @@ export default function MinistryInvite() {
                                         >
                                             Confirmar recusa
                                         </PrimaryButton>
+                                    </div>
+                                </div>
+                            ) : invitation.registerUrl && !invitation.volunteerHasUser ? (
+                                <div className="space-y-3">
+                                    <p className="text-sm text-zinc-600 dark:text-zinc-300">
+                                        Ao criar a sua conta com o <strong className="text-zinc-900 dark:text-white">mesmo e-mail</strong> do cadastro de voluntário
+                                        {invitation.volunteerEmail ? (
+                                            <>
+                                                {' '}
+                                                (<span className="font-mono text-zinc-800 dark:text-zinc-200">{invitation.volunteerEmail}</span>)
+                                            </>
+                                        ) : null}
+                                        , o convite fica aceite e fica com acesso ao app — tudo num único passo. O link de cadastro já traz o e-mail preenchido.
+                                    </p>
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                        Se abrir o cadastro por outro caminho (por exemplo, a partir do site da igreja), tem de registar-se com <strong>exatamente</strong> esse mesmo e-mail; caso contrário o convite não se liga à sua conta.
+                                    </p>
+                                    <Link
+                                        href={invitation.registerUrl}
+                                        className="inline-flex h-12 w-full items-center justify-center rounded-full bg-zinc-900 px-8 text-sm font-semibold uppercase tracking-widest text-white shadow-sm transition duration-150 ease-in-out hover:bg-zinc-700 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2 dark:bg-white dark:text-black dark:hover:bg-zinc-100 dark:focus:ring-white sm:w-auto"
+                                    >
+                                        Criar conta e aceitar convite
+                                    </Link>
+                                    <div className="flex flex-col gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-700 sm:flex-row">
+                                        <SecondaryButton type="button" onClick={accept} disabled={processing} className="w-full sm:w-auto">
+                                            Aceitar só no cadastro (sem app)
+                                        </SecondaryButton>
+                                        <SecondaryButton type="button" onClick={() => setMode('decline')} disabled={processing} className="w-full sm:w-auto">
+                                            Não aceitar
+                                        </SecondaryButton>
                                     </div>
                                 </div>
                             ) : (

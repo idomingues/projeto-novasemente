@@ -11,15 +11,15 @@ use App\Http\Controllers\EventController;
 use App\Http\Controllers\FaviconController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\LibraryBookController;
-use App\Http\Controllers\LibraryConfigExternalContentController;
 use App\Http\Controllers\LibraryBookExternalContentController;
+use App\Http\Controllers\LibraryConfigExternalContentController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\MinistryController;
 use App\Http\Controllers\MinistryLeadVolunteerController;
+use App\Http\Controllers\MobileAnoBiblicoController;
+use App\Http\Controllers\MobileBibleController;
 use App\Http\Controllers\MobileChurchSolicitationController;
 use App\Http\Controllers\MobileController;
-use App\Http\Controllers\MobileBibleController;
-use App\Http\Controllers\MobileAnoBiblicoController;
 use App\Http\Controllers\MobileLeaderSolicitationController;
 use App\Http\Controllers\MobilePastoralAppointmentController;
 use App\Http\Controllers\MobileSupportController;
@@ -325,6 +325,12 @@ Route::middleware('auth')->group(function () {
         ->middleware('auth');
     Route::patch('/lideranca/meus-voluntarios/{invitation}', [MyMinistryVolunteersController::class, 'update'])
         ->name('ministry-lead.my-volunteers.update')
+        ->middleware('auth');
+    Route::post('/lideranca/meus-voluntarios/{invitation}/reenviar-convite-email', [MyMinistryVolunteersController::class, 'resendInvitationEmail'])
+        ->name('ministry-lead.my-volunteers.invitation.resend-email')
+        ->middleware('auth');
+    Route::patch('/lideranca/meus-voluntarios/{invitation}/mensagem-convite', [MyMinistryVolunteersController::class, 'updateInvitationIntro'])
+        ->name('ministry-lead.my-volunteers.invitation.intro')
         ->middleware('auth');
     Route::get('/lideranca/meus-voluntarios/{invitation}/historico', [MyMinistryVolunteersController::class, 'history'])
         ->name('ministry-lead.my-volunteers.history')

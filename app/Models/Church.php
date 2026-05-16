@@ -24,6 +24,7 @@ class Church extends Model
         'state',
         'country',
         'description',
+        'ministry_invitation_intro',
         'active',
         'email',
         'phone',

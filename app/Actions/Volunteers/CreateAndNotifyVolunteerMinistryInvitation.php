@@ -46,7 +46,7 @@ final class CreateAndNotifyVolunteerMinistryInvitation
             ]);
         }
 
-        $inv->loadMissing(['volunteer.user', 'ministry', 'slots']);
+        $inv->loadMissing(['volunteer.user', 'ministry', 'slots', 'church']);
 
         $channels = array_values(array_unique(array_filter($channels, fn ($c) => is_string($c) && $c !== '')));
         if ($channels === []) {

@@ -1,7 +1,6 @@
 @php
     $logo = url('/logo-ns.png');
     $ministryName = (string) ($inv->ministry?->name ?? 'Departamento');
-    $volName = trim((string) ($inv->volunteer?->name ?? ''));
     $expires = $inv->expires_at ? $inv->expires_at->format('d/m/Y') : null;
     $days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 @endphp
@@ -44,24 +43,24 @@
                                 <div style="font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;font-size:20px;font-weight:800;color:#18181b;line-height:1.25;">
                                     Convite para servir em <span style="color:#065f46;">{{ $ministryName }}</span>
                                 </div>
-                                <div style="font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;font-size:14px;color:#3f3f46;line-height:1.65;margin-top:10px;">
-                                    @if($volName !== '')
-                                        Olá, <strong>{{ $volName }}</strong>!
-                                    @else
-                                        Olá!
-                                    @endif
-                                    Você foi convidado(a) para servir no departamento <strong>{{ $ministryName }}</strong>.
-                                    Para continuar, por favor confirme a sua resposta.
+                                <div style="font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;font-size:13px;color:#52525b;line-height:1.5;margin-top:10px;">
+                                    A mensagem abaixo é a mesma que pode copiar para o WhatsApp ou outras apps — também serve como texto principal deste e-mail.
                                 </div>
+                                <div style="margin-top:14px;border:1px solid #e4e4e7;border-radius:14px;background:#fafafa;padding:14px 16px;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;font-size:14px;color:#18181b;line-height:1.65;white-space:pre-wrap;">{{ $plainCopySection }}</div>
                             </div>
 
                             <div style="padding:18px 22px 0;">
+                                <div style="font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#52525b;">
+                                    Abrir na página do convite
+                                </div>
+                                <div style="margin-top:10px;">
                                 <a href="{{ $actionUrl }}" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;font-weight:800;font-size:13px;letter-spacing:.06em;text-transform:uppercase;padding:12px 16px;border-radius:999px;">
                                     Aceitar ou recusar
                                 </a>
                                 <div style="font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;font-size:12px;color:#71717a;margin-top:12px;line-height:1.5;">
                                     Se o botão não funcionar, copie e cole este link no seu navegador:<br/>
                                     <span style="word-break:break-all;color:#0f172a;">{{ $actionUrl }}</span>
+                                </div>
                                 </div>
                             </div>
 

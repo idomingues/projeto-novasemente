@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Actions\Volunteers\BuildVolunteerMinistryInvitePlainCopy;
 use App\Models\VolunteerMinistryInvitation;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
@@ -17,7 +18,7 @@ class VolunteerMinistryInvitationMail extends Mailable
         public VolunteerMinistryInvitation $invitation,
         public string $actionUrl,
     ) {
-        $this->invitation->loadMissing(['ministry', 'volunteer', 'slots']);
+        $this->invitation->loadMissing(['ministry', 'volunteer.user', 'slots', 'church']);
     }
 
     public function envelope(): Envelope
@@ -36,8 +37,8 @@ class VolunteerMinistryInvitationMail extends Mailable
             with: [
                 'inv' => $this->invitation,
                 'actionUrl' => $this->actionUrl,
+                'plainCopySection' => BuildVolunteerMinistryInvitePlainCopy::for($this->invitation),
             ],
         );
     }
 }
-

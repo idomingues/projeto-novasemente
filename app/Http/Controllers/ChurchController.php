@@ -39,6 +39,7 @@ class ChurchController extends Controller
             'donation_url' => ['nullable', 'string', 'max:1024'],
             'youtube_playlist_url' => ['nullable', 'string', 'max:512'],
             'youtube_live_url' => ['nullable', 'string', 'max:512'],
+            'ministry_invitation_intro' => ['nullable', 'string', 'max:5000'],
         ]);
 
         $church = Church::create(collect($data)->except('logo')->toArray());
@@ -72,6 +73,7 @@ class ChurchController extends Controller
             'donation_url' => ['nullable', 'string', 'max:1024'],
             'youtube_playlist_url' => ['nullable', 'string', 'max:512'],
             'youtube_live_url' => ['nullable', 'string', 'max:512'],
+            'ministry_invitation_intro' => ['nullable', 'string', 'max:5000'],
         ]);
 
         if ($request->hasFile('logo')) {

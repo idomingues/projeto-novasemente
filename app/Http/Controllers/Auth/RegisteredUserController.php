@@ -10,12 +10,15 @@ use App\Models\Invitation;
 use App\Models\Ministry;
 use App\Models\User;
 use App\Models\Volunteer;
+use App\Models\VolunteerMinistryInvitation;
 use App\Support\StorageUrl;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
@@ -58,6 +61,47 @@ class RegisteredUserController extends Controller
                 ->all();
         }
 
+        $ministryVolunteerInvite = null;
+        if ($invitation === null) {
+            $ministryInviteToken = $request->query('ministry_invite_token');
+            if (is_string($ministryInviteToken) && $ministryInviteToken !== '') {
+                $inv = VolunteerMinistryInvitation::query()
+                    ->where('token', $ministryInviteToken)
+                    ->with(['volunteer:id,name,email,user_id', 'ministry:id,name'])
+                    ->first();
+                $v = $inv?->volunteer;
+                $em = trim((string) ($v?->email ?? ''));
+                if (
+                    $inv
+                    && ! $inv->isExpired()
+                    && $inv->status === 'pending'
+                    && $v
+                    && $v->user_id === null
+                    && $em !== ''
+                ) {
+                    $ministryVolunteerInvite = [
+                        'token' => (string) $inv->token,
+                        'email' => $em,
+                        'name' => $v->name,
+                        'ministryName' => $inv->ministry?->name,
+                        'ministryId' => (int) $inv->ministry_id,
+                    ];
+                }
+            }
+        }
+
+        if ($ministryVolunteerInvite !== null) {
+            $queryEmail = $request->query('email');
+            $canonical = strtolower(trim((string) $ministryVolunteerInvite['email']));
+            $queryNorm = is_string($queryEmail) ? strtolower(trim($queryEmail)) : '';
+            if ($queryNorm !== $canonical) {
+                return redirect()->route('register', [
+                    'ministry_invite_token' => $ministryVolunteerInvite['token'],
+                    'email' => $ministryVolunteerInvite['email'],
+                ]);
+            }
+        }
+
         return Inertia::render('Auth/Register', [
             'invitation' => $invitation ? [
                 'email' => $invitation->email,
@@ -66,6 +110,7 @@ class RegisteredUserController extends Controller
                 'token' => $invitation->token,
                 'completes_existing_user' => $invitation->user_id !== null,
             ] : null,
+            'ministryVolunteerInvite' => $ministryVolunteerInvite,
             'ministryOptions' => $ministryOptions,
         ]);
     }
@@ -77,6 +122,10 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        if ($request->filled('ministry_invite_token')) {
+            return $this->storeWithVolunteerMinistryInvite($request);
+        }
+
         if ($request->filled('invitation_token')) {
             $invitation = Invitation::where('token', $request->invitation_token)->first();
             if ($invitation && $invitation->isValid() && $invitation->user_id) {
@@ -98,6 +147,7 @@ class RegisteredUserController extends Controller
             'photo_file' => ['required', 'image', 'max:4096'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'invitation_token' => ['nullable', 'string'],
+            'ministry_invite_token' => ['nullable', 'string'],
             'already_volunteer' => ['sometimes', 'boolean'],
             'volunteer_ministry_ids' => ['nullable', 'array'],
             'volunteer_ministry_ids.*' => $ministryIdRules,
@@ -155,6 +205,137 @@ class RegisteredUserController extends Controller
 
         $request->session()->flash('registration_success', true);
         $request->session()->flash('success', 'Conta criada com sucesso. Bem-vindo(a)!');
+
+        return redirect()->route('registration.welcome');
+    }
+
+    private function storeWithVolunteerMinistryInvite(Request $request): RedirectResponse
+    {
+        $invite = VolunteerMinistryInvitation::query()
+            ->where('token', (string) $request->input('ministry_invite_token', ''))
+            ->with(['volunteer', 'ministry'])
+            ->first();
+
+        if (! $invite || $invite->isExpired() || $invite->status !== 'pending') {
+            throw ValidationException::withMessages([
+                'ministry_invite_token' => 'Convite inválido, expirado ou já respondido.',
+            ]);
+        }
+
+        $volunteer = $invite->volunteer;
+        $ministry = $invite->ministry;
+        if (! $volunteer || ! $ministry) {
+            throw ValidationException::withMessages([
+                'ministry_invite_token' => 'Convite inválido.',
+            ]);
+        }
+
+        if ($volunteer->user_id !== null) {
+            throw ValidationException::withMessages([
+                'ministry_invite_token' => 'Este voluntário já está associado a uma conta. Faça login para continuar.',
+            ]);
+        }
+
+        $volunteerEmail = strtolower(trim((string) ($volunteer->email ?? '')));
+        if ($volunteerEmail === '') {
+            throw ValidationException::withMessages([
+                'email' => 'O cadastro de voluntário não tem e-mail. Contacte a secretaria.',
+            ]);
+        }
+
+        $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => [
+                'required',
+                'string',
+                'lowercase',
+                'email',
+                'max:255',
+                'unique:'.User::class,
+                function (string $attribute, mixed $value, \Closure $fail) use ($volunteerEmail): void {
+                    if (strtolower(trim((string) $value)) !== $volunteerEmail) {
+                        $fail('O e-mail tem de ser o mesmo indicado no cadastro de voluntário do convite.');
+                    }
+                },
+            ],
+            'photo_file' => ['required', 'image', 'max:4096'],
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'ministry_invite_token' => ['required', 'string'],
+            'notify_via_app' => ['required', 'boolean'],
+            'notify_via_email' => ['required', 'boolean'],
+            'notify_via_whatsapp' => ['required', 'boolean'],
+            'lgpd_accepted' => ['required', 'accepted'],
+        ]);
+
+        $request->session()->put('working_church_id', (int) $invite->church_id);
+        $request->merge(['already_volunteer' => true]);
+
+        $user = DB::transaction(function () use ($request, $invite, $volunteer, $ministry) {
+            $user = User::withoutEvents(function () use ($request) {
+                return User::create([
+                    'name' => $request->name,
+                    'email' => $request->email,
+                    'password' => $request->password,
+                    'photo_url' => $request->hasFile('photo_file') ? $this->storeUserPhoto($request->file('photo_file')) : null,
+                    'notify_via_app' => $request->boolean('notify_via_app'),
+                    'notify_via_email' => $request->boolean('notify_via_email'),
+                    'notify_via_whatsapp' => $request->boolean('notify_via_whatsapp'),
+                    'lgpd_accepted_at' => now(),
+                ]);
+            });
+
+            $volunteer->refresh();
+
+            $displayName = trim((string) $request->name);
+            if ($displayName === '') {
+                $displayName = trim((string) ($volunteer->name ?? ''));
+            }
+            if ($displayName === '') {
+                $displayName = 'Voluntário';
+            }
+
+            $volunteer->forceFill([
+                'user_id' => $user->id,
+                'name' => $displayName,
+                'email' => strtolower(trim((string) $request->email)),
+            ])->save();
+
+            if (Schema::hasTable('ministry_volunteer')) {
+                $volunteer->ministries()->syncWithoutDetaching([(int) $ministry->id]);
+            }
+
+            $invite->forceFill([
+                'status' => 'accepted',
+                'accepted_at' => now(),
+            ])->save();
+
+            return $user;
+        });
+
+        if ($user->getRoleNames()->isEmpty()) {
+            $guard = (string) config('auth.defaults.guard');
+            if (Role::query()->where('name', 'membro')->where('guard_name', $guard)->exists()) {
+                $user->assignRole('membro');
+            }
+        }
+
+        $user->syncRoleIdFromSpatieAssignments();
+
+        $user->ensureVolunteerProfile();
+
+        $user->forceFill([
+            'is_volunteer' => true,
+        ])->save();
+
+        app(SyncUserChurchFromRegistration::class)($user, $request);
+        $user->ensureVolunteerProfile();
+
+        event(new Registered($user));
+
+        Auth::login($user);
+
+        $request->session()->flash('registration_success', true);
+        $request->session()->flash('success', 'Conta criada e convite aceite. Bem-vindo(a)!');
 
         return redirect()->route('registration.welcome');
     }

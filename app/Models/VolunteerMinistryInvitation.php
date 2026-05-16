@@ -22,7 +22,7 @@ class VolunteerMinistryInvitation extends Model
         'declined_at',
         'decline_reason',
         'expires_at',
-        // Status interno do líder do ministério (não é a resposta do convidado ao link público).
+        'intro_message',
         'leader_status',
         'leader_note',
         'leader_status_set_by_user_id',
@@ -79,9 +79,30 @@ class VolunteerMinistryInvitation extends Model
         return $this->status === 'pending' && ! $this->isExpired();
     }
 
+    /**
+     * Parágrafo principal do convite (e-mail / página pública), após a saudação com o nome.
+     */
+    public function resolvedIntroParagraph(): string
+    {
+        $custom = trim((string) ($this->intro_message ?? ''));
+        if ($custom !== '') {
+            return $custom;
+        }
+        $churchIntro = trim((string) ($this->church?->ministry_invitation_intro ?? ''));
+        if ($churchIntro !== '') {
+            return $churchIntro;
+        }
+
+        return self::builtinIntroForMinistry((string) ($this->ministry?->name ?? 'Departamento'));
+    }
+
+    public static function builtinIntroForMinistry(string $ministryName): string
+    {
+        return 'Você foi convidado(a) para servir no departamento '.$ministryName.'. Para continuar, por favor confirme a sua resposta.';
+    }
+
     public static function createToken(): string
     {
         return Str::random(48);
     }
 }
-

@@ -15,11 +15,21 @@ class VolunteerMinistryInvitationPublicController extends Controller
     {
         $inv = VolunteerMinistryInvitation::query()
             ->where('token', $token)
-            ->with(['ministry:id,name', 'volunteer:id,name,email', 'slots'])
+            ->with(['ministry:id,name', 'volunteer:id,name,email,user_id', 'slots', 'church:id,ministry_invitation_intro'])
             ->firstOrFail();
 
         $expired = $inv->isExpired();
         $final = in_array($inv->status, ['accepted', 'declined'], true);
+        $volunteer = $inv->volunteer;
+        $volunteerEmail = trim((string) ($volunteer?->email ?? ''));
+        $volunteerHasUser = (bool) ($volunteer?->user_id);
+        $registerUrl = null;
+        if (! $expired && ! $final && $volunteer && ! $volunteerHasUser && $volunteerEmail !== '') {
+            $registerUrl = route('register', [
+                'ministry_invite_token' => $inv->token,
+                'email' => $volunteerEmail,
+            ]);
+        }
 
         return Inertia::render('Volunteers/MinistryInvite', [
             'invitation' => [
@@ -28,12 +38,16 @@ class VolunteerMinistryInvitationPublicController extends Controller
                 'expired' => $expired,
                 'volunteerName' => $inv->volunteer?->name,
                 'ministryName' => $inv->ministry?->name,
+                'volunteerHasUser' => $volunteerHasUser,
+                'registerUrl' => $registerUrl,
                 'slots' => $inv->slots->map(fn ($s) => [
                     'day_of_week' => (int) $s->day_of_week,
                     'start_time' => $s->start_time ? substr((string) $s->start_time, 0, 5) : null,
                     'end_time' => $s->end_time ? substr((string) $s->end_time, 0, 5) : null,
                 ])->values()->all(),
                 'isFinal' => $final,
+                'introParagraph' => $inv->resolvedIntroParagraph(),
+                'volunteerEmail' => $volunteerEmail !== '' ? $volunteerEmail : null,
             ],
         ]);
     }
@@ -87,4 +101,3 @@ class VolunteerMinistryInvitationPublicController extends Controller
         return redirect()->route('volunteers.ministry-invite.show', ['token' => $token])->with('success', 'Recusa registada. Obrigado por avisar.');
     }
 }
-

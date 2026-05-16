@@ -11,6 +11,8 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import SelectInput from '@/Components/SelectInput';
 import Textarea from '@/Components/Textarea';
 import TextInput from '@/Components/TextInput';
+import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
+import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import { Head, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState, type FormEventHandler } from 'react';
 
@@ -19,6 +21,13 @@ type VolunteerRow = {
     ministryId?: number;
     createdAt: string | null;
     ministryName: string | null;
+    /** Convite de ministério (só linhas vindas de `VolunteerMinistryInvitation`). */
+    invitePublicUrl?: string | null;
+    inviteRegisterUrl?: string | null;
+    inviteResendEmailUrl?: string | null;
+    canResendInvite?: boolean;
+    inviteIntroMessage?: string | null;
+    inviteIntroSaveUrl?: string | null;
     volunteer: {
         id: number;
         name: string | null;
@@ -82,12 +91,14 @@ type HistoryRow = {
 };
 
 export default function MyVolunteers() {
-    const { invitations, activeVolunteers, requestRows, requestMinistries, requestStoreUrl } = usePage().props as unknown as {
+    const { invitations, activeVolunteers, requestRows, requestMinistries, requestStoreUrl, churchMinistryInvitationIntro } = usePage()
+        .props as unknown as {
         invitations: Paginated<VolunteerRow>;
         activeVolunteers: VolunteerRow[];
         requestRows: RequestRow[];
         requestMinistries: RequestMinistry[];
         requestStoreUrl: string;
+        churchMinistryInvitationIntro?: string | null;
     };
 
     const [editingId, setEditingId] = useState<number | string | null>(null);
@@ -98,6 +109,7 @@ export default function MyVolunteers() {
     const [history, setHistory] = useState<HistoryRow[] | null>(null);
     const [historyLoading, setHistoryLoading] = useState(false);
     const [requestModalOpen, setRequestModalOpen] = useState(false);
+    const [inviteHelpRow, setInviteHelpRow] = useState<VolunteerRow | null>(null);
 
     const form = useForm({
         leader_status: '' as '' | 'denied' | 'training' | 'active',
@@ -109,6 +121,8 @@ export default function MyVolunteers() {
         message: '',
         quantity: 1,
     });
+    const resendInviteForm = useForm({});
+    const introInviteForm = useForm({ intro_message: '' });
 
     const newRows = useMemo(
         () => invitations.data.filter((item) => item.leaderStatus === null || item.leaderStatus === ''),
@@ -141,6 +155,14 @@ export default function MyVolunteers() {
             if (!current.updateUrl && item.updateUrl) {
                 current.updateUrl = item.updateUrl;
             }
+            if (!current.inviteIntroSaveUrl && item.inviteIntroSaveUrl) {
+                current.inviteIntroSaveUrl = item.inviteIntroSaveUrl;
+                current.inviteIntroMessage = item.inviteIntroMessage;
+                current.invitePublicUrl = item.invitePublicUrl ?? current.invitePublicUrl;
+                current.inviteRegisterUrl = item.inviteRegisterUrl ?? current.inviteRegisterUrl;
+                current.inviteResendEmailUrl = item.inviteResendEmailUrl ?? current.inviteResendEmailUrl;
+                current.canResendInvite = item.canResendInvite ?? current.canResendInvite;
+            }
             if (current.leaderStatus !== 'active' && item.leaderStatus === 'active') {
                 current.leaderStatus = 'active';
             }
@@ -168,6 +190,45 @@ export default function MyVolunteers() {
         setScreenTab('requests');
     }, [newRows.length, trainingRows.length, activeRows.length]);
 
+    const builtinMinistryInviteIntro = (ministryName: string) =>
+        `Você foi convidado(a) para servir no departamento ${ministryName}. Para continuar, por favor confirme a sua resposta.`;
+
+    const inviteIntroResolvedPreview = useMemo(() => {
+        const ministry = (inviteHelpRow?.ministryName ?? 'Departamento').trim() || 'Departamento';
+        const draft = (introInviteForm.data.intro_message ?? '').trim();
+        if (draft !== '') return draft;
+        const church = (churchMinistryInvitationIntro ?? '').trim();
+        if (church !== '') return church;
+        return builtinMinistryInviteIntro(ministry);
+    }, [inviteHelpRow?.ministryName, introInviteForm.data.intro_message, churchMinistryInvitationIntro]);
+
+    const whatsAppInviteMessage = useMemo(() => {
+        const row = inviteHelpRow;
+        const url = row?.invitePublicUrl;
+        if (!row || !url) return '';
+        const name = (row.volunteer.name ?? '').trim();
+        const greeting = name ? `Olá, ${name}!` : 'Olá!';
+        const ministry = (row.ministryName ?? 'Departamento').trim() || 'Departamento';
+        const email = (row.volunteer.email ?? '').trim();
+        let msg = `${greeting}\n\n${inviteIntroResolvedPreview}\n\nPara aceitar ou recusar o convite para «${ministry}», abra este link:\n${url}`;
+        if (row.inviteRegisterUrl) {
+            msg += `\n\nPara criar a sua conta no app e aceitar o convite de uma vez (recomendado), use este link — o e-mail já vem no endereço:\n${row.inviteRegisterUrl}`;
+        }
+        if (email !== '') {
+            msg += `\n\nSe fizer o cadastro por outro caminho (sem estes links), tem de usar exatamente o mesmo e-mail do cadastro de voluntário: ${email}.`;
+        }
+        return msg;
+    }, [inviteHelpRow, inviteIntroResolvedPreview]);
+
+    useEffect(() => {
+        if (!inviteHelpRow?.inviteIntroSaveUrl) {
+            return;
+        }
+        introInviteForm.setData('intro_message', inviteHelpRow.inviteIntroMessage ?? '');
+        introInviteForm.clearErrors();
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- só ao abrir o modal para outro convite
+    }, [inviteHelpRow?.id]);
+
     const selectedMinistry = useMemo(
         () => requestMinistries.find((m) => m.id === Number(requestForm.data.ministry_id)),
         [requestMinistries, requestForm.data.ministry_id],
@@ -176,6 +237,69 @@ export default function MyVolunteers() {
         () => (selectedMinistry?.schedule_roles ?? []).map((r) => ({ value: r.id, label: r.name })),
         [selectedMinistry],
     );
+
+    const closeInviteHelp = () => {
+        setInviteHelpRow(null);
+        introInviteForm.reset();
+        introInviteForm.clearErrors();
+    };
+
+    const submitSaveInviteIntro = () => {
+        const url = inviteHelpRow?.inviteIntroSaveUrl;
+        if (!url) return;
+        const trimmed = introInviteForm.data.intro_message.trim();
+        introInviteForm.patch(url, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setInviteHelpRow((prev) =>
+                    prev ? { ...prev, inviteIntroMessage: trimmed === '' ? null : introInviteForm.data.intro_message } : null,
+                );
+            },
+        });
+    };
+
+    const copyInvitePublicLink = async () => {
+        const url = inviteHelpRow?.invitePublicUrl;
+        if (!url) return;
+        try {
+            await navigator.clipboard.writeText(url);
+        } catch {
+            window.prompt('Copie o link do convite:', url);
+        }
+    };
+
+    const copyWhatsAppInviteMessage = async () => {
+        if (!whatsAppInviteMessage) return;
+        try {
+            await navigator.clipboard.writeText(whatsAppInviteMessage);
+        } catch {
+            window.prompt('Copie a mensagem para o WhatsApp:', whatsAppInviteMessage);
+        }
+    };
+
+    const whatsAppSendPhoneDigits = (raw: string | null | undefined): string | null => {
+        const d = (raw ?? '').replace(/\D/g, '');
+        if (d.length < 10) return null;
+        if (!d.startsWith('55') && d.length <= 11) {
+            return `55${d}`;
+        }
+        return d;
+    };
+
+    const openWhatsAppWithInvite = () => {
+        const phone = whatsAppSendPhoneDigits(inviteHelpRow?.volunteer.phone);
+        if (!phone || !whatsAppInviteMessage) return;
+        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(whatsAppInviteMessage)}`, '_blank', 'noopener,noreferrer');
+    };
+
+    const submitResendInviteEmail = () => {
+        const url = inviteHelpRow?.inviteResendEmailUrl;
+        if (!url) return;
+        resendInviteForm.post(url, {
+            preserveScroll: true,
+            onSuccess: () => closeInviteHelp(),
+        });
+    };
 
     const openEdit = (r: VolunteerRow) => {
         if (!r.updateUrl) return;
@@ -336,52 +460,166 @@ export default function MyVolunteers() {
         return map[raw] ?? raw;
     };
 
+    const rowActionsMenuItemClass =
+        'flex w-full items-center px-4 py-2.5 text-left text-sm font-medium text-zinc-800 transition hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-zinc-800';
+
     const renderVolunteerTable = (rows: VolunteerRow[], emptyText: string) => (
-        <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-                <thead>
-                    <tr className="border-b border-zinc-200 text-left dark:border-zinc-700">
-                        <th className="pb-2 pr-3 font-semibold">Voluntário</th>
-                        <th className="pb-2 pr-3 font-semibold">Departamento</th>
-                        <th className="pb-2 pr-3 font-semibold">Status do convite</th>
-                        <th className="pb-2 pr-3 font-semibold">Status (líder)</th>
-                        <th className="pb-2 font-semibold" />
-                    </tr>
-                </thead>
-                <tbody>
-                    {rows.map((item) => (
-                        <tr key={item.id} className="border-b border-zinc-100 dark:border-zinc-800">
-                            <td className="py-2 pr-3">
-                                <div className="font-medium text-zinc-900 dark:text-white">{item.volunteer.name ?? '—'}</div>
-                                <div className="text-xs text-zinc-500">{item.volunteer.email ?? ''}</div>
-                            </td>
-                            <td className="py-2 pr-3 text-zinc-700 dark:text-zinc-200">{item.ministryName ?? '—'}</td>
-                            <td className="py-2 pr-3 text-zinc-600 dark:text-zinc-300">{inviteLabel(item.inviteStatus)}</td>
-                            <td className="py-2 pr-3 text-zinc-700 dark:text-zinc-200">{statusLabel(item.leaderStatus)}</td>
-                            <td className="py-2 text-right">
-                                <div className="flex flex-wrap justify-end gap-2">
-                                    <SecondaryButton type="button" onClick={() => openProfile(item)}>
-                                        Ver dados
-                                    </SecondaryButton>
-                                    {item.updateUrl ? (
-                                        <SecondaryButton type="button" onClick={() => openEdit(item)}>
-                                            Alterar status
+        <>
+            <div className="hidden overflow-x-auto md:block">
+                <table className="min-w-full text-sm">
+                    <thead>
+                        <tr className="border-b border-zinc-200 text-left dark:border-zinc-700">
+                            <th className="pb-2 pr-3 font-semibold">Voluntário</th>
+                            <th className="pb-2 pr-3 font-semibold">Departamento</th>
+                            <th className="pb-2 pr-3 font-semibold">Status do convite</th>
+                            <th className="pb-2 pr-3 font-semibold">Status (líder)</th>
+                            <th className="pb-2 font-semibold" />
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows.map((item) => (
+                            <tr key={item.id} className="border-b border-zinc-100 dark:border-zinc-800">
+                                <td className="py-2 pr-3">
+                                    <div className="font-medium text-zinc-900 dark:text-white">{item.volunteer.name ?? '—'}</div>
+                                    <div className="text-xs text-zinc-500">{item.volunteer.email ?? ''}</div>
+                                </td>
+                                <td className="py-2 pr-3 text-zinc-700 dark:text-zinc-200">{item.ministryName ?? '—'}</td>
+                                <td className="py-2 pr-3 text-zinc-600 dark:text-zinc-300">{inviteLabel(item.inviteStatus)}</td>
+                                <td className="py-2 pr-3 text-zinc-700 dark:text-zinc-200">{statusLabel(item.leaderStatus)}</td>
+                                <td className="py-2 text-right">
+                                    <div className="flex flex-wrap justify-end gap-2">
+                                        <SecondaryButton type="button" onClick={() => openProfile(item)}>
+                                            Ver dados
                                         </SecondaryButton>
-                                    ) : null}
+                                        {item.updateUrl ? (
+                                            <SecondaryButton type="button" onClick={() => openEdit(item)}>
+                                                Alterar status
+                                            </SecondaryButton>
+                                        ) : null}
+                                        {item.canResendInvite && item.inviteResendEmailUrl ? (
+                                            <SecondaryButton type="button" onClick={() => setInviteHelpRow(item)}>
+                                                Enviar convite
+                                            </SecondaryButton>
+                                        ) : null}
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                        {rows.length === 0 ? (
+                            <tr>
+                                <td colSpan={5} className="py-6 text-center text-sm text-zinc-500">
+                                    {emptyText}
+                                </td>
+                            </tr>
+                        ) : null}
+                    </tbody>
+                </table>
+            </div>
+
+            <div className="md:hidden">
+                {rows.length === 0 ? (
+                    <p className="py-6 text-center text-sm text-zinc-500 dark:text-zinc-400">{emptyText}</p>
+                ) : (
+                    <ul className="space-y-3">
+                        {rows.map((item) => (
+                            <li
+                                key={item.id}
+                                className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/40"
+                            >
+                                <div className="flex items-start gap-3">
+                                    <div className="min-w-0 flex-1 space-y-2">
+                                        <div>
+                                            <div className="truncate font-semibold text-zinc-900 dark:text-white">
+                                                {item.volunteer.name ?? '—'}
+                                            </div>
+                                            {item.volunteer.email ? (
+                                                <div className="truncate text-xs text-zinc-500 dark:text-zinc-400">
+                                                    {item.volunteer.email}
+                                                </div>
+                                            ) : null}
+                                        </div>
+                                        <dl className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+                                            <div>
+                                                <dt className="font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                                    Departamento
+                                                </dt>
+                                                <dd className="mt-0.5 text-zinc-800 dark:text-zinc-100">{item.ministryName ?? '—'}</dd>
+                                            </div>
+                                            <div>
+                                                <dt className="font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                                    Status do convite
+                                                </dt>
+                                                <dd className="mt-0.5 text-zinc-800 dark:text-zinc-100">
+                                                    {inviteLabel(item.inviteStatus)}
+                                                </dd>
+                                            </div>
+                                            <div className="sm:col-span-2">
+                                                <dt className="font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                                    Status (líder)
+                                                </dt>
+                                                <dd className="mt-0.5 text-zinc-800 dark:text-zinc-100">{statusLabel(item.leaderStatus)}</dd>
+                                            </div>
+                                        </dl>
+                                    </div>
+                                    <Popover className="relative shrink-0">
+                                        <PopoverButton
+                                            type="button"
+                                            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-600 shadow-sm transition hover:bg-zinc-50 hover:text-zinc-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white dark:focus-visible:ring-zinc-500"
+                                            aria-label="Ações"
+                                        >
+                                            <EllipsisVerticalIcon className="h-6 w-6" aria-hidden />
+                                        </PopoverButton>
+                                        <PopoverPanel
+                                            anchor="bottom end"
+                                            className="z-[80] w-52 rounded-xl border border-zinc-200 bg-white py-1 shadow-xl [--anchor-gap:6px] dark:border-zinc-700 dark:bg-zinc-900"
+                                        >
+                                            {({ close }) => (
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        className={rowActionsMenuItemClass}
+                                                        onClick={() => {
+                                                            close();
+                                                            openProfile(item);
+                                                        }}
+                                                    >
+                                                        Ver dados
+                                                    </button>
+                                                    {item.updateUrl ? (
+                                                        <button
+                                                            type="button"
+                                                            className={rowActionsMenuItemClass}
+                                                            onClick={() => {
+                                                                close();
+                                                                openEdit(item);
+                                                            }}
+                                                        >
+                                                            Alterar status
+                                                        </button>
+                                                    ) : null}
+                                                    {item.canResendInvite && item.inviteResendEmailUrl ? (
+                                                        <button
+                                                            type="button"
+                                                            className={rowActionsMenuItemClass}
+                                                            onClick={() => {
+                                                                close();
+                                                                setInviteHelpRow(item);
+                                                            }}
+                                                        >
+                                                            Enviar convite
+                                                        </button>
+                                                    ) : null}
+                                                </>
+                                            )}
+                                        </PopoverPanel>
+                                    </Popover>
                                 </div>
-                            </td>
-                        </tr>
-                    ))}
-                    {rows.length === 0 ? (
-                        <tr>
-                            <td colSpan={5} className="py-6 text-center text-sm text-zinc-500">
-                                {emptyText}
-                            </td>
-                        </tr>
-                    ) : null}
-                </tbody>
-            </table>
-        </div>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </div>
+        </>
     );
 
     return (
@@ -638,6 +876,101 @@ export default function MyVolunteers() {
                                 )}
                             </div>
                         )}
+                    </div>
+                ) : null}
+            </Modal>
+
+            <Modal show={!!inviteHelpRow} onClose={closeInviteHelp} maxWidth="lg">
+                {inviteHelpRow ? (
+                    <div className="space-y-4 p-6">
+                        <div className="flex items-start justify-between gap-3">
+                            <div>
+                                <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Convite ao voluntário</h2>
+                                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+                                    {inviteHelpRow.volunteer.name ?? 'Voluntário'} — {inviteHelpRow.ministryName ?? 'Departamento'}
+                                </p>
+                                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+                                    A mensagem pronta abaixo é a mesma enviada por e-mail. Use-a no WhatsApp ou reenvie o e-mail.
+                                </p>
+                            </div>
+                            <SecondaryButton type="button" onClick={closeInviteHelp}>
+                                Fechar
+                            </SecondaryButton>
+                        </div>
+                        {inviteHelpRow.inviteIntroSaveUrl ? (
+                            <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-900/50">
+                                <InputLabel value="Mensagem do convite (e-mail e página pública)" />
+                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                    Aparece depois de «Olá, nome». Deixe em branco para usar o texto da igreja (super admin em Igrejas) ou o texto padrão do sistema.
+                                </p>
+                                <Textarea
+                                    value={introInviteForm.data.intro_message}
+                                    onChange={(e) => introInviteForm.setData('intro_message', e.target.value)}
+                                    rows={5}
+                                    className="mt-2 w-full"
+                                    placeholder="Ex.: Estamos felizes em tê-lo(a) connosco…"
+                                />
+                                <InputError message={introInviteForm.errors.intro_message} className="mt-1" />
+                                <div className="mt-3 rounded-lg border border-dashed border-zinc-300 bg-white p-3 text-xs text-zinc-600 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-300">
+                                    <span className="font-semibold text-zinc-700 dark:text-zinc-200">Pré-visualização:</span>
+                                    <p className="mt-1 whitespace-pre-wrap">{inviteIntroResolvedPreview}</p>
+                                </div>
+                                <SecondaryButton
+                                    type="button"
+                                    className="mt-3"
+                                    onClick={submitSaveInviteIntro}
+                                    disabled={introInviteForm.processing || resendInviteForm.processing}
+                                >
+                                    Guardar texto
+                                </SecondaryButton>
+                            </div>
+                        ) : null}
+                        {whatsAppInviteMessage ? (
+                            <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/30">
+                                <InputLabel value="Mensagem pronta (WhatsApp ou outro app)" />
+                                <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+                                    Inclui saudação, texto do convite e link. Atualiza quando altera a mensagem acima (guarde se quiser gravar no convite).
+                                </p>
+                                <div className="mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap rounded-lg border border-emerald-100 bg-white px-3 py-2 text-sm text-zinc-800 dark:border-emerald-900/40 dark:bg-zinc-950 dark:text-zinc-100">
+                                    {whatsAppInviteMessage}
+                                </div>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    <PrimaryButton type="button" onClick={() => void copyWhatsAppInviteMessage()}>
+                                        Copiar texto e link
+                                    </PrimaryButton>
+                                    {whatsAppSendPhoneDigits(inviteHelpRow.volunteer.phone) ? (
+                                        <SecondaryButton type="button" onClick={openWhatsAppWithInvite}>
+                                            Abrir no WhatsApp
+                                        </SecondaryButton>
+                                    ) : null}
+                                </div>
+                            </div>
+                        ) : null}
+                        {inviteHelpRow.invitePublicUrl ? (
+                            <div>
+                                <InputLabel value="Link público do convite" />
+                                <div className="mt-1 break-all rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100">
+                                    {inviteHelpRow.invitePublicUrl}
+                                </div>
+                                <SecondaryButton type="button" className="mt-2" onClick={() => void copyInvitePublicLink()}>
+                                    Copiar link
+                                </SecondaryButton>
+                            </div>
+                        ) : null}
+                        <div className="flex flex-wrap justify-end gap-2 border-t border-zinc-200 pt-4 dark:border-zinc-700">
+                            <SecondaryButton type="button" onClick={closeInviteHelp} disabled={resendInviteForm.processing}>
+                                Cancelar
+                            </SecondaryButton>
+                            {inviteHelpRow.inviteResendEmailUrl ? (
+                                <PrimaryButton
+                                    type="button"
+                                    onClick={submitResendInviteEmail}
+                                    disabled={resendInviteForm.processing}
+                                >
+                                    Reenviar e-mail
+                                </PrimaryButton>
+                            ) : null}
+                        </div>
                     </div>
                 ) : null}
             </Modal>

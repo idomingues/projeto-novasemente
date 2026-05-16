@@ -66,6 +66,8 @@ export default function Index({
             invitation_link?: string | null;
             invitation_for_name?: string | null;
             public_volunteer_signup_url?: string | null;
+            error?: string | null;
+            success?: string | null;
         };
         currentChurch?: { name?: string } | null;
         auth?: { permissions?: string[]; isSuperAdmin?: boolean };
@@ -196,17 +198,48 @@ export default function Index({
         }
     };
 
-    const handleDelete = async (id: number) => {
+    const handleDelete = async (v: Volunteer) => {
         const ok = await confirmAction({
             title: 'Excluir voluntário?',
-            text: 'Esta ação não pode ser desfeita.',
+            text: v.user?.id
+                ? 'O registo de voluntário será removido. Na pergunta seguinte pode escolher se remove também a conta de acesso ao app.'
+                : 'Esta ação não pode ser desfeita.',
             confirmButtonText: 'Excluir',
             danger: true,
             icon: 'warning',
         });
-        if (ok) {
-            router.delete(route('volunteers.destroy', id));
+        if (! ok) {
+            return;
         }
+
+        let deleteLinkedUser = false;
+        if (v.user?.id) {
+            const emailHint = v.user.email ?? v.email ?? '';
+            const alsoUser = await confirmAction({
+                title: 'Apagar também a conta do utilizador?',
+                text: emailHint
+                    ? `Existe utilizador ligado (${emailHint}). Confirmar remove voluntário e conta. Cancelar remove só o registo de voluntário e mantém o utilizador.`
+                    : 'Existe utilizador ligado. Confirmar remove voluntário e conta. Cancelar remove só o registo de voluntário e mantém o utilizador.',
+                confirmButtonText: 'Sim, apagar utilizador também',
+                cancelButtonText: 'Não, só voluntário',
+                danger: true,
+                icon: 'warning',
+            });
+            deleteLinkedUser = alsoUser;
+        }
+
+        router.delete(route('volunteers.destroy', v.id), {
+            data: { delete_linked_user: deleteLinkedUser },
+            onSuccess: (page) => {
+                const flash = (page?.props as { flash?: { error?: string | null; success?: string | null } } | undefined)?.flash;
+                if (flash?.error) {
+                    setSubmitToast({ kind: 'error', message: flash.error });
+                } else if (flash?.success) {
+                    setSubmitToast({ kind: 'success', message: flash.success });
+                }
+                window.setTimeout(() => setSubmitToast(null), 4500);
+            },
+        });
     };
 
     useEffect(() => {
@@ -456,7 +489,7 @@ export default function Index({
                                             </button>
                                             <button
                                                 type="button"
-                                                onClick={() => handleDelete(v.id)}
+                                                onClick={() => void handleDelete(v)}
                                                 className="shrink-0 p-2 text-zinc-500 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-700"
                                                 title="Excluir"
                                             >

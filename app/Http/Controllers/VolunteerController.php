@@ -15,6 +15,7 @@ use App\Support\VolunteerChurchRosterBuilder;
 use App\Support\VolunteerPipelineBootstrap;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -368,11 +369,37 @@ class VolunteerController extends Controller
         return $redirect;
     }
 
-    public function destroy(Volunteer $volunteer)
+    public function destroy(Request $request, Volunteer $volunteer)
     {
-        $volunteer->delete();
+        $churchId = $this->currentChurchId($request);
+        if (! $this->volunteerVisibleInWorkingChurch($volunteer, $churchId)) {
+            abort(404);
+        }
 
-        return redirect()->route('volunteers.index')->with('success', 'Voluntário removido com sucesso!');
+        $deleteLinkedUser = $request->boolean('delete_linked_user');
+        $linkedUser = $deleteLinkedUser ? User::query()->find($volunteer->user_id) : null;
+
+        if ($linkedUser) {
+            if ((int) $linkedUser->id === (int) $request->user()?->id) {
+                return redirect()->route('volunteers.index')->with('error', 'Não pode apagar a sua própria conta desta forma.');
+            }
+            if ($linkedUser->canAccessAdminMenu()) {
+                return redirect()->route('volunteers.index')->with('error', 'Não é possível apagar este utilizador: tem acesso ao painel de equipa.');
+            }
+        }
+
+        DB::transaction(function () use ($volunteer, $linkedUser) {
+            $volunteer->delete();
+            if ($linkedUser) {
+                $linkedUser->delete();
+            }
+        });
+
+        $message = ($deleteLinkedUser && $linkedUser)
+            ? 'Voluntário e conta de utilizador removidos com sucesso.'
+            : 'Voluntário removido com sucesso!';
+
+        return redirect()->route('volunteers.index')->with('success', $message);
     }
 
     public function invite(Volunteer $volunteer)
