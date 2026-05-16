@@ -59,6 +59,7 @@ type VolunteerRow = {
     leaderStatus: string | null;
     leaderNote: string | null;
     updateUrl: string | null;
+    historyUrl?: string | null;
 };
 
 interface Paginated<T> {
@@ -105,8 +106,8 @@ export default function MyVolunteers() {
         churchMinistryInvitationIntro?: string | null;
     };
 
-    const [editingId, setEditingId] = useState<number | string | null>(null);
-    const row = useMemo(() => invitations.data.find((x) => x.id === editingId) ?? null, [editingId, invitations.data]);
+    const [editingRow, setEditingRow] = useState<VolunteerRow | null>(null);
+    const row = editingRow;
     const [profileRow, setProfileRow] = useState<VolunteerRow | null>(null);
     const [tab, setTab] = useState<'status' | 'history'>('status');
     const [screenTab, setScreenTab] = useState<'active' | 'training' | 'new' | 'requests'>('new');
@@ -156,6 +157,9 @@ export default function MyVolunteers() {
             }
             if (!current.updateUrl && item.updateUrl) {
                 current.updateUrl = item.updateUrl;
+            }
+            if (!current.historyUrl && item.historyUrl) {
+                current.historyUrl = item.historyUrl;
             }
             if (!current.inviteIntroSaveUrl && item.inviteIntroSaveUrl) {
                 current.inviteIntroSaveUrl = item.inviteIntroSaveUrl;
@@ -293,7 +297,7 @@ export default function MyVolunteers() {
 
     const openEdit = (r: VolunteerRow) => {
         if (!r.updateUrl) return;
-        setEditingId(r.id);
+        setEditingRow(r);
         setTab('status');
         setHistory(null);
         setHistoryLoading(false);
@@ -305,7 +309,7 @@ export default function MyVolunteers() {
     };
 
     const closeEdit = () => {
-        setEditingId(null);
+        setEditingRow(null);
         setTab('status');
         setHistory(null);
         setHistoryLoading(false);
@@ -392,10 +396,10 @@ export default function MyVolunteers() {
     };
 
     const loadHistory = async () => {
-        if (!row || historyLoading) return;
+        if (!row?.historyUrl || historyLoading) return;
         setHistoryLoading(true);
         try {
-            const r = await fetch(route('ministry-lead.my-volunteers.history', row.id), {
+            const r = await fetch(row.historyUrl, {
                 headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 credentials: 'same-origin',
             });

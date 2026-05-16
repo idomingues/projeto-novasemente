@@ -24,6 +24,113 @@ use Inertia\Response;
 
 class MyMinistryVolunteersController extends Controller
 {
+    private function invitationForVolunteerMinistry(int $churchId, int $volunteerId, int $ministryId): ?VolunteerMinistryInvitation
+    {
+        return VolunteerMinistryInvitation::query()
+            ->where('church_id', $churchId)
+            ->where('volunteer_id', $volunteerId)
+            ->where('ministry_id', $ministryId)
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    private function findOrCreateLeaderStatusInvitation(
+        int $churchId,
+        int $volunteerId,
+        int $ministryId,
+        ?int $invitedByUserId,
+        string $defaultLeaderStatus = 'active',
+    ): VolunteerMinistryInvitation {
+        $existing = $this->invitationForVolunteerMinistry($churchId, $volunteerId, $ministryId);
+        if ($existing) {
+            return $existing;
+        }
+
+        return VolunteerMinistryInvitation::create([
+            'church_id' => $churchId,
+            'volunteer_id' => $volunteerId,
+            'ministry_id' => $ministryId,
+            'invited_by_user_id' => $invitedByUserId,
+            'token' => VolunteerMinistryInvitation::createToken(),
+            'status' => 'accepted',
+            'accepted_at' => now(),
+            'leader_status' => $defaultLeaderStatus,
+            'leader_status_set_by_user_id' => $invitedByUserId,
+            'leader_status_set_at' => now(),
+        ]);
+    }
+
+    private function assertLeaderMayManageMinistry(Request $request, int $churchId, int $ministryId): void
+    {
+        $user = $request->user();
+        if ($user?->hasRole(['admin', 'super_admin'])) {
+            return;
+        }
+        $leaderMinistryIds = $user?->ministries()
+            ->where('church_id', $churchId)
+            ->pluck('ministries.id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all() ?? [];
+        abort_unless(in_array($ministryId, $leaderMinistryIds, true), 403);
+    }
+
+    private function applyLeaderStatusUpdate(Request $request, VolunteerMinistryInvitation $invitation): RedirectResponse
+    {
+        $churchId = (int) $invitation->church_id;
+        $user = $request->user();
+        $invitation->loadMissing(['ministry', 'volunteer']);
+
+        $fromStatus = $invitation->leader_status;
+
+        $valid = $request->validate([
+            'leader_status' => ['nullable', 'string', Rule::in(['denied', 'training', 'active'])],
+            'leader_note' => ['nullable', 'string', 'max:5000'],
+        ]);
+
+        if (($valid['leader_status'] ?? null) === 'denied') {
+            $note = trim((string) ($valid['leader_note'] ?? ''));
+            abort_unless(mb_strlen($note) >= 5, 422, 'Mensagem obrigatória para recusar.');
+        }
+
+        $invitation->forceFill([
+            'leader_status' => $valid['leader_status'] ?? null,
+            'leader_note' => ($valid['leader_status'] ?? null) === 'denied' ? ($valid['leader_note'] ?? null) : null,
+            'leader_status_set_by_user_id' => $user?->id,
+            'leader_status_set_at' => now(),
+        ])->save();
+
+        if ($fromStatus !== ($invitation->leader_status ?? null) || (($valid['leader_status'] ?? null) === 'denied')) {
+            VolunteerMinistryInvitationStatusHistory::create([
+                'invitation_id' => $invitation->id,
+                'church_id' => $invitation->church_id,
+                'ministry_id' => $invitation->ministry_id,
+                'volunteer_id' => $invitation->volunteer_id,
+                'changed_by_user_id' => $user?->id,
+                'from_status' => $fromStatus,
+                'to_status' => $invitation->leader_status,
+                'note' => ($invitation->leader_status === 'denied') ? $invitation->leader_note : null,
+            ]);
+        }
+
+        if (($valid['leader_status'] ?? null) === 'denied') {
+            $ministryName = $invitation->ministry?->name ?? 'Departamento';
+            $body = "Recusado pelo líder do departamento «{$ministryName}»:\n\n".trim((string) ($valid['leader_note'] ?? ''));
+            VolunteerLeaderNote::create([
+                'volunteer_id' => $invitation->volunteer_id,
+                'church_id' => $churchId,
+                'user_id' => $user?->id,
+                'body' => $body,
+            ]);
+        }
+
+        if (in_array(($valid['leader_status'] ?? null), ['training', 'active'], true) && $invitation->volunteer && $invitation->ministry) {
+            $invitation->volunteer->ministries()->syncWithoutDetaching([$invitation->ministry_id]);
+        }
+
+        return back()->with('success', 'Status atualizado.');
+    }
+
     /**
      * @param  list<int>  $leaderMinistryIds
      * @return list<array<string,mixed>>
@@ -66,11 +173,14 @@ class MyMinistryVolunteersController extends Controller
                 'role',
                 'app_access_only',
             ])
-            ->flatMap(function (Volunteer $v) {
-                return $v->ministries->map(fn (Ministry $m) => [
-                    'id' => 'active-'.$v->id.'-'.$m->id,
+            ->flatMap(function (Volunteer $v) use ($churchId) {
+                return $v->ministries->map(function (Ministry $m) use ($churchId, $v) {
+                    $invitation = $this->invitationForVolunteerMinistry($churchId, (int) $v->id, (int) $m->id);
+
+                    return [
+                    'id' => $invitation ? (string) $invitation->id : 'active-'.$v->id.'-'.$m->id,
                     'ministryId' => (int) $m->id,
-                    'createdAt' => null,
+                    'createdAt' => $invitation?->created_at?->toIso8601String(),
                     'ministryName' => (string) $m->name,
                     'volunteer' => [
                         'id' => (int) $v->id,
@@ -96,12 +206,18 @@ class MyMinistryVolunteersController extends Controller
                         'appAccessOnly' => (bool) ($v->app_access_only ?? false),
                         'linkedUser' => $v->user ? ['id' => (int) $v->user->id, 'email' => $v->user->email] : null,
                     ],
-                    'inviteStatus' => 'active_roster',
-                    'leaderStatus' => 'active',
-                    'leaderNote' => null,
-                    'updateUrl' => null,
+                    'inviteStatus' => $invitation?->status ?? 'active_roster',
+                    'leaderStatus' => $invitation?->leader_status ?? 'active',
+                    'leaderNote' => $invitation?->leader_note,
+                    'updateUrl' => $invitation
+                        ? route('ministry-lead.my-volunteers.update', $invitation)
+                        : route('ministry-lead.my-volunteers.volunteer.leader-status', [$v, $m]),
+                    'historyUrl' => $invitation
+                        ? route('ministry-lead.my-volunteers.history', $invitation)
+                        : null,
                     'removeFromMinistryUrl' => route('ministry-lead.my-volunteers.volunteer.remove-from-ministry', [$v, $m]),
-                ]);
+                ];
+                });
             })
             ->values()
             ->all();
@@ -369,6 +485,7 @@ class MyMinistryVolunteersController extends Controller
             'leaderStatus' => $i->leader_status,
             'leaderNote' => $i->leader_note,
             'updateUrl' => route('ministry-lead.my-volunteers.update', $i),
+            'historyUrl' => route('ministry-lead.my-volunteers.history', $i),
         ])->values();
         $invites->setCollection($inviteRows);
 
@@ -444,6 +561,31 @@ class MyMinistryVolunteersController extends Controller
         return back()->with('success', 'Texto do convite atualizado.');
     }
 
+    public function updateVolunteerLeaderStatus(Request $request, Volunteer $volunteer, Ministry $ministry): RedirectResponse
+    {
+        $this->canUse($request);
+        $churchId = $this->churchId($request);
+        abort_unless($churchId, 404);
+        abort_unless((int) $ministry->church_id === (int) $churchId, 404);
+        $this->assertLeaderMayManageMinistry($request, (int) $churchId, (int) $ministry->id);
+
+        abort_unless(
+            $volunteer->ministries()->where('ministries.id', (int) $ministry->id)->exists(),
+            404,
+            'Voluntário não está neste departamento.'
+        );
+
+        $invitation = $this->findOrCreateLeaderStatusInvitation(
+            (int) $churchId,
+            (int) $volunteer->id,
+            (int) $ministry->id,
+            $request->user()?->id,
+            'active',
+        );
+
+        return $this->applyLeaderStatusUpdate($request, $invitation);
+    }
+
     public function update(Request $request, VolunteerMinistryInvitation $invitation): RedirectResponse
     {
         $this->canUse($request);
@@ -451,62 +593,9 @@ class MyMinistryVolunteersController extends Controller
         abort_unless($churchId, 404);
         abort_unless((int) $invitation->church_id === (int) $churchId, 404);
 
-        $user = $request->user();
-        $ministryIds = $user?->ministries()->where('church_id', $churchId)->pluck('ministries.id')->values()->all() ?? [];
-        abort_unless(in_array((int) $invitation->ministry_id, array_map('intval', $ministryIds), true), 403);
+        $this->assertLeaderMayManageMinistry($request, (int) $churchId, (int) $invitation->ministry_id);
 
-        $fromStatus = $invitation->leader_status;
-
-        $valid = $request->validate([
-            'leader_status' => ['nullable', 'string', Rule::in(['denied', 'training', 'active'])],
-            'leader_note' => ['nullable', 'string', 'max:5000'],
-        ]);
-
-        if (($valid['leader_status'] ?? null) === 'denied') {
-            $note = trim((string) ($valid['leader_note'] ?? ''));
-            abort_unless(mb_strlen($note) >= 5, 422, 'Mensagem obrigatória para recusar.');
-        }
-
-        $invitation->forceFill([
-            'leader_status' => $valid['leader_status'] ?? null,
-            // mensagem só faz sentido em "Recusar"; nos demais estados limpamos para não confundir
-            'leader_note' => ($valid['leader_status'] ?? null) === 'denied' ? ($valid['leader_note'] ?? null) : null,
-            'leader_status_set_by_user_id' => $user?->id,
-            'leader_status_set_at' => now(),
-        ])->save();
-
-        // Histórico (status anterior/novo, data/hora e usuário).
-        if ($fromStatus !== ($invitation->leader_status ?? null) || (($valid['leader_status'] ?? null) === 'denied')) {
-            VolunteerMinistryInvitationStatusHistory::create([
-                'invitation_id' => $invitation->id,
-                'church_id' => $invitation->church_id,
-                'ministry_id' => $invitation->ministry_id,
-                'volunteer_id' => $invitation->volunteer_id,
-                'changed_by_user_id' => $user?->id,
-                'from_status' => $fromStatus,
-                'to_status' => $invitation->leader_status,
-                'note' => ($invitation->leader_status === 'denied') ? $invitation->leader_note : null,
-            ]);
-        }
-
-        // Para o responsável do voluntariado “ler”: registamos também como nota interna do voluntário.
-        if (($valid['leader_status'] ?? null) === 'denied') {
-            $ministryName = $invitation->ministry?->name ?? 'Departamento';
-            $body = "Recusado pelo líder do departamento «{$ministryName}»:\n\n".trim((string) ($valid['leader_note'] ?? ''));
-            VolunteerLeaderNote::create([
-                'volunteer_id' => $invitation->volunteer_id,
-                'church_id' => $churchId,
-                'user_id' => $user?->id,
-                'body' => $body,
-            ]);
-        }
-
-        // Ao marcar como “Treinamento” ou “Atuante”, garantimos vínculo do voluntário ao departamento.
-        if (in_array(($valid['leader_status'] ?? null), ['training', 'active'], true) && $invitation->volunteer && $invitation->ministry) {
-            $invitation->volunteer->ministries()->syncWithoutDetaching([$invitation->ministry_id]);
-        }
-
-        return back()->with('success', 'Status atualizado.');
+        return $this->applyLeaderStatusUpdate($request, $invitation);
     }
 
     public function history(Request $request, VolunteerMinistryInvitation $invitation): JsonResponse

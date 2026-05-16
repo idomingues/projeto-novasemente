@@ -326,6 +326,9 @@ Route::middleware('auth')->group(function () {
     Route::delete('/lideranca/meus-voluntarios/voluntarios/{volunteer}/ministerio/{ministry}', [MyMinistryVolunteersController::class, 'removeVolunteerFromMinistry'])
         ->name('ministry-lead.my-volunteers.volunteer.remove-from-ministry')
         ->middleware('auth');
+    Route::patch('/lideranca/meus-voluntarios/voluntarios/{volunteer}/ministerio/{ministry}/status', [MyMinistryVolunteersController::class, 'updateVolunteerLeaderStatus'])
+        ->name('ministry-lead.my-volunteers.volunteer.leader-status')
+        ->middleware('auth');
     Route::patch('/lideranca/meus-voluntarios/{invitation}', [MyMinistryVolunteersController::class, 'update'])
         ->name('ministry-lead.my-volunteers.update')
         ->middleware('auth');
