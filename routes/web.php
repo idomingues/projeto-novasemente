@@ -418,6 +418,9 @@ Route::middleware('auth')->group(function () {
     Route::patch('/lideranca/voluntarios/{volunteer}/fase', [VolunteerPipelineLeadController::class, 'updateStage'])
         ->name('ministry-lead.volunteers.pipeline.stage')
         ->middleware('permission:volunteers.ministry_operate|volunteers.manage');
+    Route::delete('/lideranca/voluntarios/{volunteer}', [VolunteerPipelineLeadController::class, 'destroyVolunteer'])
+        ->name('ministry-lead.volunteers.pipeline.destroy')
+        ->middleware('permission:volunteers.manage');
 
     // Salas (CRUD) — por andar
     Route::get('/rooms', [\App\Http\Controllers\RoomController::class, 'index'])->name('rooms.index')->middleware('permission:rooms.view|rooms.manage');

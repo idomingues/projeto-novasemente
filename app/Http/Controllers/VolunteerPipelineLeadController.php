@@ -8,6 +8,7 @@ use App\Models\VolunteerChurchPipeline;
 use App\Models\VolunteerLeaderNote;
 use App\Models\VolunteerPipelineStage;
 use App\Models\VolunteerSelfSignupToken;
+use App\Models\User;
 use App\Support\VolunteerChurchRosterBuilder;
 use App\Support\VolunteerPipelineBootstrap;
 use App\Support\VolunteerSignupDetailPresenter;
@@ -15,6 +16,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -137,6 +139,9 @@ class VolunteerPipelineLeadController extends Controller
             'notes' => $notes,
             'updateStageUrl' => route('ministry-lead.volunteers.pipeline.stage', $volunteer),
             'storeNoteUrl' => route('ministry-lead.volunteers.pipeline.notes.store', $volunteer),
+            'destroyVolunteerUrl' => $request->user()?->can('volunteers.manage')
+                ? route('ministry-lead.volunteers.pipeline.destroy', $volunteer)
+                : null,
         ]);
     }
 
@@ -241,5 +246,39 @@ class VolunteerPipelineLeadController extends Controller
             ->update(['stage_id' => (int) $valid['stage_id']]);
 
         return back()->with('success', 'Fase atualizada.');
+    }
+
+    public function destroyVolunteer(Request $request, Volunteer $volunteer): RedirectResponse
+    {
+        abort_unless($request->user()?->can('volunteers.manage'), 403);
+
+        $churchId = $this->churchId($request);
+        abort_unless($churchId, 404);
+        abort_unless($this->volunteerVisibleInChurch($volunteer, $churchId), 404);
+
+        $deleteLinkedUser = $request->boolean('delete_linked_user');
+        $linkedUser = $deleteLinkedUser ? User::query()->find($volunteer->user_id) : null;
+
+        if ($linkedUser) {
+            if ((int) $linkedUser->id === (int) $request->user()?->id) {
+                return redirect()->route('ministry-lead.volunteers.index')->with('error', 'Não pode apagar a sua própria conta desta forma.');
+            }
+            if ($linkedUser->canAccessAdminMenu()) {
+                return redirect()->route('ministry-lead.volunteers.index')->with('error', 'Não é possível apagar este utilizador: tem acesso ao painel de equipa.');
+            }
+        }
+
+        DB::transaction(function () use ($volunteer, $linkedUser) {
+            $volunteer->delete();
+            if ($linkedUser) {
+                $linkedUser->delete();
+            }
+        });
+
+        $message = ($deleteLinkedUser && $linkedUser)
+            ? 'Voluntário e conta de utilizador removidos com sucesso.'
+            : 'Voluntário removido com sucesso.';
+
+        return redirect()->route('ministry-lead.volunteers.index')->with('success', $message);
     }
 }

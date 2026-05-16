@@ -19,8 +19,10 @@ import {
     ChevronUpIcon,
     MagnifyingGlassIcon,
     PlusIcon,
+    TrashIcon,
 } from '@heroicons/react/24/outline';
 import PublicVolunteerSignupShareModal from '@/Components/Volunteers/PublicVolunteerSignupShareModal';
+import { confirmAction } from '@/utils/confirmDialog';
 
 type StageRow = { id: number; name: string; sort_order: number; volunteer_count: number };
 
@@ -84,6 +86,7 @@ type DetailJson = {
     notes: DetailNote[];
     updateStageUrl: string;
     storeNoteUrl: string;
+    destroyVolunteerUrl?: string | null;
 };
 
 interface Props {
@@ -212,6 +215,49 @@ export default function Pipeline({
         } finally {
             setDetailLoading(false);
         }
+    };
+
+    const handlePipelineDestroyVolunteer = async () => {
+        if (!detail?.destroyVolunteerUrl) return;
+        const linked = detail.volunteer.user as { id?: number; email?: string | null } | null | undefined;
+        const ok = await confirmAction({
+            title: 'Excluir voluntário?',
+            text:
+                linked != null && linked.id != null
+                    ? 'O registo de voluntário será removido. Na pergunta seguinte pode escolher se remove também a conta de acesso ao app.'
+                    : 'Esta ação não pode ser desfeita.',
+            confirmButtonText: 'Excluir',
+            danger: true,
+            icon: 'warning',
+        });
+        if (!ok) return;
+
+        let deleteLinkedUser = false;
+        if (linked != null && linked.id != null) {
+            const emailHint = linked.email ?? String(detail.volunteer.email ?? '');
+            const alsoUser = await confirmAction({
+                title: 'Apagar também a conta do utilizador?',
+                text: emailHint
+                    ? `Existe utilizador ligado (${emailHint}). Confirmar remove voluntário e conta. Cancelar remove só o registo de voluntário.`
+                    : 'Existe utilizador ligado. Confirmar remove voluntário e conta. Cancelar remove só o registo de voluntário.',
+                confirmButtonText: 'Sim, apagar utilizador também',
+                cancelButtonText: 'Não, só voluntário',
+                danger: true,
+                icon: 'warning',
+            });
+            deleteLinkedUser = alsoUser;
+        }
+
+        router.delete(detail.destroyVolunteerUrl, {
+            preserveScroll: true,
+            data: { delete_linked_user: deleteLinkedUser },
+            onSuccess: () => {
+                setModalOpen(false);
+                setDetail(null);
+                setSelectedId(null);
+                router.reload({ only: ['volunteers', 'stages'] });
+            },
+        });
     };
 
     const applyFilters: FormEventHandler = (e) => {
@@ -1083,6 +1129,22 @@ export default function Pipeline({
                                         )}
                                     </div>
                                 )}
+                                {detail.destroyVolunteerUrl ? (
+                                    <div className="mt-6 rounded-xl border border-red-200 bg-red-50/50 p-4 dark:border-red-900/50 dark:bg-red-950/20">
+                                        <p className="text-sm font-semibold text-red-900 dark:text-red-200">Remover cadastro</p>
+                                        <p className="mt-1 text-xs text-red-800/90 dark:text-red-300/90">
+                                            Apaga o voluntário do sistema (igual ao ecrã de Voluntários). Se existir conta no app pode optar por apagar também na confirmação seguinte.
+                                        </p>
+                                        <button
+                                            type="button"
+                                            className="mt-3 inline-flex items-center gap-2 rounded-xl border border-red-300 bg-white px-4 py-2.5 text-sm font-semibold text-red-700 shadow-sm transition hover:bg-red-50 dark:border-red-800 dark:bg-zinc-900 dark:text-red-300 dark:hover:bg-red-950/40"
+                                            onClick={() => void handlePipelineDestroyVolunteer()}
+                                        >
+                                            <TrashIcon className="h-5 w-5 shrink-0" aria-hidden />
+                                            Apagar voluntário…
+                                        </button>
+                                    </div>
+                                ) : null}
                             </div>
                         </>
                     ) : (
