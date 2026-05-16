@@ -29,8 +29,8 @@ type VolunteerRow = {
     canResendInvite?: boolean;
     inviteIntroMessage?: string | null;
     inviteIntroSaveUrl?: string | null;
-    /** Remoção pela mesma política da lista de voluntários (líder: só quando o voluntário não está em outros ministérios da igreja fora dos seus). */
-    destroyVolunteerUrl?: string | null;
+    /** Remove o voluntário deste departamento (desvincula do ministério do líder). */
+    removeFromMinistryUrl?: string | null;
     volunteer: {
         id: number;
         name: string | null;
@@ -141,21 +141,19 @@ export default function MyVolunteers() {
             ...invitations.data.filter((item) => item.leaderStatus === 'active'),
             ...activeVolunteers,
         ];
-        const byVolunteer = new Map<number, VolunteerRow & { _ministries: Set<string> }>();
+        const byVolunteerMinistry = new Map<string, VolunteerRow>();
 
         source.forEach((item) => {
-            const volunteerId = item.volunteer.id;
-            const ministry = (item.ministryName ?? '').trim();
-            const current = byVolunteer.get(volunteerId);
+            const ministryId = item.ministryId ?? 0;
+            const key = `${item.volunteer.id}-${ministryId}`;
+            const current = byVolunteerMinistry.get(key);
             if (!current) {
-                byVolunteer.set(volunteerId, {
+                byVolunteerMinistry.set(key, {
                     ...item,
-                    id: `active-${volunteerId}`,
-                    _ministries: new Set(ministry ? [ministry] : []),
+                    id: ministryId > 0 ? `active-${item.volunteer.id}-${ministryId}` : `active-${item.volunteer.id}`,
                 });
                 return;
             }
-            if (ministry) current._ministries.add(ministry);
             if (!current.updateUrl && item.updateUrl) {
                 current.updateUrl = item.updateUrl;
             }
@@ -167,8 +165,8 @@ export default function MyVolunteers() {
                 current.inviteResendEmailUrl = item.inviteResendEmailUrl ?? current.inviteResendEmailUrl;
                 current.canResendInvite = item.canResendInvite ?? current.canResendInvite;
             }
-            if (!current.destroyVolunteerUrl && item.destroyVolunteerUrl) {
-                current.destroyVolunteerUrl = item.destroyVolunteerUrl;
+            if (!current.removeFromMinistryUrl && item.removeFromMinistryUrl) {
+                current.removeFromMinistryUrl = item.removeFromMinistryUrl;
             }
             if (!current.volunteer.linkedUser && item.volunteer.linkedUser) {
                 current.volunteer.linkedUser = item.volunteer.linkedUser;
@@ -178,10 +176,7 @@ export default function MyVolunteers() {
             }
         });
 
-        return Array.from(byVolunteer.values()).map(({ _ministries, ...row }) => ({
-            ...row,
-            ministryName: _ministries.size > 0 ? Array.from(_ministries).join(', ') : row.ministryName,
-        }));
+        return Array.from(byVolunteerMinistry.values());
     }, [invitations.data, activeVolunteers]);
 
     useEffect(() => {
@@ -326,39 +321,23 @@ export default function MyVolunteers() {
         setProfileRow(null);
     };
 
-    const handleDestroyVolunteer = async (sourceRow: VolunteerRow) => {
-        const url = sourceRow.destroyVolunteerUrl ?? '';
+    const handleRemoveFromMinistry = async (sourceRow: VolunteerRow) => {
+        const url = sourceRow.removeFromMinistryUrl ?? '';
         if (!url) return;
+        const dept = (sourceRow.ministryName ?? '').trim() || 'este departamento';
+        const name = (sourceRow.volunteer.name ?? '').trim() || 'este voluntário';
         const ok = await confirmAction({
-            title: 'Excluir voluntário?',
-            text: sourceRow.volunteer.linkedUser
-                ? 'O registo será removido. Na próxima pergunta pode escolher se remove também a conta de acesso ao app.'
-                : 'Esta ação não pode ser desfeita.',
-            confirmButtonText: 'Excluir',
+            title: `Confirmar remoção do departamento «${dept}»?`,
+            text: `Deseja remover ${name} do departamento «${dept}»? Depois de confirmar, deixa de aparecer na sua lista de Meus voluntários. O cadastro geral na igreja não é apagado.`,
+            confirmButtonText: 'Sim, remover',
+            cancelButtonText: 'Cancelar',
             danger: true,
             icon: 'warning',
         });
         if (!ok) return;
 
-        let deleteLinkedUser = false;
-        if (sourceRow.volunteer.linkedUser) {
-            const emailHint = sourceRow.volunteer.linkedUser.email ?? sourceRow.volunteer.email ?? '';
-            const alsoUser = await confirmAction({
-                title: 'Apagar também a conta do utilizador?',
-                text: emailHint
-                    ? `Existe utilizador ligado (${emailHint}). Confirmar remove voluntário e conta. Cancelar remove só o registo de voluntário.`
-                    : 'Existe utilizador ligado. Confirmar remove voluntário e conta. Cancelar remove só o registo de voluntário.',
-                confirmButtonText: 'Sim, apagar utilizador também',
-                cancelButtonText: 'Não, só voluntário',
-                danger: true,
-                icon: 'warning',
-            });
-            deleteLinkedUser = alsoUser;
-        }
-
         router.delete(url, {
             preserveScroll: true,
-            data: { delete_linked_user: deleteLinkedUser },
             onSuccess: () => {
                 closeEdit();
                 closeProfile();
@@ -540,15 +519,15 @@ export default function MyVolunteers() {
                                                 Enviar convite
                                             </SecondaryButton>
                                         ) : null}
-                                        {item.destroyVolunteerUrl ? (
+                                        {item.removeFromMinistryUrl ? (
                                             <button
                                                 type="button"
-                                                title="Remover cadastro deste voluntário"
+                                                title="Remover deste departamento"
                                                 className="inline-flex items-center gap-1.5 rounded-full border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-50 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/40"
-                                                onClick={() => void handleDestroyVolunteer(item)}
+                                                onClick={() => void handleRemoveFromMinistry(item)}
                                             >
                                                 <TrashIcon className="h-4 w-4 shrink-0" aria-hidden />
-                                                Apagar
+                                                Remover
                                             </button>
                                         ) : null}
                                     </div>
@@ -659,16 +638,16 @@ export default function MyVolunteers() {
                                                             Enviar convite
                                                         </button>
                                                     ) : null}
-                                                    {item.destroyVolunteerUrl ? (
+                                                    {item.removeFromMinistryUrl ? (
                                                         <button
                                                             type="button"
                                                             className={rowActionsMenuItemDangerClass}
                                                             onClick={() => {
                                                                 close();
-                                                                void handleDestroyVolunteer(item);
+                                                                void handleRemoveFromMinistry(item);
                                                             }}
                                                         >
-                                                            Apagar voluntário…
+                                                            Remover do departamento…
                                                         </button>
                                                     ) : null}
                                                 </>
@@ -1114,19 +1093,19 @@ export default function MyVolunteers() {
                             </div>
                         </div>
 
-                        {profileRow.destroyVolunteerUrl ? (
+                        {profileRow.removeFromMinistryUrl ? (
                             <div className="rounded-xl border border-red-200 bg-red-50/50 p-4 dark:border-red-900/50 dark:bg-red-950/20">
-                                <p className="text-sm font-semibold text-red-900 dark:text-red-200">Remover cadastro</p>
+                                <p className="text-sm font-semibold text-red-900 dark:text-red-200">Remover do departamento</p>
                                 <p className="mt-1 text-xs text-red-800/90 dark:text-red-300/90">
-                                    Esta ação apaga o registo de voluntário. Se também existir conta no app e confirmar na pergunta seguinte, pode apagar o utilizador. Não aparece esta opção se o voluntário estiver ligado nesta igreja a outros departamentos que não coordena — nesse caso a secretaria deve ajustar.
+                                    Ao confirmar, o voluntário deixa de aparecer na sua lista deste departamento. O cadastro na igreja não é apagado.
                                 </p>
                                 <button
                                     type="button"
                                     className="mt-3 inline-flex items-center gap-2 rounded-xl border border-red-300 bg-white px-4 py-2.5 text-sm font-semibold text-red-700 shadow-sm transition hover:bg-red-50 dark:border-red-800 dark:bg-zinc-900 dark:text-red-300 dark:hover:bg-red-950/40"
-                                    onClick={() => void handleDestroyVolunteer(profileRow)}
+                                    onClick={() => void handleRemoveFromMinistry(profileRow)}
                                 >
                                     <TrashIcon className="h-5 w-5 shrink-0" aria-hidden />
-                                    Apagar voluntário…
+                                    Remover do departamento…
                                 </button>
                             </div>
                         ) : null}
