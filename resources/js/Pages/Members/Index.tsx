@@ -62,6 +62,8 @@ interface Props {
     assignableRoles?: AssignableRole[];
     filters?: {
         search?: string;
+        leaders_only?: string;
+        ministry_id?: string;
     };
     canManageLeaderSignupLink?: boolean;
     leaderSelfSignupUrl?: string | null;
@@ -106,6 +108,32 @@ export default function Index({
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [search, setSearch] = useState(filters?.search ?? '');
+    const [leaderFilter, setLeaderFilter] = useState(filters?.leaders_only ?? '');
+    const [ministryFilter, setMinistryFilter] = useState(filters?.ministry_id ?? '');
+
+    const listFilterParams = (overrides?: { search?: string; leaders_only?: string; ministry_id?: string }) => {
+        const params: Record<string, string> = {};
+        const s = overrides?.search ?? search;
+        const l = overrides?.leaders_only ?? leaderFilter;
+        const m = overrides?.ministry_id ?? ministryFilter;
+        if (s.trim() !== '') {
+            params.search = s.trim();
+        }
+        if (l === '1') {
+            params.leaders_only = '1';
+        }
+        if (m !== '') {
+            params.ministry_id = m;
+        }
+        return params;
+    };
+
+    const applyListFilters = (overrides?: { search?: string; leaders_only?: string; ministry_id?: string }) => {
+        router.get(route('members.index'), listFilterParams(overrides), {
+            preserveState: true,
+            replace: true,
+        });
+    };
     const hydratedErrorKey = useRef<string | null>(null);
     const memberFormModeRef = useRef<{ isEditing: boolean; editingId: number | null }>({
         isEditing: false,
@@ -371,7 +399,7 @@ export default function Index({
     const handleDelete = async (id: number) => {
         const ok = await confirmAction({
             title: 'Excluir usuário?',
-            text: 'Esta ação não pode ser desfeita.',
+            text: 'Esta ação não pode ser desfeita. O acesso ao app será removido e a pessoa deixará de conseguir entrar.',
             confirmButtonText: 'Excluir',
             danger: true,
             icon: 'warning',
@@ -386,16 +414,10 @@ export default function Index({
             return;
         }
         const timeout = setTimeout(() => {
-            router.get(
-                route('members.index'),
-                { search },
-                {
-                    preserveState: true,
-                    replace: true,
-                },
-            );
+            applyListFilters({ search });
         }, 400);
         return () => clearTimeout(timeout);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [search, filters?.search]);
 
     const flash = (page.props as {
@@ -450,31 +472,69 @@ export default function Index({
                 }
                 actions={<AddButton variant="icon" onClick={openCreateModal} title="Novo usuário">Novo usuário</AddButton>}
             >
-                <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="w-full min-w-0 sm:max-w-md">
-                        <TextInput
-                            type="search"
-                            name="search"
-                            value={search}
-                            placeholder="Buscar por nome, e-mail ou telefone"
-                            className="w-full min-w-0"
-                            onChange={(e) => setSearch(e.target.value)}
-                        />
+                <div className="flex w-full flex-col gap-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="w-full min-w-0 sm:max-w-md">
+                            <TextInput
+                                type="search"
+                                name="search"
+                                value={search}
+                                placeholder="Buscar por nome, e-mail ou telefone"
+                                className="w-full min-w-0"
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
+                        </div>
+                        {canManageLeaderSignupLink && leaderLinkForModal ? (
+                            <SecondaryButton
+                                type="button"
+                                onClick={() => {
+                                    setLeaderShareUrl(null);
+                                    setLeaderShareChurch('');
+                                    setLeaderShareOpen(true);
+                                }}
+                                className="shrink-0 justify-center gap-2 sm:w-auto"
+                            >
+                                <UserGroupIcon className="h-5 w-5" />
+                                Link para líderes (WhatsApp)
+                            </SecondaryButton>
+                        ) : null}
                     </div>
-                    {canManageLeaderSignupLink && leaderLinkForModal ? (
-                        <SecondaryButton
-                            type="button"
-                            onClick={() => {
-                                setLeaderShareUrl(null);
-                                setLeaderShareChurch('');
-                                setLeaderShareOpen(true);
-                            }}
-                            className="gap-2 justify-center sm:w-auto shrink-0"
-                        >
-                            <UserGroupIcon className="w-5 h-5" />
-                            Link para líderes (WhatsApp)
-                        </SecondaryButton>
-                    ) : null}
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                        <div className="w-full sm:w-52">
+                            <InputLabel value="Líderes" className="mb-1" />
+                            <SelectInput
+                                value={leaderFilter}
+                                onChange={(e) => {
+                                    const v = e.target.value;
+                                    setLeaderFilter(v);
+                                    applyListFilters({ leaders_only: v });
+                                }}
+                                className="w-full"
+                            >
+                                <option value="">Todos os utilizadores</option>
+                                <option value="1">Apenas líderes de departamento</option>
+                            </SelectInput>
+                        </div>
+                        <div className="w-full sm:flex-1 sm:max-w-xs">
+                            <InputLabel value="Departamento" className="mb-1" />
+                            <SelectInput
+                                value={ministryFilter}
+                                onChange={(e) => {
+                                    const v = e.target.value;
+                                    setMinistryFilter(v);
+                                    applyListFilters({ ministry_id: v });
+                                }}
+                                className="w-full"
+                            >
+                                <option value="">Todos os departamentos</option>
+                                {ministryOptions.map((m) => (
+                                    <option key={m.id} value={String(m.id)}>
+                                        {m.name}
+                                    </option>
+                                ))}
+                            </SelectInput>
+                        </div>
+                    </div>
                 </div>
             </PageHeader>
 

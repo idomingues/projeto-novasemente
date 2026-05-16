@@ -38,6 +38,8 @@ class MemberController extends Controller
     public function index(Request $request)
     {
         $search = (string) $request->input('search', '');
+        $leadersOnly = $request->boolean('leaders_only');
+        $ministryId = $request->filled('ministry_id') ? (int) $request->input('ministry_id') : null;
         $churchId = $this->currentChurchId($request);
 
         $query = User::query()
@@ -51,6 +53,26 @@ class MemberController extends Controller
                     ->orWhere('email', 'like', "%{$search}%")
                     ->orWhere('phone', 'like', "%{$search}%");
             });
+        }
+
+        if ($leadersOnly) {
+            $query->where(function ($q) {
+                $q->where('is_ministry_leader', true)
+                    ->orWhereHas('roles', fn ($r) => $r->where('name', 'lider_ministerio'));
+            });
+        }
+
+        if ($ministryId !== null && $ministryId > 0 && $churchId !== null) {
+            $validMinistry = Ministry::query()
+                ->where('church_id', $churchId)
+                ->whereKey($ministryId)
+                ->exists();
+            if ($validMinistry) {
+                $query->where(function ($q) use ($ministryId) {
+                    $q->whereHas('ministries', fn ($m) => $m->where('ministries.id', $ministryId))
+                        ->orWhereHas('volunteerProfile.ministries', fn ($m) => $m->where('ministries.id', $ministryId));
+                });
+            }
         }
 
         $users = $query->orderByDesc('created_at')->paginate(10)->withQueryString();
@@ -120,6 +142,8 @@ class MemberController extends Controller
             'ministryOptions' => $ministryOptions,
             'filters' => [
                 'search' => $search,
+                'leaders_only' => $leadersOnly ? '1' : '',
+                'ministry_id' => $ministryId !== null && $ministryId > 0 ? (string) $ministryId : '',
             ],
         ]);
     }

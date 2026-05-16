@@ -424,4 +424,52 @@ class MembersTest extends TestCase
         $this->assertSame($hashBefore, $member->fresh()->password);
         $this->assertFalse(Hash::check('Hacker-Password2!', $member->fresh()->password));
     }
+
+    public function test_members_index_filters_leaders_and_ministry(): void
+    {
+        $this->seed();
+
+        $churchId = (int) Church::query()->value('id');
+        $guard = (string) config('auth.defaults.guard');
+        $admin = User::factory()->create(['church_id' => $churchId]);
+        $admin->assignRole(Role::firstOrCreate(['name' => 'admin', 'guard_name' => $guard]));
+
+        $ministryA = Ministry::query()->create([
+            'church_id' => $churchId,
+            'name' => 'Dept Filtro Único A',
+        ]);
+
+        $leader = User::factory()->create([
+            'church_id' => $churchId,
+            'email' => 'lider-filtro@example.com',
+            'is_ministry_leader' => true,
+        ]);
+        $leader->assignRole(Role::firstOrCreate(['name' => 'lider_ministerio', 'guard_name' => $guard]));
+        $leader->ministries()->sync([(int) $ministryA->id]);
+
+        User::factory()->create([
+            'church_id' => $churchId,
+            'email' => 'outro@example.com',
+        ]);
+
+        $session = ['working_church_id' => $churchId];
+
+        $this->actingAs($admin)
+            ->withSession($session)
+            ->get(route('members.index', ['leaders_only' => 1]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Members/Index')
+                ->where('filters.leaders_only', '1')
+                ->has('members.data', 1)
+                ->where('members.data.0.email', 'lider-filtro@example.com'));
+
+        $this->actingAs($admin)
+            ->withSession($session)
+            ->get(route('members.index', ['ministry_id' => $ministryA->id]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('members.data', 1)
+                ->where('members.data.0.email', 'lider-filtro@example.com'));
+    }
 }

@@ -144,7 +144,7 @@ export default function Index({
     const handleDeleteUser = async (id: number) => {
         const ok = await confirmAction({
             title: 'Excluir usuário?',
-            text: 'Esta ação não pode ser desfeita.',
+            text: 'Esta ação não pode ser desfeita. O acesso ao app será removido e a pessoa deixará de conseguir entrar.',
             confirmButtonText: 'Excluir',
             danger: true,
             icon: 'warning',
