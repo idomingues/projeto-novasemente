@@ -7,13 +7,16 @@ use App\Models\Church;
 use App\Models\ChurchSolicitation;
 use App\Models\Ministry;
 use App\Models\ScheduleRole;
+use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerLeaderNote;
 use App\Models\VolunteerMinistryInvitation;
 use App\Models\VolunteerMinistryInvitationStatusHistory;
+use App\Support\VolunteerChurchRosterBuilder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -36,10 +39,12 @@ class MyMinistryVolunteersController extends Controller
             ->whereHas('ministries', fn ($q) => $q->where('ministries.church_id', $churchId)->whereIn('ministries.id', $leaderMinistryIds))
             ->with([
                 'ministries' => fn ($q) => $q->where('ministries.church_id', $churchId)->whereIn('ministries.id', $leaderMinistryIds)->select('ministries.id', 'ministries.name'),
+                'user:id,email',
             ])
             ->orderBy('name')
             ->get([
                 'id',
+                'user_id',
                 'name',
                 'email',
                 'phone',
@@ -89,11 +94,13 @@ class MyMinistryVolunteersController extends Controller
                         'lgpdDataConsent' => $v->lgpd_data_consent,
                         'role' => $v->role,
                         'appAccessOnly' => (bool) ($v->app_access_only ?? false),
+                        'linkedUser' => $v->user ? ['id' => (int) $v->user->id, 'email' => $v->user->email] : null,
                     ],
                     'inviteStatus' => 'active_roster',
                     'leaderStatus' => 'active',
                     'leaderNote' => null,
                     'updateUrl' => null,
+                    'destroyVolunteerUrl' => route('ministry-lead.my-volunteers.volunteer.destroy', $v),
                 ]);
             })
             ->values()
@@ -223,6 +230,100 @@ class MyMinistryVolunteersController extends Controller
         abort_unless((bool) ($u->is_ministry_leader ?? false), 403);
     }
 
+    /**
+     * Utilizadores com permissão de gestão de voluntários ou convites na página do líder: mesma visibilidade do quadro da igreja.
+     * Líder de ministério: só pode apagar quando o voluntário só está ligado nesta igreja a ministérios que o líder coordena,
+     * ou quando ainda só existe fluxo por convite nesses ministérios (sem vínculos noutros departamentos da igreja).
+     */
+    private function mayDeleteVolunteerFromMyMinistryPage(Request $request, Volunteer $volunteer, int $churchId, array $leaderMinistryIds): bool
+    {
+        $user = $request->user();
+        if ($user !== null && ($user->can('volunteers.manage') || $user->hasRole(['admin', 'super_admin']))) {
+            return VolunteerChurchRosterBuilder::volunteersVisibleInChurchQuery($churchId)
+                ->whereKey($volunteer->getKey())
+                ->exists();
+        }
+
+        return $this->ministryLeadCoversVolunteerInChurch($volunteer, $churchId, $leaderMinistryIds);
+    }
+
+    /**
+     * @param  list<int|string>  $leaderMinistryIds
+     */
+    private function ministryLeadCoversVolunteerInChurch(Volunteer $volunteer, int $churchId, array $leaderMinistryIds): bool
+    {
+        $leaderMinistryIds = array_values(array_unique(array_map('intval', $leaderMinistryIds)));
+        if ($leaderMinistryIds === []) {
+            return false;
+        }
+
+        $volunteerMinistryIdsInChurch = $volunteer->ministries()
+            ->where('ministries.church_id', $churchId)
+            ->pluck('ministries.id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($volunteerMinistryIdsInChurch->isEmpty()) {
+            return VolunteerMinistryInvitation::query()
+                ->where('volunteer_id', $volunteer->id)
+                ->where('church_id', $churchId)
+                ->whereIn('ministry_id', $leaderMinistryIds)
+                ->exists();
+        }
+
+        foreach ($volunteerMinistryIdsInChurch as $mid) {
+            if (! in_array($mid, $leaderMinistryIds, true)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public function destroyVolunteer(Request $request, Volunteer $volunteer): RedirectResponse
+    {
+        $this->canUse($request);
+        $churchId = $this->churchId($request);
+        abort_unless($churchId, 404);
+
+        $acting = $request->user();
+        $leaderMinistryIds = $acting?->ministries()->where('church_id', $churchId)->pluck('ministries.id')->values()->all() ?? [];
+
+        $volunteer->loadMissing(['ministries', 'user']);
+        if (! $this->mayDeleteVolunteerFromMyMinistryPage($request, $volunteer, (int) $churchId, $leaderMinistryIds)) {
+            return back()->with(
+                'error',
+                'Não é possível apagar este voluntário a partir daqui: existe vínculo a outro ministério desta igreja que não coordena ou o registo está fora do seu alcance. Peça ajuda à secretaria.'
+            );
+        }
+
+        $deleteLinkedUser = $request->boolean('delete_linked_user');
+        $linkedUser = $deleteLinkedUser ? User::query()->find($volunteer->user_id) : null;
+
+        if ($linkedUser !== null) {
+            if ((int) $linkedUser->id === (int) $acting?->id) {
+                return back()->with('error', 'Não pode apagar a sua própria conta desta forma.');
+            }
+            if ($linkedUser->canAccessAdminMenu()) {
+                return back()->with('error', 'Não é possível apagar este utilizador: tem acesso ao painel de equipa.');
+            }
+        }
+
+        DB::transaction(function () use ($volunteer, $linkedUser) {
+            $volunteer->delete();
+            if ($linkedUser) {
+                $linkedUser->delete();
+            }
+        });
+
+        $message = ($deleteLinkedUser && $linkedUser)
+            ? 'Voluntário e conta de utilizador removidos com sucesso.'
+            : 'Voluntário removido com sucesso.';
+
+        return back()->with('success', $message);
+    }
+
     public function index(Request $request): Response
     {
         $this->canUse($request);
@@ -237,7 +338,32 @@ class MyMinistryVolunteersController extends Controller
             ->where('church_id', $churchId)
             ->whereIn('ministry_id', $ministryIds)
             ->with([
-                'volunteer:id,name,email,user_id,phone,birth_date,has_whatsapp,has_social_networks,attendance_duration,is_official_member,member_record_at_nova_semente,member_record_church,has_previous_ministry_volunteer_experience,previous_ministry_details,professional_area,ministry_involvement,other_ministry_interest,gifts_to_develop,needs_pastoral_guidance,lgpd_data_consent,role,app_access_only',
+                'volunteer' => function ($q): void {
+                    $q->select(
+                        'id',
+                        'name',
+                        'email',
+                        'user_id',
+                        'phone',
+                        'birth_date',
+                        'has_whatsapp',
+                        'has_social_networks',
+                        'attendance_duration',
+                        'is_official_member',
+                        'member_record_at_nova_semente',
+                        'member_record_church',
+                        'has_previous_ministry_volunteer_experience',
+                        'previous_ministry_details',
+                        'professional_area',
+                        'ministry_involvement',
+                        'other_ministry_interest',
+                        'gifts_to_develop',
+                        'needs_pastoral_guidance',
+                        'lgpd_data_consent',
+                        'role',
+                        'app_access_only'
+                    )->with(['user:id,email']);
+                },
                 'ministry:id,name',
                 'church:id,ministry_invitation_intro',
             ])
@@ -261,6 +387,7 @@ class MyMinistryVolunteersController extends Controller
             'inviteIntroSaveUrl' => route('ministry-lead.my-volunteers.invitation.intro', $i),
             'inviteIntroMessage' => $i->intro_message,
             'canResendInvite' => $i->status === 'pending' && ! $i->isExpired(),
+            'destroyVolunteerUrl' => route('ministry-lead.my-volunteers.volunteer.destroy', $i->volunteer_id),
             'volunteer' => [
                 'id' => $i->volunteer_id,
                 'name' => $i->volunteer?->name,
@@ -283,6 +410,7 @@ class MyMinistryVolunteersController extends Controller
                 'lgpdDataConsent' => $i->volunteer?->lgpd_data_consent,
                 'role' => $i->volunteer?->role,
                 'appAccessOnly' => (bool) ($i->volunteer?->app_access_only ?? false),
+                'linkedUser' => $i->volunteer?->user ? ['id' => (int) $i->volunteer->user->id, 'email' => $i->volunteer->user->email] : null,
             ],
             // status do convite (resposta do voluntário ao link público)
             'inviteStatus' => $i->status,

@@ -12,9 +12,10 @@ import SelectInput from '@/Components/SelectInput';
 import Textarea from '@/Components/Textarea';
 import TextInput from '@/Components/TextInput';
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
-import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
-import { Head, useForm, usePage } from '@inertiajs/react';
+import { EllipsisVerticalIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState, type FormEventHandler } from 'react';
+import { confirmAction } from '@/utils/confirmDialog';
 
 type VolunteerRow = {
     id: number | string;
@@ -28,6 +29,8 @@ type VolunteerRow = {
     canResendInvite?: boolean;
     inviteIntroMessage?: string | null;
     inviteIntroSaveUrl?: string | null;
+    /** Remoção pela mesma política da lista de voluntários (líder: só quando o voluntário não está em outros ministérios da igreja fora dos seus). */
+    destroyVolunteerUrl?: string | null;
     volunteer: {
         id: number;
         name: string | null;
@@ -50,6 +53,7 @@ type VolunteerRow = {
         lgpdDataConsent: boolean | null;
         role: string | null;
         appAccessOnly: boolean | null;
+        linkedUser?: { id: number; email: string | null } | null;
     };
     inviteStatus: string;
     leaderStatus: string | null;
@@ -110,6 +114,7 @@ export default function MyVolunteers() {
     const [historyLoading, setHistoryLoading] = useState(false);
     const [requestModalOpen, setRequestModalOpen] = useState(false);
     const [inviteHelpRow, setInviteHelpRow] = useState<VolunteerRow | null>(null);
+    const [inviteModalCopyFeedback, setInviteModalCopyFeedback] = useState<string | null>(null);
 
     const form = useForm({
         leader_status: '' as '' | 'denied' | 'training' | 'active',
@@ -122,7 +127,6 @@ export default function MyVolunteers() {
         quantity: 1,
     });
     const resendInviteForm = useForm({});
-    const introInviteForm = useForm({ intro_message: '' });
 
     const newRows = useMemo(
         () => invitations.data.filter((item) => item.leaderStatus === null || item.leaderStatus === ''),
@@ -163,6 +167,12 @@ export default function MyVolunteers() {
                 current.inviteResendEmailUrl = item.inviteResendEmailUrl ?? current.inviteResendEmailUrl;
                 current.canResendInvite = item.canResendInvite ?? current.canResendInvite;
             }
+            if (!current.destroyVolunteerUrl && item.destroyVolunteerUrl) {
+                current.destroyVolunteerUrl = item.destroyVolunteerUrl;
+            }
+            if (!current.volunteer.linkedUser && item.volunteer.linkedUser) {
+                current.volunteer.linkedUser = item.volunteer.linkedUser;
+            }
             if (current.leaderStatus !== 'active' && item.leaderStatus === 'active') {
                 current.leaderStatus = 'active';
             }
@@ -193,16 +203,18 @@ export default function MyVolunteers() {
     const builtinMinistryInviteIntro = (ministryName: string) =>
         `Você foi convidado(a) para servir no departamento ${ministryName}. Para continuar, por favor confirme a sua resposta.`;
 
+    /** Parágrafo central igual ao servidor: convite.intro_message ou texto da igreja ou texto padrão. */
     const inviteIntroResolvedPreview = useMemo(() => {
         const ministry = (inviteHelpRow?.ministryName ?? 'Departamento').trim() || 'Departamento';
-        const draft = (introInviteForm.data.intro_message ?? '').trim();
-        if (draft !== '') return draft;
+        const saved = (inviteHelpRow?.inviteIntroMessage ?? '').trim();
+        if (saved !== '') return saved;
         const church = (churchMinistryInvitationIntro ?? '').trim();
         if (church !== '') return church;
         return builtinMinistryInviteIntro(ministry);
-    }, [inviteHelpRow?.ministryName, introInviteForm.data.intro_message, churchMinistryInvitationIntro]);
+    }, [inviteHelpRow?.ministryName, inviteHelpRow?.inviteIntroMessage, churchMinistryInvitationIntro]);
 
-    const whatsAppInviteMessage = useMemo(() => {
+    /** Texto plano igual ao enviado no e-mail (BuildVolunteerMinistryInvitePlainCopy) e ao WhatsApp. */
+    const invitePlainFullMessage = useMemo(() => {
         const row = inviteHelpRow;
         const url = row?.invitePublicUrl;
         if (!row || !url) return '';
@@ -220,15 +232,6 @@ export default function MyVolunteers() {
         return msg;
     }, [inviteHelpRow, inviteIntroResolvedPreview]);
 
-    useEffect(() => {
-        if (!inviteHelpRow?.inviteIntroSaveUrl) {
-            return;
-        }
-        introInviteForm.setData('intro_message', inviteHelpRow.inviteIntroMessage ?? '');
-        introInviteForm.clearErrors();
-        // eslint-disable-next-line react-hooks/exhaustive-deps -- só ao abrir o modal para outro convite
-    }, [inviteHelpRow?.id]);
-
     const selectedMinistry = useMemo(
         () => requestMinistries.find((m) => m.id === Number(requestForm.data.ministry_id)),
         [requestMinistries, requestForm.data.ministry_id],
@@ -240,22 +243,12 @@ export default function MyVolunteers() {
 
     const closeInviteHelp = () => {
         setInviteHelpRow(null);
-        introInviteForm.reset();
-        introInviteForm.clearErrors();
+        setInviteModalCopyFeedback(null);
     };
 
-    const submitSaveInviteIntro = () => {
-        const url = inviteHelpRow?.inviteIntroSaveUrl;
-        if (!url) return;
-        const trimmed = introInviteForm.data.intro_message.trim();
-        introInviteForm.patch(url, {
-            preserveScroll: true,
-            onSuccess: () => {
-                setInviteHelpRow((prev) =>
-                    prev ? { ...prev, inviteIntroMessage: trimmed === '' ? null : introInviteForm.data.intro_message } : null,
-                );
-            },
-        });
+    const flashInviteModalCopyNotice = (message: string) => {
+        setInviteModalCopyFeedback(message);
+        window.setTimeout(() => setInviteModalCopyFeedback(null), 2800);
     };
 
     const copyInvitePublicLink = async () => {
@@ -263,17 +256,19 @@ export default function MyVolunteers() {
         if (!url) return;
         try {
             await navigator.clipboard.writeText(url);
+            flashInviteModalCopyNotice('Link do convite copiado.');
         } catch {
             window.prompt('Copie o link do convite:', url);
         }
     };
 
-    const copyWhatsAppInviteMessage = async () => {
-        if (!whatsAppInviteMessage) return;
+    const copyInvitePlainFullMessage = async () => {
+        if (!invitePlainFullMessage) return;
         try {
-            await navigator.clipboard.writeText(whatsAppInviteMessage);
+            await navigator.clipboard.writeText(invitePlainFullMessage);
+            flashInviteModalCopyNotice('Texto completo copiado (igual ao e-mail e ao WhatsApp).');
         } catch {
-            window.prompt('Copie a mensagem para o WhatsApp:', whatsAppInviteMessage);
+            window.prompt('Copie a mensagem (e-mail / WhatsApp):', invitePlainFullMessage);
         }
     };
 
@@ -288,8 +283,8 @@ export default function MyVolunteers() {
 
     const openWhatsAppWithInvite = () => {
         const phone = whatsAppSendPhoneDigits(inviteHelpRow?.volunteer.phone);
-        if (!phone || !whatsAppInviteMessage) return;
-        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(whatsAppInviteMessage)}`, '_blank', 'noopener,noreferrer');
+        if (!phone || !invitePlainFullMessage) return;
+        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(invitePlainFullMessage)}`, '_blank', 'noopener,noreferrer');
     };
 
     const submitResendInviteEmail = () => {
@@ -329,6 +324,47 @@ export default function MyVolunteers() {
 
     const closeProfile = () => {
         setProfileRow(null);
+    };
+
+    const handleDestroyVolunteer = async (sourceRow: VolunteerRow) => {
+        const url = sourceRow.destroyVolunteerUrl ?? '';
+        if (!url) return;
+        const ok = await confirmAction({
+            title: 'Excluir voluntário?',
+            text: sourceRow.volunteer.linkedUser
+                ? 'O registo será removido. Na próxima pergunta pode escolher se remove também a conta de acesso ao app.'
+                : 'Esta ação não pode ser desfeita.',
+            confirmButtonText: 'Excluir',
+            danger: true,
+            icon: 'warning',
+        });
+        if (!ok) return;
+
+        let deleteLinkedUser = false;
+        if (sourceRow.volunteer.linkedUser) {
+            const emailHint = sourceRow.volunteer.linkedUser.email ?? sourceRow.volunteer.email ?? '';
+            const alsoUser = await confirmAction({
+                title: 'Apagar também a conta do utilizador?',
+                text: emailHint
+                    ? `Existe utilizador ligado (${emailHint}). Confirmar remove voluntário e conta. Cancelar remove só o registo de voluntário.`
+                    : 'Existe utilizador ligado. Confirmar remove voluntário e conta. Cancelar remove só o registo de voluntário.',
+                confirmButtonText: 'Sim, apagar utilizador também',
+                cancelButtonText: 'Não, só voluntário',
+                danger: true,
+                icon: 'warning',
+            });
+            deleteLinkedUser = alsoUser;
+        }
+
+        router.delete(url, {
+            preserveScroll: true,
+            data: { delete_linked_user: deleteLinkedUser },
+            onSuccess: () => {
+                closeEdit();
+                closeProfile();
+                setInviteHelpRow(null);
+            },
+        });
     };
 
     const openAttachedVolunteerProfile = (req: RequestRow) => {
@@ -463,6 +499,9 @@ export default function MyVolunteers() {
     const rowActionsMenuItemClass =
         'flex w-full items-center px-4 py-2.5 text-left text-sm font-medium text-zinc-800 transition hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-zinc-800';
 
+    const rowActionsMenuItemDangerClass =
+        'flex w-full items-center px-4 py-2.5 text-left text-sm font-medium text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40';
+
     const renderVolunteerTable = (rows: VolunteerRow[], emptyText: string) => (
         <>
             <div className="hidden overflow-x-auto md:block">
@@ -500,6 +539,17 @@ export default function MyVolunteers() {
                                             <SecondaryButton type="button" onClick={() => setInviteHelpRow(item)}>
                                                 Enviar convite
                                             </SecondaryButton>
+                                        ) : null}
+                                        {item.destroyVolunteerUrl ? (
+                                            <button
+                                                type="button"
+                                                title="Remover cadastro deste voluntário"
+                                                className="inline-flex items-center gap-1.5 rounded-full border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-50 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/40"
+                                                onClick={() => void handleDestroyVolunteer(item)}
+                                            >
+                                                <TrashIcon className="h-4 w-4 shrink-0" aria-hidden />
+                                                Apagar
+                                            </button>
                                         ) : null}
                                     </div>
                                 </td>
@@ -607,6 +657,18 @@ export default function MyVolunteers() {
                                                             }}
                                                         >
                                                             Enviar convite
+                                                        </button>
+                                                    ) : null}
+                                                    {item.destroyVolunteerUrl ? (
+                                                        <button
+                                                            type="button"
+                                                            className={rowActionsMenuItemDangerClass}
+                                                            onClick={() => {
+                                                                close();
+                                                                void handleDestroyVolunteer(item);
+                                                            }}
+                                                        >
+                                                            Apagar voluntário…
                                                         </button>
                                                     ) : null}
                                                 </>
@@ -890,71 +952,41 @@ export default function MyVolunteers() {
                                     {inviteHelpRow.volunteer.name ?? 'Voluntário'} — {inviteHelpRow.ministryName ?? 'Departamento'}
                                 </p>
                                 <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
-                                    A mensagem pronta abaixo é a mesma enviada por e-mail. Use-a no WhatsApp ou reenvie o e-mail.
+                                    O texto na caixa verde é <strong className="font-semibold text-zinc-800 dark:text-zinc-100">exatamente</strong> o mesmo do e‑mail enviado e do WhatsApp — copie aí ou utilize «Reenviar e-mail». O parágrafo central segue o texto da igreja, o convite já gravado ou o padrão do sistema; alteração global pela secretaria em{' '}
+                                    <span className="font-medium">Igrejas</span> (super admin).
                                 </p>
                             </div>
                             <SecondaryButton type="button" onClick={closeInviteHelp}>
                                 Fechar
                             </SecondaryButton>
                         </div>
-                        {inviteHelpRow.inviteIntroSaveUrl ? (
-                            <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-900/50">
-                                <InputLabel value="Mensagem do convite (e-mail e página pública)" />
-                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                    Aparece depois de «Olá, nome». Deixe em branco para usar o texto da igreja (super admin em Igrejas) ou o texto padrão do sistema.
-                                </p>
-                                <Textarea
-                                    value={introInviteForm.data.intro_message}
-                                    onChange={(e) => introInviteForm.setData('intro_message', e.target.value)}
-                                    rows={5}
-                                    className="mt-2 w-full"
-                                    placeholder="Ex.: Estamos felizes em tê-lo(a) connosco…"
-                                />
-                                <InputError message={introInviteForm.errors.intro_message} className="mt-1" />
-                                <div className="mt-3 rounded-lg border border-dashed border-zinc-300 bg-white p-3 text-xs text-zinc-600 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-300">
-                                    <span className="font-semibold text-zinc-700 dark:text-zinc-200">Pré-visualização:</span>
-                                    <p className="mt-1 whitespace-pre-wrap">{inviteIntroResolvedPreview}</p>
-                                </div>
-                                <SecondaryButton
-                                    type="button"
-                                    className="mt-3"
-                                    onClick={submitSaveInviteIntro}
-                                    disabled={introInviteForm.processing || resendInviteForm.processing}
-                                >
-                                    Guardar texto
-                                </SecondaryButton>
-                            </div>
-                        ) : null}
-                        {whatsAppInviteMessage ? (
+                        {invitePlainFullMessage ? (
                             <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/30">
-                                <InputLabel value="Mensagem pronta (WhatsApp ou outro app)" />
+                                <InputLabel value="Texto completo (e-mail = WhatsApp)" />
                                 <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
-                                    Inclui saudação, texto do convite e link. Atualiza quando altera a mensagem acima (guarde se quiser gravar no convite).
+                                    Inclui saudação, parágrafo do convite, link público, link de registo (quando há) e lembrete do e-mail. Copie aqui ou reenvie o e-mail oficial.
                                 </p>
-                                <div className="mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap rounded-lg border border-emerald-100 bg-white px-3 py-2 text-sm text-zinc-800 dark:border-emerald-900/40 dark:bg-zinc-950 dark:text-zinc-100">
-                                    {whatsAppInviteMessage}
+                                <div className="mt-2 max-h-[min(22rem,50vh)] overflow-y-auto whitespace-pre-wrap rounded-lg border border-emerald-100 bg-white px-3 py-2 text-sm text-zinc-800 dark:border-emerald-900/40 dark:bg-zinc-950 dark:text-zinc-100">
+                                    {invitePlainFullMessage}
                                 </div>
                                 <div className="mt-3 flex flex-wrap gap-2">
-                                    <PrimaryButton type="button" onClick={() => void copyWhatsAppInviteMessage()}>
-                                        Copiar texto e link
+                                    <PrimaryButton type="button" onClick={() => void copyInvitePlainFullMessage()}>
+                                        Copiar texto completo e links
                                     </PrimaryButton>
+                                    {inviteHelpRow.invitePublicUrl ? (
+                                        <SecondaryButton type="button" onClick={() => void copyInvitePublicLink()}>
+                                            Copiar só link público
+                                        </SecondaryButton>
+                                    ) : null}
                                     {whatsAppSendPhoneDigits(inviteHelpRow.volunteer.phone) ? (
                                         <SecondaryButton type="button" onClick={openWhatsAppWithInvite}>
                                             Abrir no WhatsApp
                                         </SecondaryButton>
                                     ) : null}
                                 </div>
-                            </div>
-                        ) : null}
-                        {inviteHelpRow.invitePublicUrl ? (
-                            <div>
-                                <InputLabel value="Link público do convite" />
-                                <div className="mt-1 break-all rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100">
-                                    {inviteHelpRow.invitePublicUrl}
-                                </div>
-                                <SecondaryButton type="button" className="mt-2" onClick={() => void copyInvitePublicLink()}>
-                                    Copiar link
-                                </SecondaryButton>
+                                {inviteModalCopyFeedback ? (
+                                    <p className="mt-2 text-sm font-medium text-emerald-700 dark:text-emerald-400">{inviteModalCopyFeedback}</p>
+                                ) : null}
                             </div>
                         ) : null}
                         <div className="flex flex-wrap justify-end gap-2 border-t border-zinc-200 pt-4 dark:border-zinc-700">
@@ -1081,6 +1113,23 @@ export default function MyVolunteers() {
                                 </div>
                             </div>
                         </div>
+
+                        {profileRow.destroyVolunteerUrl ? (
+                            <div className="rounded-xl border border-red-200 bg-red-50/50 p-4 dark:border-red-900/50 dark:bg-red-950/20">
+                                <p className="text-sm font-semibold text-red-900 dark:text-red-200">Remover cadastro</p>
+                                <p className="mt-1 text-xs text-red-800/90 dark:text-red-300/90">
+                                    Esta ação apaga o registo de voluntário. Se também existir conta no app e confirmar na pergunta seguinte, pode apagar o utilizador. Não aparece esta opção se o voluntário estiver ligado nesta igreja a outros departamentos que não coordena — nesse caso a secretaria deve ajustar.
+                                </p>
+                                <button
+                                    type="button"
+                                    className="mt-3 inline-flex items-center gap-2 rounded-xl border border-red-300 bg-white px-4 py-2.5 text-sm font-semibold text-red-700 shadow-sm transition hover:bg-red-50 dark:border-red-800 dark:bg-zinc-900 dark:text-red-300 dark:hover:bg-red-950/40"
+                                    onClick={() => void handleDestroyVolunteer(profileRow)}
+                                >
+                                    <TrashIcon className="h-5 w-5 shrink-0" aria-hidden />
+                                    Apagar voluntário…
+                                </button>
+                            </div>
+                        ) : null}
                     </div>
                 ) : null}
             </Modal>

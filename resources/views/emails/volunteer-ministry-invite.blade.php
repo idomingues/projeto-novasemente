@@ -44,7 +44,7 @@
                                     Convite para servir em <span style="color:#065f46;">{{ $ministryName }}</span>
                                 </div>
                                 <div style="font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;font-size:13px;color:#52525b;line-height:1.5;margin-top:10px;">
-                                    A mensagem abaixo é a mesma que pode copiar para o WhatsApp ou outras apps — também serve como texto principal deste e-mail.
+                                    O texto abaixo inclui saudação, convite e links — é o mesmo texto que aparece ao copiar para o WhatsApp ou outras mensagens no painel «Meus voluntários».
                                 </div>
                                 <div style="margin-top:14px;border:1px solid #e4e4e7;border-radius:14px;background:#fafafa;padding:14px 16px;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;font-size:14px;color:#18181b;line-height:1.65;white-space:pre-wrap;">{{ $plainCopySection }}</div>
                             </div>

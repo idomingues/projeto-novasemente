@@ -32,12 +32,15 @@ class VolunteerMinistryInvitationMail extends Mailable
 
     public function content(): Content
     {
+        $plain = BuildVolunteerMinistryInvitePlainCopy::for($this->invitation);
+
         return new Content(
             view: 'emails.volunteer-ministry-invite',
+            text: 'emails.volunteer-ministry-invite-text',
             with: [
                 'inv' => $this->invitation,
                 'actionUrl' => $this->actionUrl,
-                'plainCopySection' => BuildVolunteerMinistryInvitePlainCopy::for($this->invitation),
+                'plainCopySection' => $plain,
             ],
         );
     }
