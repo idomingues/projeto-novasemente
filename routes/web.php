@@ -418,6 +418,9 @@ Route::middleware('auth')->group(function () {
     Route::patch('/lideranca/voluntarios/{volunteer}/fase', [VolunteerPipelineLeadController::class, 'updateStage'])
         ->name('ministry-lead.volunteers.pipeline.stage')
         ->middleware('permission:volunteers.ministry_operate|volunteers.manage');
+    Route::patch('/lideranca/voluntarios/{volunteer}/departamentos', [VolunteerPipelineLeadController::class, 'syncMinistries'])
+        ->name('ministry-lead.volunteers.pipeline.ministries.sync')
+        ->middleware('permission:volunteers.ministry_operate|volunteers.manage');
     Route::delete('/lideranca/voluntarios/{volunteer}', [VolunteerPipelineLeadController::class, 'destroyVolunteer'])
         ->name('ministry-lead.volunteers.pipeline.destroy')
         ->middleware('permission:volunteers.manage');

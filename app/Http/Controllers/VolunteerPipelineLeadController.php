@@ -2,8 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Volunteers\Actions\SyncVolunteerMinistryAttachments;
 use App\Models\Church;
+use App\Models\Ministry;
 use App\Models\Volunteer;
+use App\Models\VolunteerClearanceCheck;
+use App\Models\VolunteerMinistryInvitation;
 use App\Models\VolunteerChurchPipeline;
 use App\Models\VolunteerLeaderNote;
 use App\Models\VolunteerPipelineStage;
@@ -52,6 +56,27 @@ class VolunteerPipelineLeadController extends Controller
             ->exists();
     }
 
+    /** @return list<int> */
+    private function leaderMinistryIdsForChurch(Request $request, int $churchId): array
+    {
+        $u = $request->user();
+        if ($u?->can('volunteers.manage')) {
+            return Ministry::query()
+                ->where('church_id', $churchId)
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->values()
+                ->all();
+        }
+
+        return $u?->ministries()
+            ->where('church_id', $churchId)
+            ->pluck('ministries.id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all() ?? [];
+    }
+
     public function index(Request $request): Response
     {
         $this->canUseRead($request);
@@ -74,11 +99,22 @@ class VolunteerPipelineLeadController extends Controller
             }
         }
 
+        $encaminharMinistryIds = null;
+        if ($user && ! $user->can('volunteers.manage')) {
+            $encaminharMinistryIds = $user->ministries()
+                ->where('church_id', $churchId)
+                ->pluck('ministries.id')
+                ->map(fn ($id) => (int) $id)
+                ->values()
+                ->all();
+        }
+
         return Inertia::render('MinistryLeadVolunteers/Pipeline', [
             'stages' => $stages,
             'volunteers' => $volunteers,
             'filters' => $filters,
             'ministries' => $ministries,
+            'encaminharMinistryIds' => $encaminharMinistryIds,
             'storeStageUrl' => route('ministry-lead.volunteers.pipeline.stages.store'),
             'canVolunteerManage' => $user && $user->can('volunteers.manage'),
             'canPipelineMutate' => $user && ($user->can('volunteers.manage') || $user->can('volunteers.ministry_operate')),
@@ -129,6 +165,29 @@ class VolunteerPipelineLeadController extends Controller
             ->values()
             ->all();
 
+        $attachedIds = $volunteer->ministries
+            ->filter(fn (Ministry $m) => (int) $m->church_id === (int) $churchId)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+        $attachedSet = array_flip($attachedIds);
+        $leaderIds = $this->leaderMinistryIdsForChurch($request, $churchId);
+        $leaderSet = array_flip($leaderIds);
+        $canMutate = $request->user()?->can('volunteers.ministry_operate') || $request->user()?->can('volunteers.manage');
+
+        $churchMinistries = Ministry::query()
+            ->where('church_id', $churchId)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $ministryOptions = $churchMinistries->map(fn (Ministry $m) => [
+            'id' => $m->id,
+            'name' => $m->name,
+            'attached' => isset($attachedSet[(int) $m->id]),
+            'canEdit' => isset($leaderSet[(int) $m->id]),
+        ])->values()->all();
+
         return response()->json([
             'volunteer' => VolunteerSignupDetailPresenter::forVolunteer($volunteer),
             'pipeline' => [
@@ -137,8 +196,12 @@ class VolunteerPipelineLeadController extends Controller
             ],
             'stages' => $stages,
             'notes' => $notes,
+            'ministryOptions' => $ministryOptions,
             'updateStageUrl' => route('ministry-lead.volunteers.pipeline.stage', $volunteer),
             'storeNoteUrl' => route('ministry-lead.volunteers.pipeline.notes.store', $volunteer),
+            'syncMinistriesUrl' => $canMutate
+                ? route('ministry-lead.volunteers.pipeline.ministries.sync', $volunteer)
+                : null,
             'destroyVolunteerUrl' => $request->user()?->can('volunteers.manage')
                 ? route('ministry-lead.volunteers.pipeline.destroy', $volunteer)
                 : null,
@@ -225,6 +288,60 @@ class VolunteerPipelineLeadController extends Controller
         ]);
 
         return back()->with('success', 'Anotação registada.');
+    }
+
+    public function syncMinistries(Request $request, Volunteer $volunteer): RedirectResponse
+    {
+        $this->canUseMutate($request);
+        $churchId = $this->churchId($request);
+        abort_unless($churchId, 404);
+        abort_unless($this->volunteerVisibleInChurch($volunteer, $churchId), 404);
+
+        $valid = $request->validate([
+            'ministry_ids' => ['present', 'array'],
+            'ministry_ids.*' => ['integer', Rule::exists('ministries', 'id')->where('church_id', $churchId)],
+        ]);
+
+        $requestedIds = collect($valid['ministry_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        $leaderIds = $this->leaderMinistryIdsForChurch($request, $churchId);
+        $currentIds = $volunteer->ministries()
+            ->where('church_id', $churchId)
+            ->pluck('ministries.id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+
+        $untouchable = array_values(array_diff($currentIds, $leaderIds));
+        $leaderChoice = array_values(array_intersect($requestedIds, $leaderIds));
+        $finalIds = array_values(array_unique(array_merge($untouchable, $leaderChoice)));
+        $removed = array_values(array_diff($currentIds, $finalIds));
+
+        DB::transaction(function () use ($volunteer, $churchId, $finalIds, $removed) {
+            app(SyncVolunteerMinistryAttachments::class)($volunteer, $finalIds);
+
+            foreach ($removed as $ministryId) {
+                VolunteerMinistryInvitation::query()
+                    ->where('volunteer_id', $volunteer->id)
+                    ->where('church_id', $churchId)
+                    ->where('ministry_id', $ministryId)
+                    ->delete();
+
+                if (Schema::hasTable('volunteer_clearance_checks')) {
+                    VolunteerClearanceCheck::query()
+                        ->where('volunteer_id', $volunteer->id)
+                        ->where('ministry_id', $ministryId)
+                        ->delete();
+                }
+            }
+        });
+
+        return back()->with('success', 'Departamentos atualizados.');
     }
 
     public function updateStage(Request $request, Volunteer $volunteer): RedirectResponse

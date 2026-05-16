@@ -11,6 +11,7 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import SelectInput from '@/Components/SelectInput';
 import InputError from '@/Components/InputError';
+import Checkbox from '@/Components/Checkbox';
 import { Head, Link, router, useForm, usePage, useRemember } from '@inertiajs/react';
 import { FormEventHandler, useEffect, useMemo, useState } from 'react';
 import {
@@ -79,13 +80,17 @@ type DetailVolunteer = Record<string, unknown> & { id: number; name: string | nu
 
 type DetailNote = { id: number; body: string; authorName: string; createdAt: string };
 
+type MinistryOption = { id: number; name: string; attached: boolean; canEdit: boolean };
+
 type DetailJson = {
     volunteer: DetailVolunteer;
     pipeline: { stageId?: number; stageName?: string };
     stages: { id: number; name: string; sort_order: number }[];
     notes: DetailNote[];
+    ministryOptions?: MinistryOption[];
     updateStageUrl: string;
     storeNoteUrl: string;
+    syncMinistriesUrl?: string | null;
     destroyVolunteerUrl?: string | null;
 };
 
@@ -94,6 +99,7 @@ interface Props {
     volunteers: Paginated<VolunteerListRow>;
     filters: BoardFilters;
     ministries: { id: number; name: string }[];
+    encaminharMinistryIds: number[] | null;
     storeStageUrl: string;
     canVolunteerManage: boolean;
     canPipelineMutate: boolean;
@@ -137,6 +143,7 @@ export default function Pipeline({
     volunteers,
     filters,
     ministries,
+    encaminharMinistryIds = null,
     storeStageUrl,
     canVolunteerManage,
     canPipelineMutate,
@@ -165,11 +172,11 @@ export default function Pipeline({
     const [detailLoading, setDetailLoading] = useState(false);
     const [detail, setDetail] = useState<DetailJson | null>(null);
     const [selectedId, setSelectedId] = useState<number | null>(null);
-    const [detailTab, setDetailTab] = useState<'ficha' | 'notas'>('ficha');
+    const [detailTab, setDetailTab] = useState<'ficha' | 'notas' | 'departamentos'>('ficha');
     const [publicInviteOpen, setPublicInviteOpen] = useState(false);
     const [inviteOpen, setInviteOpen] = useRemember(false, 'pipeline.inviteOpen');
     const [inviteVolunteer, setInviteVolunteer] = useRemember<VolunteerListRow | null>(null, 'pipeline.inviteVolunteer');
-    const [inviteMinistryId, setInviteMinistryId] = useRemember<string>('', 'pipeline.inviteMinistryId');
+    const [inviteMinistryIds, setInviteMinistryIds] = useRemember<number[]>([], 'pipeline.inviteMinistryIds');
     const [inviteChannels, setInviteChannels] = useRemember<{ inbox: boolean }>(
         { inbox: true },
         'pipeline.inviteChannels',
@@ -177,6 +184,15 @@ export default function Pipeline({
 
     const noteForm = useForm({ body: '' });
     const stageMoveForm = useForm({ stage_id: '' as string | number });
+    const ministriesForm = useForm<{ ministry_ids: number[] }>({ ministry_ids: [] });
+
+    const encaminharMinistries = useMemo(() => {
+        if (encaminharMinistryIds == null) {
+            return ministries;
+        }
+        const allowed = new Set(encaminharMinistryIds);
+        return ministries.filter((m) => allowed.has(m.id));
+    }, [ministries, encaminharMinistryIds]);
 
     const openInvite = (v: VolunteerListRow) => {
         setInviteVolunteer(v);
@@ -193,7 +209,7 @@ export default function Pipeline({
         { value: 'more_than_3_years', label: '+ 3 anos' },
     ];
 
-    const openVolunteer = async (id: number, tab: 'ficha' | 'notas' = 'ficha') => {
+    const openVolunteer = async (id: number, tab: 'ficha' | 'notas' | 'departamentos' = 'ficha') => {
         setSelectedId(id);
         setModalOpen(true);
         setDetailTab(tab);
@@ -210,6 +226,8 @@ export default function Pipeline({
             setDetail(j);
             const sid = j.pipeline?.stageId;
             stageMoveForm.setData('stage_id', sid != null ? String(sid) : '');
+            const attachedIds = (j.ministryOptions ?? []).filter((o) => o.attached).map((o) => o.id);
+            ministriesForm.setData('ministry_ids', attachedIds);
         } catch {
             setDetail(null);
         } finally {
@@ -366,18 +384,30 @@ export default function Pipeline({
         });
     };
 
+    const toggleInviteMinistry = (ministryId: number, checked: boolean) => {
+        setInviteMinistryIds((prev) => {
+            const set = new Set(prev);
+            if (checked) {
+                set.add(ministryId);
+            } else {
+                set.delete(ministryId);
+            }
+            return Array.from(set);
+        });
+    };
+
     const postInvite = (channels: string[], closeOnSuccess: boolean) => {
-        if (!inviteVolunteer || !inviteMinistryId) return;
+        if (!inviteVolunteer || inviteMinistryIds.length === 0) return;
         router.post(
             route('ministry-lead.volunteers.ministry-invite.store', inviteVolunteer.id),
-            { ministry_id: Number(inviteMinistryId), channels },
+            { ministry_ids: inviteMinistryIds, channels },
             {
                 preserveScroll: true,
-                onSuccess: (p) => {
+                onSuccess: () => {
                     if (closeOnSuccess) {
                         setInviteOpen(false);
                         setInviteVolunteer(null);
-                        setInviteMinistryId('');
+                        setInviteMinistryIds([]);
                         setInviteChannels({ inbox: true });
                     }
                 },
@@ -387,11 +417,40 @@ export default function Pipeline({
 
     const submitInvite: FormEventHandler = (e) => {
         e.preventDefault();
-        if (!inviteVolunteer || !inviteMinistryId) return;
+        if (!inviteVolunteer || inviteMinistryIds.length === 0) return;
         // Email é o canal principal (sempre). Notificação é opcional.
         const channels = ['email', ...(inviteChannels.inbox ? ['inbox'] : [])];
         if (channels.length === 0) return;
         postInvite(channels, true);
+    };
+
+    const toggleVolunteerMinistry = (ministryId: number, checked: boolean, canEdit: boolean) => {
+        if (!canEdit) return;
+        const set = new Set(ministriesForm.data.ministry_ids);
+        if (checked) {
+            set.add(ministryId);
+        } else {
+            set.delete(ministryId);
+        }
+        ministriesForm.setData('ministry_ids', Array.from(set));
+    };
+
+    const submitMinistries: FormEventHandler = (e) => {
+        e.preventDefault();
+        if (!detail?.syncMinistriesUrl) return;
+        ministriesForm.patch(detail.syncMinistriesUrl, {
+            preserveScroll: true,
+            onSuccess: () => {
+                if (selectedId) void openVolunteer(selectedId, 'departamentos');
+                const url = `${window.location.pathname}${window.location.search}`;
+                router.get(url, {}, {
+                    only: ['volunteers', 'stages'],
+                    preserveState: true,
+                    preserveScroll: true,
+                    replace: true,
+                });
+            },
+        });
     };
 
     const currentStageFilter = filters.pipeline_stage_id ?? '';
@@ -1014,7 +1073,7 @@ export default function Pipeline({
                                     <button
                                         type="button"
                                         onClick={() => setDetailTab('ficha')}
-                                        className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                                        className={`flex-1 rounded-lg px-2 py-2 text-xs font-medium transition sm:px-3 sm:text-sm ${
                                             detailTab === 'ficha'
                                                 ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
                                                 : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
@@ -1024,14 +1083,25 @@ export default function Pipeline({
                                     </button>
                                     <button
                                         type="button"
+                                        onClick={() => setDetailTab('departamentos')}
+                                        className={`flex-1 rounded-lg px-2 py-2 text-xs font-medium transition sm:px-3 sm:text-sm ${
+                                            detailTab === 'departamentos'
+                                                ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
+                                                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+                                        }`}
+                                    >
+                                        Departamentos
+                                    </button>
+                                    <button
+                                        type="button"
                                         onClick={() => setDetailTab('notas')}
-                                        className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                                        className={`flex-1 rounded-lg px-2 py-2 text-xs font-medium transition sm:px-3 sm:text-sm ${
                                             detailTab === 'notas'
                                                 ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
                                                 : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
                                         }`}
                                     >
-                                        Lista de anotações
+                                        Anotações
                                     </button>
                                 </div>
                             </div>
@@ -1087,7 +1157,71 @@ export default function Pipeline({
                                                 );
                                             })}
                                         </div>
+
+                                        {detail.destroyVolunteerUrl ? (
+                                            <div className="mt-6 rounded-xl border border-red-200 bg-red-50/50 p-4 dark:border-red-900/50 dark:bg-red-950/20">
+                                                <p className="text-sm font-semibold text-red-900 dark:text-red-200">Remover cadastro</p>
+                                                <p className="mt-1 text-xs text-red-800/90 dark:text-red-300/90">
+                                                    Apaga o voluntário do sistema (igual ao ecrã de Voluntários). Se existir conta no app pode optar por apagar também na confirmação seguinte.
+                                                </p>
+                                                <button
+                                                    type="button"
+                                                    className="mt-3 inline-flex items-center gap-2 rounded-xl border border-red-300 bg-white px-4 py-2.5 text-sm font-semibold text-red-700 shadow-sm transition hover:bg-red-50 dark:border-red-800 dark:bg-zinc-900 dark:text-red-300 dark:hover:bg-red-950/40"
+                                                    onClick={() => void handlePipelineDestroyVolunteer()}
+                                                >
+                                                    <TrashIcon className="h-5 w-5 shrink-0" aria-hidden />
+                                                    Apagar voluntário…
+                                                </button>
+                                            </div>
+                                        ) : null}
                                     </>
+                                ) : detailTab === 'departamentos' ? (
+                                    <form onSubmit={submitMinistries} className="space-y-4">
+                                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                            Marque os departamentos em que o voluntário está. Desmarque para remover; marque outros para adicionar.
+                                        </p>
+                                        {(detail.ministryOptions ?? []).length === 0 ? (
+                                            <p className="text-sm text-zinc-500">Nenhum departamento cadastrado nesta igreja.</p>
+                                        ) : (
+                                            <div className="max-h-[min(50vh,360px)] space-y-2 overflow-y-auto pr-1">
+                                                {(detail.ministryOptions ?? []).map((o) => {
+                                                    const checked = ministriesForm.data.ministry_ids.includes(o.id);
+                                                    return (
+                                                        <label
+                                                            key={o.id}
+                                                            className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm ${
+                                                                o.canEdit
+                                                                    ? 'cursor-pointer border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900'
+                                                                    : 'cursor-not-allowed border-zinc-100 bg-zinc-50 opacity-70 dark:border-zinc-800 dark:bg-zinc-900/50'
+                                                            }`}
+                                                        >
+                                                            <Checkbox
+                                                                checked={checked}
+                                                                disabled={!o.canEdit}
+                                                                onChange={(e) =>
+                                                                    toggleVolunteerMinistry(o.id, e.target.checked, o.canEdit)
+                                                                }
+                                                            />
+                                                            <span className="flex-1 text-zinc-800 dark:text-zinc-100">{o.name}</span>
+                                                            {!o.canEdit && checked ? (
+                                                                <span className="text-xs text-zinc-500">Só consulta</span>
+                                                            ) : null}
+                                                        </label>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                        <InputError message={ministriesForm.errors.ministry_ids} />
+                                        {detail.syncMinistriesUrl && canPipelineMutate ? (
+                                            <PrimaryButton type="submit" disabled={ministriesForm.processing}>
+                                                Guardar departamentos
+                                            </PrimaryButton>
+                                        ) : (
+                                            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                                Apenas consulta: não tem permissão para alterar departamentos.
+                                            </p>
+                                        )}
+                                    </form>
                                 ) : (
                                     <div className="space-y-4">
                                         <p className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -1129,22 +1263,6 @@ export default function Pipeline({
                                         )}
                                     </div>
                                 )}
-                                {detail.destroyVolunteerUrl ? (
-                                    <div className="mt-6 rounded-xl border border-red-200 bg-red-50/50 p-4 dark:border-red-900/50 dark:bg-red-950/20">
-                                        <p className="text-sm font-semibold text-red-900 dark:text-red-200">Remover cadastro</p>
-                                        <p className="mt-1 text-xs text-red-800/90 dark:text-red-300/90">
-                                            Apaga o voluntário do sistema (igual ao ecrã de Voluntários). Se existir conta no app pode optar por apagar também na confirmação seguinte.
-                                        </p>
-                                        <button
-                                            type="button"
-                                            className="mt-3 inline-flex items-center gap-2 rounded-xl border border-red-300 bg-white px-4 py-2.5 text-sm font-semibold text-red-700 shadow-sm transition hover:bg-red-50 dark:border-red-800 dark:bg-zinc-900 dark:text-red-300 dark:hover:bg-red-950/40"
-                                            onClick={() => void handlePipelineDestroyVolunteer()}
-                                        >
-                                            <TrashIcon className="h-5 w-5 shrink-0" aria-hidden />
-                                            Apagar voluntário…
-                                        </button>
-                                    </div>
-                                ) : null}
                             </div>
                         </>
                     ) : (
@@ -1169,7 +1287,7 @@ export default function Pipeline({
                 onClose={() => {
                     setInviteOpen(false);
                     setInviteVolunteer(null);
-                    setInviteMinistryId('');
+                    setInviteMinistryIds([]);
                     setInviteChannels({ inbox: true });
                 }}
                 maxWidth="lg"
@@ -1177,24 +1295,29 @@ export default function Pipeline({
                 <div className="p-6 space-y-4">
                     <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Encaminhar voluntário</h2>
                     <p className="text-sm text-zinc-600 dark:text-zinc-300">
-                        {inviteVolunteer?.name ?? 'Voluntário'} — escolha o departamento e como deseja enviar.
+                        {inviteVolunteer?.name ?? 'Voluntário'} — escolha um ou mais departamentos e como deseja enviar.
                     </p>
                     <form onSubmit={submitInvite} className="space-y-4">
                         <div>
-                            <InputLabel value="Departamento *" />
-                            <select
-                                value={inviteMinistryId}
-                                onChange={(e) => setInviteMinistryId(e.target.value)}
-                                className="mt-1 block h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
-                                required
-                            >
-                                <option value="">Selecione…</option>
-                                {ministries.map((m) => (
-                                    <option key={m.id} value={String(m.id)}>
-                                        {m.name}
-                                    </option>
-                                ))}
-                            </select>
+                            <InputLabel value="Departamentos *" />
+                            <div className="mt-2 max-h-[min(40vh,280px)] space-y-2 overflow-y-auto pr-1">
+                                {encaminharMinistries.length === 0 ? (
+                                    <p className="text-sm text-zinc-500">Nenhum departamento disponível para encaminhar.</p>
+                                ) : (
+                                    encaminharMinistries.map((m) => (
+                                        <label
+                                            key={m.id}
+                                            className="flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                                        >
+                                            <Checkbox
+                                                checked={inviteMinistryIds.includes(m.id)}
+                                                onChange={(e) => toggleInviteMinistry(m.id, e.target.checked)}
+                                            />
+                                            <span className="text-zinc-800 dark:text-zinc-100">{m.name}</span>
+                                        </label>
+                                    ))
+                                )}
+                            </div>
                         </div>
 
                         <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
@@ -1222,7 +1345,7 @@ export default function Pipeline({
                                 onClick={() => {
                                     setInviteOpen(false);
                                     setInviteVolunteer(null);
-                                    setInviteMinistryId('');
+                                    setInviteMinistryIds([]);
                                     setInviteChannels({ inbox: true });
                                 }}
                             >
@@ -1230,7 +1353,7 @@ export default function Pipeline({
                             </SecondaryButton>
                             <PrimaryButton
                                 type="submit"
-                                disabled={!inviteMinistryId}
+                                disabled={inviteMinistryIds.length === 0}
                             >
                                 Enviar convite
                             </PrimaryButton>

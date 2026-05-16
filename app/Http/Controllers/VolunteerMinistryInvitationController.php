@@ -33,7 +33,9 @@ class VolunteerMinistryInvitationController extends Controller
         abort_unless($churchId, 404);
 
         $valid = $request->validate([
-            'ministry_id' => ['required', 'integer', Rule::exists('ministries', 'id')->where('church_id', $churchId)],
+            'ministry_id' => ['nullable', 'integer', Rule::exists('ministries', 'id')->where('church_id', $churchId)],
+            'ministry_ids' => ['nullable', 'array', 'min:1'],
+            'ministry_ids.*' => ['integer', Rule::exists('ministries', 'id')->where('church_id', $churchId)],
             'channels' => ['array'],
             'channels.*' => ['string', Rule::in(['email', 'inbox'])],
             'slots' => ['array'],
@@ -42,22 +44,53 @@ class VolunteerMinistryInvitationController extends Controller
             'slots.*.end_time' => ['nullable', 'date_format:H:i'],
         ]);
 
-        $ministry = Ministry::query()->where('church_id', $churchId)->findOrFail((int) $valid['ministry_id']);
+        $rawIds = is_array($valid['ministry_ids'] ?? null) ? $valid['ministry_ids'] : [];
+        if ($rawIds === [] && isset($valid['ministry_id'])) {
+            $rawIds = [(int) $valid['ministry_id']];
+        }
+        $ministryIds = collect($rawIds)
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($ministryIds === []) {
+            return back()->withErrors(['ministry_ids' => 'Selecione pelo menos um departamento.']);
+        }
+
+        $u = $request->user();
+        if (! $u?->can('volunteers.manage')) {
+            $leaderIds = $u?->ministries()->where('church_id', $churchId)->pluck('ministries.id')->map(fn ($id) => (int) $id)->values()->all() ?? [];
+            $ministryIds = array_values(array_intersect($ministryIds, $leaderIds));
+            if ($ministryIds === []) {
+                return back()->with('error', 'Sem permissão para encaminhar para os departamentos selecionados.');
+            }
+        }
 
         $slots = is_array($valid['slots'] ?? null) ? $valid['slots'] : [];
         $channels = array_values(array_unique(array_filter($valid['channels'] ?? [], fn ($c) => is_string($c) && $c !== '')));
 
-        app(CreateAndNotifyVolunteerMinistryInvitation::class)(
-            (int) $churchId,
-            $volunteer,
-            $ministry,
-            $request->user(),
-            $channels,
-            $slots,
-        );
+        $created = 0;
+        foreach ($ministryIds as $ministryId) {
+            $ministry = Ministry::query()->where('church_id', $churchId)->findOrFail($ministryId);
+            app(CreateAndNotifyVolunteerMinistryInvitation::class)(
+                (int) $churchId,
+                $volunteer,
+                $ministry,
+                $request->user(),
+                $channels,
+                $slots,
+            );
+            $created++;
+        }
 
         VolunteerPipelineBootstrap::moveVolunteerToStageByNormalizedName($volunteer, (int) $churchId, 'encaminhado');
 
-        return back()->with('success', 'Convite criado.');
+        $msg = $created === 1
+            ? 'Convite criado.'
+            : "{$created} convites criados.";
+
+        return back()->with('success', $msg);
     }
 }

@@ -534,7 +534,7 @@ export default function Index({
                                 <th className="px-4 py-3 sm:px-6 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
                                     Status
                                 </th>
-                                <th className="px-4 py-3 sm:px-6 text-right text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                <th className="sticky right-0 z-20 w-[1%] whitespace-nowrap bg-zinc-50 px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-zinc-500 shadow-[-6px_0_12px_-6px_rgba(0,0,0,0.12)] dark:bg-zinc-900 dark:text-zinc-400 dark:shadow-[-6px_0_12px_-6px_rgba(0,0,0,0.45)] sm:px-6">
                                     Ações
                                 </th>
                             </tr>
@@ -571,19 +571,23 @@ export default function Index({
                                             {member.status === 'active' ? 'Ativo' : 'Inativo'}
                                         </span>
                                     </td>
-                                    <td className="px-4 py-4 sm:px-6 sm:py-6 whitespace-nowrap text-right text-sm font-medium">
-                                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <td className="sticky right-0 z-10 whitespace-nowrap bg-white px-4 py-4 text-right text-sm font-medium shadow-[-6px_0_12px_-6px_rgba(0,0,0,0.12)] group-hover:bg-zinc-50 dark:bg-zinc-950 dark:shadow-[-6px_0_12px_-6px_rgba(0,0,0,0.45)] dark:group-hover:bg-zinc-900 sm:px-6 sm:py-6">
+                                        <div className="flex items-center justify-end gap-1 sm:gap-2">
                                 <button
                                     type="button"
                                     onClick={() => openEditModal(member)}
-                                    className="p-2 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                                    className="rounded-full p-2 text-zinc-600 transition-colors hover:bg-zinc-800 hover:text-white dark:text-zinc-300"
+                                    title="Editar"
+                                    aria-label="Editar"
                                 >
-                                    <PencilIcon className="w-5 h-5" />
+                                    <PencilIcon className="h-5 w-5" />
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => handleDelete(member.id)}
-                                    className="p-2 rounded-full text-zinc-400 hover:text-red-400 hover:bg-zinc-800 transition-colors"
+                                    className="rounded-full p-2 text-zinc-600 transition-colors hover:bg-zinc-800 hover:text-red-400 dark:text-zinc-300"
+                                    title="Excluir"
+                                    aria-label="Excluir"
                                 >
                                     <TrashIcon className="w-5 h-5" />
                                 </button>
