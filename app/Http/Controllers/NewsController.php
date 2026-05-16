@@ -29,6 +29,7 @@ class NewsController extends Controller
                 News::TYPE_YOUTUBE,
                 News::TYPE_PDF,
                 News::TYPE_IMAGE,
+                News::TYPE_INSTAGRAM_FEED,
             ])],
             'excerpt' => ['nullable', 'string', 'max:500'],
             'body' => ['nullable', 'string', 'max:65000'],
@@ -72,13 +73,15 @@ class NewsController extends Controller
             }
         }
 
-        if ($type === News::TYPE_IMAGE) {
+        if ($type === News::TYPE_IMAGE || $type === News::TYPE_INSTAGRAM_FEED) {
             $hasFile = $request->hasFile('image_file');
             $hasUrl = trim((string) ($data['image_url'] ?? '')) !== '';
             $hasExisting = $existing && $existing->image_url;
             if (! $hasFile && ! $hasUrl && ! $hasExisting) {
                 throw ValidationException::withMessages([
-                    'image_file' => 'Adicione uma imagem (ficheiro ou URL).',
+                    'image_file' => $type === News::TYPE_INSTAGRAM_FEED
+                        ? 'Adicione uma imagem para o feed (ficheiro ou URL). Recomendado: 1080 × 1350 px, proporção 4:5 (JPG ou PNG, até 2 MB).'
+                        : 'Adicione uma imagem (ficheiro ou URL).',
                 ]);
             }
         }

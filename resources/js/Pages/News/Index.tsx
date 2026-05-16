@@ -30,7 +30,7 @@ function imageSrc(url: string | null, appUrl: string): string {
     return url;
 }
 
-type ContentType = 'article' | 'youtube' | 'pdf' | 'image';
+type ContentType = 'article' | 'youtube' | 'pdf' | 'image' | 'instagram_feed';
 
 interface NewsPost {
     id: number;
@@ -77,10 +77,16 @@ function typeShortLabel(t: ContentType): string {
             return 'PDF';
         case 'image':
             return 'Imagem';
+        case 'instagram_feed':
+            return 'Feed IG';
         default:
             return 'Artigo';
     }
 }
+
+/** Orientação exibida ao criar publicações tipo Feed Instagram */
+const INSTAGRAM_FEED_IMAGE_SPECS =
+    'Proporção 4:5 (vertical). Resolução recomendada: 1080 × 1350 px. Formatos: JPG ou PNG, até 2 MB. Imagens com outra proporção serão cortadas no app.';
 
 function cardSummary(p: NewsPost): string {
     if (p.excerpt?.trim()) return p.excerpt.trim();
@@ -92,6 +98,7 @@ function cardSummary(p: NewsPost): string {
     if (p.content_type === 'youtube') return 'Vídeo no YouTube';
     if (p.content_type === 'pdf') return 'Documento PDF';
     if (p.content_type === 'image') return 'Publicação com imagem';
+    if (p.content_type === 'instagram_feed') return 'Publicação no feed';
     return '';
 }
 
@@ -214,17 +221,23 @@ export default function Index({ posts, filters, canManage }: Props) {
         }
     };
 
-    const imageFieldLabel =
-        data.content_type === 'image'
-            ? 'Imagem (obrigatória)'
-            : data.content_type === 'youtube'
-              ? 'Imagem de capa (opcional — se vazio, usa a miniatura do YouTube)'
-              : 'Imagem de capa (opcional)';
+    const isInstagramFeed = data.content_type === 'instagram_feed';
 
-    const bodyLabel =
-        data.content_type === 'article' ? 'Conteúdo' : 'Texto / legenda (opcional)';
+    const imageFieldLabel = isInstagramFeed
+        ? 'Imagem do post (obrigatória — 1080 × 1350 px, proporção 4:5)'
+        : data.content_type === 'image'
+          ? 'Imagem (obrigatória)'
+          : data.content_type === 'youtube'
+            ? 'Imagem de capa (opcional — se vazio, usa a miniatura do YouTube)'
+            : 'Imagem de capa (opcional)';
 
-    const bodyRows = data.content_type === 'article' ? 10 : 5;
+    const bodyLabel = data.content_type === 'article'
+        ? 'Conteúdo'
+        : isInstagramFeed
+          ? 'Legenda'
+          : 'Texto / legenda (opcional)';
+
+    const bodyRows = data.content_type === 'article' ? 10 : isInstagramFeed ? 6 : 5;
 
     const previewSnippet =
         data.excerpt?.trim() ||
@@ -236,7 +249,9 @@ export default function Index({ posts, filters, canManage }: Props) {
                 ? 'Documento PDF'
                 : data.content_type === 'image'
                   ? 'Imagem'
-                  : 'Resumo aparecerá aqui.');
+                  : data.content_type === 'instagram_feed'
+                    ? 'Legenda do feed'
+                    : 'Resumo aparecerá aqui.');
 
     return (
         <AdminLayout>
@@ -263,7 +278,13 @@ export default function Index({ posts, filters, canManage }: Props) {
                     return (
                         <Card key={p.id} className="flex touch-manipulation flex-col gap-4 p-4 sm:p-6 md:p-8">
                             {hero ? (
-                                <div className="relative h-40 w-full flex-shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800 md:h-48">
+                                <div
+                                    className={`relative w-full flex-shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800 ${
+                                        p.content_type === 'instagram_feed'
+                                            ? 'aspect-[4/5] max-h-80 md:max-h-96'
+                                            : 'h-40 md:h-48'
+                                    }`}
+                                >
                                     <img
                                         src={imageSrc(hero, appUrl)}
                                         alt=""
@@ -415,7 +436,14 @@ export default function Index({ posts, filters, canManage }: Props) {
                                     <option value="youtube">Vídeo (YouTube)</option>
                                     <option value="pdf">Documento PDF</option>
                                     <option value="image">Só imagem</option>
+                                    <option value="instagram_feed">Feed Instagram</option>
                                 </SelectInput>
+                                {isInstagramFeed && (
+                                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                        Republicação manual: imagem + legenda, exibida em coluna no app (sem ligação à conta
+                                        Instagram). Imagem: <strong>1080 × 1350 px</strong>, proporção 4:5.
+                                    </p>
+                                )}
                                 <InputError message={errors.content_type} className="mt-1" />
                             </div>
                             <div>
@@ -428,17 +456,19 @@ export default function Index({ posts, filters, canManage }: Props) {
                                 />
                                 <InputError message={errors.title} className="mt-1" />
                             </div>
-                            <div>
-                                <InputLabel htmlFor="excerpt" value="Resumo (opcional)" />
-                                <Textarea
-                                    id="excerpt"
-                                    value={data.excerpt}
-                                    onChange={(e) => setData('excerpt', e.target.value)}
-                                    rows={2}
-                                    className="mt-1 block w-full"
-                                />
-                                <InputError message={errors.excerpt} className="mt-1" />
-                            </div>
+                            {!isInstagramFeed && (
+                                <div>
+                                    <InputLabel htmlFor="excerpt" value="Resumo (opcional)" />
+                                    <Textarea
+                                        id="excerpt"
+                                        value={data.excerpt}
+                                        onChange={(e) => setData('excerpt', e.target.value)}
+                                        rows={2}
+                                        className="mt-1 block w-full"
+                                    />
+                                    <InputError message={errors.excerpt} className="mt-1" />
+                                </div>
+                            )}
 
                             {data.content_type === 'youtube' && (
                                 <div>
@@ -499,6 +529,15 @@ export default function Index({ posts, filters, canManage }: Props) {
 
                             <div>
                                 <InputLabel htmlFor="image_url" value={imageFieldLabel} />
+                                {isInstagramFeed && (
+                                    <p
+                                        id="instagram_feed_image_specs"
+                                        className="mt-1.5 rounded-xl border border-amber-200/80 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/35 dark:text-amber-100"
+                                    >
+                                        <span className="font-semibold">Tamanho da imagem:</span>{' '}
+                                        {INSTAGRAM_FEED_IMAGE_SPECS}
+                                    </p>
+                                )}
                                 <div className="mt-1 space-y-3">
                                     <div className="flex items-center gap-3">
                                         <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-zinc-200 dark:bg-zinc-800">
@@ -528,7 +567,10 @@ export default function Index({ posts, filters, canManage }: Props) {
                                             <input
                                                 id="image_file"
                                                 type="file"
-                                                accept="image/*"
+                                                accept={isInstagramFeed ? 'image/jpeg,image/png,image/webp' : 'image/*'}
+                                                aria-describedby={
+                                                    isInstagramFeed ? 'instagram_feed_image_specs' : undefined
+                                                }
                                                 onChange={(e) => {
                                                     const file = e.target.files?.[0] ?? null;
                                                     setData('image_file', file);
@@ -567,10 +609,21 @@ export default function Index({ posts, filters, canManage }: Props) {
                             <p className="mb-3 text-xs font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
                                 Pré-visualização (app)
                             </p>
-                            <div className="max-w-sm overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+                            <div className={`max-w-sm overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 ${isInstagramFeed ? 'max-w-xs' : ''}`}>
                                 {previewThumbSrc ? (
                                     <div className="relative">
-                                        <img src={previewThumbSrc} alt="" className="h-40 w-full object-cover" />
+                                        <img
+                                            src={previewThumbSrc}
+                                            alt=""
+                                            className={`w-full object-cover ${
+                                                isInstagramFeed ? 'aspect-[4/5]' : 'h-40'
+                                            }`}
+                                        />
+                                        {isInstagramFeed && (
+                                            <span className="absolute left-2 top-2 rounded-lg bg-gradient-to-r from-[#f58529] via-[#dd2a7b] to-[#8134af] px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
+                                                Feed IG
+                                            </span>
+                                        )}
                                         {data.content_type === 'youtube' && (
                                             <span className="absolute left-2 top-2 flex items-center gap-1 rounded-lg bg-black/65 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
                                                 <PlayCircleIcon className="h-3.5 w-3.5" />
@@ -592,21 +645,53 @@ export default function Index({ posts, filters, canManage }: Props) {
                                     </div>
                                 ) : null}
                                 <div className="p-4">
-                                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
-                                        {data.title || 'Título da notícia'}
-                                    </h3>
-                                    {data.published_at && (
-                                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                            {new Date(data.published_at).toLocaleDateString('pt-BR', {
-                                                day: '2-digit',
-                                                month: 'long',
-                                                year: 'numeric',
-                                            })}
-                                        </p>
+                                    {isInstagramFeed ? (
+                                        <>
+                                            <div className="mb-3 flex items-center gap-2">
+                                                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af] text-[10px] font-bold text-white">
+                                                    IG
+                                                </span>
+                                                <div>
+                                                    <p className="text-sm font-semibold text-zinc-900 dark:text-white">
+                                                        {data.title || 'Título do post'}
+                                                    </p>
+                                                    {data.published_at && (
+                                                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                                            {new Date(data.published_at).toLocaleDateString('pt-BR', {
+                                                                day: '2-digit',
+                                                                month: 'short',
+                                                                year: 'numeric',
+                                                            })}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <p className="line-clamp-4 text-sm text-zinc-600 dark:text-zinc-300">
+                                                <span className="font-semibold text-zinc-900 dark:text-white">
+                                                    {data.title || 'Título'}
+                                                </span>{' '}
+                                                {previewSnippet}
+                                            </p>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
+                                                {data.title || 'Título da notícia'}
+                                            </h3>
+                                            {data.published_at && (
+                                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                                    {new Date(data.published_at).toLocaleDateString('pt-BR', {
+                                                        day: '2-digit',
+                                                        month: 'long',
+                                                        year: 'numeric',
+                                                    })}
+                                                </p>
+                                            )}
+                                            <p className="mt-3 line-clamp-4 text-sm text-zinc-600 dark:text-zinc-300">
+                                                {previewSnippet}
+                                            </p>
+                                        </>
                                     )}
-                                    <p className="mt-3 line-clamp-4 text-sm text-zinc-600 dark:text-zinc-300">
-                                        {previewSnippet}
-                                    </p>
                                 </div>
                             </div>
                         </div>

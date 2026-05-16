@@ -176,6 +176,7 @@ class MobileController extends Controller
                     News::TYPE_YOUTUBE => 'VÍDEO',
                     News::TYPE_PDF => 'PDF',
                     News::TYPE_IMAGE => 'IMAGEM',
+                    News::TYPE_INSTAGRAM_FEED => 'FEED',
                     default => 'NOTÍCIA',
                 };
 
@@ -338,16 +339,9 @@ class MobileController extends Controller
     public function news(Request $request): Response
     {
         $churchId = $this->currentChurch()?->id;
-        $query = News::query()
-            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
-            ->whereNotNull('published_at')
-            ->where('published_at', '<=', now())
-            ->orderByDesc('published_at');
-
-        $posts = $query->paginate(10)->withQueryString();
-
         $baseUrl = request()->getSchemeAndHttpHost();
-        $posts->getCollection()->transform(function (News $p) use ($baseUrl) {
+
+        $mapPost = function (News $p) use ($baseUrl): array {
             $imageUrl = $p->image_url;
             if ($imageUrl && ! str_starts_with($imageUrl, 'http')) {
                 $imageUrl = $baseUrl.$imageUrl;
@@ -367,9 +361,35 @@ class MobileController extends Controller
                 'cover_url' => $p->resolvedCoverUrl($baseUrl),
                 'published_at' => $p->published_at?->toIso8601String(),
             ];
-        });
+        };
+
+        $feedPosts = News::query()
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
+            ->where('content_type', News::TYPE_INSTAGRAM_FEED)
+            ->whereNotNull('published_at')
+            ->where('published_at', '<=', now())
+            ->orderByDesc('published_at')
+            ->limit(60)
+            ->get()
+            ->map(fn (News $p) => $mapPost($p))
+            ->values()
+            ->all();
+
+        $posts = News::query()
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
+            ->where('content_type', '!=', News::TYPE_INSTAGRAM_FEED)
+            ->whereNotNull('published_at')
+            ->where('published_at', '<=', now())
+            ->orderByDesc('published_at')
+            ->paginate(10)
+            ->withQueryString();
+
+        $posts->getCollection()->transform(fn (News $p) => $mapPost($p));
 
         return Inertia::render('Mobile/News', [
+            'feedPosts' => $feedPosts,
             'posts' => $posts,
         ]);
     }

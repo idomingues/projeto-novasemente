@@ -17,6 +17,9 @@ class News extends Model
 
     public const TYPE_IMAGE = 'image';
 
+    /** Publicação estilo feed (imagem + legenda), listada em coluna no app. */
+    public const TYPE_INSTAGRAM_FEED = 'instagram_feed';
+
     protected $fillable = [
         'church_id',
         'title',

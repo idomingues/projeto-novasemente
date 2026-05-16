@@ -1,4 +1,5 @@
 import MobileLayout from '@/Layouts/MobileLayout';
+import InstagramFeedCard from '@/Components/News/InstagramFeedCard';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { ArrowLeftIcon, NewspaperIcon, PlayCircleIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 function imageSrc(url: string | null, appUrl: string): string {
@@ -8,7 +9,7 @@ function imageSrc(url: string | null, appUrl: string): string {
     return `${base}${url}`;
 }
 
-type ContentType = 'article' | 'youtube' | 'pdf' | 'image';
+type ContentType = 'article' | 'youtube' | 'pdf' | 'image' | 'instagram_feed';
 
 interface Post {
     id: number;
@@ -52,6 +53,8 @@ function typeLabel(t: ContentType): string {
             return 'Documento';
         case 'image':
             return 'Imagem';
+        case 'instagram_feed':
+            return 'Feed';
         default:
             return 'Notícia';
     }
@@ -62,6 +65,26 @@ export default function MobileNewsShow({ post }: Props) {
     const cover = post.cover_url;
     const isYoutube = post.content_type === 'youtube';
     const isPdf = post.content_type === 'pdf';
+    const isInstagramFeed = post.content_type === 'instagram_feed';
+
+    if (isInstagramFeed) {
+        return (
+            <MobileLayout>
+                <Head title={post.title} />
+                <div className="space-y-4">
+                    <Link
+                        href={route('mobile.news')}
+                        className="inline-flex items-center gap-2 text-sm font-medium text-primary-600 hover:underline dark:text-primary-400"
+                    >
+                        <ArrowLeftIcon className="h-4 w-4" aria-hidden />
+                        Voltar às notícias
+                    </Link>
+                    <InstagramFeedCard post={post} appUrl={appUrl} variant="detail" />
+                </div>
+            </MobileLayout>
+        );
+    }
+
     return (
         <MobileLayout>
             <Head title={post.title} />
