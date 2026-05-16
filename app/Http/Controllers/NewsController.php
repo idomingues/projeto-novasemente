@@ -36,6 +36,7 @@ class NewsController extends Controller
             'youtube_url' => ['nullable', 'string', 'max:500'],
             'image_url' => ['nullable', 'string', 'max:1024'],
             'image_file' => ['nullable', 'image', 'max:2048'],
+            'video_file' => ['nullable', 'file', 'mimes:mp4,mov,quicktime,webm', 'max:51200'],
             'pdf_file' => ['nullable', 'file', 'mimes:pdf', 'max:12288'],
             'published_at' => ['nullable', 'date'],
         ]);
@@ -73,15 +74,28 @@ class NewsController extends Controller
             }
         }
 
-        if ($type === News::TYPE_IMAGE || $type === News::TYPE_INSTAGRAM_FEED) {
+        if ($type === News::TYPE_IMAGE) {
             $hasFile = $request->hasFile('image_file');
             $hasUrl = trim((string) ($data['image_url'] ?? '')) !== '';
             $hasExisting = $existing && $existing->image_url;
             if (! $hasFile && ! $hasUrl && ! $hasExisting) {
                 throw ValidationException::withMessages([
-                    'image_file' => $type === News::TYPE_INSTAGRAM_FEED
-                        ? 'Adicione uma imagem para o feed (ficheiro ou URL). Recomendado: 1080 × 1350 px, proporção 4:5 (JPG ou PNG, até 2 MB).'
-                        : 'Adicione uma imagem (ficheiro ou URL).',
+                    'image_file' => 'Adicione uma imagem (ficheiro ou URL).',
+                ]);
+            }
+        }
+
+        if ($type === News::TYPE_INSTAGRAM_FEED) {
+            $hasImageFile = $request->hasFile('image_file');
+            $hasImageUrl = trim((string) ($data['image_url'] ?? '')) !== '';
+            $hasExistingImage = $existing && $existing->image_url;
+            $hasVideoFile = $request->hasFile('video_file');
+            $hasExistingVideo = $existing && $existing->video_path;
+
+            if (! $hasImageFile && ! $hasImageUrl && ! $hasExistingImage && ! $hasVideoFile && ! $hasExistingVideo) {
+                throw ValidationException::withMessages([
+                    'image_file' => 'Adicione uma imagem ou um vídeo para o feed.',
+                    'video_file' => 'Adicione uma imagem ou um vídeo para o feed.',
                 ]);
             }
         }
@@ -124,6 +138,7 @@ class NewsController extends Controller
             $arr = $n->toArray();
             $arr['cover_url'] = $n->resolvedCoverUrl($host);
             $arr['pdf_url'] = $n->resolvedPdfUrl($host);
+            $arr['video_url'] = $n->resolvedVideoUrl($host);
 
             return $arr;
         });
@@ -167,6 +182,11 @@ class NewsController extends Controller
             $pdfPath = $request->file('pdf_file')->store('news/pdfs', 'public');
         }
 
+        $videoPath = null;
+        if ($data['content_type'] === News::TYPE_INSTAGRAM_FEED && $request->hasFile('video_file')) {
+            $videoPath = $request->file('video_file')->store('news/videos', 'public');
+        }
+
         $publishedAt = isset($data['published_at']) && $data['published_at'] !== '' ? $data['published_at'] : now();
 
         News::create([
@@ -178,6 +198,7 @@ class NewsController extends Controller
             'body' => trim((string) ($data['body'] ?? '')),
             'youtube_url' => $data['content_type'] === News::TYPE_YOUTUBE ? ($data['youtube_url'] ?? null) : null,
             'pdf_path' => $data['content_type'] === News::TYPE_PDF ? $pdfPath : null,
+            'video_path' => $data['content_type'] === News::TYPE_INSTAGRAM_FEED ? $videoPath : null,
             'image_url' => $imageUrl,
             'published_at' => $publishedAt,
             'created_by' => $request->user()?->id,
@@ -220,6 +241,15 @@ class NewsController extends Controller
             $pdfPath = null;
         }
 
+        $videoPath = $news->video_path;
+        if ($data['content_type'] === News::TYPE_INSTAGRAM_FEED) {
+            if ($request->hasFile('video_file')) {
+                $videoPath = $request->file('video_file')->store('news/videos', 'public');
+            }
+        } else {
+            $videoPath = null;
+        }
+
         $publishedAt = isset($data['published_at']) && $data['published_at'] !== '' ? $data['published_at'] : ($news->published_at ?? now());
 
         $news->fill([
@@ -229,6 +259,7 @@ class NewsController extends Controller
             'body' => trim((string) ($data['body'] ?? '')),
             'youtube_url' => $data['content_type'] === News::TYPE_YOUTUBE ? ($data['youtube_url'] ?? null) : null,
             'pdf_path' => $pdfPath,
+            'video_path' => $videoPath,
             'image_url' => $imageUrl,
             'published_at' => $publishedAt,
         ])->save();

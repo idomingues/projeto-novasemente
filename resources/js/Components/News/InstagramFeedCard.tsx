@@ -1,6 +1,7 @@
 import { Link } from '@inertiajs/react';
+import { PlayCircleIcon } from '@heroicons/react/24/solid';
 
-function imageSrc(url: string | null, appUrl: string): string {
+function mediaSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
     const base = appUrl || (typeof window !== 'undefined' ? window.location.origin : '');
@@ -15,6 +16,7 @@ export interface InstagramFeedPost {
     body: string;
     image_url: string | null;
     cover_url: string | null;
+    video_url?: string | null;
     published_at: string | null;
 }
 
@@ -40,8 +42,89 @@ interface Props {
     variant?: 'feed' | 'detail';
 }
 
+function FeedMedia({
+    post,
+    appUrl,
+    variant,
+    showHref,
+}: {
+    post: InstagramFeedPost;
+    appUrl: string;
+    variant: 'feed' | 'detail';
+    showHref: string;
+}) {
+    const videoUrl = post.video_url ? mediaSrc(post.video_url, appUrl) : '';
+    const posterUrl = post.cover_url || post.image_url;
+    const poster = posterUrl ? mediaSrc(posterUrl, appUrl) : undefined;
+    const isDetail = variant === 'detail';
+    const aspectClass = videoUrl ? 'aspect-[9/16]' : 'aspect-[4/5]';
+
+    if (videoUrl) {
+        const video = (
+            <video
+                src={videoUrl}
+                poster={poster}
+                className="h-full w-full object-cover"
+                controls={isDetail}
+                playsInline
+                muted={!isDetail}
+                loop={!isDetail}
+                autoPlay={!isDetail}
+                preload={isDetail ? 'metadata' : 'auto'}
+            />
+        );
+
+        if (isDetail) {
+            return (
+                <div className={`relative w-full overflow-hidden bg-zinc-950 ${aspectClass}`}>
+                    {video}
+                </div>
+            );
+        }
+
+        return (
+            <Link
+                href={showHref}
+                className={`relative block w-full overflow-hidden bg-zinc-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500 ${aspectClass}`}
+            >
+                {video}
+                <span className="pointer-events-none absolute right-3 top-3 rounded-full bg-black/55 p-1.5 text-white">
+                    <PlayCircleIcon className="h-6 w-6" aria-hidden />
+                </span>
+            </Link>
+        );
+    }
+
+    const thumb = poster;
+    if (!thumb) {
+        return null;
+    }
+
+    if (isDetail) {
+        return (
+            <div className={`relative w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800 ${aspectClass}`}>
+                <img
+                    src={thumb}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    loading="eager"
+                    decoding="async"
+                />
+            </div>
+        );
+    }
+
+    return (
+        <Link
+            href={showHref}
+            className={`relative block w-full overflow-hidden bg-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500 dark:bg-zinc-800 ${aspectClass}`}
+        >
+            <img src={thumb} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
+        </Link>
+    );
+}
+
 export default function InstagramFeedCard({ post, appUrl, variant = 'feed' }: Props) {
-    const thumb = post.cover_url || post.image_url;
     const caption = plainCaption(post);
     const showHref = route('mobile.news.show', post.slug);
     const isDetail = variant === 'detail';
@@ -61,32 +144,7 @@ export default function InstagramFeedCard({ post, appUrl, variant = 'feed' }: Pr
                 </div>
             </div>
 
-            {thumb ? (
-                isDetail ? (
-                    <div className="relative aspect-[4/5] w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
-                        <img
-                            src={imageSrc(thumb, appUrl)}
-                            alt=""
-                            className="h-full w-full object-cover"
-                            loading="eager"
-                            decoding="async"
-                        />
-                    </div>
-                ) : (
-                    <Link
-                        href={showHref}
-                        className="relative block aspect-[4/5] w-full overflow-hidden bg-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500 dark:bg-zinc-800"
-                    >
-                        <img
-                            src={imageSrc(thumb, appUrl)}
-                            alt=""
-                            className="h-full w-full object-cover"
-                            loading="lazy"
-                            decoding="async"
-                        />
-                    </Link>
-                )
-            ) : null}
+            <FeedMedia post={post} appUrl={appUrl} variant={variant} showHref={showHref} />
 
             {(caption || !isDetail) && (
                 <div className="px-4 py-3">

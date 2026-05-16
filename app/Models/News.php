@@ -29,6 +29,7 @@ class News extends Model
         'body',
         'youtube_url',
         'pdf_path',
+        'video_path',
         'image_url',
         'published_at',
         'created_by',
@@ -123,5 +124,23 @@ class News extends Model
         }
 
         return StorageUrl::publicMediaUrl($path);
+    }
+
+    public function resolvedVideoUrl(string $baseUrl): ?string
+    {
+        $path = $this->video_path;
+        if (empty($path)) {
+            return null;
+        }
+        if (str_starts_with($path, 'http')) {
+            return $path;
+        }
+
+        return StorageUrl::publicMediaUrl($path);
+    }
+
+    public function hasInstagramFeedVideo(): bool
+    {
+        return $this->content_type === self::TYPE_INSTAGRAM_FEED && ! empty($this->video_path);
     }
 }

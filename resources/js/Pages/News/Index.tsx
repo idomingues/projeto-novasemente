@@ -43,6 +43,7 @@ interface NewsPost {
     image_url: string | null;
     cover_url: string | null;
     pdf_url: string | null;
+    video_url: string | null;
     published_at: string | null;
     created_at: string;
     author?: { name: string } | null;
@@ -86,7 +87,10 @@ function typeShortLabel(t: ContentType): string {
 
 /** Orientação exibida ao criar publicações tipo Feed Instagram */
 const INSTAGRAM_FEED_IMAGE_SPECS =
-    'Proporção 4:5 (vertical). Resolução recomendada: 1080 × 1350 px. Formatos: JPG ou PNG, até 2 MB. Imagens com outra proporção serão cortadas no app.';
+    'Imagem — proporção 4:5. Resolução recomendada: 1080 × 1350 px. JPG ou PNG, até 2 MB. Opcional se enviar vídeo (pode servir de capa).';
+
+const INSTAGRAM_FEED_VIDEO_SPECS =
+    'Vídeo — proporção 9:16. Resolução recomendada: 1080 × 1920 px. MP4, MOV ou WebM, até 50 MB. Use imagem ou vídeo (pelo menos um).';
 
 function cardSummary(p: NewsPost): string {
     if (p.excerpt?.trim()) return p.excerpt.trim();
@@ -98,7 +102,9 @@ function cardSummary(p: NewsPost): string {
     if (p.content_type === 'youtube') return 'Vídeo no YouTube';
     if (p.content_type === 'pdf') return 'Documento PDF';
     if (p.content_type === 'image') return 'Publicação com imagem';
-    if (p.content_type === 'instagram_feed') return 'Publicação no feed';
+    if (p.content_type === 'instagram_feed') {
+        return p.video_url ? 'Vídeo no feed' : 'Publicação no feed';
+    }
     return '';
 }
 
@@ -108,6 +114,7 @@ export default function Index({ posts, filters, canManage }: Props) {
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [existingPdfUrl, setExistingPdfUrl] = useState<string | null>(null);
+    const [existingVideoUrl, setExistingVideoUrl] = useState<string | null>(null);
     const [search, setSearch] = useState(filters.search ?? '');
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
         content_type: 'article' as ContentType,
@@ -118,6 +125,7 @@ export default function Index({ posts, filters, canManage }: Props) {
         image_url: '',
         published_at: '',
         image_file: null as File | null,
+        video_file: null as File | null,
         pdf_file: null as File | null,
     });
 
@@ -128,6 +136,13 @@ export default function Index({ posts, filters, canManage }: Props) {
         return URL.createObjectURL(data.image_file);
     }, [data.image_file]);
 
+    const videoPreviewUrl = useMemo(() => {
+        if (!data.video_file) {
+            return null;
+        }
+        return URL.createObjectURL(data.video_file);
+    }, [data.video_file]);
+
     useEffect(() => {
         return () => {
             if (fileThumbUrl) {
@@ -135,6 +150,14 @@ export default function Index({ posts, filters, canManage }: Props) {
             }
         };
     }, [fileThumbUrl]);
+
+    useEffect(() => {
+        return () => {
+            if (videoPreviewUrl) {
+                URL.revokeObjectURL(videoPreviewUrl);
+            }
+        };
+    }, [videoPreviewUrl]);
 
     const previewThumbSrc =
         fileThumbUrl ||
@@ -164,10 +187,12 @@ export default function Index({ posts, filters, canManage }: Props) {
         setIsEditing(false);
         setEditingId(null);
         setExistingPdfUrl(null);
+        setExistingVideoUrl(null);
         reset();
         clearErrors();
         setData('content_type', 'article');
         setData('image_file', null);
+        setData('video_file', null);
         setData('pdf_file', null);
         setIsModalOpen(true);
     };
@@ -176,6 +201,7 @@ export default function Index({ posts, filters, canManage }: Props) {
         setIsEditing(true);
         setEditingId(p.id);
         setExistingPdfUrl(p.pdf_url ?? null);
+        setExistingVideoUrl(p.video_url ?? null);
         setData({
             content_type: p.content_type ?? 'article',
             title: p.title,
@@ -187,6 +213,7 @@ export default function Index({ posts, filters, canManage }: Props) {
         });
         clearErrors();
         setData('image_file', null);
+        setData('video_file', null);
         setData('pdf_file', null);
         setIsModalOpen(true);
     };
@@ -194,8 +221,10 @@ export default function Index({ posts, filters, canManage }: Props) {
     const closeModal = () => {
         setIsModalOpen(false);
         setExistingPdfUrl(null);
+        setExistingVideoUrl(null);
         reset();
         setData('image_file', null);
+        setData('video_file', null);
         setData('pdf_file', null);
     };
 
@@ -223,8 +252,11 @@ export default function Index({ posts, filters, canManage }: Props) {
 
     const isInstagramFeed = data.content_type === 'instagram_feed';
 
+    const previewVideoSrc = videoPreviewUrl || (isInstagramFeed && existingVideoUrl ? existingVideoUrl : '');
+    const previewHasVideo = Boolean(previewVideoSrc);
+
     const imageFieldLabel = isInstagramFeed
-        ? 'Imagem do post (obrigatória — 1080 × 1350 px, proporção 4:5)'
+        ? 'Imagem (opcional — 1080 × 1350 px, 4:5; capa do vídeo)'
         : data.content_type === 'image'
           ? 'Imagem (obrigatória)'
           : data.content_type === 'youtube'
@@ -275,13 +307,32 @@ export default function Index({ posts, filters, canManage }: Props) {
             <div className="grid grid-cols-1 gap-6 pb-8 md:pb-0 lg:grid-cols-2">
                 {posts.data.map((p) => {
                     const hero = p.cover_url || p.image_url;
+                    const feedVideo = p.content_type === 'instagram_feed' && p.video_url;
+                    const feedAspect = feedVideo ? 'aspect-[9/16]' : 'aspect-[4/5]';
                     return (
                         <Card key={p.id} className="flex touch-manipulation flex-col gap-4 p-4 sm:p-6 md:p-8">
-                            {hero ? (
+                            {feedVideo ? (
+                                <div
+                                    className={`relative w-full flex-shrink-0 overflow-hidden rounded-2xl bg-zinc-950 ${feedAspect} max-h-80 md:max-h-96`}
+                                >
+                                    <video
+                                        src={imageSrc(p.video_url, appUrl)}
+                                        className="h-full w-full object-cover"
+                                        muted
+                                        playsInline
+                                        preload="metadata"
+                                        poster={hero ? imageSrc(hero, appUrl) : undefined}
+                                    />
+                                    <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
+                                        <PlayCircleIcon className="h-3.5 w-3.5" />
+                                        Vídeo
+                                    </span>
+                                </div>
+                            ) : hero ? (
                                 <div
                                     className={`relative w-full flex-shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800 ${
                                         p.content_type === 'instagram_feed'
-                                            ? 'aspect-[4/5] max-h-80 md:max-h-96'
+                                            ? `${feedAspect} max-h-80 md:max-h-96`
                                             : 'h-40 md:h-48'
                                     }`}
                                 >
@@ -441,7 +492,8 @@ export default function Index({ posts, filters, canManage }: Props) {
                                 {isInstagramFeed && (
                                     <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                                         Republicação manual: imagem + legenda, exibida em coluna no app (sem ligação à conta
-                                        Instagram). Imagem: <strong>1080 × 1350 px</strong>, proporção 4:5.
+                                        Instagram). Imagem <strong>1080×1350</strong> (4:5) ou vídeo{' '}
+                                        <strong>1080×1920</strong> (9:16).
                                     </p>
                                 )}
                                 <InputError message={errors.content_type} className="mt-1" />
@@ -534,8 +586,7 @@ export default function Index({ posts, filters, canManage }: Props) {
                                         id="instagram_feed_image_specs"
                                         className="mt-1.5 rounded-xl border border-amber-200/80 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/35 dark:text-amber-100"
                                     >
-                                        <span className="font-semibold">Tamanho da imagem:</span>{' '}
-                                        {INSTAGRAM_FEED_IMAGE_SPECS}
+                                        <span className="font-semibold">Imagem:</span> {INSTAGRAM_FEED_IMAGE_SPECS}
                                     </p>
                                 )}
                                 <div className="mt-1 space-y-3">
@@ -590,6 +641,36 @@ export default function Index({ posts, filters, canManage }: Props) {
                                     <InputError message={errors.image_file} className="mt-1" />
                                 </div>
                             </div>
+
+                            {isInstagramFeed && (
+                                <div>
+                                    <InputLabel htmlFor="video_file" value="Vídeo do post (opcional — 1080 × 1920 px, 9:16)" />
+                                    <p
+                                        id="instagram_feed_video_specs"
+                                        className="mt-1.5 rounded-xl border border-violet-200/80 bg-violet-50 px-3 py-2 text-xs leading-relaxed text-violet-950 dark:border-violet-900/50 dark:bg-violet-950/35 dark:text-violet-100"
+                                    >
+                                        <span className="font-semibold">Tamanho do vídeo:</span> {INSTAGRAM_FEED_VIDEO_SPECS}
+                                    </p>
+                                    <input
+                                        id="video_file"
+                                        type="file"
+                                        accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm"
+                                        aria-describedby="instagram_feed_video_specs"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0] ?? null;
+                                            setData('video_file', file);
+                                        }}
+                                        className="mt-2 block w-full text-sm text-zinc-900 file:mr-4 file:rounded-full file:border-0 file:bg-zinc-900 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-white hover:file:bg-zinc-800 dark:text-zinc-100 dark:file:bg-zinc-100 dark:file:text-zinc-900"
+                                    />
+                                    {existingVideoUrl && !data.video_file && (
+                                        <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                                            Vídeo atual mantido. Envie um novo ficheiro para substituir.
+                                        </p>
+                                    )}
+                                    <InputError message={errors.video_file} className="mt-1" />
+                                </div>
+                            )}
+
                             <div>
                                 <InputLabel
                                     htmlFor="published_at"
@@ -610,7 +691,23 @@ export default function Index({ posts, filters, canManage }: Props) {
                                 Pré-visualização (app)
                             </p>
                             <div className={`max-w-sm overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 ${isInstagramFeed ? 'max-w-xs' : ''}`}>
-                                {previewThumbSrc ? (
+                                {previewHasVideo ? (
+                                    <div className="relative aspect-[9/16] bg-zinc-950">
+                                        <video
+                                            src={previewVideoSrc}
+                                            className="h-full w-full object-cover"
+                                            controls
+                                            playsInline
+                                            muted
+                                            poster={previewThumbSrc || undefined}
+                                        />
+                                        {isInstagramFeed && (
+                                            <span className="absolute left-2 top-2 rounded-lg bg-gradient-to-r from-[#f58529] via-[#dd2a7b] to-[#8134af] px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
+                                                Vídeo IG
+                                            </span>
+                                        )}
+                                    </div>
+                                ) : previewThumbSrc ? (
                                     <div className="relative">
                                         <img
                                             src={previewThumbSrc}
