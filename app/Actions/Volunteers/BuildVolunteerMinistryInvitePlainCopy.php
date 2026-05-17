@@ -5,11 +5,27 @@ namespace App\Actions\Volunteers;
 use App\Models\VolunteerMinistryInvitation;
 
 /**
- * Texto plano do convite: saudação, texto introdutório, links público e de registo (quando aplicável).
+ * Texto plano do convite: saudação, texto introdutório e link de cadastro (quando aplicável).
  * É o mesmo conteúdo usado no WhatsApp e passa a ser o corpo principal do e-mail.
  */
 final class BuildVolunteerMinistryInvitePlainCopy
 {
+    public static function registerUrlFor(VolunteerMinistryInvitation $invitation): ?string
+    {
+        $invitation->loadMissing(['volunteer']);
+
+        $v = $invitation->volunteer;
+        $em = trim((string) ($v?->email ?? ''));
+        if ($em === '' || $v?->user_id !== null || $invitation->status !== 'pending' || $invitation->isExpired()) {
+            return null;
+        }
+
+        return route('register', [
+            'ministry_invite_token' => $invitation->token,
+            'email' => $em,
+        ], true);
+    }
+
     public static function for(VolunteerMinistryInvitation $invitation): string
     {
         $invitation->loadMissing(['volunteer', 'ministry', 'church']);
@@ -20,32 +36,23 @@ final class BuildVolunteerMinistryInvitePlainCopy
 
         $intro = $invitation->resolvedIntroParagraph();
 
-        $publicUrl = route('volunteers.ministry-invite.show', ['token' => $invitation->token], true);
-
         $lines = [
             $greeting,
             '',
             $intro,
-            '',
-            "Para aceitar ou recusar o convite para «{$ministry}», abra este link:",
-            $publicUrl,
         ];
 
-        $v = $invitation->volunteer;
-        $em = trim((string) ($v?->email ?? ''));
-        if ($em !== '' && $v?->user_id === null && $invitation->status === 'pending' && ! $invitation->isExpired()) {
-            $reg = route('register', [
-                'ministry_invite_token' => $invitation->token,
-                'email' => $em,
-            ], true);
+        $registerUrl = self::registerUrlFor($invitation);
+        if ($registerUrl !== null) {
             $lines[] = '';
-            $lines[] = 'Para criar a sua conta no app e aceitar o convite de uma vez (recomendado), use este link — o e-mail já vem no endereço:';
-            $lines[] = $reg;
+            $lines[] = "Para confirmar o convite para «{$ministry}», crie sua conta no aplicativo (o e-mail já vem preenchido):";
+            $lines[] = $registerUrl;
         }
 
-        if ($em !== '') {
+        $em = trim((string) ($invitation->volunteer?->email ?? ''));
+        if ($em !== '' && $registerUrl !== null) {
             $lines[] = '';
-            $lines[] = 'Se fizer o cadastro por outro caminho (sem estes links), tem de usar exatamente o mesmo e-mail do cadastro de voluntário: '.$em.'.';
+            $lines[] = 'Se criar a conta por outro caminho, use exatamente este e-mail: '.$em.'.';
         }
 
         return implode("\n", $lines);

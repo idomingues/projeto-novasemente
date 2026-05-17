@@ -53,7 +53,8 @@ final class CreateAndNotifyVolunteerMinistryInvitation
             $channels = ['email'];
         }
 
-        $inviteUrl = route('volunteers.ministry-invite.show', ['token' => $inv->token], true);
+        $registerUrl = BuildVolunteerMinistryInvitePlainCopy::registerUrlFor($inv);
+        $inboxActionUrl = $registerUrl ?? route('login', [], true);
 
         $sent = false;
         if (in_array('email', $channels, true)) {
@@ -62,7 +63,7 @@ final class CreateAndNotifyVolunteerMinistryInvitation
                 $to = trim((string) ($inv->volunteer->user->email ?? ''));
             }
             if ($to !== '') {
-                Mail::to($to)->send(new VolunteerMinistryInvitationMail($inv, $inviteUrl));
+                Mail::to($to)->send(new VolunteerMinistryInvitationMail($inv));
                 $sent = true;
                 $inv->forceFill(['channel' => 'email'])->save();
             }
@@ -72,14 +73,14 @@ final class CreateAndNotifyVolunteerMinistryInvitation
             $user = $inv->volunteer->user;
             if (UserMessagingPreferences::acceptsInbox($user)) {
                 $title = 'Convite para novo departamento';
-                $body = 'Você foi convidado(a) para servir em «'.$ministry->name.'». Toque para aceitar ou recusar.';
+                $body = 'Você foi convidado(a) para servir em «'.$ministry->name.'». Toque para ver o convite no app.';
                 $row = UserInboxNotification::create([
                     'user_id' => $user->id,
                     'title' => $title,
                     'body' => $body,
-                    'action_url' => $inviteUrl,
+                    'action_url' => $inboxActionUrl,
                 ]);
-                $row->update(['action_url' => $inviteUrl]);
+                $row->update(['action_url' => $inboxActionUrl]);
                 $sent = true;
                 $inv->forceFill(['channel' => 'inbox'])->save();
             }

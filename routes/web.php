@@ -247,7 +247,7 @@ Route::post('/lider/cadastro/check-email', [\App\Http\Controllers\LeaderPublicSi
     ->middleware('throttle:30,1')
     ->name('leaders.self-signup.check-email');
 
-// Convite para voluntário aceitar/recusar novo departamento (link público).
+// Convite de ministério: link antigo redireciona para cadastro (ou mostra estado final).
 Route::get('/voluntario/convite/{token}', [\App\Http\Controllers\VolunteerMinistryInvitationPublicController::class, 'show'])
     ->name('volunteers.ministry-invite.show');
 Route::post('/voluntario/convite/{token}/aceitar', [\App\Http\Controllers\VolunteerMinistryInvitationPublicController::class, 'accept'])

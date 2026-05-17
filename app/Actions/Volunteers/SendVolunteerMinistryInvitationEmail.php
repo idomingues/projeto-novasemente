@@ -7,7 +7,7 @@ use App\Models\VolunteerMinistryInvitation;
 use Illuminate\Support\Facades\Mail;
 
 /**
- * Envia o e-mail do convite público (aceitar/recusar ministério) para o endereço do voluntário ou do utilizador ligado.
+ * Envia o e-mail do convite de ministério para o endereço do voluntário ou do usuário vinculado.
  */
 final class SendVolunteerMinistryInvitationEmail
 {
@@ -23,8 +23,7 @@ final class SendVolunteerMinistryInvitationEmail
             return false;
         }
 
-        $inviteUrl = route('volunteers.ministry-invite.show', ['token' => $invitation->token], true);
-        Mail::to($to)->send(new VolunteerMinistryInvitationMail($invitation, $inviteUrl));
+        Mail::to($to)->send(new VolunteerMinistryInvitationMail($invitation));
 
         if ($invitation->sent_at === null) {
             $invitation->forceFill(['sent_at' => now(), 'channel' => 'email'])->save();

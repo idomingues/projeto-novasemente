@@ -9,11 +9,9 @@ export function buildVolunteerMinistryInviteWhatsAppText(link: string, inviteeNa
     const dept = ministryName.trim() ? `«${ministryName.trim()}»` : 'um departamento';
     return `${greeting} Você recebeu um convite para servir em ${dept}.
 
-Para aceitar ou recusar, abra o link:
+Para confirmar, crie sua conta no aplicativo:
 
-${link}
-
-Se recusar, é obrigatório informar o motivo.`;
+${link}`;
 }
 
 interface Props {
@@ -73,7 +71,7 @@ export default function VolunteerMinistryInviteShareModal({
                         <p className="mt-1 text-sm font-semibold text-emerald-700 dark:text-emerald-300">{ministryName}</p>
                     ) : null}
                     <p className="mt-4 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
-                        Partilhe o link para a pessoa aceitar ou recusar. Se recusar, ela deve informar o motivo.
+                        Partilhe o link para a pessoa criar a conta e confirmar o convite.
                     </p>
                 </div>
 

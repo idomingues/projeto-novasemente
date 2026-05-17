@@ -12,7 +12,13 @@ import SelectInput from '@/Components/SelectInput';
 import Textarea from '@/Components/Textarea';
 import TextInput from '@/Components/TextInput';
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
-import { EllipsisVerticalIcon, TrashIcon } from '@heroicons/react/24/outline';
+import {
+    ChatBubbleLeftEllipsisIcon,
+    ClipboardDocumentIcon,
+    EllipsisVerticalIcon,
+    LinkIcon,
+    TrashIcon,
+} from '@heroicons/react/24/outline';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState, type FormEventHandler } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
@@ -200,7 +206,7 @@ export default function MyVolunteers() {
     }, [newRows.length, trainingRows.length, activeRows.length]);
 
     const builtinMinistryInviteIntro = (ministryName: string) =>
-        `Você foi convidado(a) para servir no departamento ${ministryName}. Para continuar, por favor confirme a sua resposta.`;
+        `Você foi convidado(a) para servir no departamento ${ministryName}. Para participar, crie sua conta no aplicativo pelo link abaixo.`;
 
     /** Parágrafo central igual ao servidor: convite.intro_message ou texto da igreja ou texto padrão. */
     const inviteIntroResolvedPreview = useMemo(() => {
@@ -215,18 +221,18 @@ export default function MyVolunteers() {
     /** Texto plano igual ao enviado no e-mail (BuildVolunteerMinistryInvitePlainCopy) e ao WhatsApp. */
     const invitePlainFullMessage = useMemo(() => {
         const row = inviteHelpRow;
-        const url = row?.invitePublicUrl;
-        if (!row || !url) return '';
+        if (!row) return '';
         const name = (row.volunteer.name ?? '').trim();
         const greeting = name ? `Olá, ${name}!` : 'Olá!';
         const ministry = (row.ministryName ?? 'Departamento').trim() || 'Departamento';
         const email = (row.volunteer.email ?? '').trim();
-        let msg = `${greeting}\n\n${inviteIntroResolvedPreview}\n\nPara aceitar ou recusar o convite para «${ministry}», abra este link:\n${url}`;
-        if (row.inviteRegisterUrl) {
-            msg += `\n\nPara criar a sua conta no app e aceitar o convite de uma vez (recomendado), use este link — o e-mail já vem no endereço:\n${row.inviteRegisterUrl}`;
-        }
-        if (email !== '') {
-            msg += `\n\nSe fizer o cadastro por outro caminho (sem estes links), tem de usar exatamente o mesmo e-mail do cadastro de voluntário: ${email}.`;
+        const registerUrl = row.inviteRegisterUrl?.trim() ?? '';
+        let msg = `${greeting}\n\n${inviteIntroResolvedPreview}`;
+        if (registerUrl !== '') {
+            msg += `\n\nPara confirmar o convite para «${ministry}», crie sua conta no aplicativo (o e-mail já vem preenchido):\n${registerUrl}`;
+            if (email !== '') {
+                msg += `\n\nSe criar a conta por outro caminho, use exatamente este e-mail: ${email}.`;
+            }
         }
         return msg;
     }, [inviteHelpRow, inviteIntroResolvedPreview]);
@@ -250,14 +256,14 @@ export default function MyVolunteers() {
         window.setTimeout(() => setInviteModalCopyFeedback(null), 2800);
     };
 
-    const copyInvitePublicLink = async () => {
-        const url = inviteHelpRow?.invitePublicUrl;
+    const copyInviteRegisterLink = async () => {
+        const url = inviteHelpRow?.inviteRegisterUrl?.trim();
         if (!url) return;
         try {
             await navigator.clipboard.writeText(url);
-            flashInviteModalCopyNotice('Link do convite copiado.');
+            flashInviteModalCopyNotice('Link de cadastro copiado.');
         } catch {
-            window.prompt('Copie o link do convite:', url);
+            window.prompt('Copie o link de cadastro:', url);
         }
     };
 
@@ -925,67 +931,103 @@ export default function MyVolunteers() {
                 ) : null}
             </Modal>
 
-            <Modal show={!!inviteHelpRow} onClose={closeInviteHelp} maxWidth="lg">
-                {inviteHelpRow ? (
-                    <div className="space-y-4 p-6">
-                        <div className="flex items-start justify-between gap-3">
-                            <div>
-                                <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Convite ao voluntário</h2>
-                                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
-                                    {inviteHelpRow.volunteer.name ?? 'Voluntário'} — {inviteHelpRow.ministryName ?? 'Departamento'}
-                                </p>
-                                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
-                                    O texto na caixa verde é <strong className="font-semibold text-zinc-800 dark:text-zinc-100">exatamente</strong> o mesmo do e‑mail enviado e do WhatsApp — copie aí ou utilize «Reenviar e-mail». O parágrafo central segue o texto da igreja, o convite já gravado ou o padrão do sistema; alteração global pela secretaria em{' '}
-                                    <span className="font-medium">Igrejas</span> (super admin).
-                                </p>
-                            </div>
-                            <SecondaryButton type="button" onClick={closeInviteHelp}>
-                                Fechar
-                            </SecondaryButton>
-                        </div>
-                        {invitePlainFullMessage ? (
-                            <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/30">
-                                <InputLabel value="Texto completo (e-mail = WhatsApp)" />
-                                <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
-                                    Inclui saudação, parágrafo do convite, link público, link de registro (quando há) e lembrete do e-mail. Copie aqui ou reenvie o e-mail oficial.
-                                </p>
-                                <div className="mt-2 max-h-[min(22rem,50vh)] overflow-y-auto whitespace-pre-wrap rounded-lg border border-emerald-100 bg-white px-3 py-2 text-sm text-zinc-800 dark:border-emerald-900/40 dark:bg-zinc-950 dark:text-zinc-100">
-                                    {invitePlainFullMessage}
-                                </div>
-                                <div className="mt-3 flex flex-wrap gap-2">
-                                    <PrimaryButton type="button" onClick={() => void copyInvitePlainFullMessage()}>
-                                        Copiar texto completo e links
+            <Modal
+                show={!!inviteHelpRow}
+                onClose={closeInviteHelp}
+                maxWidth="lg"
+                footer={
+                    inviteHelpRow ? (
+                        <div className="flex w-full flex-col gap-3">
+                            {invitePlainFullMessage ? (
+                                <>
+                                    <PrimaryButton
+                                        type="button"
+                                        onClick={() => void copyInvitePlainFullMessage()}
+                                        className="!h-11 w-full !rounded-xl !normal-case !tracking-normal"
+                                    >
+                                        <ClipboardDocumentIcon className="mr-2 h-5 w-5 shrink-0" aria-hidden />
+                                        Copiar mensagem
                                     </PrimaryButton>
-                                    {inviteHelpRow.invitePublicUrl ? (
-                                        <SecondaryButton type="button" onClick={() => void copyInvitePublicLink()}>
-                                            Copiar só link público
-                                        </SecondaryButton>
+                                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                        {inviteHelpRow.inviteRegisterUrl ? (
+                                            <SecondaryButton
+                                                type="button"
+                                                onClick={() => void copyInviteRegisterLink()}
+                                                className="!h-11 w-full !rounded-xl !normal-case !tracking-normal"
+                                            >
+                                                <LinkIcon className="mr-2 h-5 w-5 shrink-0" aria-hidden />
+                                                Copiar link de cadastro
+                                            </SecondaryButton>
+                                        ) : null}
+                                        {whatsAppSendPhoneDigits(inviteHelpRow.volunteer.phone) ? (
+                                            <SecondaryButton
+                                                type="button"
+                                                onClick={openWhatsAppWithInvite}
+                                                className="!h-11 w-full !rounded-xl !normal-case !tracking-normal"
+                                            >
+                                                <ChatBubbleLeftEllipsisIcon className="mr-2 h-5 w-5 shrink-0" aria-hidden />
+                                                WhatsApp
+                                            </SecondaryButton>
+                                        ) : null}
+                                    </div>
+                                    {inviteModalCopyFeedback ? (
+                                        <p className="text-center text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                                            {inviteModalCopyFeedback}
+                                        </p>
                                     ) : null}
-                                    {whatsAppSendPhoneDigits(inviteHelpRow.volunteer.phone) ? (
-                                        <SecondaryButton type="button" onClick={openWhatsAppWithInvite}>
-                                            Abrir no WhatsApp
-                                        </SecondaryButton>
-                                    ) : null}
-                                </div>
-                                {inviteModalCopyFeedback ? (
-                                    <p className="mt-2 text-sm font-medium text-emerald-700 dark:text-emerald-400">{inviteModalCopyFeedback}</p>
+                                </>
+                            ) : null}
+                            <div className="flex flex-col-reverse gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-700 sm:flex-row sm:justify-end">
+                                <SecondaryButton
+                                    type="button"
+                                    onClick={closeInviteHelp}
+                                    disabled={resendInviteForm.processing}
+                                    className="!h-11 w-full !rounded-xl !normal-case !tracking-normal sm:w-auto"
+                                >
+                                    Cancelar
+                                </SecondaryButton>
+                                {inviteHelpRow.inviteResendEmailUrl ? (
+                                    <PrimaryButton
+                                        type="button"
+                                        onClick={submitResendInviteEmail}
+                                        disabled={resendInviteForm.processing}
+                                        className="!h-11 w-full !rounded-xl !normal-case !tracking-normal sm:w-auto"
+                                    >
+                                        {resendInviteForm.processing ? 'Enviando…' : 'Reenviar e-mail'}
+                                    </PrimaryButton>
                                 ) : null}
                             </div>
-                        ) : null}
-                        <div className="flex flex-wrap justify-end gap-2 border-t border-zinc-200 pt-4 dark:border-zinc-700">
-                            <SecondaryButton type="button" onClick={closeInviteHelp} disabled={resendInviteForm.processing}>
-                                Cancelar
-                            </SecondaryButton>
-                            {inviteHelpRow.inviteResendEmailUrl ? (
-                                <PrimaryButton
-                                    type="button"
-                                    onClick={submitResendInviteEmail}
-                                    disabled={resendInviteForm.processing}
-                                >
-                                    Reenviar e-mail
-                                </PrimaryButton>
+                        </div>
+                    ) : undefined
+                }
+            >
+                {inviteHelpRow ? (
+                    <div className="space-y-4 px-4 pb-2 pt-2 sm:px-6 sm:pb-4 sm:pt-4">
+                        <div className="pr-8">
+                            <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                Convite ao voluntário
+                            </p>
+                            <h2 className="mt-1 text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
+                                {inviteHelpRow.volunteer.name?.trim() || 'Voluntário'}
+                            </h2>
+                            {inviteHelpRow.ministryName ? (
+                                <p className="mt-1.5 inline-flex max-w-full rounded-full bg-zinc-100 px-3 py-1 text-sm font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+                                    {inviteHelpRow.ministryName}
+                                </p>
                             ) : null}
                         </div>
+                        {invitePlainFullMessage ? (
+                            <div className="rounded-xl border border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800/50">
+                                <p className="border-b border-zinc-200 px-3 py-2 text-xs font-medium text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+                                    Mensagem (igual ao e-mail e ao WhatsApp)
+                                </p>
+                                <div className="max-h-[min(40vh,20rem)] overflow-y-auto overscroll-y-contain whitespace-pre-wrap px-3 py-3 text-sm leading-relaxed text-zinc-800 dark:text-zinc-100">
+                                    {invitePlainFullMessage}
+                                </div>
+                            </div>
+                        ) : (
+                            <p className="text-sm text-zinc-500 dark:text-zinc-400">Mensagem do convite indisponível.</p>
+                        )}
                     </div>
                 ) : null}
             </Modal>

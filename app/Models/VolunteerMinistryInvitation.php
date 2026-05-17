@@ -98,7 +98,7 @@ class VolunteerMinistryInvitation extends Model
 
     public static function builtinIntroForMinistry(string $ministryName): string
     {
-        return 'Você foi convidado(a) para servir no departamento '.$ministryName.'. Para continuar, por favor confirme a sua resposta.';
+        return 'Você foi convidado(a) para servir no departamento '.$ministryName.'. Para participar, crie sua conta no aplicativo pelo link abaixo.';
     }
 
     public static function createToken(): string

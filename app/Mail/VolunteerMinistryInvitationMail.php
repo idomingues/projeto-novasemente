@@ -16,7 +16,6 @@ class VolunteerMinistryInvitationMail extends Mailable
 
     public function __construct(
         public VolunteerMinistryInvitation $invitation,
-        public string $actionUrl,
     ) {
         $this->invitation->loadMissing(['ministry', 'volunteer.user', 'slots', 'church']);
     }
@@ -33,13 +32,14 @@ class VolunteerMinistryInvitationMail extends Mailable
     public function content(): Content
     {
         $plain = BuildVolunteerMinistryInvitePlainCopy::for($this->invitation);
+        $registerUrl = BuildVolunteerMinistryInvitePlainCopy::registerUrlFor($this->invitation);
 
         return new Content(
             view: 'emails.volunteer-ministry-invite',
             text: 'emails.volunteer-ministry-invite-text',
             with: [
                 'inv' => $this->invitation,
-                'actionUrl' => $this->actionUrl,
+                'registerUrl' => $registerUrl,
                 'plainCopySection' => $plain,
             ],
         );
