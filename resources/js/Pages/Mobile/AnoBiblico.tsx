@@ -211,7 +211,7 @@ export default function MobileAnoBiblico(props: Props) {
                                 <code className="mt-1 block text-xs">{props.setup.generateCmd}</code>
                             </div>
                             <p className="text-xs text-amber-900/85 dark:text-amber-100/75">
-                                Alternativa ao passo 1: importar manualmente o ficheiro SQL no MySQL (phpMyAdmin ou cliente).
+                                Alternativa ao passo 1: importar manualmente o arquivo SQL no MySQL (phpMyAdmin ou cliente).
                             </p>
                             <div className="mt-4">
                                 <div className="flex items-center justify-between gap-2">

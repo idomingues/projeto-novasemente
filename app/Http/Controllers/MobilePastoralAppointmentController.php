@@ -226,8 +226,8 @@ class MobilePastoralAppointmentController extends Controller
 
         $hasSlot = $preferredStart !== null;
         $msg = $hasSlot
-            ? 'Pedido registado com o horário escolhido. Utilize o chat para confirmar detalhes com a equipe pastoral, se necessário.'
-            : 'Pedido registado. Utilize o chat para combinar detalhes com a equipe pastoral, se necessário.';
+            ? 'Pedido registrado com o horário escolhido. Utilize o chat para confirmar detalhes com a equipe pastoral, se necessário.'
+            : 'Pedido registrado. Utilize o chat para combinar detalhes com a equipe pastoral, se necessário.';
 
         return redirect()
             ->route('mobile.pastoral-appointments.request')

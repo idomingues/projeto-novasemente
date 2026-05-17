@@ -381,7 +381,7 @@ class VolunteerPipelineLeadController extends Controller
                 return redirect()->route('ministry-lead.volunteers.index')->with('error', 'Não pode apagar a sua própria conta desta forma.');
             }
             if ($linkedUser->canAccessAdminMenu()) {
-                return redirect()->route('ministry-lead.volunteers.index')->with('error', 'Não é possível apagar este utilizador: tem acesso ao painel de equipa.');
+                return redirect()->route('ministry-lead.volunteers.index')->with('error', 'Não é possível apagar este usuário: tem acesso ao painel de equipe.');
             }
         }
 
@@ -393,7 +393,7 @@ class VolunteerPipelineLeadController extends Controller
         });
 
         $message = ($deleteLinkedUser && $linkedUser)
-            ? 'Voluntário e conta de utilizador removidos com sucesso.'
+            ? 'Voluntário e conta de usuário removidos com sucesso.'
             : 'Voluntário removido com sucesso.';
 
         return redirect()->route('ministry-lead.volunteers.index')->with('success', $message);

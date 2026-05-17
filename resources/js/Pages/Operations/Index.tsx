@@ -80,9 +80,9 @@ export default function OperationsIndex({
                             hint={`Driver: ${sessionDriver}. Contagem de linhas em \`sessions\` com last_activity recente.`}
                         />
                         <StatCard
-                            title="Utilizadores com sessão (distinct)"
+                            title="Usuários com sessão (distinct)"
                             value={sessionsDistinctUsersApprox}
-                            hint="Aproximação de utilizadores únicos com sessão na mesma janela."
+                            hint="Aproximação de usuários únicos com sessão na mesma janela."
                         />
                     </div>
                 </section>
@@ -91,7 +91,7 @@ export default function OperationsIndex({
                     <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-200 mb-3">Logins hoje (audit)</h2>
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                         <StatCard title="Logins com sucesso" value={loginsSuccessToday} />
-                        <StatCard title="Utilizadores distintos (sucesso)" value={distinctUsersSuccessToday} />
+                        <StatCard title="Usuários distintos (sucesso)" value={distinctUsersSuccessToday} />
                         <StatCard title="Falhas de credenciais" value={loginsFailedToday} />
                         <StatCard title="Bloqueios (rate limit)" value={lockoutsToday} />
                     </div>
@@ -121,7 +121,7 @@ export default function OperationsIndex({
                                 <tr>
                                     <th className="px-4 py-3">Quando</th>
                                     <th className="px-4 py-3">Resultado</th>
-                                    <th className="px-4 py-3">Utilizador</th>
+                                    <th className="px-4 py-3">Usuário</th>
                                     <th className="px-4 py-3">IP</th>
                                     <th className="px-4 py-3">User-Agent</th>
                                 </tr>
@@ -130,7 +130,7 @@ export default function OperationsIndex({
                                 {recentEvents.length === 0 ? (
                                     <tr>
                                         <td colSpan={5} className="px-4 py-8 text-center text-zinc-500">
-                                            Ainda não há eventos registados.
+                                            Ainda não há eventos registrados.
                                         </td>
                                     </tr>
                                 ) : (

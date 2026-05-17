@@ -56,7 +56,7 @@ class User extends Authenticatable
     }
 
     /**
-     * Mantém `users.role_id` alinhado com o primeiro papel Spatie atribuído ao utilizador.
+     * Mantém `users.role_id` alinhado com o primeiro papel Spatie atribuído ao usuário.
      */
     public function syncRoleIdFromSpatieAssignments(): void
     {
@@ -96,7 +96,7 @@ class User extends Authenticatable
 
     /**
      * Painel web com menu lateral (admin, super admin, pastor, secretaria).
-     * Exclui `membro`, `lider_ministerio` e contas sem papéis de equipa.
+     * Exclui `membro`, `lider_ministerio` e contas sem papéis de equipe.
      */
     public function canAccessAdminMenu(): bool
     {
@@ -111,11 +111,11 @@ class User extends Authenticatable
     }
 
     /**
-     * Garante um registo em `volunteers` ligado a este utilizador (espelho de contacto / app).
+     * Garante um registo em `volunteers` ligado a este usuário (espelho de contacto / app).
      * Ministérios em que a pessoa **serve** vêm do cadastro de voluntário; só para `lider_ministerio`
      * espelhamos aqui os ministérios que a pessoa **lidera** (`ministry_user`).
      *
-     * `app_access_only`: conta com app sem serviço em ministérios (ex.: utilizador só com login).
+     * `app_access_only`: conta com app sem serviço em ministérios (ex.: usuário só com login).
      */
     public function ensureVolunteerProfile(): void
     {
@@ -162,7 +162,7 @@ class User extends Authenticatable
     }
 
     /**
-     * Utilizador só com conta na app (sem papel de equipe nem ministérios de serviço no registo de voluntário).
+     * Usuário só com conta na app (sem papel de equipe nem ministérios de serviço no registo de voluntário).
      */
     public function volunteerRowIsAppAccessOnly(\App\Models\Volunteer $volunteer): bool
     {

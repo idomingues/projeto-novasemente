@@ -90,7 +90,7 @@ export default function MobileSplash({ videoSrc, nextUrl }: Props) {
                     onEnded={() => setFinished(true)}
                     onError={() => {
                         setLoadError(true);
-                        // se o vídeo falhar (404/mime/etc), não prende o utilizador aqui.
+                        // se o vídeo falhar (404/mime/etc), não prende o usuário aqui.
                         window.setTimeout(() => setFinished(true), 600);
                     }}
                 />

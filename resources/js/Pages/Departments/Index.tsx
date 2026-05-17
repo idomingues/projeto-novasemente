@@ -1,6 +1,14 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm, router } from '@inertiajs/react';
-import { PlusIcon, PencilIcon, TrashIcon, ClipboardDocumentListIcon } from '@heroicons/react/24/outline';
+import {
+    PlusIcon,
+    PencilIcon,
+    TrashIcon,
+    ClipboardDocumentListIcon,
+    Squares2X2Icon,
+    ListBulletIcon,
+    MagnifyingGlassIcon,
+} from '@heroicons/react/24/outline';
 import AddButton from '@/Components/AddButton';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
@@ -10,13 +18,24 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import PageHeader from '@/Components/PageHeader';
 import InputError from '@/Components/InputError';
 import { DEPARTMENT_ICON_OPTIONS, getMinistryIconByKey } from '@/lib/ministryIcons';
-import { useState, FormEventHandler } from 'react';
+import { useState, useEffect, useMemo, FormEventHandler } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
+
+interface PersonRef {
+    id: number;
+    name: string;
+}
+
+interface PersonOption extends PersonRef {
+    email?: string | null;
+}
 
 interface Department {
     id: number;
     name: string;
     icon: string | null;
+    leaders: PersonRef[];
+    volunteers: PersonRef[];
 }
 
 interface ScheduleRole {
@@ -27,13 +46,127 @@ interface ScheduleRole {
 interface Props {
     departments: Department[];
     scheduleRolesByDepartmentId: Record<number, ScheduleRole[]>;
+    leaderOptions: PersonOption[];
+    volunteerOptions: PersonOption[];
     canManageEscalasRoles: boolean;
+    canManage: boolean;
+    filters: { search?: string };
 }
 
-export default function Index({ departments, scheduleRolesByDepartmentId, canManageEscalasRoles }: Props) {
+function PersonPicker({
+    label,
+    hint,
+    options,
+    selectedIds,
+    onChange,
+    filter,
+    onFilterChange,
+    error,
+}: {
+    label: string;
+    hint: string;
+    options: PersonOption[];
+    selectedIds: number[];
+    onChange: (ids: number[]) => void;
+    filter: string;
+    onFilterChange: (v: string) => void;
+    error?: string;
+}) {
+    const filtered = useMemo(() => {
+        const q = filter.trim().toLowerCase();
+        if (!q) return options;
+        return options.filter(
+            (o) =>
+                o.name.toLowerCase().includes(q) ||
+                (o.email?.toLowerCase().includes(q) ?? false),
+        );
+    }, [options, filter]);
+
+    const toggle = (id: number) => {
+        const set = new Set(selectedIds);
+        if (set.has(id)) {
+            set.delete(id);
+        } else {
+            set.add(id);
+        }
+        onChange(Array.from(set));
+    };
+
+    return (
+        <div className="mt-4">
+            <InputLabel value={label} />
+            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{hint}</p>
+            <TextInput
+                value={filter}
+                onChange={(e) => onFilterChange(e.target.value)}
+                className="mt-2 block w-full"
+                placeholder="Filtrar por nome ou e-mail…"
+            />
+            <div className="mt-2 max-h-40 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/80 p-2 dark:border-zinc-700 dark:bg-zinc-800/40">
+                {filtered.length === 0 ? (
+                    <p className="px-2 py-3 text-sm text-zinc-500 dark:text-zinc-400">Nenhum resultado.</p>
+                ) : (
+                    <ul className="space-y-1">
+                        {filtered.map((o) => (
+                            <li key={o.id}>
+                                <label className="flex cursor-pointer items-start gap-2 rounded-lg px-2 py-1.5 hover:bg-white dark:hover:bg-zinc-800">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedIds.includes(o.id)}
+                                        onChange={() => toggle(o.id)}
+                                        className="mt-0.5 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600"
+                                    />
+                                    <span className="min-w-0 text-sm">
+                                        <span className="font-medium text-zinc-900 dark:text-white">{o.name}</span>
+                                        {o.email ? (
+                                            <span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">
+                                                {o.email}
+                                            </span>
+                                        ) : null}
+                                    </span>
+                                </label>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </div>
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                {selectedIds.length} selecionado{selectedIds.length === 1 ? '' : 's'}
+            </p>
+            {error ? <InputError message={error} className="mt-1" /> : null}
+        </div>
+    );
+}
+
+function namesPreview(people: PersonRef[], max = 2): string {
+    if (people.length === 0) return '—';
+    const shown = people
+        .slice(0, max)
+        .map((p) => p.name)
+        .join(', ');
+    if (people.length > max) {
+        return `${shown} +${people.length - max}`;
+    }
+    return shown;
+}
+
+export default function Index({
+    departments,
+    scheduleRolesByDepartmentId,
+    leaderOptions,
+    volunteerOptions,
+    canManageEscalasRoles,
+    canManage,
+    filters,
+}: Props) {
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [search, setSearch] = useState(filters.search ?? '');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
+    const [leaderPickerFilter, setLeaderPickerFilter] = useState('');
+    const [volunteerPickerFilter, setVolunteerPickerFilter] = useState('');
+    const [rosterTab, setRosterTab] = useState<'leaders' | 'volunteers'>('leaders');
 
     const [rolesModalDepartmentId, setRolesModalDepartmentId] = useState<number | null>(null);
     const [rolesModalNewRoleName, setRolesModalNewRoleName] = useState('');
@@ -41,11 +174,35 @@ export default function Index({ departments, scheduleRolesByDepartmentId, canMan
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
         name: '',
         icon: '' as string | null,
+        leader_user_ids: [] as number[],
+        volunteer_ids: [] as number[],
     });
+
+    useEffect(() => {
+        if (search === (filters.search ?? '')) return;
+        const timeout = setTimeout(() => {
+            router.get(
+                route('departments.index'),
+                { search: search || undefined },
+                { preserveState: true, replace: true },
+            );
+        }, 350);
+        return () => clearTimeout(timeout);
+    }, [search, filters.search]);
+
+    const rosterTabBtn = (active: boolean) =>
+        `flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+            active
+                ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-white'
+                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
+        }`;
 
     const openCreateModal = () => {
         setIsEditing(false);
         setEditingId(null);
+        setRosterTab('leaders');
+        setLeaderPickerFilter('');
+        setVolunteerPickerFilter('');
         reset();
         clearErrors();
         setIsModalOpen(true);
@@ -54,7 +211,15 @@ export default function Index({ departments, scheduleRolesByDepartmentId, canMan
     const openEditModal = (d: Department) => {
         setIsEditing(true);
         setEditingId(d.id);
-        setData({ name: d.name, icon: d.icon ?? '' });
+        setRosterTab('leaders');
+        setLeaderPickerFilter('');
+        setVolunteerPickerFilter('');
+        setData({
+            name: d.name,
+            icon: d.icon ?? '',
+            leader_user_ids: d.leaders.map((l) => l.id),
+            volunteer_ids: d.volunteers.map((v) => v.id),
+        });
         clearErrors();
         setIsModalOpen(true);
     };
@@ -106,115 +271,216 @@ export default function Index({ departments, scheduleRolesByDepartmentId, canMan
         }
     };
 
+    const renderActions = (d: Department) => (
+        <div className="flex shrink-0 justify-end gap-1">
+            {canManage && (
+                <button
+                    type="button"
+                    onClick={() => handleDelete(d.id)}
+                    className="p-2 text-zinc-500 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                    title="Excluir"
+                    aria-label="Excluir departamento"
+                >
+                    <TrashIcon className="w-5 h-5" />
+                </button>
+            )}
+            {canManage && (
+                <button
+                    type="button"
+                    onClick={() => openEditModal(d)}
+                    className="p-2 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                    title="Editar"
+                    aria-label="Editar departamento"
+                >
+                    <PencilIcon className="w-5 h-5" />
+                </button>
+            )}
+            {canManageEscalasRoles && (
+                <button
+                    type="button"
+                    onClick={() => openRolesModal(d.id)}
+                    className="p-2 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                    title="Gerir funções"
+                    aria-label="Gerir funções"
+                >
+                    <ClipboardDocumentListIcon className="w-5 h-5" />
+                </button>
+            )}
+        </div>
+    );
+
+    const renderDepartmentCard = (d: Department) => {
+        const IconComponent = getMinistryIconByKey(d.icon);
+        const deptRoles = scheduleRolesByDepartmentId[d.id] ?? [];
+
+        return (
+            <div
+                key={d.id}
+                className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col min-h-[280px] overflow-hidden"
+            >
+                <div className="shrink-0">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center">
+                            <IconComponent className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />
+                        </div>
+                        <h3
+                            className="text-sm font-semibold leading-snug text-zinc-900 dark:text-white line-clamp-2 min-w-0 flex-1"
+                            title={d.name}
+                        >
+                            {d.name}
+                        </h3>
+                    </div>
+                </div>
+
+                <div className="mt-3 space-y-3 flex-1 min-h-0 text-xs text-zinc-600 dark:text-zinc-400">
+                    <div>
+                        <p className="font-semibold text-zinc-700 dark:text-zinc-300">Líderes</p>
+                        <p className="mt-0.5 line-clamp-2">{namesPreview(d.leaders)}</p>
+                    </div>
+                    <div>
+                        <p className="font-semibold text-zinc-700 dark:text-zinc-300">Voluntários</p>
+                        <p className="mt-0.5">
+                            {d.volunteers.length === 0 ? '—' : `${d.volunteers.length} vinculado(s)`}
+                        </p>
+                    </div>
+                    <div className="flex flex-col flex-1 min-h-0 pt-1 border-t border-zinc-100 dark:border-zinc-800">
+                        <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-200 tracking-wide shrink-0">
+                            Funções na escala
+                        </p>
+                        <div className="mt-1.5 flex-1 min-h-0 max-h-24 overflow-y-auto rounded-lg border border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-800/30 px-2 py-1.5">
+                            {deptRoles.length === 0 ? (
+                                <span className="text-xs">Nenhuma função</span>
+                            ) : (
+                                <div className="flex flex-wrap gap-1.5 content-start">
+                                    {deptRoles.map((r) => (
+                                        <span
+                                            key={r.id}
+                                            className="text-xs px-2 py-0.5 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700"
+                                        >
+                                            {r.name}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="shrink-0 mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-800">
+                    {renderActions(d)}
+                </div>
+            </div>
+        );
+    };
+
+    const renderDepartmentListRow = (d: Department) => {
+        const IconComponent = getMinistryIconByKey(d.icon);
+        const deptRoles = scheduleRolesByDepartmentId[d.id] ?? [];
+
+        return (
+            <div
+                key={d.id}
+                className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 sm:flex-row sm:items-center sm:gap-4"
+            >
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
+                        <IconComponent className="h-5 w-5 text-zinc-700 dark:text-zinc-300" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate" title={d.name}>
+                            {d.name}
+                        </p>
+                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                            {deptRoles.length} função(ões) · {d.leaders.length} líder(es) · {d.volunteers.length}{' '}
+                            voluntário(s)
+                        </p>
+                        <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400 truncate">
+                            Líderes: {namesPreview(d.leaders, 3)}
+                        </p>
+                    </div>
+                </div>
+                {renderActions(d)}
+            </div>
+        );
+    };
+
     return (
         <AdminLayout>
             <Head title="Departamentos" />
             <PageHeader
                 title="Departamentos"
-                actions={<AddButton variant="icon" onClick={openCreateModal} title="Novo departamento">Novo Departamento</AddButton>}
-            />
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {departments.map((d) => {
-                    const IconComponent = getMinistryIconByKey(d.icon);
-                    const deptRoles = scheduleRolesByDepartmentId[d.id] ?? [];
-                    return (
-                    <div
-                        key={d.id}
-                        className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6 shadow-sm hover:shadow-md transition-shadow flex flex-col h-[320px] overflow-hidden"
-                    >
-                        <div className="shrink-0">
-                            <div className="flex items-center gap-3 min-w-0">
-                                <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center">
-                                    <IconComponent className="w-6 h-6 text-zinc-700 dark:text-zinc-300" />
-                                </div>
-                                <h3
-                                    className="font-semibold text-lg leading-tight text-zinc-900 dark:text-white truncate min-w-0 flex-1"
-                                    title={d.name}
-                                >
-                                    {d.name}
-                                </h3>
-                            </div>
-                        </div>
-
-                        <div className="mt-5 pt-4 border-t border-zinc-100 dark:border-zinc-800 flex flex-col flex-1 min-h-0">
-                            <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-200 tracking-wide shrink-0">
-                                Funções na escala
-                            </p>
-                            <div
-                                className="mt-2 flex-1 min-h-0 overflow-y-auto overscroll-contain rounded-lg border border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-800/30 px-2 py-2"
-                                aria-label="Lista de funções"
-                            >
-                                {deptRoles.length === 0 ? (
-                                    <span className="text-sm text-zinc-500 dark:text-zinc-400">Nenhuma função cadastrada</span>
-                                ) : (
-                                    <div className="flex flex-wrap gap-2 content-start">
-                                        {deptRoles.map((r) => (
-                                            <span
-                                                key={r.id}
-                                                className="text-sm px-3 py-1 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200"
-                                            >
-                                                {r.name}
-                                            </span>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="shrink-0 mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800 flex justify-end gap-1">
+                actions={
+                    <div className="flex flex-wrap items-center gap-2">
+                        <div className="inline-flex rounded-xl border border-zinc-200 bg-white p-0.5 dark:border-zinc-700 dark:bg-zinc-900">
                             <button
                                 type="button"
-                                onClick={() => handleDelete(d.id)}
-                                className="p-2 text-zinc-500 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                                title="Excluir"
-                                aria-label="Excluir departamento"
+                                onClick={() => setViewMode('grid')}
+                                className={`rounded-lg p-2 ${viewMode === 'grid' ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-500'}`}
+                                title="Grade"
+                                aria-label="Vista em grade"
                             >
-                                <TrashIcon className="w-5 h-5" />
+                                <Squares2X2Icon className="h-5 w-5" />
                             </button>
                             <button
                                 type="button"
-                                onClick={() => openEditModal(d)}
-                                className="p-2 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                                title="Editar"
-                                aria-label="Editar departamento"
+                                onClick={() => setViewMode('list')}
+                                className={`rounded-lg p-2 ${viewMode === 'list' ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-500'}`}
+                                title="Lista"
+                                aria-label="Vista em lista"
                             >
-                                <PencilIcon className="w-5 h-5" />
+                                <ListBulletIcon className="h-5 w-5" />
                             </button>
-                            {canManageEscalasRoles && (
-                                <button
-                                    type="button"
-                                    onClick={() => openRolesModal(d.id)}
-                                    className="p-2 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                                    title="Gerir funções"
-                                    aria-label="Gerir funções"
-                                >
-                                    <ClipboardDocumentListIcon className="w-5 h-5" />
-                                </button>
-                            )}
                         </div>
+                        {canManage ? (
+                            <AddButton variant="icon" onClick={openCreateModal} title="Novo departamento">
+                                Novo Departamento
+                            </AddButton>
+                        ) : null}
                     </div>
-                    );
-                })}
+                }
+            >
+                <div className="relative w-full max-w-md">
+                    <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400" />
+                    <TextInput
+                        type="search"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="w-full pl-10"
+                        placeholder="Buscar departamento…"
+                    />
+                </div>
+            </PageHeader>
 
-                <button
-                    type="button"
-                    onClick={openCreateModal}
-                    className="rounded-2xl border-2 border-dashed border-zinc-300 dark:border-zinc-600 bg-zinc-50 dark:bg-zinc-800/50 p-6 flex flex-col items-center justify-center gap-2 text-zinc-500 dark:text-zinc-400 hover:border-zinc-400 dark:hover:border-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors min-h-[120px]"
-                >
-                    <PlusIcon className="w-8 h-8" />
-                    <span className="font-medium text-sm">Novo Departamento</span>
-                </button>
-            </div>
-
-            {departments.length === 0 && (
-                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 p-12 text-center text-zinc-500 dark:text-zinc-400">
-                    Nenhum departamento cadastrado. Clique em &quot;Novo Departamento&quot; para começar.
+            {viewMode === 'grid' ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {departments.map((d) => renderDepartmentCard(d))}
+                    {canManage && (
+                        <button
+                            type="button"
+                            onClick={openCreateModal}
+                            className="rounded-2xl border-2 border-dashed border-zinc-300 dark:border-zinc-600 bg-zinc-50 dark:bg-zinc-800/50 p-6 flex flex-col items-center justify-center gap-2 text-zinc-500 dark:text-zinc-400 hover:border-zinc-400 dark:hover:border-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors min-h-[120px]"
+                        >
+                            <PlusIcon className="w-8 h-8" />
+                            <span className="font-medium text-sm">Novo Departamento</span>
+                        </button>
+                    )}
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    {departments.map((d) => renderDepartmentListRow(d))}
                 </div>
             )}
 
-            <Modal show={isModalOpen} onClose={closeModal}>
-                <form onSubmit={submit} className="p-6">
+            {departments.length === 0 && (
+                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 p-12 text-center text-zinc-500 dark:text-zinc-400">
+                    {search.trim()
+                        ? 'Nenhum departamento encontrado para esta busca.'
+                        : 'Nenhum departamento cadastrado. Clique em "Novo Departamento" para começar.'}
+                </div>
+            )}
+
+            <Modal show={isModalOpen} onClose={closeModal} maxWidth={isEditing ? '2xl' : undefined}>
+                <form onSubmit={submit} className="p-6 max-h-[85vh] overflow-y-auto">
                     <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-6">
                         {isEditing ? 'Editar departamento' : 'Novo departamento'}
                     </h2>
@@ -251,11 +517,74 @@ export default function Index({ departments, scheduleRolesByDepartmentId, canMan
                         </div>
                         <InputError message={errors.icon} className="mt-1" />
                     </div>
+
+                    {isEditing && canManage ? (
+                        <div className="mt-6 border-t border-zinc-200 pt-5 dark:border-zinc-700">
+                            <p className="text-sm font-semibold text-zinc-900 dark:text-white">Equipe do departamento</p>
+                            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                                Associe líderes e voluntários em separado (opcional).
+                            </p>
+                            <div className="mt-3 inline-flex w-full rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800/80">
+                                <button
+                                    type="button"
+                                    className={rosterTabBtn(rosterTab === 'leaders')}
+                                    onClick={() => setRosterTab('leaders')}
+                                >
+                                    Líderes
+                                    {data.leader_user_ids.length > 0 ? (
+                                        <span className="ml-1.5 text-xs font-normal text-zinc-500 dark:text-zinc-400">
+                                            ({data.leader_user_ids.length})
+                                        </span>
+                                    ) : null}
+                                </button>
+                                <button
+                                    type="button"
+                                    className={rosterTabBtn(rosterTab === 'volunteers')}
+                                    onClick={() => setRosterTab('volunteers')}
+                                >
+                                    Voluntários
+                                    {data.volunteer_ids.length > 0 ? (
+                                        <span className="ml-1.5 text-xs font-normal text-zinc-500 dark:text-zinc-400">
+                                            ({data.volunteer_ids.length})
+                                        </span>
+                                    ) : null}
+                                </button>
+                            </div>
+                            {rosterTab === 'leaders' ? (
+                                <PersonPicker
+                                    label="Líderes do departamento"
+                                    hint="Usuários que lideram este departamento."
+                                    options={leaderOptions}
+                                    selectedIds={data.leader_user_ids}
+                                    onChange={(ids) => setData('leader_user_ids', ids)}
+                                    filter={leaderPickerFilter}
+                                    onFilterChange={setLeaderPickerFilter}
+                                    error={errors.leader_user_ids}
+                                />
+                            ) : (
+                                <PersonPicker
+                                    label="Voluntários do departamento"
+                                    hint="Voluntários vinculados a este departamento."
+                                    options={volunteerOptions}
+                                    selectedIds={data.volunteer_ids}
+                                    onChange={(ids) => setData('volunteer_ids', ids)}
+                                    filter={volunteerPickerFilter}
+                                    onFilterChange={setVolunteerPickerFilter}
+                                    error={errors.volunteer_ids}
+                                />
+                            )}
+                        </div>
+                    ) : null}
+
                     <div className="mt-6 flex justify-end gap-2">
-                        <SecondaryButton type="button" onClick={closeModal}>Cancelar</SecondaryButton>
-                        <PrimaryButton type="button" onClick={submitDepartment} disabled={processing}>
-                            {isEditing ? 'Salvar' : 'Criar'}
-                        </PrimaryButton>
+                        <SecondaryButton type="button" onClick={closeModal}>
+                            Cancelar
+                        </SecondaryButton>
+                        {canManage ? (
+                            <PrimaryButton type="button" onClick={submitDepartment} disabled={processing}>
+                                {isEditing ? 'Salvar' : 'Criar'}
+                            </PrimaryButton>
+                        ) : null}
                     </div>
                 </form>
             </Modal>
@@ -264,18 +593,23 @@ export default function Index({ departments, scheduleRolesByDepartmentId, canMan
                 {rolesModalDepartmentId !== null && (
                     <div className="p-6">
                         <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">
-                            Funções na escala — {
-                            departments.find((d) => d.id === rolesModalDepartmentId)?.name ?? 'Departamento'
-                            }
+                            Funções na escala —{' '}
+                            {departments.find((d) => d.id === rolesModalDepartmentId)?.name ?? 'Departamento'}
                         </h2>
 
                         <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
-                            {((scheduleRolesByDepartmentId[rolesModalDepartmentId] ?? []) as ScheduleRole[]).length === 0 ? (
-                                <p className="text-sm text-zinc-500 dark:text-zinc-400">Nenhuma função cadastrada para este departamento.</p>
+                            {((scheduleRolesByDepartmentId[rolesModalDepartmentId] ?? []) as ScheduleRole[]).length ===
+                            0 ? (
+                                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                                    Nenhuma função cadastrada para este departamento.
+                                </p>
                             ) : (
                                 <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
                                     {(scheduleRolesByDepartmentId[rolesModalDepartmentId] ?? []).map((r) => (
-                                        <li key={r.id} className="flex items-center justify-between gap-2 py-2 text-sm text-zinc-800 dark:text-zinc-200">
+                                        <li
+                                            key={r.id}
+                                            className="flex items-center justify-between gap-2 py-2 text-sm text-zinc-800 dark:text-zinc-200"
+                                        >
                                             <span className="truncate">{r.name}</span>
                                             <button
                                                 type="button"

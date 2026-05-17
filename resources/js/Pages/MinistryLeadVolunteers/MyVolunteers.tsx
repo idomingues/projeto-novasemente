@@ -947,7 +947,7 @@ export default function MyVolunteers() {
                             <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/30">
                                 <InputLabel value="Texto completo (e-mail = WhatsApp)" />
                                 <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
-                                    Inclui saudação, parágrafo do convite, link público, link de registo (quando há) e lembrete do e-mail. Copie aqui ou reenvie o e-mail oficial.
+                                    Inclui saudação, parágrafo do convite, link público, link de registro (quando há) e lembrete do e-mail. Copie aqui ou reenvie o e-mail oficial.
                                 </p>
                                 <div className="mt-2 max-h-[min(22rem,50vh)] overflow-y-auto whitespace-pre-wrap rounded-lg border border-emerald-100 bg-white px-3 py-2 text-sm text-zinc-800 dark:border-emerald-900/40 dark:bg-zinc-950 dark:text-zinc-100">
                                     {invitePlainFullMessage}

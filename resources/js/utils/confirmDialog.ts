@@ -18,7 +18,7 @@ function isDarkMode(): boolean {
 
 /**
  * Diálogo de confirmação (SweetAlert2), alinhado ao tema claro/escuro da app.
- * Use em vez de `window.confirm()` para todas as perguntas ao utilizador.
+ * Use em vez de `window.confirm()` para todas as perguntas ao usuário.
  */
 export async function confirmAction(options: ConfirmDialogOptions): Promise<boolean> {
     const {

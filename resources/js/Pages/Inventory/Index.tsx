@@ -89,7 +89,7 @@ export default function Index({ items, filters }: Props) {
     const barcodeScanPurposeRef = useRef<'form' | 'search'>('form');
     const skipSearchDebounceRef = useRef(false);
     const setBarcodeFromScanRef = useRef((_: string) => {});
-    /** Em telemóvel fica fechado por defeito; em md+ abre ao criar (ver openCreateModal) */
+    /** Em celular fica fechado por defeito; em md+ abre ao criar (ver openCreateModal) */
     const [inventoryOptionalOpen, setInventoryOptionalOpen] = useState(false);
 
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
@@ -156,7 +156,7 @@ export default function Index({ items, filters }: Props) {
                 const msg =
                     err instanceof Error
                         ? err.message
-                        : 'Não foi possível usar a câmara. Verifique as permissões ou use HTTPS.';
+                        : 'Não foi possível usar a câmera. Verifique as permissões ou use HTTPS.';
                 setBarcodeCameraError(msg);
                 setBarcodeScannerOpen(false);
             }
@@ -329,8 +329,8 @@ export default function Index({ items, filters }: Props) {
                                 setBarcodeScannerOpen(true);
                             }}
                             className="absolute right-1.5 top-1/2 z-10 -translate-y-1/2 rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-                            title="Ler código de barras com a câmara e buscar"
-                            aria-label="Ler código de barras com a câmara e buscar"
+                            title="Ler código de barras com a câmera e buscar"
+                            aria-label="Ler código de barras com a câmera e buscar"
                         >
                             <CameraIcon className="h-5 w-5" aria-hidden />
                         </button>
@@ -454,18 +454,18 @@ export default function Index({ items, filters }: Props) {
                                             setBarcodeScannerOpen(true);
                                         }}
                                         className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-200 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white dark:hover:bg-zinc-700 sm:py-2.5 md:hidden"
-                                        title="Ler código de barras com a câmara (telemóvel)"
+                                        title="Ler código de barras com a câmera (celular)"
                                     >
                                         <CameraIcon className="h-5 w-5" aria-hidden />
-                                        Ler com câmara
+                                        Ler com câmera
                                     </button>
                                 </div>
                                 <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                                     <span className="md:hidden">
-                                        Toque em «Ler com câmara» para preencher pelo código de barras, ou digite no campo.
+                                        Toque em «Ler com câmera» para preencher pelo código de barras, ou digite no campo.
                                     </span>
                                     <span className="hidden md:inline">
-                                        Digite o código de barras. A leitura com câmara aparece neste formulário em ecrã de telemóvel
+                                        Digite o código de barras. A leitura com câmera aparece neste formulário em tela de celular
                                         (ou use o inventário na app móvel).
                                     </span>
                                 </p>
@@ -501,7 +501,7 @@ export default function Index({ items, filters }: Props) {
                             <div className="mt-4 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white/80 p-3 dark:bg-zinc-950/40">
                                 <InputLabel htmlFor="photo" value="Foto do objeto (opcional)" />
                                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 mb-2">
-                                    Tire uma foto ou escolha um ficheiro da galeria (telemóvel: pode usar a câmara).
+                                    Tire uma foto ou escolha um arquivo da galeria (celular: pode usar a câmera).
                                 </p>
                                 <input
                                     id="photo"
@@ -755,7 +755,7 @@ export default function Index({ items, filters }: Props) {
                         <span className="font-semibold">
                             {barcodeScanPurpose === 'search'
                                 ? 'Buscar pela leitura do código'
-                                : 'Aponte a câmara para o código'}
+                                : 'Aponte a câmera para o código'}
                         </span>
                         <button
                             type="button"
@@ -773,7 +773,7 @@ export default function Index({ items, filters }: Props) {
                         />
                     </div>
                     <p className="px-6 pb-8 text-center text-sm text-white/80">
-                        Em telemóveis usa a câmara traseira; no computador pode pedir acesso à webcam.
+                        Em telemóveis usa a câmera traseira; no computador pode pedir acesso à webcam.
                     </p>
                 </div>
             )}

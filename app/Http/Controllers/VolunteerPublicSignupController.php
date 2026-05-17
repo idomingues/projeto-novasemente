@@ -29,7 +29,7 @@ class VolunteerPublicSignupController extends Controller
     public function createPublicPage(): RedirectResponse|Response
     {
         if (! Schema::hasTable('volunteer_self_signup_tokens')) {
-            return redirect()->route('login')->with('error', 'Cadastro de voluntários ainda não está disponível. Contacte a equipe.');
+            return redirect()->route('login')->with('error', 'Cadastro de voluntários ainda não está disponível. Entre em contato a equipe.');
         }
 
         $church = Church::query()->where('active', true)->orderBy('name')->first();
@@ -101,7 +101,7 @@ class VolunteerPublicSignupController extends Controller
     public function create(Request $request): RedirectResponse|Response
     {
         if (! Schema::hasTable('volunteer_self_signup_tokens')) {
-            return redirect()->route('mobile.home')->with('error', 'Cadastro público de voluntários ainda não está disponível. Contacte a equipe.');
+            return redirect()->route('mobile.home')->with('error', 'Cadastro público de voluntários ainda não está disponível. Entre em contato a equipe.');
         }
 
         $token = (string) $request->query('token', '');

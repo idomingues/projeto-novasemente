@@ -166,8 +166,8 @@ class PastoralAvailability extends Model
                 'online' => ' · Online',
                 default => ' · Presencial ou online',
             };
-            $labelStart = $slotStart->locale('pt')->isoFormat('ddd, D MMM · HH:mm');
-            $labelEnd = $slotEnd->locale('pt')->isoFormat('HH:mm');
+            $labelStart = $slotStart->locale('pt_BR')->isoFormat('ddd, D MMM · HH:mm');
+            $labelEnd = $slotEnd->locale('pt_BR')->isoFormat('HH:mm');
             $rows[] = [
                 'value' => $slotStart->toIso8601String(),
                 'label' => $labelStart.' — '.$labelEnd.$suffix,

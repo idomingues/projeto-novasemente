@@ -88,7 +88,7 @@ export default function MobileMore(_: Props) {
         isAuthenticated &&
         route().has('ministry-lead.my-volunteers.index') &&
         auth?.isMinistryLeaderAccount === true;
-    /** «Atendimento Pastoral» abre o painel web completo — só equipa pastoral/secretaria/admin. */
+    /** «Atendimento Pastoral» abre o painel web completo — só equipe pastoral/secretaria/admin. */
     const showMySolicitations =
         isAuthenticated &&
         route().has('solicitations.index') &&

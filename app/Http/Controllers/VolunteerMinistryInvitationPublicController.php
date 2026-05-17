@@ -75,7 +75,7 @@ class VolunteerMinistryInvitationPublicController extends Controller
             'accepted_at' => now(),
         ])->save();
 
-        return redirect()->route('volunteers.ministry-invite.show', ['token' => $token])->with('success', 'Aceite registado. Obrigado!');
+        return redirect()->route('volunteers.ministry-invite.show', ['token' => $token])->with('success', 'Aceite registrado. Obrigado!');
     }
 
     public function decline(Request $request, string $token): RedirectResponse

@@ -239,7 +239,7 @@ class RegisteredUserController extends Controller
         $volunteerEmail = strtolower(trim((string) ($volunteer->email ?? '')));
         if ($volunteerEmail === '') {
             throw ValidationException::withMessages([
-                'email' => 'O cadastro de voluntário não tem e-mail. Contacte a secretaria.',
+                'email' => 'O cadastro de voluntário não tem e-mail. Entre em contato a secretaria.',
             ]);
         }
 
@@ -406,7 +406,7 @@ class RegisteredUserController extends Controller
     }
 
     /**
-     * Utilizador marcou «Já sou voluntário»: liga a um registo existente em `volunteers` pelo e-mail (sem conta) ou marca o perfil para equipe.
+     * Usuário marcou «Já sou voluntário»: liga a um registro existente em `volunteers` pelo e-mail (sem conta) ou marca o perfil para equipe.
      */
     private function applyAlreadyVolunteerOnPublicRegister(User $user): void
     {
@@ -516,7 +516,7 @@ class RegisteredUserController extends Controller
     }
 
     /**
-     * Ecrã de confirmação após registo (utilizador já autenticado).
+     * Tela de confirmação após registro (usuário já autenticado).
      */
     public function welcome(Request $request): RedirectResponse|Response
     {

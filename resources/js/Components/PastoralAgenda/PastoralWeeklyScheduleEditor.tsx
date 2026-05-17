@@ -834,7 +834,7 @@ const PastoralWeeklyScheduleEditor = forwardRef<PastoralWeeklyScheduleEditorHand
                         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                             Indique a <span className="font-medium text-zinc-700 dark:text-zinc-200">data</span> e o{' '}
                             <span className="font-medium text-zinc-700 dark:text-zinc-200">horário de início e fim</span> que quiser
-                            (qualquer combinação válida — útil após um contacto informal). Só os blocos com início futuro e com
+                            (qualquer combinação válida — útil após um contato informal). Só os blocos com início futuro e com
                             «disponível na app» ligado aparecem para os membros marcarem. Ao confirmar, a agenda guarda-se
                             automaticamente.
                         </p>
@@ -905,7 +905,7 @@ const PastoralWeeklyScheduleEditor = forwardRef<PastoralWeeklyScheduleEditorHand
                                     />
                                     <span className="text-sm leading-snug text-zinc-700 dark:text-zinc-200">
                                         <span className="font-semibold text-zinc-900 dark:text-white">Disponível na app</span> para os
-                                        membros escolherem este horário ao pedir marcação. Desligue para um registo só na sua agenda
+                                        membros escolherem este horário ao pedir marcação. Desligue para um registro só na sua agenda
                                         (ex.: compromisso já combinado por fora).
                                     </span>
                                 </label>

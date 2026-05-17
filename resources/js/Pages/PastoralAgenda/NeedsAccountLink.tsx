@@ -12,7 +12,7 @@ export default function PastoralAgendaNeedsAccountLink({ variant, pastorsIndexUr
     const description =
         variant === 'pastor'
             ? 'Para publicar horários neste módulo, a sua conta tem de estar ligada a um perfil de pastor nesta igreja.'
-            : 'Ainda não há perfis com conta associada, ou precisa de permissões para os gerir. A disponibilidade semanal configura-se no módulo Agenda pastoral após associar utilizadores em Pastores.';
+            : 'Ainda não há perfis com conta associada, ou precisa de permissões para os gerir. A disponibilidade semanal configura-se no módulo Agenda pastoral após associar usuários em Pastores.';
 
     return (
         <AdminLayout>
@@ -27,7 +27,7 @@ export default function PastoralAgendaNeedsAccountLink({ variant, pastorsIndexUr
                     {variant === 'pastor' ? (
                         <>
                             <p>
-                                Peça à secretaria ou a um administrador para ligar o seu utilizador ao seu perfil em{' '}
+                                Peça à secretaria ou a um administrador para ligar o seu usuário ao seu perfil em{' '}
                                 <span className="font-medium text-zinc-900 dark:text-white">Pastores</span> (campo «Conta da
                                 app»).
                             </p>

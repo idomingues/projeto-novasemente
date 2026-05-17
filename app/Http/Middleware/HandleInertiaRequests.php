@@ -243,7 +243,7 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             /**
              * Dados do último POST com validação falhada (sem senhas), para reabrir formulários
-             * após o redirect 303 usado em pedidos Inertia (ex.: cadastro de utilizadores no painel).
+             * após o redirect 303 usado em pedidos Inertia (ex.: cadastro de usuários no painel).
              */
             'oldInput' => fn () => Arr::except(
                 $request->session()->getOldInput() ?? [],
@@ -254,7 +254,7 @@ class HandleInertiaRequests extends Middleware
             'appVersion' => $appVersionShared,
             'appVersionHistory' => $appVersionHistory,
             'appUrl' => $request->getSchemeAndHttpHost(),
-            /** URL raiz desta instalação (scheme + host + path base), para ecrã «Sobre o APP». */
+            /** URL raiz desta instalação (scheme + host + path base), para tela «Sobre o APP». */
             'appRootUrl' => rtrim($request->root(), '/'),
             'appLogoUrl' => $appLogoUrl,
             'defaultBrandLogoUrl' => $defaultBrandLogoUrl,
@@ -277,7 +277,7 @@ class HandleInertiaRequests extends Middleware
                 'roleLabel' => $roleLabel,
                 'canAccessAdminMenu' => $canAccessAdminMenu,
                 'canManageSettings' => $canManageSettings,
-                /** Pastor com registo ligado à conta na igreja em contexto (para menu «Minha disponibilidade»). */
+                /** Pastor com registro ligado à conta na igreja em contexto (para menu «Minha disponibilidade»). */
                 'linkedPastor' => $linkedPastor,
                 /** Mostrar «Agenda Pastoral» no menu (pastor ligado, papel pastor, ou quem gere pastores). */
                 'pastoralAgendaMenuVisible' => $pastoralAgendaMenuVisible,

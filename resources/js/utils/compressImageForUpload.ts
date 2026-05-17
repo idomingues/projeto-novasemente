@@ -55,7 +55,7 @@ export class ImageCompressError extends Error {
 }
 
 /**
- * @returns Ficheiro JPEG (ou o original se já for pequeno / não for imagem)
+ * @returns Arquivo JPEG (ou o original se já for pequeno / não for imagem)
  */
 export async function compressImageForUpload(file: File): Promise<File> {
     if (!file.type.startsWith('image/')) {
@@ -71,7 +71,7 @@ export async function compressImageForUpload(file: File): Promise<File> {
         decoded = await decodeToImage(file);
     } catch {
         throw new ImageCompressError(
-            'Não foi possível ler esta imagem. Tente outra foto ou exporte como JPEG nas definições da câmara.',
+            'Não foi possível ler esta imagem. Tente outra foto ou exporte como JPEG nas definições da câmera.',
         );
     }
 

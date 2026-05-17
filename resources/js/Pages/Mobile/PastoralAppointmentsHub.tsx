@@ -160,7 +160,7 @@ export default function PastoralAppointmentsHub({
                     subtitle={
                         <>
                             <span className="block text-zinc-600 dark:text-zinc-400">
-                                Toque num pedido para ver ou editar. Use o separador «Chat» para falar com a equipe pastoral.
+                                Toque num pedido para ver ou editar. Use o aba «Chat» para falar com a equipe pastoral.
                             </span>
                             {!hasAnyFreeSlot ? (
                                 <span className="mt-2 block text-xs text-amber-700 dark:text-amber-300">

@@ -842,7 +842,7 @@ export default function PublicSignup({ token, churchName }: Props) {
 
                                     <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                                         <div>
-                                            <InputLabel htmlFor="password" value="Palavra-passe *" />
+                                            <InputLabel htmlFor="password" value="Senha *" />
                                             <TextInput
                                                 id="password"
                                                 type="password"

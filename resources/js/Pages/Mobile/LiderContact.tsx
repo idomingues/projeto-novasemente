@@ -264,7 +264,7 @@ export default function LiderContact({ leaderOptions, storeUrl, myLeaderChats }:
                             <InputError message={errors.assigned_volunteer_id} className="mt-1" />
                             {leaderOptions.length === 0 ? (
                                 <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
-                                    Ainda não há líderes com utilizador da app associado ao voluntariado. Peça à secretaria para associar a
+                                    Ainda não há líderes com usuário da app associado ao voluntariado. Peça à secretaria para associar a
                                     conta na ficha do voluntário.
                                 </p>
                             ) : null}

@@ -131,7 +131,7 @@ export default function SupportTicketChatPanel({ publicToken, returnTo, compact 
                     {hideFromMyAppUrl ? (
                         <div className="mt-3 rounded-xl border border-zinc-200 bg-zinc-50/90 p-3 dark:border-zinc-700 dark:bg-zinc-800/50">
                             <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                                Pode remover este chamado da sua lista na app; a equipa mantém o registo.
+                                Pode remover este chamado da sua lista na app; a equipe mantém o registro.
                             </p>
                             <SecondaryButton
                                 type="button"
@@ -139,7 +139,7 @@ export default function SupportTicketChatPanel({ publicToken, returnTo, compact 
                                 onClick={async () => {
                                     const ok = await confirmAction({
                                         title: 'Remover este chamado da sua app?',
-                                        text: 'Deixa de aparecer nos seus chamados. A equipa continua a poder ver o histórico.',
+                                        text: 'Deixa de aparecer nos seus chamados. A equipe continua a poder ver o histórico.',
                                         icon: 'warning',
                                         danger: true,
                                         confirmButtonText: 'Sim, remover da minha app',

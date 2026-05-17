@@ -113,7 +113,7 @@ export default function Show({ volunteer: v }: Props) {
 
             <div className="space-y-6">
                 <Card>
-                    <SectionTitle>Identificação e contactos</SectionTitle>
+                    <SectionTitle>Identificação e contatos</SectionTitle>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <DetailRow label="Nome completo">{formatText(v.name)}</DetailRow>
                         <DetailRow label="E-mail (cadastro)">{formatText(v.email)}</DetailRow>
@@ -131,8 +131,8 @@ export default function Show({ volunteer: v }: Props) {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <DetailRow label="Há quanto tempo frequenta / serve">{formatAttendance(v.attendance_duration)}</DetailRow>
                         <DetailRow label="Membro com cartão oficial?">{formatBool(v.is_official_member)}</DetailRow>
-                        <DetailRow label="Registo em Nova Semente (membro)">{formatBool(v.member_record_at_nova_semente)}</DetailRow>
-                        <DetailRow label="Outra igreja / detalhe de registo">{formatText(v.member_record_church)}</DetailRow>
+                        <DetailRow label="Registro em Nova Semente (membro)">{formatBool(v.member_record_at_nova_semente)}</DetailRow>
+                        <DetailRow label="Outra igreja / detalhe de registro">{formatText(v.member_record_church)}</DetailRow>
                     </div>
                 </Card>
 
@@ -194,7 +194,7 @@ export default function Show({ volunteer: v }: Props) {
                         <p className="text-sm text-zinc-600 dark:text-zinc-300">Sem conta associada.</p>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <DetailRow label="Utilizador">{formatText(v.user.name)}</DetailRow>
+                            <DetailRow label="Usuário">{formatText(v.user.name)}</DetailRow>
                             <DetailRow label="E-mail da conta">{v.user.email ? v.user.email : '— (convite pendente)'}</DetailRow>
                             <div className="md:col-span-2">
                                 <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-2">
@@ -220,7 +220,7 @@ export default function Show({ volunteer: v }: Props) {
                 </Card>
 
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 px-1">
-                    Registo criado em{' '}
+                    Registro criado em{' '}
                     {v.created_at ? new Date(v.created_at).toLocaleString('pt-PT') : '—'}
                     {v.updated_at && v.updated_at !== v.created_at ? (
                         <>

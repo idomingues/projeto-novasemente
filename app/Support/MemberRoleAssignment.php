@@ -72,7 +72,7 @@ final class MemberRoleAssignment
         }
 
         if ($target->hasRole('super_admin') && ! $actor->hasRole('super_admin')) {
-            abort(403, 'Não autorizado a alterar o perfil deste utilizador.');
+            abort(403, 'Não autorizado a alterar o perfil deste usuário.');
         }
 
         if ($roleName === 'super_admin' && ! $actor->hasRole('super_admin')) {

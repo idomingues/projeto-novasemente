@@ -16,7 +16,7 @@ class RoleController extends Controller
     private const SYSTEM_ROLE_NAMES = ['super_admin', 'admin'];
 
     /**
-     * Permissões que não entram na grelha de perfis: sem módulo financeiro no produto;
+     * Permissões que não entram na grade de perfis: sem módulo financeiro no produto;
      * suporte administrativo do app é só para super administrador (rotas próprias).
      */
     public static function permissionExcludedFromProfileMatrix(string $name): bool
@@ -120,7 +120,7 @@ class RoleController extends Controller
         }
 
         if ($role->users()->exists()) {
-            return back()->with('error', 'Este perfil está atribuído a utilizadores. Altere o perfil em Voluntários antes de excluir.');
+            return back()->with('error', 'Este perfil está atribuído a usuários. Altere o perfil em Voluntários antes de excluir.');
         }
 
         $role->delete();

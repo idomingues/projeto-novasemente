@@ -3,7 +3,7 @@ import AppVersionTrigger from '@/Components/AppVersionTrigger';
 
 /**
  * Barra superior padrão para visitantes (mesma do {@link MobileLayout} sem sessão).
- * Usada no cadastro público e noutras páginas guest fora do fluxo «painel login».
+ * Usada no cadastro público e em outras páginas guest fora do fluxo «painel login».
  */
 export default function GuestAppBar() {
     const { currentChurch, defaultBrandLogoUrl } = usePage().props as {

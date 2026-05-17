@@ -140,7 +140,7 @@ export default function Login({
                         </div>
                         <div className="flex items-start gap-3">
                             <span className="mt-1 h-1 w-6 rounded-full bg-zinc-100" />
-                            <span>Gestão de membros, voluntários e escalas em um só lugar.</span>
+                            <span>Gerenciamento de membros, voluntários e escalas em um só lugar.</span>
                         </div>
                     </div>
                     <p className="mt-10 text-xs text-zinc-500">

@@ -90,7 +90,7 @@ export default function Show({ member }: Props) {
 
                 {member.address?.trim() ? (
                     <div className="mt-8">
-                        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Morada</p>
+                        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Endereço</p>
                         <p className="text-sm text-zinc-300 mt-1 whitespace-pre-line">{member.address}</p>
                     </div>
                 ) : null}

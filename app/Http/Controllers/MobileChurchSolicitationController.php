@@ -20,7 +20,7 @@ use Inertia\Response;
 
 class MobileChurchSolicitationController extends Controller
 {
-    /** Tipos listados no hub (pedidos formais). «Falar com líder» é só em Mais → Contacto. */
+    /** Tipos listados no hub (pedidos formais). «Falar com líder» é só em Mais → Contato. */
     private const HUB_TYPES = ['baptism', 'bible_study', 'baby_presentation', 'pastor_visit', 'other'];
 
     private const TYPES = ['baptism', 'bible_study', 'baby_presentation', 'pastor_visit', 'other', 'leader_chat'];

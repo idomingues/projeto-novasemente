@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Rotas do painel administrativo (ex.: `/dashboard`) — só equipa com menu lateral.
+ * Rotas do painel administrativo (ex.: `/dashboard`) — só equipe com menu lateral.
  */
 class EnsureCanAccessAdminMenu
 {
@@ -17,7 +17,7 @@ class EnsureCanAccessAdminMenu
         if ($user !== null && ! $user->canAccessAdminMenu()) {
             return redirect()
                 ->route('mobile.home')
-                ->with('error', 'Esta área é reservada à equipa da igreja.');
+                ->with('error', 'Esta área é reservada à equipe da igreja.');
         }
 
         return $next($request);

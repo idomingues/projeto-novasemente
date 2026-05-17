@@ -387,6 +387,6 @@ class MobileSupportController extends Controller
         $ticket->update(['user_hidden_at' => now()]);
 
         return redirect()->route('mobile.support.index')
-            ->with('success', 'O chamado foi removido da sua lista. A equipa de suporte mantém o registo.');
+            ->with('success', 'O chamado foi removido da sua lista. A equipe de suporte mantém o registro.');
     }
 }

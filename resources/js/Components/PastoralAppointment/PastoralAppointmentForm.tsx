@@ -100,7 +100,7 @@ export default function PastoralAppointmentForm({
                 <InputError message={errors.preferred_pastor_id} className="mt-1" />
                 {pastors.length === 0 ? (
                     <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
-                        Ainda não há pastores cadastrados. Contacte a secretaria.
+                        Ainda não há pastores cadastrados. Entre em contato a secretaria.
                     </p>
                 ) : null}
             </div>

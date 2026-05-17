@@ -357,7 +357,7 @@ export default function SupportTicketDetailPanel({
                         <div>
                             <div className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">Conversa</div>
                             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                                {isOpen ? 'Histórico registado no chamado.' : 'Histórico do chamado (encerrado — só leitura).'}
+                                {isOpen ? 'Histórico registrado no chamado.' : 'Histórico do chamado (encerrado — só leitura).'}
                             </p>
                         </div>
                     </div>
@@ -401,12 +401,12 @@ export default function SupportTicketDetailPanel({
                         <ChatBubbleLeftRightIcon className="w-6 h-6 shrink-0 text-zinc-600 dark:text-zinc-300" aria-hidden />
                         <div className="min-w-0">
                             <h2 className="text-base font-semibold text-zinc-900 dark:text-white">
-                                {internalCoordination ? 'Coordenação interna' : 'Conversa com o utilizador'}
+                                {internalCoordination ? 'Coordenação interna' : 'Conversa com o usuário'}
                             </h2>
                             <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
                                 {internalCoordination
                                     ? 'O pedido não tem conta na app; use este espaço para alinhar entre a equipe pastoral e secretaria.'
-                                    : 'Respostas enviadas aqui aparecem no histórico deste chamado na app (utilizador com sessão iniciada).'}
+                                    : 'Respostas enviadas aqui aparecem no histórico deste chamado na app (usuário com sessão iniciada).'}
                             </p>
                         </div>
                     </div>
@@ -456,7 +456,7 @@ export default function SupportTicketDetailPanel({
                                         placeholder={
                                             internalCoordination
                                                 ? 'Escreva uma nota à equipe…'
-                                                : 'Escreva a sua mensagem ao utilizador…'
+                                                : 'Escreva a sua mensagem ao usuário…'
                                         }
                                         className="w-full"
                                     />
@@ -500,7 +500,7 @@ export default function SupportTicketDetailPanel({
                 <div className="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4">
                     <div className="text-sm font-semibold text-amber-900 dark:text-amber-200">Chat indisponível</div>
                     <div className="mt-1 text-sm text-amber-900/90 dark:text-amber-200/90">
-                        Este chamado não tem utilizador com sessão na app. Use a aba Detalhes para encerrar com a solução.
+                        Este chamado não tem usuário com sessão na app. Use a aba Detalhes para encerrar com a solução.
                     </div>
                 </div>
             )}
@@ -529,7 +529,7 @@ export default function SupportTicketDetailPanel({
                         <div className="text-lg font-semibold text-zinc-900 dark:text-white mb-2">Encerrar chamado</div>
                         <div className="text-sm text-zinc-600 dark:text-zinc-400 mb-3">
                             {isDevItem
-                                ? 'Descreva o que foi feito ou como ficou resolvido. Isso encerra o registo.'
+                                ? 'Descreva o que foi feito ou como ficou resolvido. Isso encerra o registro.'
                                 : 'Informe a solução para o usuário. Isso encerra o chat.'}
                         </div>
 

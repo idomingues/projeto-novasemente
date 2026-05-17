@@ -163,7 +163,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
 
     const permissions: string[] = auth?.permissions ?? [];
     const isAuthenticated = !!auth?.user;
-    /** Troca de igreja ativa: só utilizadores com papel `super_admin` recebem a lista. */
+    /** Troca de igreja ativa: só usuários com papel `super_admin` recebem a lista. */
     const showChurchSwitcher = churchesForSwitch.length > 0;
     const isSuperAdminUser = auth?.isSuperAdmin === true;
     const canAccessSupportAdmin = permissions.includes('support.view') || permissions.includes('support.manage');
@@ -252,7 +252,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
                 if (item.route === 'pastoral-agenda.index' && !showPastoralAgendaInSidebar) {
                     return false;
                 }
-                /** Lista de utilizadores (cadastro `members`): visível para equipe do painel ou quem tem members.view/manage. */
+                /** Lista de usuários (cadastro `members`): visível para equipe do painel ou quem tem members.view/manage. */
                 if (item.route === 'members.index') {
                     return canAccessAdminMenu || canAccess('members.index');
                 }

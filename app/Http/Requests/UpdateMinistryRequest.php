@@ -24,6 +24,10 @@ class UpdateMinistryRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'icon' => ['nullable', 'string', 'in:' . implode(',', $iconKeys)],
+            'leader_user_ids' => ['nullable', 'array'],
+            'leader_user_ids.*' => ['integer'],
+            'volunteer_ids' => ['nullable', 'array'],
+            'volunteer_ids.*' => ['integer'],
         ];
     }
 }

@@ -23,7 +23,7 @@ class LeaderPublicSignupController extends Controller
     public function create(Request $request): RedirectResponse|Response
     {
         if (! Schema::hasTable('leader_self_signup_tokens')) {
-            return redirect()->route('login')->with('error', 'Cadastro de líderes ainda não está disponível. Contacte a equipe.');
+            return redirect()->route('login')->with('error', 'Cadastro de líderes ainda não está disponível. Entre em contato a equipe.');
         }
 
         $token = (string) $request->query('token', '');
@@ -75,7 +75,7 @@ class LeaderPublicSignupController extends Controller
         return response()->json([
             'email_taken' => $taken,
             'invalid_token' => false,
-            'message' => $taken ? 'Este e-mail já está registado.' : null,
+            'message' => $taken ? 'Este e-mail já está registrado.' : null,
         ]);
     }
 
@@ -111,7 +111,7 @@ class LeaderPublicSignupController extends Controller
         $guard = (string) config('auth.defaults.guard');
         if (! Role::query()->where('name', 'lider_ministerio')->where('guard_name', $guard)->exists()) {
             throw ValidationException::withMessages([
-                'name' => ['O papel de líder de ministério não está configurado. Contacte o administrador.'],
+                'name' => ['O papel de líder de ministério não está configurado. Entre em contato o administrador.'],
             ]);
         }
 

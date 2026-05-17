@@ -104,7 +104,7 @@ class ScheduleController extends Controller
             return back()->withErrors(['volunteer_id' => 'Escolha um voluntário para esta escala.']);
         }
         if (! empty($valid['member_id']) && ! empty($valid['volunteer_id'])) {
-            return back()->withErrors(['volunteer_id' => 'Envie apenas volunteer_id ou o utilizador (member_id).']);
+            return back()->withErrors(['volunteer_id' => 'Envie apenas volunteer_id ou o usuário (member_id).']);
         }
 
         $userId = null;

@@ -207,7 +207,7 @@ export default function RolesIndex({ roles, permissions }: Props) {
     const handleDeleteRole = async (role: RoleRow) => {
         const ok = await confirmAction({
             title: 'Remover perfil?',
-            text: `O perfil «${appRoleLabel(role.name)}» será apagado. Utilizadores não podem estar com este perfil atribuído.`,
+            text: `O perfil «${appRoleLabel(role.name)}» será apagado. Usuários não podem estar com este perfil atribuído.`,
             confirmButtonText: 'Remover',
             danger: true,
             icon: 'warning',
@@ -224,7 +224,7 @@ export default function RolesIndex({ roles, permissions }: Props) {
                 title="Perfis de acesso"
                 subtitle={
                     <>
-                        Utilizadores podem ficar <strong className="font-medium text-zinc-700 dark:text-zinc-300">sem perfil</strong>{' '}
+                        Usuários podem ficar <strong className="font-medium text-zinc-700 dark:text-zinc-300">sem perfil</strong>{' '}
                         no app até um administrador definir o acesso em{' '}
                         <Link href={route('volunteers.index')} className="font-medium text-primary-600 underline dark:text-primary-400">
                             Voluntários
@@ -258,7 +258,7 @@ export default function RolesIndex({ roles, permissions }: Props) {
                         <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Novo perfil</h2>
                         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                             Identificador interno: letras minúsculas, números e sublinhado (ex.:{' '}
-                            <code className="text-xs">coordenador_eventos</code>). Depois escolha as permissões na grelha e
+                            <code className="text-xs">coordenador_eventos</code>). Depois escolha as permissões na grade e
                             salve.
                         </p>
                     </div>
@@ -301,8 +301,8 @@ export default function RolesIndex({ roles, permissions }: Props) {
                                         <p className="text-xs text-zinc-500 dark:text-zinc-400 font-mono mt-0.5">{role.name}</p>
                                         <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
                                             {usersCount === 0
-                                                ? 'Nenhum utilizador com este perfil.'
-                                                : `${usersCount} utilizador(es) com este perfil.`}
+                                                ? 'Nenhum usuário com este perfil.'
+                                                : `${usersCount} usuário(es) com este perfil.`}
                                         </p>
                                     </div>
                                     <div className="flex shrink-0 flex-col items-end gap-2">

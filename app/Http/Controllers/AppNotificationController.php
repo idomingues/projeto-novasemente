@@ -36,7 +36,7 @@ class AppNotificationController extends Controller
 
         $this->dispatchNativePushForNotification($notification);
 
-        return redirect()->back()->with('success', 'Notificação enviada para todos os utilizadores do app.');
+        return redirect()->back()->with('success', 'Notificação enviada para todos os usuários do app.');
     }
 
     public function destroy(Request $request, AppNotification $notification)

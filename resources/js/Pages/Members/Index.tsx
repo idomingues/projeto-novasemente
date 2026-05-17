@@ -191,7 +191,7 @@ export default function Index({
     transform((form) => {
         const editing =
             memberFormModeRef.current.isEditing && memberFormModeRef.current.editingId;
-        // Sem isto, `photo` (ficheiro) vem antes de `role_name` na ordem das chaves do `useForm` e o
+        // Sem isto, `photo` (arquivo) vem antes de `role_name` na ordem das chaves do `useForm` e o
         // multipart pode cortar o fim do pedido (post_max_size / limites) — o Laravel deixa de receber `role_name`.
         const { photo, ...rest } = form;
         const departmentIds = Array.isArray(rest.department_ids) ? rest.department_ids : [];
@@ -282,7 +282,7 @@ export default function Index({
                 forceFormData: true,
                 onSuccess: () => closeModal(),
                 onError: (errs) => {
-                    const msg = firstFlatError(errs) ?? 'Não foi possível guardar. Verifique os campos.';
+                    const msg = firstFlatError(errs) ?? 'Não foi possível salvar. Verifique os campos.';
                     setSubmitMessage({ kind: 'error', text: msg });
                 },
             });
@@ -292,7 +292,7 @@ export default function Index({
                 forceFormData: true,
                 onSuccess: () => closeModal(),
                 onError: (errs) => {
-                    const msg = firstFlatError(errs) ?? 'Não foi possível guardar. Verifique os campos.';
+                    const msg = firstFlatError(errs) ?? 'Não foi possível salvar. Verifique os campos.';
                     setSubmitMessage({ kind: 'error', text: msg });
                 },
             });
@@ -464,10 +464,10 @@ export default function Index({
                 title="Usuários"
                 subtitle={
                     <>
-                        Acesso e login baseiam-se na tabela de utilizadores (
+                        Acesso e login baseiam-se na tabela de usuários (
                         <strong className="font-medium text-zinc-700 dark:text-zinc-300">users</strong>); a ficha na igreja é{' '}
-                        <strong className="font-medium text-zinc-700 dark:text-zinc-300">members</strong>. O mesmo núcleo do registo público «Criar conta»: nome e e-mail obrigatórios; telefone e data de nascimento são opcionais.{' '}
-                        <strong className="font-medium text-zinc-700 dark:text-zinc-300">Morada não é pedida nesta fase.</strong>
+                        <strong className="font-medium text-zinc-700 dark:text-zinc-300">members</strong>. O mesmo núcleo do registro público «Criar conta»: nome e e-mail obrigatórios; telefone e data de nascimento são opcionais.{' '}
+                        <strong className="font-medium text-zinc-700 dark:text-zinc-300">Endereço não é pedida nesta fase.</strong>
                     </>
                 }
                 actions={<AddButton variant="icon" onClick={openCreateModal} title="Novo usuário">Novo usuário</AddButton>}
@@ -511,7 +511,7 @@ export default function Index({
                                 }}
                                 className="w-full"
                             >
-                                <option value="">Todos os utilizadores</option>
+                                <option value="">Todos os usuários</option>
                                 <option value="1">Apenas líderes de departamento</option>
                             </SelectInput>
                         </div>
@@ -694,7 +694,7 @@ export default function Index({
                     </h2>
                     <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1 mb-5">
                         {isEditing
-                            ? 'Atualize nome, e-mail, contactos opcionais e estado. A morada não é alterada neste formulário.'
+                            ? 'Atualize nome, e-mail, contatos opcionais e estado. A endereço não é alterada neste formulário.'
                             : 'Cria a conta de login na igreja. Defina uma senha inicial (mínimo 6 caracteres); a pessoa pode alterá-la depois em «Editar dados da conta» ou em «Esqueci a senha».'}
                     </p>
 
@@ -710,7 +710,7 @@ export default function Index({
                             <div className="flex items-start justify-between gap-3">
                                 <div>
                                     <p className="font-semibold">
-                                        {submitMessage.kind === 'success' ? 'Guardado com sucesso' : 'Não foi possível guardar'}
+                                        {submitMessage.kind === 'success' ? 'Salvo com sucesso' : 'Não foi possível salvar'}
                                     </p>
                                     <p className="mt-1 text-sm opacity-90">{submitMessage.text}</p>
                                 </div>
@@ -805,7 +805,7 @@ export default function Index({
                                 <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">Nova senha de acesso</p>
                                 <p className="mt-1 text-xs text-amber-900/80 dark:text-amber-200/90">
                                     Apenas super administrador: deixe em branco para manter a senha actual; caso contrário, defina uma nova
-                                    (mesmas regras de complexidade que no registo).
+                                    (mesmas regras de complexidade que no registro).
                                 </p>
                                 <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
                                     <div>
@@ -889,7 +889,7 @@ export default function Index({
                             <div>
                                 <InputLabel value="Perfil de acesso" className="mb-1" />
                                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">
-                                    O seu acesso permite ver utilizadores, mas não alterar o perfil de permissões.
+                                    O seu acesso permite ver usuários, mas não alterar o perfil de permissões.
                                 </p>
                                 <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-800 dark:border-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-100">
                                     {profileReadOnlyText}
@@ -904,9 +904,9 @@ export default function Index({
                                 </div>
                                 <div className="min-w-0 flex-1 space-y-2">
                                     <div>
-                                        <InputLabel htmlFor="member_face_photo" value="Foto do utilizador (opcional)" className="!mb-1" />
+                                        <InputLabel htmlFor="member_face_photo" value="Foto do usuário (opcional)" className="!mb-1" />
                                         <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                            No telemóvel pode usar a câmara; no computador, escolha um ficheiro de imagem (máx. 4 MB).
+                                            No celular pode usar a câmera; no computador, escolha um arquivo de imagem (máx. 4 MB).
                                         </p>
                                     </div>
                                     <input
@@ -962,7 +962,7 @@ export default function Index({
                         <div className="rounded-xl border border-zinc-200 bg-zinc-50/90 p-4 dark:border-zinc-700 dark:bg-zinc-800/40 space-y-3">
                             <p className="text-sm font-semibold text-zinc-900 dark:text-white">Comunicações</p>
                             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                Preferências de contacto para avisos da igreja e da app (editáveis depois no perfil do utilizador).
+                                Preferências de contato para avisos da igreja e da app (editáveis depois no perfil do usuário).
                             </p>
                             <label className="flex cursor-pointer items-start gap-3">
                                 <Checkbox
@@ -1002,7 +1002,7 @@ export default function Index({
                                         onChange={(e) => setData('lgpd_accepted', e.target.checked)}
                                     />
                                     <span className="text-sm leading-snug text-zinc-700 dark:text-zinc-200">
-                                        O utilizador aceita o tratamento dos dados pessoais conforme a{' '}
+                                        O usuário aceita o tratamento dos dados pessoais conforme a{' '}
                                         <strong className="font-semibold text-zinc-900 dark:text-white">LGPD</strong> nesta
                                         plataforma.
                                     </span>

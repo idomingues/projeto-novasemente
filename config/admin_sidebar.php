@@ -12,7 +12,7 @@
  */
 return [
     'items' => [
-        // Menu principal (ordem fixa pedida pela equipa)
+        // Menu principal (ordem fixa pedida pela equipe)
         ['name' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'home'],
         ['name' => 'Atendimento Pastoral', 'route' => 'solicitations.index', 'icon' => 'inbox'],
         ['name' => 'Pedido de voluntários', 'route' => 'volunteer-requests.staff.index', 'icon' => 'user-plus'],

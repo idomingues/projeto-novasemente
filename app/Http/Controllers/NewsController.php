@@ -28,10 +28,10 @@ class NewsController extends Controller
     private function uploadErrorMessage(int $code): string
     {
         return match ($code) {
-            \UPLOAD_ERR_INI_SIZE, \UPLOAD_ERR_FORM_SIZE => 'Ficheiro demasiado grande para o servidor. Vídeo até 50 MB na app — confirme Nginx client_max_body_size 64M e PHP upload_max_filesize 64M (ver deployment/apply-upload-limits.sh).',
+            \UPLOAD_ERR_INI_SIZE, \UPLOAD_ERR_FORM_SIZE => 'Arquivo demasiado grande para o servidor. Vídeo até 50 MB na app — confirme Nginx client_max_body_size 64M e PHP upload_max_filesize 64M (ver deployment/apply-upload-limits.sh).',
             \UPLOAD_ERR_PARTIAL => 'Upload cortado a meio (muito comum com Nginx: aumente client_max_body_size para 64M e recarregue o Nginx).',
-            \UPLOAD_ERR_NO_FILE => 'Nenhum ficheiro foi recebido.',
-            default => 'O ficheiro não chegou ao servidor por completo. Revise limites Nginx (client_max_body_size) e PHP (upload_max_filesize, post_max_size).',
+            \UPLOAD_ERR_NO_FILE => 'Nenhum arquivo foi recebido.',
+            default => 'O arquivo não chegou ao servidor por completo. Revise limites Nginx (client_max_body_size) e PHP (upload_max_filesize, post_max_size).',
         };
     }
 
@@ -103,7 +103,7 @@ class NewsController extends Controller
             $hasExisting = $existing && $existing->pdf_path;
             if (! $hasFile && ! $hasExisting) {
                 throw ValidationException::withMessages([
-                    'pdf_file' => 'Envie um ficheiro PDF.',
+                    'pdf_file' => 'Envie um arquivo PDF.',
                 ]);
             }
         }
@@ -114,7 +114,7 @@ class NewsController extends Controller
             $hasExisting = $existing && $existing->image_url;
             if (! $hasFile && ! $hasUrl && ! $hasExisting) {
                 throw ValidationException::withMessages([
-                    'image_file' => 'Adicione uma imagem (ficheiro ou URL).',
+                    'image_file' => 'Adicione uma imagem (arquivo ou URL).',
                 ]);
             }
         }

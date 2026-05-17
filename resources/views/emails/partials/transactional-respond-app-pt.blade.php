@@ -6,8 +6,8 @@
                 Responda pela app
             </p>
             <p style="margin:0;font-size:13px;color:#713f12;line-height:1.55;">
-                Para a igreja receber a sua resposta, continue a conversa <strong>na app {{ config('app.name') }}</strong> (no telemóvel ou no browser), no mesmo pedido ou ticket.
-                <strong>Não responda a este e-mail</strong> — esta caixa não é lida pela equipa.
+                Para a igreja receber a sua resposta, continue a conversa <strong>na app {{ config('app.name') }}</strong> (no celular ou no browser), no mesmo pedido ou ticket.
+                <strong>Não responda a este e-mail</strong> — esta caixa não é lida pela equipe.
             </p>
         </td>
     </tr>

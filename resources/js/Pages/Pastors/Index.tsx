@@ -24,7 +24,7 @@ interface PastorRow {
     user_id: number | null;
     /** Email da conta da app associada (quando existe). */
     linked_user_email: string | null;
-    /** Utilizadores que podem editar a agenda pastoral deste perfil (além da conta principal). */
+    /** Usuários que podem editar a agenda pastoral deste perfil (além da conta principal). */
     agenda_delegate_user_ids: number[];
     scheduleSummary: string | null;
 }
@@ -53,7 +53,7 @@ export default function PastorsIndex({ pastors, canManage, linkableUsers }: Prop
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
-    /** Foto já guardada ao abrir edição (para pré-visualização quando não há ficheiro novo). */
+    /** Foto já guardada ao abrir edição (para pré-visualização quando não há arquivo novo). */
     const [savedPhotoUrl, setSavedPhotoUrl] = useState<string | null>(null);
     const [photoObjectUrl, setPhotoObjectUrl] = useState<string | null>(null);
 
@@ -189,7 +189,7 @@ export default function PastorsIndex({ pastors, canManage, linkableUsers }: Prop
                         Equipe pastoral da igreja em contexto (foto e texto). A página pública fica em Mais → Nossos pastores. A{' '}
                         <span className="font-medium text-zinc-700 dark:text-zinc-300">disponibilidade semanal</span> para «Agendar com pastor» define-se no módulo{' '}
                         <span className="font-medium text-zinc-700 dark:text-zinc-300">Agenda pastoral</span> no menu lateral (não neste formulário). Associe a «Conta da app» ao pastor e, se quiser,{' '}
-                        <span className="font-medium text-zinc-700 dark:text-zinc-300">delegados da agenda</span> para outros utilizadores poderem editar as mesmas faixas nesse módulo.
+                        <span className="font-medium text-zinc-700 dark:text-zinc-300">delegados da agenda</span> para outros usuários poderem editar as mesmas faixas nesse módulo.
                     </>
                 }
             />
@@ -341,7 +341,7 @@ export default function PastorsIndex({ pastors, canManage, linkableUsers }: Prop
                                             onClick={clearPickedPhotoFile}
                                             className="text-xs font-medium text-zinc-600 underline underline-offset-2 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
                                         >
-                                            Desfazer ficheiro novo (mantém a foto já guardada)
+                                            Desfazer arquivo novo (mantém a foto já guardada)
                                         </button>
                                     ) : null}
                                 </div>
@@ -410,7 +410,7 @@ export default function PastorsIndex({ pastors, canManage, linkableUsers }: Prop
                             <div>
                                 <InputLabel value="Delegados da agenda (opcional)" />
                                 <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                    Estes utilizadores podem abrir o módulo <span className="font-medium">Agenda pastoral</span> e
+                                    Estes usuários podem abrir o módulo <span className="font-medium">Agenda pastoral</span> e
                                     editar as faixas deste perfil.
                                 </p>
                                 <div className="mt-2 max-h-40 overflow-y-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/80 dark:bg-zinc-900/50 p-2 space-y-1.5">

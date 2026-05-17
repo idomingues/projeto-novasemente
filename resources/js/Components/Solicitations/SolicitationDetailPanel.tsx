@@ -96,21 +96,21 @@ export type SolicitationDetailPanelProps = {
     /** Membro ou líder pode encerrar conversa com líder (assunto finalizado). */
     canFinalizeLeaderChat?: boolean;
     finalizeLeaderChatUrl?: string | null;
-    /** Membro remove o pedido/conversa da sua app (mantém-se na equipe). */
+    /** Membro remove o pedido/conversa da sua app (permanece na equipe). */
     memberHideConversationUrl?: string | null;
     /** Líder remove a conversa da sua lista na app. */
     leaderHideConversationUrl?: string | null;
-    /** Corpo POST `return_to` ao ocultar como membro (batismo / hub / contacto líder). */
+    /** Corpo POST `return_to` ao ocultar como membro (batismo / hub / contato líder). */
     hideConversationReturnTo?: 'hub' | 'leader_contact' | 'baptism_hub';
     /**
-     * Quando true, POST do chat e PATCH administrativo preservam o estado React do ecrã pai
+     * Quando true, POST do chat e PATCH administrativo preservam o estado React do tela pai
      * (ex.: modal «Detalhes / Chat» em Pedidos de voluntário).
      */
     preserveStateOnPanelActions?: boolean;
-    /** Chamado após enviar chat ou guardar alterações administrativas com sucesso. */
+    /** Chamado após enviar chat ou salvar alterações administrativas com sucesso. */
     onPanelActionSuccess?: () => void;
     /**
-     * Conteúdo extra no separador Detalhes, imediatamente antes de «Gestão interna»
+     * Conteúdo extra no aba Detalhes, imediatamente antes de «Gestão interna»
      * (ex.: alterar pedido + anexar voluntário no fluxo unificado de voluntários).
      */
     detailsBeforeAdminFooter?: ReactNode;
@@ -322,7 +322,7 @@ export default function SolicitationDetailPanel({
 
     const isModalChatOnly = isModal && sectionProp === 'chat';
     const isVolunteerRequest = solicitation.type === 'volunteer_request';
-    /** Equipa: cabeçalho do modal + gestão + formulário de alteração tornam o cartão redundante. Líder: mantém-se para ler o pedido quando não edita. */
+    /** Equipe: cabeçalho do modal + gestão + formulário de alteração tornam o cartão redundante. Líder: permanece para ler o pedido quando não edita. */
     const hideVolunteerRequestPedidoCard =
         isVolunteerRequest && isModal && composerRole === 'staff';
 
@@ -428,7 +428,7 @@ export default function SolicitationDetailPanel({
                             if (!finalizeLeaderChatUrl) return;
                             const ok = await confirmAction({
                                 title: 'Encerrar esta conversa?',
-                                text: 'O assunto fica finalizado para si e para a outra parte. Não será possível enviar novas mensagens neste fio (mantém-se o histórico para consulta).',
+                                text: 'O assunto fica finalizado para si e para a outra parte. Não será possível enviar novas mensagens neste fio (permanece o histórico para consulta).',
                                 icon: 'warning',
                                 danger: true,
                                 confirmButtonText: 'Sim, encerrar',
@@ -461,10 +461,10 @@ export default function SolicitationDetailPanel({
                             </h2>
                             <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
                                 {isLeaderChat
-                                    ? 'Pode mudar o assunto e a mensagem inicial. Para a conversa em tempo real, use o separador Chat.'
+                                    ? 'Pode mudar o assunto e a mensagem inicial. Para a conversa em tempo real, use o aba Chat.'
                                     : solicitation.type === 'pastor_visit'
-                                      ? 'Escolha pastor e horário na lista abaixo; as notas são opcionais. Mensagens à igreja ficam no separador Chat.'
-                                      : 'Atualize a mensagem, a data ou o pastor abaixo. Para falar com a igreja, use o separador Chat.'}
+                                      ? 'Escolha pastor e horário na lista abaixo; as notas são opcionais. Mensagens à igreja ficam no aba Chat.'
+                                      : 'Atualize a mensagem, a data ou o pastor abaixo. Para falar com a igreja, use o aba Chat.'}
                             </p>
                         </div>
                     ) : (
@@ -593,7 +593,7 @@ export default function SolicitationDetailPanel({
                     <div>
                         <div className="text-sm font-semibold text-indigo-950 dark:text-indigo-100">Gestão interna</div>
                         <p className="mt-1 text-xs leading-relaxed text-indigo-900/75 dark:text-indigo-200/75">
-                            Estado e notas só para a equipe. Responda ao membro no separador <strong className="font-semibold">Chat</strong>.
+                            Estado e notas só para a equipe. Responda ao membro no aba <strong className="font-semibold">Chat</strong>.
                         </p>
                     </div>
                     <div className={`grid grid-cols-1 gap-4 ${isVolunteerRequest ? '' : 'sm:grid-cols-2'}`}>
@@ -642,7 +642,7 @@ export default function SolicitationDetailPanel({
                     ) : null}
                     <div className="flex justify-end pt-1">
                         <PrimaryButton type="submit" disabled={adminForm.processing} className="min-w-[10rem] justify-center">
-                            Guardar gestão
+                            Salvar gestão
                         </PrimaryButton>
                     </div>
                 </form>
@@ -665,7 +665,7 @@ export default function SolicitationDetailPanel({
                                 <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">Conversa com o membro</h2>
                                 <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
                                     {canChat
-                                        ? 'Histórico abaixo — escreva a resposta no fim. O membro vê no telemóvel e por email.'
+                                        ? 'Histórico abaixo — escreva a resposta no fim. O membro vê no celular e por email.'
                                         : 'Este pedido está encerrado — histórico só para consulta.'}
                                 </p>
                             </div>
@@ -680,8 +680,8 @@ export default function SolicitationDetailPanel({
                         {messages.length === 0 ? (
                             <p className="px-2 py-10 text-center text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
                                 {composerRole === 'staff'
-                                    ? 'Ainda não há mensagens nesta conversa. O texto inicial do pedido está no separador «Detalhes» — pode enviar aqui a primeira resposta ao membro.'
-                                    : 'Ainda não há mensagens neste fio. O pedido inicial está no separador de detalhes.'}
+                                    ? 'Ainda não há mensagens nesta conversa. O texto inicial do pedido está no aba «Detalhes» — pode enviar aqui a primeira resposta ao membro.'
+                                    : 'Ainda não há mensagens neste fio. O pedido inicial está no aba de detalhes.'}
                             </p>
                         ) : (
                             <div className="flex flex-col gap-2">
@@ -759,7 +759,7 @@ export default function SolicitationDetailPanel({
                 <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/60 p-4 space-y-3">
                     <div className="text-sm font-semibold text-zinc-900 dark:text-white">Confidencialidade</div>
                     <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                        Se preferir não ver mais esta conversa na app, pode removê-la da sua conta. O registo pode manter-se
+                        Se preferir não ver mais esta conversa na app, pode removê-la da sua conta. O registro pode manter-se
                         disponível para a igreja no atendimento (suporte interno e obrigações legais).
                     </p>
                     <SecondaryButton

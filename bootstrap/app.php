@@ -96,7 +96,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
             if ($request->expectsJson()) {
                 return response()->json([
-                    'message' => 'Não foi possível ligar à base de dados. Verifique o servidor e o ficheiro .env.',
+                    'message' => 'Não foi possível ligar à base de dados. Verifique o servidor e o arquivo .env.',
                 ], 503);
             }
 

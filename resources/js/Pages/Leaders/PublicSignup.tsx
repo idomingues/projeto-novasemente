@@ -46,7 +46,7 @@ export default function PublicSignup({ token, churchName, ministries }: Props) {
                 return;
             }
             if (data.email_taken) {
-                setEmailCheck({ ok: false, message: data.message ?? 'E-mail já registado.' });
+                setEmailCheck({ ok: false, message: data.message ?? 'E-mail já cadastrado.' });
                 return;
             }
             setEmailCheck({ ok: true, message: null });
@@ -142,7 +142,7 @@ export default function PublicSignup({ token, churchName, ministries }: Props) {
                         <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Selecione pelo menos um.</p>
                         <div className="mt-2 max-h-48 space-y-2 overflow-y-auto rounded-xl border border-zinc-200 p-3 dark:border-zinc-700">
                             {ministries.length === 0 ? (
-                                <p className="text-sm text-zinc-500">Nenhum departamento disponível. Contacte a secretaria.</p>
+                                <p className="text-sm text-zinc-500">Nenhum departamento disponível. Entre em contato a secretaria.</p>
                             ) : (
                                 ministries.map((m) => (
                                     <label key={m.id} className="flex cursor-pointer items-center gap-2">

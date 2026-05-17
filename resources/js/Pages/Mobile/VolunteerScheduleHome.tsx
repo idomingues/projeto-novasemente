@@ -164,7 +164,7 @@ export default function VolunteerScheduleHome({ canViewSchedule, needsMember, me
 
                 {canViewSchedule && needsMember && (
                     <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 shadow-sm dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
-                        O seu utilizador ainda não está associado a um membro. Peça à secretaria para concluir o cadastro e
+                        O seu usuário ainda não está associado a um membro. Peça à secretaria para concluir o cadastro e
                         poder ver a sua escala.
                     </div>
                 )}

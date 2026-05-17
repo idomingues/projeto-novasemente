@@ -86,7 +86,7 @@ export default function Show({ ministry, volunteer, criteria, boardUrl, updateCl
 
             {volunteer.piiMasked ? (
                 <p className="mb-4 text-xs text-amber-800 dark:text-amber-200">
-                    Contactos parcialmente ocultos (visão líder). A secretaria vê os dados completos no cadastro global.
+                    Contatos parcialmente ocultos (visão líder). A secretaria vê os dados completos no cadastro global.
                 </p>
             ) : null}
 
@@ -119,7 +119,7 @@ export default function Show({ ministry, volunteer, criteria, boardUrl, updateCl
                     <h3 className="text-sm font-semibold text-zinc-900 dark:text-white mb-2">Sinais automáticos (referência)</h3>
                     <div className="flex flex-wrap gap-2">
                         <SignalPill ok={volunteer.signals.memberNs} label="Membro NS (cadastro)" />
-                        <SignalPill ok={volunteer.signals.sixMonthsInChurchOrLetter} label="≥ 6 meses como membro (registo)" />
+                        <SignalPill ok={volunteer.signals.sixMonthsInChurchOrLetter} label="≥ 6 meses como membro (registro)" />
                         <SignalPill ok={volunteer.signals.ministryExperienceDeclared} label="Experiência em ministério (declarado)" />
                     </div>
                     <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">{volunteer.signals.notes}</p>

@@ -254,7 +254,7 @@ export default function AppVersionsIndex({ versions, latestVersion, schemaReady 
                                 Cancelar
                             </SecondaryButton>
                             <PrimaryButton type="submit" className="flex-1" disabled={processing}>
-                                {isEditing ? 'Guardar' : 'Cadastrar'}
+                                {isEditing ? 'Salvar' : 'Cadastrar'}
                             </PrimaryButton>
                         </div>
                     </form>

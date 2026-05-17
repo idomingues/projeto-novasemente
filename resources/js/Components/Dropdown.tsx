@@ -61,7 +61,7 @@ const Content = ({
     align = 'right',
     width = '48',
     contentClasses = 'py-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300',
-    /** Ancora ao viewport (evita painel a sair do ecrã quando o gatilho é estreito, ex.: sino no mobile). */
+    /** Ancora ao viewport (evita painel a sair da tela quando o gatilho é estreito, ex.: sino no mobile). */
     viewport = false,
     children,
 }: PropsWithChildren<{

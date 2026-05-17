@@ -128,7 +128,7 @@ export default function UpdateProfileInformation({
                         <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">A preparar a imagem…</p>
                     ) : null}
                     <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                        Fotos grandes são reduzidas automaticamente (cerca de 500 KB) para o envio correr bem no telemóvel.
+                        Fotos grandes são reduzidas automaticamente (cerca de 500 KB) para o envio correr bem no celular.
                     </p>
                     <InputError className="mt-2" message={photoClientError ?? undefined} />
                     <InputError className="mt-2" message={errors.photo_file} />

@@ -4,6 +4,7 @@
     "type": "module",
     "scripts": {
         "build": "tsc && vite build",
+        "lint:pt-br": "bash scripts/check-pt-br.sh",
         "dev": "vite",
         "serve": "concurrently -n \"artisan,vite\" -c \"blue,green\" \"bash scripts/artisan-serve.sh\" \"npm run dev\"",
         "cap:sync": "npm run build && npx cap sync && node scripts/patch-capapp-spm-local-packages.mjs",

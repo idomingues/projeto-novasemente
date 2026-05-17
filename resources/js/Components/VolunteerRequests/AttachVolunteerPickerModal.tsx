@@ -374,7 +374,7 @@ export default function AttachVolunteerPickerModal({ open, onClose, pickerUrl, o
                                                 </SelectInput>
                                             </div>
                                             <div>
-                                                <InputLabel value="Registo na Nova Semente" />
+                                                <InputLabel value="Registro na Nova Semente" />
                                                 <SelectInput
                                                     className="mt-1"
                                                     value={filterForm.data.member_record_at_nova_semente}
@@ -544,7 +544,7 @@ export default function AttachVolunteerPickerModal({ open, onClose, pickerUrl, o
                                                 />
                                             </div>
                                             <div className="sm:col-span-2 xl:col-span-2">
-                                                <InputLabel value="Registo em qual igreja (texto)" />
+                                                <InputLabel value="Registro em qual igreja (texto)" />
                                                 <TextInput
                                                     className="mt-1"
                                                     value={filterForm.data.member_record_church}
@@ -626,7 +626,7 @@ export default function AttachVolunteerPickerModal({ open, onClose, pickerUrl, o
                                                         <th className="pb-2 pr-3 font-semibold">Nome</th>
                                                         <th className="pb-2 pr-3 font-semibold">Fase</th>
                                                         <th className="pb-2 pr-3 font-semibold">Cadastro</th>
-                                                        <th className="pb-2 pr-3 font-semibold">Contacto</th>
+                                                        <th className="pb-2 pr-3 font-semibold">Contato</th>
                                                         <th className="pb-2 pr-3 font-semibold">Interesses</th>
                                                         <th className="pb-2 font-semibold">Ministérios</th>
                                                         <th className="pb-2 w-28" />

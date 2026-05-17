@@ -136,7 +136,7 @@ export default function VolunteerSchedule({
 
                 {canViewSchedule && needsMember && (
                     <div className="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4 text-sm text-amber-900 dark:text-amber-200">
-                        O seu utilizador ainda não está associado a um membro. Peça à secretaria para concluir o
+                        O seu usuário ainda não está associado a um membro. Peça à secretaria para concluir o
                         cadastro e poder ver a sua escala.
                     </div>
                 )}

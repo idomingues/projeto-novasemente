@@ -65,7 +65,7 @@ interface Props {
     /** Horários publicados para «Visita aos pastores» (criar pedido). */
     pastoralBooking?: MemberPastoralBookingPayload | null;
     pastoralAgendaUrl?: string;
-    /** Ecrã dedicado a batismo (menu principal mobile). */
+    /** Tela dedicada a batismo (menu principal mobile). */
     pageTitle?: string;
     pageSubtitle?: string;
     singleBaptismType?: boolean;

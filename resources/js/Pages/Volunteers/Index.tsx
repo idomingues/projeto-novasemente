@@ -202,7 +202,7 @@ export default function Index({
         const ok = await confirmAction({
             title: 'Excluir voluntário?',
             text: v.user?.id
-                ? 'O registo de voluntário será removido. Na pergunta seguinte pode escolher se remove também a conta de acesso ao app.'
+                ? 'O registro de voluntário será removido. Na pergunta seguinte pode escolher se remove também a conta de acesso ao app.'
                 : 'Esta ação não pode ser desfeita.',
             confirmButtonText: 'Excluir',
             danger: true,
@@ -216,11 +216,11 @@ export default function Index({
         if (v.user?.id) {
             const emailHint = v.user.email ?? v.email ?? '';
             const alsoUser = await confirmAction({
-                title: 'Apagar também a conta do utilizador?',
+                title: 'Apagar também a conta do usuário?',
                 text: emailHint
-                    ? `Existe utilizador ligado (${emailHint}). Confirmar remove voluntário e conta. Cancelar remove só o registo de voluntário e mantém o utilizador.`
-                    : 'Existe utilizador ligado. Confirmar remove voluntário e conta. Cancelar remove só o registo de voluntário e mantém o utilizador.',
-                confirmButtonText: 'Sim, apagar utilizador também',
+                    ? `Existe usuário ligado (${emailHint}). Confirmar remove voluntário e conta. Cancelar remove só o registro de voluntário e mantém o usuário.`
+                    : 'Existe usuário ligado. Confirmar remove voluntário e conta. Cancelar remove só o registro de voluntário e mantém o usuário.',
+                confirmButtonText: 'Sim, apagar usuário também',
                 cancelButtonText: 'Não, só voluntário',
                 danger: true,
                 icon: 'warning',
@@ -391,7 +391,7 @@ export default function Index({
                                                 {v.app_access_only ? (
                                                     <span
                                                         className="inline-flex shrink-0 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-800 dark:bg-violet-950/60 dark:text-violet-200"
-                                                        title="Conta na app sem registo de serviço em ministérios"
+                                                        title="Conta na app sem registro de serviço em ministérios"
                                                     >
                                                         Usuário (app)
                                                     </span>
@@ -428,7 +428,7 @@ export default function Index({
                                                     Convite pendente
                                                 </span>
                                                 <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                                                    Aguarda e-mail no registo
+                                                    Aguarda e-mail no registro
                                                 </span>
                                             </div>
                                         ) : (
@@ -468,7 +468,7 @@ export default function Index({
                                                 }}
                                                 disabled={invitingVolunteerId === v.id}
                                                 className="inline-flex w-full min-w-[8.5rem] items-center justify-center gap-2 rounded-full border border-emerald-600/80 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900 shadow-sm transition hover:bg-emerald-100 disabled:opacity-60 dark:border-emerald-500/70 dark:bg-emerald-950/40 dark:text-emerald-100 dark:hover:bg-emerald-900/50 sm:w-auto"
-                                                title="Gera o link e abre o ecrã para copiar ou enviar pelo WhatsApp"
+                                                title="Gera o link e abre a tela para copiar ou enviar pelo WhatsApp"
                                             >
                                                 <ChatBubbleLeftRightIcon className="h-4 w-4 shrink-0" aria-hidden />
                                                 Convidar
@@ -556,7 +556,7 @@ export default function Index({
                             />
                             <InputError message={errors.name} className="mt-1" />
                         </div>
-                        {/* Em mobile, uma coluna evita “saltos” quando o teclado abre e o Safari recalcula a grelha. */}
+                        {/* Em mobile, uma coluna evita “saltos” quando o teclado abre e o Safari recalcula a grade. */}
                         <div className="flex flex-col gap-4 sm:grid sm:grid-cols-2">
                             <div>
                                 <InputLabel htmlFor="phone" value="Telefone (opcional)" />
@@ -639,7 +639,7 @@ export default function Index({
                                 </div>
                             </div>
                             <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
-                                Se já existir utilizador com o mesmo e-mail, a conta é reutilizada; só precisa de senha ao criar utilizador novo.
+                                Se já existir usuário com o mesmo e-mail, a conta é reutilizada; só precisa de senha ao criar usuário novo.
                             </p>
                         </div>
 
@@ -719,8 +719,8 @@ export default function Index({
                                 <InputLabel htmlFor="app_role" value="Perfil de acesso no app (opcional)" />
                                 {editingUserIsSuperAdmin ? (
                                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 px-3 py-2.5">
-                                        Este utilizador é <strong className="font-medium text-zinc-800 dark:text-zinc-200">super administrador</strong>
-                                        : tem acesso total e o papel não é definido aqui (gestão de utilizadores / sistema).
+                                        Este usuário é <strong className="font-medium text-zinc-800 dark:text-zinc-200">super administrador</strong>
+                                        : tem acesso total e o papel não é definido aqui (gestão de usuários / sistema).
                                     </p>
                                 ) : (
                                     <select

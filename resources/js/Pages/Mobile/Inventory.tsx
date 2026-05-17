@@ -211,7 +211,7 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
                 const msg =
                     err instanceof Error
                         ? err.message
-                        : 'Não foi possível usar a câmara. Verifique as permissões.';
+                        : 'Não foi possível usar a câmera. Verifique as permissões.';
                 setCameraError(msg);
                 setScannerOpen(false);
             }
@@ -347,7 +347,7 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
 
                 <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 shadow-sm space-y-3">
                     <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                        Use a câmara do telemóvel para ler o código de barras ou pesquise manualmente.
+                        Use a câmera do celular para ler o código de barras ou pesquise manualmente.
                     </p>
                     <button
                         type="button"
@@ -390,7 +390,7 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
                             />
                         </div>
                         <p className="text-center text-white/80 text-sm px-6 pb-8">
-                            A câmara traseira é usada por defeito. Autorize o acesso se o browser pedir.
+                            A câmera traseira é usada por defeito. Autorize o acesso se o browser pedir.
                         </p>
                     </div>
                 )}
@@ -563,7 +563,7 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
                                             className="w-full flex items-center justify-center gap-2 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-3 py-2.5 text-sm font-semibold active:scale-[0.99] transition-transform"
                                         >
                                             <CameraIcon className="w-5 h-5" />
-                                            Ler código (câmara)
+                                            Ler código (câmera)
                                         </button>
                                         {registerForm.data.barcode ? (
                                             <p className="text-sm text-zinc-700 dark:text-zinc-300">

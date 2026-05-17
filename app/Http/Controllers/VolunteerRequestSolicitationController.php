@@ -830,8 +830,8 @@ class VolunteerRequestSolicitationController extends Controller
 
         if ($source === 'staff') {
             $msg = $quantity > 1
-                ? sprintf('%d pedidos de voluntário registados (uma linha por pessoa).', $quantity)
-                : 'Pedido de voluntário registado.';
+                ? sprintf('%d pedidos de voluntário registrados (uma linha por pessoa).', $quantity)
+                : 'Pedido de voluntário registrado.';
 
             return redirect()
                 ->route('volunteer-requests.staff.index')

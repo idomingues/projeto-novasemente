@@ -7,7 +7,7 @@ import { appToast } from '@/utils/appToast';
 type Props = {
     /** URL da imagem (relativa ao app, absoluta ou blob:) */
     src: string;
-    /** Base do nome do ficheiro (sem extensão) */
+    /** Base do nome do arquivo (sem extensão) */
     filenameBase: string;
     /** Base URL da app (props Inertia `appUrl`) para paths relativos */
     appUrl?: string;
@@ -67,9 +67,9 @@ export default function ImageDownloadButton({
             }
             if (crossOrigin && typeof window !== 'undefined') {
                 window.open(abs, '_blank', 'noopener,noreferrer');
-                appToast('Abri a imagem noutro separador — use o menu do browser para salvar.', 'info');
+                appToast('Abri a imagem noutro aba — use o menu do browser para salvar.', 'info');
             } else {
-                appToast('Não foi possível salvar. Em telemóvel: toque longo na imagem → «Salvar imagem».', 'error');
+                appToast('Não foi possível salvar. Em celular: toque longo na imagem → «Salvar imagem».', 'error');
             }
         } finally {
             setBusy(false);

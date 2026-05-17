@@ -42,11 +42,11 @@ class VolunteerContactDuplicateChecker
     }
 
     /**
-     * E-mail já usado por outro utilizador ou voluntário (âmbito igreja atual).
+     * E-mail já usado por outro usuário ou voluntário (âmbito igreja atual).
      *
      * @param  int|null  $excludeVolunteerId  voluntário em edição
-     * @param  int|null  $excludeChurchUserId  utilizador com ficha na igreja (excluir na verificação de duplicados)
-     * @param  int|null  $excludeUserId  utilizador vinculado ao voluntário atual
+     * @param  int|null  $excludeChurchUserId  usuário com ficha na igreja (excluir na verificação de duplicados)
+     * @param  int|null  $excludeUserId  usuário vinculado ao voluntário atual
      */
     public static function emailConflicts(
         Request $request,
@@ -65,7 +65,7 @@ class VolunteerContactDuplicateChecker
             $userQ->where('id', '!=', $excludeUserId);
         }
         if ($userQ->exists()) {
-            return 'Este e-mail já está registado a outro utilizador.';
+            return 'Este e-mail já está cadastrado a outro usuário.';
         }
 
         $volQ = Volunteer::query()
@@ -96,7 +96,7 @@ class VolunteerContactDuplicateChecker
     }
 
     /**
-     * Telefone já usado por outro utilizador ou voluntário (âmbito igreja atual).
+     * Telefone já usado por outro usuário ou voluntário (âmbito igreja atual).
      */
     public static function phoneConflicts(
         Request $request,
@@ -116,7 +116,7 @@ class VolunteerContactDuplicateChecker
 
         foreach ($users as $u) {
             if (self::normalizePhone($u->phone) === $phoneNorm) {
-                return 'Este telefone já está associado a outro utilizador nesta igreja.';
+                return 'Este telefone já está associado a outro usuário nesta igreja.';
             }
         }
 
@@ -149,7 +149,7 @@ class VolunteerContactDuplicateChecker
     }
 
     /**
-     * Cadastro público: utilizadores já cobertos por unique:users; aqui voluntário/utilizador na igreja.
+     * Cadastro público: usuários já cobertos por unique:users; aqui voluntário/usuário na igreja.
      */
     public static function emailConflictsMemberVolunteerForChurch(int $churchId, string $emailNorm): ?string
     {
@@ -157,7 +157,7 @@ class VolunteerContactDuplicateChecker
             ->where('church_id', $churchId)
             ->whereRaw('LOWER(TRIM(COALESCE(email, ""))) = ?', [$emailNorm])
             ->exists()) {
-            return 'Este e-mail já está associado a outro utilizador nesta igreja.';
+            return 'Este e-mail já está associado a outro usuário nesta igreja.';
         }
 
         if (Volunteer::query()
@@ -178,7 +178,7 @@ class VolunteerContactDuplicateChecker
         $users = User::query()->where('church_id', $churchId)->get(['id', 'phone']);
         foreach ($users as $u) {
             if (self::normalizePhone($u->phone) === $phoneNorm) {
-                return 'Este telefone já está associado a outro utilizador nesta igreja.';
+                return 'Este telefone já está associado a outro usuário nesta igreja.';
             }
         }
 
@@ -199,7 +199,7 @@ class VolunteerContactDuplicateChecker
     }
 
     /**
-     * E-mail de acesso ao app (pode diferir do e-mail de contacto do voluntário).
+     * E-mail de acesso ao app (pode diferir do e-mail de contato do voluntário).
      */
     public static function appEmailConflicts(
         Request $request,

@@ -275,7 +275,7 @@ php scripts/instalar_ano_biblico.php
 # 2) Plano base de 365 dias em plano_leitura (requer bible_books + bible_verses já importados)
 php scripts/gerar_plano_ano_biblico.php
 
-# Alternativa ao passo 1 — importar o SQL no cliente MySQL (ajuste host, utilizador e base)
+# Alternativa ao passo 1 — importar o SQL no cliente MySQL (ajuste host, usuário e base)
 # mysql -h 127.0.0.1 -P 3306 -u USUARIO -p NOME_DA_BASE < database/sql/ano_biblico.sql
 TXT;
 

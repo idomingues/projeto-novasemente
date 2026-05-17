@@ -242,7 +242,7 @@ export default function Pipeline({
             title: 'Excluir voluntário?',
             text:
                 linked != null && linked.id != null
-                    ? 'O registo de voluntário será removido. Na pergunta seguinte pode escolher se remove também a conta de acesso ao app.'
+                    ? 'O registro de voluntário será removido. Na pergunta seguinte pode escolher se remove também a conta de acesso ao app.'
                     : 'Esta ação não pode ser desfeita.',
             confirmButtonText: 'Excluir',
             danger: true,
@@ -254,11 +254,11 @@ export default function Pipeline({
         if (linked != null && linked.id != null) {
             const emailHint = linked.email ?? String(detail.volunteer.email ?? '');
             const alsoUser = await confirmAction({
-                title: 'Apagar também a conta do utilizador?',
+                title: 'Apagar também a conta do usuário?',
                 text: emailHint
-                    ? `Existe utilizador ligado (${emailHint}). Confirmar remove voluntário e conta. Cancelar remove só o registo de voluntário.`
-                    : 'Existe utilizador ligado. Confirmar remove voluntário e conta. Cancelar remove só o registo de voluntário.',
-                confirmButtonText: 'Sim, apagar utilizador também',
+                    ? `Existe usuário ligado (${emailHint}). Confirmar remove voluntário e conta. Cancelar remove só o registro de voluntário.`
+                    : 'Existe usuário ligado. Confirmar remove voluntário e conta. Cancelar remove só o registro de voluntário.',
+                confirmButtonText: 'Sim, apagar usuário também',
                 cancelButtonText: 'Não, só voluntário',
                 danger: true,
                 icon: 'warning',
@@ -348,8 +348,8 @@ export default function Pipeline({
         const label = stageName.trim() || 'esta fase';
         const msg =
             count > 0
-                ? `Eliminar a fase «${label}»? Os ${count} voluntários nesta fase passam para a fase padrão (Interessado).`
-                : `Eliminar a fase «${label}»?`;
+                ? `Excluir a fase «${label}»? Os ${count} voluntários nesta fase passam para a fase padrão (Interessado).`
+                : `Excluir a fase «${label}»?`;
         if (!window.confirm(msg)) return;
         router.delete(route('ministry-lead.volunteers.pipeline.stages.destroy', stageId), { preserveScroll: true });
     };
@@ -647,7 +647,7 @@ export default function Pipeline({
                                         </SelectInput>
                                     </div>
                                     <div>
-                                        <InputLabel value="Registo na Nova Semente" />
+                                        <InputLabel value="Registro na Nova Semente" />
                                         <SelectInput
                                             className="mt-1"
                                             value={filterForm.data.member_record_at_nova_semente}
@@ -815,7 +815,7 @@ export default function Pipeline({
                                         />
                                     </div>
                                     <div className="sm:col-span-2 xl:col-span-2">
-                                        <InputLabel value="Registo em qual igreja (texto)" />
+                                        <InputLabel value="Registro em qual igreja (texto)" />
                                         <TextInput
                                             className="mt-1"
                                             value={filterForm.data.member_record_church}
@@ -891,7 +891,7 @@ export default function Pipeline({
                                         <th className="pb-2 pr-3 font-semibold">Nome</th>
                                         <th className="pb-2 pr-3 font-semibold">Fase</th>
                                         <th className="pb-2 pr-3 font-semibold">Cadastro</th>
-                                        <th className="pb-2 pr-3 font-semibold">Contacto</th>
+                                        <th className="pb-2 pr-3 font-semibold">Contato</th>
                                         <th className="pb-2 pr-3 font-semibold">Interesses</th>
                                         <th className="pb-2 font-semibold">Ministérios</th>
                                     </tr>
@@ -1118,8 +1118,8 @@ export default function Pipeline({
                                                 ['Redes sociais', yn(detail.volunteer.has_social_networks)],
                                                 ['Tempo na igreja (texto)', String(detail.volunteer.attendance_duration ?? '—')],
                                                 ['Membro oficial', yn(detail.volunteer.is_official_member)],
-                                                ['Registo na NS', yn(detail.volunteer.member_record_at_nova_semente)],
-                                                ['Registo noutra igreja', String(detail.volunteer.member_record_church ?? '—')],
+                                                ['Registro na NS', yn(detail.volunteer.member_record_at_nova_semente)],
+                                                ['Registro em outra igreja', String(detail.volunteer.member_record_church ?? '—')],
                                                 ['Experiência prévia em ministério', yn(detail.volunteer.has_previous_ministry_volunteer_experience)],
                                                 ['Precisa orientação pastoral', yn(detail.volunteer.needs_pastoral_guidance)],
                                                 ['Consentimento LGPD', yn(detail.volunteer.lgpd_data_consent)],
@@ -1162,7 +1162,7 @@ export default function Pipeline({
                                             <div className="mt-6 rounded-xl border border-red-200 bg-red-50/50 p-4 dark:border-red-900/50 dark:bg-red-950/20">
                                                 <p className="text-sm font-semibold text-red-900 dark:text-red-200">Remover cadastro</p>
                                                 <p className="mt-1 text-xs text-red-800/90 dark:text-red-300/90">
-                                                    Apaga o voluntário do sistema (igual ao ecrã de Voluntários). Se existir conta no app pode optar por apagar também na confirmação seguinte.
+                                                    Apaga o voluntário do sistema (igual à tela de Voluntários). Se existir conta no app pode optar por apagar também na confirmação seguinte.
                                                 </p>
                                                 <button
                                                     type="button"
@@ -1214,7 +1214,7 @@ export default function Pipeline({
                                         <InputError message={ministriesForm.errors.ministry_ids} />
                                         {detail.syncMinistriesUrl && canPipelineMutate ? (
                                             <PrimaryButton type="submit" disabled={ministriesForm.processing}>
-                                                Guardar departamentos
+                                                Salvar departamentos
                                             </PrimaryButton>
                                         ) : (
                                             <p className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -1439,7 +1439,7 @@ export default function Pipeline({
                                                         onClick={() => saveStageName(s.id, serverName)}
                                                         className="rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 dark:bg-brand-500 dark:hover:bg-brand-400 dark:focus:ring-brand-400 dark:focus:ring-offset-zinc-900"
                                                     >
-                                                        Guardar nome
+                                                        Salvar nome
                                                     </button>
                                                 ) : null}
                                                 <button

@@ -9,7 +9,7 @@ export type SwalConfirmOptions = {
 };
 
 /**
- * Diálogo de confirmação (substitui window.confirm). Retorna true se o utilizador confirmou.
+ * Diálogo de confirmação (substitui window.confirm). Retorna true se o usuário confirmou.
  */
 export async function swalConfirm(opts: SwalConfirmOptions): Promise<boolean> {
     const result = await Swal.fire({

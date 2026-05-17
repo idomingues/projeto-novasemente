@@ -987,7 +987,7 @@ export default function EscalasIndex({
                             {removeModalAssignment.scheduleDate
                                 ? new Date(removeModalAssignment.scheduleDate + 'T12:00:00').toLocaleDateString('pt-BR')
                                 : 'esta data'}{' '}
-                            ou eliminar toda a série.
+                            ou excluir toda a série.
                         </p>
                     </div>
                 )}

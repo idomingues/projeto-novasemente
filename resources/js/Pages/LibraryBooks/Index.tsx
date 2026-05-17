@@ -315,14 +315,14 @@ export default function LibraryBooksIndex({
                     role="alert"
                     className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-100"
                 >
-                    <p className="font-semibold">Não foi possível guardar. Corrija os campos abaixo e tente de novo.</p>
+                    <p className="font-semibold">Não foi possível salvar. Corrija os campos abaixo e tente de novo.</p>
                     <ul className="mt-2 list-disc space-y-1 pl-5">
                         {libraryErrorMessages.map((msg, idx) => (
                             <li key={`${idx}-${msg}`}>{msg}</li>
                         ))}
                     </ul>
                     <p className="mt-2 text-xs text-red-800/90 dark:text-red-200/80">
-                        Volte a escolher capa e PDF (se aplicável) se precisar de alterar os ficheiros (o browser não os mantém após o envio).
+                        Volte a escolher capa e PDF (se aplicável) se precisar de alterar os arquivos (o browser não os mantém após o envio).
                     </p>
                 </div>
             ) : null}
@@ -561,10 +561,10 @@ export default function LibraryBooksIndex({
                                         libraryCategoryUsesExternalUrl(data.category)
                                             ? isEditing
                                                 ? 'PDF (substituir — opcional)'
-                                                : 'Ficheiro PDF (opcional se usar link)'
+                                                : 'Arquivo PDF (opcional se usar link)'
                                             : isEditing
                                               ? 'PDF (substituir — opcional)'
-                                              : 'Ficheiro PDF'
+                                              : 'Arquivo PDF'
                                     }
                                 />
                                 <input

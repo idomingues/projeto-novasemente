@@ -88,7 +88,7 @@ export default function SettingsIndex({
                     </p>
                     <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-500">
                         Quem já tinha acesso ao atendimento pastoral por permissões (admin, secretaria, pastor, outros líderes) mantém o
-                        acesso; este contacto é o responsável principal para alertas de novos pedidos.
+                        acesso; este contato é o responsável principal para alertas de novos pedidos.
                     </p>
 
                     <form onSubmit={submitHandler} className="mt-6 space-y-4">
@@ -111,7 +111,7 @@ export default function SettingsIndex({
                             {solicitationsHandlerOptions.length === 0 && (
                                 <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
                                     Nenhum líder de ministério com serviço nesta igreja encontrado. Atribua o papel e
-                                    ministérios ao utilizador em Voluntários / utilizadores.
+                                    ministérios ao usuário em Voluntários / usuários.
                                 </p>
                             )}
                         </div>
@@ -161,7 +161,7 @@ export default function SettingsIndex({
                 <section className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6 shadow-sm">
                     <h2 className="text-base font-semibold text-zinc-900 dark:text-white">App mobile — Biblioteca</h2>
                     <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                        Nos separadores <strong>Meditação</strong> e <strong>Lição</strong>, o app abre um único link configurado aqui.
+                        Nas abas <strong>Meditação</strong> e <strong>Lição</strong>, o app abre um único link configurado aqui.
                         Se o site permitir, o app também tenta mostrar o texto dentro do nosso layout (melhor esforço) e mantém o botão
                         para abrir a página original.
                     </p>

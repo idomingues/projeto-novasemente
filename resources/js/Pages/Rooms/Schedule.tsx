@@ -281,7 +281,7 @@ export default function Schedule({
             <Head title="Agendamento de salas" />
             <PageHeader
                 title="Agendamento de salas"
-                subtitle="Filtre por sala ou veja todas no período. O responsável é o utilizador que cria o agendamento."
+                subtitle="Filtre por sala ou veja todas no período. O responsável é o usuário que cria o agendamento."
             />
 
             <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
@@ -487,7 +487,7 @@ export default function Schedule({
                                 <span className="font-medium text-zinc-600 dark:text-zinc-300">Responsável:</span> {editing.user.name}
                             </>
                         ) : (
-                            'O responsável será o seu nome de utilizador (quem cria o agendamento).'
+                            'O responsável será o seu nome de usuário (quem cria o agendamento).'
                         )}
                     </p>
                     <div className="mt-4 space-y-4">

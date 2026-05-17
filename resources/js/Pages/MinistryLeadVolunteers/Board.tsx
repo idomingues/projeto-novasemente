@@ -627,7 +627,7 @@ export default function Board({
                             <tr className="border-b border-zinc-200 text-left dark:border-zinc-700">
                                 <th className="pb-2 pr-3 font-semibold text-zinc-900 dark:text-white">Nome</th>
                                 <th className="pb-2 pr-3 font-semibold text-zinc-900 dark:text-white">Cadastro</th>
-                                <th className="pb-2 pr-3 font-semibold text-zinc-900 dark:text-white">Contacto</th>
+                                <th className="pb-2 pr-3 font-semibold text-zinc-900 dark:text-white">Contato</th>
                                 <th className="pb-2 pr-3 font-semibold text-zinc-900 dark:text-white">Interesses</th>
                                 <th className="pb-2 pr-3 font-semibold text-zinc-900 dark:text-white">Sinais</th>
                                 <th className="pb-2 pr-3 font-semibold text-zinc-900 dark:text-white">Ministérios</th>

@@ -21,7 +21,7 @@
         <p><strong>O que verificar:</strong></p>
         <ul>
             <li>Se usa <strong>MySQL</strong>: serviço a correr e credenciais em <code>.env</code> (<code>DB_HOST</code>, <code>DB_DATABASE</code>, <code>DB_USERNAME</code>, <code>DB_PASSWORD</code>).</li>
-            <li>Se usa <strong>SQLite</strong>: o ficheiro existe (ex. <code>database/database.sqlite</code>) e tem permissões de leitura/escrita.</li>
+            <li>Se usa <strong>SQLite</strong>: o arquivo existe (ex. <code>database/database.sqlite</code>) e tem permissões de leitura/escrita.</li>
             <li>Na pasta do projecto: <code>php artisan app:check-data</code> e <code>php artisan migrate:status</code>.</li>
         </ul>
         <p><a href="{{ url('/') }}">Tentar voltar ao início</a></p>

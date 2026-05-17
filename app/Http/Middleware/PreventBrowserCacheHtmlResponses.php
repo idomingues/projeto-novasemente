@@ -8,7 +8,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Evita que o browser (sobretudo mobile) guarde em cache o HTML do Inertia com
- * tags @vite antigas — caso contrário o utilizador continua a carregar JS/CSS de builds anteriores.
+ * tags @vite antigas — caso contrário o usuário continua a carregar JS/CSS de builds anteriores.
  */
 class PreventBrowserCacheHtmlResponses
 {

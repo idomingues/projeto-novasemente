@@ -18,7 +18,7 @@ export default function Modal({
     /** Botão X no canto superior direito (só quando `closeable` é true) */
     showCloseButton?: boolean;
     /**
-     * Rodapé fixo fora da zona de scroll (ex.: Cancelar / Guardar). Evita botões cortados em ecrãs baixos.
+     * Rodapé fixo fora da zona de scroll (ex.: Cancelar / Salvar). Evita botões cortados em telas baixos.
      * O conteúdo principal fica em `children` e desliza por cima.
      */
     footer?: ReactNode;

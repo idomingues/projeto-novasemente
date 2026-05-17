@@ -77,8 +77,8 @@ class PastorWeeklySchedule
                 $seen[$key] = true;
 
                 $slotEnd = Carbon::parse($day->format('Y-m-d').' '.$rule['end'], $tz);
-                $labelStart = $slotStart->locale('pt')->isoFormat('ddd, D MMM · HH:mm');
-                $labelEnd = $slotEnd->locale('pt')->isoFormat('HH:mm');
+                $labelStart = $slotStart->locale('pt_BR')->isoFormat('ddd, D MMM · HH:mm');
+                $labelEnd = $slotEnd->locale('pt_BR')->isoFormat('HH:mm');
                 $modality = (string) $rule['modality'];
                 $suffix = match ($modality) {
                     'presential' => ' · Presencial',

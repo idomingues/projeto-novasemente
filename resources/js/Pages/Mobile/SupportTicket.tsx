@@ -134,7 +134,7 @@ export default function MobileSupportTicket({
                         <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50/90 p-3 dark:border-zinc-700 dark:bg-zinc-800/50">
                             <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
                                 <span className="font-semibold text-zinc-800 dark:text-zinc-200">Confidencialidade:</span> pode remover
-                                este chamado da sua lista na app. A equipa de suporte mantém o registo.
+                                este chamado da sua lista na app. A equipe de suporte mantém o registro.
                             </p>
                             <button
                                 type="button"
@@ -142,7 +142,7 @@ export default function MobileSupportTicket({
                                 onClick={async () => {
                                     const ok = await confirmAction({
                                         title: 'Remover este chamado da sua app?',
-                                        text: 'Deixa de aparecer em «Os meus chamados». A equipa continua a poder ver o histórico.',
+                                        text: 'Deixa de aparecer em «Os meus chamados». A equipe continua a poder ver o histórico.',
                                         icon: 'warning',
                                         danger: true,
                                         confirmButtonText: 'Sim, remover da minha app',

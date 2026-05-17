@@ -368,11 +368,11 @@ class LibraryBookController extends Controller
         return match ($code) {
             \UPLOAD_ERR_INI_SIZE => $subject.' ultrapassa o limite upload_max_filesize do PHP neste servidor. Peça ao apoio técnico para aumentar upload_max_filesize e post_max_size (por exemplo 32M). A aplicação aceita PDF até 20 MB.',
             \UPLOAD_ERR_FORM_SIZE => $subject.' ultrapassa o limite definido no formulário no servidor.',
-            \UPLOAD_ERR_PARTIAL => $subject.' não foi recebido por completo (muito comum quando o Nginx corta o pedido: configure client_max_body_size com margem, ex. 32M, e recarregue o Nginx). Tente outra rede ou um ficheiro mais pequeno.',
+            \UPLOAD_ERR_PARTIAL => $subject.' não foi recebido por completo (muito comum quando o Nginx corta o pedido: configure client_max_body_size com margem, ex. 32M, e recarregue o Nginx). Tente outra rede ou um arquivo mais pequeno.',
             \UPLOAD_ERR_NO_FILE => $isPdf ? 'Não foi enviado nenhum PDF.' : 'Não foi enviada nenhuma imagem de capa.',
-            \UPLOAD_ERR_NO_TMP_DIR => 'Falta pasta temporária no servidor para receber o ficheiro. Contacte o apoio técnico.',
-            \UPLOAD_ERR_CANT_WRITE => 'O servidor não conseguiu gravar o ficheiro enviado. Contacte o apoio técnico.',
-            \UPLOAD_ERR_EXTENSION => 'Uma extensão do PHP bloqueou o envio. Contacte o apoio técnico.',
+            \UPLOAD_ERR_NO_TMP_DIR => 'Falta pasta temporária no servidor para receber o arquivo. Entre em contato o apoio técnico.',
+            \UPLOAD_ERR_CANT_WRITE => 'O servidor não conseguiu gravar o arquivo enviado. Entre em contato o apoio técnico.',
+            \UPLOAD_ERR_EXTENSION => 'Uma extensão do PHP bloqueou o envio. Entre em contato o apoio técnico.',
             default => $subject.' não chegou ao servidor por completo. Peça ao apoio técnico para rever limites de upload (Nginx: client_max_body_size; PHP: upload_max_filesize e post_max_size).',
         };
     }
@@ -390,7 +390,7 @@ class LibraryBookController extends Controller
     }
 
     /**
-     * Aceita PDF real e ficheiros com MIME genérico (ex.: application/octet-stream) desde que a extensão seja .pdf.
+     * Aceita PDF real e arquivos com MIME genérico (ex.: application/octet-stream) desde que a extensão seja .pdf.
      */
     private function pdfFileRule(): \Closure
     {
@@ -400,14 +400,14 @@ class LibraryBookController extends Controller
             }
             $ext = strtolower($value->getClientOriginalExtension());
             if ($ext !== 'pdf') {
-                $fail('O ficheiro deve ter extensão .pdf.');
+                $fail('O arquivo deve ter extensão .pdf.');
 
                 return;
             }
             $mime = (string) $value->getMimeType();
             $allowedMimes = ['application/pdf', 'application/x-pdf', 'application/octet-stream', 'binary/octet-stream'];
             if ($mime !== '' && ! in_array($mime, $allowedMimes, true)) {
-                $fail('Envie um ficheiro PDF válido.');
+                $fail('Envie um arquivo PDF válido.');
             }
         };
     }

@@ -423,7 +423,7 @@ export default function VolunteerRequestsIndex({
         }
     };
 
-    /** Ao mudar de pedido com o painel aberto, voltar ao separador Detalhes (não sobrescrever abertura directa no Chat). */
+    /** Ao mudar de pedido com o painel aberto, voltar ao aba Detalhes (não sobrescrever abertura directa no Chat). */
     useEffect(() => {
         if (!panelOpen) {
             prevPanelSolicitationIdRef.current = null;
@@ -637,7 +637,7 @@ export default function VolunteerRequestsIndex({
                     <Card className="p-10 text-center text-sm text-zinc-600 dark:text-zinc-400">
                         {canAdd ? (
                             <p>
-                                Ainda não há pedidos registados. Toque em <strong className="text-zinc-900 dark:text-white">+</strong>{' '}
+                                Ainda não há pedidos registrados. Toque em <strong className="text-zinc-900 dark:text-white">+</strong>{' '}
                                 para enviar o primeiro.
                             </p>
                         ) : (
@@ -831,7 +831,7 @@ export default function VolunteerRequestsIndex({
                             rows={5}
                             placeholder={
                                 mode === 'staff'
-                                    ? 'Ex.: pedido por WhatsApp de fulano, contacto, urgência do culto…'
+                                    ? 'Ex.: pedido por WhatsApp de fulano, contato, urgência do culto…'
                                     : 'Quantidade, datas preferidas, requisitos, etc.'
                             }
                             onChange={(e) => createForm.setData('message', e.target.value)}
@@ -907,7 +907,7 @@ export default function VolunteerRequestsIndex({
                                                 variant="modal"
                                                 section="details"
                                                 composerRole={panelComposerRole}
-                                                staffBubbleLabel="Secretaria / equipa"
+                                                staffBubbleLabel="Secretaria / equipe"
                                                 memberBubbleLabel={mode === 'leader' ? 'Eu (requisitante)' : 'Requisitante'}
                                                 canManage={panelPayload.canManage === true}
                                                 preserveStateOnPanelActions
@@ -1013,7 +1013,7 @@ export default function VolunteerRequestsIndex({
                                                                         </div>
                                                                         <div className="flex justify-end pt-1">
                                                                             <PrimaryButton type="submit" disabled={panelEditForm.processing}>
-                                                                                Guardar alterações
+                                                                                Salvar alterações
                                                                             </PrimaryButton>
                                                                         </div>
                                                                     </form>
@@ -1032,7 +1032,7 @@ export default function VolunteerRequestsIndex({
                                                             <p className="mt-1 text-sm text-emerald-900/90 dark:text-emerald-100/90">
                                                                 Será criado o convite ao departamento indicado no pedido (como no
                                                                 encaminhamento manual). O pedido passa a{' '}
-                                                                <strong className="font-semibold">concluído</strong>, fica registo no
+                                                                <strong className="font-semibold">concluído</strong>, fica registro no
                                                                 histórico e o voluntário entra na fase «Encaminhado» no cadastro,
                                                                 quando essa fase existir.
                                                             </p>
@@ -1131,7 +1131,7 @@ export default function VolunteerRequestsIndex({
                                                                             <strong className="font-medium text-zinc-700 dark:text-zinc-300">
                                                                                 Filtros
                                                                             </strong>{' '}
-                                                                            para o quadro completo (fase, contacto, ministérios, etc.),
+                                                                            para o quadro completo (fase, contato, ministérios, etc.),
                                                                             como na página Voluntários.
                                                                         </p>
                                                                         <InputError className="mt-2" message={attachForm.errors.volunteer_id} />
@@ -1165,7 +1165,7 @@ export default function VolunteerRequestsIndex({
                                                 variant="modal"
                                                 section="chat"
                                                 composerRole={panelComposerRole}
-                                                staffBubbleLabel="Secretaria / equipa"
+                                                staffBubbleLabel="Secretaria / equipe"
                                                 memberBubbleLabel={mode === 'leader' ? 'Eu (requisitante)' : 'Requisitante'}
                                                 canManage={panelPayload.canManage === true}
                                                 preserveStateOnPanelActions

@@ -557,7 +557,7 @@ export default function Index({ posts, filters, canManage }: Props) {
 
                             {data.content_type === 'pdf' && (
                                 <div>
-                                    <InputLabel htmlFor="pdf_file" value="Ficheiro PDF" />
+                                    <InputLabel htmlFor="pdf_file" value="Arquivo PDF" />
                                     <input
                                         id="pdf_file"
                                         type="file"
@@ -686,7 +686,7 @@ export default function Index({ posts, filters, canManage }: Props) {
                                     />
                                     {existingVideoUrl && !data.video_file && (
                                         <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                                            Vídeo atual mantido. Envie um novo ficheiro para substituir.
+                                            Vídeo atual mantido. Envie um novo arquivo para substituir.
                                         </p>
                                     )}
                                     <InputError message={errors.video_file} className="mt-1" />

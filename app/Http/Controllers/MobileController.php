@@ -150,7 +150,7 @@ class MobileController extends Controller
     }
 
     /**
-     * Início da app (substitui News como ecrã principal): atalhos + últimas notícias.
+     * Início da app (substitui News como tela principal): atalhos + últimas notícias.
      */
     public function home(Request $request): Response
     {
@@ -819,7 +819,7 @@ class MobileController extends Controller
 
     /**
      * Descarrega o PDF com Content-Disposition: attachment (evita abrir o visualizador como em «Ler»).
-     * Ficheiros em disco: caminhos .pdf sob library/ (exceto library/covers/). URLs absolutas: redirecionamento (comportamento do browser).
+     * Arquivos em disco: caminhos .pdf sob library/ (exceto library/covers/). URLs absolutas: redirecionamento (comportamento do browser).
      *
      * @return RedirectResponse|\Symfony\Component\HttpFoundation\StreamedResponse
      */
@@ -1172,7 +1172,7 @@ class MobileController extends Controller
         /** Igual ao `currentChurch` do HandleInertiaRequests (feed do sino); evita divergir de `resolveWorkingId`. */
         $churchId = $church !== null ? (int) $church->id : Church::resolveWorkingId($request);
 
-        /** Igual ao perfil móvel: contagem só para equipa do painel, não `lider_ministerio` só com permissões soltas. */
+        /** Igual ao perfil móvel: contagem só para equipe do painel, não `lider_ministerio` só com permissões soltas. */
         $atendimentoStaff = $user->hasAnyRole(['super_admin', 'admin', 'pastor', 'secretaria']);
         $atendimentoOpen = null;
         if (

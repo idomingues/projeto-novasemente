@@ -3,7 +3,7 @@
 namespace App\Support;
 
 /**
- * Rótulos PT-BR alinhados aos menus da app: barra inferior, topbar e ecrã «Mais».
+ * Rótulos PT-BR alinhados aos menus da app: barra inferior, topbar e tela «Mais».
  * Manter em sincronia com as rotas referidas em:
  * @see resources/js/Components/MobileBottomNav.tsx (activeRoutes)
  * @see resources/js/Components/Topbar.tsx
@@ -36,7 +36,7 @@ final class PageViewRouteLabels
         'mobile.profile.edit' => 'Editar perfil',
         'profile.edit' => 'Editar perfil (conta)',
         'login' => 'Login',
-        'register' => 'Registo',
+        'register' => 'Cadastro',
 
         // —— Mais (cartões) — mesmos títulos que Mobile/More.tsx e More/Index.tsx ——
         'mobile.news' => 'Notícias',

@@ -208,7 +208,7 @@ export default function VariosNotifications({ notifications, canManage, mode = '
                         Enviar notificação
                     </h2>
                     <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6">
-                        Envie um aviso para todos os utilizadores do app.
+                        Envie um aviso para todos os usuários do app.
                     </p>
 
                     <form onSubmit={submit} className="space-y-4">

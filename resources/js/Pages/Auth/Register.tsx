@@ -339,7 +339,7 @@ export default function Register({ invitation, ministryVolunteerInvite = null, m
                                 />
                                 <span className="text-sm leading-snug text-zinc-700 dark:text-zinc-200">
                                     <span className="font-semibold text-zinc-900 dark:text-white">Já sou voluntário</span> no
-                                    cadastro da equipe (ligamos a conta ao registo existente pelo e-mail, se existir). Indique
+                                    cadastro da equipe (ligamos a conta ao registro existente pelo e-mail, se existir). Indique
                                     abaixo em que departamentos participa para a escala.
                                 </span>
                             </label>

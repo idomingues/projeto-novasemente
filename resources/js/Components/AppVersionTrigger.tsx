@@ -100,7 +100,7 @@ export default function AppVersionTrigger({ className = '' }: { className?: stri
                     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-7">
                         {rows.length === 0 ? (
                             <p className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/80 px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800/40 dark:text-zinc-400">
-                                Ainda não há registos de versão na base de dados.
+                                Ainda não há registros de versão na base de dados.
                             </p>
                         ) : (
                             <ul className="space-y-3">

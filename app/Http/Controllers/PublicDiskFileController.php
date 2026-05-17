@@ -37,7 +37,7 @@ class PublicDiskFileController extends Controller
         }
 
         if (! Storage::disk('public')->exists($path)) {
-            // BD copiada de outro ambiente: referência a logos/… sem ficheiro local — evita 404 na UI e no DevTools.
+            // BD copiada de outro ambiente: referência a logos/… sem arquivo local — evita 404 na UI e no DevTools.
             if (str_starts_with($path, 'logos/')) {
                 $fallback = public_path('logo-ns.png');
                 if (is_file($fallback)) {

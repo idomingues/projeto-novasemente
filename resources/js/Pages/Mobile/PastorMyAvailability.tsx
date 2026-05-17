@@ -23,8 +23,8 @@ export default function PastorMyAvailability({ linked }: Props) {
                 {!linked ? (
                     <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 text-sm text-zinc-600 dark:text-zinc-400">
                         <p>
-                            A sua conta ainda não está associada a um registo de pastor nesta igreja. Peça à secretaria ou a um
-                            administrador para ligar o seu utilizador ao seu perfil em{' '}
+                            A sua conta ainda não está associada a um registro de pastor nesta igreja. Peça à secretaria ou a um
+                            administrador para ligar o seu usuário ao seu perfil em{' '}
                             <span className="font-medium text-zinc-800 dark:text-zinc-200">Pastores</span> (campo «Conta da
                             app»).
                         </p>

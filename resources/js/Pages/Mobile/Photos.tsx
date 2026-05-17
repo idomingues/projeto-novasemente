@@ -208,7 +208,7 @@ export default function MobilePhotos({
                     <div className="rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
                         <div className="px-4 py-3 border-b border-zinc-100 dark:border-zinc-800">
                             <p className="text-sm text-zinc-600 dark:text-zinc-300">
-                                Visualização básica do Drive (pode exibir nomes de ficheiro).
+                                Visualização básica do Drive (pode exibir nomes de arquivo).
                             </p>
                         </div>
                         <iframe

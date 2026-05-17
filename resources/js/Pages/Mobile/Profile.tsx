@@ -19,7 +19,7 @@ interface Props {
     church: { name: string } | null;
     user: { name: string; email: string };
     profileCounts: {
-        /** Pedidos em aberto no painel Atendimento Pastoral (null se o utilizador não vê o painel). */
+        /** Pedidos em aberto no painel Atendimento Pastoral (null se o usuário não vê o painel). */
         atendimento_open: number | null;
         /** Compromissos na agenda do perfil ligado (null se não há pastor ligado à conta). */
         pastoral_agenda: number | null;

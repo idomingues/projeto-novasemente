@@ -44,7 +44,7 @@ class VolunteerController extends Controller
     }
 
     /**
-     * Garante que só um registo em volunteers use este user_id (o voluntário atual).
+     * Garante que só um registro em volunteers use este user_id (o voluntário atual).
      */
     private function releaseVolunteerUserIdForOtherVolunteers(int $userId, Volunteer $volunteer): void
     {
@@ -384,7 +384,7 @@ class VolunteerController extends Controller
                 return redirect()->route('volunteers.index')->with('error', 'Não pode apagar a sua própria conta desta forma.');
             }
             if ($linkedUser->canAccessAdminMenu()) {
-                return redirect()->route('volunteers.index')->with('error', 'Não é possível apagar este utilizador: tem acesso ao painel de equipa.');
+                return redirect()->route('volunteers.index')->with('error', 'Não é possível apagar este usuário: tem acesso ao painel de equipe.');
             }
         }
 
@@ -396,7 +396,7 @@ class VolunteerController extends Controller
         });
 
         $message = ($deleteLinkedUser && $linkedUser)
-            ? 'Voluntário e conta de utilizador removidos com sucesso.'
+            ? 'Voluntário e conta de usuário removidos com sucesso.'
             : 'Voluntário removido com sucesso!';
 
         return redirect()->route('volunteers.index')->with('success', $message);
@@ -439,12 +439,12 @@ class VolunteerController extends Controller
 
             return redirect()->route('volunteers.index')->with(
                 'error',
-                'Registo guardado. '.$detail
+                'Registro salvo. '.$detail
             );
         }
 
         return $redirect
-            ->with('success', 'Registo guardado. Convite gerado — envie o link para a pessoa concluir o cadastro (e-mail e senha).')
+            ->with('success', 'Registro salvo. Convite gerado — envie o link para a pessoa concluir o cadastro (e-mail e senha).')
             ->with('invitation_link', $result['link'])
             ->with('invitation_for_name', $result['name']);
     }

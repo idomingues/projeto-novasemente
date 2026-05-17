@@ -8,7 +8,7 @@ export function buildVolunteerInviteWhatsAppText(link: string, inviteeName: stri
     const greeting = inviteeName.trim() ? `Olá, ${inviteeName.trim()}!` : 'Olá!';
     return `${greeting} Foi criado um convite para criares a tua conta no app da igreja.
 
-Abre o link para definir o teu e-mail e palavra-passe. O link é válido por 7 dias:
+Abre o link para definir o teu e-mail e senha. O link é válido por 7 dias:
 
 ${link}`;
 }
@@ -60,7 +60,7 @@ export default function VolunteerInviteShareModal({ show, link, inviteeName = ''
                         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{inviteeName}</p>
                     ) : null}
                     <p className="mt-4 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
-                        Partilhe o link para a pessoa concluir o registo (e-mail e palavra-passe). O convite expira em 7 dias.
+                        Partilhe o link para a pessoa concluir o registro (e-mail e senha). O convite expira em 7 dias.
                     </p>
                 </div>
 

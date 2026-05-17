@@ -18,7 +18,7 @@ export function pdfUrlWithViewerParams(pdfUrl: string, fragment: string): string
 }
 
 /**
- * Fragmento adequado à orientação: retrato = zoom maior para leitura no telemóvel.
+ * Fragmento adequado à orientação: retrato = zoom maior para leitura no celular.
  */
 export function usePdfViewerFragment(): string {
     const [fragment, setFragment] = useState<string>(() => {

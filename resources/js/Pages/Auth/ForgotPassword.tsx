@@ -49,7 +49,7 @@ export default function ForgotPassword({
                         <p className="mt-1 leading-relaxed">
                             O envio está em <code className="rounded bg-amber-100/80 px-1 py-0.5 text-xs dark:bg-amber-900/60">MAIL_MAILER=log</code>: não
                             chega e-mail à caixa de entrada. Abra <code className="rounded bg-amber-100/80 px-1 py-0.5 text-xs dark:bg-amber-900/60">storage/logs/laravel.log</code> após
-                            enviar — o link de redefinição fica registado lá. Para testar e-mail real, configure SMTP no{' '}
+                            enviar — o link de redefinição fica registrado lá. Para testar e-mail real, configure SMTP no{' '}
                             <code className="rounded bg-amber-100/80 px-1 py-0.5 text-xs dark:bg-amber-900/60">.env</code>.
                         </p>
                     </div>

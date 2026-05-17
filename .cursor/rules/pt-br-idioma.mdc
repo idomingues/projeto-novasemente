@@ -1,0 +1,46 @@
+---
+description: Textos do produto em português do Brasil (pt_BR), nunca português de Portugal
+alwaysApply: true
+---
+
+# Idioma: português do Brasil (pt_BR)
+
+Todo texto visível ao usuário final (app, painel, e-mails, flashes, validações) deve estar em **português do Brasil**.
+
+## Configuração do projeto
+
+- `config/app.php`: `locale`, `fallback_locale` e `faker_locale` = `pt_BR`
+- Traduções Laravel: apenas `lang/pt_BR/`
+- Glossário e lista de termos: `config/idioma.php`
+- Verificação local: `composer run lint:pt-br` ou `npm run lint:pt-br`
+
+## Nunca usar (PT-PT) → usar (PT-BR)
+
+| Evitar | Preferir |
+|--------|----------|
+| equipa | equipe |
+| utilizador(es) | usuário(s) |
+| registo | registro |
+| registado (gravado) | registrado |
+| registado (cadastro) | cadastrado |
+| ecrã | tela |
+| grelha | grade |
+| contacto | contato |
+| telemóvel | celular |
+| ficheiro | arquivo |
+| palavra-passe | senha |
+| morada | endereço |
+| separador (UI) | aba |
+| guardar (botão) | salvar |
+| eliminar | excluir |
+
+## Exceções
+
+- **Equipamentos**: categoria de inventário (não é «equipa»).
+- Textos bíblicos ou citações fixas já publicadas (ex.: credos gerados).
+- Comentários de código podem ser PT-BR; prioridade são strings de produto.
+
+## Ao criar ou editar
+
+1. Revise labels, placeholders, `with('success')`, Blade e copy da app móvel.
+2. Rode `composer run lint:pt-br` antes de concluir alterações de copy.

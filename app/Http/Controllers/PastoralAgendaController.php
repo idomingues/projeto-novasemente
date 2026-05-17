@@ -28,7 +28,7 @@ class PastoralAgendaController extends Controller
     }
 
     /**
-     * Pastor com conta ligada ao registo (ou administrador com ?pastor=id): define horários para o pedido de agendamento.
+     * Pastor com conta ligada ao registro (ou administrador com ?pastor=id): define horários para o pedido de agendamento.
      */
     public function index(Request $request): Response
     {
@@ -46,7 +46,7 @@ class PastoralAgendaController extends Controller
             ]);
         }
 
-        /** Só a agenda do perfil ligado a esta conta (perfil móvel «Minha Agenda»); nunca o ecrã de escolher outro pastor. */
+        /** Só a agenda do perfil ligado a esta conta (perfil móvel «Minha Agenda»); nunca o tela de escolher outro pastor. */
         if ($request->boolean('mine')) {
             $minePastor = Pastor::query()
                 ->where('church_id', $churchId)
@@ -129,7 +129,7 @@ class PastoralAgendaController extends Controller
                     'id' => $p->id,
                     'name' => $p->name,
                 ])->values()->all(),
-                'intro' => 'Foi indicado como responsável pela agenda destes perfis em Pastores (utilizadores delegados). Escolha um para editar.',
+                'intro' => 'Você foi indicado como responsável pela agenda destes perfis em Pastores (usuários delegados). Escolha um para editar.',
                 'pastoralModuleNavUrl' => $this->pastoralModuleNavUrl($user),
             ]);
         }

@@ -532,7 +532,7 @@ class MyMinistryVolunteersController extends Controller
 
         $sent = app(SendVolunteerMinistryInvitationEmail::class)($invitation);
         if (! $sent) {
-            return back()->with('error', 'Não há e-mail no cadastro do voluntário (nem no utilizador ligado) para enviar o convite.');
+            return back()->with('error', 'Não há e-mail no cadastro do voluntário (nem no usuário vinculado) para enviar o convite.');
         }
 
         return back()->with('success', 'E-mail do convite enviado.');
