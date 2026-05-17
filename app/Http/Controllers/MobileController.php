@@ -347,6 +347,18 @@ class MobileController extends Controller
                 $imageUrl = $baseUrl.$imageUrl;
             }
 
+            $author = null;
+            if ($p->relationLoaded('author') && $p->author !== null) {
+                $photoUrl = $p->author->photo_url;
+                if ($photoUrl && ! str_starts_with($photoUrl, 'http')) {
+                    $photoUrl = $baseUrl.$photoUrl;
+                }
+                $author = [
+                    'name' => (string) $p->author->name,
+                    'photo_url' => $photoUrl,
+                ];
+            }
+
             return [
                 'id' => $p->id,
                 'title' => $p->title,
@@ -361,10 +373,12 @@ class MobileController extends Controller
                 'image_url' => $imageUrl,
                 'cover_url' => $p->resolvedCoverUrl($baseUrl),
                 'published_at' => $p->published_at?->toIso8601String(),
+                'author' => $author,
             ];
         };
 
         $feedPosts = News::query()
+            ->with(['author:id,name,photo_url'])
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
             ->where('content_type', News::TYPE_INSTAGRAM_FEED)
@@ -378,6 +392,7 @@ class MobileController extends Controller
             ->all();
 
         $posts = News::query()
+            ->with(['author:id,name,photo_url'])
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
             ->where('content_type', '!=', News::TYPE_INSTAGRAM_FEED)
@@ -405,10 +420,24 @@ class MobileController extends Controller
             abort(404);
         }
 
+        $news->loadMissing(['author:id,name,photo_url']);
+
         $baseUrl = request()->getSchemeAndHttpHost();
         $imageUrl = $news->image_url;
         if ($imageUrl && ! str_starts_with($imageUrl, 'http')) {
             $imageUrl = $baseUrl.$imageUrl;
+        }
+
+        $author = null;
+        if ($news->author !== null) {
+            $photoUrl = $news->author->photo_url;
+            if ($photoUrl && ! str_starts_with($photoUrl, 'http')) {
+                $photoUrl = $baseUrl.$photoUrl;
+            }
+            $author = [
+                'name' => (string) $news->author->name,
+                'photo_url' => $photoUrl,
+            ];
         }
 
         return Inertia::render('Mobile/NewsShow', [
@@ -426,6 +455,7 @@ class MobileController extends Controller
                 'image_url' => $imageUrl,
                 'cover_url' => $news->resolvedCoverUrl($baseUrl),
                 'published_at' => $news->published_at?->toIso8601String(),
+                'author' => $author,
             ],
         ]);
     }

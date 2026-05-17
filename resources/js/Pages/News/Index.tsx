@@ -24,6 +24,7 @@ import { confirmAction } from '@/utils/confirmDialog';
 import ImageDownloadButton from '@/Components/ImageDownloadButton';
 import { youtubeThumbUrlFromVideoUrl } from '@/utils/youtube';
 import FeedCaptionBody from '@/Components/News/FeedCaptionBody';
+import FeedPostHeader, { type FeedPostAuthor } from '@/Components/News/FeedPostHeader';
 import { feedCaptionText } from '@/utils/feedCaption';
 
 function imageSrc(url: string | null, appUrl: string): string {
@@ -48,7 +49,7 @@ interface NewsPost {
     video_url: string | null;
     published_at: string | null;
     created_at: string;
-    author?: { name: string } | null;
+    author?: FeedPostAuthor | null;
 }
 
 interface PaginationLink {
@@ -115,6 +116,7 @@ export default function Index({ posts, filters, canManage }: Props) {
         appUrl?: string;
         currentChurch?: { name: string; logo_url?: string | null } | null;
         defaultBrandLogoUrl?: string;
+        auth?: { user?: { name: string; photo_url?: string | null } | null };
     };
     const appUrl = pageProps.appUrl ?? '';
     const publisherName = pageProps.currentChurch?.name ?? 'Nova Semente';
@@ -287,6 +289,19 @@ export default function Index({ posts, filters, canManage }: Props) {
         : '';
 
     const instagramPreviewCaption = isInstagramFeed ? previewCaptionBody : '';
+
+    const previewAuthor: FeedPostAuthor | null = (() => {
+        if (!isInstagramFeed) return null;
+        if (isEditing && editingId) {
+            const existing = posts.data.find((p) => p.id === editingId);
+            if (existing?.author?.name) return existing.author;
+        }
+        const user = pageProps.auth?.user;
+        if (user?.name) {
+            return { name: user.name, photo_url: user.photo_url ?? null };
+        }
+        return null;
+    })();
 
     const previewSnippet =
         (isInstagramFeed ? '' : data.excerpt?.trim()) ||
@@ -715,27 +730,13 @@ export default function Index({ posts, filters, canManage }: Props) {
                             </p>
                             <div className={`max-w-sm overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 ${isInstagramFeed ? 'max-w-xs' : ''}`}>
                                 {isInstagramFeed && (
-                                    <div className="flex items-center gap-2 px-4 pb-3 pt-4">
-                                        <img
-                                            src={publisherLogoUrl}
-                                            alt=""
-                                            className="h-8 w-8 rounded-full object-cover ring-1 ring-zinc-200 dark:ring-zinc-700"
-                                        />
-                                        <div>
-                                            <p className="text-sm font-semibold text-zinc-900 dark:text-white">
-                                                {publisherName}
-                                            </p>
-                                            {data.published_at && (
-                                                <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                                    {new Date(data.published_at).toLocaleDateString('pt-BR', {
-                                                        day: '2-digit',
-                                                        month: 'short',
-                                                        year: 'numeric',
-                                                    })}
-                                                </p>
-                                            )}
-                                        </div>
-                                    </div>
+                                    <FeedPostHeader
+                                        author={previewAuthor}
+                                        churchName={publisherName}
+                                        churchLogoUrl={publisherLogoUrl}
+                                        publishedAt={data.published_at || null}
+                                        compact
+                                    />
                                 )}
                                 {previewHasVideo ? (
                                     <div className="relative aspect-[9/16] bg-zinc-950">

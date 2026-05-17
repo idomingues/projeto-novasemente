@@ -181,6 +181,17 @@ class NewsController extends Controller
             $arr['pdf_url'] = $n->resolvedPdfUrl($host);
             $arr['video_url'] = $n->resolvedVideoUrl($host);
 
+            if ($n->author !== null) {
+                $photoUrl = $n->author->photo_url;
+                if ($photoUrl && ! str_starts_with($photoUrl, 'http')) {
+                    $photoUrl = $host.$photoUrl;
+                }
+                $arr['author'] = [
+                    'name' => (string) $n->author->name,
+                    'photo_url' => $photoUrl,
+                ];
+            }
+
             return $arr;
         });
 

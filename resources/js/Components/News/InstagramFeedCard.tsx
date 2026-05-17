@@ -1,6 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import { PlayCircleIcon } from '@heroicons/react/24/solid';
 import FeedCaptionBody from '@/Components/News/FeedCaptionBody';
+import FeedPostHeader, { type FeedPostAuthor } from '@/Components/News/FeedPostHeader';
 import { feedCaptionText } from '@/utils/feedCaption';
 
 function mediaSrc(url: string | null, appUrl: string): string {
@@ -20,15 +21,7 @@ export interface InstagramFeedPost {
     cover_url: string | null;
     video_url?: string | null;
     published_at: string | null;
-}
-
-function formatFeedDate(iso: string | null): string {
-    if (!iso) return '';
-    return new Date(iso).toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-    });
+    author?: FeedPostAuthor | null;
 }
 
 function captionForPost(post: InstagramFeedPost): string {
@@ -138,17 +131,12 @@ export default function InstagramFeedCard({ post, appUrl, variant = 'feed' }: Pr
 
     return (
         <article className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-            <div className="flex items-center gap-3 px-4 py-3">
-                <img
-                    src={publisherLogoUrl}
-                    alt=""
-                    className="h-9 w-9 shrink-0 rounded-full object-cover object-center ring-1 ring-zinc-200 dark:ring-zinc-700 dark:invert"
-                />
-                <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-zinc-900 dark:text-white">{publisherName}</p>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">{formatFeedDate(post.published_at)}</p>
-                </div>
-            </div>
+            <FeedPostHeader
+                author={post.author}
+                churchName={publisherName}
+                churchLogoUrl={publisherLogoUrl}
+                publishedAt={post.published_at}
+            />
 
             <FeedMedia post={post} appUrl={appUrl} variant={variant} showHref={showHref} />
 
