@@ -1,5 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import { PlayCircleIcon } from '@heroicons/react/24/solid';
+import FeedCaptionBody from '@/Components/News/FeedCaptionBody';
 import { feedCaptionText } from '@/utils/feedCaption';
 
 function mediaSrc(url: string | null, appUrl: string): string {
@@ -168,13 +169,7 @@ export default function InstagramFeedCard({ post, appUrl, variant = 'feed' }: Pr
                         )
                     ) : null}
                     {caption ? (
-                        <p
-                            className={`whitespace-pre-line break-words text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 ${
-                                isDetail ? '' : 'line-clamp-6'
-                            }`}
-                        >
-                            {caption}
-                        </p>
+                        <FeedCaptionBody caption={caption} clampLines={!isDetail} />
                     ) : !isDetail && !post.title ? (
                         <Link href={showHref} className="text-sm font-semibold text-primary-600 dark:text-primary-400">
                             Ver publicação

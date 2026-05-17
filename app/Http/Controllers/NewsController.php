@@ -22,7 +22,14 @@ class NewsController extends Controller
 
     private function normalizeNewsBody(string $body): string
     {
-        return trim(str_replace(["\r\n", "\r"], "\n", $body));
+        $normalized = str_replace(["\r\n", "\r"], "\n", $body);
+        // Colapsa espaços no fim de cada linha; mantém linhas vazias (parágrafos).
+        $lines = array_map(
+            static fn (string $line) => rtrim(preg_replace('/[^\S\n]+/u', ' ', $line) ?? $line),
+            explode("\n", $normalized),
+        );
+
+        return trim(implode("\n", $lines));
     }
 
     private function uploadErrorMessage(int $code): string
@@ -228,7 +235,7 @@ class NewsController extends Controller
             'title' => $data['title'],
             'slug' => $slug,
             'content_type' => $data['content_type'],
-            'excerpt' => $data['excerpt'] ?? null,
+            'excerpt' => $data['content_type'] === News::TYPE_INSTAGRAM_FEED ? null : ($data['excerpt'] ?? null),
             'body' => $this->normalizeNewsBody((string) ($data['body'] ?? '')),
             'youtube_url' => $data['content_type'] === News::TYPE_YOUTUBE ? ($data['youtube_url'] ?? null) : null,
             'pdf_path' => $data['content_type'] === News::TYPE_PDF ? $pdfPath : null,
@@ -289,7 +296,7 @@ class NewsController extends Controller
         $news->fill([
             'title' => $data['title'],
             'content_type' => $data['content_type'],
-            'excerpt' => $data['excerpt'] ?? null,
+            'excerpt' => $data['content_type'] === News::TYPE_INSTAGRAM_FEED ? null : ($data['excerpt'] ?? null),
             'body' => $this->normalizeNewsBody((string) ($data['body'] ?? '')),
             'youtube_url' => $data['content_type'] === News::TYPE_YOUTUBE ? ($data['youtube_url'] ?? null) : null,
             'pdf_path' => $pdfPath,

@@ -23,6 +23,7 @@ import { useState, useEffect, FormEventHandler, useMemo } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
 import ImageDownloadButton from '@/Components/ImageDownloadButton';
 import { youtubeThumbUrlFromVideoUrl } from '@/utils/youtube';
+import FeedCaptionBody from '@/Components/News/FeedCaptionBody';
 import { feedCaptionText } from '@/utils/feedCaption';
 
 function imageSrc(url: string | null, appUrl: string): string {
@@ -785,9 +786,11 @@ export default function Index({ posts, filters, canManage }: Props) {
                                                 </p>
                                             ) : null}
                                             {instagramPreviewCaption ? (
-                                                <p className="line-clamp-6 whitespace-pre-line text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
-                                                    {instagramPreviewCaption}
-                                                </p>
+                                                <FeedCaptionBody
+                                                    caption={instagramPreviewCaption}
+                                                    clampLines
+                                                    className="text-zinc-600 dark:text-zinc-300"
+                                                />
                                             ) : null}
                                         </div>
                                     ) : (
