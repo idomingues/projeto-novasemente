@@ -21,6 +21,7 @@ import {
     TrashIcon,
 } from '@heroicons/react/24/outline';
 import { confirmAction } from '@/utils/confirmDialog';
+import { formatListPreview } from '@/utils/formatListPreview';
 
 interface MinistryRef {
     id: number;
@@ -670,12 +671,8 @@ export default function Board({
                                             ) : null}
                                         </div>
                                     </td>
-                                    <td className="py-2 pr-3 text-xs text-zinc-600 dark:text-zinc-400">
-                                        {v.ministryNames.length ? (
-                                            <span className="line-clamp-2">{v.ministryNames.join(', ')}</span>
-                                        ) : (
-                                            <span className="text-zinc-400">—</span>
-                                        )}
+                                    <td className="py-2 pr-3 max-w-[220px] text-xs text-zinc-600 dark:text-zinc-400">
+                                        {formatListPreview(v.ministryNames) || <span className="text-zinc-400">—</span>}
                                     </td>
                                     <td className="py-2 pr-3">
                                         {v.inThisMinistry ? (

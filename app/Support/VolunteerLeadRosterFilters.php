@@ -22,6 +22,15 @@ class VolunteerLeadRosterFilters
             });
         }
 
+        $hasUserAccount = $request->input('has_user_account');
+        if ($hasUserAccount === '0' || $hasUserAccount === '1' || $hasUserAccount === 0 || $hasUserAccount === 1) {
+            if ((bool) (int) $hasUserAccount) {
+                $q->whereNotNull('user_id');
+            } else {
+                $q->whereNull('user_id');
+            }
+        }
+
         foreach ([
             'has_whatsapp',
             'has_social_networks',
@@ -158,6 +167,7 @@ class VolunteerLeadRosterFilters
     {
         return [
             'search' => trim((string) $request->input('search', '')),
+            'has_user_account' => (string) $request->input('has_user_account', ''),
             'has_whatsapp' => (string) $request->input('has_whatsapp', ''),
             'has_social_networks' => (string) $request->input('has_social_networks', ''),
             'is_official_member' => (string) $request->input('is_official_member', ''),

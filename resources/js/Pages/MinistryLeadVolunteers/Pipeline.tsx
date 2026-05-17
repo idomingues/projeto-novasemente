@@ -13,7 +13,7 @@ import SelectInput from '@/Components/SelectInput';
 import InputError from '@/Components/InputError';
 import Checkbox from '@/Components/Checkbox';
 import { Head, Link, router, useForm, usePage, useRemember } from '@inertiajs/react';
-import { FormEventHandler, useEffect, useMemo, useState } from 'react';
+import { FormEventHandler, useEffect, useMemo, useRef, useState } from 'react';
 import {
     AdjustmentsHorizontalIcon,
     ChevronDownIcon,
@@ -24,12 +24,14 @@ import {
 } from '@heroicons/react/24/outline';
 import PublicVolunteerSignupShareModal from '@/Components/Volunteers/PublicVolunteerSignupShareModal';
 import { confirmAction } from '@/utils/confirmDialog';
+import { formatListPreview } from '@/utils/formatListPreview';
 
 type StageRow = { id: number; name: string; sort_order: number; volunteer_count: number };
 
 type VolunteerListRow = {
     id: number;
     name: string | null;
+    hasUserAccount?: boolean;
     email: string | null;
     phone: string | null;
     active: boolean;
@@ -45,6 +47,7 @@ type VolunteerListRow = {
 
 type BoardFilters = {
     search: string;
+    has_user_account: string;
     has_whatsapp: string;
     has_social_networks: string;
     is_official_member: string;
@@ -74,6 +77,28 @@ type BoardFilters = {
 interface Paginated<T> {
     data: T[];
     links: { url: string | null; label: string; active: boolean }[];
+    total?: number;
+    from?: number | null;
+    to?: number | null;
+    per_page?: number;
+    current_page?: number;
+    last_page?: number;
+}
+
+function formatVolunteerResultsSummary(volunteers: Paginated<unknown>): string {
+    const total = typeof volunteers.total === 'number' ? volunteers.total : volunteers.data.length;
+    if (total === 0) {
+        return 'Nenhum registro encontrado';
+    }
+    const word = total === 1 ? 'registro' : 'registros';
+    const from = volunteers.from;
+    const to = volunteers.to;
+    const paginated = typeof from === 'number' && typeof to === 'number' && total > volunteers.data.length;
+    if (paginated) {
+        return `${total} ${word} encontrados · mostrando ${from}–${to}`;
+    }
+
+    return `${total} ${word} encontrados`;
 }
 
 type DetailVolunteer = Record<string, unknown> & { id: number; name: string | null };
@@ -156,11 +181,38 @@ export default function Pipeline({
     const churchName = currentChurch?.name ?? 'Igreja';
 
     const filterForm = useForm<BoardFilters>({ ...filters });
+    const [searchQuery, setSearchQuery] = useState(filters.search ?? '');
+    const filtersRef = useRef(filters);
+    filtersRef.current = filters;
+    const lastAppliedSearchRef = useRef(filters.search ?? '');
+    const SEARCH_DEBOUNCE_MS = 750;
+
     const filtersKey = useMemo(() => JSON.stringify(filters), [filters]);
     useEffect(() => {
         filterForm.setData({ ...filters });
+        const serverSearch = filters.search ?? '';
+        if (serverSearch === lastAppliedSearchRef.current) {
+            setSearchQuery(serverSearch);
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filtersKey]);
+
+    useEffect(() => {
+        const serverSearch = filtersRef.current.search ?? '';
+        if (searchQuery === serverSearch) {
+            return;
+        }
+        const timeout = window.setTimeout(() => {
+            lastAppliedSearchRef.current = searchQuery;
+            const data = Object.fromEntries(
+                Object.entries({ ...filtersRef.current, search: searchQuery }).filter(
+                    ([, v]) => v !== '' && v !== null && v !== undefined,
+                ),
+            ) as Record<string, string>;
+            router.get(route('ministry-lead.volunteers.index'), data, { preserveState: true, replace: true });
+        }, SEARCH_DEBOUNCE_MS);
+        return () => window.clearTimeout(timeout);
+    }, [searchQuery]);
 
     const stageForm = useForm({ name: '' });
     const [stageManageOpen, setStageManageOpen] = useState(false);
@@ -280,18 +332,28 @@ export default function Pipeline({
 
     const applyFilters: FormEventHandler = (e) => {
         e.preventDefault();
+        lastAppliedSearchRef.current = searchQuery;
         const data = Object.fromEntries(
-            Object.entries(filterForm.data).filter(([, v]) => v !== '' && v !== null && v !== undefined),
+            Object.entries({ ...filterForm.data, search: searchQuery }).filter(
+                ([, v]) => v !== '' && v !== null && v !== undefined,
+            ),
         ) as Record<string, string>;
         router.get(route('ministry-lead.volunteers.index'), data, { preserveState: true, replace: true });
     };
 
     const clearFilters = () => {
+        lastAppliedSearchRef.current = '';
+        setSearchQuery('');
         router.get(route('ministry-lead.volunteers.index'), {}, { preserveState: true, replace: true });
     };
 
     const pickStage = (stageId: number | '') => {
-        const next = { ...filterForm.data, pipeline_stage_id: stageId === '' ? '' : String(stageId) };
+        lastAppliedSearchRef.current = searchQuery;
+        const next = {
+            ...filterForm.data,
+            search: searchQuery,
+            pipeline_stage_id: stageId === '' ? '' : String(stageId),
+        };
         const data = Object.fromEntries(Object.entries(next).filter(([, v]) => v !== '')) as Record<string, string>;
         router.get(route('ministry-lead.volunteers.index'), data, { preserveState: true, replace: true });
     };
@@ -457,12 +519,13 @@ export default function Pipeline({
     const activeFiltersCount = useMemo(() => {
         const entries = Object.entries(filters) as [string, unknown][];
         return entries.filter(([k, v]) => {
-            if (k === 'pipeline_stage_id') return false;
+            if (k === 'pipeline_stage_id' || k === 'search') return false;
             return v !== '' && v !== null && v !== undefined;
         }).length;
     }, [filters]);
 
     const pipelineTotalCount = useMemo(() => stages.reduce((acc, s) => acc + s.volunteer_count, 0), [stages]);
+    const resultsSummary = useMemo(() => formatVolunteerResultsSummary(volunteers), [volunteers]);
 
     return (
         <AdminLayout>
@@ -588,6 +651,20 @@ export default function Pipeline({
                 </aside>
 
                 <div className="min-w-0 flex-1 space-y-4">
+                    <div className="relative">
+                        <MagnifyingGlassIcon
+                            className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400"
+                            aria-hidden
+                        />
+                        <TextInput
+                            type="search"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-10"
+                            placeholder="Nome, e-mail ou telefone"
+                            aria-label="Nome, e-mail ou telefone"
+                        />
+                    </div>
                     <button
                         type="button"
                         onClick={() => setFiltersOpen((o) => !o)}
@@ -609,12 +686,14 @@ export default function Pipeline({
                             <form onSubmit={applyFilters} className="space-y-4">
                                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                                     <div className="sm:col-span-2 xl:col-span-3">
-                                        <InputLabel value="Nome, e-mail ou telefone" />
-                                        <TextInput
+                                        <InputLabel value="Cadastro de usuário no app" />
+                                        <SelectInput
                                             className="mt-1"
-                                            value={filterForm.data.search}
-                                            onChange={(e) => filterForm.setData('search', e.target.value)}
-                                        />
+                                            value={filterForm.data.has_user_account}
+                                            onChange={(e) => filterForm.setData('has_user_account', e.target.value)}
+                                        >
+                                            {tri}
+                                        </SelectInput>
                                     </div>
                                     <div>
                                         <InputLabel value="WhatsApp" />
@@ -883,6 +962,10 @@ export default function Pipeline({
                         </Card>
                     ) : null}
 
+                    <p className="text-sm font-medium text-zinc-600 dark:text-zinc-300" aria-live="polite">
+                        {resultsSummary}
+                    </p>
+
                     <Card>
                         <div className="overflow-x-auto">
                             <table className="min-w-full text-sm hidden md:table">
@@ -903,7 +986,19 @@ export default function Pipeline({
                                             className={`border-b border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900/80 ${v.pendingInvite ? 'bg-amber-50/40 dark:bg-amber-950/10' : ''}`}
                                             onClick={() => void openVolunteer(v.id)}
                                         >
-                                            <td className="py-2 pr-3 font-medium text-zinc-900 dark:text-white">{v.name}</td>
+                                            <td className="py-2 pr-3 font-medium text-zinc-900 dark:text-white">
+                                                <div className="flex flex-wrap items-center gap-1.5">
+                                                    <span>{v.name}</span>
+                                                    {v.hasUserAccount ? (
+                                                        <span
+                                                            className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-800 dark:bg-sky-950/50 dark:text-sky-200"
+                                                            title="Já possui cadastro de usuário no aplicativo"
+                                                        >
+                                                            Com conta
+                                                        </span>
+                                                    ) : null}
+                                                </div>
+                                            </td>
                                             <td className="py-2 pr-3 text-zinc-700 dark:text-zinc-200">{v.stageName}</td>
                                             <td className="py-2 pr-3 whitespace-nowrap text-zinc-600 dark:text-zinc-400">
                                                 {formatShortDate(v.createdAt)}
@@ -913,8 +1008,8 @@ export default function Pipeline({
                                                 {v.phone ? <div className="text-xs">{v.phone}</div> : null}
                                             </td>
                                             <td className="py-2 pr-3 max-w-[200px] text-xs text-zinc-500">{v.interestPreview ?? '—'}</td>
-                                            <td className="py-2 text-xs text-zinc-500">
-                                                {v.ministryNames.length ? v.ministryNames.join(', ') : '—'}
+                                            <td className="py-2 max-w-[220px] text-xs text-zinc-500">
+                                                {formatListPreview(v.ministryNames) || '—'}
                                             </td>
                                             <td className="py-2 text-right">
                                                 <button
@@ -947,7 +1042,14 @@ export default function Pipeline({
                                 >
                                     <div className="flex items-start justify-between gap-3">
                                         <button type="button" onClick={() => void openVolunteer(v.id)} className="min-w-0 text-left">
-                                            <div className="truncate font-semibold text-zinc-900 dark:text-white">{v.name ?? '—'}</div>
+                                            <div className="flex flex-wrap items-center gap-1.5">
+                                                <span className="truncate font-semibold text-zinc-900 dark:text-white">{v.name ?? '—'}</span>
+                                                {v.hasUserAccount ? (
+                                                    <span className="shrink-0 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-800 dark:bg-sky-950/50 dark:text-sky-200">
+                                                        Com conta
+                                                    </span>
+                                                ) : null}
+                                            </div>
                                             <div className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
                                                 {v.stageName} · {formatShortDate(v.createdAt)}
                                             </div>
@@ -965,12 +1067,13 @@ export default function Pipeline({
                                         {v.phone ? <div className="truncate">{v.phone}</div> : null}
                                         {v.pendingInvite && (v.pendingInviteMinistryNames?.length ?? 0) > 0 ? (
                                             <div className="truncate text-zinc-700 dark:text-zinc-200">
-                                                Encaminhado para: {v.pendingInviteMinistryNames?.join(', ')}
+                                                Encaminhado para:{' '}
+                                                {formatListPreview(v.pendingInviteMinistryNames ?? [])}
                                             </div>
                                         ) : null}
                                         {!v.pendingInvite && v.ministryNames.length > 0 ? (
                                             <div className="truncate text-zinc-700 dark:text-zinc-200">
-                                                Departamentos: {v.ministryNames.join(', ')}
+                                                Departamentos: {formatListPreview(v.ministryNames)}
                                             </div>
                                         ) : null}
                                         {v.interestPreview ? (

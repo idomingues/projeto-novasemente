@@ -145,6 +145,7 @@ class VolunteerChurchRosterBuilder
                 return [
                     'id' => $v->id,
                     'name' => $v->name,
+                    'hasUserAccount' => $v->user_id !== null,
                     'email' => $mask['email'],
                     'phone' => $mask['phone'],
                     'active' => (bool) $v->active,

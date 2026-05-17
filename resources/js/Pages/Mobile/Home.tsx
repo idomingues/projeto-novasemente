@@ -68,8 +68,16 @@ function cardSnippet(n: NewsCard): string {
     if (n.content_type === 'youtube') return 'Vídeo no YouTube';
     if (n.content_type === 'pdf') return 'Documento PDF';
     if (n.content_type === 'image') return 'Imagem';
-    if (n.content_type === 'instagram_feed') return 'Feed';
     return '';
+}
+
+function cardTypeLabel(n: NewsCard): string {
+    const normalized = (n.type_label ?? '').trim().toLowerCase();
+    if (n.content_type === 'instagram_feed' || normalized === 'feed') {
+        return '';
+    }
+
+    return n.type_label || 'COMUNIDADE';
 }
 
 /** Rodapé tipo “Hoje · 14:30” para cartões de notícia. */
@@ -223,6 +231,7 @@ export default function MobileHome({ latestNews, upcomingEvents }: Props) {
                                     const src = imageSrc(thumb, appUrl);
                                     const snippet = cardSnippet(n);
                                     const whenLine = timeAgoPtBr(n.published_at) || formatNewsWhen(n.published_at);
+                                    const typeLabel = cardTypeLabel(n);
                                     return (
                                         <li key={n.id}>
                                             <Link
@@ -239,9 +248,11 @@ export default function MobileHome({ latestNews, upcomingEvents }: Props) {
                                                     )}
                                                 </div>
                                                 <div className="min-w-0 flex-1">
-                                                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
-                                                        {n.type_label || 'COMUNIDADE'}
-                                                    </p>
+                                                    {typeLabel ? (
+                                                        <p className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+                                                            {typeLabel}
+                                                        </p>
+                                                    ) : null}
                                                     <p className="mt-0.5 line-clamp-2 text-sm font-semibold leading-snug text-zinc-900 dark:text-white">
                                                         {n.title}
                                                     </p>
