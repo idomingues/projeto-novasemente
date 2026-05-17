@@ -34,7 +34,7 @@ export default function MobileLayout({ children }: PropsWithChildren) {
                         hasSidebar={canAccessAdminMenu}
                     />
 
-                    <main className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] pt-20 [scrollbar-gutter:stable] sm:px-6 md:px-8 md:pt-24">
+                    <main className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] pt-[calc(5rem+env(safe-area-inset-top,0px))] [scrollbar-gutter:stable] sm:px-6 md:px-8 md:pt-[calc(6rem+env(safe-area-inset-top,0px))]">
                         <div className="max-w-7xl xl:max-w-[90rem] mx-auto w-full min-w-0 pt-6 pb-2">
                             {children}
                         </div>
