@@ -24,33 +24,6 @@ class FcmMessaging
         $projectId = (string) config('services.fcm.project_id');
         $accessToken = $this->accessToken();
         if ($accessToken === null || $accessToken === '') {
-            // #region agent log
-            try {
-                logger()->warning('debug-5acbd2 No OAuth access token; FCM send aborted', [
-                    'runId' => 'pre-fix',
-                    'hypothesisId' => 'H2',
-                    'project_id_present' => $projectId !== '',
-                    'token_sha1_8' => substr(sha1($token), 0, 8),
-                ]);
-            } catch (\Throwable) {
-            }
-            @file_put_contents(
-                base_path('.cursor/debug-5acbd2.log'),
-                json_encode([
-                    'sessionId' => '5acbd2',
-                    'runId' => 'pre-fix',
-                    'hypothesisId' => 'H2',
-                    'location' => 'app/Services/FcmMessaging.php:sendVisibleNotification',
-                    'message' => 'No OAuth access token; FCM send aborted',
-                    'data' => [
-                        'project_id_present' => $projectId !== '',
-                        'token_sha1_8' => substr(sha1($token), 0, 8),
-                    ],
-                    'timestamp' => (int) round(microtime(true) * 1000),
-                ], JSON_UNESCAPED_SLASHES) . "\n",
-                FILE_APPEND
-            );
-            // #endregion agent log
             return false;
         }
 
@@ -97,74 +70,8 @@ class FcmMessaging
             ->post($url, $payload);
 
         if ($res->successful()) {
-            // #region agent log
-            try {
-                logger()->info('debug-5acbd2 FCM send OK', [
-                    'runId' => 'pre-fix',
-                    'hypothesisId' => 'H4',
-                    'token_sha1_8' => substr(sha1($token), 0, 8),
-                    'status' => $res->status(),
-                ]);
-            } catch (\Throwable) {
-            }
-            @file_put_contents(
-                base_path('.cursor/debug-5acbd2.log'),
-                json_encode([
-                    'sessionId' => '5acbd2',
-                    'runId' => 'pre-fix',
-                    'hypothesisId' => 'H4',
-                    'location' => 'app/Services/FcmMessaging.php:sendVisibleNotification',
-                    'message' => 'FCM send OK',
-                    'data' => [
-                        'token_sha1_8' => substr(sha1($token), 0, 8),
-                        'status' => $res->status(),
-                    ],
-                    'timestamp' => (int) round(microtime(true) * 1000),
-                ], JSON_UNESCAPED_SLASHES) . "\n",
-                FILE_APPEND
-            );
-            // #endregion agent log
             return true;
         }
-
-        // #region agent log
-        $json = $res->json();
-        try {
-            logger()->warning('debug-5acbd2 FCM send failed', [
-                'runId' => 'pre-fix',
-                'hypothesisId' => 'H5',
-                'token_sha1_8' => substr(sha1($token), 0, 8),
-                'status' => $res->status(),
-                'error_status' => is_array($json) ? ($json['error']['status'] ?? null) : null,
-                'error_message' => is_array($json) ? ($json['error']['message'] ?? null) : null,
-                'error_code' => is_array($json) && isset($json['error']['details']) && is_array($json['error']['details'])
-                    ? collect($json['error']['details'])->first(fn ($d) => is_array($d) && isset($d['errorCode']))['errorCode'] ?? null
-                    : null,
-            ]);
-        } catch (\Throwable) {
-        }
-        @file_put_contents(
-            base_path('.cursor/debug-5acbd2.log'),
-            json_encode([
-                'sessionId' => '5acbd2',
-                'runId' => 'pre-fix',
-                'hypothesisId' => 'H5',
-                'location' => 'app/Services/FcmMessaging.php:sendVisibleNotification',
-                'message' => 'FCM send failed',
-                'data' => [
-                    'token_sha1_8' => substr(sha1($token), 0, 8),
-                    'status' => $res->status(),
-                    'error_status' => is_array($json) ? ($json['error']['status'] ?? null) : null,
-                    'error_message' => is_array($json) ? ($json['error']['message'] ?? null) : null,
-                    'error_code' => is_array($json) && isset($json['error']['details']) && is_array($json['error']['details'])
-                        ? collect($json['error']['details'])->first(fn ($d) => is_array($d) && isset($d['errorCode']))['errorCode'] ?? null
-                        : null,
-                ],
-                'timestamp' => (int) round(microtime(true) * 1000),
-            ], JSON_UNESCAPED_SLASHES) . "\n",
-            FILE_APPEND
-        );
-        // #endregion agent log
 
         $this->maybePruneInvalidToken($token, $res->json());
 

@@ -4,13 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\AppNotification;
 use App\Models\Church;
-use App\Models\PushToken;
-use App\Models\User;
-use App\Services\FcmMessaging;
+use App\Services\NativePushNotifier;
 use Illuminate\Http\Request;
 
 class AppNotificationController extends Controller
 {
+    public function __construct(
+        private readonly NativePushNotifier $nativePush,
+    ) {}
+
     private function currentChurchId(): ?int
     {
         return Church::resolveWorkingId(request());
@@ -34,7 +36,17 @@ class AppNotificationController extends Controller
             'created_by' => $request->user()?->id,
         ]);
 
-        $this->dispatchNativePushForNotification($notification);
+        $this->nativePush->notifyChurchBroadcast(
+            $churchId,
+            (string) $notification->title,
+            (string) $notification->body,
+            [
+                'type' => 'app_notification',
+                'id' => (string) $notification->id,
+                'title' => (string) $notification->title,
+                'body' => (string) $notification->body,
+            ],
+        );
 
         return redirect()->back()->with('success', 'Notificação enviada para todos os usuários do app.');
     }
@@ -53,170 +65,5 @@ class AppNotificationController extends Controller
         $notification->delete();
 
         return redirect()->back()->with('success', 'Notificação excluída.');
-    }
-
-    private function dispatchNativePushForNotification(AppNotification $notification): void
-    {
-        if (! FcmMessaging::enabled()) {
-            // #region agent log
-            try {
-                logger()->info('debug-5acbd2 FCM disabled; skipping native push dispatch', [
-                    'runId' => 'pre-fix',
-                    'hypothesisId' => 'H2',
-                    'notification_id' => (string) $notification->id,
-                ]);
-            } catch (\Throwable) {
-            }
-            @file_put_contents(
-                base_path('.cursor/debug-5acbd2.log'),
-                json_encode([
-                    'sessionId' => '5acbd2',
-                    'runId' => 'pre-fix',
-                    'hypothesisId' => 'H2',
-                    'location' => 'app/Http/Controllers/AppNotificationController.php:dispatchNativePushForNotification',
-                    'message' => 'FCM disabled; skipping native push dispatch',
-                    'data' => [
-                        'notification_id' => (string) $notification->id,
-                    ],
-                    'timestamp' => (int) round(microtime(true) * 1000),
-                ], JSON_UNESCAPED_SLASHES)."\n",
-                FILE_APPEND
-            );
-
-            // #endregion agent log
-            return;
-        }
-
-        $churchId = $notification->church_id;
-
-        $userIds = User::query()
-            ->where('notify_via_app', true)
-            ->whereHas('pushTokens')
-            ->when($churchId !== null, fn ($q) => $q->where('church_id', (int) $churchId))
-            ->pluck('id')
-            ->map(fn ($id) => (int) $id)
-            ->values()
-            ->all();
-
-        if ($userIds === []) {
-            // #region agent log
-            try {
-                logger()->info('debug-5acbd2 No users with notify_via_app + pushTokens; skipping', [
-                    'runId' => 'pre-fix',
-                    'hypothesisId' => 'H3',
-                    'notification_id' => (string) $notification->id,
-                    'church_id' => $churchId === null ? null : (int) $churchId,
-                ]);
-            } catch (\Throwable) {
-            }
-            @file_put_contents(
-                base_path('.cursor/debug-5acbd2.log'),
-                json_encode([
-                    'sessionId' => '5acbd2',
-                    'runId' => 'pre-fix',
-                    'hypothesisId' => 'H3',
-                    'location' => 'app/Http/Controllers/AppNotificationController.php:dispatchNativePushForNotification',
-                    'message' => 'No users with notify_via_app + pushTokens; skipping',
-                    'data' => [
-                        'notification_id' => (string) $notification->id,
-                        'church_id' => $churchId === null ? null : (int) $churchId,
-                    ],
-                    'timestamp' => (int) round(microtime(true) * 1000),
-                ], JSON_UNESCAPED_SLASHES)."\n",
-                FILE_APPEND
-            );
-
-            // #endregion agent log
-            return;
-        }
-
-        $tokens = PushToken::query()
-            ->whereIn('user_id', $userIds)
-            ->get(['platform', 'token']);
-
-        if ($tokens->isEmpty()) {
-            // #region agent log
-            try {
-                logger()->info('debug-5acbd2 Users exist but no tokens returned; skipping', [
-                    'runId' => 'pre-fix',
-                    'hypothesisId' => 'H3',
-                    'notification_id' => (string) $notification->id,
-                    'user_ids_count' => count($userIds),
-                ]);
-            } catch (\Throwable) {
-            }
-            @file_put_contents(
-                base_path('.cursor/debug-5acbd2.log'),
-                json_encode([
-                    'sessionId' => '5acbd2',
-                    'runId' => 'pre-fix',
-                    'hypothesisId' => 'H3',
-                    'location' => 'app/Http/Controllers/AppNotificationController.php:dispatchNativePushForNotification',
-                    'message' => 'Users exist but no tokens returned; skipping',
-                    'data' => [
-                        'notification_id' => (string) $notification->id,
-                        'user_ids_count' => count($userIds),
-                    ],
-                    'timestamp' => (int) round(microtime(true) * 1000),
-                ], JSON_UNESCAPED_SLASHES)."\n",
-                FILE_APPEND
-            );
-
-            // #endregion agent log
-            return;
-        }
-
-        $fcm = new FcmMessaging;
-        $title = (string) $notification->title;
-        $body = (string) $notification->body;
-        $payload = [
-            'type' => 'app_notification',
-            'id' => (string) $notification->id,
-            'title' => $title,
-            'body' => $body,
-        ];
-
-        // #region agent log
-        try {
-            logger()->info('debug-5acbd2 Dispatching native push via FCM', [
-                'runId' => 'pre-fix',
-                'hypothesisId' => 'H4',
-                'notification_id' => (string) $notification->id,
-                'church_id' => $churchId === null ? null : (int) $churchId,
-                'user_ids_count' => count($userIds),
-                'tokens_count' => $tokens->count(),
-                'platform_counts' => $tokens->groupBy('platform')->map->count()->all(),
-            ]);
-        } catch (\Throwable) {
-        }
-        @file_put_contents(
-            base_path('.cursor/debug-5acbd2.log'),
-            json_encode([
-                'sessionId' => '5acbd2',
-                'runId' => 'pre-fix',
-                'hypothesisId' => 'H4',
-                'location' => 'app/Http/Controllers/AppNotificationController.php:dispatchNativePushForNotification',
-                'message' => 'Dispatching native push via FCM',
-                'data' => [
-                    'notification_id' => (string) $notification->id,
-                    'church_id' => $churchId === null ? null : (int) $churchId,
-                    'user_ids_count' => count($userIds),
-                    'tokens_count' => $tokens->count(),
-                    'platform_counts' => $tokens->groupBy('platform')->map->count()->all(),
-                ],
-                'timestamp' => (int) round(microtime(true) * 1000),
-            ], JSON_UNESCAPED_SLASHES)."\n",
-            FILE_APPEND
-        );
-        // #endregion agent log
-
-        foreach ($tokens as $row) {
-            $token = (string) $row->token;
-            if ($token === '') {
-                continue;
-            }
-
-            $fcm->sendVisibleNotification($token, $title, $body, $payload);
-        }
     }
 }

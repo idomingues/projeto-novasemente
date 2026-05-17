@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Models\User;
+use App\Models\UserInboxNotification;
+use App\Observers\UserInboxNotificationObserver;
 use Illuminate\Foundation\Console\ServeCommand;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\File;
@@ -49,6 +51,8 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->ensureSqliteDatabaseFileExists();
+
+        UserInboxNotification::observe(UserInboxNotificationObserver::class);
     }
 
     /**
