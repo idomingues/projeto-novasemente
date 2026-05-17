@@ -1,5 +1,6 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { PlayCircleIcon } from '@heroicons/react/24/solid';
+import { feedCaptionText } from '@/utils/feedCaption';
 
 function mediaSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
@@ -29,10 +30,8 @@ function formatFeedDate(iso: string | null): string {
     });
 }
 
-function plainCaption(post: InstagramFeedPost): string {
-    const raw = (post.body || post.excerpt || '').trim();
-    if (!raw) return '';
-    return raw.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+function captionForPost(post: InstagramFeedPost): string {
+    return feedCaptionText(post.body || post.excerpt || '', post.title);
 }
 
 interface Props {
@@ -125,43 +124,58 @@ function FeedMedia({
 }
 
 export default function InstagramFeedCard({ post, appUrl, variant = 'feed' }: Props) {
-    const caption = plainCaption(post);
+    const { currentChurch, defaultBrandLogoUrl } = usePage().props as {
+        currentChurch?: { name: string; logo_url?: string | null } | null;
+        defaultBrandLogoUrl?: string;
+    };
+    const publisherName = currentChurch?.name ?? 'Nova Semente';
+    const publisherLogoUrl = currentChurch?.logo_url ?? defaultBrandLogoUrl ?? '/logo-ns.png';
+
+    const caption = captionForPost(post);
     const showHref = route('mobile.news.show', post.slug);
     const isDetail = variant === 'detail';
 
     return (
         <article className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             <div className="flex items-center gap-3 px-4 py-3">
-                <span
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af] text-[11px] font-bold text-white shadow-sm"
-                    aria-hidden
-                >
-                    IG
-                </span>
+                <img
+                    src={publisherLogoUrl}
+                    alt=""
+                    className="h-9 w-9 shrink-0 rounded-full object-cover object-center ring-1 ring-zinc-200 dark:ring-zinc-700 dark:invert"
+                />
                 <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-zinc-900 dark:text-white">{post.title}</p>
+                    <p className="truncate text-sm font-semibold text-zinc-900 dark:text-white">{publisherName}</p>
                     <p className="text-xs text-zinc-500 dark:text-zinc-400">{formatFeedDate(post.published_at)}</p>
                 </div>
             </div>
 
             <FeedMedia post={post} appUrl={appUrl} variant={variant} showHref={showHref} />
 
-            {(caption || !isDetail) && (
-                <div className="px-4 py-3">
+            {(post.title || caption || !isDetail) && (
+                <div className="space-y-1 px-4 py-3">
+                    {post.title ? (
+                        isDetail ? (
+                            <h2 className="text-sm font-semibold leading-snug text-zinc-900 dark:text-white">
+                                {post.title}
+                            </h2>
+                        ) : (
+                            <Link
+                                href={showHref}
+                                className="block text-sm font-semibold leading-snug text-zinc-900 hover:underline dark:text-white"
+                            >
+                                {post.title}
+                            </Link>
+                        )
+                    ) : null}
                     {caption ? (
                         <p
-                            className={`text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 ${
-                                isDetail ? 'whitespace-pre-wrap break-words' : 'line-clamp-4'
+                            className={`whitespace-pre-line break-words text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 ${
+                                isDetail ? '' : 'line-clamp-6'
                             }`}
                         >
-                            {!isDetail && (
-                                <Link href={showHref} className="mr-1 font-semibold hover:underline">
-                                    {post.title}
-                                </Link>
-                            )}
-                            {isDetail ? caption : ` ${caption}`}
+                            {caption}
                         </p>
-                    ) : !isDetail ? (
+                    ) : !isDetail && !post.title ? (
                         <Link href={showHref} className="text-sm font-semibold text-primary-600 dark:text-primary-400">
                             Ver publicação
                         </Link>

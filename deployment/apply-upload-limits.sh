@@ -23,8 +23,8 @@ if command -v nginx >/dev/null 2>&1 && [ -d /etc/nginx/conf.d ]; then
 fi
 
 cat > "${PHP_LIMITS_FILE}" <<'INI'
-upload_max_filesize = 32M
-post_max_size = 32M
+upload_max_filesize = 64M
+post_max_size = 72M
 INI
 
 PHP_FPM_CONFIGURED=0

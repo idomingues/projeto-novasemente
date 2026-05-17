@@ -112,12 +112,6 @@ export default function MobileNews({ feedPosts, posts }: Props) {
                     <>
                         {hasFeed && (
                             <section className="space-y-4">
-                                <div className="flex items-center gap-2">
-                                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af] text-[10px] font-bold text-white">
-                                        IG
-                                    </span>
-                                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Feed</h2>
-                                </div>
                                 <ul className="mx-auto flex max-w-md flex-col gap-6">
                                     {feedPosts.map((p) => (
                                         <li key={p.id}>

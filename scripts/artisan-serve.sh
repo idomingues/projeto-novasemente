@@ -12,6 +12,6 @@ export PHP_INI_SCAN_DIR="${SCRIPT_DIR}/php-dev-ini:"
 PHP_BIN="${PHP_BIN:-php}"
 
 exec "$PHP_BIN" \
-  -d upload_max_filesize=40M \
+  -d upload_max_filesize=64M \
   -d post_max_size=128M \
   artisan serve "$@"

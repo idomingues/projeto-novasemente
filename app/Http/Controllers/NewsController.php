@@ -20,8 +20,37 @@ class NewsController extends Controller
         return Church::resolveWorkingId(request());
     }
 
+    private function normalizeNewsBody(string $body): string
+    {
+        return trim(str_replace(["\r\n", "\r"], "\n", $body));
+    }
+
+    private function uploadErrorMessage(int $code): string
+    {
+        return match ($code) {
+            \UPLOAD_ERR_INI_SIZE, \UPLOAD_ERR_FORM_SIZE => 'Ficheiro demasiado grande para o servidor. Vídeo até 50 MB na app — confirme Nginx client_max_body_size 64M e PHP upload_max_filesize 64M (ver deployment/apply-upload-limits.sh).',
+            \UPLOAD_ERR_PARTIAL => 'Upload cortado a meio (muito comum com Nginx: aumente client_max_body_size para 64M e recarregue o Nginx).',
+            \UPLOAD_ERR_NO_FILE => 'Nenhum ficheiro foi recebido.',
+            default => 'O ficheiro não chegou ao servidor por completo. Revise limites Nginx (client_max_body_size) e PHP (upload_max_filesize, post_max_size).',
+        };
+    }
+
+    private function assertUploadFilesValid(Request $request): void
+    {
+        foreach (['image_file', 'video_file', 'pdf_file'] as $field) {
+            $file = $request->file($field);
+            if ($file !== null && ! $file->isValid()) {
+                throw ValidationException::withMessages([
+                    $field => $this->uploadErrorMessage($file->getError()),
+                ]);
+            }
+        }
+    }
+
     private function assertNewsPayload(Request $request, ?News $existing = null): array
     {
+        $this->assertUploadFilesValid($request);
+
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'content_type' => ['required', 'string', Rule::in([
@@ -39,6 +68,11 @@ class NewsController extends Controller
             'video_file' => ['nullable', 'file', 'mimes:mp4,mov,quicktime,webm', 'max:51200'],
             'pdf_file' => ['nullable', 'file', 'mimes:pdf', 'max:12288'],
             'published_at' => ['nullable', 'date'],
+        ], [
+            'image_file.uploaded' => 'A imagem não chegou ao servidor (413?). Aumente client_max_body_size no Nginx para 64M.',
+            'video_file.uploaded' => 'O vídeo não chegou ao servidor (413?). Aumente client_max_body_size no Nginx para 64M e PHP upload_max_filesize para 64M.',
+            'video_file.max' => 'O vídeo pode ter no máximo 50 MB.',
+            'pdf_file.uploaded' => 'O PDF não chegou ao servidor por completo. Revise limites de upload no Nginx e PHP.',
         ]);
 
         $type = $data['content_type'];
@@ -195,7 +229,7 @@ class NewsController extends Controller
             'slug' => $slug,
             'content_type' => $data['content_type'],
             'excerpt' => $data['excerpt'] ?? null,
-            'body' => trim((string) ($data['body'] ?? '')),
+            'body' => $this->normalizeNewsBody((string) ($data['body'] ?? '')),
             'youtube_url' => $data['content_type'] === News::TYPE_YOUTUBE ? ($data['youtube_url'] ?? null) : null,
             'pdf_path' => $data['content_type'] === News::TYPE_PDF ? $pdfPath : null,
             'video_path' => $data['content_type'] === News::TYPE_INSTAGRAM_FEED ? $videoPath : null,
@@ -256,7 +290,7 @@ class NewsController extends Controller
             'title' => $data['title'],
             'content_type' => $data['content_type'],
             'excerpt' => $data['excerpt'] ?? null,
-            'body' => trim((string) ($data['body'] ?? '')),
+            'body' => $this->normalizeNewsBody((string) ($data['body'] ?? '')),
             'youtube_url' => $data['content_type'] === News::TYPE_YOUTUBE ? ($data['youtube_url'] ?? null) : null,
             'pdf_path' => $pdfPath,
             'video_path' => $videoPath,

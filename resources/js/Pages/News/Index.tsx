@@ -23,6 +23,7 @@ import { useState, useEffect, FormEventHandler, useMemo } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
 import ImageDownloadButton from '@/Components/ImageDownloadButton';
 import { youtubeThumbUrlFromVideoUrl } from '@/utils/youtube';
+import { feedCaptionText } from '@/utils/feedCaption';
 
 function imageSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
@@ -79,7 +80,7 @@ function typeShortLabel(t: ContentType): string {
         case 'image':
             return 'Imagem';
         case 'instagram_feed':
-            return 'Feed IG';
+            return 'Feed';
         default:
             return 'Artigo';
     }
@@ -109,7 +110,14 @@ function cardSummary(p: NewsPost): string {
 }
 
 export default function Index({ posts, filters, canManage }: Props) {
-    const appUrl = (usePage().props as { appUrl?: string }).appUrl ?? '';
+    const pageProps = usePage().props as {
+        appUrl?: string;
+        currentChurch?: { name: string; logo_url?: string | null } | null;
+        defaultBrandLogoUrl?: string;
+    };
+    const appUrl = pageProps.appUrl ?? '';
+    const publisherName = pageProps.currentChurch?.name ?? 'Nova Semente';
+    const publisherLogoUrl = pageProps.currentChurch?.logo_url ?? pageProps.defaultBrandLogoUrl ?? '/logo-ns.png';
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
@@ -271,10 +279,18 @@ export default function Index({ posts, filters, canManage }: Props) {
 
     const bodyRows = data.content_type === 'article' ? 10 : isInstagramFeed ? 6 : 5;
 
+    const previewCaptionBody = data.body?.trim()
+        ? isInstagramFeed
+            ? feedCaptionText(data.body, data.title)
+            : data.body.trim().slice(0, 300) + (data.body.trim().length > 300 ? '…' : '')
+        : '';
+
+    const instagramPreviewCaption = isInstagramFeed ? previewCaptionBody : '';
+
     const previewSnippet =
-        data.excerpt?.trim() ||
-        (data.body?.trim()
-            ? data.body.trim().slice(0, 300) + (data.body.trim().length > 300 ? '…' : '')
+        (isInstagramFeed ? '' : data.excerpt?.trim()) ||
+        (previewCaptionBody
+            ? previewCaptionBody
             : data.content_type === 'youtube'
               ? 'Vídeo no YouTube'
               : data.content_type === 'pdf'
@@ -576,6 +592,12 @@ export default function Index({ posts, filters, canManage }: Props) {
                                     rows={bodyRows}
                                     className="mt-1 block w-full"
                                 />
+                                {isInstagramFeed && (
+                                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                        Use <kbd className="rounded bg-zinc-100 px-1 dark:bg-zinc-800">Enter</kbd> para
+                                        nova linha na legenda (o app respeita as quebras).
+                                    </p>
+                                )}
                                 <InputError message={errors.body} className="mt-1" />
                             </div>
 
@@ -691,6 +713,29 @@ export default function Index({ posts, filters, canManage }: Props) {
                                 Pré-visualização (app)
                             </p>
                             <div className={`max-w-sm overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 ${isInstagramFeed ? 'max-w-xs' : ''}`}>
+                                {isInstagramFeed && (
+                                    <div className="flex items-center gap-2 px-4 pb-3 pt-4">
+                                        <img
+                                            src={publisherLogoUrl}
+                                            alt=""
+                                            className="h-8 w-8 rounded-full object-cover ring-1 ring-zinc-200 dark:ring-zinc-700"
+                                        />
+                                        <div>
+                                            <p className="text-sm font-semibold text-zinc-900 dark:text-white">
+                                                {publisherName}
+                                            </p>
+                                            {data.published_at && (
+                                                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                                    {new Date(data.published_at).toLocaleDateString('pt-BR', {
+                                                        day: '2-digit',
+                                                        month: 'short',
+                                                        year: 'numeric',
+                                                    })}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
                                 {previewHasVideo ? (
                                     <div className="relative aspect-[9/16] bg-zinc-950">
                                         <video
@@ -701,11 +746,6 @@ export default function Index({ posts, filters, canManage }: Props) {
                                             muted
                                             poster={previewThumbSrc || undefined}
                                         />
-                                        {isInstagramFeed && (
-                                            <span className="absolute left-2 top-2 rounded-lg bg-gradient-to-r from-[#f58529] via-[#dd2a7b] to-[#8134af] px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
-                                                Vídeo IG
-                                            </span>
-                                        )}
                                     </div>
                                 ) : previewThumbSrc ? (
                                     <div className="relative">
@@ -716,11 +756,6 @@ export default function Index({ posts, filters, canManage }: Props) {
                                                 isInstagramFeed ? 'aspect-[4/5]' : 'h-40'
                                             }`}
                                         />
-                                        {isInstagramFeed && (
-                                            <span className="absolute left-2 top-2 rounded-lg bg-gradient-to-r from-[#f58529] via-[#dd2a7b] to-[#8134af] px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
-                                                Feed IG
-                                            </span>
-                                        )}
                                         {data.content_type === 'youtube' && (
                                             <span className="absolute left-2 top-2 flex items-center gap-1 rounded-lg bg-black/65 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
                                                 <PlayCircleIcon className="h-3.5 w-3.5" />
@@ -743,33 +778,18 @@ export default function Index({ posts, filters, canManage }: Props) {
                                 ) : null}
                                 <div className="p-4">
                                     {isInstagramFeed ? (
-                                        <>
-                                            <div className="mb-3 flex items-center gap-2">
-                                                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af] text-[10px] font-bold text-white">
-                                                    IG
-                                                </span>
-                                                <div>
-                                                    <p className="text-sm font-semibold text-zinc-900 dark:text-white">
-                                                        {data.title || 'Título do post'}
-                                                    </p>
-                                                    {data.published_at && (
-                                                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                                            {new Date(data.published_at).toLocaleDateString('pt-BR', {
-                                                                day: '2-digit',
-                                                                month: 'short',
-                                                                year: 'numeric',
-                                                            })}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <p className="line-clamp-4 text-sm text-zinc-600 dark:text-zinc-300">
-                                                <span className="font-semibold text-zinc-900 dark:text-white">
-                                                    {data.title || 'Título'}
-                                                </span>{' '}
-                                                {previewSnippet}
-                                            </p>
-                                        </>
+                                        <div className="space-y-1">
+                                            {data.title ? (
+                                                <p className="text-sm font-semibold leading-snug text-zinc-900 dark:text-white">
+                                                    {data.title}
+                                                </p>
+                                            ) : null}
+                                            {instagramPreviewCaption ? (
+                                                <p className="line-clamp-6 whitespace-pre-line text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+                                                    {instagramPreviewCaption}
+                                                </p>
+                                            ) : null}
+                                        </div>
                                     ) : (
                                         <>
                                             <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
