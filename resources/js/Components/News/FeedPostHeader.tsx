@@ -24,12 +24,12 @@ function formatFeedDate(iso: string | null): string {
 
 function buildSubtitle(author: FeedPostAuthor | null | undefined, churchName: string, dateLabel: string): string {
     const parts: string[] = [];
+    if (churchName.trim()) {
+        parts.push(churchName.trim());
+    }
     const authorName = author?.name?.trim();
     if (authorName) {
         parts.push(authorName);
-    }
-    if (churchName.trim()) {
-        parts.push(churchName.trim());
     }
     if (dateLabel) {
         parts.push(dateLabel);
