@@ -4,6 +4,7 @@ export interface FeedPostAuthor {
 }
 
 interface Props {
+    title: string;
     author?: FeedPostAuthor | null;
     churchName: string;
     churchLogoUrl: string;
@@ -21,12 +22,34 @@ function formatFeedDate(iso: string | null): string {
     });
 }
 
-export default function FeedPostHeader({ author, churchName, churchLogoUrl, publishedAt, compact = false }: Props) {
-    const displayName = author?.name?.trim() || churchName;
+function buildSubtitle(author: FeedPostAuthor | null | undefined, churchName: string, dateLabel: string): string {
+    const parts: string[] = [];
+    const authorName = author?.name?.trim();
+    if (authorName) {
+        parts.push(authorName);
+    }
+    if (churchName.trim()) {
+        parts.push(churchName.trim());
+    }
+    if (dateLabel) {
+        parts.push(dateLabel);
+    }
+    return parts.join(' · ');
+}
+
+export default function FeedPostHeader({
+    title,
+    author,
+    churchName,
+    churchLogoUrl,
+    publishedAt,
+    compact = false,
+}: Props) {
+    const headline = title.trim() || churchName;
     const avatarUrl = author?.photo_url?.trim() || churchLogoUrl;
     const dateLabel = formatFeedDate(publishedAt);
+    const subtitle = buildSubtitle(author, churchName, dateLabel);
     const avatarClass = compact ? 'h-8 w-8' : 'h-9 w-9';
-    const showChurchSubtitle = Boolean(author?.name?.trim());
 
     return (
         <div className={`flex items-center gap-3 ${compact ? 'px-4 pb-3 pt-4' : 'px-4 py-3'}`}>
@@ -38,17 +61,10 @@ export default function FeedPostHeader({ author, churchName, churchLogoUrl, publ
                 }`}
             />
             <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-zinc-900 dark:text-white">{displayName}</p>
-                <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
-                    {showChurchSubtitle && churchName ? (
-                        <>
-                            <span>{churchName}</span>
-                            {dateLabel ? <span> · {dateLabel}</span> : null}
-                        </>
-                    ) : (
-                        dateLabel
-                    )}
-                </p>
+                <p className="line-clamp-2 text-sm font-semibold leading-snug text-zinc-900 dark:text-white">{headline}</p>
+                {subtitle ? (
+                    <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">{subtitle}</p>
+                ) : null}
             </div>
         </div>
     );

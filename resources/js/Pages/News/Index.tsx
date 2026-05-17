@@ -731,6 +731,7 @@ export default function Index({ posts, filters, canManage }: Props) {
                             <div className={`max-w-sm overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 ${isInstagramFeed ? 'max-w-xs' : ''}`}>
                                 {isInstagramFeed && (
                                     <FeedPostHeader
+                                        title={data.title || 'Título da publicação'}
                                         author={previewAuthor}
                                         churchName={publisherName}
                                         churchLogoUrl={publisherLogoUrl}
@@ -780,20 +781,13 @@ export default function Index({ posts, filters, canManage }: Props) {
                                 ) : null}
                                 <div className="p-4">
                                     {isInstagramFeed ? (
-                                        <div className="space-y-1">
-                                            {data.title ? (
-                                                <p className="text-sm font-semibold leading-snug text-zinc-900 dark:text-white">
-                                                    {data.title}
-                                                </p>
-                                            ) : null}
-                                            {instagramPreviewCaption ? (
-                                                <FeedCaptionBody
-                                                    caption={instagramPreviewCaption}
-                                                    clampLines
-                                                    className="text-zinc-600 dark:text-zinc-300"
-                                                />
-                                            ) : null}
-                                        </div>
+                                        instagramPreviewCaption ? (
+                                            <FeedCaptionBody
+                                                caption={instagramPreviewCaption}
+                                                clampLines
+                                                className="text-zinc-600 dark:text-zinc-300"
+                                            />
+                                        ) : null
                                     ) : (
                                         <>
                                             <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">

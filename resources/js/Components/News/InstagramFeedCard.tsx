@@ -132,6 +132,7 @@ export default function InstagramFeedCard({ post, appUrl, variant = 'feed' }: Pr
     return (
         <article className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             <FeedPostHeader
+                title={post.title}
                 author={post.author}
                 churchName={publisherName}
                 churchLogoUrl={publisherLogoUrl}
@@ -140,25 +141,11 @@ export default function InstagramFeedCard({ post, appUrl, variant = 'feed' }: Pr
 
             <FeedMedia post={post} appUrl={appUrl} variant={variant} showHref={showHref} />
 
-            {(post.title || caption || !isDetail) && (
-                <div className="space-y-1 px-4 py-3">
-                    {post.title ? (
-                        isDetail ? (
-                            <h2 className="text-sm font-semibold leading-snug text-zinc-900 dark:text-white">
-                                {post.title}
-                            </h2>
-                        ) : (
-                            <Link
-                                href={showHref}
-                                className="block text-sm font-semibold leading-snug text-zinc-900 hover:underline dark:text-white"
-                            >
-                                {post.title}
-                            </Link>
-                        )
-                    ) : null}
+            {(caption || !isDetail) && (
+                <div className="px-4 py-3">
                     {caption ? (
                         <FeedCaptionBody caption={caption} clampLines={!isDetail} />
-                    ) : !isDetail && !post.title ? (
+                    ) : !isDetail ? (
                         <Link href={showHref} className="text-sm font-semibold text-primary-600 dark:text-primary-400">
                             Ver publicação
                         </Link>
