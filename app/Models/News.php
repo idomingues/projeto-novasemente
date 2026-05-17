@@ -9,6 +9,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class News extends Model
 {
+    public const SECTION_NEWS = 'news';
+
+    public const SECTION_HEALTH = 'health';
+
     public const TYPE_ARTICLE = 'article';
 
     public const TYPE_YOUTUBE = 'youtube';
@@ -22,6 +26,7 @@ class News extends Model
 
     protected $fillable = [
         'church_id',
+        'section',
         'title',
         'slug',
         'content_type',

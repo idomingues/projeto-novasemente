@@ -41,6 +41,12 @@ final class PageViewRouteLabels
         // —— Mais (cartões) — mesmos títulos que Mobile/More.tsx e More/Index.tsx ——
         'mobile.news' => 'Notícias',
         'mobile.news.show' => 'Notícias — artigo',
+        'mobile.health' => 'Saúde',
+        'mobile.health.show' => 'Saúde — artigo',
+        'mobile.mission' => 'Missão',
+        'mission.form' => 'Missão — formulário',
+        'mission.index' => 'Missão — gestão',
+        'mission.show' => 'Missão — cadastro',
         'mobile.offerings' => 'Dízimos e ofertas',
         'mobile.musica' => 'Música',
         'mobile.musica.show' => 'Música — vídeo',
@@ -64,6 +70,7 @@ final class PageViewRouteLabels
         'mobile.sobre-o-app' => 'Sobre o app',
         'more.index' => 'Mais (web /mais)',
         'musica.index' => 'Música (painel)',
+        'health.index' => 'Saúde (painel)',
 
         // —— Ligações frequentes a partir de Mais / áreas relacionadas ——
         'varios.schedule' => 'Escala (web)',

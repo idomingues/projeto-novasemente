@@ -9,11 +9,14 @@ use App\Http\Controllers\CultoController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\FaviconController;
+use App\Http\Controllers\HealthController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\LibraryBookController;
 use App\Http\Controllers\LibraryBookExternalContentController;
 use App\Http\Controllers\LibraryConfigExternalContentController;
 use App\Http\Controllers\MemberController;
+use App\Http\Controllers\MissionFormController;
+use App\Http\Controllers\MissionVolunteerController;
 use App\Http\Controllers\MinistryController;
 use App\Http\Controllers\MinistryLeadVolunteerController;
 use App\Http\Controllers\MobileAnoBiblicoController;
@@ -114,10 +117,16 @@ Route::get('/mobile/culto', [MobileController::class, 'culto'])->name('mobile.cu
 Route::get('/mobile/culto/{culto}', [MobileController::class, 'cultoShow'])->name('mobile.culto.show');
 Route::get('/mobile/news', [MobileController::class, 'news'])->name('mobile.news');
 Route::get('/mobile/news/{news:slug}', [MobileController::class, 'newsShow'])->name('mobile.news.show');
+Route::get('/mobile/saude', [MobileController::class, 'health'])->name('mobile.health');
+Route::get('/mobile/saude/{health:slug}', [MobileController::class, 'healthShow'])->name('mobile.health.show');
 Route::get('/mobile/events', [MobileController::class, 'events'])->name('mobile.events');
 Route::get('/mobile/schedule', [MobileController::class, 'schedule'])->name('mobile.schedule');
 Route::get('/mobile/schedule/full', [MobileController::class, 'scheduleFull'])->name('mobile.schedule.full');
 Route::get('/mobile/more', [MobileController::class, 'more'])->name('mobile.more');
+Route::get('/mobile/missao', [MissionFormController::class, 'create'])->name('mobile.mission');
+Route::post('/mobile/missao', [MissionFormController::class, 'store'])->name('mobile.mission.store');
+Route::get('/missao', [MissionFormController::class, 'create'])->name('mission.form');
+Route::post('/missao', [MissionFormController::class, 'store'])->name('mission.store');
 Route::get('/mobile/biblia', [MobileBibleController::class, 'index'])->name('mobile.bible');
 Route::get('/mobile/biblia/chapter', [MobileBibleController::class, 'chapter'])
     ->middleware('throttle:80,1')
@@ -469,6 +478,23 @@ Route::middleware('auth')->group(function () {
     Route::post('/news', [NewsController::class, 'store'])->name('news.store')->middleware('permission:news.manage');
     Route::put('/news/{news}', [NewsController::class, 'update'])->name('news.update')->middleware('permission:news.manage');
     Route::delete('/news/{news}', [NewsController::class, 'destroy'])->name('news.destroy')->middleware('permission:news.manage');
+    Route::get('/saude', [HealthController::class, 'index'])->name('health.index');
+    Route::post('/saude', [HealthController::class, 'store'])->name('health.store')->middleware('permission:news.manage');
+    Route::put('/saude/{health}', [HealthController::class, 'update'])->name('health.update')->middleware('permission:news.manage');
+    Route::delete('/saude/{health}', [HealthController::class, 'destroy'])->name('health.destroy')->middleware('permission:news.manage');
+
+    // Missão (Insight / Inflexão)
+    Route::get('/missao/gestao', [MissionVolunteerController::class, 'index'])->name('mission.index')->middleware('permission:mission.view|mission.manage');
+    Route::get('/missao/gestao/{missionVolunteer}', [MissionVolunteerController::class, 'show'])->name('mission.show')->middleware('permission:mission.view|mission.manage');
+    Route::get('/missao/gestao/{missionVolunteer}/detalhe', [MissionVolunteerController::class, 'detail'])->name('mission.volunteers.detail')->middleware('permission:mission.view|mission.manage');
+    Route::patch('/missao/gestao/{missionVolunteer}/fase', [MissionVolunteerController::class, 'updatePhase'])->name('mission.volunteers.phase')->middleware('permission:mission.manage');
+    Route::delete('/missao/gestao/{missionVolunteer}', [MissionVolunteerController::class, 'destroy'])->name('mission.volunteers.destroy')->middleware('permission:mission.manage');
+    Route::post('/missao/gestao/convite', [MissionVolunteerController::class, 'invite'])->name('mission.volunteers.invite')->middleware('permission:mission.manage');
+    Route::post('/missao/gestao/convites', [MissionVolunteerController::class, 'inviteBulk'])->name('mission.volunteers.invite-bulk')->middleware('permission:mission.manage');
+    Route::post('/missao/fases', [MissionVolunteerController::class, 'storeStage'])->name('mission.phases.store')->middleware('permission:mission.manage');
+    Route::put('/missao/fases/{phase}', [MissionVolunteerController::class, 'updateStageMeta'])->name('mission.phases.update')->middleware('permission:mission.manage');
+    Route::delete('/missao/fases/{phase}', [MissionVolunteerController::class, 'destroyStage'])->name('mission.phases.destroy')->middleware('permission:mission.manage');
+
     // Eventos — ver exige events.view|events.manage; criar/editar/excluir exige events.manage
     Route::get('/events', [EventController::class, 'index'])->name('events.index')->middleware('permission:events.view|events.manage');
     Route::post('/events', [EventController::class, 'store'])->name('events.store')->middleware('permission:events.manage');

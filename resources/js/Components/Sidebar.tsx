@@ -27,6 +27,8 @@ import {
     CameraIcon,
     BookOpenIcon,
     UserPlusIcon,
+    HeartIcon,
+    GlobeAltIcon,
 } from '@heroicons/react/24/outline';
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 import { useMemo, useState } from 'react';
@@ -84,6 +86,8 @@ const ICON_MAP: Record<string, MenuIcon> = {
     camera: CameraIcon,
     'book-open': BookOpenIcon,
     'user-plus': UserPlusIcon,
+    heart: HeartIcon,
+    'globe-alt': GlobeAltIcon,
 };
 
 /**
@@ -103,6 +107,7 @@ const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'Usuários', route: 'members.index', icon: UsersIcon },
     { name: 'Oração', route: 'prayer.index', icon: PrayingHandsIcon },
     { name: 'News', route: 'news.index', icon: NewspaperIcon },
+    { name: 'Saúde', route: 'health.index', icon: HeartIcon },
     { name: 'Eventos', route: 'events.index', icon: CalendarDaysIcon },
     { name: 'Acervo', route: 'acervo.index', icon: PlayCircleIcon },
     { name: 'Música', route: 'musica.index', icon: MusicalNoteIcon },
@@ -183,6 +188,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
 
     const publicationRoutes = new Set([
         'news.index',
+        'health.index',
         'culto.index',
         'events.index',
         'acervo.index',
@@ -206,6 +212,9 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
                 route().current('volunteers.index') ||
                 route().current('volunteers.show')
             );
+        }
+        if (itemRoute === 'mission.index') {
+            return route().current('mission.index') || route().current('mission.show') || route().current('mission.volunteers.detail');
         }
         if (itemRoute === 'churches.index') {
             const c = route().current();

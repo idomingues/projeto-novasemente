@@ -28,6 +28,10 @@ interface Post {
 
 interface Props {
     post: Post;
+    config?: {
+        listRoute?: 'mobile.news' | 'mobile.health';
+        listLabel?: string;
+    };
 }
 
 function formatDate(iso: string | null): string {
@@ -54,13 +58,16 @@ function typeLabel(t: ContentType): string {
         case 'image':
             return 'Imagem';
         case 'instagram_feed':
-            return 'Feed';
+            return 'Notícia';
         default:
             return 'Notícia';
     }
 }
 
-export default function MobileNewsShow({ post }: Props) {
+export default function MobileNewsShow({ post, config }: Props) {
+    const resolvedConfig = config ?? {};
+    const listRoute = resolvedConfig.listRoute ?? 'mobile.news';
+    const listLabel = resolvedConfig.listLabel ?? 'notícias';
     const appUrl = (usePage().props as { appUrl?: string }).appUrl ?? '';
     const cover = post.cover_url;
     const isYoutube = post.content_type === 'youtube';
@@ -73,11 +80,11 @@ export default function MobileNewsShow({ post }: Props) {
                 <Head title={post.title} />
                 <div className="space-y-4">
                     <Link
-                        href={route('mobile.news')}
+                        href={route(listRoute)}
                         className="inline-flex items-center gap-2 text-sm font-medium text-primary-600 hover:underline dark:text-primary-400"
                     >
                         <ArrowLeftIcon className="h-4 w-4" aria-hidden />
-                        Voltar às notícias
+                        {`Voltar às ${listLabel}`}
                     </Link>
                     <InstagramFeedCard post={post} appUrl={appUrl} variant="detail" />
                 </div>
@@ -90,11 +97,11 @@ export default function MobileNewsShow({ post }: Props) {
             <Head title={post.title} />
             <div className="space-y-4">
                 <Link
-                    href={route('mobile.news')}
+                    href={route(listRoute)}
                     className="inline-flex items-center gap-2 text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline"
                 >
                     <ArrowLeftIcon className="w-4 h-4" aria-hidden />
-                    Voltar às notícias
+                    {`Voltar às ${listLabel}`}
                 </Link>
 
                 <article className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">

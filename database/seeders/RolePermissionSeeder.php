@@ -54,6 +54,8 @@ class RolePermissionSeeder extends Seeder
             'pastors.manage',
             'pastoral_appointments.manage',
             'roles.manage',
+            'mission.view',
+            'mission.manage',
         ];
 
         $guard = config('auth.defaults.guard');
@@ -98,6 +100,8 @@ class RolePermissionSeeder extends Seeder
                 'pastors.manage',
                 'pastoral_appointments.manage',
                 'roles.manage',
+                'mission.view',
+                'mission.manage',
             ],
             'secretaria' => [
                 'members.view',
@@ -131,6 +135,8 @@ class RolePermissionSeeder extends Seeder
                 'pastors.view',
                 'pastors.manage',
                 'pastoral_appointments.manage',
+                'mission.view',
+                'mission.manage',
             ],
             'pastor' => [
                 'members.view',
@@ -154,6 +160,7 @@ class RolePermissionSeeder extends Seeder
                 'pastors.view',
                 'pastors.manage',
                 'pastoral_appointments.manage',
+                'mission.view',
             ],
             'membro' => [
                 // Conta de membro com app: sem permissões de painel; rotas móveis usam `auth` onde necessário.
@@ -176,6 +183,8 @@ class RolePermissionSeeder extends Seeder
                 'solicitations.manage',
                 'pastors.view',
                 'pastors.manage',
+                'mission.view',
+                'mission.manage',
             ],
         ];
 

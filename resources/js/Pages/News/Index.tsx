@@ -71,6 +71,12 @@ interface Props {
         search?: string;
     };
     canManage: boolean;
+    config?: {
+        entityTitle?: string;
+        entityLabel?: string;
+        routeBase?: 'news' | 'health';
+        mobileShowRoute?: 'mobile.news.show' | 'mobile.health.show';
+    };
 }
 
 function typeShortLabel(t: ContentType): string {
@@ -111,7 +117,17 @@ function cardSummary(p: NewsPost): string {
     return '';
 }
 
-export default function Index({ posts, filters, canManage }: Props) {
+export default function Index({ posts, filters, canManage, config }: Props) {
+    const resolvedConfig = config ?? {};
+    const entityTitle = resolvedConfig.entityTitle ?? 'Notícias';
+    const entityLabel = resolvedConfig.entityLabel ?? 'notícia';
+    const routeBaseName = resolvedConfig.routeBase ?? 'news';
+    const mobileShowRoute = resolvedConfig.mobileShowRoute ?? 'mobile.news.show';
+    const routeIndex = `${routeBaseName}.index`;
+    const routeStore = `${routeBaseName}.store`;
+    const routeUpdate = `${routeBaseName}.update`;
+    const routeDestroy = `${routeBaseName}.destroy`;
+
     const pageProps = usePage().props as {
         appUrl?: string;
         currentChurch?: { name: string; logo_url?: string | null } | null;
@@ -183,7 +199,7 @@ export default function Index({ posts, filters, canManage }: Props) {
         }
         const timeout = setTimeout(() => {
             router.get(
-                route('news.index'),
+                route(routeIndex),
                 { search },
                 {
                     preserveState: true,
@@ -192,7 +208,7 @@ export default function Index({ posts, filters, canManage }: Props) {
             );
         }, 400);
         return () => clearTimeout(timeout);
-    }, [search, filters.search]);
+    }, [search, filters.search, routeIndex]);
 
     const openCreateModal = () => {
         setIsEditing(false);
@@ -242,22 +258,22 @@ export default function Index({ posts, filters, canManage }: Props) {
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         if (isEditing && editingId) {
-            put(route('news.update', editingId), { onSuccess: () => closeModal(), forceFormData: true });
+            put(route(routeUpdate, editingId), { onSuccess: () => closeModal(), forceFormData: true });
         } else {
-            post(route('news.store'), { onSuccess: () => closeModal(), forceFormData: true });
+            post(route(routeStore), { onSuccess: () => closeModal(), forceFormData: true });
         }
     };
 
     const handleDelete = async (id: number) => {
         const ok = await confirmAction({
-            title: 'Remover notícia?',
+            title: `Remover ${entityLabel}?`,
             text: 'Esta ação não pode ser desfeita.',
             confirmButtonText: 'Remover',
             danger: true,
             icon: 'warning',
         });
         if (ok) {
-            router.delete(route('news.destroy', id));
+            router.delete(route(routeDestroy, id));
         }
     };
 
@@ -319,17 +335,17 @@ export default function Index({ posts, filters, canManage }: Props) {
 
     return (
         <AdminLayout>
-            <Head title="News" />
+            <Head title={entityTitle} />
             <PageHeader
-                title="News"
-                actions={canManage ? <AddButton variant="icon" onClick={openCreateModal} title="Nova notícia">Nova notícia</AddButton> : undefined}
+                title={entityTitle}
+                actions={canManage ? <AddButton variant="icon" onClick={openCreateModal} title={`Nova ${entityLabel}`}>Nova {entityLabel}</AddButton> : undefined}
             >
                 <div className="w-full max-w-md">
                     <TextInput
                         type="search"
                         name="search"
                         value={search}
-                        placeholder="Buscar news…"
+                        placeholder={`Buscar ${entityTitle.toLowerCase()}...`}
                         className="w-full"
                         onChange={(e) => setSearch(e.target.value)}
                     />
@@ -449,7 +465,7 @@ export default function Index({ posts, filters, canManage }: Props) {
                                     <p className="text-sm text-zinc-600 dark:text-zinc-300">{cardSummary(p)}</p>
                                 )}
                                 <Link
-                                    href={route('mobile.news.show', p.slug)}
+                                    href={route(mobileShowRoute, p.slug)}
                                     className="text-xs font-medium text-zinc-500 underline-offset-2 hover:text-zinc-800 hover:underline dark:text-zinc-400 dark:hover:text-zinc-200"
                                 >
                                     Ver na app
@@ -462,11 +478,11 @@ export default function Index({ posts, filters, canManage }: Props) {
                 {posts.data.length === 0 && (
                     <Card className="lg:col-span-2">
                         <p className="text-center text-sm text-zinc-500 dark:text-zinc-400">
-                            Nenhuma notícia cadastrada.
+                            Nenhuma {entityLabel} cadastrada.
                             {canManage && (
                                 <>
                                     {' '}
-                                    Use <span className="font-medium text-zinc-700 dark:text-zinc-300">Nova notícia</span>{' '}
+                                    Use <span className="font-medium text-zinc-700 dark:text-zinc-300">Nova {entityLabel}</span>{' '}
                                     para criar a primeira.
                                 </>
                             )}
@@ -502,7 +518,7 @@ export default function Index({ posts, filters, canManage }: Props) {
                 <Modal show={isModalOpen} onClose={closeModal} maxWidth="2xl">
                     <form onSubmit={submit} className="p-6">
                         <h2 className="mb-6 text-lg font-semibold text-zinc-900 dark:text-white">
-                            {isEditing ? 'Editar notícia' : 'Nova notícia'}
+                            {isEditing ? `Editar ${entityLabel}` : `Nova ${entityLabel}`}
                         </h2>
                         <div className="space-y-4">
                             <div>
@@ -791,7 +807,7 @@ export default function Index({ posts, filters, canManage }: Props) {
                                     ) : (
                                         <>
                                             <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
-                                                {data.title || 'Título da notícia'}
+                                                {data.title || `Título da ${entityLabel}`}
                                             </h3>
                                             {data.published_at && (
                                                 <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">

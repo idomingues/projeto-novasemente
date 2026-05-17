@@ -82,6 +82,7 @@ class MobileController extends Controller
 
         $baseUrl = request()->getSchemeAndHttpHost();
         $latestNews = News::query()
+            ->where('section', News::SECTION_NEWS)
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
             ->whereNotNull('published_at')
@@ -159,6 +160,7 @@ class MobileController extends Controller
         $baseUrl = $request->getSchemeAndHttpHost();
 
         $latestNews = News::query()
+            ->where('section', News::SECTION_NEWS)
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
             ->whereNotNull('published_at')
@@ -379,6 +381,7 @@ class MobileController extends Controller
 
         $feedPosts = News::query()
             ->with(['author:id,name,photo_url'])
+            ->where('section', News::SECTION_NEWS)
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
             ->where('content_type', News::TYPE_INSTAGRAM_FEED)
@@ -393,6 +396,7 @@ class MobileController extends Controller
 
         $posts = News::query()
             ->with(['author:id,name,photo_url'])
+            ->where('section', News::SECTION_NEWS)
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
             ->where('content_type', '!=', News::TYPE_INSTAGRAM_FEED)
@@ -414,6 +418,9 @@ class MobileController extends Controller
     {
         $churchId = $this->currentChurch()?->id;
         if ($churchId === null || $news->church_id !== $churchId) {
+            abort(404);
+        }
+        if ($news->section !== News::SECTION_NEWS) {
             abort(404);
         }
         if ($news->published_at === null || $news->published_at->isFuture()) {
@@ -455,6 +462,135 @@ class MobileController extends Controller
                 'image_url' => $imageUrl,
                 'cover_url' => $news->resolvedCoverUrl($baseUrl),
                 'published_at' => $news->published_at?->toIso8601String(),
+                'author' => $author,
+            ],
+        ]);
+    }
+
+    public function health(Request $request): Response
+    {
+        $churchId = $this->currentChurch()?->id;
+        $baseUrl = request()->getSchemeAndHttpHost();
+
+        $mapPost = function (News $p) use ($baseUrl): array {
+            $imageUrl = $p->image_url;
+            if ($imageUrl && ! str_starts_with($imageUrl, 'http')) {
+                $imageUrl = $baseUrl.$imageUrl;
+            }
+
+            $author = null;
+            if ($p->relationLoaded('author') && $p->author !== null) {
+                $photoUrl = $p->author->photo_url;
+                if ($photoUrl && ! str_starts_with($photoUrl, 'http')) {
+                    $photoUrl = $baseUrl.$photoUrl;
+                }
+                $author = [
+                    'name' => (string) $p->author->name,
+                    'photo_url' => $photoUrl,
+                ];
+            }
+
+            return [
+                'id' => $p->id,
+                'title' => $p->title,
+                'slug' => $p->slug,
+                'excerpt' => $p->excerpt,
+                'body' => $p->body,
+                'content_type' => $p->content_type ?? News::TYPE_ARTICLE,
+                'youtube_url' => $p->youtube_url,
+                'youtube_embed_url' => $p->youtube_embed_url,
+                'pdf_url' => $p->resolvedPdfUrl($baseUrl),
+                'video_url' => $p->resolvedVideoUrl($baseUrl),
+                'image_url' => $imageUrl,
+                'cover_url' => $p->resolvedCoverUrl($baseUrl),
+                'published_at' => $p->published_at?->toIso8601String(),
+                'author' => $author,
+            ];
+        };
+
+        $feedPosts = News::query()
+            ->with(['author:id,name,photo_url'])
+            ->where('section', News::SECTION_HEALTH)
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
+            ->where('content_type', News::TYPE_INSTAGRAM_FEED)
+            ->whereNotNull('published_at')
+            ->where('published_at', '<=', now())
+            ->orderByDesc('published_at')
+            ->limit(60)
+            ->get()
+            ->map(fn (News $p) => $mapPost($p))
+            ->values()
+            ->all();
+
+        $posts = News::query()
+            ->with(['author:id,name,photo_url'])
+            ->where('section', News::SECTION_HEALTH)
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
+            ->where('content_type', '!=', News::TYPE_INSTAGRAM_FEED)
+            ->whereNotNull('published_at')
+            ->where('published_at', '<=', now())
+            ->orderByDesc('published_at')
+            ->paginate(10)
+            ->withQueryString();
+
+        $posts->getCollection()->transform(fn (News $p) => $mapPost($p));
+
+        return Inertia::render('Mobile/Health', [
+            'feedPosts' => $feedPosts,
+            'posts' => $posts,
+        ]);
+    }
+
+    public function healthShow(Request $request, News $health): Response
+    {
+        $churchId = $this->currentChurch()?->id;
+        if ($churchId === null || $health->church_id !== $churchId) {
+            abort(404);
+        }
+        if ($health->section !== News::SECTION_HEALTH) {
+            abort(404);
+        }
+        if ($health->published_at === null || $health->published_at->isFuture()) {
+            abort(404);
+        }
+
+        $health->loadMissing(['author:id,name,photo_url']);
+
+        $baseUrl = request()->getSchemeAndHttpHost();
+        $imageUrl = $health->image_url;
+        if ($imageUrl && ! str_starts_with($imageUrl, 'http')) {
+            $imageUrl = $baseUrl.$imageUrl;
+        }
+
+        $author = null;
+        if ($health->author !== null) {
+            $photoUrl = $health->author->photo_url;
+            if ($photoUrl && ! str_starts_with($photoUrl, 'http')) {
+                $photoUrl = $baseUrl.$photoUrl;
+            }
+            $author = [
+                'name' => (string) $health->author->name,
+                'photo_url' => $photoUrl,
+            ];
+        }
+
+        return Inertia::render('Mobile/HealthShow', [
+            'post' => [
+                'id' => $health->id,
+                'title' => $health->title,
+                'slug' => $health->slug,
+                'excerpt' => $health->excerpt,
+                'body' => $health->body,
+                'content_type' => $health->content_type ?? News::TYPE_ARTICLE,
+                'youtube_url' => $health->youtube_url,
+                'youtube_embed_url' => $health->youtube_embed_url,
+                'pdf_url' => $health->resolvedPdfUrl($baseUrl),
+                'video_url' => $health->resolvedVideoUrl($baseUrl),
+                'image_url' => $imageUrl,
+                'cover_url' => $health->resolvedCoverUrl($baseUrl),
+                'published_at' => $health->published_at?->toIso8601String(),
                 'author' => $author,
             ],
         ]);

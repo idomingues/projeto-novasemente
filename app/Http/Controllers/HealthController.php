@@ -13,17 +13,16 @@ use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class NewsController extends Controller
+class HealthController extends Controller
 {
     private function currentChurchId(): ?int
     {
         return Church::resolveWorkingId(request());
     }
 
-    private function normalizeNewsBody(string $body): string
+    private function normalizeBody(string $body): string
     {
         $normalized = str_replace(["\r\n", "\r"], "\n", $body);
-        // Colapsa espaços no fim de cada linha; mantém linhas vazias (parágrafos).
         $lines = array_map(
             static fn (string $line) => rtrim(preg_replace('/[^\S\n]+/u', ' ', $line) ?? $line),
             explode("\n", $normalized),
@@ -35,10 +34,10 @@ class NewsController extends Controller
     private function uploadErrorMessage(int $code): string
     {
         return match ($code) {
-            \UPLOAD_ERR_INI_SIZE, \UPLOAD_ERR_FORM_SIZE => 'Arquivo demasiado grande para o servidor. Vídeo até 50 MB na app — confirme Nginx client_max_body_size 64M e PHP upload_max_filesize 64M (ver deployment/apply-upload-limits.sh).',
-            \UPLOAD_ERR_PARTIAL => 'Upload cortado a meio (muito comum com Nginx: aumente client_max_body_size para 64M e recarregue o Nginx).',
+            \UPLOAD_ERR_INI_SIZE, \UPLOAD_ERR_FORM_SIZE => 'Arquivo muito grande para o servidor. Vídeo até 50 MB na app — confirme Nginx client_max_body_size 64M e PHP upload_max_filesize 64M.',
+            \UPLOAD_ERR_PARTIAL => 'Upload interrompido antes de concluir. Ajuste limites do Nginx/PHP e tente novamente.',
             \UPLOAD_ERR_NO_FILE => 'Nenhum arquivo foi recebido.',
-            default => 'O arquivo não chegou ao servidor por completo. Revise limites Nginx (client_max_body_size) e PHP (upload_max_filesize, post_max_size).',
+            default => 'O arquivo não chegou completo ao servidor. Revise limites de upload do Nginx e PHP.',
         };
     }
 
@@ -54,7 +53,7 @@ class NewsController extends Controller
         }
     }
 
-    private function assertNewsPayload(Request $request, ?News $existing = null): array
+    private function assertPayload(Request $request, ?News $existing = null): array
     {
         $this->assertUploadFilesValid($request);
 
@@ -75,18 +74,13 @@ class NewsController extends Controller
             'video_file' => ['nullable', 'file', 'mimes:mp4,mov,quicktime,webm', 'max:51200'],
             'pdf_file' => ['nullable', 'file', 'mimes:pdf', 'max:12288'],
             'published_at' => ['nullable', 'date'],
-        ], [
-            'image_file.uploaded' => 'A imagem não chegou ao servidor (413?). Aumente client_max_body_size no Nginx para 64M.',
-            'video_file.uploaded' => 'O vídeo não chegou ao servidor (413?). Aumente client_max_body_size no Nginx para 64M e PHP upload_max_filesize para 64M.',
-            'video_file.max' => 'O vídeo pode ter no máximo 50 MB.',
-            'pdf_file.uploaded' => 'O PDF não chegou ao servidor por completo. Revise limites de upload no Nginx e PHP.',
         ]);
 
         $type = $data['content_type'];
 
         if ($type === News::TYPE_ARTICLE && trim((string) ($data['body'] ?? '')) === '') {
             throw ValidationException::withMessages([
-                'body' => 'Escreva o conteúdo da notícia.',
+                'body' => 'Escreva o conteúdo da publicação de saúde.',
             ]);
         }
 
@@ -94,7 +88,7 @@ class NewsController extends Controller
             $url = trim((string) ($data['youtube_url'] ?? ''));
             if ($url === '') {
                 throw ValidationException::withMessages([
-                    'youtube_url' => 'Indique o link do vídeo no YouTube.',
+                    'youtube_url' => 'Informe o link do vídeo no YouTube.',
                 ]);
             }
             if (! Musica::youtubeVideoId($url)) {
@@ -135,8 +129,8 @@ class NewsController extends Controller
 
             if (! $hasImageFile && ! $hasImageUrl && ! $hasExistingImage && ! $hasVideoFile && ! $hasExistingVideo) {
                 throw ValidationException::withMessages([
-                    'image_file' => 'Adicione uma imagem ou um vídeo para o feed.',
-                    'video_file' => 'Adicione uma imagem ou um vídeo para o feed.',
+                    'image_file' => 'Adicione uma imagem ou um vídeo para a publicação.',
+                    'video_file' => 'Adicione uma imagem ou um vídeo para a publicação.',
                 ]);
             }
         }
@@ -152,7 +146,7 @@ class NewsController extends Controller
         $churchId = $this->currentChurchId();
 
         $query = News::query()->with('author')
-            ->where('section', News::SECTION_NEWS)
+            ->where('section', News::SECTION_HEALTH)
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'));
 
@@ -196,7 +190,7 @@ class NewsController extends Controller
             return $arr;
         });
 
-        return Inertia::render('News/Index', [
+        return Inertia::render('Health/Index', [
             'posts' => $posts,
             'filters' => ['search' => $search],
             'canManage' => $canManage,
@@ -207,7 +201,7 @@ class NewsController extends Controller
     {
         $this->authorize('news.manage');
 
-        $data = $this->assertNewsPayload($request, null);
+        $data = $this->assertPayload($request, null);
 
         $slugBase = Str::slug($data['title']);
         $slug = $slugBase;
@@ -218,12 +212,12 @@ class NewsController extends Controller
 
         $churchId = $this->currentChurchId();
         if ($churchId === null) {
-            return redirect()->route('news.index')->with('error', 'Nenhuma igreja ativa. Associe uma igreja primeiro.');
+            return redirect()->route('health.index')->with('error', 'Nenhuma igreja ativa. Associe uma igreja primeiro.');
         }
 
         $imageUrl = null;
         if ($request->hasFile('image_file')) {
-            $path = $request->file('image_file')->store('news', 'public');
+            $path = $request->file('image_file')->store('health', 'public');
             $imageUrl = StorageUrl::publicMediaUrl($path);
         } else {
             $t = trim((string) ($data['image_url'] ?? ''));
@@ -232,24 +226,24 @@ class NewsController extends Controller
 
         $pdfPath = null;
         if ($data['content_type'] === News::TYPE_PDF && $request->hasFile('pdf_file')) {
-            $pdfPath = $request->file('pdf_file')->store('news/pdfs', 'public');
+            $pdfPath = $request->file('pdf_file')->store('health/pdfs', 'public');
         }
 
         $videoPath = null;
         if ($data['content_type'] === News::TYPE_INSTAGRAM_FEED && $request->hasFile('video_file')) {
-            $videoPath = $request->file('video_file')->store('news/videos', 'public');
+            $videoPath = $request->file('video_file')->store('health/videos', 'public');
         }
 
         $publishedAt = isset($data['published_at']) && $data['published_at'] !== '' ? $data['published_at'] : now();
 
         News::create([
             'church_id' => $churchId,
-            'section' => News::SECTION_NEWS,
+            'section' => News::SECTION_HEALTH,
             'title' => $data['title'],
             'slug' => $slug,
             'content_type' => $data['content_type'],
             'excerpt' => $data['content_type'] === News::TYPE_INSTAGRAM_FEED ? null : ($data['excerpt'] ?? null),
-            'body' => $this->normalizeNewsBody((string) ($data['body'] ?? '')),
+            'body' => $this->normalizeBody((string) ($data['body'] ?? '')),
             'youtube_url' => $data['content_type'] === News::TYPE_YOUTUBE ? ($data['youtube_url'] ?? null) : null,
             'pdf_path' => $data['content_type'] === News::TYPE_PDF ? $pdfPath : null,
             'video_path' => $data['content_type'] === News::TYPE_INSTAGRAM_FEED ? $videoPath : null,
@@ -258,61 +252,61 @@ class NewsController extends Controller
             'created_by' => $request->user()?->id,
         ]);
 
-        return redirect()->route('news.index')->with('success', 'Notícia criada com sucesso.');
+        return redirect()->route('health.index')->with('success', 'Publicação de saúde criada com sucesso.');
     }
 
-    public function update(Request $request, News $news)
+    public function update(Request $request, News $health)
     {
         $this->authorize('news.manage');
-        abort_unless($news->section === News::SECTION_NEWS, 404);
+        abort_unless($health->section === News::SECTION_HEALTH, 404);
 
-        $data = $this->assertNewsPayload($request, $news);
+        $data = $this->assertPayload($request, $health);
 
-        if ($data['title'] !== $news->title) {
+        if ($data['title'] !== $health->title) {
             $slugBase = Str::slug($data['title']);
             $slug = $slugBase;
             $i = 1;
-            while (News::where('slug', $slug)->where('id', '!=', $news->id)->exists()) {
+            while (News::where('slug', $slug)->where('id', '!=', $health->id)->exists()) {
                 $slug = $slugBase.'-'.$i++;
             }
-            $news->slug = $slug;
+            $health->slug = $slug;
         }
 
-        $imageUrl = $news->image_url;
+        $imageUrl = $health->image_url;
         if ($request->hasFile('image_file')) {
-            $path = $request->file('image_file')->store('news', 'public');
+            $path = $request->file('image_file')->store('health', 'public');
             $imageUrl = StorageUrl::publicMediaUrl($path);
         } else {
             $t = trim((string) ($data['image_url'] ?? ''));
             $imageUrl = $t !== '' ? $t : null;
         }
 
-        $pdfPath = $news->pdf_path;
+        $pdfPath = $health->pdf_path;
         if ($data['content_type'] === News::TYPE_PDF) {
             if ($request->hasFile('pdf_file')) {
-                $pdfPath = $request->file('pdf_file')->store('news/pdfs', 'public');
+                $pdfPath = $request->file('pdf_file')->store('health/pdfs', 'public');
             }
         } else {
             $pdfPath = null;
         }
 
-        $videoPath = $news->video_path;
+        $videoPath = $health->video_path;
         if ($data['content_type'] === News::TYPE_INSTAGRAM_FEED) {
             if ($request->hasFile('video_file')) {
-                $videoPath = $request->file('video_file')->store('news/videos', 'public');
+                $videoPath = $request->file('video_file')->store('health/videos', 'public');
             }
         } else {
             $videoPath = null;
         }
 
-        $publishedAt = isset($data['published_at']) && $data['published_at'] !== '' ? $data['published_at'] : ($news->published_at ?? now());
+        $publishedAt = isset($data['published_at']) && $data['published_at'] !== '' ? $data['published_at'] : ($health->published_at ?? now());
 
-        $news->fill([
-            'section' => News::SECTION_NEWS,
+        $health->fill([
+            'section' => News::SECTION_HEALTH,
             'title' => $data['title'],
             'content_type' => $data['content_type'],
             'excerpt' => $data['content_type'] === News::TYPE_INSTAGRAM_FEED ? null : ($data['excerpt'] ?? null),
-            'body' => $this->normalizeNewsBody((string) ($data['body'] ?? '')),
+            'body' => $this->normalizeBody((string) ($data['body'] ?? '')),
             'youtube_url' => $data['content_type'] === News::TYPE_YOUTUBE ? ($data['youtube_url'] ?? null) : null,
             'pdf_path' => $pdfPath,
             'video_path' => $videoPath,
@@ -320,16 +314,16 @@ class NewsController extends Controller
             'published_at' => $publishedAt,
         ])->save();
 
-        return redirect()->route('news.index')->with('success', 'Notícia atualizada com sucesso.');
+        return redirect()->route('health.index')->with('success', 'Publicação de saúde atualizada com sucesso.');
     }
 
-    public function destroy(News $news)
+    public function destroy(News $health)
     {
         $this->authorize('news.manage');
-        abort_unless($news->section === News::SECTION_NEWS, 404);
+        abort_unless($health->section === News::SECTION_HEALTH, 404);
 
-        $news->delete();
+        $health->delete();
 
-        return redirect()->route('news.index')->with('success', 'Notícia removida com sucesso.');
+        return redirect()->route('health.index')->with('success', 'Publicação de saúde removida com sucesso.');
     }
 }

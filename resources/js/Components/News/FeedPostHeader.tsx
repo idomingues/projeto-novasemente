@@ -37,6 +37,15 @@ function buildSubtitle(author: FeedPostAuthor | null | undefined, churchName: st
     return parts.join(' · ');
 }
 
+function normalizedHeadline(title: string): string {
+    const clean = title.trim();
+    if (!clean) {
+        return '';
+    }
+
+    return clean.toLowerCase() === 'feed' ? '' : clean;
+}
+
 export default function FeedPostHeader({
     title,
     author,
@@ -45,7 +54,7 @@ export default function FeedPostHeader({
     publishedAt,
     compact = false,
 }: Props) {
-    const headline = title.trim() || churchName;
+    const headline = normalizedHeadline(title) || churchName;
     const avatarUrl = author?.photo_url?.trim() || churchLogoUrl;
     const dateLabel = formatFeedDate(publishedAt);
     const subtitle = buildSubtitle(author, churchName, dateLabel);

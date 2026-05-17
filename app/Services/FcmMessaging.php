@@ -19,6 +19,20 @@ class FcmMessaging
             && filled($cfg['private_key'] ?? null);
     }
 
+    /** Testa credenciais (OAuth). Útil para `notifications:check-fcm`. */
+    public function canAuthenticate(): bool
+    {
+        if (! self::enabled()) {
+            return false;
+        }
+
+        Cache::forget('fcm:oauth:access_token');
+
+        $token = $this->accessToken();
+
+        return is_string($token) && $token !== '';
+    }
+
     public function sendVisibleNotification(string $token, string $title, string $body, array $data = []): bool
     {
         $projectId = (string) config('services.fcm.project_id');

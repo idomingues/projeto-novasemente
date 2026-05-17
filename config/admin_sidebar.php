@@ -22,10 +22,12 @@ return [
         ['name' => 'Escalas', 'route' => 'escalas.index', 'icon' => 'calendar'],
         ['name' => 'Inventários', 'route' => 'inventory.index', 'icon' => 'archive-box'],
         ['name' => 'Voluntários', 'route' => 'ministry-lead.volunteers.index', 'icon' => 'user-group'],
+        ['name' => 'Missão', 'route' => 'mission.index', 'icon' => 'globe-alt'],
         ['name' => 'Usuários', 'route' => 'members.index', 'icon' => 'users'],
         ['name' => 'Oração', 'route' => 'prayer.index', 'icon' => 'praying-hands'],
         // Publicação
         ['name' => 'News', 'route' => 'news.index', 'icon' => 'newspaper'],
+        ['name' => 'Saúde', 'route' => 'health.index', 'icon' => 'heart'],
         ['name' => 'Eventos', 'route' => 'events.index', 'icon' => 'calendar-days'],
         ['name' => 'Acervo', 'route' => 'acervo.index', 'icon' => 'play-circle'],
         ['name' => 'Música', 'route' => 'musica.index', 'icon' => 'musical-note'],

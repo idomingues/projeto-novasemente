@@ -287,6 +287,10 @@ class HandleInertiaRequests extends Middleware
                 'openVolunteerRequestsCount' => $openVolunteerRequestsCount,
                 /** Badge no menu lateral — chamados de suporte não atendidos. */
                 'openSupportTicketsCount' => $openSupportTicketsCount,
+                'canViewMission' => $request->user()
+                    ? ($request->user()->can('mission.view') || $request->user()->can('mission.manage'))
+                    : false,
+                'canManageMission' => $request->user()?->can('mission.manage') ?? false,
             ],
             'currentChurch' => $currentChurch,
             'churchesForSwitch' => $churchesForSwitch,

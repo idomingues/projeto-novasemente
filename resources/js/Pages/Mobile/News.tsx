@@ -38,6 +38,11 @@ interface Props {
         current_page: number;
         last_page: number;
     };
+    config?: {
+        pageTitle?: string;
+        showRoute?: 'mobile.news.show' | 'mobile.health.show';
+        sectionTitle?: string;
+    };
 }
 
 function formatDate(iso: string | null): string {
@@ -90,7 +95,11 @@ function TypeCornerBadge({ type }: { type: ContentType }) {
     return null;
 }
 
-export default function MobileNews({ feedPosts, posts }: Props) {
+export default function MobileNews({ feedPosts, posts, config }: Props) {
+    const resolvedConfig = config ?? {};
+    const pageTitle = resolvedConfig.pageTitle ?? 'Notícias';
+    const showRoute = resolvedConfig.showRoute ?? 'mobile.news.show';
+    const sectionTitle = resolvedConfig.sectionTitle ?? 'Notícias';
     const appUrl = (usePage().props as { appUrl?: string }).appUrl ?? '';
     const hasFeed = feedPosts.length > 0;
     const hasGrid = posts.data.length > 0;
@@ -98,7 +107,7 @@ export default function MobileNews({ feedPosts, posts }: Props) {
 
     return (
         <MobileLayout>
-            <Head title="News" />
+            <Head title={pageTitle} />
             <div className="space-y-8">
                 {isEmpty ? (
                     <div className="py-12 text-center">
@@ -125,7 +134,7 @@ export default function MobileNews({ feedPosts, posts }: Props) {
                         {hasGrid && (
                             <section className="space-y-4">
                                 {hasFeed && (
-                                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Notícias</h2>
+                                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">{sectionTitle}</h2>
                                 )}
                                 <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                                     {posts.data.map((p) => {
@@ -139,7 +148,7 @@ export default function MobileNews({ feedPosts, posts }: Props) {
                                                 {thumb ? (
                                                     <div className="relative">
                                                         <Link
-                                                            href={route('mobile.news.show', p.slug)}
+                                                            href={route(showRoute, p.slug)}
                                                             className="block rounded-t-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"
                                                         >
                                                             <div className="relative aspect-[16/10] overflow-hidden bg-zinc-200 dark:bg-zinc-800">
@@ -172,7 +181,7 @@ export default function MobileNews({ feedPosts, posts }: Props) {
                                                     </div>
                                                 ) : (
                                                     <Link
-                                                        href={route('mobile.news.show', p.slug)}
+                                                        href={route(showRoute, p.slug)}
                                                         className="block rounded-t-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"
                                                     >
                                                         <div className="relative flex h-32 items-center justify-center bg-gradient-to-br from-rose-100 via-zinc-100 to-amber-50 dark:from-rose-950/30 dark:via-zinc-800 dark:to-amber-950/20">
@@ -185,7 +194,7 @@ export default function MobileNews({ feedPosts, posts }: Props) {
                                                     </Link>
                                                 )}
                                                 <Link
-                                                    href={route('mobile.news.show', p.slug)}
+                                                    href={route(showRoute, p.slug)}
                                                     className="block rounded-b-2xl p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
                                                 >
                                                     <h2 className="line-clamp-2 text-lg font-semibold leading-snug text-zinc-900 dark:text-white">

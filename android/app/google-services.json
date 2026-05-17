@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "78887539619",
+    "project_id": "nova-semente-111f8",
+    "storage_bucket": "nova-semente-111f8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:78887539619:android:f23fb8eb6abdbc6e7f8016",
+        "android_client_info": {
+          "package_name": "br.org.novasemente.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDVE5cMmnRaLlnEl39O77rZVJpE8iU_hY0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
