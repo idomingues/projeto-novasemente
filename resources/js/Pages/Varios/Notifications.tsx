@@ -54,12 +54,17 @@ export default function VariosNotifications({
     recipientOptions = [],
 }: Props) {
     const [createOpen, setCreateOpen] = useState(false);
-    const { data, setData, post, processing, errors, reset } = useForm({
+    const { data, setData, post, processing, errors, reset, transform } = useForm({
         audience: 'all' as NotificationAudience,
         user_id: '' as number | '',
         title: '',
         body: '',
     });
+
+    transform((form) => ({
+        ...form,
+        user_id: form.audience === 'user' ? form.user_id : null,
+    }));
 
     const canCreate = canManage && mode === 'manage';
     const isSingleUser = data.audience === 'user';
@@ -86,10 +91,6 @@ export default function VariosNotifications({
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         post(route('notifications.store'), {
-            transform: (formData) => ({
-                ...formData,
-                user_id: formData.audience === 'user' ? formData.user_id : null,
-            }),
             onSuccess: () => {
                 closeCreateModal();
             },
