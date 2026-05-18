@@ -9,13 +9,12 @@
         "serve": "concurrently -n \"artisan,vite\" -c \"blue,green\" \"bash scripts/artisan-serve.sh\" \"npm run dev\"",
         "cap:sync": "npm run build && npx cap sync && node scripts/patch-capapp-spm-local-packages.mjs",
         "cap:sync:prod": "npm run build && CAPACITOR_SERVER_URL='https://app.novasemente.com.br' npx cap sync && node scripts/patch-capapp-spm-local-packages.mjs",
-        "cap:assets": "npx @capacitor/assets generate --iconBackgroundColor '#f4f4f5' --iconBackgroundColorDark '#09090b' --splashBackgroundColor '#f4f4f5' --splashBackgroundColorDark '#09090b' --iosProject ios/App --androidProject android",
+        "cap:assets": "npx --yes @capacitor/assets@3 generate --iconBackgroundColor '#f4f4f5' --iconBackgroundColorDark '#09090b' --splashBackgroundColor '#f4f4f5' --splashBackgroundColorDark '#09090b' --iosProject ios/App --androidProject android",
         "cap:android": "npx cap open android",
         "cap:ios": "npx cap open ios"
     },
     "devDependencies": {
         "@capacitor/android": "^8.3.1",
-        "@capacitor/assets": "^3.0.5",
         "@capacitor/cli": "^8.3.1",
         "@capacitor/core": "^8.3.1",
         "@capacitor/ios": "^8.3.1",
