@@ -18,6 +18,14 @@ interface SearchableSelectProps {
     id?: string;
 }
 
+function idsMatch(a: number | string | null | undefined, b: number | string | null | undefined): boolean {
+    if (a === null || a === undefined || a === '' || b === null || b === undefined || b === '') {
+        return false;
+    }
+
+    return String(a) === String(b);
+}
+
 export default function SearchableSelect({
     label,
     value,
@@ -30,24 +38,30 @@ export default function SearchableSelect({
 }: SearchableSelectProps) {
     const [query, setQuery] = useState('');
 
-    const filtered = useMemo(() => {
-        if (!query.trim()) return options;
-        const q = query.toLowerCase().trim();
-        return options.filter((o) => o.name.toLowerCase().includes(q));
-    }, [options, query]);
+    const selectedOption = useMemo(
+        () => options.find((o) => idsMatch(o.id, value)),
+        [options, value],
+    );
 
-    const selectedOption = options.find((o) => o.id === value);
     const getDisplayValue = (val: number | string | null) => {
-        if (val === null || val === '') return emptyOption ?? '';
-        return options.find((o) => o.id === val)?.name ?? '';
+        if (val === null || val === '') {
+            return emptyOption ?? '';
+        }
+
+        return options.find((o) => idsMatch(o.id, val))?.name ?? '';
     };
 
     const optionsWithEmpty = emptyOption ? [{ id: '' as const, name: emptyOption }, ...options] : options;
     const filteredWithEmpty = useMemo(() => {
-        if (!query.trim()) return optionsWithEmpty;
+        if (!query.trim()) {
+            return optionsWithEmpty;
+        }
         const q = query.toLowerCase().trim();
+
         return optionsWithEmpty.filter((o) => o.name.toLowerCase().includes(q));
     }, [optionsWithEmpty, query]);
+
+    const hasValue = value !== '' && value !== null && value !== undefined;
 
     return (
         <div>
@@ -55,13 +69,23 @@ export default function SearchableSelect({
                 {label}
             </label>
             <Combobox
-                value={value === '' || value === null || value === undefined ? null : String(value)}
-                onChange={(v) => onChange(v === null ? '' : (v as number | string))}
+                value={hasValue ? String(value) : null}
+                onChange={(v) => {
+                    setQuery('');
+                    if (v === null || v === '') {
+                        onChange('');
+                        return;
+                    }
+                    const match = options.find((o) => idsMatch(o.id, v));
+                    onChange(match ? match.id : (v as number | string));
+                }}
             >
                 <div className="relative mt-1">
                     <Combobox.Input
                         id={id}
-                        displayValue={(val: number | string | null) => getDisplayValue(val)}
+                        displayValue={() =>
+                            query.trim() !== '' ? query : (selectedOption?.name ?? getDisplayValue(hasValue ? value : null))
+                        }
                         onChange={(e) => setQuery(e.target.value)}
                         placeholder={value === '' ? placeholder : undefined}
                         className="block w-full min-h-[2.75rem] h-11 py-2.5 pl-3 pr-10 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white text-sm shadow-sm focus:ring-2 focus:ring-zinc-500 focus:border-transparent"
