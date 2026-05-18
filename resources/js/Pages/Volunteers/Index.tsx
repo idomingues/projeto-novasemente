@@ -13,7 +13,10 @@ import PageHeader from '@/Components/PageHeader';
 import Card from '@/Components/Card';
 import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
-import { useState, useEffect, FormEventHandler, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, FormEventHandler, useMemo } from 'react';
+import axios from 'axios';
+import VolunteerRecordDetailBody from '@/Components/Volunteers/VolunteerRecordDetailBody';
+import type { VolunteerDetailData } from '@/utils/volunteerDetailRows';
 import { confirmAction } from '@/utils/confirmDialog';
 import { activeInactivePillClass } from '@/lib/statusBadges';
 import { appRoleLabel } from '@/lib/appRoleLabels';
@@ -44,6 +47,11 @@ interface Props {
         search?: string;
     };
     publicVolunteerSignupUrl: string | null;
+    detailUrlPattern: string;
+}
+
+function detailUrlFromPattern(pattern: string, id: number): string {
+    return pattern.replace(/\/0(\/|$)/, `/${id}$1`);
 }
 
 function splitDisplayName(full: string | null | undefined): { first: string; last: string } {
@@ -60,6 +68,7 @@ export default function Index({
     appRoles,
     filters,
     publicVolunteerSignupUrl,
+    detailUrlPattern,
 }: Props) {
     const page = usePage().props as {
         flash?: {
@@ -86,6 +95,10 @@ export default function Index({
     const [search, setSearch] = useState(filters?.search ?? '');
     const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
     const [submitToast, setSubmitToast] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
+    const [detailOpen, setDetailOpen] = useState(false);
+    const [detailLoading, setDetailLoading] = useState(false);
+    const [detailVolunteer, setDetailVolunteer] = useState<VolunteerDetailData | null>(null);
+    const openedVoluntarioFromUrl = useRef(false);
 
     const { data, setData, post, put, processing, errors, reset, clearErrors, transform } = useForm({
         name: '',
@@ -147,6 +160,54 @@ export default function Index({
         setIsModalOpen(false);
         reset();
         // Não limpar submitToast aqui: queremos mostrar feedback após fechar o modal.
+    };
+
+    const openDetail = useCallback(
+        async (id: number) => {
+            setDetailOpen(true);
+            setDetailLoading(true);
+            setDetailVolunteer(null);
+            try {
+                const { data } = await axios.get<{ volunteer: VolunteerDetailData }>(
+                    detailUrlFromPattern(detailUrlPattern, id),
+                );
+                setDetailVolunteer(data.volunteer);
+            } finally {
+                setDetailLoading(false);
+            }
+        },
+        [detailUrlPattern],
+    );
+
+    const closeDetail = useCallback(() => {
+        setDetailOpen(false);
+        if (typeof window !== 'undefined') {
+            const url = new URL(window.location.href);
+            if (url.searchParams.has('voluntario')) {
+                url.searchParams.delete('voluntario');
+                window.history.replaceState({}, '', url.pathname + url.search);
+            }
+        }
+    }, []);
+
+    useEffect(() => {
+        if (openedVoluntarioFromUrl.current || typeof window === 'undefined') {
+            return;
+        }
+        const voluntario = new URLSearchParams(window.location.search).get('voluntario');
+        if (voluntario && /^\d+$/.test(voluntario)) {
+            openedVoluntarioFromUrl.current = true;
+            void openDetail(Number(voluntario));
+        }
+    }, [openDetail]);
+
+    const openEditFromDetail = () => {
+        if (!detailVolunteer) return;
+        const row = volunteers.data.find((v) => v.id === detailVolunteer.id);
+        closeDetail();
+        if (row) {
+            openEditModal(row);
+        }
     };
 
     const submit: FormEventHandler = (e) => {
@@ -374,20 +435,18 @@ export default function Index({
                                 const displayName = v.name ?? '—';
                                 const initial = displayName !== '—' ? displayName.charAt(0).toUpperCase() : '?';
                                 return (
-                                <tr key={v.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                                    <td className="px-4 md:px-8 py-3 md:py-4">
+                                <tr
+                                    key={v.id}
+                                    className="cursor-pointer border-b border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900/50"
+                                    onClick={() => void openDetail(v.id)}
+                                >
+                                    <td className="cursor-pointer px-4 md:px-8 py-3 md:py-4">
                                         <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-sm font-semibold text-zinc-700 dark:text-zinc-300 flex-shrink-0 overflow-hidden">
                                                 {initial}
                                             </div>
                                             <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                                                <Link
-                                                    href={route('volunteers.show', v.id)}
-                                                    className="font-medium text-zinc-900 dark:text-white hover:underline focus:outline-none focus:ring-2 focus:ring-zinc-400 rounded"
-                                                    title="Ver ficha completa"
-                                                >
-                                                    {displayName}
-                                                </Link>
+                                                <span className="font-medium text-zinc-900 dark:text-white">{displayName}</span>
                                                 {v.app_access_only ? (
                                                     <span
                                                         className="inline-flex shrink-0 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-800 dark:bg-violet-950/60 dark:text-violet-200"
@@ -399,7 +458,7 @@ export default function Index({
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-4 md:px-8 py-3 md:py-4">
+                                    <td className="cursor-pointer px-4 md:px-8 py-3 md:py-4">
                                         <div className="flex flex-wrap items-center gap-1.5 text-zinc-600 dark:text-zinc-300">
                                             {(v.ministries ?? []).map((min) => {
                                                 const Icon = getMinistryIcon(min.name);
@@ -413,13 +472,13 @@ export default function Index({
                                             {(v.ministries ?? []).length === 0 && '—'}
                                         </div>
                                     </td>
-                                    <td className="px-4 md:px-8 py-3 md:py-4 text-zinc-600 dark:text-zinc-300">{v.role || '—'}</td>
-                                    <td className="px-4 md:px-8 py-3 md:py-4">
+                                    <td className="cursor-pointer px-4 md:px-8 py-3 md:py-4 text-zinc-600 dark:text-zinc-300">{v.role || '—'}</td>
+                                    <td className="cursor-pointer px-4 md:px-8 py-3 md:py-4">
                                         <span className={activeInactivePillClass(v.active)}>
                                             {v.active ? 'Ativo' : 'Inativo'}
                                         </span>
                                     </td>
-                                    <td className="px-4 md:px-8 py-3 md:py-4 text-zinc-700 dark:text-zinc-300">
+                                    <td className="cursor-pointer px-4 md:px-8 py-3 md:py-4 text-zinc-700 dark:text-zinc-300">
                                         {!v.user ? (
                                             <span className="text-sm text-zinc-500 dark:text-zinc-400">Sem conta</span>
                                         ) : !v.user.email ? (
@@ -451,7 +510,7 @@ export default function Index({
                                             </div>
                                         )}
                                     </td>
-                                    <td className="px-4 md:px-8 py-3 md:py-4 align-middle">
+                                    <td className="cursor-default px-4 md:px-8 py-3 md:py-4 align-middle" onClick={(e) => e.stopPropagation()}>
                                         {!v.user?.email ? (
                                             <button
                                                 type="button"
@@ -477,7 +536,10 @@ export default function Index({
                                             <span className="text-xs text-zinc-400 dark:text-zinc-500">—</span>
                                         )}
                                     </td>
-                                    <td className="px-4 md:px-8 py-3 md:py-4 text-right align-middle w-[1%] whitespace-nowrap">
+                                    <td
+                                        className="cursor-default px-4 md:px-8 py-3 md:py-4 text-right align-middle w-[1%] whitespace-nowrap"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
                                         <div className="inline-flex flex-nowrap items-center justify-end gap-0.5">
                                             <button
                                                 type="button"
@@ -775,6 +837,26 @@ export default function Index({
                             </div>
                         </form>
                     </div>
+                </div>
+            </Modal>
+
+            <Modal show={detailOpen} onClose={closeDetail} maxWidth="2xl">
+                <div className="max-h-[min(90vh,80vh)] overflow-y-auto p-6">
+                    {detailLoading && <p className="text-sm text-zinc-500">Carregando ficha…</p>}
+                    {!detailLoading && detailVolunteer && (
+                        <VolunteerRecordDetailBody
+                            volunteer={detailVolunteer}
+                            badge={detailVolunteer.active === false ? 'Inativo' : 'Ativo'}
+                            onClose={closeDetail}
+                            footer={
+                                <div className="flex flex-wrap gap-2 rounded-2xl border border-zinc-200/90 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-900/50">
+                                    <PrimaryButton type="button" onClick={openEditFromDetail}>
+                                        Editar cadastro
+                                    </PrimaryButton>
+                                </div>
+                            }
+                        />
+                    )}
                 </div>
             </Modal>
 

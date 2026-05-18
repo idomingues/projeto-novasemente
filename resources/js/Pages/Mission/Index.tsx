@@ -9,9 +9,16 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import SelectInput from '@/Components/SelectInput';
 import Checkbox from '@/Components/Checkbox';
-import { Head, Link, router, useForm } from '@inertiajs/react';
-import { FormEventHandler, useCallback, useEffect, useMemo, useState } from 'react';
+import MissionInviteShareModal from '@/Components/Mission/MissionInviteShareModal';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { FormEventHandler, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
+import RecordDetailHeader from '@/Components/RecordDetail/RecordDetailHeader';
+import RecordDetailSections from '@/Components/RecordDetail/RecordDetailSections';
+import {
+    missionVolunteerDetailSections,
+    type MissionVolunteerDetail,
+} from '@/utils/missionVolunteerDetailRows';
 import axios from 'axios';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
@@ -31,7 +38,7 @@ type VolunteerRow = {
     createdAt: string | null;
 };
 
-type DetailVolunteer = Record<string, unknown> & { id: number; fullName: string; photoUrl?: string | null };
+type DetailVolunteer = MissionVolunteerDetail;
 
 type DetailJson = {
     volunteer: DetailVolunteer;
@@ -56,8 +63,6 @@ interface Props {
     inviteUrl: string;
     bulkInviteUrl: string;
     detailUrlPattern: string;
-    formPublicUrl: string;
-    mobileFormUrl: string;
 }
 
 function detailUrlFromPattern(pattern: string, id: number): string {
@@ -73,12 +78,6 @@ function phaseBtnClass(active: boolean) {
     ].join(' ');
 }
 
-function yn(v: unknown): string {
-    if (v === true) return 'Sim';
-    if (v === false) return 'Não';
-    return '—';
-}
-
 export default function MissionIndex({
     volunteers,
     phases,
@@ -88,8 +87,6 @@ export default function MissionIndex({
     inviteUrl,
     bulkInviteUrl,
     detailUrlPattern,
-    formPublicUrl,
-    mobileFormUrl,
 }: Props) {
     const [selected, setSelected] = useState<number[]>([]);
     const [stageManageOpen, setStageManageOpen] = useState(false);
@@ -99,6 +96,15 @@ export default function MissionIndex({
     const [detailLoading, setDetailLoading] = useState(false);
     const [detail, setDetail] = useState<DetailJson | null>(null);
     const [detailPhaseId, setDetailPhaseId] = useState('');
+    const [inviteShareOpen, setInviteShareOpen] = useState(false);
+    const [inviteShare, setInviteShare] = useState<{ link: string; name: string; phone: string | null } | null>(null);
+    const openedCadastroFromUrl = useRef(false);
+
+    const flash = usePage().props.flash as {
+        invitation_link?: string | null;
+        invitation_for_name?: string | null;
+        mission_invite_phone?: string | null;
+    };
 
     const searchForm = useForm({ search: filters.search, mission_phase_id: filters.mission_phase_id });
 
@@ -132,6 +138,41 @@ export default function MissionIndex({
         },
         [detailUrlPattern],
     );
+
+    const closeDetail = useCallback(() => {
+        setDetailOpen(false);
+        if (typeof window !== 'undefined') {
+            const url = new URL(window.location.href);
+            if (url.searchParams.has('cadastro')) {
+                url.searchParams.delete('cadastro');
+                window.history.replaceState({}, '', url.pathname + url.search);
+            }
+        }
+    }, []);
+
+    useEffect(() => {
+        if (openedCadastroFromUrl.current || typeof window === 'undefined') {
+            return;
+        }
+        const cadastro = new URLSearchParams(window.location.search).get('cadastro');
+        if (cadastro && /^\d+$/.test(cadastro)) {
+            openedCadastroFromUrl.current = true;
+            void openDetail(Number(cadastro));
+        }
+    }, [openDetail]);
+
+    useEffect(() => {
+        const link = flash?.invitation_link;
+        const name = flash?.invitation_for_name;
+        if (typeof link === 'string' && link.length > 0) {
+            setInviteShare({
+                link,
+                name: typeof name === 'string' ? name : '',
+                phone: typeof flash?.mission_invite_phone === 'string' ? flash.mission_invite_phone : null,
+            });
+            setInviteShareOpen(true);
+        }
+    }, [flash?.invitation_link, flash?.invitation_for_name, flash?.mission_invite_phone]);
 
     const saveDetailPhase = () => {
         if (!detail?.updatePhaseUrl || !detailPhaseId) return;
@@ -176,11 +217,9 @@ export default function MissionIndex({
             <Head title="Missão — gestão" />
             <FlashMessages />
             <PageHeader
-                title="Missão — Insight e Inflexão"
+                title="Missão"
                 subtitle="Quadro por fases, fichas e convites. Acesso da equipe administrativa (admin, secretaria, pastor)."
-            >
-                <FormLinks formPublicUrl={formPublicUrl} mobileFormUrl={mobileFormUrl} />
-            </PageHeader>
+            />
 
             <div className="flex flex-col gap-6 lg:flex-row">
                 <aside className="shrink-0 space-y-4 lg:w-64">
@@ -235,6 +274,7 @@ export default function MissionIndex({
                                     <th className="p-3">Nome</th>
                                     <th className="p-3">Fase</th>
                                     <th className="p-3">Contato</th>
+                                    {canManage && <th className="w-28 p-3 text-right">Ações</th>}
                                 </tr>
                             </thead>
                             <tbody>
@@ -274,7 +314,14 @@ export default function MissionIndex({
                                             <div>{v.phone ?? '—'}</div>
                                             {v.email && <div className="text-xs text-zinc-500">{v.email}</div>}
                                         </td>
-                                    </tr>
+                                                                            {canManage && (
+                                            <td className="p-3 text-right" onClick={(e) => e.stopPropagation()}>
+                                                <SecondaryButton type="button" className="text-xs" onClick={() => inviteOne(v.id)}>
+                                                    Convite
+                                                </SecondaryButton>
+                                            </td>
+                                        )}
+</tr>
                                 ))}
                             </tbody>
                         </table>
@@ -285,8 +332,8 @@ export default function MissionIndex({
                 </div>
             </div>
 
-            <Modal show={detailOpen} onClose={() => setDetailOpen(false)} maxWidth="2xl">
-                <div className="max-h-[min(90vh,720px)] overflow-y-auto p-6">
+            <Modal show={detailOpen} onClose={closeDetail} maxWidth="2xl">
+                <div className="max-h-[min(90vh,80vh)] overflow-y-auto p-6">
                     {detailLoading && <p className="text-sm text-zinc-500">Carregando ficha…</p>}
                     {!detailLoading && detail && (
                         <DetailPanel
@@ -295,7 +342,7 @@ export default function MissionIndex({
                             setDetailPhaseId={setDetailPhaseId}
                             onSavePhase={saveDetailPhase}
                             onInvite={() => inviteOne(detail.volunteer.id)}
-                            onClose={() => setDetailOpen(false)}
+                            onClose={closeDetail}
                         />
                     )}
                 </div>
@@ -337,20 +384,18 @@ export default function MissionIndex({
                     </form>
                 </div>
             </Modal>
-        </AdminLayout>
-    );
-}
 
-function FormLinks({ formPublicUrl, mobileFormUrl }: { formPublicUrl: string; mobileFormUrl: string }) {
-    return (
-        <div className="flex flex-wrap gap-2">
-            <Link href={formPublicUrl} target="_blank" className="rounded-xl border px-3 py-2 text-sm font-medium shadow-sm hover:bg-zinc-50 dark:border-zinc-700">
-                Formulário (web)
-            </Link>
-            <Link href={mobileFormUrl} target="_blank" className="rounded-xl border px-3 py-2 text-sm font-medium shadow-sm hover:bg-zinc-50 dark:border-zinc-700">
-                Formulário (app)
-            </Link>
-        </div>
+            <MissionInviteShareModal
+                show={inviteShareOpen && !!inviteShare}
+                link={inviteShare?.link ?? ''}
+                inviteeName={inviteShare?.name}
+                phone={inviteShare?.phone}
+                onClose={() => {
+                    setInviteShareOpen(false);
+                    setInviteShare(null);
+                }}
+            />
+        </AdminLayout>
     );
 }
 
@@ -418,33 +463,71 @@ function DetailPanel({
     onClose: () => void;
 }) {
     const v = detail.volunteer;
-    const rows: [string, string][] = [
-        ['E-mail', String(v.email ?? '—')],
-        ['Telefone', String(v.phone ?? '—')],
-        ['Endereço', String(v.fullAddress ?? '—')],
-        ['Profissão', String(v.profession ?? '—')],
-        ['Perfil', String(v.profileType ?? '—')],
-        ['Ministério', String(v.ministryPreference ?? '—')],
-        ['NPS', v.npsScore != null ? String(v.npsScore) : '—'],
-        ['LGPD', yn(v.lgpdConsent)],
-    ];
+    const sections = missionVolunteerDetailSections(v);
+
+    const destroyVolunteer = async () => {
+        if (!detail.destroyUrl) return;
+        const ok = await confirmAction({
+            title: 'Excluir cadastro?',
+            text: `Excluir o cadastro de «${v.fullName}»? Esta ação não pode ser desfeita.`,
+            danger: true,
+        });
+        if (!ok) return;
+        router.delete(detail.destroyUrl, {
+            preserveScroll: true,
+            onSuccess: () => onClose(),
+        });
+    };
 
     return (
         <div className="space-y-4">
-            <div className="flex items-start justify-between gap-4">
-                <h2 className="text-lg font-semibold">{String(v.fullName)}</h2>
+            <div className="flex items-start justify-between gap-4 rounded-2xl border border-teal-200/70 bg-gradient-to-br from-teal-50/90 via-white to-white p-4 dark:border-teal-900/50 dark:from-teal-950/35 dark:via-zinc-900/80 dark:to-zinc-900/80">
+                <div className="flex min-w-0 items-center gap-4">
+                    {v.photoUrl ? (
+                        <img
+                            src={v.photoUrl}
+                            alt=""
+                            className="h-20 w-20 shrink-0 rounded-full object-cover ring-2 ring-white shadow-sm dark:ring-zinc-800"
+                        />
+                    ) : (
+                        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-lg font-semibold text-zinc-500 ring-2 ring-white dark:bg-zinc-700 dark:text-zinc-400 dark:ring-zinc-800">
+                            {v.fullName.charAt(0).toUpperCase()}
+                        </div>
+                    )}
+                    <div className="min-w-0">
+                        <h2 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-white">{v.fullName}</h2>
+                        {v.phaseName ? (
+                            <span className="mt-1.5 inline-flex rounded-full bg-teal-100 px-2.5 py-0.5 text-xs font-semibold text-teal-800 dark:bg-teal-900/50 dark:text-teal-200">
+                                {v.phaseName}
+                            </span>
+                        ) : null}
+                    </div>
+                </div>
                 <SecondaryButton type="button" onClick={onClose}>
                     Fechar
                 </SecondaryButton>
             </div>
-            <dl className="grid gap-3 sm:grid-cols-2">
-                {rows.map(([k, val]) => (
-                    <DetailRow key={k} label={k} value={val} />
+
+            <div className="space-y-3">
+                {sections.map((section) => (
+                    <section
+                        key={section.title}
+                        className="overflow-hidden rounded-2xl border border-zinc-200/90 bg-zinc-50/50 shadow-sm dark:border-zinc-700/80 dark:bg-zinc-900/40"
+                    >
+                        <h3 className="border-b border-zinc-200/90 bg-teal-600/10 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-teal-900 dark:border-zinc-700 dark:bg-teal-500/10 dark:text-teal-200">
+                            {section.title}
+                        </h3>
+                        <dl className="grid gap-2 p-3 sm:grid-cols-2 sm:gap-2.5">
+                            {section.rows.map((row) => (
+                                <DetailRow key={`${section.title}-${row.label}`} label={row.label} value={row.value} />
+                            ))}
+                        </dl>
+                    </section>
                 ))}
-            </dl>
+            </div>
             {detail.canManage && (
-                <div className="flex flex-wrap gap-2 border-t pt-4">
-                    <SelectInput value={detailPhaseId} onChange={(e) => setDetailPhaseId(e.target.value)}>
+                <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-zinc-200/90 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-900/50">
+                    <SelectInput value={detailPhaseId} onChange={(e) => setDetailPhaseId(e.target.value)} className="min-w-[10rem]">
                         {detail.stages.map((s) => (
                             <option key={s.id} value={String(s.id)}>
                                 {s.name}
@@ -454,23 +537,52 @@ function DetailPanel({
                     <PrimaryButton type="button" onClick={onSavePhase}>
                         Salvar fase
                     </PrimaryButton>
-                    <SecondaryButton type="button" disabled={!v.email} onClick={onInvite}>
+                    <SecondaryButton type="button" onClick={onInvite}>
                         Enviar convite
                     </SecondaryButton>
+                    {detail.destroyUrl ? (
+                        <SecondaryButton type="button" onClick={() => void destroyVolunteer()}>
+                            Excluir cadastro
+                        </SecondaryButton>
+                    ) : null}
                 </div>
             )}
-            <Link href={route('mission.show', v.id)} className="text-sm text-emerald-700 underline">
-                Ficha completa
-            </Link>
         </div>
     );
 }
 
 function DetailRow({ label, value }: { label: string; value: string }) {
+    const numbered = label.match(/^(\d+)\.\s*(.+)$/);
+    const number = numbered?.[1];
+    const question = numbered?.[2] ?? label;
+    const isEmpty = value === '—';
+
     return (
-        <div>
-            <dt className="text-xs font-semibold uppercase text-zinc-500">{label}</dt>
-            <dd className="text-sm">{value}</dd>
+        <div className="rounded-xl border border-zinc-200/80 bg-white p-3 dark:border-zinc-700/80 dark:bg-zinc-950/40">
+            <dt className="flex items-start gap-2.5">
+                {number ? (
+                    <span
+                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-600 text-[11px] font-bold text-white dark:bg-teal-500"
+                        aria-hidden
+                    >
+                        {number}
+                    </span>
+                ) : null}
+                <span className="min-w-0 pt-0.5 text-[11px] font-semibold uppercase leading-snug tracking-wide text-zinc-500 dark:text-zinc-400">
+                    {question}
+                </span>
+            </dt>
+            <dd
+                className={[
+                    number ? 'mt-2 pl-8' : 'mt-1.5',
+                    'whitespace-pre-wrap text-sm leading-relaxed',
+                    isEmpty
+                        ? 'italic text-zinc-400 dark:text-zinc-500'
+                        : 'font-medium text-zinc-900 dark:text-zinc-50',
+                ].join(' ')}
+            >
+                {value}
+            </dd>
         </div>
     );
 }

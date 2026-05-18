@@ -8,6 +8,7 @@ use App\Support\MissionPhaseBootstrap;
 use App\Support\MissionVolunteerPayload;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -25,9 +26,20 @@ class MissionFormController extends Controller
 
         $isMobile = $request->routeIs('mobile.mission');
 
+        $missionOptions = config('mission');
+
         return Inertia::render($isMobile ? 'Mobile/Mission' : 'Mission/Form', [
             'churchName' => $church?->name ?? config('app.name'),
-            'options' => config('mission'),
+            'options' => [
+                'professions' => $missionOptions['professions'] ?? [],
+                'beliefs' => $missionOptions['beliefs'] ?? [],
+                'religions' => $missionOptions['religions'] ?? [],
+                'seeks_in_community' => $missionOptions['seeks_in_community'] ?? [],
+                'studied_bible' => $missionOptions['studied_bible'] ?? [],
+                'first_contact_via' => $missionOptions['first_contact_via'] ?? [],
+                'wants_bible_study_partner' => $missionOptions['wants_bible_study_partner'] ?? [],
+            ],
+            'formRevision' => 11,
             'storeUrl' => $isMobile ? route('mobile.mission.store') : route('mission.store'),
             'layout' => $isMobile ? 'mobile' : 'default',
         ]);
@@ -39,8 +51,11 @@ class MissionFormController extends Controller
         abort_unless($churchId, 404, 'Nenhuma igreja ativa.');
 
         $valid = $request->validate(MissionVolunteerPayload::validationRules());
-        $photoPath = MissionVolunteerPayload::storePhoto($request);
         $phaseId = MissionPhaseBootstrap::defaultPhaseIdForChurch((int) $churchId);
+
+        /** @var UploadedFile $photoFile */
+        $photoFile = $request->file('photo');
+        $photoPath = $photoFile->store('mission/volunteers', 'public');
 
         MissionVolunteer::create(array_merge(
             MissionVolunteerPayload::toModelAttributes($valid, $photoPath),

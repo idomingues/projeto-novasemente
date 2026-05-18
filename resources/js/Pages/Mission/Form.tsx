@@ -10,19 +10,17 @@ interface Props {
     options: MissionOptions;
     storeUrl: string;
     layout: 'mobile' | 'default';
+    formRevision?: number;
 }
 
-function emptyForm(fromMobile: boolean): MissionFormData {
+export function emptyMissionForm(): MissionFormData {
     return {
-        from_mobile: fromMobile,
-        photo_file: null,
+        photo: null,
         full_name: '',
-        email: '',
         birth_date: '',
         phone: '',
         full_address: '',
         profession: '',
-        profession_other: '',
         has_belief: null,
         belief_which: '',
         belief_which_other: '',
@@ -30,7 +28,7 @@ function emptyForm(fromMobile: boolean): MissionFormData {
         religion_which: '',
         religion_which_other: '',
         baptized: null,
-        seeks_in_community: [],
+        seeks_in_community: '',
         seeks_in_community_other: '',
         studied_bible: '',
         studied_bible_structured: null,
@@ -38,45 +36,23 @@ function emptyForm(fromMobile: boolean): MissionFormData {
         first_contact_via: '',
         first_contact_via_other: '',
         wants_bible_study_partner: '',
-        if_not_how_long: '',
-        insight_duration: '',
-        participated_groups: [],
-        participated_groups_other: '',
-        engagement_level: '',
-        closer_to_god_text: '',
-        belonging_people: '',
-        belonging_location: '',
-        belonging_availability: '',
-        belonging_spirituality: '',
-        social_actions_interest: '',
-        profile_type: '',
-        ministry_preference: '',
-        social_action_type: '',
-        weekday_availability: '',
-        time_per_week: '',
-        work_preference: '',
-        can_contact_week: null,
-        contact_period: '',
-        contact_format: '',
-        nps_score: '',
         lgpd_consent: false,
     };
 }
 
-export default function MissionForm({ churchName, options, storeUrl, layout }: Props) {
+export default function MissionForm({ churchName, options, storeUrl, layout, formRevision }: Props) {
     const isMobile = layout === 'mobile';
-    const form = useForm(emptyForm(isMobile));
+    const form = useForm(emptyMissionForm());
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        const payload = { ...form.data };
-        if (payload.profession === 'Outro' && payload.profession_other.trim()) {
-            payload.profession = payload.profession_other.trim();
-        }
-        form.transform(() => payload);
+        form.transform((d) => ({
+            ...d,
+            seeks_in_community: d.seeks_in_community ? [d.seeks_in_community] : [],
+        }));
         form.post(storeUrl, {
-            forceFormData: true,
             preserveScroll: true,
+            forceFormData: true,
             onFinish: () => form.transform((d) => d),
         });
     };
@@ -86,7 +62,13 @@ export default function MissionForm({ churchName, options, storeUrl, layout }: P
             <Head title="Missão" />
             <FlashMessages />
             <FormHeader churchName={churchName} isMobile={isMobile} />
-            <MissionFormBody form={form} options={options} onSubmit={submit} processing={form.processing} />
+            <MissionFormBody
+                form={form}
+                options={options}
+                onSubmit={submit}
+                processing={form.processing}
+                formRevision={formRevision}
+            />
         </>
     );
 
@@ -96,18 +78,24 @@ export default function MissionForm({ churchName, options, storeUrl, layout }: P
 
     return (
         <AdminLayout>
-            <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">{content}</div>
+            <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-10">{content}</div>
         </AdminLayout>
     );
 }
 
 function FormHeader({ churchName, isMobile }: { churchName: string; isMobile: boolean }) {
     return (
-        <div className={isMobile ? 'mb-6' : 'mb-8'}>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Missão — Insight e Inflexão</h1>
-            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                Cadastro missionário da {churchName}. Preencha com calma; você pode avançar por etapas.
+        <header className={isMobile ? 'mb-5' : 'mb-8'}>
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
+                Missão
+            </h1>
+            <p className="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                Cadastro missionário da {churchName}. Este formulário não coleta automaticamente seu nome ou e-mail — apenas o
+                que você preencher abaixo.
             </p>
-        </div>
+            <p className="mt-2 text-xs text-red-600 dark:text-red-400">
+                <span className="font-semibold">*</span> Obrigatória
+            </p>
+        </header>
     );
 }

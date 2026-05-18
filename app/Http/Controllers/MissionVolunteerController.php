@@ -112,30 +112,16 @@ class MissionVolunteerController extends Controller
             'bulkInviteUrl' => route('mission.volunteers.invite-bulk'),
             'updatePhaseUrlPattern' => route('mission.volunteers.phase', ['missionVolunteer' => 0]),
             'detailUrlPattern' => route('mission.volunteers.detail', ['missionVolunteer' => 0]),
-            'formPublicUrl' => route('mission.form'),
-            'mobileFormUrl' => route('mobile.mission'),
         ]);
     }
 
-    public function show(Request $request, MissionVolunteer $missionVolunteer): Response
+    public function show(Request $request, MissionVolunteer $missionVolunteer): RedirectResponse
     {
         $this->canView($request);
         $churchId = $this->churchId($request);
         abort_unless($churchId && (int) $missionVolunteer->church_id === (int) $churchId, 404);
 
-        $missionVolunteer->load('phase');
-
-        return Inertia::render('Mission/Show', [
-            'volunteer' => MissionVolunteerPayload::serializeForFrontend($missionVolunteer),
-            'phases' => MissionPhase::query()
-                ->where('church_id', $churchId)
-                ->orderBy('sort_order')
-                ->get(['id', 'name']),
-            'canManage' => $request->user()?->can('mission.manage') ?? false,
-            'updatePhaseUrl' => route('mission.volunteers.phase', $missionVolunteer),
-            'inviteUrl' => route('mission.volunteers.invite'),
-            'destroyUrl' => route('mission.volunteers.destroy', $missionVolunteer),
-        ]);
+        return redirect()->route('mission.index', ['cadastro' => $missionVolunteer->id]);
     }
 
     public function detail(Request $request, MissionVolunteer $missionVolunteer): \Illuminate\Http\JsonResponse
@@ -210,13 +196,15 @@ class MissionVolunteerController extends Controller
         $volunteer = MissionVolunteer::query()->findOrFail($valid['mission_volunteer_id']);
         abort_unless((int) $volunteer->church_id === (int) $churchId, 404);
 
-        if (! $sendInvite($volunteer, $request->user())) {
-            return back()->with('error', 'Este cadastro não tem e-mail para envio do convite.');
-        }
+        $result = $sendInvite($volunteer, $request->user());
 
         return back()->with([
-            'success' => 'Convite enviado por e-mail.',
-            'mission_invite_name' => $volunteer->full_name,
+            'success' => $result['email_sent']
+                ? 'Convite enviado por e-mail. Você também pode compartilhar o link pelo WhatsApp.'
+                : 'Convite gerado. Compartilhe o link pelo WhatsApp ou copie para enviar.',
+            'invitation_link' => $result['link'],
+            'invitation_for_name' => $volunteer->full_name,
+            'mission_invite_phone' => $volunteer->phone,
         ]);
     }
 
@@ -231,7 +219,8 @@ class MissionVolunteerController extends Controller
             'mission_volunteer_ids.*' => ['integer', 'exists:mission_volunteers,id'],
         ]);
 
-        $sent = 0;
+        $emailed = 0;
+        $linkOnly = 0;
         $skipped = 0;
 
         foreach ($valid['mission_volunteer_ids'] as $id) {
@@ -241,17 +230,26 @@ class MissionVolunteerController extends Controller
 
                 continue;
             }
-            if ($sendInvite($volunteer, $request->user())) {
-                $sent++;
+            $result = $sendInvite($volunteer, $request->user());
+            if ($result['email_sent']) {
+                $emailed++;
             } else {
-                $skipped++;
+                $linkOnly++;
             }
         }
 
-        $msg = "{$sent} convite(s) enviado(s).";
-        if ($skipped > 0) {
-            $msg .= " {$skipped} ignorado(s) (sem e-mail ou inválido).";
+        $parts = [];
+        if ($emailed > 0) {
+            $parts[] = "{$emailed} por e-mail";
         }
+        if ($linkOnly > 0) {
+            $parts[] = "{$linkOnly} sem e-mail (abra a ficha e use Enviar convite para WhatsApp)";
+        }
+        if ($skipped > 0) {
+            $parts[] = "{$skipped} ignorado(s)";
+        }
+
+        $msg = $parts !== [] ? 'Convites: '.implode('; ', $parts).'.' : 'Nenhum convite processado.';
 
         return back()->with('success', $msg);
     }

@@ -300,6 +300,7 @@ class HandleInertiaRequests extends Middleware
                 'ministry_invite_link' => fn () => $request->session()->get('ministry_invite_link'),
                 'invitation_link' => fn () => $request->session()->get('invitation_link'),
                 'invitation_for_name' => fn () => $request->session()->get('invitation_for_name'),
+                'mission_invite_phone' => fn () => $request->session()->get('mission_invite_phone'),
                 'public_volunteer_signup_url' => fn () => $request->session()->get('public_volunteer_signup_url'),
                 'public_volunteer_signup_church' => fn () => $request->session()->get('public_volunteer_signup_church'),
                 'leader_self_signup_url' => fn () => $request->session()->get('leader_self_signup_url'),

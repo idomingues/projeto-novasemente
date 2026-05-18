@@ -105,7 +105,7 @@ class ChurchSolicitationModalPayloadPresenter
             ->values()
             ->all();
 
-        return [
+        $payload = [
             'solicitation' => [
                 'id' => $s->id,
                 'type' => $s->type,
@@ -129,5 +129,11 @@ class ChurchSolicitationModalPayloadPresenter
             ],
             'messages' => $messages,
         ];
+
+        if ($s->type === MobileChurchSolicitationController::TYPE_COMMUNICATION_REQUEST) {
+            $payload['communicationDetails'] = CommunicationRequestOptions::detailsForPanel($s->meta);
+        }
+
+        return $payload;
     }
 }

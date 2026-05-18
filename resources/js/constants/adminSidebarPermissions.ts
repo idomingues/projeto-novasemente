@@ -16,6 +16,7 @@ export const adminSidebarRoutePermissions: Record<string, string[]> = {
     'leaders.self-signup.rotate': ['members.manage', 'users.manage'],
     'volunteers.index': ['volunteers.view', 'volunteers.manage'],
     'volunteers.show': ['volunteers.view', 'volunteers.manage'],
+    'volunteers.detail': ['volunteers.view', 'volunteers.manage'],
     'ministry-lead.volunteers.index': ['volunteers.view', 'volunteers.manage', 'volunteers.ministry_operate'],
     // “Meus voluntários” é filtrado por role no backend (lider_ministerio|admin|super_admin).
     // Mantemos sem permissão para aparecer no menu desses perfis.

@@ -316,6 +316,7 @@ Route::middleware('auth')->group(function () {
     // Voluntários (CRUD) — departamento no cadastro
     Route::get('/volunteers', [VolunteerController::class, 'index'])->name('volunteers.index')->middleware('permission:volunteers.view|volunteers.manage');
     Route::get('/volunteers/{volunteer}', [VolunteerController::class, 'show'])->name('volunteers.show')->middleware('permission:volunteers.view|volunteers.manage');
+    Route::get('/volunteers/{volunteer}/detalhe', [VolunteerController::class, 'detail'])->name('volunteers.detail')->middleware('permission:volunteers.view|volunteers.manage');
     Route::post('/volunteers', [VolunteerController::class, 'store'])->name('volunteers.store')->middleware('permission:volunteers.manage');
     Route::post('/volunteers/{volunteer}/invite', [VolunteerController::class, 'invite'])->name('volunteers.invite')->middleware('permission:volunteers.manage');
     Route::post('/volunteers/public-signup-link', [VolunteerPublicSignupController::class, 'rotateToken'])
@@ -483,7 +484,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/saude/{health}', [HealthController::class, 'update'])->name('health.update')->middleware('permission:news.manage');
     Route::delete('/saude/{health}', [HealthController::class, 'destroy'])->name('health.destroy')->middleware('permission:news.manage');
 
-    // Missão (Insight / Inflexão)
+    // Missão
     Route::get('/missao/gestao', [MissionVolunteerController::class, 'index'])->name('mission.index')->middleware('permission:mission.view|mission.manage');
     Route::get('/missao/gestao/{missionVolunteer}', [MissionVolunteerController::class, 'show'])->name('mission.show')->middleware('permission:mission.view|mission.manage');
     Route::get('/missao/gestao/{missionVolunteer}/detalhe', [MissionVolunteerController::class, 'detail'])->name('mission.volunteers.detail')->middleware('permission:mission.view|mission.manage');

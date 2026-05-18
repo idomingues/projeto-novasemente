@@ -25,6 +25,8 @@ import {
 import PublicVolunteerSignupShareModal from '@/Components/Volunteers/PublicVolunteerSignupShareModal';
 import { confirmAction } from '@/utils/confirmDialog';
 import { formatListPreview } from '@/utils/formatListPreview';
+import RecordDetailSections from '@/Components/RecordDetail/RecordDetailSections';
+import { volunteerDetailSections, type VolunteerDetailData } from '@/utils/volunteerDetailRows';
 
 type StageRow = { id: number; name: string; sort_order: number; volunteer_count: number };
 
@@ -983,10 +985,10 @@ export default function Pipeline({
                                     {volunteers.data.map((v) => (
                                         <tr
                                             key={v.id}
-                                            className={`border-b border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900/80 ${v.pendingInvite ? 'bg-amber-50/40 dark:bg-amber-950/10' : ''}`}
+                                            className={`cursor-pointer border-b border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900/50 ${v.pendingInvite ? 'bg-amber-50/40 dark:bg-amber-950/10' : ''}`}
                                             onClick={() => void openVolunteer(v.id)}
                                         >
-                                            <td className="py-2 pr-3 font-medium text-zinc-900 dark:text-white">
+                                            <td className="cursor-pointer py-2 pr-3 font-medium text-zinc-900 dark:text-white">
                                                 <div className="flex flex-wrap items-center gap-1.5">
                                                     <span>{v.name}</span>
                                                     {v.hasUserAccount ? (
@@ -999,19 +1001,19 @@ export default function Pipeline({
                                                     ) : null}
                                                 </div>
                                             </td>
-                                            <td className="py-2 pr-3 text-zinc-700 dark:text-zinc-200">{v.stageName}</td>
-                                            <td className="py-2 pr-3 whitespace-nowrap text-zinc-600 dark:text-zinc-400">
+                                            <td className="cursor-pointer py-2 pr-3 text-zinc-700 dark:text-zinc-200">{v.stageName}</td>
+                                            <td className="cursor-pointer py-2 pr-3 whitespace-nowrap text-zinc-600 dark:text-zinc-400">
                                                 {formatShortDate(v.createdAt)}
                                             </td>
-                                            <td className="py-2 pr-3 text-zinc-600 dark:text-zinc-400">
+                                            <td className="cursor-pointer py-2 pr-3 text-zinc-600 dark:text-zinc-400">
                                                 <div>{v.email}</div>
                                                 {v.phone ? <div className="text-xs">{v.phone}</div> : null}
                                             </td>
-                                            <td className="py-2 pr-3 max-w-[200px] text-xs text-zinc-500">{v.interestPreview ?? '—'}</td>
-                                            <td className="py-2 max-w-[220px] text-xs text-zinc-500">
+                                            <td className="cursor-pointer py-2 pr-3 max-w-[200px] text-xs text-zinc-500">{v.interestPreview ?? '—'}</td>
+                                            <td className="cursor-pointer py-2 max-w-[220px] text-xs text-zinc-500">
                                                 {formatListPreview(v.ministryNames) || '—'}
                                             </td>
-                                            <td className="py-2 text-right">
+                                            <td className="cursor-default py-2 text-right" onClick={(ev) => ev.stopPropagation()}>
                                                 <button
                                                     type="button"
                                                     onClick={(ev) => {
@@ -1212,56 +1214,11 @@ export default function Pipeline({
                             <div className="min-h-0 flex-1 overflow-y-auto p-4">
                                 {detailTab === 'ficha' ? (
                                     <>
-                                        <div className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
-                                            {[
-                                                ['E-mail', String(detail.volunteer.email ?? '—')],
-                                                ['Telefone', String(detail.volunteer.phone ?? '—')],
-                                                ['Data de nascimento', String(detail.volunteer.birth_date ?? '—')],
-                                                ['WhatsApp', yn(detail.volunteer.has_whatsapp)],
-                                                ['Redes sociais', yn(detail.volunteer.has_social_networks)],
-                                                ['Tempo na igreja (texto)', String(detail.volunteer.attendance_duration ?? '—')],
-                                                ['Membro oficial', yn(detail.volunteer.is_official_member)],
-                                                ['Registro na NS', yn(detail.volunteer.member_record_at_nova_semente)],
-                                                ['Registro em outra igreja', String(detail.volunteer.member_record_church ?? '—')],
-                                                ['Experiência prévia em ministério', yn(detail.volunteer.has_previous_ministry_volunteer_experience)],
-                                                ['Precisa orientação pastoral', yn(detail.volunteer.needs_pastoral_guidance)],
-                                                ['Consentimento LGPD', yn(detail.volunteer.lgpd_data_consent)],
-                                                ['Área profissional', String(detail.volunteer.professional_area ?? '—')],
-                                                [
-                                                    'Ministérios no cadastro',
-                                                    Array.isArray(detail.volunteer.ministries)
-                                                        ? (detail.volunteer.ministries as { name: string }[]).map((m) => m.name).join(', ') || '—'
-                                                        : '—',
-                                                ],
-                                            ].map(([k, val]) => (
-                                                <div key={k} className="border-b border-zinc-100 pb-2 dark:border-zinc-800">
-                                                    <div className="text-xs font-medium text-zinc-500">{k}</div>
-                                                    <div className="text-zinc-900 dark:text-zinc-100 whitespace-pre-wrap">{val}</div>
-                                                </div>
-                                            ))}
-                                        </div>
+                                        <RecordDetailSections
+                                            sections={volunteerDetailSections(detail.volunteer as VolunteerDetailData)}
+                                        />
 
-                                        <div className="mt-6 space-y-2">
-                                            <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Textos longos</h3>
-                                            {(
-                                                [
-                                                    ['Experiências anteriores', detail.volunteer.previous_ministry_details],
-                                                    ['Como quer servir', detail.volunteer.ministry_involvement],
-                                                    ['Outros interesses', detail.volunteer.other_ministry_interest],
-                                                    ['Dons a desenvolver', detail.volunteer.gifts_to_develop],
-                                                ] as [string, unknown][]
-                                            ).map(([label, val]) => {
-                                                const text = val != null && String(val).trim() !== '' ? String(val) : '—';
-                                                return (
-                                                    <div key={label} className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-                                                        <div className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">{label}</div>
-                                                        <div className="mt-1 text-sm text-zinc-800 whitespace-pre-wrap dark:text-zinc-200">{text}</div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-
-                                        {detail.destroyVolunteerUrl ? (
+                                                                                {detail.destroyVolunteerUrl ? (
                                             <div className="mt-6 rounded-xl border border-red-200 bg-red-50/50 p-4 dark:border-red-900/50 dark:bg-red-950/20">
                                                 <p className="text-sm font-semibold text-red-900 dark:text-red-200">Remover cadastro</p>
                                                 <p className="mt-1 text-xs text-red-800/90 dark:text-red-300/90">

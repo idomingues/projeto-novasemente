@@ -1,7 +1,6 @@
 <?php
 
 return [
-    'belonging_levels' => ['Pouco', 'Médio', 'Muito'],
 
     'professions' => [
         'Administrador(a)',
@@ -18,8 +17,6 @@ return [
         'Assistente Social',
         'Nutricionista',
         'Analista de Sistemas (TI)',
-        'Publicitário(a)',
-        'Fisioterapeuta',
     ],
 
     'beliefs' => [
@@ -31,6 +28,7 @@ return [
         'Budismo',
         'Judaísmo',
         'Islamismo',
+        'Outra',
     ],
 
     'religions' => [
@@ -45,6 +43,7 @@ return [
         'Igreja Internacional da Graça de Deus',
         'Igreja Metodista',
         'Igreja Luterana',
+        'Outra',
     ],
 
     'seeks_in_community' => [
@@ -53,6 +52,7 @@ return [
         'Música/Louvor',
         'Ensinamentos/doutrinas',
         'Busca proposito/sentido',
+        'Outra',
     ],
 
     'studied_bible' => [
@@ -65,7 +65,8 @@ return [
         'Amigos',
         'Redes Sociais',
         'Eventos',
-        'Busca propria',
+        'Busca própria',
+        'Outra',
     ],
 
     'wants_bible_study_partner' => [
@@ -74,87 +75,4 @@ return [
         'Não',
     ],
 
-    'duration_buckets' => [
-        'Menos de 1 mês',
-        '1 - 6 meses',
-        '6 - 12 meses',
-        'Mais de 1 ano',
-    ],
-
-    'participated_groups' => [
-        'Conviva/Inflexão',
-        'Pequeno Grupo (PG)',
-        'Insight',
-        'Ações Sociais',
-        'Não participei',
-    ],
-
-    'engagement_levels' => [
-        'Muito',
-        'Médio',
-        'Pouco',
-        'Não sei definir',
-    ],
-
-    'social_actions_interest' => [
-        'Sim',
-        'Não',
-        'Talvez',
-    ],
-
-    'profile_types' => [
-        'Comunicativo',
-        'Executor',
-        'Analítico',
-        'Cuidador',
-    ],
-
-    'ministry_preferences' => [
-        'Ministério Acolhimento',
-        'Ministério Onboarding',
-        'Ministério Anjo',
-        'Ministério Insight (Ações Sociais)',
-        'Ministério Voz (Marketing e Comunicação)',
-        'Ministério Radar (Inteligência e Dados)',
-        'Ministério Conexão Bíblica',
-    ],
-
-    'social_action_types' => [
-        'Doação (Coleta e Distribuição)',
-        'Construção/Reparos',
-        'Saúde (Atendimento/Orientação)',
-        'Organização de eventos sociais',
-        'Musica/Arte em ações',
-    ],
-
-    'weekday_availability' => [
-        'Sim',
-        'Não',
-        'Somente em horários específicos',
-    ],
-
-    'time_per_week' => [
-        '20 minutos por semana',
-        '40 minutos por semana',
-        'Ate 2 horas por semana',
-        'Mais de 3 horas por semana',
-    ],
-
-    'work_preferences' => [
-        'Presencial',
-        'Online',
-        'Hibrido',
-    ],
-
-    'contact_periods' => [
-        'Manhã',
-        'Tarde',
-        'Noite',
-    ],
-
-    'contact_formats' => [
-        'Whatsapp',
-        'Ligação telefônica',
-        'Presencial (a combinar horários)',
-    ],
 ];

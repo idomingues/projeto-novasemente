@@ -18,7 +18,6 @@ import {
     ChatBubbleLeftRightIcon,
     HeartIcon,
     GlobeAltIcon,
-    Cog6ToothIcon,
 } from '@heroicons/react/24/outline';
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 import type { ComponentType, SVGProps } from 'react';
@@ -41,15 +40,13 @@ type PageProps = {
         adminSidebarUnrestricted?: boolean;
         canAccessAdminMenu?: boolean;
         isMinistryLeaderAccount?: boolean;
-        canViewMission?: boolean;
-        canManageMission?: boolean;
     };
 };
 
 const items: MoreMenuItem[] = [
     { name: 'Notícias', description: 'Notícias e comunicados da igreja', route: 'mobile.news', icon: NewspaperIcon },
     { name: 'Saúde', description: 'Conteúdos de saúde e bem-estar', route: 'mobile.health', icon: HeartIcon },
-    { name: 'Missão', description: 'Insight e Inflexão — cadastro missionário', route: 'mobile.mission', icon: GlobeAltIcon },
+    { name: 'Missão', description: 'Cadastro missionário', route: 'mobile.mission', icon: GlobeAltIcon },
     { name: 'Oração', description: 'Pedidos de oração', route: 'mobile.prayer', icon: PrayingHandsIcon },
     { name: 'Dízimos e Ofertas', description: 'Contribuições e ofertas', route: 'mobile.offerings', icon: HandRaisedIcon },
     { name: 'Culto', description: 'Vídeos do culto online', route: 'mobile.culto', icon: FilmIcon },
@@ -106,11 +103,6 @@ export default function MobileMore(_: Props) {
         route().has('communication-requests.index') &&
         (auth?.isMinistryLeaderAccount === true ||
             (canAccessAdminMenu && (can('solicitations.view') || can('solicitations.manage'))));
-    const showMissionManage =
-        isAuthenticated &&
-        route().has('mission.index') &&
-        (auth?.canViewMission === true || auth?.canManageMission === true || can('mission.view') || can('mission.manage'));
-
     return (
         <MobileLayout>
             <Head title="Mais" />
@@ -127,7 +119,7 @@ export default function MobileMore(_: Props) {
                     </p>
                 </div>
 
-                {(showMyVolunteers || showMySolicitations || showCommunicationRequests || showMissionManage) ? (
+                {(showMyVolunteers || showMySolicitations || showCommunicationRequests) ? (
                     <div className="space-y-2">
                         <p className="text-sm font-semibold text-zinc-900 dark:text-white">Área de liderança</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-4">
@@ -170,20 +162,6 @@ export default function MobileMore(_: Props) {
                                     <div className="min-w-0 flex-1">
                                         <span className="font-semibold text-zinc-900 dark:text-white block">Comunicação</span>
                                         <span className="text-sm text-zinc-500 dark:text-zinc-400">Solicitações e acompanhamento</span>
-                                    </div>
-                                </Link>
-                            ) : null}
-                            {showMissionManage ? (
-                                <Link
-                                    href={route('mission.index')}
-                                    className="flex items-center gap-4 p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 active:bg-zinc-50 dark:active:bg-zinc-800 transition-colors"
-                                >
-                                    <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-zinc-100 dark:bg-zinc-800">
-                                        <Cog6ToothIcon className="w-6 h-6 text-zinc-600 dark:text-zinc-400" />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <span className="font-semibold text-zinc-900 dark:text-white block">Gestão Missão</span>
-                                        <span className="text-sm text-zinc-500 dark:text-zinc-400">Cadastros Insight, fases e convites</span>
                                     </div>
                                 </Link>
                             ) : null}

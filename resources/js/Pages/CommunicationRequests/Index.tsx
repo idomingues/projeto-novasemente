@@ -1,7 +1,12 @@
 import AddButton from '@/Components/AddButton';
 import Card from '@/Components/Card';
+import CommunicationRequestDetailsBlock, {
+    type CommunicationDetailsPayload,
+} from '@/Components/CommunicationRequests/CommunicationRequestDetailsBlock';
+import CommunicationRequestFormFields, {
+    type CommunicationRequestFormData,
+} from '@/Components/CommunicationRequests/CommunicationRequestFormFields';
 import FlashMessages from '@/Components/FlashMessages';
-import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import Modal from '@/Components/Modal';
 import PageHeader from '@/Components/PageHeader';
@@ -10,7 +15,6 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import SelectInput from '@/Components/SelectInput';
 import SolicitationDetailPanel, { type SolicitationDetailPanelProps } from '@/Components/Solicitations/SolicitationDetailPanel';
 import TextInput from '@/Components/TextInput';
-import Textarea from '@/Components/Textarea';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { confirmAction } from '@/utils/confirmDialog';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
@@ -25,6 +29,8 @@ type CommunicationRow = {
     status_label: string;
     created_at: string | null;
     preferred_date: string | null;
+    event_date: string | null;
+    ministry_name: string | null;
     demand_type: string;
     demand_type_label: string;
     priority: string;
@@ -36,7 +42,9 @@ type CommunicationRow = {
     panel_json_url: string;
 };
 
-type CommunicationPanelPayload = Omit<SolicitationDetailPanelProps, 'variant' | 'section' | 'composerRole'>;
+type CommunicationPanelPayload = Omit<SolicitationDetailPanelProps, 'variant' | 'section' | 'composerRole'> & {
+    communicationDetails?: CommunicationDetailsPayload;
+};
 
 interface Props {
     mode: 'leader' | 'staff';
@@ -45,6 +53,9 @@ interface Props {
     indexUrl: string;
     demandTypeOptions: Array<{ value: string; label: string }>;
     priorityOptions: Array<{ value: string; label: string }>;
+    artChannelOptions: Array<{ value: string; label: string }>;
+    coverageSupportOptions: Array<{ value: string; label: string }>;
+    maxAttachments: number;
     filters: {
         status: string;
         demand_type: string;
@@ -69,6 +80,9 @@ export default function CommunicationRequestsIndex({
     indexUrl,
     demandTypeOptions,
     priorityOptions,
+    artChannelOptions,
+    coverageSupportOptions,
+    maxAttachments,
     filters,
 }: Props) {
     const page = usePage();
@@ -81,12 +95,22 @@ export default function CommunicationRequestsIndex({
     const [panelLoading, setPanelLoading] = useState(false);
     const [panelTab, setPanelTab] = useState<'detalhes' | 'chat'>('detalhes');
 
-    const form = useForm({
-        demand_type: '' as '' | string,
-        priority: '' as '' | string,
+    const emptyForm: CommunicationRequestFormData = {
+        demand_type: '',
+        priority: '',
+        event_date: '',
+        ministry_name: '',
         preferred_date: '',
         message: '',
-    });
+        art_channels: [],
+        coverage_event: '',
+        coverage_support: [],
+        technical_event: '',
+        technical_support: [],
+        attachment_files: [],
+    };
+
+    const form = useForm<CommunicationRequestFormData>(emptyForm);
 
     const canManage = mode === 'staff';
     const pageTitle = 'Solicitações de Comunicação';
@@ -123,12 +147,7 @@ export default function CommunicationRequestsIndex({
     const openRequestModal = () => {
         form.reset();
         form.clearErrors();
-        form.setData({
-            demand_type: '',
-            priority: '',
-            preferred_date: '',
-            message: '',
-        });
+        form.setData({ ...emptyForm });
         setRequestModalOpen(true);
     };
 
@@ -193,6 +212,7 @@ export default function CommunicationRequestsIndex({
         e.preventDefault();
         form.post(storeUrl, {
             preserveScroll: true,
+            forceFormData: true,
             onSuccess: () => closeRequestModal(),
         });
     };
@@ -314,6 +334,8 @@ export default function CommunicationRequestsIndex({
                                         {mode === 'staff' && row.requester_name ? <span>Por {row.requester_name}</span> : null}
                                         <span>{row.demand_type_label}</span>
                                         <span>Prioridade: {row.priority_label}</span>
+                                        {row.event_date ? <span>Evento: {row.event_date}</span> : null}
+                                        {row.ministry_name ? <span>{row.ministry_name}</span> : null}
                                         {row.preferred_date ? <span>Prazo: {row.preferred_date}</span> : null}
                                     </div>
                                 </button>
@@ -361,71 +383,19 @@ export default function CommunicationRequestsIndex({
                     <div>
                         <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Nova solicitação de comunicação</h2>
                         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                            Descreva a demanda com contexto e prazo para facilitar a organização da equipe.
+                            Descreva a demanda com contexto, data do evento e materiais para facilitar a priorização da equipe.
                         </p>
                     </div>
 
-                    <div className="grid gap-4 sm:grid-cols-2">
-                        <div>
-                            <InputLabel htmlFor="comm_demand_type" value="Tipo de demanda" />
-                            <SelectInput
-                                id="comm_demand_type"
-                                value={form.data.demand_type}
-                                className="mt-1 block w-full"
-                                onChange={(e) => form.setData('demand_type', e.target.value)}
-                            >
-                                <option value="">Selecione…</option>
-                                {demandTypeOptions.map((o) => (
-                                    <option key={o.value} value={o.value}>
-                                        {o.label}
-                                    </option>
-                                ))}
-                            </SelectInput>
-                            <InputError className="mt-2" message={form.errors.demand_type} />
-                        </div>
-                        <div>
-                            <InputLabel htmlFor="comm_priority" value="Prioridade" />
-                            <SelectInput
-                                id="comm_priority"
-                                value={form.data.priority}
-                                className="mt-1 block w-full"
-                                onChange={(e) => form.setData('priority', e.target.value)}
-                            >
-                                <option value="">Selecione…</option>
-                                {priorityOptions.map((o) => (
-                                    <option key={o.value} value={o.value}>
-                                        {o.label}
-                                    </option>
-                                ))}
-                            </SelectInput>
-                            <InputError className="mt-2" message={form.errors.priority} />
-                        </div>
-                    </div>
-
-                    <div>
-                        <InputLabel htmlFor="comm_preferred_date" value="Prazo desejado (opcional)" />
-                        <TextInput
-                            id="comm_preferred_date"
-                            type="date"
-                            value={form.data.preferred_date}
-                            className="mt-1 block w-full max-w-xs"
-                            onChange={(e) => form.setData('preferred_date', e.target.value)}
-                        />
-                        <InputError className="mt-2" message={form.errors.preferred_date} />
-                    </div>
-
-                    <div>
-                        <InputLabel htmlFor="comm_message" value="Descrição" />
-                        <Textarea
-                            id="comm_message"
-                            value={form.data.message}
-                            className="mt-1 block w-full"
-                            rows={6}
-                            placeholder="Objetivo, público, contexto, data do evento, materiais já existentes, etc."
-                            onChange={(e) => form.setData('message', e.target.value)}
-                        />
-                        <InputError className="mt-2" message={form.errors.message} />
-                    </div>
+                    <CommunicationRequestFormFields
+                        form={form}
+                        demandTypeOptions={demandTypeOptions}
+                        priorityOptions={priorityOptions}
+                        artChannelOptions={artChannelOptions}
+                        coverageSupportOptions={coverageSupportOptions}
+                        maxAttachments={maxAttachments}
+                    />
+                    
                 </form>
             </Modal>
 
@@ -483,6 +453,11 @@ export default function CommunicationRequestsIndex({
                                         canManage={canManage && panelPayload.canManage}
                                         memberBubbleLabel="Solicitante"
                                         staffBubbleLabel="Equipe de comunicação"
+                                        detailsBeforeAdminFooter={
+                                            panelPayload.communicationDetails ? (
+                                                <CommunicationRequestDetailsBlock details={panelPayload.communicationDetails} />
+                                            ) : null
+                                        }
                                     />
                                 ) : (
                                     <p className="text-sm text-red-600 dark:text-red-400">Não foi possível carregar o painel.</p>

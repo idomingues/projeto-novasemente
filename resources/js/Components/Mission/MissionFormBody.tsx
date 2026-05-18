@@ -3,16 +3,15 @@ import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
-import SelectInput from '@/Components/SelectInput';
 import TextInput from '@/Components/TextInput';
 import Textarea from '@/Components/Textarea';
+import { compressImageForUpload, ImageCompressError } from '@/utils/compressImageForUpload';
 import { useForm } from '@inertiajs/react';
+import { FormEventHandler, MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type MissionFormReturn = ReturnType<typeof useForm<MissionFormData>>;
-import { FormEventHandler, useMemo, useState } from 'react';
 
 export type MissionOptions = {
-    belonging_levels: string[];
     professions: string[];
     beliefs: string[];
     religions: string[];
@@ -20,30 +19,15 @@ export type MissionOptions = {
     studied_bible: string[];
     first_contact_via: string[];
     wants_bible_study_partner: string[];
-    duration_buckets: string[];
-    participated_groups: string[];
-    engagement_levels: string[];
-    social_actions_interest: string[];
-    profile_types: string[];
-    ministry_preferences: string[];
-    social_action_types: string[];
-    weekday_availability: string[];
-    time_per_week: string[];
-    work_preferences: string[];
-    contact_periods: string[];
-    contact_formats: string[];
 };
 
 export type MissionFormData = {
-    from_mobile: boolean;
-    photo_file: File | null;
+    photo: File | null;
     full_name: string;
-    email: string;
     birth_date: string;
     phone: string;
     full_address: string;
     profession: string;
-    profession_other: string;
     has_belief: boolean | null;
     belief_which: string;
     belief_which_other: string;
@@ -51,7 +35,7 @@ export type MissionFormData = {
     religion_which: string;
     religion_which_other: string;
     baptized: boolean | null;
-    seeks_in_community: string[];
+    seeks_in_community: string;
     seeks_in_community_other: string;
     studied_bible: string;
     studied_bible_structured: boolean | null;
@@ -59,147 +43,31 @@ export type MissionFormData = {
     first_contact_via: string;
     first_contact_via_other: string;
     wants_bible_study_partner: string;
-    if_not_how_long: string;
-    insight_duration: string;
-    participated_groups: string[];
-    participated_groups_other: string;
-    engagement_level: string;
-    closer_to_god_text: string;
-    belonging_people: string;
-    belonging_location: string;
-    belonging_availability: string;
-    belonging_spirituality: string;
-    social_actions_interest: string;
-    profile_type: string;
-    ministry_preference: string;
-    social_action_type: string;
-    weekday_availability: string;
-    time_per_week: string;
-    work_preference: string;
-    can_contact_week: boolean | null;
-    contact_period: string;
-    contact_format: string;
-    nps_score: number | '';
     lgpd_consent: boolean;
 };
 
-const PROFILE_HINTS: Record<string, string> = {
-    Comunicativo: 'Gosto de expressar ideias, registrar momentos e dar voz ao que vivemos.',
-    Executor: 'Gosto de colocar a mão na massa, planejar o prático e fazer as ações acontecerem.',
-    Analítico: 'Gosto de organizar informações, entender perfis e direcionar estrategicamente.',
-    Cuidador: 'Gosto de receber bem, fazer pontes de relacionamento e promover crescimento espiritual.',
-};
+/** Seis páginas: 5 = comunidade/bíblia (11–13); 6 = só Nova Semente (14–16). */
+const PAGE_TITLES = ['Dados pessoais', 'Profissão', 'Fé e crença', 'Religião', 'Comunidade e Bíblia', 'Nova Semente'];
+const COMMUNITY_PAGE_INDEX = PAGE_TITLES.length - 2;
+const LAST_PAGE_INDEX = PAGE_TITLES.length - 1;
 
-const STEP_TITLES = ['Dados pessoais', 'Fé e religião', 'Nova Semente', 'Perfil missionário', 'Contato e LGPD'];
-
-function toggleInList(list: string[], item: string): string[] {
-    return list.includes(item) ? list.filter((x) => x !== item) : [...list, item];
-}
-
-function ProgressBar({ value }: { value: number }) {
-    return (
-        <div className="h-2 w-full rounded-full bg-zinc-100 dark:bg-zinc-800">
-            <div className="h-2 rounded-full bg-emerald-500 transition-[width]" style={{ width: `${value}%` }} />
-        </div>
+function hasPersonalDataErrors(errors: Partial<Record<keyof MissionFormData, string>>): boolean {
+    return Boolean(
+        errors.photo ||
+            errors.full_name ||
+            errors.birth_date ||
+            errors.phone ||
+            errors.full_address,
     );
 }
 
-function YesNo({
-    label,
-    value,
-    onChange,
-    error,
-}: {
-    label: string;
-    value: boolean | null;
-    onChange: (v: boolean) => void;
-    error?: string;
-}) {
-    return (
-        <div>
-            <InputLabel value={label} />
-            <div className="mt-2 flex gap-2">
-                {[
-                    { v: true, l: 'Sim' },
-                    { v: false, l: 'Não' },
-                ].map(({ v, l }) => (
-                    <button
-                        key={l}
-                        type="button"
-                        onClick={() => onChange(v)}
-                        className={[
-                            'flex-1 rounded-xl border px-3 py-2.5 text-sm font-medium',
-                            value === v
-                                ? 'border-emerald-400 bg-emerald-50 dark:border-emerald-500/60 dark:bg-emerald-950/30'
-                                : 'border-zinc-200 dark:border-zinc-700',
-                        ].join(' ')}
-                    >
-                        {l}
-                    </button>
-                ))}
-            </div>
-            {error ? <InputError message={error} className="mt-1" /> : null}
-        </div>
-    );
-}
-
-function MatrixRow({
-    label,
-    value,
-    levels,
-    onChange,
-    error,
-}: {
-    label: string;
-    value: string;
-    levels: string[];
-    onChange: (v: string) => void;
-    error?: string;
-}) {
-    return (
-        <div className="rounded-xl border border-zinc-200 p-3 dark:border-zinc-700">
-            <div className="text-sm font-medium">{label}</div>
-            <MatrixButtons levels={levels} value={value} onChange={onChange} />
-            {error ? <InputError message={error} className="mt-1" /> : null}
-        </div>
-    );
-}
-
-function MatrixButtons({
-    levels,
-    value,
-    onChange,
-}: {
-    levels: string[];
-    value: string;
-    onChange: (v: string) => void;
-}) {
-    return (
-        <div className="mt-2 flex flex-wrap gap-2">
-            {levels.map((lvl) => (
-                <button
-                    key={lvl}
-                    type="button"
-                    onClick={() => onChange(lvl)}
-                    className={[
-                        'rounded-lg border px-3 py-1.5 text-xs font-medium',
-                        value === lvl ? 'border-emerald-400 bg-emerald-50' : 'border-zinc-200',
-                    ].join(' ')}
-                >
-                    {lvl}
-                </button>
-            ))}
-        </div>
-    );
-}
-
-function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
-    return (
-        <div>
-            <InputLabel value={label} />
-            <div className="mt-1">{children}</div>
-            {error ? <InputError message={error} /> : null}
-        </div>
+function hasNovaSementeErrors(errors: Partial<Record<keyof MissionFormData, string>>): boolean {
+    return Boolean(
+        errors.first_time_nova_semente ||
+            errors.first_contact_via ||
+            errors.first_contact_via_other ||
+            errors.wants_bible_study_partner ||
+            errors.lgpd_consent,
     );
 }
 
@@ -208,425 +76,733 @@ interface Props {
     options: MissionOptions;
     onSubmit: FormEventHandler;
     processing: boolean;
+    formRevision?: number;
 }
 
-export default function MissionFormBody({ form, options, onSubmit, processing }: Props) {
-    const { data, setData, errors } = form;
-    const [step, setStep] = useState(0);
-    const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-    const progress = useMemo(() => ((step + 1) / STEP_TITLES.length) * 100, [step]);
+function ProgressBar({ value }: { value: number }) {
+    return (
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
+            <div
+                className="h-full rounded-full bg-teal-600 transition-[width] duration-300 ease-out dark:bg-teal-500"
+                style={{ width: `${value}%` }}
+            />
+        </div>
+    );
+}
 
-    const onPhotoChange = (file: File | null) => {
-        setData('photo_file', file);
-        if (photoPreview?.startsWith('blob:')) URL.revokeObjectURL(photoPreview);
-        setPhotoPreview(file ? URL.createObjectURL(file) : null);
+function Question({
+    number,
+    label,
+    required = true,
+    error,
+    children,
+}: {
+    number: number;
+    label: string;
+    required?: boolean;
+    error?: string;
+    children: React.ReactNode;
+}) {
+    const titleId = `mission-q-${number}`;
+
+    return (
+        <section
+            id={titleId}
+            aria-labelledby={`${titleId}-heading`}
+            className="scroll-mt-32 rounded-2xl border border-zinc-200/90 bg-white p-4 shadow-sm dark:border-zinc-700/80 dark:bg-zinc-900/60 sm:scroll-mt-36 sm:p-5"
+        >
+            <h3 id={`${titleId}-heading`} className="mb-3 text-base font-semibold leading-snug text-zinc-900 dark:text-white">
+                <span className="mr-1.5 tabular-nums text-zinc-500 dark:text-zinc-400">{number}.</span>
+                {label}
+                {required ? <span className="ml-0.5 text-red-600 dark:text-red-400">*</span> : null}
+            </h3>
+            <div className="space-y-2">{children}</div>
+            {error ? <InputError message={error} className="mt-2" /> : null}
+        </section>
+    );
+}
+
+function MissionPhotoField({
+    previewUrl,
+    photoPreparing,
+    clientError,
+    serverError,
+    missingOnAdvance,
+    onFileChosen,
+    onClear,
+}: {
+    previewUrl: string | null;
+    photoPreparing: boolean;
+    clientError: string | null;
+    serverError?: string;
+    missingOnAdvance: boolean;
+    onFileChosen: (file: File | null) => void;
+    onClear: () => void;
+}) {
+    const displayError = clientError ?? serverError ?? (missingOnAdvance ? 'Envie uma foto antes de avançar.' : undefined);
+
+    return (
+        <section
+            id="mission-photo"
+            className="scroll-mt-32 rounded-2xl border border-zinc-200/90 bg-white p-4 shadow-sm dark:border-zinc-700/80 dark:bg-zinc-900/60 sm:scroll-mt-36 sm:p-5"
+        >
+            <h3 className="mb-1 text-base font-semibold leading-snug text-zinc-900 dark:text-white">
+                Foto
+                <span className="ml-0.5 text-red-600 dark:text-red-400">*</span>
+            </h3>
+            <p className="mb-3 text-xs text-zinc-500 dark:text-zinc-400">
+                No celular você pode usar a câmera; no computador, escolha uma imagem (máx. 4 MB). A foto ajuda a equipe a
+                reconhecer você.
+            </p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
+                    {previewUrl ? (
+                        <img src={previewUrl} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                        <span className="text-2xl font-semibold text-zinc-500 dark:text-zinc-400">?</span>
+                    )}
+                </div>
+                <div className="min-w-0 flex-1 space-y-2">
+                    <InputLabel htmlFor="mission_photo" value="Selecionar foto" className="sr-only" />
+                    <input
+                        id="mission_photo"
+                        type="file"
+                        accept="image/*"
+                        capture="user"
+                        disabled={photoPreparing}
+                        onChange={(e) => {
+                            const raw = e.currentTarget.files?.[0] ?? null;
+                            e.currentTarget.value = '';
+                            onFileChosen(raw);
+                        }}
+                        className="block w-full text-sm text-zinc-600 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-zinc-700 hover:file:bg-zinc-200 disabled:opacity-60 dark:text-zinc-300 dark:file:bg-zinc-800 dark:file:text-zinc-100 dark:hover:file:bg-zinc-700"
+                    />
+                    {photoPreparing ? (
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">Preparando a imagem…</p>
+                    ) : previewUrl ? (
+                        <button
+                            type="button"
+                            onClick={onClear}
+                            className="text-xs font-semibold text-teal-700 underline dark:text-teal-400"
+                        >
+                            Remover foto
+                        </button>
+                    ) : null}
+                    {displayError ? <InputError message={displayError} /> : null}
+                </div>
+            </div>
+        </section>
+    );
+}
+
+function RadioList({
+    name,
+    options,
+    value,
+    onChange,
+}: {
+    name: string;
+    options: string[];
+    value: string;
+    onChange: (v: string) => void;
+}) {
+    const safeOptions = options ?? [];
+
+    return (
+        <div className="space-y-1.5" role="radiogroup" aria-label={name}>
+            {safeOptions.map((opt) => {
+                const selected = value === opt;
+                return (
+                    <button
+                        key={`${name}-${opt}`}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        onClick={() => onChange(opt)}
+                        className={[
+                            'flex w-full cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition-colors sm:px-4 sm:py-3',
+                            selected
+                                ? 'border-teal-500/80 bg-teal-50/90 ring-1 ring-teal-500/30 dark:border-teal-500/50 dark:bg-teal-950/40'
+                                : 'border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50/80 dark:border-zinc-700 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/50',
+                        ].join(' ')}
+                    >
+                        <span
+                            className={[
+                                'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2',
+                                selected
+                                    ? 'border-teal-600 dark:border-teal-400'
+                                    : 'border-zinc-300 dark:border-zinc-600',
+                            ].join(' ')}
+                            aria-hidden
+                        >
+                            {selected ? (
+                                <span className="h-2.5 w-2.5 rounded-full bg-teal-600 dark:bg-teal-400" />
+                            ) : null}
+                        </span>
+                        <span className="text-zinc-800 dark:text-zinc-100">{opt}</span>
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
+
+function YesNoRadio({
+    name,
+    value,
+    onChange,
+}: {
+    name: string;
+    value: boolean | null;
+    onChange: (v: boolean) => void;
+}) {
+    return (
+        <RadioList
+            name={name}
+            options={['Não', 'Sim']}
+            value={value === true ? 'Sim' : value === false ? 'Não' : ''}
+            onChange={(label) => onChange(label === 'Sim')}
+        />
+    );
+}
+
+function OtherField({
+    visible,
+    value,
+    onChange,
+    error,
+    placeholder = 'Especifique',
+}: {
+    visible: boolean;
+    value: string;
+    onChange: (v: string) => void;
+    error?: string;
+    placeholder?: string;
+}) {
+    if (!visible) {
+        return null;
+    }
+
+    return (
+        <div className="mt-2 pl-1 sm:pl-2">
+            <TextInput
+                className="w-full max-w-md"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                placeholder={placeholder}
+            />
+            {error ? <InputError message={error} className="mt-1" /> : null}
+        </div>
+    );
+}
+
+function ConditionalBlock({ show, children }: { show: boolean; children: React.ReactNode }) {
+    if (!show) {
+        return null;
+    }
+
+    return <div className="space-y-4 sm:space-y-5">{children}</div>;
+}
+
+function NovaSementeQuestions({
+    data,
+    errors,
+    safeOptions,
+    patchData,
+    setData,
+}: {
+    data: MissionFormData;
+    errors: Partial<Record<keyof MissionFormData, string>>;
+    safeOptions: {
+        first_contact_via: string[];
+        wants_bible_study_partner: string[];
+    };
+    patchData: (fields: Partial<MissionFormData>) => void;
+    setData: MissionFormReturn['setData'];
+}) {
+    return (
+        <div className="space-y-4 sm:space-y-5">
+            <Question number={14} label="É primeira vez na nova semente?" error={errors.first_time_nova_semente}>
+                <YesNoRadio
+                    name="first_time_nova_semente"
+                    value={data.first_time_nova_semente}
+                    onChange={(v) => setData('first_time_nova_semente', v)}
+                />
+            </Question>
+            <Question
+                number={15}
+                label="Seu primeiro convite/contato com a comunidade foi por meio de:"
+                error={errors.first_contact_via}
+            >
+                <RadioList
+                    name="first_contact_via"
+                    options={safeOptions.first_contact_via}
+                    value={data.first_contact_via}
+                    onChange={(v) => {
+                        patchData({
+                            first_contact_via: v,
+                            first_contact_via_other: v === 'Outra' ? data.first_contact_via_other : '',
+                        });
+                    }}
+                />
+                <OtherField
+                    visible={data.first_contact_via === 'Outra'}
+                    value={data.first_contact_via_other}
+                    onChange={(v) => setData('first_contact_via_other', v)}
+                    error={errors.first_contact_via_other}
+                />
+            </Question>
+            <Question number={16} label="Gostaria de ter alguém para estudar a bíblia com você?" error={errors.wants_bible_study_partner}>
+                <RadioList
+                    name="wants_bible_study_partner"
+                    options={safeOptions.wants_bible_study_partner}
+                    value={data.wants_bible_study_partner}
+                    onChange={(v) => setData('wants_bible_study_partner', v)}
+                />
+            </Question>
+            <div className="rounded-2xl border border-zinc-200/90 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-900/40 sm:p-5">
+                <label className="flex cursor-pointer items-start gap-3">
+                    <Checkbox checked={data.lgpd_consent} onChange={(e) => setData('lgpd_consent', e.target.checked)} />
+                    <span className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+                        Autorizo o uso dos meus dados conforme a LGPD, exclusivamente para o acompanhamento missionário da
+                        igreja. <span className="text-red-600 dark:text-red-400">*</span>
+                    </span>
+                </label>
+                <InputError message={errors.lgpd_consent} className="mt-2" />
+            </div>
+        </div>
+    );
+}
+
+export default function MissionFormBody({ form, options, onSubmit, processing, formRevision }: Props) {
+    const { data, setData, errors } = form;
+    const [page, setPage] = useState(() => {
+        if (hasNovaSementeErrors(errors)) {
+            return LAST_PAGE_INDEX;
+        }
+        if (hasPersonalDataErrors(errors)) {
+            return 0;
+        }
+        return 0;
+    });
+    const pageTopRef = useRef<HTMLDivElement>(null);
+    const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
+    const [photoPreparing, setPhotoPreparing] = useState(false);
+    const [photoClientError, setPhotoClientError] = useState<string | null>(null);
+    const [photoMissingOnAdvance, setPhotoMissingOnAdvance] = useState(false);
+
+    const safeOptions = useMemo(
+        () => ({
+            professions: options.professions ?? [],
+            beliefs: options.beliefs ?? [],
+            religions: options.religions ?? [],
+            seeks_in_community: options.seeks_in_community ?? [],
+            studied_bible: options.studied_bible ?? [],
+            first_contact_via: options.first_contact_via ?? [],
+            wants_bible_study_partner: options.wants_bible_study_partner ?? [],
+        }),
+        [options],
+    );
+
+    const progress = useMemo(() => ((page + 1) / PAGE_TITLES.length) * 100, [page]);
+
+    const patchData = useCallback(
+        (fields: Partial<MissionFormData>) => {
+            (Object.entries(fields) as [keyof MissionFormData, MissionFormData[keyof MissionFormData]][]).forEach(
+                ([key, value]) => {
+                    setData(key, value);
+                },
+            );
+        },
+        [setData],
+    );
+
+    const goToPage = useCallback(
+        (next: number | ((current: number) => number)) => {
+            setPage((current) => {
+                const target = typeof next === 'function' ? next(current) : next;
+                if (target > current && current === 0 && !data.photo) {
+                    setPhotoMissingOnAdvance(true);
+                    return current;
+                }
+                setPhotoMissingOnAdvance(false);
+                return target;
+            });
+        },
+        [data.photo],
+    );
+
+    const handlePhotoSelect = useCallback(
+        (file: File) => {
+            setPhotoClientError(null);
+            setPhotoMissingOnAdvance(false);
+            setData('photo', file);
+            setPhotoPreviewUrl((prev) => {
+                if (prev?.startsWith('blob:')) {
+                    URL.revokeObjectURL(prev);
+                }
+                return URL.createObjectURL(file);
+            });
+        },
+        [setData],
+    );
+
+    const handlePhotoClear = useCallback(() => {
+        setPhotoClientError(null);
+        setData('photo', null);
+        setPhotoPreviewUrl((prev) => {
+            if (prev?.startsWith('blob:')) {
+                URL.revokeObjectURL(prev);
+            }
+            return null;
+        });
+    }, [setData]);
+
+    const handlePhotoFileChosen = useCallback(
+        async (raw: File | null) => {
+            setPhotoClientError(null);
+            if (!raw) {
+                handlePhotoClear();
+                return;
+            }
+            setPhotoPreparing(true);
+            try {
+                const prepared = await compressImageForUpload(raw);
+                handlePhotoSelect(prepared);
+            } catch (err) {
+                handlePhotoClear();
+                setPhotoClientError(
+                    err instanceof ImageCompressError
+                        ? err.message
+                        : 'Não foi possível preparar a imagem para envio.',
+                );
+            } finally {
+                setPhotoPreparing(false);
+            }
+        },
+        [handlePhotoClear, handlePhotoSelect],
+    );
+
+    useEffect(() => {
+        return () => {
+            if (photoPreviewUrl?.startsWith('blob:')) {
+                URL.revokeObjectURL(photoPreviewUrl);
+            }
+        };
+    }, [photoPreviewUrl]);
+
+    useEffect(() => {
+        const id = window.requestAnimationFrame(() => {
+            if (page === LAST_PAGE_INDEX) {
+                document.getElementById('mission-q-14')?.scrollIntoView({ block: 'start', behavior: 'auto' });
+                return;
+            }
+            pageTopRef.current?.scrollIntoView({ block: 'start', behavior: 'auto' });
+        });
+        return () => window.cancelAnimationFrame(id);
+    }, [page]);
+
+    useEffect(() => {
+        if (hasNovaSementeErrors(errors)) {
+            setPage(LAST_PAGE_INDEX);
+            return;
+        }
+        if (hasPersonalDataErrors(errors)) {
+            setPage(0);
+        }
+    }, [errors]);
+
+    const showBeliefDetail = data.has_belief === true;
+    const showReligionDetail = data.participates_religion === true;
+
+    const handleFormSubmit: FormEventHandler = (event) => {
+        if (page !== LAST_PAGE_INDEX) {
+            event.preventDefault();
+            return;
+        }
+        onSubmit(event);
     };
 
     return (
-        <form onSubmit={onSubmit} className="space-y-6">
-            <div>
-                <div className="mb-2 flex justify-between text-xs text-zinc-500">
+        <form onSubmit={handleFormSubmit} className="pb-24 sm:pb-12">
+            <div ref={pageTopRef} className="mb-6 scroll-mt-28 space-y-2 sm:scroll-mt-32">
+                <div className="flex items-center justify-between text-xs font-medium text-zinc-500 dark:text-zinc-400">
                     <span>
-                        Etapa {step + 1}/{STEP_TITLES.length}
+                        Página {page + 1} de {PAGE_TITLES.length}
                     </span>
-                    <span>{STEP_TITLES[step]}</span>
+                    <span>{PAGE_TITLES[page]}</span>
                 </div>
                 <ProgressBar value={progress} />
+                {formRevision != null ? (
+                    <p className="text-[10px] text-zinc-400 dark:text-zinc-500">Formulário v{formRevision}</p>
+                ) : null}
             </div>
 
-            {step === 0 && (
-                <div className="space-y-4">
-                    <div>
-                        <InputLabel value="Foto (opcional)" />
-                        <div className="mt-2 flex items-center gap-4">
-                            <PhotoPreview photoPreview={photoPreview} />
-                            <input type="file" accept="image/*" onChange={(e) => onPhotoChange(e.target.files?.[0] ?? null)} />
-                        </div>
-                    </div>
-                    <Field label="Nome completo *" error={errors.full_name}>
-                        <TextInput className="w-full" value={data.full_name} onChange={(e) => setData('full_name', e.target.value)} />
-                    </Field>
-                    <Field label="E-mail" error={errors.email}>
-                        <TextInput type="email" className="w-full" value={data.email} onChange={(e) => setData('email', e.target.value)} />
-                    </Field>
-                    <Field label="Data de nascimento *" error={errors.birth_date}>
-                        <TextInput type="date" className="w-full" value={data.birth_date} onChange={(e) => setData('birth_date', e.target.value)} />
-                    </Field>
-                    <Field label="Telefone *" error={errors.phone}>
-                        <TextInput className="w-full" value={data.phone} onChange={(e) => setData('phone', e.target.value)} />
-                    </Field>
-                    <Field label="Endereço *" error={errors.full_address}>
-                        <Textarea className="w-full" rows={2} value={data.full_address} onChange={(e) => setData('full_address', e.target.value)} />
-                    </Field>
-                    <Field label="Profissão *" error={errors.profession}>
-                        <SelectInput className="w-full" value={data.profession} onChange={(e) => setData('profession', e.target.value)}>
-                            <option value="">Selecione</option>
-                            {options.professions.map((p) => (
-                                <option key={p} value={p}>
-                                    {p}
-                                </option>
-                            ))}
-                            <option value="Outro">Outro</option>
-                        </SelectInput>
-                    </Field>
-                </div>
-            )}
+            <div className="space-y-4 sm:space-y-5">
+                {page === 0 && (
+                    <>
+                        <MissionPhotoField
+                            previewUrl={photoPreviewUrl}
+                            photoPreparing={photoPreparing}
+                            clientError={photoClientError}
+                            serverError={errors.photo}
+                            missingOnAdvance={photoMissingOnAdvance}
+                            onFileChosen={handlePhotoFileChosen}
+                            onClear={handlePhotoClear}
+                        />
+                        <Question number={1} label="Nome completo" error={errors.full_name}>
+                            <TextInput
+                                className="w-full"
+                                value={data.full_name}
+                                onChange={(e) => setData('full_name', e.target.value)}
+                                autoComplete="name"
+                            />
+                        </Question>
+                        <Question number={2} label="Data do nascimento" error={errors.birth_date}>
+                            <TextInput
+                                type="date"
+                                className="w-full max-w-xs"
+                                value={data.birth_date}
+                                onChange={(e) => setData('birth_date', e.target.value)}
+                            />
+                        </Question>
+                        <Question number={3} label="Número de telefone" error={errors.phone}>
+                            <TextInput
+                                type="tel"
+                                className="w-full"
+                                value={data.phone}
+                                onChange={(e) => setData('phone', e.target.value)}
+                                autoComplete="tel"
+                                inputMode="tel"
+                            />
+                        </Question>
+                        <Question number={4} label="Endereço completo" error={errors.full_address}>
+                            <Textarea
+                                className="w-full"
+                                rows={3}
+                                value={data.full_address}
+                                onChange={(e) => setData('full_address', e.target.value)}
+                            />
+                        </Question>
+                    </>
+                )}
 
-            {step === 1 && (
-                <div className="space-y-4">
-                    <YesNo label="Tem alguma crença? *" value={data.has_belief} onChange={(v) => setData('has_belief', v)} error={errors.has_belief} />
-                    {data.has_belief && (
-                        <Field label="Qual crença?" error={errors.belief_which}>
-                            <SelectInput className="w-full" value={data.belief_which} onChange={(e) => setData('belief_which', e.target.value)}>
-                                <option value="">Selecione</option>
-                                {options.beliefs.map((b) => (
-                                    <option key={b} value={b}>
-                                        {b}
-                                    </option>
-                                ))}
-                            </SelectInput>
-                        </Field>
-                    )}
-                    <YesNo label="Participa de religião? *" value={data.participates_religion} onChange={(v) => setData('participates_religion', v)} error={errors.participates_religion} />
-                    {data.participates_religion && (
-                        <Field label="Qual?" error={errors.religion_which}>
-                            <SelectInput className="w-full" value={data.religion_which} onChange={(e) => setData('religion_which', e.target.value)}>
-                                <option value="">Selecione</option>
-                                {options.religions.map((r) => (
-                                    <option key={r} value={r}>
-                                        {r}
-                                    </option>
-                                ))}
-                            </SelectInput>
-                        </Field>
-                    )}
-                    <YesNo label="Já foi batizado? *" value={data.baptized} onChange={(v) => setData('baptized', v)} error={errors.baptized} />
-                    <div>
-                        <InputLabel value="O que busca na comunidade? *" />
-                        <div className="mt-2 space-y-2">
-                            {options.seeks_in_community.map((item) => (
-                                <label key={item} className="flex gap-2 text-sm">
-                                    <Checkbox checked={data.seeks_in_community.includes(item)} onChange={() => setData('seeks_in_community', toggleInList(data.seeks_in_community, item))} />
-                                    {item}
-                                </label>
-                            ))}
-                        </div>
-                        <InputError message={errors.seeks_in_community} />
-                    </div>
-                    <Field label="Já estudou a Bíblia? *" error={errors.studied_bible}>
-                        <SelectInput className="w-full" value={data.studied_bible} onChange={(e) => setData('studied_bible', e.target.value)}>
-                            <option value="">Selecione</option>
-                            {options.studied_bible.map((s) => (
-                                <option key={s} value={s}>
-                                    {s}
-                                </option>
-                            ))}
-                        </SelectInput>
-                    </Field>
-                    <YesNo label="Estudo estruturado? *" value={data.studied_bible_structured} onChange={(v) => setData('studied_bible_structured', v)} error={errors.studied_bible_structured} />
-                </div>
-            )}
+                {page === 1 && (
+                    <Question number={5} label="Qual a sua profissão?" error={errors.profession}>
+                        <RadioList
+                            name="profession"
+                            options={safeOptions.professions}
+                            value={data.profession}
+                            onChange={(v) => setData('profession', v)}
+                        />
+                    </Question>
+                )}
 
-            {step === 2 && (
-                <div className="space-y-4">
-                    <YesNo label="Primeira vez na Nova Semente? *" value={data.first_time_nova_semente} onChange={(v) => setData('first_time_nova_semente', v)} error={errors.first_time_nova_semente} />
-                    {data.first_time_nova_semente === false && (
-                        <Field label="Há quanto tempo?" error={errors.if_not_how_long}>
-                            <SelectInput className="w-full" value={data.if_not_how_long} onChange={(e) => setData('if_not_how_long', e.target.value)}>
-                                <option value="">Selecione</option>
-                                {options.duration_buckets.map((d) => (
-                                    <option key={d} value={d}>
-                                        {d}
-                                    </option>
-                                ))}
-                            </SelectInput>
-                        </Field>
-                    )}
-                    <Field label="Primeiro contato *" error={errors.first_contact_via}>
-                        <SelectInput className="w-full" value={data.first_contact_via} onChange={(e) => setData('first_contact_via', e.target.value)}>
-                            <option value="">Selecione</option>
-                            {options.first_contact_via.map((c) => (
-                                <option key={c} value={c}>
-                                    {c}
-                                </option>
-                            ))}
-                        </SelectInput>
-                    </Field>
-                    <Field label="Estudar Bíblia com alguém? *" error={errors.wants_bible_study_partner}>
-                        <SelectInput className="w-full" value={data.wants_bible_study_partner} onChange={(e) => setData('wants_bible_study_partner', e.target.value)}>
-                            <option value="">Selecione</option>
-                            {options.wants_bible_study_partner.map((w) => (
-                                <option key={w} value={w}>
-                                    {w}
-                                </option>
-                            ))}
-                        </SelectInput>
-                    </Field>
-                    <Field label="Tempo no Insight *" error={errors.insight_duration}>
-                        <SelectInput className="w-full" value={data.insight_duration} onChange={(e) => setData('insight_duration', e.target.value)}>
-                            <option value="">Selecione</option>
-                            {options.duration_buckets.map((d) => (
-                                <option key={d} value={d}>
-                                    {d}
-                                </option>
-                            ))}
-                        </SelectInput>
-                    </Field>
-                    <ParticipatedGroups data={data} setData={setData} options={options} errors={errors} />
-                    <Field label="Engajamento *" error={errors.engagement_level}>
-                        <SelectInput className="w-full" value={data.engagement_level} onChange={(e) => setData('engagement_level', e.target.value)}>
-                            <option value="">Selecione</option>
-                            {options.engagement_levels.map((e) => (
-                                <option key={e} value={e}>
-                                    {e}
-                                </option>
-                            ))}
-                        </SelectInput>
-                    </Field>
-                    <Field label="Mais próximo de Deus *" error={errors.closer_to_god_text}>
-                        <Textarea className="w-full" rows={3} value={data.closer_to_god_text} onChange={(e) => setData('closer_to_god_text', e.target.value)} />
-                    </Field>
-                    <MatrixRow label="Pessoas" value={data.belonging_people} levels={options.belonging_levels} onChange={(v) => setData('belonging_people', v)} error={errors.belonging_people} />
-                    <MatrixRow label="Localização" value={data.belonging_location} levels={options.belonging_levels} onChange={(v) => setData('belonging_location', v)} error={errors.belonging_location} />
-                    <MatrixRow label="Disponibilidade" value={data.belonging_availability} levels={options.belonging_levels} onChange={(v) => setData('belonging_availability', v)} error={errors.belonging_availability} />
-                    <MatrixRow label="Espiritualidade" value={data.belonging_spirituality} levels={options.belonging_levels} onChange={(v) => setData('belonging_spirituality', v)} error={errors.belonging_spirituality} />
-                </div>
-            )}
+                {page === 2 && (
+                    <>
+                        <Question number={6} label="Você tem alguma crença?" error={errors.has_belief}>
+                            <YesNoRadio
+                                name="has_belief"
+                                value={data.has_belief}
+                                onChange={(v) => {
+                                    if (v) {
+                                        patchData({ has_belief: true });
+                                    } else {
+                                        patchData({
+                                            has_belief: false,
+                                            belief_which: '',
+                                            belief_which_other: '',
+                                        });
+                                    }
+                                }}
+                            />
+                        </Question>
+                        <ConditionalBlock show={showBeliefDetail}>
+                            <Question number={7} label="Se sim, qual?" error={errors.belief_which}>
+                                <RadioList
+                                    name="belief_which"
+                                    options={safeOptions.beliefs}
+                                    value={data.belief_which}
+                                    onChange={(v) => {
+                                        patchData({
+                                            belief_which: v,
+                                            belief_which_other: v === 'Outra' ? data.belief_which_other : '',
+                                        });
+                                    }}
+                                />
+                                <OtherField
+                                    visible={data.belief_which === 'Outra'}
+                                    value={data.belief_which_other}
+                                    onChange={(v) => setData('belief_which_other', v)}
+                                    error={errors.belief_which_other}
+                                />
+                            </Question>
+                        </ConditionalBlock>
+                        <Question number={8} label="Você é participante de uma religião atualmente?" error={errors.participates_religion}>
+                            <YesNoRadio
+                                name="participates_religion"
+                                value={data.participates_religion}
+                                onChange={(v) => {
+                                    if (v) {
+                                        patchData({ participates_religion: true });
+                                    } else {
+                                        patchData({
+                                            participates_religion: false,
+                                            religion_which: '',
+                                            religion_which_other: '',
+                                        });
+                                    }
+                                }}
+                            />
+                        </Question>
+                    </>
+                )}
 
-            {step === 3 && (
-                <div className="space-y-4">
-                    <Field label="Ações sociais? *" error={errors.social_actions_interest}>
-                        <SelectInput className="w-full" value={data.social_actions_interest} onChange={(e) => setData('social_actions_interest', e.target.value)}>
-                            <option value="">Selecione</option>
-                            {options.social_actions_interest.map((s) => (
-                                <option key={s} value={s}>
-                                    {s}
-                                </option>
-                            ))}
-                        </SelectInput>
-                    </Field>
-                    <ProfileTypes data={data} setData={setData} options={options} errors={errors} />
-                    <Field label="Ministério *" error={errors.ministry_preference}>
-                        <SelectInput className="w-full" value={data.ministry_preference} onChange={(e) => setData('ministry_preference', e.target.value)}>
-                            <option value="">Selecione</option>
-                            {options.ministry_preferences.map((m) => (
-                                <option key={m} value={m}>
-                                    {m}
-                                </option>
-                            ))}
-                        </SelectInput>
-                    </Field>
-                    <Field label="Tipo ação social *" error={errors.social_action_type}>
-                        <SelectInput className="w-full" value={data.social_action_type} onChange={(e) => setData('social_action_type', e.target.value)}>
-                            <option value="">Selecione</option>
-                            {options.social_action_types.map((s) => (
-                                <option key={s} value={s}>
-                                    {s}
-                                </option>
-                            ))}
-                        </SelectInput>
-                    </Field>
-                    <Field label="Disponibilidade semana *" error={errors.weekday_availability}>
-                        <SelectInput className="w-full" value={data.weekday_availability} onChange={(e) => setData('weekday_availability', e.target.value)}>
-                            <option value="">Selecione</option>
-                            {options.weekday_availability.map((w) => (
-                                <option key={w} value={w}>
-                                    {w}
-                                </option>
-                            ))}
-                        </SelectInput>
-                    </Field>
-                    <Field label="Tempo/semana *" error={errors.time_per_week}>
-                        <SelectInput className="w-full" value={data.time_per_week} onChange={(e) => setData('time_per_week', e.target.value)}>
-                            <option value="">Selecione</option>
-                            {options.time_per_week.map((t) => (
-                                <option key={t} value={t}>
-                                    {t}
-                                </option>
-                            ))}
-                        </SelectInput>
-                    </Field>
-                    <Field label="Presencial/online *" error={errors.work_preference}>
-                        <SelectInput className="w-full" value={data.work_preference} onChange={(e) => setData('work_preference', e.target.value)}>
-                            <option value="">Selecione</option>
-                            {options.work_preferences.map((w) => (
-                                <option key={w} value={w}>
-                                    {w}
-                                </option>
-                            ))}
-                        </SelectInput>
-                    </Field>
-                </div>
-            )}
+                {page === 3 && (
+                    <>
+                        <ConditionalBlock show={showReligionDetail}>
+                            <Question number={9} label="Se sim, qual?" error={errors.religion_which}>
+                                <RadioList
+                                    name="religion_which"
+                                    options={safeOptions.religions}
+                                    value={data.religion_which}
+                                    onChange={(v) => {
+                                        patchData({
+                                            religion_which: v,
+                                            religion_which_other: v === 'Outra' ? data.religion_which_other : '',
+                                        });
+                                    }}
+                                />
+                                <OtherField
+                                    visible={data.religion_which === 'Outra'}
+                                    value={data.religion_which_other}
+                                    onChange={(v) => setData('religion_which_other', v)}
+                                    error={errors.religion_which_other}
+                                />
+                            </Question>
+                        </ConditionalBlock>
+                        <Question number={10} label="Você já foi batizado?" error={errors.baptized}>
+                            <YesNoRadio name="baptized" value={data.baptized} onChange={(v) => setData('baptized', v)} />
+                        </Question>
+                    </>
+                )}
 
-            {step === 4 && (
-                <StepContact data={data} setData={setData} options={options} errors={errors} />
-            )}
+                {page === COMMUNITY_PAGE_INDEX && (
+                    <>
+                        <Question number={11} label="O que você busca em uma comunidade religiosa?" error={errors.seeks_in_community}>
+                            <RadioList
+                                name="seeks_in_community"
+                                options={safeOptions.seeks_in_community}
+                                value={data.seeks_in_community}
+                                onChange={(v) => {
+                                    patchData({
+                                        seeks_in_community: v,
+                                        seeks_in_community_other: v === 'Outra' ? data.seeks_in_community_other : '',
+                                    });
+                                }}
+                            />
+                            <OtherField
+                                visible={data.seeks_in_community === 'Outra'}
+                                value={data.seeks_in_community_other}
+                                onChange={(v) => setData('seeks_in_community_other', v)}
+                                error={errors.seeks_in_community_other}
+                            />
+                        </Question>
+                        <Question number={12} label="Já estudou a bíblia?" error={errors.studied_bible}>
+                            <RadioList
+                                name="studied_bible"
+                                options={safeOptions.studied_bible}
+                                value={data.studied_bible}
+                                onChange={(v) => setData('studied_bible', v)}
+                            />
+                        </Question>
+                        <Question
+                            number={13}
+                            label="Já estudou a bíblia de forma estruturada (curso, em grupo, ou plano de estudo)"
+                            error={errors.studied_bible_structured}
+                        >
+                            <YesNoRadio
+                                name="studied_bible_structured"
+                                value={data.studied_bible_structured}
+                                onChange={(v) => setData('studied_bible_structured', v)}
+                            />
+                        </Question>
+                    </>
+                )}
 
-            <FormNav step={step} setStep={setStep} processing={processing} total={STEP_TITLES.length} />
+                {page === LAST_PAGE_INDEX && (
+                    <NovaSementeQuestions
+                        data={data}
+                        errors={errors}
+                        safeOptions={safeOptions}
+                        patchData={patchData}
+                        setData={setData}
+                    />
+                )}
+            </div>
+
+            <FormNav page={page} goToPage={goToPage} processing={processing} total={PAGE_TITLES.length} />
         </form>
     );
 }
 
-function PhotoPreview({ photoPreview }: { photoPreview: string | null }) {
-    return (
-        <div className="h-20 w-20 overflow-hidden rounded-full bg-zinc-100">
-            {photoPreview ? <img src={photoPreview} alt="" className="h-full w-full object-cover" /> : null}
-        </div>
-    );
-}
-
-function ParticipatedGroups({
-    data,
-    setData,
-    options,
-    errors,
-}: {
-    data: MissionFormData;
-    setData: MissionFormReturn['setData'];
-    options: MissionOptions;
-    errors: Partial<Record<string, string>>;
-}) {
-    return (
-        <div>
-            <InputLabel value="Participou de grupos? *" />
-            <div className="mt-2 space-y-2">
-                {options.participated_groups.map((item) => (
-                    <label key={item} className="flex gap-2 text-sm">
-                        <Checkbox checked={data.participated_groups.includes(item)} onChange={() => setData('participated_groups', toggleInList(data.participated_groups, item))} />
-                        {item}
-                    </label>
-                ))}
-            </div>
-            <InputError message={errors.participated_groups} />
-        </div>
-    );
-}
-
-function ProfileTypes({
-    data,
-    setData,
-    options,
-    errors,
-}: {
-    data: MissionFormData;
-    setData: MissionFormReturn['setData'];
-    options: MissionOptions;
-    errors: Partial<Record<string, string>>;
-}) {
-    return (
-        <div>
-            <InputLabel value="Perfil *" />
-            <div className="mt-2 space-y-2">
-                {options.profile_types.map((pt) => (
-                    <button
-                        key={pt}
-                        type="button"
-                        onClick={() => setData('profile_type', pt)}
-                        className={['w-full rounded-xl border px-4 py-3 text-left text-sm', data.profile_type === pt ? 'border-emerald-400 bg-emerald-50' : 'border-zinc-200'].join(' ')}
-                    >
-                        <span className="font-semibold">{pt}</span>
-                        {PROFILE_HINTS[pt] ? <p className="mt-1 text-xs text-zinc-500">{PROFILE_HINTS[pt]}</p> : null}
-                    </button>
-                ))}
-            </div>
-            <InputError message={errors.profile_type} />
-        </div>
-    );
-}
-
-function StepContact({
-    data,
-    setData,
-    options,
-    errors,
-}: {
-    data: MissionFormData;
-    setData: MissionFormReturn['setData'];
-    options: MissionOptions;
-    errors: Partial<Record<string, string>>;
-}) {
-    return (
-        <div className="space-y-4">
-            <YesNo label="Podemos contatar na semana? *" value={data.can_contact_week} onChange={(v) => setData('can_contact_week', v)} error={errors.can_contact_week} />
-            {data.can_contact_week && (
-                <>
-                    <Field label="Período">
-                        <SelectInput className="w-full" value={data.contact_period} onChange={(e) => setData('contact_period', e.target.value)}>
-                            <option value="">Selecione</option>
-                            {options.contact_periods.map((p) => (
-                                <option key={p} value={p}>
-                                    {p}
-                                </option>
-                            ))}
-                        </SelectInput>
-                    </Field>
-                    <Field label="Formato">
-                        <SelectInput className="w-full" value={data.contact_format} onChange={(e) => setData('contact_format', e.target.value)}>
-                            <option value="">Selecione</option>
-                            {options.contact_formats.map((f) => (
-                                <option key={f} value={f}>
-                                    {f}
-                                </option>
-                            ))}
-                        </SelectInput>
-                    </Field>
-                </>
-            )}
-            <div>
-                <InputLabel value="NPS (0–10) *" />
-                <div className="mt-2 flex flex-wrap gap-1">
-                    {Array.from({ length: 11 }, (_, i) => (
-                        <button
-                            key={i}
-                            type="button"
-                            onClick={() => setData('nps_score', i)}
-                            className={['h-9 w-9 rounded-lg border text-sm', data.nps_score === i ? 'bg-emerald-500 text-white' : ''].join(' ')}
-                        >
-                            {i}
-                        </button>
-                    ))}
-                </div>
-                <InputError message={errors.nps_score} />
-            </div>
-            <label className="flex gap-3 rounded-xl border p-4">
-                <Checkbox checked={data.lgpd_consent} onChange={(e) => setData('lgpd_consent', e.target.checked)} />
-                <span className="text-sm">Autorizo o uso dos meus dados conforme a LGPD. *</span>
-            </label>
-            <InputError message={errors.lgpd_consent} />
-        </div>
-    );
-}
-
 function FormNav({
-    step,
-    setStep,
+    page,
+    goToPage,
     processing,
     total,
 }: {
-    step: number;
-    setStep: (fn: (s: number) => number) => void;
+    page: number;
+    goToPage: (next: number | ((current: number) => number)) => void;
     processing: boolean;
     total: number;
 }) {
+    const showAdvance = page < total - 1;
+
+    const handleAdvance = (event: MouseEvent<HTMLButtonElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const nextPage = page + 1;
+        window.requestAnimationFrame(() => {
+            goToPage(nextPage);
+        });
+    };
+
     return (
-        <div className="flex gap-3">
-            {step > 0 ? (
-                <SecondaryButton type="button" className="flex-1" onClick={() => setStep((s) => s - 1)}>
-                    Voltar
-                </SecondaryButton>
-            ) : (
-                <div className="flex-1" />
-            )}
-            {step < total - 1 ? (
-                <PrimaryButton type="button" className="flex-1" onClick={() => setStep((s) => s + 1)}>
-                    Próximo
+        <div className="mt-8 border-t border-zinc-200/90 pt-5 dark:border-zinc-800">
+            <div className="flex gap-3">
+                {page > 0 ? (
+                    <SecondaryButton type="button" className="min-w-[7rem] flex-1 sm:flex-none" onClick={() => goToPage((p) => p - 1)}>
+                        Voltar
+                    </SecondaryButton>
+                ) : (
+                    <div className="hidden flex-1 sm:block" />
+                )}
+                <PrimaryButton
+                    type="button"
+                    className={[
+                        'flex-1 sm:min-w-[7rem] sm:flex-none',
+                        showAdvance ? '' : 'pointer-events-none invisible absolute w-0 overflow-hidden p-0 opacity-0',
+                    ].join(' ')}
+                    onClick={handleAdvance}
+                    tabIndex={showAdvance ? 0 : -1}
+                    aria-hidden={!showAdvance}
+                >
+                    Avançar
                 </PrimaryButton>
-            ) : (
-                <PrimaryButton type="submit" className="flex-1" disabled={processing}>
+                <PrimaryButton
+                    type="submit"
+                    className={[
+                        'flex-1 sm:min-w-[7rem] sm:flex-none',
+                        showAdvance ? 'pointer-events-none invisible absolute w-0 overflow-hidden p-0 opacity-0' : '',
+                    ].join(' ')}
+                    disabled={processing || showAdvance}
+                    tabIndex={showAdvance ? -1 : 0}
+                    aria-hidden={showAdvance}
+                >
                     {processing ? 'Enviando…' : 'Enviar'}
                 </PrimaryButton>
-            )}
+            </div>
         </div>
     );
 }

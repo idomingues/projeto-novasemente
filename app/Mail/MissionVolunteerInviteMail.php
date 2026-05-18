@@ -15,6 +15,7 @@ class MissionVolunteerInviteMail extends Mailable
 
     public function __construct(
         public MissionInvitation $invitation,
+        public string $formUrl,
     ) {}
 
     public function envelope(): Envelope
@@ -22,7 +23,7 @@ class MissionVolunteerInviteMail extends Mailable
         $church = $this->invitation->volunteer->church?->name ?? 'Nova Semente';
 
         return new Envelope(
-            subject: "Insight e Inflexão — {$church}",
+            subject: "Missão — {$church}",
         );
     }
 
@@ -36,7 +37,7 @@ class MissionVolunteerInviteMail extends Mailable
             with: [
                 'volunteerName' => $volunteer->full_name,
                 'churchName' => $churchName,
-                'formUrl' => route('mission.form', [], true),
+                'formUrl' => $this->formUrl,
             ],
         );
     }

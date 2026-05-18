@@ -6,8 +6,10 @@ use App\Models\Church;
 use App\Models\ChurchSolicitation;
 use App\Models\ChurchSolicitationMessage;
 use App\Models\User;
+use App\Services\CommunicationRequestAttachmentService;
 use App\Services\SolicitationChatNotifier;
 use App\Support\ChurchSolicitationModalPayloadPresenter;
+use App\Support\CommunicationRequestOptions;
 use App\Support\SolicitationAssignees;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -19,21 +21,9 @@ use Inertia\Response;
 
 class CommunicationRequestController extends Controller
 {
-    private const DEMAND_TYPE_LABELS = [
-        'design' => 'Criação de artes',
-        'posts_ads' => 'Postagens e anúncios',
-        'programming_tasks' => 'Tarefas na programação',
-        'team_scheduling' => 'Agendamento de equipe',
-        'ns_structure' => 'Estrutura da NS',
-        'other' => 'Outros',
-    ];
-
-    private const PRIORITY_LABELS = [
-        'low' => 'Baixa',
-        'medium' => 'Média',
-        'high' => 'Alta',
-        'urgent' => 'Urgente',
-    ];
+    public function __construct(
+        private readonly CommunicationRequestAttachmentService $attachments,
+    ) {}
 
     private function churchId(Request $request): ?int
     {
@@ -73,48 +63,14 @@ class CommunicationRequestController extends Controller
         abort_unless((int) $solicitation->church_id === $churchId, 404);
     }
 
-    private function demandTypeLabel(string $value): string
-    {
-        return self::DEMAND_TYPE_LABELS[$value] ?? $value;
-    }
-
-    private function priorityLabel(string $value): string
-    {
-        return self::PRIORITY_LABELS[$value] ?? $value;
-    }
-
     /**
-     * @return array{
-     *   demand_type: string,
-     *   priority: string,
-     *   preferred_date: string|null,
-     *   message: string,
-     *   subject: string
-     * }
+     * @return array<string, mixed>
      */
     private function validatedPayload(Request $request): array
     {
-        $valid = $request->validate([
-            'demand_type' => ['required', 'in:'.implode(',', array_keys(self::DEMAND_TYPE_LABELS))],
-            'priority' => ['required', 'in:'.implode(',', array_keys(self::PRIORITY_LABELS))],
-            'preferred_date' => ['nullable', 'date'],
-            'message' => ['required', 'string', 'max:5000'],
-        ]);
+        $valid = $request->validate(CommunicationRequestOptions::validationRules());
 
-        $demandType = (string) $valid['demand_type'];
-        $priority = (string) $valid['priority'];
-        $message = trim((string) $valid['message']);
-        $subject = 'Comunicação — '.$this->demandTypeLabel($demandType);
-
-        return [
-            'demand_type' => $demandType,
-            'priority' => $priority,
-            'preferred_date' => isset($valid['preferred_date']) && $valid['preferred_date'] !== ''
-                ? (string) $valid['preferred_date']
-                : null,
-            'message' => $message,
-            'subject' => $subject,
-        ];
+        return CommunicationRequestOptions::validatedPayload($valid);
     }
 
     public function index(Request $request): Response
@@ -165,7 +121,7 @@ class CommunicationRequestController extends Controller
             ->get(['id', 'subject', 'message', 'status', 'created_at', 'preferred_date', 'meta', 'user_id'])
             ->map(function (ChurchSolicitation $s) use ($mode, $user) {
                 $meta = $s->meta ?? [];
-                $demandType = (string) ($meta['communication_demand_type'] ?? 'other');
+                $demandType = (string) ($meta['communication_demand_type'] ?? '');
                 $priority = (string) ($meta['communication_priority'] ?? 'medium');
                 $canEdit = $mode === 'staff'
                     ? $user->can('manageCommunicationRequestAsStaff', $s)
@@ -182,10 +138,12 @@ class CommunicationRequestController extends Controller
                     'status_label' => MobileChurchSolicitationController::statusLabel((string) $s->status),
                     'created_at' => $s->created_at?->toIso8601String(),
                     'preferred_date' => $s->preferred_date?->toDateString(),
+                    'event_date' => $meta['communication_event_date'] ?? null,
+                    'ministry_name' => $meta['communication_ministry_name'] ?? null,
                     'demand_type' => $demandType,
-                    'demand_type_label' => $this->demandTypeLabel($demandType),
+                    'demand_type_label' => CommunicationRequestOptions::demandTypeLabel($demandType),
                     'priority' => $priority,
-                    'priority_label' => $this->priorityLabel($priority),
+                    'priority_label' => CommunicationRequestOptions::priorityLabel($priority),
                     'requester_name' => $s->user?->name,
                     'can_edit' => $canEdit,
                     'can_delete' => $canDelete,
@@ -200,14 +158,11 @@ class CommunicationRequestController extends Controller
             'mode' => $mode,
             'rows' => $rows,
             'storeUrl' => route('communication-requests.store'),
-            'demandTypeOptions' => collect(self::DEMAND_TYPE_LABELS)
-                ->map(fn (string $label, string $value) => ['value' => $value, 'label' => $label])
-                ->values()
-                ->all(),
-            'priorityOptions' => collect(self::PRIORITY_LABELS)
-                ->map(fn (string $label, string $value) => ['value' => $value, 'label' => $label])
-                ->values()
-                ->all(),
+            'demandTypeOptions' => CommunicationRequestOptions::toSelectOptions(CommunicationRequestOptions::DEMAND_TYPES),
+            'priorityOptions' => CommunicationRequestOptions::toSelectOptions(CommunicationRequestOptions::PRIORITIES),
+            'artChannelOptions' => CommunicationRequestOptions::toSelectOptions(CommunicationRequestOptions::ART_CHANNELS),
+            'coverageSupportOptions' => CommunicationRequestOptions::toSelectOptions(CommunicationRequestOptions::COVERAGE_SUPPORT),
+            'maxAttachments' => (int) config('communication.max_attachments', 8),
             'filters' => [
                 'status' => is_string($status) ? $status : '',
                 'demand_type' => is_string($demandType) ? $demandType : '',
@@ -228,7 +183,7 @@ class CommunicationRequestController extends Controller
 
         $payload = $this->validatedPayload($request);
 
-        ChurchSolicitation::query()->create([
+        $solicitation = ChurchSolicitation::query()->create([
             'church_id' => (int) $churchId,
             'user_id' => (int) $user->id,
             'type' => MobileChurchSolicitationController::TYPE_COMMUNICATION_REQUEST,
@@ -236,11 +191,18 @@ class CommunicationRequestController extends Controller
             'subject' => $payload['subject'],
             'message' => $payload['message'],
             'preferred_date' => $payload['preferred_date'],
-            'meta' => [
-                'communication_demand_type' => $payload['demand_type'],
-                'communication_priority' => $payload['priority'],
-            ],
+            'meta' => $payload['meta'],
         ]);
+
+        $storedAttachments = $this->attachments->storeFromRequest($request, $solicitation);
+        if ($storedAttachments !== []) {
+            $meta = $solicitation->meta ?? [];
+            $meta['communication_attachments'] = $storedAttachments;
+            $solicitation->meta = $meta;
+            $solicitation->save();
+        }
+
+        app(SolicitationChatNotifier::class)->notifyCommunicationTeamOfNewRequest($solicitation->fresh(), (int) $churchId);
 
         return redirect()->route('communication-requests.index')
             ->with('success', 'Solicitação de comunicação enviada com sucesso.');
@@ -349,32 +311,31 @@ class CommunicationRequestController extends Controller
 
         $this->authorize('updateCommunicationRequestAsSubmitter', $solicitation);
 
-        $valid = $request->validate([
-            'message' => ['required', 'string', 'max:5000'],
-            'preferred_date' => ['nullable', 'date'],
-            'demand_type' => ['sometimes', 'in:'.implode(',', array_keys(self::DEMAND_TYPE_LABELS))],
-            'priority' => ['sometimes', 'in:'.implode(',', array_keys(self::PRIORITY_LABELS))],
-        ]);
-
         if ($solicitation->status !== 'pending') {
             throw ValidationException::withMessages([
                 'message' => ['Só é possível alterar pedidos pendentes.'],
             ]);
         }
 
-        $meta = $solicitation->meta ?? [];
-        $demandType = isset($valid['demand_type'])
-            ? (string) $valid['demand_type']
-            : (string) ($meta['communication_demand_type'] ?? 'other');
-        $priority = isset($valid['priority'])
-            ? (string) $valid['priority']
-            : (string) ($meta['communication_priority'] ?? 'medium');
-        $meta['communication_demand_type'] = $demandType;
-        $meta['communication_priority'] = $priority;
+        $payload = $this->validatedPayload($request);
+        $meta = $payload['meta'];
+        $existingAttachments = ($solicitation->meta ?? [])['communication_attachments'] ?? [];
+        if (is_array($existingAttachments) && $existingAttachments !== []) {
+            $meta['communication_attachments'] = $existingAttachments;
+        }
+
+        $newAttachments = $this->attachments->storeFromRequest($request, $solicitation);
+        if ($newAttachments !== []) {
+            $merged = is_array($meta['communication_attachments'] ?? null)
+                ? $meta['communication_attachments']
+                : [];
+            $meta['communication_attachments'] = array_merge($merged, $newAttachments);
+        }
+
         $solicitation->meta = $meta;
-        $solicitation->subject = 'Comunicação — '.$this->demandTypeLabel($demandType);
-        $solicitation->message = trim((string) $valid['message']);
-        $solicitation->preferred_date = $valid['preferred_date'] ?? null;
+        $solicitation->subject = $payload['subject'];
+        $solicitation->message = $payload['message'];
+        $solicitation->preferred_date = $payload['preferred_date'];
         $solicitation->save();
 
         return redirect()->route('communication-requests.index')->with('success', 'Pedido atualizado.');

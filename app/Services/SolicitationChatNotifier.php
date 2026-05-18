@@ -10,6 +10,7 @@ use App\Models\ChurchSolicitation;
 use App\Models\User;
 use App\Models\UserInboxNotification;
 use App\Models\Volunteer;
+use App\Support\CommunicationRequestOptions;
 use App\Support\SafeSpatieUsersByPermission;
 use App\Support\UserMessagingPreferences;
 use Illuminate\Support\Facades\Mail;
@@ -206,6 +207,36 @@ class SolicitationChatNotifier
                 ));
             }
         }
+    }
+
+    /** Nova solicitação de comunicação: inbox + e-mail dedicado da equipe. */
+    public function notifyCommunicationTeamOfNewRequest(ChurchSolicitation $solicitation, int $churchId): void
+    {
+        if ($solicitation->type !== MobileChurchSolicitationController::TYPE_COMMUNICATION_REQUEST) {
+            return;
+        }
+
+        $this->notifyChurchSolicitationsHandlerOfNewRequest($solicitation, $churchId);
+
+        $notifyEmail = config('communication.notify_email');
+        if (! is_string($notifyEmail) || ! filter_var($notifyEmail, FILTER_VALIDATE_EMAIL)) {
+            return;
+        }
+
+        $member = User::query()->find($solicitation->user_id);
+        $memberName = $member?->name ?? 'Um líder';
+        $demandLabel = CommunicationRequestOptions::demandTypeLabel(
+            (string) (($solicitation->meta ?? [])['communication_demand_type'] ?? ''),
+        );
+        $inboxUrl = route('communication-requests.index', [], absolute: true);
+
+        Mail::to($notifyEmail)->send(new SolicitationNewRequestMail(
+            'Nova solicitação de comunicação — '.$demandLabel,
+            'Nova solicitação de comunicação',
+            $memberName.' abriu um pedido («'.$demandLabel.'»).',
+            CommunicationRequestOptions::emailPreview($solicitation),
+            $inboxUrl,
+        ));
     }
 
     /**
