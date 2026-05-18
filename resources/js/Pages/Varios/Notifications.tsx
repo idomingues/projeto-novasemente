@@ -12,7 +12,10 @@ import Modal from '@/Components/Modal';
 import SecondaryButton from '@/Components/SecondaryButton';
 import MarkInboxNotificationReadButton from '@/Components/MarkInboxNotificationReadButton';
 import { confirmAction } from '@/utils/confirmDialog';
+import SearchableSelect, { type SearchableOption } from '@/Components/SearchableSelect';
 import { FormEventHandler, useMemo, useState } from 'react';
+
+type NotificationAudience = 'all' | 'user';
 
 interface NotificationItem {
     id: string;
@@ -30,6 +33,7 @@ interface Props {
     notifications: NotificationItem[];
     canManage: boolean;
     mode?: 'view' | 'manage';
+    recipientOptions?: SearchableOption[];
 }
 
 function formatTimeAgo(iso: string): string {
@@ -43,14 +47,28 @@ function formatTimeAgo(iso: string): string {
     return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-export default function VariosNotifications({ notifications, canManage, mode = 'view' }: Props) {
+export default function VariosNotifications({
+    notifications,
+    canManage,
+    mode = 'view',
+    recipientOptions = [],
+}: Props) {
     const [createOpen, setCreateOpen] = useState(false);
     const { data, setData, post, processing, errors, reset } = useForm({
+        audience: 'all' as NotificationAudience,
+        user_id: '' as number | '',
         title: '',
         body: '',
     });
 
     const canCreate = canManage && mode === 'manage';
+    const isSingleUser = data.audience === 'user';
+    const selectedRecipient = recipientOptions.find((o) => o.id === data.user_id);
+
+    const closeCreateModal = () => {
+        setCreateOpen(false);
+        reset();
+    };
 
     const appNotificationIds = useMemo(() => {
         const map = new Map<string, number>();
@@ -68,9 +86,12 @@ export default function VariosNotifications({ notifications, canManage, mode = '
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         post(route('notifications.store'), {
+            transform: (formData) => ({
+                ...formData,
+                user_id: formData.audience === 'user' ? formData.user_id : null,
+            }),
             onSuccess: () => {
-                reset();
-                setCreateOpen(false);
+                closeCreateModal();
             },
             preserveScroll: true,
         });
@@ -201,17 +222,73 @@ export default function VariosNotifications({ notifications, canManage, mode = '
                 </section>
             </div>
 
-            <Modal show={createOpen} onClose={() => setCreateOpen(false)} maxWidth="2xl">
+            <Modal show={createOpen} onClose={closeCreateModal} maxWidth="2xl">
                 <div className="p-6 sm:p-8">
                     <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-1 flex items-center gap-2">
                         <PaperAirplaneIcon className="w-5 h-5 text-primary-500" />
                         Enviar notificação
                     </h2>
                     <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6">
-                        Envie um aviso para todos os usuários do app.
+                        {isSingleUser
+                            ? 'Envie um aviso pessoal para um usuário do app.'
+                            : 'Envie um aviso para todos os usuários do app.'}
                     </p>
 
                     <form onSubmit={submit} className="space-y-4">
+                        <fieldset className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/80 dark:bg-zinc-800/40 p-4 space-y-3">
+                            <legend className="text-sm font-semibold text-zinc-800 dark:text-zinc-100 px-1">
+                                Destinatários
+                            </legend>
+                            <label className="flex items-start gap-3 text-sm text-zinc-700 dark:text-zinc-200 cursor-pointer rounded-xl p-2 -m-1 hover:bg-white/60 dark:hover:bg-zinc-900/40 transition-colors">
+                                <input
+                                    type="radio"
+                                    name="notif_audience"
+                                    className="mt-0.5 h-4 w-4 shrink-0 border-zinc-300 text-zinc-900 focus:ring-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:focus:ring-white"
+                                    checked={data.audience === 'all'}
+                                    onChange={() => {
+                                        setData((prev) => ({
+                                            ...prev,
+                                            audience: 'all',
+                                            user_id: '',
+                                        }));
+                                    }}
+                                />
+                                <span className="leading-snug">
+                                    <span className="font-medium text-zinc-900 dark:text-white">Todos os usuários</span>
+                                    <span className="block text-zinc-500 dark:text-zinc-400 mt-0.5">
+                                        Aparece na lista geral de notificações do app.
+                                    </span>
+                                </span>
+                            </label>
+                            <label className="flex items-start gap-3 text-sm text-zinc-700 dark:text-zinc-200 cursor-pointer rounded-xl p-2 -m-1 hover:bg-white/60 dark:hover:bg-zinc-900/40 transition-colors">
+                                <input
+                                    type="radio"
+                                    name="notif_audience"
+                                    className="mt-0.5 h-4 w-4 shrink-0 border-zinc-300 text-zinc-900 focus:ring-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:focus:ring-white"
+                                    checked={data.audience === 'user'}
+                                    onChange={() => setData('audience', 'user')}
+                                />
+                                <span className="leading-snug">
+                                    <span className="font-medium text-zinc-900 dark:text-white">Um usuário</span>
+                                    <span className="block text-zinc-500 dark:text-zinc-400 mt-0.5">
+                                        Notificação pessoal na caixa de entrada do usuário.
+                                    </span>
+                                </span>
+                            </label>
+                        </fieldset>
+
+                        {isSingleUser && (
+                            <SearchableSelect
+                                id="notif_user"
+                                label="Usuário"
+                                value={data.user_id}
+                                onChange={(value) => setData('user_id', value === '' ? '' : Number(value))}
+                                options={recipientOptions}
+                                placeholder="Buscar por nome ou e-mail..."
+                                error={errors.user_id}
+                            />
+                        )}
+
                         <div>
                             <InputLabel htmlFor="notif_title" value="Título" />
                             <TextInput
@@ -221,7 +298,7 @@ export default function VariosNotifications({ notifications, canManage, mode = '
                                 placeholder="Ex: Novo evento no sábado"
                                 className="mt-1 block w-full"
                                 maxLength={255}
-                                autoFocus
+                                autoFocus={!isSingleUser}
                             />
                             <InputError message={errors.title} className="mt-1" />
                         </div>
@@ -231,10 +308,15 @@ export default function VariosNotifications({ notifications, canManage, mode = '
                                 id="notif_body"
                                 value={data.body}
                                 onChange={(e) => setData('body', e.target.value)}
-                                placeholder="Escreva a mensagem que todos verão..."
+                                placeholder={
+                                    isSingleUser
+                                        ? 'Escreva a mensagem que este usuário verá...'
+                                        : 'Escreva a mensagem que todos verão...'
+                                }
                                 rows={5}
                                 className="mt-1 block w-full"
                                 maxLength={5000}
+                                autoFocus={isSingleUser}
                             />
                             <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
                                 {data.body.length}/5000
@@ -243,11 +325,22 @@ export default function VariosNotifications({ notifications, canManage, mode = '
                         </div>
 
                         <div className="pt-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                            <SecondaryButton type="button" onClick={() => setCreateOpen(false)} disabled={processing}>
+                            <SecondaryButton type="button" onClick={closeCreateModal} disabled={processing}>
                                 Cancelar
                             </SecondaryButton>
-                            <PrimaryButton type="submit" disabled={processing}>
-                                {processing ? 'A enviar...' : 'Enviar para todos'}
+                            <PrimaryButton
+                                type="submit"
+                                disabled={
+                                    processing || (isSingleUser && (data.user_id === '' || recipientOptions.length === 0))
+                                }
+                            >
+                                {processing
+                                    ? 'A enviar...'
+                                    : isSingleUser
+                                      ? selectedRecipient
+                                          ? `Enviar para ${selectedRecipient.name.split(' (')[0]}`
+                                          : 'Enviar para usuário'
+                                      : 'Enviar para todos'}
                             </PrimaryButton>
                         </div>
                     </form>

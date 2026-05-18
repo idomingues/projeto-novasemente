@@ -176,10 +176,33 @@ class VariosController extends Controller
         $notifications = NotificationFeed::mergedForUser($request, $churchId, 50);
         $canManage = $request->user()?->can('notifications.manage') ?? false;
 
+        $recipientOptions = [];
+        if ($churchId !== null) {
+            $recipientOptions = User::query()
+                ->where('church_id', $churchId)
+                ->orderBy('name')
+                ->get(['id', 'name', 'email'])
+                ->map(function (User $user) {
+                    $label = (string) $user->name;
+                    $email = $user->email;
+                    if (is_string($email) && $email !== '') {
+                        $label .= ' ('.$email.')';
+                    }
+
+                    return [
+                        'id' => (int) $user->id,
+                        'name' => $label,
+                    ];
+                })
+                ->values()
+                ->all();
+        }
+
         return Inertia::render('Varios/Notifications', [
             'notifications' => $notifications,
             'canManage' => $canManage,
             'mode' => 'manage',
+            'recipientOptions' => $recipientOptions,
         ]);
     }
 }
