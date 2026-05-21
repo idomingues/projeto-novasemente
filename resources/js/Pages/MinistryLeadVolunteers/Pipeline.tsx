@@ -26,6 +26,7 @@ import PublicVolunteerSignupShareModal from '@/Components/Volunteers/PublicVolun
 import { confirmAction } from '@/utils/confirmDialog';
 import { formatListPreview } from '@/utils/formatListPreview';
 import RecordDetailSections from '@/Components/RecordDetail/RecordDetailSections';
+import { volunteerLeaderStatusLabel } from '@/lib/volunteerLeaderStatusLabels';
 import { volunteerDetailSections, type VolunteerDetailData } from '@/utils/volunteerDetailRows';
 
 type StageRow = { id: number; name: string; sort_order: number; volunteer_count: number };
@@ -109,10 +110,30 @@ type DetailNote = { id: number; body: string; authorName: string; createdAt: str
 
 type MinistryOption = { id: number; name: string; attached: boolean; canEdit: boolean };
 
+type MinistryStatusHistoryRow = {
+    id: number;
+    fromStatus: string | null;
+    toStatus: string | null;
+    fromStatusLabel?: string;
+    toStatusLabel?: string;
+    note: string | null;
+    changedAt: string | null;
+    changedBy: string | null;
+};
+
+type MinistryStatusHistorySection = {
+    ministryId: number;
+    ministryName: string;
+    currentLeaderStatus: string | null;
+    currentLeaderStatusLabel?: string;
+    history: MinistryStatusHistoryRow[];
+};
+
 type DetailJson = {
     volunteer: DetailVolunteer;
     pipeline: { stageId?: number; stageName?: string };
     stages: { id: number; name: string; sort_order: number }[];
+    statusHistoryByMinistry?: MinistryStatusHistorySection[];
     notes: DetailNote[];
     ministryOptions?: MinistryOption[];
     updateStageUrl: string;
@@ -226,7 +247,7 @@ export default function Pipeline({
     const [detailLoading, setDetailLoading] = useState(false);
     const [detail, setDetail] = useState<DetailJson | null>(null);
     const [selectedId, setSelectedId] = useState<number | null>(null);
-    const [detailTab, setDetailTab] = useState<'ficha' | 'notas' | 'departamentos'>('ficha');
+    const [detailTab, setDetailTab] = useState<'ficha' | 'notas' | 'departamentos' | 'historico'>('ficha');
     const [publicInviteOpen, setPublicInviteOpen] = useState(false);
     const [inviteOpen, setInviteOpen] = useRemember(false, 'pipeline.inviteOpen');
     const [inviteVolunteer, setInviteVolunteer] = useRemember<VolunteerListRow | null>(null, 'pipeline.inviteVolunteer');
@@ -263,7 +284,7 @@ export default function Pipeline({
         { value: 'more_than_3_years', label: '+ 3 anos' },
     ];
 
-    const openVolunteer = async (id: number, tab: 'ficha' | 'notas' | 'departamentos' = 'ficha') => {
+    const openVolunteer = async (id: number, tab: 'ficha' | 'notas' | 'departamentos' | 'historico' = 'ficha') => {
         setSelectedId(id);
         setModalOpen(true);
         setDetailTab(tab);
@@ -1147,7 +1168,7 @@ export default function Pipeline({
                                     {canPipelineMutate ? (
                                         <form onSubmit={submitStageMove} className="flex flex-wrap items-end gap-2">
                                             <div>
-                                                <InputLabel value="Fase / pasta" />
+                                                <InputLabel value={canVolunteerManage ? 'Status geral' : 'Fase / pasta'} />
                                                 <SelectInput
                                                     className="mt-1 min-w-[200px]"
                                                     value={stageMoveForm.data.stage_id}
@@ -1161,13 +1182,15 @@ export default function Pipeline({
                                                 </SelectInput>
                                             </div>
                                             <PrimaryButton type="submit" disabled={stageMoveForm.processing}>
-                                                Salvar fase
+                                                {canVolunteerManage ? 'Salvar status' : 'Salvar fase'}
                                             </PrimaryButton>
                                             <InputError message={stageMoveForm.errors.stage_id} />
                                         </form>
                                     ) : (
                                         <div className="text-right text-sm text-zinc-600 dark:text-zinc-300">
-                                            <div className="text-xs font-medium text-zinc-500">Fase / pasta</div>
+                                            <div className="text-xs font-medium text-zinc-500">
+                                                {canVolunteerManage ? 'Status geral' : 'Fase / pasta'}
+                                            </div>
                                             <div className="mt-1 font-medium text-zinc-900 dark:text-white">
                                                 {detail.pipeline?.stageName ?? '—'}
                                             </div>
@@ -1196,6 +1219,17 @@ export default function Pipeline({
                                         }`}
                                     >
                                         Departamentos
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setDetailTab('historico')}
+                                        className={`flex-1 rounded-lg px-2 py-2 text-xs font-medium transition sm:px-3 sm:text-sm ${
+                                            detailTab === 'historico'
+                                                ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
+                                                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+                                        }`}
+                                    >
+                                        Histórico
                                     </button>
                                     <button
                                         type="button"
@@ -1235,6 +1269,71 @@ export default function Pipeline({
                                             </div>
                                         ) : null}
                                     </>
+                                ) : detailTab === 'historico' ? (
+                                    <div className="space-y-4">
+                                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                            Histórico de status do líder, separado por departamento. O status geral do voluntário
+                                            (Interessado, Encaminhado, Finalizado) é alterado no topo desta ficha.
+                                        </p>
+                                        {(detail.statusHistoryByMinistry ?? []).length === 0 ? (
+                                            <p className="text-sm text-zinc-500">Nenhum encaminhamento a departamentos ainda.</p>
+                                        ) : (
+                                            (detail.statusHistoryByMinistry ?? []).map((section) => (
+                                                <section
+                                                    key={section.ministryId}
+                                                    className="rounded-xl border border-zinc-200 bg-zinc-50/80 dark:border-zinc-700 dark:bg-zinc-900/40"
+                                                >
+                                                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-700">
+                                                        <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">
+                                                            {section.ministryName}
+                                                        </h3>
+                                                        <span
+                                                            className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                                                                section.currentLeaderStatus === 'denied'
+                                                                    ? 'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-200'
+                                                                    : 'bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200'
+                                                            }`}
+                                                        >
+                                                            {section.currentLeaderStatusLabel ??
+                                                                volunteerLeaderStatusLabel(section.currentLeaderStatus)}
+                                                        </span>
+                                                    </div>
+                                                    <ul className="max-h-[min(32vh,240px)] space-y-2 overflow-y-auto p-3 text-sm">
+                                                        {section.history.length === 0 ? (
+                                                            <li className="text-zinc-500">Sem alterações registradas.</li>
+                                                        ) : (
+                                                            section.history.map((h) => (
+                                                                <li
+                                                                    key={h.id}
+                                                                    className="rounded-lg border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
+                                                                >
+                                                                    <div className="text-xs text-zinc-500">
+                                                                        {(h.changedBy ?? 'Sistema') +
+                                                                            ' · ' +
+                                                                            (h.changedAt
+                                                                                ? formatDateTime(h.changedAt)
+                                                                                : '—')}
+                                                                    </div>
+                                                                    <div className="mt-1 font-medium text-zinc-900 dark:text-zinc-100">
+                                                                        {(h.fromStatusLabel ??
+                                                                            volunteerLeaderStatusLabel(h.fromStatus)) +
+                                                                            ' → ' +
+                                                                            (h.toStatusLabel ??
+                                                                                volunteerLeaderStatusLabel(h.toStatus))}
+                                                                    </div>
+                                                                    {h.note ? (
+                                                                        <div className="mt-2 whitespace-pre-wrap text-sm text-zinc-700 dark:text-zinc-200">
+                                                                            {h.note}
+                                                                        </div>
+                                                                    ) : null}
+                                                                </li>
+                                                            ))
+                                                        )}
+                                                    </ul>
+                                                </section>
+                                            ))
+                                        )}
+                                    </div>
                                 ) : detailTab === 'departamentos' ? (
                                     <form onSubmit={submitMinistries} className="space-y-4">
                                         <p className="text-xs text-zinc-500 dark:text-zinc-400">

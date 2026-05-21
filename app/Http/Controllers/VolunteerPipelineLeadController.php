@@ -8,6 +8,7 @@ use App\Models\Ministry;
 use App\Models\Volunteer;
 use App\Models\VolunteerClearanceCheck;
 use App\Models\VolunteerMinistryInvitation;
+use App\Models\VolunteerMinistryInvitationStatusHistory;
 use App\Models\VolunteerChurchPipeline;
 use App\Models\VolunteerLeaderNote;
 use App\Models\VolunteerPipelineStage;
@@ -141,13 +142,24 @@ class VolunteerPipelineLeadController extends Controller
         ]);
 
         $pipe = $volunteer->churchPipelines->firstWhere('church_id', $churchId);
-        $stages = VolunteerPipelineStage::query()
-            ->where('church_id', $churchId)
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->get(['id', 'name', 'sort_order'])
-            ->values()
-            ->all();
+
+        VolunteerPipelineBootstrap::ensureFinalizadoStageForChurch($churchId);
+
+        $isAdminWorkflow = $request->user()?->can('volunteers.manage') === true;
+        $stages = $isAdminWorkflow
+            ? VolunteerPipelineBootstrap::adminWorkflowStagesForChurch($churchId)
+            : VolunteerPipelineStage::query()
+                ->where('church_id', $churchId)
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get(['id', 'name', 'sort_order'])
+                ->map(fn (VolunteerPipelineStage $s) => [
+                    'id' => (int) $s->id,
+                    'name' => $s->name,
+                    'sort_order' => (int) $s->sort_order,
+                ])
+                ->values()
+                ->all();
 
         $notes = VolunteerLeaderNote::query()
             ->where('volunteer_id', $volunteer->id)
@@ -188,6 +200,40 @@ class VolunteerPipelineLeadController extends Controller
             'canEdit' => isset($leaderSet[(int) $m->id]),
         ])->values()->all();
 
+        $statusHistoryByMinistry = [];
+        if (Schema::hasTable('volunteer_ministry_invitations')) {
+            $invitations = VolunteerMinistryInvitation::query()
+                ->where('church_id', $churchId)
+                ->where('volunteer_id', $volunteer->id)
+                ->with([
+                    'ministry:id,name',
+                    'leaderStatusHistory' => fn ($h) => $h->with('changedBy:id,name')->orderByDesc('created_at')->orderByDesc('id')->limit(50),
+                ])
+                ->get()
+                ->sortBy(fn (VolunteerMinistryInvitation $i) => mb_strtolower($i->ministry?->name ?? ''))
+                ->values();
+
+            $statusHistoryByMinistry = $invitations->map(fn (VolunteerMinistryInvitation $inv) => [
+                'ministryId' => (int) $inv->ministry_id,
+                'ministryName' => $inv->ministry?->name ?? 'Departamento',
+                'currentLeaderStatus' => $inv->leader_status,
+                'currentLeaderStatusLabel' => \App\Support\VolunteerLeaderStatusLabels::label($inv->leader_status),
+                'history' => $inv->leaderStatusHistory
+                    ->map(fn (VolunteerMinistryInvitationStatusHistory $h) => [
+                        'id' => $h->id,
+                        'fromStatus' => $h->from_status,
+                        'toStatus' => $h->to_status,
+                        'fromStatusLabel' => \App\Support\VolunteerLeaderStatusLabels::label($h->from_status),
+                        'toStatusLabel' => \App\Support\VolunteerLeaderStatusLabels::label($h->to_status),
+                        'note' => $h->note,
+                        'changedAt' => $h->created_at?->toIso8601String(),
+                        'changedBy' => $h->changedBy?->name,
+                    ])
+                    ->values()
+                    ->all(),
+            ])->values()->all();
+        }
+
         return response()->json([
             'volunteer' => VolunteerSignupDetailPresenter::forVolunteer($volunteer),
             'pipeline' => [
@@ -195,6 +241,7 @@ class VolunteerPipelineLeadController extends Controller
                 'stageName' => $pipe?->stage?->name,
             ],
             'stages' => $stages,
+            'statusHistoryByMinistry' => $statusHistoryByMinistry,
             'notes' => $notes,
             'ministryOptions' => $ministryOptions,
             'updateStageUrl' => route('ministry-lead.volunteers.pipeline.stage', $volunteer),
@@ -354,6 +401,14 @@ class VolunteerPipelineLeadController extends Controller
         $valid = $request->validate([
             'stage_id' => ['required', 'integer', Rule::exists('volunteer_pipeline_stages', 'id')->where('church_id', $churchId)],
         ]);
+
+        if ($request->user()?->can('volunteers.manage')) {
+            $allowedIds = collect(VolunteerPipelineBootstrap::adminWorkflowStagesForChurch($churchId))
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+            abort_unless(in_array((int) $valid['stage_id'], $allowedIds, true), 422, 'Status geral inválido.');
+        }
 
         VolunteerPipelineBootstrap::ensureRowForVolunteerInChurch($volunteer, $churchId);
 

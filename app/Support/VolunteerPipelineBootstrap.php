@@ -16,7 +16,11 @@ class VolunteerPipelineBootstrap
         ['name' => 'Em treinamento', 'sort_order' => 20],
         ['name' => 'Pronto para servir', 'sort_order' => 30],
         ['name' => 'A servir', 'sort_order' => 40],
+        ['name' => 'Finalizado', 'sort_order' => 50],
     ];
+
+    /** Status geral do adm (fase / pasta no quadro de voluntários). */
+    public const ADMIN_WORKFLOW_STAGE_NAMES = ['interessado', 'encaminhado', 'finalizado'];
 
     /**
      * Garante as fases padrão quando a igreja ainda não tem nenhuma (ex.: igreja nova).
@@ -130,5 +134,63 @@ class VolunteerPipelineBootstrap
             ->where('volunteer_id', $volunteer->id)
             ->where('church_id', $churchId)
             ->update(['stage_id' => (int) $stageId]);
+    }
+
+    /**
+     * Garante a fase «Finalizado» para o status geral do adm.
+     */
+    public static function ensureFinalizadoStageForChurch(int $churchId): void
+    {
+        if (! Schema::hasTable('volunteer_pipeline_stages')) {
+            return;
+        }
+
+        $exists = VolunteerPipelineStage::query()
+            ->where('church_id', $churchId)
+            ->whereRaw('LOWER(TRIM(name)) = ?', ['finalizado'])
+            ->exists();
+
+        if ($exists) {
+            return;
+        }
+
+        $maxSort = (int) VolunteerPipelineStage::query()->where('church_id', $churchId)->max('sort_order');
+
+        VolunteerPipelineStage::query()->create([
+            'church_id' => $churchId,
+            'name' => 'Finalizado',
+            'sort_order' => $maxSort + 10,
+        ]);
+    }
+
+    /**
+     * Fases disponíveis no seletor de status geral (adm).
+     *
+     * @return list<array{id: int, name: string, sort_order: int}>
+     */
+    public static function adminWorkflowStagesForChurch(int $churchId): array
+    {
+        if (! Schema::hasTable('volunteer_pipeline_stages')) {
+            return [];
+        }
+
+        self::seedDefaultStagesForChurch($churchId);
+        self::ensureFinalizadoStageForChurch($churchId);
+
+        $allowed = self::ADMIN_WORKFLOW_STAGE_NAMES;
+
+        return VolunteerPipelineStage::query()
+            ->where('church_id', $churchId)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get(['id', 'name', 'sort_order'])
+            ->filter(fn (VolunteerPipelineStage $s) => in_array(mb_strtolower(trim($s->name)), $allowed, true))
+            ->map(fn (VolunteerPipelineStage $s) => [
+                'id' => (int) $s->id,
+                'name' => $s->name,
+                'sort_order' => (int) $s->sort_order,
+            ])
+            ->values()
+            ->all();
     }
 }

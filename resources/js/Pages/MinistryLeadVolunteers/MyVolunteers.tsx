@@ -423,7 +423,7 @@ export default function MyVolunteers() {
     };
 
     const statusLabel = (s: string | null) => {
-        if (s === 'denied') return 'Recusar';
+        if (s === 'denied') return 'Recusado';
         if (s === 'training') return 'Treinamento';
         if (s === 'active') return 'Atuante';
         return '—';
