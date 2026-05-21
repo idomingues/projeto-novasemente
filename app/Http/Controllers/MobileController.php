@@ -31,6 +31,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -1117,7 +1118,8 @@ class MobileController extends Controller
             ->all();
 
         return Inertia::render('Mobile/LiderContact', [
-            'leaderOptions' => SolicitationAssignees::leaderContactVolunteerOptions($churchId),
+            'leaderOptions' => SolicitationAssignees::leaderContactVolunteerOptions($churchId, $user),
+            'contactMinistry' => SolicitationAssignees::leaderContactMinistryForChurch($churchId),
             'storeUrl' => route('mobile.contact.store'),
             'myLeaderChats' => $myLeaderChats,
         ]);
@@ -1142,11 +1144,16 @@ class MobileController extends Controller
             'message' => ['required', 'string', 'max:5000'],
         ]);
 
+        if (! SolicitationAssignees::isValidLeaderContactVolunteer((int) $valid['assigned_volunteer_id'], (int) $churchId, $user)) {
+            throw ValidationException::withMessages([
+                'assigned_volunteer_id' => ['Escolha um líder da equipe de Voluntariado.'],
+            ]);
+        }
+
         $volunteer = Volunteer::query()
             ->whereKey((int) $valid['assigned_volunteer_id'])
             ->where('active', true)
             ->whereNotNull('user_id')
-            ->whereHas('ministries', fn ($q) => $q->where('church_id', $churchId))
             ->firstOrFail();
 
         $solicitation = ChurchSolicitation::create([

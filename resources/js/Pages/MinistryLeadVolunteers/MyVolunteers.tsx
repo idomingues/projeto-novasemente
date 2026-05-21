@@ -32,7 +32,11 @@ type VolunteerRow = {
     invitePublicUrl?: string | null;
     inviteRegisterUrl?: string | null;
     inviteResendEmailUrl?: string | null;
-    canResendInvite?: boolean;
+    canSendInvite?: boolean;
+    inviteStatusLabel?: string;
+    invitePlainMessage?: string | null;
+    inviteSentAt?: string | null;
+    volunteerHasLinkedUser?: boolean;
     inviteIntroMessage?: string | null;
     inviteIntroSaveUrl?: string | null;
     /** Remove o voluntário deste departamento (desvincula do ministério do líder). */
@@ -173,7 +177,9 @@ export default function MyVolunteers() {
                 current.invitePublicUrl = item.invitePublicUrl ?? current.invitePublicUrl;
                 current.inviteRegisterUrl = item.inviteRegisterUrl ?? current.inviteRegisterUrl;
                 current.inviteResendEmailUrl = item.inviteResendEmailUrl ?? current.inviteResendEmailUrl;
-                current.canResendInvite = item.canResendInvite ?? current.canResendInvite;
+                current.canSendInvite = item.canSendInvite ?? current.canSendInvite;
+                current.invitePlainMessage = item.invitePlainMessage ?? current.invitePlainMessage;
+                current.volunteerHasLinkedUser = item.volunteerHasLinkedUser ?? current.volunteerHasLinkedUser;
             }
             if (!current.removeFromMinistryUrl && item.removeFromMinistryUrl) {
                 current.removeFromMinistryUrl = item.removeFromMinistryUrl;
@@ -205,37 +211,10 @@ export default function MyVolunteers() {
         setScreenTab('requests');
     }, [newRows.length, trainingRows.length, activeRows.length]);
 
-    const builtinMinistryInviteIntro = (ministryName: string) =>
-        `Você foi convidado(a) para servir no departamento ${ministryName}. Para participar, crie sua conta no aplicativo pelo link abaixo.`;
-
-    /** Parágrafo central igual ao servidor: convite.intro_message ou texto da igreja ou texto padrão. */
-    const inviteIntroResolvedPreview = useMemo(() => {
-        const ministry = (inviteHelpRow?.ministryName ?? 'Departamento').trim() || 'Departamento';
-        const saved = (inviteHelpRow?.inviteIntroMessage ?? '').trim();
-        if (saved !== '') return saved;
-        const church = (churchMinistryInvitationIntro ?? '').trim();
-        if (church !== '') return church;
-        return builtinMinistryInviteIntro(ministry);
-    }, [inviteHelpRow?.ministryName, inviteHelpRow?.inviteIntroMessage, churchMinistryInvitationIntro]);
-
-    /** Texto plano igual ao enviado no e-mail (BuildVolunteerMinistryInvitePlainCopy) e ao WhatsApp. */
+    /** Texto plano do servidor (e-mail / WhatsApp) — BuildVolunteerMinistryInvitePlainCopy. */
     const invitePlainFullMessage = useMemo(() => {
-        const row = inviteHelpRow;
-        if (!row) return '';
-        const name = (row.volunteer.name ?? '').trim();
-        const greeting = name ? `Olá, ${name}!` : 'Olá!';
-        const ministry = (row.ministryName ?? 'Departamento').trim() || 'Departamento';
-        const email = (row.volunteer.email ?? '').trim();
-        const registerUrl = row.inviteRegisterUrl?.trim() ?? '';
-        let msg = `${greeting}\n\n${inviteIntroResolvedPreview}`;
-        if (registerUrl !== '') {
-            msg += `\n\nPara confirmar o convite para «${ministry}», crie sua conta no aplicativo (o e-mail já vem preenchido):\n${registerUrl}`;
-            if (email !== '') {
-                msg += `\n\nSe criar a conta por outro caminho, use exatamente este e-mail: ${email}.`;
-            }
-        }
-        return msg;
-    }, [inviteHelpRow, inviteIntroResolvedPreview]);
+        return (inviteHelpRow?.invitePlainMessage ?? '').trim();
+    }, [inviteHelpRow?.invitePlainMessage]);
 
     const selectedMinistry = useMemo(
         () => requestMinistries.find((m) => m.id === Number(requestForm.data.ministry_id)),
@@ -356,6 +335,38 @@ export default function MyVolunteers() {
         });
     };
 
+    const findRowForVolunteerMinistry = (
+        volunteerId: number,
+        ministryId: number | undefined,
+        pageProps?: { invitations?: Paginated<VolunteerRow>; activeVolunteers?: VolunteerRow[] },
+    ): VolunteerRow | null => {
+        const inv = pageProps?.invitations ?? invitations;
+        const active = pageProps?.activeVolunteers ?? activeVolunteers;
+        const source = [...inv.data, ...active];
+        return (
+            source.find((item) => item.volunteer.id === volunteerId && (item.ministryId ?? 0) === (ministryId ?? 0)) ??
+            null
+        );
+    };
+
+    const statusFormIsDirty = (sourceRow: VolunteerRow | null): boolean => {
+        if (!sourceRow) return false;
+        const savedStatus = (sourceRow.leaderStatus as 'denied' | 'training' | 'active' | null) ?? '';
+        const savedNote = sourceRow.leaderNote ?? '';
+        if (form.data.leader_status !== savedStatus) return true;
+        if (form.data.leader_status === 'denied' && form.data.leader_note !== savedNote) return true;
+
+        return false;
+    };
+
+    const refreshEditingRowFromPage = (pageProps?: {
+        invitations?: Paginated<VolunteerRow>;
+        activeVolunteers?: VolunteerRow[];
+    }) => {
+        if (!row) return null;
+        return findRowForVolunteerMinistry(row.volunteer.id, row.ministryId, pageProps);
+    };
+
     const openAttachedVolunteerProfile = (req: RequestRow) => {
         if (!req.attached_volunteer_profile) return;
         setProfileRow({
@@ -372,7 +383,29 @@ export default function MyVolunteers() {
 
     const submit = () => {
         if (!row || !row.updateUrl) return;
-        form.patch(row.updateUrl, { preserveScroll: true, onSuccess: () => closeEdit() });
+        form.patch(row.updateUrl, {
+            preserveScroll: true,
+            onSuccess: (page) => {
+                const pageProps = page.props as {
+                    invitations?: Paginated<VolunteerRow>;
+                    activeVolunteers?: VolunteerRow[];
+                };
+                const updated = refreshEditingRowFromPage(pageProps);
+                if (updated) {
+                    setEditingRow(updated);
+                    form.setData({
+                        leader_status: (updated.leaderStatus as 'denied' | 'training' | 'active' | null) ?? '',
+                        leader_note: updated.leaderNote ?? '',
+                    });
+                    form.clearErrors();
+                    setHistory(null);
+                    setTab('history');
+                    void loadHistory(updated, true);
+                    return;
+                }
+                closeEdit();
+            },
+        });
     };
 
     const openRequestModal = () => {
@@ -401,11 +434,12 @@ export default function MyVolunteers() {
         });
     };
 
-    const loadHistory = async () => {
-        if (!row?.historyUrl || historyLoading) return;
+    const loadHistory = async (sourceRow?: VolunteerRow | null, force = false) => {
+        const target = sourceRow ?? row;
+        if (!target?.historyUrl || (historyLoading && !force)) return;
         setHistoryLoading(true);
         try {
-            const r = await fetch(row.historyUrl, {
+            const r = await fetch(target.historyUrl, {
                 headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 credentials: 'same-origin',
             });
@@ -429,13 +463,19 @@ export default function MyVolunteers() {
         return '—';
     };
 
-    const inviteLabel = (s: string) => {
-        if (s === 'active_roster') return 'Ativo na escala';
-        if (s === 'accepted') return 'Aceito no link';
-        if (s === 'declined') return 'Recusado no link';
-        if (s === 'pending') return 'Aguardando resposta';
-        return s || '—';
-    };
+    const inviteLabel = (item: VolunteerRow) =>
+        item.inviteStatusLabel ??
+        (item.inviteStatus === 'accepted'
+            ? 'Aceito'
+            : item.inviteStatus === 'declined'
+              ? 'Rejeitado'
+              : item.inviteStatus === 'pending'
+                ? item.inviteSentAt
+                    ? item.volunteerHasLinkedUser
+                        ? 'Aguardando resposta'
+                        : 'Aguardando cadastro'
+                    : 'Convite não enviado'
+                : item.inviteStatus || '—');
 
     const requestDateLabel = (iso: string | null) => {
         if (!iso) return '—';
@@ -512,7 +552,7 @@ export default function MyVolunteers() {
                                     <div className="text-xs text-zinc-500">{item.volunteer.email ?? ''}</div>
                                 </td>
                                 <td className="py-2 pr-3 text-zinc-700 dark:text-zinc-200">{item.ministryName ?? '—'}</td>
-                                <td className="py-2 pr-3 text-zinc-600 dark:text-zinc-300">{inviteLabel(item.inviteStatus)}</td>
+                                <td className="py-2 pr-3 text-zinc-600 dark:text-zinc-300">{inviteLabel(item)}</td>
                                 <td className="py-2 pr-3 text-zinc-700 dark:text-zinc-200">{statusLabel(item.leaderStatus)}</td>
                                 <td className="py-2 text-right">
                                     <div className="flex flex-wrap justify-end gap-2">
@@ -524,7 +564,7 @@ export default function MyVolunteers() {
                                                 Alterar status
                                             </SecondaryButton>
                                         ) : null}
-                                        {item.canResendInvite && item.inviteResendEmailUrl ? (
+                                        {item.canSendInvite && item.inviteResendEmailUrl ? (
                                             <SecondaryButton type="button" onClick={() => setInviteHelpRow(item)}>
                                                 Enviar convite
                                             </SecondaryButton>
@@ -589,7 +629,7 @@ export default function MyVolunteers() {
                                                     Status do convite
                                                 </dt>
                                                 <dd className="mt-0.5 text-zinc-800 dark:text-zinc-100">
-                                                    {inviteLabel(item.inviteStatus)}
+                                                    {inviteLabel(item)}
                                                 </dd>
                                             </div>
                                             <div className="sm:col-span-2">
@@ -636,7 +676,7 @@ export default function MyVolunteers() {
                                                             Alterar status
                                                         </button>
                                                     ) : null}
-                                                    {item.canResendInvite && item.inviteResendEmailUrl ? (
+                                                    {item.canSendInvite && item.inviteResendEmailUrl ? (
                                                         <button
                                                             type="button"
                                                             className={rowActionsMenuItemClass}
@@ -836,7 +876,8 @@ export default function MyVolunteers() {
                                 type="button"
                                 onClick={() => {
                                     setTab('history');
-                                    void loadHistory();
+                                    if (statusFormIsDirty(row)) return;
+                                    void loadHistory(row, history !== null);
                                 }}
                                 className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${
                                     tab === 'history'
@@ -899,9 +940,14 @@ export default function MyVolunteers() {
                             </>
                         ) : (
                             <div className="space-y-3">
+                                {statusFormIsDirty(row) ? (
+                                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
+                                        Salve o status na aba «Status» para registrar a alteração no histórico.
+                                    </div>
+                                ) : null}
                                 {historyLoading ? (
                                     <div className="text-sm text-zinc-500">Carregando histórico…</div>
-                                ) : (history ?? []).length === 0 ? (
+                                ) : statusFormIsDirty(row) ? null : (history ?? []).length === 0 ? (
                                     <div className="text-sm text-zinc-500">Sem alterações registradas.</div>
                                 ) : (
                                     <ul className="space-y-2 text-sm">
@@ -993,7 +1039,7 @@ export default function MyVolunteers() {
                                         disabled={resendInviteForm.processing}
                                         className="!h-11 w-full !rounded-xl !normal-case !tracking-normal sm:w-auto"
                                     >
-                                        {resendInviteForm.processing ? 'Enviando…' : 'Reenviar e-mail'}
+                                        {resendInviteForm.processing ? 'Enviando…' : 'Enviar convite'}
                                     </PrimaryButton>
                                 ) : null}
                             </div>
@@ -1016,6 +1062,11 @@ export default function MyVolunteers() {
                                 </p>
                             ) : null}
                         </div>
+                        {inviteHelpRow.volunteerHasLinkedUser ? (
+                            <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
+                                Esta pessoa já tem conta no app. O convite pede aceitar ou recusar no aplicativo; após aceitar, você entra em contato pelo app.
+                            </p>
+                        ) : null}
                         {invitePlainFullMessage ? (
                             <div className="rounded-xl border border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800/50">
                                 <p className="border-b border-zinc-200 px-3 py-2 text-xs font-medium text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">

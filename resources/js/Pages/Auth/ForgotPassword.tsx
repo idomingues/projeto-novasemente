@@ -13,9 +13,14 @@ export default function ForgotPassword({
     status?: string;
     showMailLogHint?: boolean;
 }) {
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, post, processing, errors, transform } = useForm({
         email: '',
     });
+
+    transform((formData) => ({
+        ...formData,
+        email: formData.email.trim().toLowerCase(),
+    }));
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();

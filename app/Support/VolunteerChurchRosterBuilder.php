@@ -101,6 +101,7 @@ class VolunteerChurchRosterBuilder
     ): array {
         $q = self::volunteersVisibleInChurchQuery($churchId)
             ->with([
+                'user:id,email',
                 'ministries' => fn ($m) => $m->where('church_id', $churchId),
                 'churchPipelines' => fn ($p) => $p->where('church_id', $churchId)->with('stage'),
                 'ministryInvitations' => fn ($i) => $i->where('church_id', $churchId)->where('status', 'pending')->with('ministry:id,name'),
@@ -109,6 +110,11 @@ class VolunteerChurchRosterBuilder
         VolunteerLeadRosterFilters::apply($request, $q, $churchId);
 
         $volunteers = $q->orderByDesc('volunteers.created_at')->paginate($perPage)->withQueryString();
+
+        $volunteerIds = $volunteers->getCollection()->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
+        $forwardedMinistryIdsByVolunteer = Schema::hasTable('volunteer_ministry_invitations')
+            ? \App\Models\VolunteerMinistryInvitation::blockingMinistryIdsByVolunteerIds($churchId, $volunteerIds)
+            : [];
 
         $stages = VolunteerPipelineStage::query()
             ->where('church_id', $churchId)
@@ -128,7 +134,7 @@ class VolunteerChurchRosterBuilder
             ->all();
 
         $volunteers->setCollection(
-            $volunteers->getCollection()->map(function (Volunteer $v) use ($user, $churchId, $alwaysShowFullContact) {
+            $volunteers->getCollection()->map(function (Volunteer $v) use ($user, $churchId, $alwaysShowFullContact, $forwardedMinistryIdsByVolunteer) {
                 $pipe = $v->churchPipelines->firstWhere('church_id', $churchId);
                 $stage = $pipe?->stage;
                 $mask = $alwaysShowFullContact
@@ -145,7 +151,7 @@ class VolunteerChurchRosterBuilder
                 return [
                     'id' => $v->id,
                     'name' => $v->name,
-                    'hasUserAccount' => $v->user_id !== null,
+                    'hasUserAccount' => VolunteerAppLogin::loginReady($v),
                     'email' => $mask['email'],
                     'phone' => $mask['phone'],
                     'active' => (bool) $v->active,
@@ -154,6 +160,7 @@ class VolunteerChurchRosterBuilder
                     'stageName' => $hasPendingInvite ? 'Aguardando' : ($stage?->name ?? 'Não definido'),
                     'pendingInvite' => $hasPendingInvite,
                     'pendingInviteMinistryNames' => array_values(array_unique($pendingInviteMinistryNames)),
+                    'forwardedMinistryIds' => $forwardedMinistryIdsByVolunteer[(int) $v->id] ?? [],
                     'ministryNames' => $v->ministries->pluck('name')->values()->all(),
                     'interestPreview' => self::truncateInterestPreview($v),
                     'signals' => [

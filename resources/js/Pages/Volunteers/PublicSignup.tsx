@@ -717,6 +717,9 @@ export default function PublicSignup({ token, churchName }: Props) {
 
                                         <div className="mt-4">
                                             <InputLabel htmlFor="other_ministry_interest" value="Gostaria de servir em outro ministério? Se sim, qual? *" />
+                                            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                                (Se você quiser participar do Programa Caminho para vida plena, descreva abaixo.)
+                                            </p>
                                             <TextInput
                                                 id="other_ministry_interest"
                                                 value={data.other_ministry_interest}
@@ -836,7 +839,7 @@ export default function PublicSignup({ token, churchName }: Props) {
                                         <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-100">
                                             <div className="font-semibold">Conta de acesso</div>
                                             <div className="mt-1 text-xs text-emerald-800/80 dark:text-emerald-200/80">
-                                                Por fim, crie sua senha para aceder ao aplicativo. O departamento será definido por um administrador.
+                                                Por fim, crie sua senha para acessar o aplicativo. O departamento será definido por um administrador. O login será feito com o e-mail de contato informado no início do cadastro.
                                             </div>
                                         </div>
 

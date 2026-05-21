@@ -72,9 +72,10 @@ class VolunteerMinistryInvitationController extends Controller
         $channels = array_values(array_unique(array_filter($valid['channels'] ?? [], fn ($c) => is_string($c) && $c !== '')));
 
         $created = 0;
+        $skipped = 0;
         foreach ($ministryIds as $ministryId) {
             $ministry = Ministry::query()->where('church_id', $churchId)->findOrFail($ministryId);
-            app(CreateAndNotifyVolunteerMinistryInvitation::class)(
+            $invitation = app(CreateAndNotifyVolunteerMinistryInvitation::class)(
                 (int) $churchId,
                 $volunteer,
                 $ministry,
@@ -82,14 +83,29 @@ class VolunteerMinistryInvitationController extends Controller
                 $channels,
                 $slots,
             );
-            $created++;
+            if ($invitation->wasRecentlyCreated) {
+                $created++;
+            } else {
+                $skipped++;
+            }
+        }
+
+        if ($created === 0 && $skipped > 0) {
+            return back()->with('error', 'Este voluntário já foi encaminhado para o(s) departamento(s) selecionado(s).');
         }
 
         VolunteerPipelineBootstrap::moveVolunteerToStageByNormalizedName($volunteer, (int) $churchId, 'encaminhado');
 
-        $msg = $created === 1
-            ? 'Convite criado.'
-            : "{$created} convites criados.";
+        $notified = $channels !== [];
+        if ($notified) {
+            $msg = $created === 1
+                ? 'Convite enviado ao voluntário.'
+                : "{$created} convites enviados ao voluntário.";
+        } else {
+            $msg = $created === 1
+                ? 'Voluntário encaminhado ao departamento. Envie o convite em Meus voluntários quando quiser.'
+                : "Voluntário encaminhado a {$created} departamentos. Envie o convite em Meus voluntários quando quiser.";
+        }
 
         return back()->with('success', $msg);
     }

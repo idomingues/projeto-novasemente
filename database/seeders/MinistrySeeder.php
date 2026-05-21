@@ -11,7 +11,7 @@ class MinistrySeeder extends Seeder
 {
     public function run(): void
     {
-        $names = ['Louvor', 'Portaria', 'Som', 'Intercessão', 'Crianças', 'Recepção', 'Midia'];
+        $names = ['Louvor', 'Portaria', 'Som', 'Intercessão', 'Crianças', 'Recepção', 'Midia', 'Voluntariado'];
         $churchId = null;
         if (Schema::hasTable('churches')) {
             $churchId = Church::query()

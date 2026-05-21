@@ -26,6 +26,11 @@ interface LeaderOpt {
     label: string;
 }
 
+interface MinistryOpt {
+    id: number;
+    name: string;
+}
+
 export interface LeaderContactRow {
     solicitation: SolicitationDetailShape;
     messages: SolicitationMessageRow[];
@@ -44,6 +49,7 @@ export interface LeaderContactRow {
 
 interface Props {
     leaderOptions: LeaderOpt[];
+    contactMinistry: MinistryOpt | null;
     storeUrl: string;
     myLeaderChats: LeaderContactRow[];
 }
@@ -72,7 +78,8 @@ function rowTitle(row: LeaderContactRow): string {
     return row.solicitation.assignedVolunteerName ?? row.solicitation.typeLabel;
 }
 
-export default function LiderContact({ leaderOptions, storeUrl, myLeaderChats }: Props) {
+export default function LiderContact({ leaderOptions, contactMinistry, storeUrl, myLeaderChats }: Props) {
+    const singleLeader = leaderOptions.length === 1 ? leaderOptions[0] : null;
     const [createOpen, setCreateOpen] = useState(false);
     const [detailOpen, setDetailOpen] = useState(false);
     const [detailRow, setDetailRow] = useState<LeaderContactRow | null>(null);
@@ -88,6 +95,9 @@ export default function LiderContact({ leaderOptions, storeUrl, myLeaderChats }:
 
     const openCreate = () => {
         reset();
+        if (singleLeader) {
+            setData('assigned_volunteer_id', singleLeader.value);
+        }
         setCreateOpen(true);
     };
 
@@ -225,8 +235,8 @@ export default function LiderContact({ leaderOptions, storeUrl, myLeaderChats }:
                 <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain p-6 sm:p-8">
                     <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Nova conversa</h2>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1 mb-6">
-                        Indique um assunto curto, escolha o líder com conta na app e escreva a primeira mensagem. Abre-se um chat privado
-                        entre si e esse líder.
+                        Indique um assunto curto, escolha um líder da equipe de Voluntariado e escreva a primeira mensagem. Abre-se um chat
+                        privado entre você e esse líder.
                     </p>
 
                     <form onSubmit={submit} className="space-y-4">
@@ -243,29 +253,47 @@ export default function LiderContact({ leaderOptions, storeUrl, myLeaderChats }:
                             />
                             <InputError message={errors.subject} className="mt-1" />
                         </div>
+                        {contactMinistry ? (
+                            <div>
+                                <InputLabel value="Departamento" />
+                                <p className="mt-1 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-800 dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-100">
+                                    {contactMinistry.name}
+                                </p>
+                            </div>
+                        ) : null}
                         <div>
                             <InputLabel htmlFor="lc_leader" value="Líder de ministério" />
-                            <SelectInput
-                                id="lc_leader"
-                                className="mt-1"
-                                value={data.assigned_volunteer_id}
-                                onChange={(e) => setData('assigned_volunteer_id', e.target.value)}
-                                required
-                            >
-                                <option value="" disabled>
-                                    Selecione…
-                                </option>
-                                {leaderOptions.map((o) => (
-                                    <option key={o.value} value={o.value}>
-                                        {o.label}
+                            {singleLeader ? (
+                                <p
+                                    id="lc_leader"
+                                    className="mt-1 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-800 dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-100"
+                                >
+                                    {singleLeader.label}
+                                </p>
+                            ) : (
+                                <SelectInput
+                                    id="lc_leader"
+                                    className="mt-1"
+                                    value={data.assigned_volunteer_id}
+                                    onChange={(e) => setData('assigned_volunteer_id', e.target.value)}
+                                    required
+                                >
+                                    <option value="" disabled>
+                                        Selecione…
                                     </option>
-                                ))}
-                            </SelectInput>
+                                    {leaderOptions.map((o) => (
+                                        <option key={o.value} value={o.value}>
+                                            {o.label}
+                                        </option>
+                                    ))}
+                                </SelectInput>
+                            )}
                             <InputError message={errors.assigned_volunteer_id} className="mt-1" />
                             {leaderOptions.length === 0 ? (
                                 <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
-                                    Ainda não há líderes com usuário da app associado ao voluntariado. Peça à secretaria para associar a
-                                    conta na ficha do voluntário.
+                                    {contactMinistry
+                                        ? 'Não há líderes da equipe de Voluntariado com conta na app no momento. Tente novamente mais tarde ou fale com a secretaria.'
+                                        : 'O departamento Voluntariado ainda não está configurado nesta igreja. Fale com a secretaria.'}
                                 </p>
                             ) : null}
                         </div>

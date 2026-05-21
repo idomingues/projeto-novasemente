@@ -1,6 +1,6 @@
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Head, Link, usePage } from '@inertiajs/react';
-import { useMemo } from 'react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { useMemo, useState } from 'react';
 
 type Slot = { day_of_week: number; start_time: string | null; end_time: string | null };
 
@@ -13,6 +13,8 @@ type Invite = {
     volunteerEmail: string | null;
     ministryName: string | null;
     volunteerHasUser: boolean;
+    loggedInAsInvitee?: boolean;
+    canRespond?: boolean;
     registerUrl: string | null;
     pendingWithoutEmail: boolean;
     slots: Slot[];
@@ -21,6 +23,7 @@ type Invite = {
 
 export default function MinistryInvite() {
     const { invitation } = usePage().props as unknown as { invitation: Invite };
+    const [responding, setResponding] = useState<'accept' | 'decline' | null>(null);
 
     const dayLabel = useMemo(() => ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'], []);
 
@@ -28,9 +31,9 @@ export default function MinistryInvite() {
 
     const statusPill = () => {
         if (invitation.expired) return <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">Expirado</span>;
-        if (invitation.status === 'accepted') return <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">Confirmado</span>;
-        if (invitation.status === 'declined') return <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-800 dark:bg-red-950/40 dark:text-red-200">Recusado</span>;
-        return <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">Aguardando</span>;
+        if (invitation.status === 'accepted') return <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">Aceito</span>;
+        if (invitation.status === 'declined') return <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-800 dark:bg-red-950/40 dark:text-red-200">Rejeitado</span>;
+        return <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">Aguardando resposta</span>;
     };
 
     const statusMessage = () => {
@@ -38,20 +41,30 @@ export default function MinistryInvite() {
             return 'Este convite expirou. Solicite um novo convite à equipe do departamento.';
         }
         if (invitation.status === 'accepted') {
-            return invitation.volunteerHasUser
-                ? 'Convite confirmado. Acesse o aplicativo com sua conta.'
-                : 'Convite confirmado. Obrigado!';
+            return 'Convite aceito! O líder do departamento entrará em contato em breve pelo aplicativo. Mantenha-se logado no app.';
         }
         if (invitation.status === 'declined') {
-            return 'Este convite foi recusado. Se mudou de ideia, fale com a liderança do departamento.';
+            return 'Você recusou este convite. Se mudou de ideia, fale com a liderança do departamento.';
         }
         if (invitation.pendingWithoutEmail) {
             return 'Não há e-mail no cadastro de voluntário para abrir o cadastro. Entre em contato com a secretaria ou a liderança do departamento.';
         }
+        if (invitation.canRespond) {
+            return 'Leia a mensagem acima e confirme se deseja participar deste departamento.';
+        }
         if (invitation.volunteerHasUser) {
-            return 'Este voluntário já tem conta no aplicativo. Faça login para continuar.';
+            return 'Faça login com sua conta no aplicativo para aceitar ou recusar o convite.';
         }
         return 'Não foi possível abrir o cadastro neste momento. Entre em contato com a equipe.';
+    };
+
+    const postRespond = (kind: 'accept' | 'decline') => {
+        setResponding(kind);
+        const url =
+            kind === 'accept'
+                ? route('volunteers.ministry-invite.accept', { token: invitation.token })
+                : route('volunteers.ministry-invite.decline', { token: invitation.token });
+        router.post(url, {}, { preserveScroll: true, onFinish: () => setResponding(null) });
     };
 
     return (
@@ -106,21 +119,44 @@ export default function MinistryInvite() {
                         {statusMessage()}
                     </div>
 
-                    {invitation.volunteerHasUser && invitation.status === 'accepted' ? (
+                    {invitation.canRespond ? (
+                        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                            <button
+                                type="button"
+                                disabled={responding !== null}
+                                onClick={() => postRespond('accept')}
+                                className="inline-flex h-12 flex-1 items-center justify-center rounded-full bg-emerald-600 px-8 text-sm font-semibold uppercase tracking-widest text-white shadow-sm transition hover:bg-emerald-500 disabled:opacity-60"
+                            >
+                                {responding === 'accept' ? 'Salvando…' : 'Aceitar convite'}
+                            </button>
+                            <button
+                                type="button"
+                                disabled={responding !== null}
+                                onClick={() => postRespond('decline')}
+                                className="inline-flex h-12 flex-1 items-center justify-center rounded-full border border-zinc-300 bg-white px-8 text-sm font-semibold uppercase tracking-widest text-zinc-800 shadow-sm transition hover:bg-zinc-50 disabled:opacity-60 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                            >
+                                {responding === 'decline' ? 'Salvando…' : 'Recusar convite'}
+                            </button>
+                        </div>
+                    ) : null}
+
+                    {invitation.status === 'accepted' ? (
                         <Link
-                            href={route('login')}
+                            href={route('mobile.home')}
                             className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-full bg-zinc-900 px-8 text-sm font-semibold uppercase tracking-widest text-white shadow-sm transition hover:bg-zinc-700 dark:bg-white dark:text-black dark:hover:bg-zinc-100"
                         >
-                            Entrar no app
+                            Voltar ao início
                         </Link>
                     ) : null}
 
-                    {invitation.volunteerHasUser && invitation.status === 'pending' && !invitation.expired ? (
+                    {invitation.volunteerHasUser && invitation.status === 'pending' && !invitation.expired && !invitation.canRespond ? (
                         <Link
-                            href={route('login')}
+                            href={route('login', {
+                                redirect: route('volunteers.ministry-invite.show', { token: invitation.token }),
+                            })}
                             className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-full bg-zinc-900 px-8 text-sm font-semibold uppercase tracking-widest text-white shadow-sm transition hover:bg-zinc-700 dark:bg-white dark:text-black dark:hover:bg-zinc-100"
                         >
-                            Fazer login
+                            Entrar no app
                         </Link>
                     ) : null}
                 </div>

@@ -96,13 +96,98 @@ class VolunteerMinistryInvitation extends Model
         return self::builtinIntroForMinistry((string) ($this->ministry?->name ?? 'Departamento'));
     }
 
+    public function hasLinkedAppAccount(): bool
+    {
+        return $this->volunteer?->user_id !== null;
+    }
+
     public static function builtinIntroForMinistry(string $ministryName): string
     {
-        return 'Você foi convidado(a) para servir no departamento '.$ministryName.'. Para participar, crie sua conta no aplicativo pelo link abaixo.';
+        return 'Seja bem-vindo(a) ao departamento «'.$ministryName.'»! '
+            .'Após aceitar este convite, o líder entrará em contato em breve pelo aplicativo Nova Semente. '
+            .'Mantenha-se logado em https://app.novasemente.com.br ou baixe o app na App Store (Apple) ou na Google Play.';
     }
 
     public static function createToken(): string
     {
         return Str::random(48);
+    }
+
+    /**
+     * Convite vigente que impede novo encaminhamento ao mesmo departamento.
+     */
+    /**
+     * IDs dos convites vigentes que impedem novo encaminhamento ao mesmo departamento.
+     *
+     * @param  list<int>  $volunteerIds
+     * @return array<int, list<int>>
+     */
+    public static function blockingMinistryIdsByVolunteerIds(int $churchId, array $volunteerIds): array
+    {
+        if ($volunteerIds === []) {
+            return [];
+        }
+
+        $rows = static::query()
+            ->where('church_id', $churchId)
+            ->whereIn('volunteer_id', $volunteerIds)
+            ->where(function ($q): void {
+                $q->where('status', 'accepted')
+                    ->orWhere(function ($q2): void {
+                        $q2->where('status', 'pending')
+                            ->where(function ($q3): void {
+                                $q3->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                            });
+                    });
+            })
+            ->get(['volunteer_id', 'ministry_id']);
+
+        $grouped = [];
+        foreach ($rows as $row) {
+            $volunteerId = (int) $row->volunteer_id;
+            $grouped[$volunteerId][] = (int) $row->ministry_id;
+        }
+
+        foreach ($grouped as $volunteerId => $ministryIds) {
+            $grouped[$volunteerId] = array_values(array_unique($ministryIds));
+        }
+
+        return $grouped;
+    }
+
+    public static function findBlockingForMinistry(int $churchId, int $volunteerId, int $ministryId): ?self
+    {
+        return static::query()
+            ->where('church_id', $churchId)
+            ->where('volunteer_id', $volunteerId)
+            ->where('ministry_id', $ministryId)
+            ->where(function ($q): void {
+                $q->where('status', 'accepted')
+                    ->orWhere(function ($q2): void {
+                        $q2->where('status', 'pending')
+                            ->where(function ($q3): void {
+                                $q3->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                            });
+                    });
+            })
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    /**
+     * IDs dos convites mais recentes por voluntário + departamento (para listagens).
+     *
+     * @param  list<int>  $ministryIds
+     * @return \Illuminate\Database\Eloquent\Builder<self>
+     */
+    public static function queryLatestPerVolunteerMinistry(int $churchId, array $ministryIds): \Illuminate\Database\Eloquent\Builder
+    {
+        $latestIds = static::query()
+            ->where('church_id', $churchId)
+            ->whereIn('ministry_id', $ministryIds)
+            ->selectRaw('MAX(id) as id')
+            ->groupBy('volunteer_id', 'ministry_id');
+
+        return static::query()->whereIn('id', $latestIds);
     }
 }

@@ -511,15 +511,9 @@ class VolunteerRequestSolicitationController extends Controller
 
         $ministry = Ministry::query()->where('church_id', $churchId)->whereKey($ministryId)->firstOrFail();
 
-        $dup = VolunteerMinistryInvitation::query()
-            ->where('church_id', $churchId)
-            ->where('volunteer_id', $volunteer->id)
-            ->where('ministry_id', $ministry->id)
-            ->where('status', 'pending')
-            ->exists();
-        if ($dup) {
+        if (VolunteerMinistryInvitation::findBlockingForMinistry((int) $churchId, (int) $volunteer->id, (int) $ministry->id)) {
             throw ValidationException::withMessages([
-                'volunteer_id' => ['Já existe um convite pendente deste voluntário para este departamento.'],
+                'volunteer_id' => ['Este voluntário já foi encaminhado para este departamento.'],
             ]);
         }
 

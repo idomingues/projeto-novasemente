@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Actions\Volunteers\SendVolunteerMinistryInvitationEmail;
+use App\Actions\Volunteers\BuildVolunteerMinistryInvitePlainCopy;
+use App\Actions\Volunteers\NotifyVolunteerMinistryInvitation;
+use App\Support\VolunteerInvitationStatusLabels;
 use App\Models\Church;
 use App\Models\ChurchSolicitation;
 use App\Models\Ministry;
@@ -207,6 +209,15 @@ class MyMinistryVolunteersController extends Controller
                         'linkedUser' => $v->user ? ['id' => (int) $v->user->id, 'email' => $v->user->email] : null,
                     ],
                     'inviteStatus' => $invitation?->status ?? 'active_roster',
+                    'inviteStatusLabel' => VolunteerInvitationStatusLabels::forInvitation($invitation),
+                    'invitePlainMessage' => $invitation
+                        ? BuildVolunteerMinistryInvitePlainCopy::for($invitation)
+                        : null,
+                    'inviteSentAt' => $invitation?->sent_at?->toIso8601String(),
+                    'volunteerHasLinkedUser' => $v->user_id !== null,
+                    'canSendInvite' => $invitation
+                        ? ($invitation->status === 'pending' && ! $invitation->isExpired())
+                        : false,
                     'leaderStatus' => $invitation?->leader_status ?? 'active',
                     'leaderNote' => $invitation?->leader_note,
                     'updateUrl' => $invitation
@@ -214,7 +225,7 @@ class MyMinistryVolunteersController extends Controller
                         : route('ministry-lead.my-volunteers.volunteer.leader-status', [$v, $m]),
                     'historyUrl' => $invitation
                         ? route('ministry-lead.my-volunteers.history', $invitation)
-                        : null,
+                        : route('ministry-lead.my-volunteers.volunteer.history', [$v, $m]),
                     'removeFromMinistryUrl' => route('ministry-lead.my-volunteers.volunteer.remove-from-ministry', [$v, $m]),
                 ];
                 });
@@ -401,9 +412,7 @@ class MyMinistryVolunteersController extends Controller
         $ministryIds = $user?->ministries()->where('church_id', $churchId)->pluck('ministries.id')->values()->all() ?? [];
         $leaderMinistries = $this->leaderMinistriesWithRoles((int) $churchId, $ministryIds);
 
-        $invites = VolunteerMinistryInvitation::query()
-            ->where('church_id', $churchId)
-            ->whereIn('ministry_id', $ministryIds)
+        $invites = VolunteerMinistryInvitation::queryLatestPerVolunteerMinistry((int) $churchId, array_map('intval', $ministryIds))
             ->with([
                 'volunteer' => function ($q): void {
                     $q->select(
@@ -453,7 +462,7 @@ class MyMinistryVolunteersController extends Controller
             'inviteResendEmailUrl' => route('ministry-lead.my-volunteers.invitation.resend-email', $i),
             'inviteIntroSaveUrl' => route('ministry-lead.my-volunteers.invitation.intro', $i),
             'inviteIntroMessage' => $i->intro_message,
-            'canResendInvite' => $i->status === 'pending' && ! $i->isExpired(),
+            'canSendInvite' => $i->status === 'pending' && ! $i->isExpired(),
             'removeFromMinistryUrl' => route('ministry-lead.my-volunteers.volunteer.remove-from-ministry', [$i->volunteer_id, $i->ministry_id]),
             'volunteer' => [
                 'id' => $i->volunteer_id,
@@ -479,8 +488,12 @@ class MyMinistryVolunteersController extends Controller
                 'appAccessOnly' => (bool) ($i->volunteer?->app_access_only ?? false),
                 'linkedUser' => $i->volunteer?->user ? ['id' => (int) $i->volunteer->user->id, 'email' => $i->volunteer->user->email] : null,
             ],
-            // status do convite (resposta do voluntário ao link público)
+            // status do convite (cadastro do voluntário)
             'inviteStatus' => $i->status,
+            'inviteStatusLabel' => VolunteerInvitationStatusLabels::forInvitation($i),
+            'invitePlainMessage' => BuildVolunteerMinistryInvitePlainCopy::for($i),
+            'inviteSentAt' => $i->sent_at?->toIso8601String(),
+            'volunteerHasLinkedUser' => $i->volunteer?->user_id !== null,
             // status interno do líder
             'leaderStatus' => $i->leader_status,
             'leaderNote' => $i->leader_note,
@@ -524,18 +537,25 @@ class MyMinistryVolunteersController extends Controller
         abort_unless(in_array((int) $invitation->ministry_id, array_map('intval', $ministryIds), true), 403);
 
         if ($invitation->status !== 'pending') {
-            return back()->with('error', 'Só é possível reenviar enquanto o convite estiver pendente de resposta.');
+            return back()->with('error', 'Só é possível enviar o convite enquanto o cadastro do voluntário estiver pendente.');
         }
         if ($invitation->isExpired()) {
             return back()->with('error', 'Este convite expirou. Peça à secretaria um novo encaminhamento.');
         }
 
-        $sent = app(SendVolunteerMinistryInvitationEmail::class)($invitation);
-        if (! $sent) {
-            return back()->with('error', 'Não há e-mail no cadastro do voluntário (nem no usuário vinculado) para enviar o convite.');
+        $wasSent = $invitation->sent_at !== null;
+
+        $channels = ['email'];
+        if ($invitation->volunteer?->user_id) {
+            $channels[] = 'inbox';
         }
 
-        return back()->with('success', 'E-mail do convite enviado.');
+        $sent = app(NotifyVolunteerMinistryInvitation::class)($invitation, $channels);
+        if (! $sent) {
+            return back()->with('error', 'Não foi possível enviar o convite (verifique o e-mail do voluntário e as preferências de notificação no app).');
+        }
+
+        return back()->with('success', $wasSent ? 'Convite reenviado.' : 'Convite enviado ao voluntário.');
     }
 
     public function updateInvitationIntro(Request $request, VolunteerMinistryInvitation $invitation): RedirectResponse
@@ -598,20 +618,12 @@ class MyMinistryVolunteersController extends Controller
         return $this->applyLeaderStatusUpdate($request, $invitation);
     }
 
-    public function history(Request $request, VolunteerMinistryInvitation $invitation): JsonResponse
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function leaderStatusHistoryPayload(VolunteerMinistryInvitation $invitation): array
     {
-        $this->canUse($request);
-        $churchId = $this->churchId($request);
-        abort_unless($churchId, 404);
-        abort_unless((int) $invitation->church_id === (int) $churchId, 404);
-
-        $user = $request->user();
-        if (! $user?->hasRole(['admin', 'super_admin'])) {
-            $ministryIds = $user?->ministries()->where('church_id', $churchId)->pluck('ministries.id')->values()->all() ?? [];
-            abort_unless(in_array((int) $invitation->ministry_id, array_map('intval', $ministryIds), true), 403);
-        }
-
-        $rows = $invitation->leaderStatusHistory()
+        return $invitation->leaderStatusHistory()
             ->with('changedBy:id,name')
             ->limit(50)
             ->get()
@@ -625,7 +637,37 @@ class MyMinistryVolunteersController extends Controller
             ])
             ->values()
             ->all();
+    }
 
-        return response()->json(['history' => $rows]);
+    public function history(Request $request, VolunteerMinistryInvitation $invitation): JsonResponse
+    {
+        $this->canUse($request);
+        $churchId = $this->churchId($request);
+        abort_unless($churchId, 404);
+        abort_unless((int) $invitation->church_id === (int) $churchId, 404);
+
+        $user = $request->user();
+        if (! $user?->hasRole(['admin', 'super_admin'])) {
+            $ministryIds = $user?->ministries()->where('church_id', $churchId)->pluck('ministries.id')->values()->all() ?? [];
+            abort_unless(in_array((int) $invitation->ministry_id, array_map('intval', $ministryIds), true), 403);
+        }
+
+        return response()->json(['history' => $this->leaderStatusHistoryPayload($invitation)]);
+    }
+
+    public function volunteerMinistryHistory(Request $request, Volunteer $volunteer, Ministry $ministry): JsonResponse
+    {
+        $this->canUse($request);
+        $churchId = $this->churchId($request);
+        abort_unless($churchId, 404);
+        abort_unless((int) $ministry->church_id === (int) $churchId, 404);
+        $this->assertLeaderMayManageMinistry($request, (int) $churchId, (int) $ministry->id);
+
+        $invitation = $this->invitationForVolunteerMinistry((int) $churchId, (int) $volunteer->id, (int) $ministry->id);
+        if (! $invitation) {
+            return response()->json(['history' => []]);
+        }
+
+        return response()->json(['history' => $this->leaderStatusHistoryPayload($invitation)]);
     }
 }

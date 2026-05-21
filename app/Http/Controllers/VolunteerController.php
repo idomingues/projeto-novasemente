@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerSelfSignupToken;
 use App\Support\VolunteerChurchRosterBuilder;
+use App\Support\VolunteerContactDuplicateChecker;
 use App\Support\VolunteerPipelineBootstrap;
 use App\Support\VolunteerSignupDetailPresenter;
 use Illuminate\Http\JsonResponse;
@@ -180,10 +181,12 @@ class VolunteerController extends Controller
             return null;
         }
 
-        $user = User::withoutEvents(function () use ($name) {
+        $email = VolunteerContactDuplicateChecker::normalizeEmail((string) ($volunteer->email ?? ''));
+
+        $user = User::withoutEvents(function () use ($name, $email) {
             return User::create([
                 'name' => $name,
-                'email' => null,
+                'email' => $email,
                 'password' => Str::random(64),
             ]);
         });

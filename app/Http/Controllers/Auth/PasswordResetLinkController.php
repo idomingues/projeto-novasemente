@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Support\VolunteerContactDuplicateChecker;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
@@ -30,16 +32,24 @@ class PasswordResetLinkController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        $request->validate([
-            'email' => 'required|email',
+        $validated = $request->validate([
+            'email' => ['required', 'string', 'email', 'max:255'],
         ]);
 
-        // We will send the password reset link to this user. Once we have attempted
-        // to send the link, we will examine the response then see the message we
-        // need to show to the user. Finally, we'll send out a proper response.
-        $status = Password::sendResetLink(
-            $request->only('email')
-        );
+        $emailNorm = VolunteerContactDuplicateChecker::normalizeEmail($validated['email']);
+        $user = $emailNorm
+            ? User::query()->whereRaw('LOWER(TRIM(COALESCE(email, ""))) = ?', [$emailNorm])->first()
+            : null;
+
+        if ($user === null || trim((string) $user->email) === '') {
+            throw ValidationException::withMessages([
+                'email' => [trans('passwords.user')],
+            ]);
+        }
+
+        $status = Password::sendResetLink([
+            'email' => $user->email,
+        ]);
 
         if ($status == Password::RESET_LINK_SENT) {
             // Inertia: 303 após POST alinha com o tratamento de validação (evita resposta “muda” sem flash).

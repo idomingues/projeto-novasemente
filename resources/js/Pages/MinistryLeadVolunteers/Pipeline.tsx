@@ -43,6 +43,7 @@ type VolunteerListRow = {
     stageName: string;
     pendingInvite?: boolean;
     pendingInviteMinistryNames?: string[];
+    forwardedMinistryIds?: number[];
     ministryNames: string[];
     interestPreview: string | null;
     signals: { memberNs: boolean; sixMonthsInChurchOrLetter: boolean; ministryExperienceDeclared: boolean };
@@ -252,11 +253,6 @@ export default function Pipeline({
     const [inviteOpen, setInviteOpen] = useRemember(false, 'pipeline.inviteOpen');
     const [inviteVolunteer, setInviteVolunteer] = useRemember<VolunteerListRow | null>(null, 'pipeline.inviteVolunteer');
     const [inviteMinistryIds, setInviteMinistryIds] = useRemember<number[]>([], 'pipeline.inviteMinistryIds');
-    const [inviteChannels, setInviteChannels] = useRemember<{ inbox: boolean }>(
-        { inbox: true },
-        'pipeline.inviteChannels',
-    );
-
     const noteForm = useForm({ body: '' });
     const stageMoveForm = useForm({ stage_id: '' as string | number });
     const ministriesForm = useForm<{ ministry_ids: number[] }>({ ministry_ids: [] });
@@ -269,10 +265,15 @@ export default function Pipeline({
         return ministries.filter((m) => allowed.has(m.id));
     }, [ministries, encaminharMinistryIds]);
 
+    const inviteBlockedMinistryIds = useMemo(
+        () => new Set(inviteVolunteer?.forwardedMinistryIds ?? []),
+        [inviteVolunteer?.forwardedMinistryIds],
+    );
+
     const openInvite = (v: VolunteerListRow) => {
         setInviteVolunteer(v);
-        // Não resetamos automaticamente os campos do formulário.
-        // O estado é "remembered" para sobreviver a reloads parciais do Inertia enquanto o modal está aberto.
+        const blocked = new Set(v.forwardedMinistryIds ?? []);
+        setInviteMinistryIds((prev) => prev.filter((id) => !blocked.has(id)));
         setInviteOpen(true);
     };
 
@@ -470,6 +471,7 @@ export default function Pipeline({
     };
 
     const toggleInviteMinistry = (ministryId: number, checked: boolean) => {
+        if (inviteBlockedMinistryIds.has(ministryId)) return;
         setInviteMinistryIds((prev) => {
             const set = new Set(prev);
             if (checked) {
@@ -493,20 +495,17 @@ export default function Pipeline({
                         setInviteOpen(false);
                         setInviteVolunteer(null);
                         setInviteMinistryIds([]);
-                        setInviteChannels({ inbox: true });
                     }
                 },
             },
         );
     };
 
-    const submitInvite: FormEventHandler = (e) => {
+    const submitEncaminhar: FormEventHandler = (e) => {
         e.preventDefault();
         if (!inviteVolunteer || inviteMinistryIds.length === 0) return;
-        // Email é o canal principal (sempre). Notificação é opcional.
-        const channels = ['email', ...(inviteChannels.inbox ? ['inbox'] : [])];
-        if (channels.length === 0) return;
-        postInvite(channels, true);
+        // Encaminhar não notifica o voluntário — o líder envia o convite em Meus voluntários.
+        postInvite([], true);
     };
 
     const toggleVolunteerMinistry = (ministryId: number, checked: boolean, canEdit: boolean) => {
@@ -1447,54 +1446,53 @@ export default function Pipeline({
                     setInviteOpen(false);
                     setInviteVolunteer(null);
                     setInviteMinistryIds([]);
-                    setInviteChannels({ inbox: true });
                 }}
                 maxWidth="lg"
             >
                 <div className="p-6 space-y-4">
                     <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Encaminhar voluntário</h2>
                     <p className="text-sm text-zinc-600 dark:text-zinc-300">
-                        {inviteVolunteer?.name ?? 'Voluntário'} — escolha um ou mais departamentos e como deseja enviar.
+                        {inviteVolunteer?.name ?? 'Voluntário'} — escolha um ou mais departamentos. O voluntário{' '}
+                        <strong className="font-semibold text-zinc-800 dark:text-zinc-100">não</strong> é notificado
+                        agora; cada líder envia o convite em <strong className="font-semibold">Meus voluntários</strong>.
                     </p>
-                    <form onSubmit={submitInvite} className="space-y-4">
+                    <form onSubmit={submitEncaminhar} className="space-y-4">
                         <div>
                             <InputLabel value="Departamentos *" />
                             <div className="mt-2 max-h-[min(40vh,280px)] space-y-2 overflow-y-auto pr-1">
                                 {encaminharMinistries.length === 0 ? (
                                     <p className="text-sm text-zinc-500">Nenhum departamento disponível para encaminhar.</p>
+                                ) : encaminharMinistries.every((m) => inviteBlockedMinistryIds.has(m.id)) ? (
+                                    <p className="text-sm text-zinc-500">
+                                        Este voluntário já foi encaminhado para todos os departamentos disponíveis.
+                                    </p>
                                 ) : (
-                                    encaminharMinistries.map((m) => (
-                                        <label
-                                            key={m.id}
-                                            className="flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-                                        >
-                                            <Checkbox
-                                                checked={inviteMinistryIds.includes(m.id)}
-                                                onChange={(e) => toggleInviteMinistry(m.id, e.target.checked)}
-                                            />
-                                            <span className="text-zinc-800 dark:text-zinc-100">{m.name}</span>
-                                        </label>
-                                    ))
+                                    encaminharMinistries.map((m) => {
+                                        const isBlocked = inviteBlockedMinistryIds.has(m.id);
+                                        return (
+                                            <label
+                                                key={m.id}
+                                                className={`flex items-center gap-3 rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-900 ${
+                                                    isBlocked
+                                                        ? 'cursor-not-allowed opacity-60'
+                                                        : 'cursor-pointer'
+                                                }`}
+                                            >
+                                                <Checkbox
+                                                    checked={!isBlocked && inviteMinistryIds.includes(m.id)}
+                                                    disabled={isBlocked}
+                                                    onChange={(e) => toggleInviteMinistry(m.id, e.target.checked)}
+                                                />
+                                                <span className="min-w-0 flex-1 text-zinc-800 dark:text-zinc-100">{m.name}</span>
+                                                {isBlocked ? (
+                                                    <span className="shrink-0 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                                                        Já encaminhado
+                                                    </span>
+                                                ) : null}
+                                            </label>
+                                        );
+                                    })
                                 )}
-                            </div>
-                        </div>
-
-                        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
-                            <p className="text-sm font-semibold text-zinc-900 dark:text-white">Canais</p>
-                            <div className="mt-3 space-y-2">
-                                <div className="flex items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900">
-                                    <span className="text-zinc-700 dark:text-zinc-200">E-mail (principal)</span>
-                                    <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">Sempre</span>
-                                </div>
-                                <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-200">
-                                    <input
-                                        type="checkbox"
-                                        checked={inviteChannels.inbox}
-                                        onChange={(e) => setInviteChannels({ inbox: e.target.checked })}
-                                        className="rounded border-zinc-300 dark:border-zinc-600"
-                                    />
-                                    Notificação (app) — opcional
-                                </label>
                             </div>
                         </div>
 
@@ -1505,16 +1503,18 @@ export default function Pipeline({
                                     setInviteOpen(false);
                                     setInviteVolunteer(null);
                                     setInviteMinistryIds([]);
-                                    setInviteChannels({ inbox: true });
                                 }}
                             >
                                 Cancelar
                             </SecondaryButton>
                             <PrimaryButton
                                 type="submit"
-                                disabled={inviteMinistryIds.length === 0}
+                                disabled={
+                                    inviteMinistryIds.length === 0 ||
+                                    encaminharMinistries.every((m) => inviteBlockedMinistryIds.has(m.id))
+                                }
                             >
-                                Enviar convite
+                                Encaminhar
                             </PrimaryButton>
                         </div>
                     </form>

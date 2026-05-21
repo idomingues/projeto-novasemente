@@ -145,7 +145,7 @@ class MobileSupportController extends Controller
 
         app(SupportTicketChatNotifier::class)->notifyStaffOfNewTicket($ticket, $user);
 
-        return redirect()->route('mobile.support.ticket', ['token' => $ticket->public_token], absolute: true);
+        return redirect()->route('mobile.support.ticket', ['token' => $ticket->public_token]);
     }
 
     public function ticket(Request $request, string $token): Response

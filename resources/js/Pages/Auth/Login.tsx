@@ -1,5 +1,4 @@
 import Checkbox from '@/Components/Checkbox';
-import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
@@ -11,6 +10,21 @@ import { FormEventHandler, useEffect } from 'react';
 /** Evita zoom bloqueado e faz o Chrome redimensionar a área útil quando o teclado/autofill abre (melhor que sobrepor o formulário). */
 const LOGIN_VIEWPORT =
     'width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content';
+
+/** Fallback se o servidor enviar chave de tradução sem resolver (ex.: locale en no .env). */
+const AUTH_ERROR_PT: Record<string, string> = {
+    'auth.user':
+        'Não encontramos uma conta com este e-mail ou nome. Use o mesmo e-mail informado no cadastro de voluntário (com @) e a senha que você definiu.',
+    'auth.password': 'Senha incorreta. Verifique e tente novamente, ou use «Esqueceu a senha?».',
+    'auth.failed': 'Essas credenciais não correspondem aos nossos registros.',
+};
+
+function humanizeAuthError(message: string | undefined): string | undefined {
+    if (!message || message.trim() === '') {
+        return undefined;
+    }
+    return AUTH_ERROR_PT[message] ?? message;
+}
 
 /** Laravel/Inertia podem expor erros como string ou array; o `useForm` só recebe objeto em 422. */
 function firstErrorMessage(
@@ -64,16 +78,15 @@ export default function Login({
      * mesclar com `sharedErrors`. Enquanto `processing`, não usamos `sharedErrors` (evita mensagem antiga).
      */
     const formErrBag = errors as Record<string, string | string[] | undefined>;
-    const loginError =
+    const loginError = humanizeAuthError(
         firstErrorMessage(formErrBag, 'login') ??
-        (!processing ? firstErrorMessage(sharedErrors, 'login') : undefined);
-    const passwordError =
+            (!processing ? firstErrorMessage(sharedErrors, 'login') : undefined),
+    );
+    const passwordError = humanizeAuthError(
         firstErrorMessage(formErrBag, 'password') ??
-        (!processing ? firstErrorMessage(sharedErrors, 'password') : undefined);
+            (!processing ? firstErrorMessage(sharedErrors, 'password') : undefined),
+    );
 
-    // UX: se a senha estiver errada, não repetir mensagem embaixo do e-mail.
-    const loginErrorMessage = passwordError ? undefined : loginError;
-    const passwordErrorMessage = passwordError;
     const bannerMessage = passwordError || loginError;
 
     useEffect(() => {
@@ -165,7 +178,7 @@ export default function Login({
                             </p>
                         </div>
                         {status && (
-                            <div className="mb-4 text-sm font-medium text-green-600">
+                            <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-100">
                                 {status}
                             </div>
                         )}
@@ -205,7 +218,6 @@ export default function Login({
                                     onChange={(e) => setData('login', e.target.value)}
                                     required
                                 />
-                                <InputError message={loginErrorMessage} className="mt-2" />
                             </div>
 
                             <div>
@@ -220,7 +232,6 @@ export default function Login({
                                     onChange={(e) => setData('password', e.target.value)}
                                     required
                                 />
-                                <InputError message={passwordErrorMessage} className="mt-2" />
                             </div>
 
                             {/* Ação principal logo após as credenciais — mais espaço para o dropdown de autofill sem tapar o botão */}

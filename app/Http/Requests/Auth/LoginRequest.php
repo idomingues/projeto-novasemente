@@ -4,6 +4,7 @@ namespace App\Http\Requests\Auth;
 
 use App\Models\AuthLoginEvent;
 use App\Models\User;
+use App\Support\VolunteerAppLogin;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -69,7 +70,7 @@ class LoginRequest extends FormRequest
             RateLimiter::hit($this->ipThrottleKey(), $this->ipDecaySeconds());
 
             throw ValidationException::withMessages([
-                'login' => trans('auth.failed'),
+                'login' => $this->authMessage('auth.failed'),
             ]);
         }
 
@@ -77,18 +78,7 @@ class LoginRequest extends FormRequest
         $this->ensureIsNotRateLimited();
 
         $password = (string) $this->input('password');
-
-        // Se tem "cara de e-mail" (contém @), pesquisar só por e-mail — mesmo que esteja "mal digitado".
-        // Isso evita cair na busca por nome e trocar o tipo de mensagem (login vs senha).
-        $looksLikeEmail = str_contains($login, '@');
-
-        $user = User::query()
-            ->when(
-                $looksLikeEmail,
-                fn ($q) => $q->whereRaw('LOWER(email) = ?', [mb_strtolower($login, 'UTF-8')]),
-                fn ($q) => $q->whereRaw('LOWER(name) = ?', [mb_strtolower($login, 'UTF-8')]),
-            )
-            ->first();
+        $user = VolunteerAppLogin::findUserByLogin($login);
 
         if (! $user) {
             RateLimiter::hit($this->throttleKey(), $this->identityDecaySeconds());
@@ -96,7 +86,7 @@ class LoginRequest extends FormRequest
             AuthLoginEvent::record(AuthLoginEvent::OUTCOME_FAILED, null, $login, $ip, $ua);
 
             throw ValidationException::withMessages([
-                'login' => trans('auth.user'),
+                'login' => $this->authMessage('auth.user'),
             ]);
         }
 
@@ -106,7 +96,7 @@ class LoginRequest extends FormRequest
             AuthLoginEvent::record(AuthLoginEvent::OUTCOME_FAILED, null, $login, $ip, $ua);
 
             throw ValidationException::withMessages([
-                'password' => trans('auth.password'),
+                'password' => $this->authMessage('auth.password'),
             ]);
         }
 
@@ -139,11 +129,19 @@ class LoginRequest extends FormRequest
         );
 
         throw ValidationException::withMessages([
-            'login' => trans('auth.throttle', [
+            'login' => $this->authMessage('auth.throttle', [
                 'seconds' => $seconds,
                 'minutes' => ceil($seconds / 60),
             ]),
         ]);
+    }
+
+    /**
+     * @param  array<string, int|string>  $replace
+     */
+    private function authMessage(string $key, array $replace = []): string
+    {
+        return trans($key, $replace, 'pt_BR');
     }
 
     private function ensureIpNotRateLimited(): void
@@ -165,7 +163,7 @@ class LoginRequest extends FormRequest
         );
 
         throw ValidationException::withMessages([
-            'login' => trans('auth.throttle', [
+            'login' => $this->authMessage('auth.throttle', [
                 'seconds' => $seconds,
                 'minutes' => ceil($seconds / 60),
             ]),

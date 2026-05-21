@@ -348,6 +348,9 @@ Route::middleware('auth')->group(function () {
     Route::patch('/lideranca/meus-voluntarios/{invitation}/mensagem-convite', [MyMinistryVolunteersController::class, 'updateInvitationIntro'])
         ->name('ministry-lead.my-volunteers.invitation.intro')
         ->middleware('auth');
+    Route::get('/lideranca/meus-voluntarios/voluntarios/{volunteer}/ministerio/{ministry}/historico', [MyMinistryVolunteersController::class, 'volunteerMinistryHistory'])
+        ->name('ministry-lead.my-volunteers.volunteer.history')
+        ->middleware('auth');
     Route::get('/lideranca/meus-voluntarios/{invitation}/historico', [MyMinistryVolunteersController::class, 'history'])
         ->name('ministry-lead.my-volunteers.history')
         ->middleware('auth');

@@ -92,6 +92,9 @@ class LoginValidationInertiaTest extends TestCase
         $this->assertIsArray($errors);
         $this->assertArrayHasKey('login', $errors);
         $this->assertNotEmpty($errors['login']);
+        $loginMessage = is_array($errors['login']) ? ($errors['login'][0] ?? '') : $errors['login'];
+        $this->assertStringNotContainsString('auth.user', (string) $loginMessage);
+        $this->assertStringContainsString('conta', (string) $loginMessage);
         $this->assertGuest();
     }
 }

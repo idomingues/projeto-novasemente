@@ -50,10 +50,13 @@ export default function ResetPassword({
                             type="email"
                             name="email"
                             value={data.email}
-                            className="mt-1 block w-full"
+                            className="mt-1 block w-full bg-zinc-50 dark:bg-zinc-800/60"
                             autoComplete="username"
-                            onChange={(e) => setData('email', e.target.value)}
+                            readOnly
                         />
+                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                            Use o mesmo e-mail indicado no pedido de recuperação.
+                        </p>
                         <InputError message={errors.email} className="mt-2" />
                     </div>
 

@@ -2,16 +2,11 @@
 
 namespace App\Actions\Volunteers;
 
-use App\Mail\VolunteerMinistryInvitationMail;
 use App\Models\Ministry;
 use App\Models\User;
-use App\Models\UserInboxNotification;
 use App\Models\Volunteer;
 use App\Models\VolunteerMinistryInvitation;
 use App\Models\VolunteerMinistryInvitationSlot;
-use App\Support\UserMessagingPreferences;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Schema;
 
 final class CreateAndNotifyVolunteerMinistryInvitation
 {
@@ -27,6 +22,15 @@ final class CreateAndNotifyVolunteerMinistryInvitation
         array $channels,
         array $slots,
     ): VolunteerMinistryInvitation {
+        $existing = VolunteerMinistryInvitation::findBlockingForMinistry(
+            $churchId,
+            (int) $volunteer->id,
+            (int) $ministry->id,
+        );
+        if ($existing) {
+            return $existing;
+        }
+
         $inv = VolunteerMinistryInvitation::create([
             'church_id' => $churchId,
             'volunteer_id' => $volunteer->id,
@@ -46,48 +50,8 @@ final class CreateAndNotifyVolunteerMinistryInvitation
             ]);
         }
 
-        $inv->loadMissing(['volunteer.user', 'ministry', 'slots', 'church']);
-
-        $channels = array_values(array_unique(array_filter($channels, fn ($c) => is_string($c) && $c !== '')));
-        if ($channels === []) {
-            $channels = ['email'];
-        }
-
-        $registerUrl = BuildVolunteerMinistryInvitePlainCopy::registerUrlFor($inv);
-        $inboxActionUrl = $registerUrl ?? route('login', [], true);
-
-        $sent = false;
-        if (in_array('email', $channels, true)) {
-            $to = trim((string) ($inv->volunteer->email ?? ''));
-            if ($to === '' && $inv->volunteer->user) {
-                $to = trim((string) ($inv->volunteer->user->email ?? ''));
-            }
-            if ($to !== '') {
-                Mail::to($to)->send(new VolunteerMinistryInvitationMail($inv));
-                $sent = true;
-                $inv->forceFill(['channel' => 'email'])->save();
-            }
-        }
-
-        if (in_array('inbox', $channels, true) && $inv->volunteer->user && Schema::hasTable('user_inbox_notifications')) {
-            $user = $inv->volunteer->user;
-            if (UserMessagingPreferences::acceptsInbox($user)) {
-                $title = 'Convite para novo departamento';
-                $body = 'Você foi convidado(a) para servir em «'.$ministry->name.'». Toque para ver o convite no app.';
-                $row = UserInboxNotification::create([
-                    'user_id' => $user->id,
-                    'title' => $title,
-                    'body' => $body,
-                    'action_url' => $inboxActionUrl,
-                ]);
-                $row->update(['action_url' => $inboxActionUrl]);
-                $sent = true;
-                $inv->forceFill(['channel' => 'inbox'])->save();
-            }
-        }
-
-        if ($sent) {
-            $inv->forceFill(['sent_at' => now()])->save();
+        if ($channels !== []) {
+            app(NotifyVolunteerMinistryInvitation::class)($inv, $channels);
         }
 
         return $inv;

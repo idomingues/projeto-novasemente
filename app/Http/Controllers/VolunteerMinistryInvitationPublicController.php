@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Volunteers\BuildVolunteerMinistryInvitePlainCopy;
+use App\Actions\Volunteers\RespondToVolunteerMinistryInvitation;
 use App\Models\VolunteerMinistryInvitation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,9 +26,14 @@ class VolunteerMinistryInvitationPublicController extends Controller
 
         $volunteer = $inv->volunteer;
         $volunteerHasUser = (bool) ($volunteer?->user_id);
-        if ($inv->isPending() && ! $inv->isExpired() && $volunteerHasUser) {
+        $authUser = $request->user();
+        $loggedInAsInvitee = $authUser !== null
+            && $volunteerHasUser
+            && (int) $authUser->id === (int) $volunteer->user_id;
+
+        if ($inv->isPending() && ! $inv->isExpired() && $volunteerHasUser && ! $loggedInAsInvitee) {
             return redirect()
-                ->route('login')
+                ->route('login', ['redirect' => route('volunteers.ministry-invite.show', ['token' => $inv->token], false)])
                 ->with('info', 'Faça login no aplicativo para ver o convite.');
         }
 
@@ -43,6 +49,7 @@ class VolunteerMinistryInvitationPublicController extends Controller
                 'volunteerName' => $inv->volunteer?->name,
                 'ministryName' => $inv->ministry?->name,
                 'volunteerHasUser' => $volunteerHasUser,
+                'loggedInAsInvitee' => $loggedInAsInvitee,
                 'registerUrl' => null,
                 'slots' => $inv->slots->map(fn ($s) => [
                     'day_of_week' => (int) $s->day_of_week,
@@ -53,36 +60,28 @@ class VolunteerMinistryInvitationPublicController extends Controller
                 'introParagraph' => $inv->resolvedIntroParagraph(),
                 'volunteerEmail' => $volunteerEmail !== '' ? $volunteerEmail : null,
                 'pendingWithoutEmail' => $inv->isPending() && ! $expired && $volunteerEmail === '',
+                'canRespond' => $inv->isPending() && ! $expired && $loggedInAsInvitee && $volunteerHasUser,
             ],
         ]);
     }
 
-    public function accept(Request $request, string $token): RedirectResponse
+    public function accept(Request $request, string $token, RespondToVolunteerMinistryInvitation $respond): RedirectResponse
     {
         $inv = VolunteerMinistryInvitation::query()
             ->where('token', $token)
             ->with(['volunteer'])
             ->firstOrFail();
 
-        $registerUrl = BuildVolunteerMinistryInvitePlainCopy::registerUrlFor($inv);
-        if ($registerUrl !== null) {
-            return redirect()->to($registerUrl);
-        }
-
-        return redirect()->route('volunteers.ministry-invite.show', ['token' => $token]);
+        return $respond->accept($request, $inv);
     }
 
-    public function decline(Request $request, string $token): RedirectResponse
+    public function decline(Request $request, string $token, RespondToVolunteerMinistryInvitation $respond): RedirectResponse
     {
         $inv = VolunteerMinistryInvitation::query()
             ->where('token', $token)
+            ->with(['volunteer'])
             ->firstOrFail();
 
-        $registerUrl = BuildVolunteerMinistryInvitePlainCopy::registerUrlFor($inv);
-        if ($registerUrl !== null) {
-            return redirect()->to($registerUrl);
-        }
-
-        return redirect()->route('volunteers.ministry-invite.show', ['token' => $token]);
+        return $respond->decline($request, $inv);
     }
 }

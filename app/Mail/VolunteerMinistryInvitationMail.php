@@ -33,6 +33,10 @@ class VolunteerMinistryInvitationMail extends Mailable
     {
         $plain = BuildVolunteerMinistryInvitePlainCopy::for($this->invitation);
         $registerUrl = BuildVolunteerMinistryInvitePlainCopy::registerUrlFor($this->invitation);
+        $hasLinkedAppAccount = BuildVolunteerMinistryInvitePlainCopy::hasLinkedAppAccount($this->invitation);
+        $inviteUrl = $hasLinkedAppAccount
+            ? BuildVolunteerMinistryInvitePlainCopy::inviteUrlFor($this->invitation)
+            : null;
 
         return new Content(
             view: 'emails.volunteer-ministry-invite',
@@ -40,6 +44,8 @@ class VolunteerMinistryInvitationMail extends Mailable
             with: [
                 'inv' => $this->invitation,
                 'registerUrl' => $registerUrl,
+                'hasLinkedAppAccount' => $hasLinkedAppAccount,
+                'inviteUrl' => $inviteUrl,
                 'plainCopySection' => $plain,
             ],
         );

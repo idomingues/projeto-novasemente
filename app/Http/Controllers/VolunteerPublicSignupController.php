@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Church;
 use App\Models\Ministry;
 use App\Models\User;
+use App\Models\Volunteer;
 use App\Models\VolunteerSelfSignupToken;
 use App\Services\VolunteerMinistryRosterNotifier;
+use App\Support\VolunteerAppLogin;
 use App\Support\VolunteerContactDuplicateChecker;
 use App\Support\VolunteerPipelineBootstrap;
 use Illuminate\Http\JsonResponse;
@@ -222,10 +224,11 @@ class VolunteerPublicSignupController extends Controller
                 ? User::query()->whereRaw('LOWER(TRIM(COALESCE(email, ""))) = ?', [$emailNorm])->first()
                 : null;
 
-            $user = User::withoutEvents(function () use ($validated, $name, $record, $existingUser) {
+            $user = User::withoutEvents(function () use ($validated, $name, $record, $existingUser, $emailNorm) {
                 if ($existingUser) {
                     $existingUser->forceFill([
                         'name' => $name,
+                        'email' => $emailNorm ?? VolunteerContactDuplicateChecker::normalizeEmail($validated['email']),
                         'password' => $validated['password'],
                     ]);
                     if (! $existingUser->church_id) {
@@ -238,7 +241,7 @@ class VolunteerPublicSignupController extends Controller
 
                 return User::create([
                     'name' => $name,
-                    'email' => $validated['email'],
+                    'email' => $emailNorm ?? VolunteerContactDuplicateChecker::normalizeEmail($validated['email']),
                     'password' => $validated['password'],
                     'church_id' => $record->church_id,
                 ]);
@@ -250,6 +253,8 @@ class VolunteerPublicSignupController extends Controller
             }
             $user->syncRoleIdFromSpatieAssignments();
             $user->ensureVolunteerProfile();
+            $this->linkPreRegisteredVolunteerRecord($user);
+            $user->load('volunteerProfile');
 
             $volunteer = $user->volunteerProfile;
             if ($volunteer) {
@@ -283,13 +288,66 @@ class VolunteerPublicSignupController extends Controller
                 VolunteerPipelineBootstrap::ensureRowForVolunteerInChurch($volunteer->fresh(), (int) $record->church_id);
             }
 
+            $user->forceFill(['is_volunteer' => true])->save();
             $user->ensureVolunteerProfile();
 
-            return $user;
+            return $user->fresh();
         });
 
-        return redirect('/login')
-            ->with('status', 'Cadastro concluído! Agora entre com seu e-mail e senha.');
+        return redirect()
+            ->route('login')
+            ->with(
+                'status',
+                'Parabéns! Seu cadastro de voluntário foi concluído com sucesso. Entre com seu e-mail e senha para acessar o aplicativo.'
+            );
+    }
+
+    /**
+     * Liga a conta nova a um registro em `volunteers` criado pela equipe (mesmo e-mail, sem user_id).
+     */
+    private function linkPreRegisteredVolunteerRecord(User $user): void
+    {
+        $user->load('volunteerProfile');
+        $current = $user->volunteerProfile;
+        if ($current === null) {
+            return;
+        }
+
+        $email = strtolower(trim((string) ($user->email ?? '')));
+        if ($email === '') {
+            return;
+        }
+
+        $preRegistered = Volunteer::query()
+            ->where('id', '!=', $current->id)
+            ->whereRaw('lower(trim(COALESCE(email, ""))) = ?', [$email])
+            ->whereNull('user_id')
+            ->orderByDesc('id')
+            ->first();
+
+        if ($preRegistered === null) {
+            return;
+        }
+
+        Volunteer::query()
+            ->where('user_id', $user->id)
+            ->where('id', '!=', $preRegistered->id)
+            ->update(['user_id' => null]);
+
+        $name = trim((string) ($preRegistered->name ?? ''));
+        if ($name === '') {
+            $name = trim((string) ($user->name ?? ''));
+        }
+
+        $preRegistered->forceFill([
+            'user_id' => $user->id,
+            'name' => $name !== '' ? $name : ($user->name ?? 'Voluntário'),
+            'email' => $user->email,
+        ])->save();
+
+        VolunteerAppLogin::syncLoginEmailFromVolunteer($user, $preRegistered);
+
+        $current->delete();
     }
 
     /**
