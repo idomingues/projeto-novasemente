@@ -7,6 +7,7 @@ use App\Models\Ministry;
 use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerPipelineStage;
+use App\Support\VolunteerPipelineBootstrap;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -25,16 +26,16 @@ class VolunteerChurchRosterBuilder
     {
         // Uma só igreja na BD (comum em local / restore): não filtrar por ministério — evita lista vazia
         // quando `ministries.church_id` ficou desalinhado do `churches.id` após import.
-        if (Church::query()->count() <= 1) {
-            return Volunteer::query();
-        }
+        $query = Church::query()->count() <= 1
+            ? Volunteer::query()
+            : Volunteer::query()
+                ->where(function ($q2) use ($churchId) {
+                    $q2->whereDoesntHave('ministries')
+                        ->orWhereHas('ministries', fn ($mq) => $mq->where('church_id', $churchId))
+                        ->orWhereHas('churchPipelines', fn ($p) => $p->where('church_id', $churchId));
+                });
 
-        return Volunteer::query()
-            ->where(function ($q2) use ($churchId) {
-                $q2->whereDoesntHave('ministries')
-                    ->orWhereHas('ministries', fn ($mq) => $mq->where('church_id', $churchId))
-                    ->orWhereHas('churchPipelines', fn ($p) => $p->where('church_id', $churchId));
-            });
+        return $query->where('app_access_only', false);
     }
 
     /**
@@ -109,19 +110,23 @@ class VolunteerChurchRosterBuilder
 
         VolunteerLeadRosterFilters::apply($request, $q, $churchId);
 
-        $volunteers = $q->orderByDesc('volunteers.created_at')->paginate($perPage)->withQueryString();
+        $volunteers = $q->orderBy('volunteers.name')->paginate($perPage)->withQueryString();
 
         $volunteerIds = $volunteers->getCollection()->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
         $forwardedMinistryIdsByVolunteer = Schema::hasTable('volunteer_ministry_invitations')
             ? \App\Models\VolunteerMinistryInvitation::blockingMinistryIdsByVolunteerIds($churchId, $volunteerIds)
             : [];
 
+        VolunteerPipelineBootstrap::ensureRecusaStagesForChurch($churchId);
+
         $stages = VolunteerPipelineStage::query()
             ->where('church_id', $churchId)
             ->orderBy('sort_order')
             ->orderBy('id')
             ->withCount([
-                'churchPipelines as volunteer_count' => fn ($sq) => $sq->where('church_id', $churchId),
+                'churchPipelines as volunteer_count' => fn ($sq) => $sq
+                    ->where('church_id', $churchId)
+                    ->whereHas('volunteer', fn ($vq) => $vq->where('app_access_only', false)),
             ])
             ->get()
             ->map(fn (VolunteerPipelineStage $s) => [
@@ -145,6 +150,7 @@ class VolunteerChurchRosterBuilder
                 $pendingInviteMinistryNames = $v->ministryInvitations
                     ->map(fn ($inv) => (string) ($inv->ministry?->name ?? ''))
                     ->filter(fn ($name) => trim($name) !== '')
+                    ->sortBy(fn ($name) => mb_strtolower($name))
                     ->values()
                     ->all();
 

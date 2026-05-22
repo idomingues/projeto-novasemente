@@ -72,15 +72,21 @@ function PersonPicker({
     onFilterChange: (v: string) => void;
     error?: string;
 }) {
-    const filtered = useMemo(() => {
+    const { selectedOptions, otherOptions } = useMemo(() => {
         const q = filter.trim().toLowerCase();
-        if (!q) return options;
-        return options.filter(
-            (o) =>
-                o.name.toLowerCase().includes(q) ||
-                (o.email?.toLowerCase().includes(q) ?? false),
-        );
-    }, [options, filter]);
+        const list = q
+            ? options.filter(
+                  (o) =>
+                      o.name.toLowerCase().includes(q) ||
+                      (o.email?.toLowerCase().includes(q) ?? false),
+              )
+            : options;
+        const byName = (a: PersonOption, b: PersonOption) =>
+            a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' });
+        const selected = list.filter((o) => selectedIds.includes(o.id)).sort(byName);
+        const others = list.filter((o) => !selectedIds.includes(o.id)).sort(byName);
+        return { selectedOptions: selected, otherOptions: others };
+    }, [options, filter, selectedIds]);
 
     const toggle = (id: number) => {
         const set = new Set(selectedIds);
@@ -103,30 +109,69 @@ function PersonPicker({
                 placeholder="Filtrar por nome ou e-mail…"
             />
             <div className="mt-2 max-h-40 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/80 p-2 dark:border-zinc-700 dark:bg-zinc-800/40">
-                {filtered.length === 0 ? (
+                {selectedOptions.length === 0 && otherOptions.length === 0 ? (
                     <p className="px-2 py-3 text-sm text-zinc-500 dark:text-zinc-400">Nenhum resultado.</p>
                 ) : (
                     <ul className="space-y-1">
-                        {filtered.map((o) => (
-                            <li key={o.id}>
-                                <label className="flex cursor-pointer items-start gap-2 rounded-lg px-2 py-1.5 hover:bg-white dark:hover:bg-zinc-800">
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedIds.includes(o.id)}
-                                        onChange={() => toggle(o.id)}
-                                        className="mt-0.5 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600"
-                                    />
-                                    <span className="min-w-0 text-sm">
-                                        <span className="font-medium text-zinc-900 dark:text-white">{o.name}</span>
-                                        {o.email ? (
-                                            <span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">
-                                                {o.email}
+                        {selectedOptions.length > 0 ? (
+                            <>
+                                <li className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+                                    Selecionados
+                                </li>
+                                {selectedOptions.map((o) => (
+                                    <li key={o.id}>
+                                        <label className="flex cursor-pointer items-start gap-2 rounded-lg bg-emerald-50/80 px-2 py-1.5 hover:bg-emerald-100/80 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/40">
+                                            <input
+                                                type="checkbox"
+                                                checked
+                                                onChange={() => toggle(o.id)}
+                                                className="mt-0.5 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600"
+                                            />
+                                            <span className="min-w-0 text-sm">
+                                                <span className="font-medium text-zinc-900 dark:text-white">{o.name}</span>
+                                                {o.email ? (
+                                                    <span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">
+                                                        {o.email}
+                                                    </span>
+                                                ) : null}
                                             </span>
-                                        ) : null}
-                                    </span>
-                                </label>
-                            </li>
-                        ))}
+                                        </label>
+                                    </li>
+                                ))}
+                            </>
+                        ) : null}
+                        {selectedOptions.length > 0 && otherOptions.length > 0 ? (
+                            <li className="my-1 border-t border-zinc-200 dark:border-zinc-600" aria-hidden />
+                        ) : null}
+                        {otherOptions.length > 0 ? (
+                            <>
+                                {selectedOptions.length > 0 ? (
+                                    <li className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                        Outros
+                                    </li>
+                                ) : null}
+                                {otherOptions.map((o) => (
+                                    <li key={o.id}>
+                                        <label className="flex cursor-pointer items-start gap-2 rounded-lg px-2 py-1.5 hover:bg-white dark:hover:bg-zinc-800">
+                                            <input
+                                                type="checkbox"
+                                                checked={false}
+                                                onChange={() => toggle(o.id)}
+                                                className="mt-0.5 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600"
+                                            />
+                                            <span className="min-w-0 text-sm">
+                                                <span className="font-medium text-zinc-900 dark:text-white">{o.name}</span>
+                                                {o.email ? (
+                                                    <span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">
+                                                        {o.email}
+                                                    </span>
+                                                ) : null}
+                                            </span>
+                                        </label>
+                                    </li>
+                                ))}
+                            </>
+                        ) : null}
                     </ul>
                 )}
             </div>

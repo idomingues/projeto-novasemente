@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\User;
 use App\Models\Volunteer;
+use App\Support\VolunteerAppAccessRules;
 use App\Support\VolunteerContactDuplicateChecker;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -32,6 +33,12 @@ class UpdateVolunteerRequest extends FormRequest
             'app_ministry_ids' => ['nullable', 'array'],
             'app_ministry_ids.*' => ['exists:ministries,id'],
             'app_password' => ['nullable', 'string', 'max:255', 'confirmed'],
+            'user_status' => ['nullable', 'in:active,inactive'],
+            'birth_date' => ['nullable', 'date'],
+            'notify_via_app' => ['sometimes', 'boolean'],
+            'notify_via_email' => ['sometimes', 'boolean'],
+            'notify_via_whatsapp' => ['sometimes', 'boolean'],
+            'photo' => ['nullable', 'image', 'max:4096'],
         ];
     }
 
@@ -40,6 +47,14 @@ class UpdateVolunteerRequest extends FormRequest
         if ($this->has('active') && is_string($this->active)) {
             $this->merge(['active' => $this->active === 'true' || $this->active === '1']);
         }
+
+        $this->merge([
+            'notify_via_app' => $this->boolean('notify_via_app'),
+            'notify_via_email' => $this->boolean('notify_via_email'),
+            'notify_via_whatsapp' => $this->boolean('notify_via_whatsapp'),
+        ]);
+
+        VolunteerAppAccessRules::prepareForValidation($this);
     }
 
     public function withValidator($validator): void
@@ -83,6 +98,8 @@ class UpdateVolunteerRequest extends FormRequest
             if (! $existingUser && ! $this->filled('app_password')) {
                 $validator->errors()->add('app_password', 'Defina uma senha para criar a conta de acesso.');
             }
+
+            VolunteerAppAccessRules::validateLeaderProfile($validator, $this);
         });
     }
 }

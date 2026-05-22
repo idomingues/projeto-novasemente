@@ -29,12 +29,15 @@ class Ministry extends Model
      */
     public function users(): BelongsToMany
     {
-        return $this->belongsToMany(\App\Models\User::class, 'ministry_user')->withTimestamps();
+        return $this->belongsToMany(\App\Models\User::class, 'ministry_user')
+            ->orderBy('users.name')
+            ->withTimestamps();
     }
 
     public function volunteers(): BelongsToMany
     {
         return $this->belongsToMany(Volunteer::class, 'ministry_volunteer')
+            ->orderBy('volunteers.name')
             ->withPivot(['id', 'clearance_status', 'cleared_at', 'cleared_by_user_id'])
             ->withTimestamps();
     }

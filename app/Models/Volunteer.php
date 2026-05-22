@@ -66,6 +66,7 @@ class Volunteer extends Model
     public function ministries(): BelongsToMany
     {
         return $this->belongsToMany(Ministry::class, 'ministry_volunteer')
+            ->orderBy('ministries.name')
             ->withPivot(['id', 'clearance_status', 'cleared_at', 'cleared_by_user_id'])
             ->withTimestamps();
     }

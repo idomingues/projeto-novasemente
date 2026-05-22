@@ -85,8 +85,13 @@ class LoginRequest extends FormRequest
             RateLimiter::hit($this->ipThrottleKey(), $this->ipDecaySeconds());
             AuthLoginEvent::record(AuthLoginEvent::OUTCOME_FAILED, null, $login, $ip, $ua);
 
+            $reason = VolunteerAppLogin::loginFailureReason($login);
+            $message = $reason === 'volunteer_without_account'
+                ? $this->authMessage('auth.volunteer_without_account')
+                : $this->authMessage('auth.user');
+
             throw ValidationException::withMessages([
-                'login' => $this->authMessage('auth.user'),
+                'login' => $message,
             ]);
         }
 

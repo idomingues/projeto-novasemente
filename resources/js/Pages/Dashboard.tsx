@@ -71,18 +71,18 @@ export default function Dashboard({
 }) {
     const statCards = [
         {
-            name: 'Total de usuários',
+            name: 'Membros do app',
             value: formatStat(stats.members),
             icon: UsersIcon,
             href: route('members.index'),
-            linkLabel: 'Ver usuários',
+            linkLabel: 'Ver membros',
         },
         {
-            name: 'Total de voluntários',
+            name: 'Voluntários',
             value: formatStat(stats.volunteers),
             icon: UserGroupIcon,
             href: route('volunteers.index'),
-            linkLabel: 'Ver voluntários',
+            linkLabel: 'Cadastro de voluntários',
         },
         {
             name: 'Pedidos de oração',

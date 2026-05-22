@@ -124,5 +124,36 @@ class VolunteersTest extends TestCase
         $response->assertRedirect();
         $response->assertSessionHasErrors(['email']);
     }
+
+    public function test_can_delete_volunteer_and_keeps_user_without_recreating_profile(): void
+    {
+        $admin = $this->actingAsAdmin();
+
+        $this->actingAs($admin)->post('/volunteers', [
+            'name' => 'Para Excluir',
+            'email' => 'excluir.voluntario@example.com',
+            'ministry_ids' => [],
+            'active' => '1',
+            'app_role' => '',
+            'app_ministry_ids' => [],
+            'app_password' => 'secret123',
+            'app_password_confirmation' => 'secret123',
+        ])->assertRedirect('/volunteers');
+
+        $volunteer = Volunteer::query()->where('email', 'excluir.voluntario@example.com')->firstOrFail();
+        $userId = (int) $volunteer->user_id;
+
+        $response = $this->actingAs($admin)->post("/volunteers/{$volunteer->id}", [
+            '_method' => 'delete',
+            'delete_linked_user' => false,
+        ]);
+
+        $response->assertRedirect('/volunteers');
+        $response->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('volunteers', ['id' => $volunteer->id]);
+        $this->assertDatabaseHas('users', ['id' => $userId, 'is_volunteer' => false]);
+        $this->assertDatabaseMissing('volunteers', ['user_id' => $userId]);
+    }
 }
 

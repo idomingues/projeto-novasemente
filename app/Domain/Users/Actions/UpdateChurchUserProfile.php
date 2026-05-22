@@ -56,15 +56,15 @@ class UpdateChurchUserProfile
             $payload['lgpd_accepted_at'] = $data['lgpd_accepted_at'];
         }
         $user->update($payload);
-        $user->ensureVolunteerProfile();
+
+        $user->syncVolunteerRecord();
 
         $volunteer = $user->fresh()->volunteerProfile;
         if ($volunteer !== null) {
             $syncIds = $isVolunteer ? $allowedMinistryIds : [];
             app(SyncVolunteerMinistryAttachments::class)($volunteer, $syncIds);
+            $user->fresh()->ensureVolunteerProfile();
         }
-
-        $user->ensureVolunteerProfile();
 
         return $user->fresh();
     }

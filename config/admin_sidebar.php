@@ -22,8 +22,9 @@ return [
         ['name' => 'Escalas', 'route' => 'escalas.index', 'icon' => 'calendar'],
         ['name' => 'Inventários', 'route' => 'inventory.index', 'icon' => 'archive-box'],
         ['name' => 'Voluntários', 'route' => 'ministry-lead.volunteers.index', 'icon' => 'user-group'],
+        ['name' => 'Cadastro de voluntários', 'route' => 'volunteers.index', 'icon' => 'user-plus'],
+        ['name' => 'Membros do app', 'route' => 'members.index', 'icon' => 'users'],
         ['name' => 'Missão', 'route' => 'mission.index', 'icon' => 'globe-alt'],
-        ['name' => 'Usuários', 'route' => 'members.index', 'icon' => 'users'],
         ['name' => 'Oração', 'route' => 'prayer.index', 'icon' => 'praying-hands'],
         // Publicação
         ['name' => 'News', 'route' => 'news.index', 'icon' => 'newspaper'],
@@ -39,8 +40,8 @@ return [
         ['name' => 'Salas', 'route' => 'rooms.index', 'icon' => 'building-office'],
         ['name' => 'Departamentos', 'route' => 'departments.index', 'icon' => 'building-office-2'],
         ['name' => 'Pastores', 'route' => 'pastors.index', 'icon' => 'user-circle'],
-        ['name' => 'Contas do app', 'route' => 'users.index', 'icon' => 'sparkles'],
         // ADM (ordem fixa em Sidebar.tsx — admRouteOrder)
+        ['name' => 'Contas do app (equipe)', 'route' => 'users.index', 'icon' => 'sparkles'],
         ['name' => 'Igrejas', 'route' => 'churches.index', 'icon' => 'building-office'],
         ['name' => 'Operações', 'route' => 'operations.index', 'icon' => 'chart-bar-square'],
         ['name' => 'Perfis', 'route' => 'roles.index', 'icon' => 'key'],

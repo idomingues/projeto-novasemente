@@ -19,8 +19,16 @@ class VolunteerPipelineBootstrap
         ['name' => 'Finalizado', 'sort_order' => 50],
     ];
 
-    /** Status geral do adm (fase / pasta no quadro de voluntários). */
-    public const ADMIN_WORKFLOW_STAGE_NAMES = ['interessado', 'encaminhado', 'finalizado'];
+    public const STAGE_RECUSADO_VOLUNTARIO = 'recusado pelo voluntário';
+
+    public const STAGE_RECUSADO_LIDER = 'recusado pelo líder';
+
+    /** Status geral do adm (seletor na ficha) — apenas macro-fases; recusas são por departamento. */
+    public const ADMIN_WORKFLOW_STAGE_NAMES = [
+        'interessado',
+        'encaminhado',
+        'finalizado',
+    ];
 
     /**
      * Garante as fases padrão quando a igreja ainda não tem nenhuma (ex.: igreja nova).
@@ -101,6 +109,33 @@ class VolunteerPipelineBootstrap
     }
 
     /**
+     * Novo cadastro público / adm: status geral deve começar em «Interessado».
+     */
+    public static function setInteressadoStageForVolunteer(Volunteer $volunteer, int $churchId): void
+    {
+        self::moveVolunteerToStageByNormalizedName($volunteer, $churchId, 'interessado');
+    }
+
+    /**
+     * ID de fase para o seletor de status geral (adm): se a fase atual não for Interessado/Encaminhado/Finalizado,
+     * mostra Interessado (evita select HTML apontar para opção errada).
+     */
+    public static function resolveAdminWorkflowStageId(int $churchId, ?int $currentStageId): ?int
+    {
+        $allowedIds = collect(self::adminWorkflowStagesForChurch($churchId))
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+
+        if ($currentStageId !== null && in_array((int) $currentStageId, $allowedIds, true)) {
+            return (int) $currentStageId;
+        }
+
+        return self::defaultStageIdForNewVolunteer($churchId);
+    }
+
+    /**
      * Move o voluntário para uma fase existente (nome comparado em minúsculas), ex.: «em treinamento».
      * Ignora se não existir tabela ou fase com esse nome.
      */
@@ -111,6 +146,7 @@ class VolunteerPipelineBootstrap
         }
 
         self::seedDefaultStagesForChurch($churchId);
+        self::ensureRecusaStagesForChurch($churchId);
 
         $needle = mb_strtolower(trim($normalizedName));
         if ($needle === '') {
@@ -134,6 +170,36 @@ class VolunteerPipelineBootstrap
             ->where('volunteer_id', $volunteer->id)
             ->where('church_id', $churchId)
             ->update(['stage_id' => (int) $stageId]);
+    }
+
+    /**
+     * Garante fases de recusa (voluntário vs líder) para filtro no quadro e movimentação automática.
+     */
+    public static function ensureRecusaStagesForChurch(int $churchId): void
+    {
+        if (! Schema::hasTable('volunteer_pipeline_stages')) {
+            return;
+        }
+
+        foreach ([
+            ['name' => 'Recusado pelo voluntário', 'needle' => self::STAGE_RECUSADO_VOLUNTARIO, 'sort_order' => 16],
+            ['name' => 'Recusado pelo líder', 'needle' => self::STAGE_RECUSADO_LIDER, 'sort_order' => 17],
+        ] as $row) {
+            $exists = VolunteerPipelineStage::query()
+                ->where('church_id', $churchId)
+                ->whereRaw('LOWER(TRIM(name)) = ?', [$row['needle']])
+                ->exists();
+
+            if ($exists) {
+                continue;
+            }
+
+            VolunteerPipelineStage::query()->create([
+                'church_id' => $churchId,
+                'name' => $row['name'],
+                'sort_order' => $row['sort_order'],
+            ]);
+        }
     }
 
     /**
@@ -176,6 +242,7 @@ class VolunteerPipelineBootstrap
 
         self::seedDefaultStagesForChurch($churchId);
         self::ensureFinalizadoStageForChurch($churchId);
+        self::ensureRecusaStagesForChurch($churchId);
 
         $allowed = self::ADMIN_WORKFLOW_STAGE_NAMES;
 

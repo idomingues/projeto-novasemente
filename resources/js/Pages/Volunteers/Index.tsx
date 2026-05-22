@@ -1,6 +1,6 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm, router, Link, usePage } from '@inertiajs/react';
-import { PencilIcon, TrashIcon, ChatBubbleLeftRightIcon, UserPlusIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, ChatBubbleLeftRightIcon, UserPlusIcon, CameraIcon } from '@heroicons/react/24/outline';
 import VolunteerInviteShareModal from '@/Components/Volunteers/VolunteerInviteShareModal';
 import PublicVolunteerSignupShareModal from '@/Components/Volunteers/PublicVolunteerSignupShareModal';
 import AddButton from '@/Components/AddButton';
@@ -12,12 +12,14 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import PageHeader from '@/Components/PageHeader';
 import Card from '@/Components/Card';
 import TextInput from '@/Components/TextInput';
+import SelectInput from '@/Components/SelectInput';
+import Checkbox from '@/Components/Checkbox';
 import InputError from '@/Components/InputError';
 import { useState, useEffect, useCallback, useRef, FormEventHandler, useMemo } from 'react';
 import axios from 'axios';
 import VolunteerRecordDetailBody from '@/Components/Volunteers/VolunteerRecordDetailBody';
 import type { VolunteerDetailData } from '@/utils/volunteerDetailRows';
-import { confirmAction } from '@/utils/confirmDialog';
+import VolunteerDeleteConfirmBlock from '@/Components/Volunteers/VolunteerDeleteConfirmBlock';
 import { activeInactivePillClass } from '@/lib/statusBadges';
 import { appRoleLabel } from '@/lib/appRoleLabels';
 
@@ -33,7 +35,20 @@ interface Volunteer {
     active: boolean;
     app_access_only?: boolean;
     ministries: { id: number; name: string }[];
-    user?: { id: number; email: string | null; roles?: string[]; ministry_ids?: number[] } | null;
+    user?: {
+        id: number;
+        email: string | null;
+        is_ministry_leader?: boolean;
+        status?: 'active' | 'inactive' | string;
+        birth_date?: string | null;
+        photo_url?: string | null;
+        phone?: string | null;
+        notify_via_app?: boolean;
+        notify_via_email?: boolean;
+        notify_via_whatsapp?: boolean;
+        roles?: string[];
+        ministry_ids?: number[];
+    } | null;
 }
 
 interface Props {
@@ -98,6 +113,9 @@ export default function Index({
     const [detailOpen, setDetailOpen] = useState(false);
     const [detailLoading, setDetailLoading] = useState(false);
     const [detailVolunteer, setDetailVolunteer] = useState<VolunteerDetailData | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<Volunteer | null>(null);
+    const [avatarPreviewSrc, setAvatarPreviewSrc] = useState<string | null>(null);
+    const lastSavedPhotoRef = useRef<string | null>(null);
     const openedVoluntarioFromUrl = useRef(false);
 
     const { data, setData, post, put, processing, errors, reset, clearErrors, transform } = useForm({
@@ -110,12 +128,30 @@ export default function Index({
         app_ministry_ids: [] as number[],
         app_password: '',
         app_password_confirmation: '',
+        user_status: 'active' as 'active' | 'inactive',
+        birth_date: '',
+        notify_via_app: true,
+        notify_via_email: true,
+        notify_via_whatsapp: false,
+        photo: null as File | null,
     });
 
+    const isMinistryLeader = data.app_role === 'lider_ministerio';
+
     // Inertia v2: transform lives on the form, not on post()/put() options.
-    transform((form) => ({
-        ...form,
-    }));
+    transform((form) => {
+        const ledIds = Array.isArray(form.app_ministry_ids)
+            ? form.app_ministry_ids.filter((id) => Number(id) > 0)
+            : [];
+        const appRole =
+            ledIds.length > 0 || form.app_role === 'lider_ministerio' ? 'lider_ministerio' : form.app_role;
+
+        return {
+            ...form,
+            app_role: appRole,
+            app_ministry_ids: appRole === 'lider_ministerio' ? ledIds : [],
+        };
+    });
 
     const openCreateModal = () => {
         setIsEditing(false);
@@ -134,29 +170,56 @@ export default function Index({
     }, [isEditing, editingId, volunteers.data]);
 
     const editingUserIsSuperAdmin = Boolean(editingVolunteer?.user?.roles?.includes('super_admin'));
+    const editingUserIsPanelTeam = Boolean(
+        editingVolunteer?.user?.roles?.some((r) =>
+            ['admin', 'super_admin', 'pastor', 'secretaria'].includes(r),
+        ),
+    );
 
-    const openEditModal = (v: Volunteer) => {
-        setIsEditing(true);
-        setEditingId(v.id);
-        const roles = v.user?.roles ?? [];
+    const populateEditForm = (v: Volunteer, detail?: VolunteerDetailData | null) => {
+        const roles = detail?.user?.roles ?? v.user?.roles ?? [];
         const isSuper = roles.includes('super_admin');
+        const isLeader =
+            roles.includes('lider_ministerio') ||
+            Boolean(detail?.user?.is_ministry_leader ?? v.user?.is_ministry_leader);
+        const savedPhoto = detail?.photo_url ?? detail?.user?.photo_url ?? v.user?.photo_url ?? null;
+        lastSavedPhotoRef.current = savedPhoto?.trim() ? savedPhoto : null;
+        setAvatarPreviewSrc(lastSavedPhotoRef.current);
         setData({
-            name: v.name ?? '',
-            email: v.user?.email ?? v.email ?? '',
-            phone: v.phone ?? '',
-            ministry_ids: v.ministries?.map((m) => m.id) ?? [],
-            active: v.active,
-            app_role: isSuper ? '' : roles[0] ?? '',
-            app_ministry_ids: v.user?.ministry_ids ?? [],
+            name: detail?.user?.name ?? v.name ?? '',
+            email: detail?.display_email ?? detail?.user?.email ?? v.user?.email ?? v.email ?? '',
+            phone: detail?.display_phone ?? detail?.user?.phone ?? v.phone ?? v.user?.phone ?? '',
+            ministry_ids: (detail?.ministries ?? v.ministries)?.map((m) => m.id) ?? [],
+            active: detail?.active ?? v.active,
+            app_role: isSuper ? '' : isLeader ? 'lider_ministerio' : roles[0] ?? '',
+            app_ministry_ids: detail?.user?.led_ministries?.map((m) => m.id) ?? v.user?.ministry_ids ?? [],
             app_password: '',
             app_password_confirmation: '',
+            user_status:
+                (detail?.user?.status === 'inactive' ? 'inactive' : 'active') as 'active' | 'inactive',
+            birth_date: (detail?.birth_date ?? detail?.user?.birth_date ?? v.user?.birth_date ?? '').split('T')[0] ?? '',
+            notify_via_app: detail?.user?.notify_via_app ?? v.user?.notify_via_app ?? true,
+            notify_via_email: detail?.user?.notify_via_email ?? v.user?.notify_via_email ?? true,
+            notify_via_whatsapp: detail?.user?.notify_via_whatsapp ?? v.user?.notify_via_whatsapp ?? false,
+            photo: null,
         });
+    };
+
+    const openEditModal = (v: Volunteer, detail?: VolunteerDetailData | null) => {
+        setIsEditing(true);
+        setEditingId(v.id);
+        populateEditForm(v, detail ?? null);
         clearErrors();
         setSubmitToast(null);
         setIsModalOpen(true);
     };
 
     const closeModal = () => {
+        if (avatarPreviewSrc?.startsWith('blob:')) {
+            URL.revokeObjectURL(avatarPreviewSrc);
+        }
+        setAvatarPreviewSrc(null);
+        lastSavedPhotoRef.current = null;
         setIsModalOpen(false);
         reset();
         // Não limpar submitToast aqui: queremos mostrar feedback após fechar o modal.
@@ -204,10 +267,24 @@ export default function Index({
     const openEditFromDetail = () => {
         if (!detailVolunteer) return;
         const row = volunteers.data.find((v) => v.id === detailVolunteer.id);
+        const snapshot = detailVolunteer;
         closeDetail();
         if (row) {
-            openEditModal(row);
+            openEditModal(row, snapshot);
         }
+    };
+
+    const detailBadge = (v: VolunteerDetailData): string | null => {
+        const parts: string[] = [];
+        if (v.active === false) {
+            parts.push('Escalas: inativo');
+        } else if (v.active === true) {
+            parts.push('Escalas: ativo');
+        }
+        if (v.has_app_account) {
+            parts.push(v.user?.status === 'inactive' ? 'Conta: inativa' : 'Conta: ativa');
+        }
+        return parts.length > 0 ? parts.join(' · ') : null;
     };
 
     const submit: FormEventHandler = (e) => {
@@ -257,50 +334,6 @@ export default function Index({
                 },
             });
         }
-    };
-
-    const handleDelete = async (v: Volunteer) => {
-        const ok = await confirmAction({
-            title: 'Excluir voluntário?',
-            text: v.user?.id
-                ? 'O registro de voluntário será removido. Na pergunta seguinte pode escolher se remove também a conta de acesso ao app.'
-                : 'Esta ação não pode ser desfeita.',
-            confirmButtonText: 'Excluir',
-            danger: true,
-            icon: 'warning',
-        });
-        if (! ok) {
-            return;
-        }
-
-        let deleteLinkedUser = false;
-        if (v.user?.id) {
-            const emailHint = v.user.email ?? v.email ?? '';
-            const alsoUser = await confirmAction({
-                title: 'Apagar também a conta do usuário?',
-                text: emailHint
-                    ? `Existe usuário ligado (${emailHint}). Confirmar remove voluntário e conta. Cancelar remove só o registro de voluntário e mantém o usuário.`
-                    : 'Existe usuário ligado. Confirmar remove voluntário e conta. Cancelar remove só o registro de voluntário e mantém o usuário.',
-                confirmButtonText: 'Sim, apagar usuário também',
-                cancelButtonText: 'Não, só voluntário',
-                danger: true,
-                icon: 'warning',
-            });
-            deleteLinkedUser = alsoUser;
-        }
-
-        router.delete(route('volunteers.destroy', v.id), {
-            data: { delete_linked_user: deleteLinkedUser },
-            onSuccess: (page) => {
-                const flash = (page?.props as { flash?: { error?: string | null; success?: string | null } } | undefined)?.flash;
-                if (flash?.error) {
-                    setSubmitToast({ kind: 'error', message: flash.error });
-                } else if (flash?.success) {
-                    setSubmitToast({ kind: 'success', message: flash.success });
-                }
-                window.setTimeout(() => setSubmitToast(null), 4500);
-            },
-        });
     };
 
     useEffect(() => {
@@ -551,7 +584,7 @@ export default function Index({
                                             </button>
                                             <button
                                                 type="button"
-                                                onClick={() => void handleDelete(v)}
+                                                onClick={() => setDeleteTarget(v)}
                                                 className="shrink-0 p-2 text-zinc-500 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-700"
                                                 title="Excluir"
                                             >
@@ -593,6 +626,9 @@ export default function Index({
                         <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white sm:text-xl pr-8">
                             {isEditing ? 'Editar voluntário' : 'Novo voluntário'}
                         </h2>
+                        <p className="-mt-2 mb-4 text-xs text-zinc-500 dark:text-zinc-400">
+                            Ficha de voluntário e conta no app na mesma tela — um cadastro só.
+                        </p>
                         {submitToast && (
                             <div
                                 className={`mb-5 rounded-2xl border px-4 py-3 text-sm ${
@@ -668,6 +704,139 @@ export default function Index({
                             />
                             <InputError message={errors.email} className="mt-1" />
                         </div>
+
+                        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/80 dark:bg-zinc-900/40 p-4 space-y-4">
+                            <div>
+                                <p className="text-sm font-semibold text-zinc-900 dark:text-white">Perfil da conta no app</p>
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                                    Situação da conta, <span className="font-medium">perfil de acesso</span>, foto e preferências — como em Membros do app.
+                                </p>
+                            </div>
+                            <div>
+                                <InputLabel htmlFor="app_role" value="Perfil de acesso no app" />
+                                {editingUserIsSuperAdmin ? (
+                                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 px-3 py-2.5">
+                                        Este usuário é <strong className="font-medium">super administrador</strong>: o perfil é gerido em Usuários do sistema.
+                                    </p>
+                                ) : editingUserIsPanelTeam ? (
+                                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 px-3 py-2.5">
+                                        Conta da equipe do painel — altere o perfil em <span className="font-medium">Contas do app (equipe)</span>.
+                                    </p>
+                                ) : (
+                                    <SelectInput
+                                        id="app_role"
+                                        value={data.app_role}
+                                        onChange={(e) => {
+                                            const role = e.target.value;
+                                            setData((prev) => ({
+                                                ...prev,
+                                                app_role: role,
+                                                app_ministry_ids:
+                                                    role === 'lider_ministerio' ? prev.app_ministry_ids : [],
+                                            }));
+                                        }}
+                                        className="mt-1 block w-full"
+                                    >
+                                        <option value="">Sem perfil (só conta até definir permissões)</option>
+                                        {appRoles.map((r) => (
+                                            <option key={r.id} value={r.name}>
+                                                {appRoleLabel(r.name)}
+                                            </option>
+                                        ))}
+                                    </SelectInput>
+                                )}
+                                <InputError message={errors.app_role} className="mt-1" />
+                            </div>
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <div>
+                                    <InputLabel htmlFor="birth_date" value="Data de nascimento (opcional)" />
+                                    <TextInput
+                                        id="birth_date"
+                                        type="date"
+                                        value={data.birth_date}
+                                        onChange={(e) => setData('birth_date', e.target.value)}
+                                        className="mt-1 block w-full"
+                                    />
+                                    <InputError message={errors.birth_date} className="mt-1" />
+                                </div>
+                                <div>
+                                    <InputLabel htmlFor="user_status" value="Situação da conta no app" />
+                                    <SelectInput
+                                        id="user_status"
+                                        value={data.user_status}
+                                        onChange={(e) =>
+                                            setData('user_status', e.target.value as 'active' | 'inactive')
+                                        }
+                                        className="mt-1 block w-full"
+                                    >
+                                        <option value="active">Ativa (pode entrar no app)</option>
+                                        <option value="inactive">Inativa (bloqueia login)</option>
+                                    </SelectInput>
+                                    <InputError message={errors.user_status} className="mt-1" />
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-3">
+                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-zinc-200 dark:bg-zinc-700">
+                                    <CameraIcon className="h-5 w-5 text-zinc-600 dark:text-zinc-300" aria-hidden />
+                                </div>
+                                <div className="min-w-0 flex-1 space-y-2">
+                                    <InputLabel htmlFor="volunteer_face_photo" value="Foto do usuário (opcional)" />
+                                    <input
+                                        id="volunteer_face_photo"
+                                        type="file"
+                                        accept="image/*"
+                                        capture="user"
+                                        className="block w-full max-w-md text-sm text-zinc-600 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-900 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white hover:file:bg-zinc-800 dark:text-zinc-400 dark:file:bg-zinc-100 dark:file:text-zinc-900"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0] ?? null;
+                                            if (avatarPreviewSrc?.startsWith('blob:')) {
+                                                URL.revokeObjectURL(avatarPreviewSrc);
+                                            }
+                                            setData('photo', file);
+                                            if (file) {
+                                                setAvatarPreviewSrc(URL.createObjectURL(file));
+                                            } else {
+                                                setAvatarPreviewSrc(lastSavedPhotoRef.current);
+                                            }
+                                            e.target.value = '';
+                                        }}
+                                    />
+                                    <InputError message={errors.photo} className="mt-1" />
+                                </div>
+                            </div>
+                            {avatarPreviewSrc ? (
+                                <img
+                                    src={avatarPreviewSrc}
+                                    alt=""
+                                    className="h-16 w-16 rounded-2xl object-cover border border-zinc-200 dark:border-zinc-600"
+                                />
+                            ) : null}
+                            <div className="space-y-2 border-t border-zinc-200 pt-3 dark:border-zinc-600">
+                                <p className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Comunicações</p>
+                                <label className="flex cursor-pointer items-center gap-2">
+                                    <Checkbox
+                                        checked={data.notify_via_app}
+                                        onChange={(e) => setData('notify_via_app', e.target.checked)}
+                                    />
+                                    <span className="text-sm text-zinc-700 dark:text-zinc-200">Notificações na app</span>
+                                </label>
+                                <label className="flex cursor-pointer items-center gap-2">
+                                    <Checkbox
+                                        checked={data.notify_via_email}
+                                        onChange={(e) => setData('notify_via_email', e.target.checked)}
+                                    />
+                                    <span className="text-sm text-zinc-700 dark:text-zinc-200">E-mail</span>
+                                </label>
+                                <label className="flex cursor-pointer items-center gap-2">
+                                    <Checkbox
+                                        checked={data.notify_via_whatsapp}
+                                        onChange={(e) => setData('notify_via_whatsapp', e.target.checked)}
+                                    />
+                                    <span className="text-sm text-zinc-700 dark:text-zinc-200">WhatsApp</span>
+                                </label>
+                            </div>
+                        </div>
+
                         <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/80 dark:bg-zinc-900/40 p-4">
                             <p className="text-sm font-semibold text-zinc-900 dark:text-white">Senha (app)</p>
                             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
@@ -710,8 +879,7 @@ export default function Index({
                                 <p className="text-sm font-semibold text-zinc-900 dark:text-white">Acesso e permissões</p>
                                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
                                     Uma conta pode existir <strong className="font-medium text-zinc-700 dark:text-zinc-300">sem perfil</strong> no
-                                    painel; o administrador atribui o perfil aqui para liberar menus e ações. Marque líder apenas quando este
-                                    voluntário for gerir escalas.
+                                    painel até o administrador definir permissões. Quem for <strong className="font-medium text-zinc-700 dark:text-zinc-300">líder de ministério</strong> recebe automaticamente o perfil <strong className="font-medium text-zinc-700 dark:text-zinc-300">Líder de ministério</strong> e deve ter ao menos um departamento a gerir.
                                 </p>
                                 {isSuperAdmin ? (
                                     <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">
@@ -729,26 +897,29 @@ export default function Index({
                             <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
                                 <input
                                     type="checkbox"
-                                    checked={data.app_role === 'lider_ministerio'}
+                                    checked={isMinistryLeader}
+                                    disabled={editingUserIsSuperAdmin || editingUserIsPanelTeam}
                                     onChange={(e) => {
                                         const checked = e.target.checked;
                                         if (checked) {
                                             setData('app_role', 'lider_ministerio');
-                                        } else if (data.app_role === 'lider_ministerio') {
-                                            setData({
-                                                ...data,
-                                                app_role: '',
+                                        } else {
+                                            setData((prev) => ({
+                                                ...prev,
+                                                app_role: prev.app_role === 'lider_ministerio' ? '' : prev.app_role,
                                                 app_ministry_ids: [],
-                                            });
+                                            }));
                                         }
                                     }}
-                                    className="rounded border-zinc-300 dark:border-zinc-600 text-zinc-900 focus:ring-zinc-500"
+                                    className="rounded border-zinc-300 dark:border-zinc-600 text-zinc-900 focus:ring-zinc-500 disabled:opacity-50"
                                 />
                                 <span className="font-medium">É líder de ministério</span>
                             </label>
-                            <InputError message={errors.app_role} className="mt-1" />
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                Atalho: marca o perfil <span className="font-medium">Líder de ministério</span> no campo acima. Também pode escolher outro perfil diretamente na lista.
+                            </p>
 
-                            {data.app_role === 'lider_ministerio' && (
+                            {isMinistryLeader && (
                                 <div>
                                     <InputLabel value="Departamentos que este líder gerirá" />
                                     <div className="mt-2 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 max-h-48 overflow-y-auto space-y-2">
@@ -777,30 +948,6 @@ export default function Index({
                                 </div>
                             )}
 
-                            <div>
-                                <InputLabel htmlFor="app_role" value="Perfil de acesso no app (opcional)" />
-                                {editingUserIsSuperAdmin ? (
-                                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 px-3 py-2.5">
-                                        Este usuário é <strong className="font-medium text-zinc-800 dark:text-zinc-200">super administrador</strong>
-                                        : tem acesso total e o papel não é definido aqui (gestão de usuários / sistema).
-                                    </p>
-                                ) : (
-                                    <select
-                                        id="app_role"
-                                        value={data.app_role}
-                                        onChange={(e) => setData('app_role', e.target.value)}
-                                        className="mt-1 block h-11 min-h-[2.75rem] w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-base text-zinc-900 shadow-sm focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:focus:border-white dark:focus:ring-white/20 sm:text-sm"
-                                    >
-                                        <option value="">Sem perfil (só conta até o administrador definir permissões)</option>
-                                        {appRoles.map((r) => (
-                                            <option key={r.id} value={r.name}>
-                                                {appRoleLabel(r.name)}
-                                            </option>
-                                        ))}
-                                    </select>
-                                )}
-                                <InputError message={errors.app_role} className="mt-1" />
-                            </div>
                         </div>
 
                         <div>
@@ -831,7 +978,14 @@ export default function Index({
                                 <SecondaryButton type="button" onClick={closeModal} className="justify-center sm:w-auto">
                                     Cancelar
                                 </SecondaryButton>
-                                <PrimaryButton type="submit" disabled={processing} className="justify-center sm:w-auto">
+                                <PrimaryButton
+                                    type="submit"
+                                    disabled={
+                                        processing ||
+                                        (isMinistryLeader && (data.app_ministry_ids?.length ?? 0) < 1)
+                                    }
+                                    className="justify-center sm:w-auto"
+                                >
                                     {isEditing ? 'Salvar' : 'Cadastrar'}
                                 </PrimaryButton>
                             </div>
@@ -846,12 +1000,12 @@ export default function Index({
                     {!detailLoading && detailVolunteer && (
                         <VolunteerRecordDetailBody
                             volunteer={detailVolunteer}
-                            badge={detailVolunteer.active === false ? 'Inativo' : 'Ativo'}
+                            badge={detailBadge(detailVolunteer)}
                             onClose={closeDetail}
                             footer={
                                 <div className="flex flex-wrap gap-2 rounded-2xl border border-zinc-200/90 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-900/50">
                                     <PrimaryButton type="button" onClick={openEditFromDetail}>
-                                        Editar cadastro
+                                        Editar cadastro e perfil
                                     </PrimaryButton>
                                 </div>
                             }
@@ -878,6 +1032,25 @@ export default function Index({
                     onClose={() => setPublicInviteModalOpen(false)}
                 />
             ) : null}
+
+            <Modal show={deleteTarget != null} onClose={() => setDeleteTarget(null)} maxWidth="md">
+                <div className="p-6">
+                    {deleteTarget ? (
+                        <VolunteerDeleteConfirmBlock
+                            destroyUrl={route('volunteers.destroy', deleteTarget.id)}
+                            volunteerName={deleteTarget.name ?? 'Voluntário'}
+                            volunteerEmail={deleteTarget.email}
+                            linkedUser={deleteTarget.user}
+                            onSuccess={() => {
+                                setDeleteTarget(null);
+                                setDetailOpen(false);
+                                setDetailVolunteer(null);
+                                router.visit(route('volunteers.index'), { preserveScroll: true });
+                            }}
+                        />
+                    ) : null}
+                </div>
+            </Modal>
         </AdminLayout>
     );
 }

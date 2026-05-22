@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Volunteers\ApplyVolunteerMinistryLeaderStatusUpdate;
+use App\Domain\Volunteers\Actions\DeleteVolunteer;
 use App\Domain\Volunteers\Actions\SyncVolunteerMinistryAttachments;
 use App\Models\Church;
 use App\Models\Ministry;
@@ -135,7 +137,7 @@ class VolunteerPipelineLeadController extends Controller
 
         $volunteer->refresh()->load([
             'ministries:id,name,church_id',
-            'user:id,email,name',
+            'user:id,email,name,photo_url',
             'user.roles:id,name',
             'user.ministries:id,name',
             'churchPipelines' => fn ($p) => $p->where('church_id', $churchId)->with('stage'),
@@ -144,8 +146,12 @@ class VolunteerPipelineLeadController extends Controller
         $pipe = $volunteer->churchPipelines->firstWhere('church_id', $churchId);
 
         VolunteerPipelineBootstrap::ensureFinalizadoStageForChurch($churchId);
+        VolunteerPipelineBootstrap::ensureRecusaStagesForChurch($churchId);
 
         $isAdminWorkflow = $request->user()?->can('volunteers.manage') === true;
+        $adminWorkflowStageId = $isAdminWorkflow
+            ? VolunteerPipelineBootstrap::resolveAdminWorkflowStageId($churchId, $pipe?->stage_id)
+            : $pipe?->stage_id;
         $stages = $isAdminWorkflow
             ? VolunteerPipelineBootstrap::adminWorkflowStagesForChurch($churchId)
             : VolunteerPipelineStage::query()
@@ -200,45 +206,21 @@ class VolunteerPipelineLeadController extends Controller
             'canEdit' => isset($leaderSet[(int) $m->id]),
         ])->values()->all();
 
-        $statusHistoryByMinistry = [];
-        if (Schema::hasTable('volunteer_ministry_invitations')) {
-            $invitations = VolunteerMinistryInvitation::query()
-                ->where('church_id', $churchId)
-                ->where('volunteer_id', $volunteer->id)
-                ->with([
-                    'ministry:id,name',
-                    'leaderStatusHistory' => fn ($h) => $h->with('changedBy:id,name')->orderByDesc('created_at')->orderByDesc('id')->limit(50),
-                ])
-                ->get()
-                ->sortBy(fn (VolunteerMinistryInvitation $i) => mb_strtolower($i->ministry?->name ?? ''))
-                ->values();
-
-            $statusHistoryByMinistry = $invitations->map(fn (VolunteerMinistryInvitation $inv) => [
-                'ministryId' => (int) $inv->ministry_id,
-                'ministryName' => $inv->ministry?->name ?? 'Departamento',
-                'currentLeaderStatus' => $inv->leader_status,
-                'currentLeaderStatusLabel' => \App\Support\VolunteerLeaderStatusLabels::label($inv->leader_status),
-                'history' => $inv->leaderStatusHistory
-                    ->map(fn (VolunteerMinistryInvitationStatusHistory $h) => [
-                        'id' => $h->id,
-                        'fromStatus' => $h->from_status,
-                        'toStatus' => $h->to_status,
-                        'fromStatusLabel' => \App\Support\VolunteerLeaderStatusLabels::label($h->from_status),
-                        'toStatusLabel' => \App\Support\VolunteerLeaderStatusLabels::label($h->to_status),
-                        'note' => $h->note,
-                        'changedAt' => $h->created_at?->toIso8601String(),
-                        'changedBy' => $h->changedBy?->name,
-                    ])
-                    ->values()
-                    ->all(),
-            ])->values()->all();
-        }
+        $canManageLeaderStatus = $request->user()?->can('volunteers.manage') === true;
+        $statusHistoryByMinistry = $this->statusHistoryByMinistryForVolunteer(
+            $volunteer,
+            $churchId,
+            $attachedSet,
+            $leaderSet,
+            $canManageLeaderStatus,
+        );
 
         return response()->json([
             'volunteer' => VolunteerSignupDetailPresenter::forVolunteer($volunteer),
             'pipeline' => [
-                'stageId' => $pipe?->stage_id,
+                'stageId' => $isAdminWorkflow ? $adminWorkflowStageId : $pipe?->stage_id,
                 'stageName' => $pipe?->stage?->name,
+                'adminWorkflowStageId' => $adminWorkflowStageId,
             ],
             'stages' => $stages,
             'statusHistoryByMinistry' => $statusHistoryByMinistry,
@@ -420,6 +402,39 @@ class VolunteerPipelineLeadController extends Controller
         return back()->with('success', 'Fase atualizada.');
     }
 
+    public function updateMinistryLeaderStatus(Request $request, Volunteer $volunteer, Ministry $ministry): RedirectResponse
+    {
+        $this->canUseMutate($request);
+        $churchId = $this->churchId($request);
+        abort_unless($churchId, 404);
+        abort_unless($this->volunteerVisibleInChurch($volunteer, $churchId), 404);
+        abort_unless((int) $ministry->church_id === (int) $churchId, 404);
+
+        $user = $request->user();
+        $isAdminManage = $user?->can('volunteers.manage') === true;
+
+        if (! $isAdminManage) {
+            $leaderSet = array_flip($this->leaderMinistryIdsForChurch($request, $churchId));
+            abort_unless(isset($leaderSet[(int) $ministry->id]), 403);
+            abort_unless(
+                $volunteer->ministries()->where('ministries.id', (int) $ministry->id)->exists(),
+                404,
+                'Voluntário não está neste departamento.'
+            );
+        }
+
+        $invitation = $this->findOrCreateLeaderStatusInvitation(
+            $churchId,
+            (int) $volunteer->id,
+            (int) $ministry->id,
+            $user?->id,
+        );
+
+        app(ApplyVolunteerMinistryLeaderStatusUpdate::class)($request, $invitation);
+
+        return back()->with('success', 'Status do departamento atualizado.');
+    }
+
     public function destroyVolunteer(Request $request, Volunteer $volunteer): RedirectResponse
     {
         abort_unless($request->user()?->can('volunteers.manage'), 403);
@@ -440,17 +455,133 @@ class VolunteerPipelineLeadController extends Controller
             }
         }
 
-        DB::transaction(function () use ($volunteer, $linkedUser) {
-            $volunteer->delete();
-            if ($linkedUser) {
-                $linkedUser->delete();
-            }
-        });
+        try {
+            app(DeleteVolunteer::class)($volunteer, $deleteLinkedUser && $linkedUser !== null);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return redirect()->route('ministry-lead.volunteers.index')->with(
+                'error',
+                'Não foi possível excluir o voluntário. Tente novamente ou contate a equipe técnica.'
+            );
+        }
 
         $message = ($deleteLinkedUser && $linkedUser)
             ? 'Voluntário e conta de usuário removidos com sucesso.'
             : 'Voluntário removido com sucesso.';
 
         return redirect()->route('ministry-lead.volunteers.index')->with('success', $message);
+    }
+
+    /**
+     * @param  array<int, true>  $attachedSet
+     * @param  array<int, true>  $leaderSet
+     * @return list<array<string, mixed>>
+     */
+    private function statusHistoryByMinistryForVolunteer(
+        Volunteer $volunteer,
+        int $churchId,
+        array $attachedSet,
+        array $leaderSet,
+        bool $canManageAll,
+    ): array {
+        if (! Schema::hasTable('volunteer_ministry_invitations')) {
+            return [];
+        }
+
+        $attachedMinistries = $volunteer->ministries
+            ->filter(fn (Ministry $m) => (int) $m->church_id === $churchId)
+            ->keyBy('id');
+
+        $invitations = VolunteerMinistryInvitation::query()
+            ->where('church_id', $churchId)
+            ->where('volunteer_id', $volunteer->id)
+            ->with([
+                'ministry:id,name,church_id',
+                'leaderStatusHistory' => fn ($h) => $h->with('changedBy:id,name')->orderByDesc('created_at')->orderByDesc('id')->limit(50),
+            ])
+            ->get()
+            ->keyBy('ministry_id');
+
+        $ministryIds = collect($attachedMinistries->keys())
+            ->merge($invitations->keys())
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->sortBy(fn ($id) => mb_strtolower($attachedMinistries->get($id)?->name ?? $invitations->get($id)?->ministry?->name ?? ''))
+            ->values();
+
+        $sections = [];
+        foreach ($ministryIds as $ministryId) {
+            $ministry = $attachedMinistries->get($ministryId) ?? $invitations->get($ministryId)?->ministry;
+            $inv = $invitations->get($ministryId);
+            $isAttached = isset($attachedSet[$ministryId]);
+            $canEdit = $canManageAll || ($isAttached && isset($leaderSet[$ministryId]));
+
+            $sections[] = [
+                'ministryId' => $ministryId,
+                'ministryName' => $ministry?->name ?? 'Departamento',
+                'isAttached' => $isAttached,
+                'canEdit' => $canEdit,
+                'currentLeaderStatus' => $inv?->leader_status,
+                'currentLeaderNote' => $inv?->leader_note,
+                'currentLeaderStatusLabel' => \App\Support\VolunteerLeaderStatusLabels::label($inv?->leader_status),
+                'updateLeaderStatusUrl' => $canEdit
+                    ? route('ministry-lead.volunteers.pipeline.ministry-leader-status', [$volunteer, $ministryId])
+                    : null,
+                'history' => $inv
+                    ? $inv->leaderStatusHistory
+                        ->map(fn (VolunteerMinistryInvitationStatusHistory $h) => [
+                            'id' => $h->id,
+                            'fromStatus' => $h->from_status,
+                            'toStatus' => $h->to_status,
+                            'fromStatusLabel' => \App\Support\VolunteerLeaderStatusLabels::label($h->from_status),
+                            'toStatusLabel' => \App\Support\VolunteerLeaderStatusLabels::label($h->to_status),
+                            'note' => $h->note,
+                            'changedAt' => $h->created_at?->toIso8601String(),
+                            'changedBy' => $h->changedBy?->name,
+                        ])
+                        ->values()
+                        ->all()
+                    : [],
+            ];
+        }
+
+        return $sections;
+    }
+
+    private function invitationForVolunteerMinistry(int $churchId, int $volunteerId, int $ministryId): ?VolunteerMinistryInvitation
+    {
+        return VolunteerMinistryInvitation::query()
+            ->where('church_id', $churchId)
+            ->where('volunteer_id', $volunteerId)
+            ->where('ministry_id', $ministryId)
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    private function findOrCreateLeaderStatusInvitation(
+        int $churchId,
+        int $volunteerId,
+        int $ministryId,
+        ?int $invitedByUserId,
+        string $defaultLeaderStatus = 'active',
+    ): VolunteerMinistryInvitation {
+        $existing = $this->invitationForVolunteerMinistry($churchId, $volunteerId, $ministryId);
+        if ($existing) {
+            return $existing;
+        }
+
+        return VolunteerMinistryInvitation::create([
+            'church_id' => $churchId,
+            'volunteer_id' => $volunteerId,
+            'ministry_id' => $ministryId,
+            'invited_by_user_id' => $invitedByUserId,
+            'token' => VolunteerMinistryInvitation::createToken(),
+            'status' => 'accepted',
+            'accepted_at' => now(),
+            'leader_status' => $defaultLeaderStatus,
+            'leader_status_set_by_user_id' => $invitedByUserId,
+            'leader_status_set_at' => now(),
+        ]);
     }
 }

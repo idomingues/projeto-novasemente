@@ -39,7 +39,7 @@ class CreateChurchUserProfile
         // Se já selecionou departamentos (no cadastro), consideramos voluntário automaticamente.
         $isVolunteer = (bool) ($userPayload['is_volunteer'] ?? false) || count($allowedMinistryIds) > 0;
 
-        $user = tap(User::create([
+        $user = User::create([
             'name' => $userPayload['name'],
             'email' => $userPayload['email'],
             'password' => Hash::make((string) ($userPayload['password'] ?? Str::password())),
@@ -55,15 +55,16 @@ class CreateChurchUserProfile
             'notify_via_email' => (bool) ($userPayload['notify_via_email'] ?? true),
             'notify_via_whatsapp' => (bool) ($userPayload['notify_via_whatsapp'] ?? false),
             'lgpd_accepted_at' => $userPayload['lgpd_accepted_at'] ?? null,
-        ]), fn (User $u) => $u->ensureVolunteerProfile());
+        ]);
+
+        $user->syncVolunteerRecord();
 
         $volunteer = $user->fresh()->volunteerProfile;
         if ($volunteer !== null) {
             $syncIds = $isVolunteer ? $allowedMinistryIds : [];
             app(SyncVolunteerMinistryAttachments::class)($volunteer, $syncIds);
+            $user->fresh()->ensureVolunteerProfile();
         }
-
-        $user->ensureVolunteerProfile();
 
         return $user->fresh();
     }

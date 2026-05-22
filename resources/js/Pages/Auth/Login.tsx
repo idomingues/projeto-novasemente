@@ -46,10 +46,12 @@ function firstErrorMessage(
 
 export default function Login({
     status,
+    volunteerSignupWelcome = false,
     canResetPassword,
     redirectTo,
 }: {
     status?: string;
+    volunteerSignupWelcome?: boolean;
     canResetPassword: boolean;
     redirectTo?: string | null;
 }) {
@@ -178,14 +180,21 @@ export default function Login({
                             </p>
                         </div>
                         {status && (
-                            <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-100">
+                            <div
+                                role="status"
+                                className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-100"
+                            >
                                 {status}
                             </div>
                         )}
 
-                        <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-zinc-900">Bem-vindo de volta</h2>
+                        <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-zinc-900">
+                            {volunteerSignupWelcome ? 'Bem-vindo!' : 'Bem-vindo de volta'}
+                        </h2>
                         <p className="mt-3 text-sm sm:text-base text-zinc-600 leading-relaxed">
-                            Acesse sua conta para acompanhar a gestão da igreja.
+                            {volunteerSignupWelcome
+                                ? 'Seu cadastro de voluntário foi concluído. Entre com o e-mail e a senha que você definiu para acessar o aplicativo.'
+                                : 'Acesse sua conta para acompanhar a gestão da igreja.'}
                         </p>
 
                         {bannerMessage ? (
@@ -277,7 +286,7 @@ export default function Login({
                         <div className="mt-6">
                             <Link
                                 href={route('register')}
-                                className="flex w-full items-center justify-center rounded-xl border border-zinc-200 bg-zinc-50 py-3 text-center text-sm font-semibold text-zinc-800 transition-colors hover:bg-zinc-100"
+                                className="flex w-full items-center justify-center rounded-xl bg-teal-600 py-3 text-center text-sm font-semibold text-white shadow-sm shadow-teal-600/25 transition-colors hover:bg-teal-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600"
                             >
                                 Cadastro para uso completo do app
                             </Link>

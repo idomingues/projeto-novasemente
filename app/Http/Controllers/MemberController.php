@@ -39,6 +39,7 @@ class MemberController extends Controller
     {
         $search = (string) $request->input('search', '');
         $leadersOnly = $request->boolean('leaders_only');
+        $appMembersOnly = $request->boolean('app_members_only');
         $ministryId = $request->filled('ministry_id') ? (int) $request->input('ministry_id') : null;
         $churchId = $this->currentChurchId($request);
 
@@ -60,6 +61,12 @@ class MemberController extends Controller
                 $q->where('is_ministry_leader', true)
                     ->orWhereHas('roles', fn ($r) => $r->where('name', 'lider_ministerio'));
             });
+        }
+
+        if ($appMembersOnly) {
+            $query->where('is_volunteer', false)
+                ->where('is_ministry_leader', false)
+                ->whereDoesntHave('roles', fn ($r) => $r->where('name', 'lider_ministerio'));
         }
 
         if ($ministryId !== null && $ministryId > 0 && $churchId !== null) {
@@ -114,6 +121,12 @@ class MemberController extends Controller
                 $appMinistryIds = $user->ministries()->pluck('ministries.id')->map(fn ($id) => (int) $id)->values()->all();
 
                 $roleName = $user->getRoleNames()->first();
+                $volunteerProfile = $user->volunteerProfile;
+                $hasOperationalVolunteer = $volunteerProfile !== null
+                    && ! (bool) ($volunteerProfile->app_access_only ?? false);
+                $profileKind = $hasOperationalVolunteer || (bool) ($user->is_volunteer ?? false)
+                    ? 'volunteer'
+                    : 'app_only';
 
                 return [
                     'id' => $user->id,
@@ -136,6 +149,8 @@ class MemberController extends Controller
                     'created_at' => $user->created_at->toIso8601String(),
                     'role_name' => $roleName,
                     'role_label' => $roleName ? MemberRoleAssignment::label((string) $roleName) : null,
+                    'profile_kind' => $profileKind,
+                    'volunteer_profile_id' => $hasOperationalVolunteer ? (int) $volunteerProfile->id : null,
                 ];
             }),
             'assignableRoles' => $assignableRoles,
@@ -143,6 +158,7 @@ class MemberController extends Controller
             'filters' => [
                 'search' => $search,
                 'leaders_only' => $leadersOnly ? '1' : '',
+                'app_members_only' => $appMembersOnly ? '1' : '',
                 'ministry_id' => $ministryId !== null && $ministryId > 0 ? (string) $ministryId : '',
             ],
         ]);
@@ -173,8 +189,11 @@ class MemberController extends Controller
             MemberRoleAssignment::syncUserRole($request->user(), $user, (string) $roleName);
         }
 
-        // Líder não é mais perfil; departamentos liderados vêm sempre de `app_ministry_ids`.
         $user->ministries()->sync($request->input('app_ministry_ids', []));
+
+        if ((bool) ($user->is_ministry_leader ?? false)) {
+            MemberRoleAssignment::applyMinistryLeaderRole($user->fresh());
+        }
 
         return redirect()->route('members.index')->with('success', 'Usuário criado com sucesso!');
     }
@@ -271,9 +290,13 @@ class MemberController extends Controller
             }
         }
 
-        // Sincronizar departamentos que o usuário lidera (ministry_user) quando for líder de ministério.
-        // Líder não é mais perfil; departamentos liderados vêm sempre de `app_ministry_ids`.
         $user->ministries()->sync($request->input('app_ministry_ids', []));
+
+        if ((bool) ($user->is_ministry_leader ?? false)) {
+            MemberRoleAssignment::applyMinistryLeaderRole($user->fresh());
+        } else {
+            MemberRoleAssignment::clearMinistryLeaderRole($user->fresh());
+        }
 
         return redirect()->route('members.index')->with('success', 'Usuário atualizado com sucesso!');
     }

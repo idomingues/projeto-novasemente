@@ -119,7 +119,90 @@ class User extends Authenticatable
     }
 
     /**
-     * Garante um registo em `volunteers` ligado a este usuário (espelho de contacto / app).
+     * Voluntário formal, líder ou conta de equipe do painel — mantém (ou cria) registro em `volunteers`.
+     * Membro só com app (`membro`, sem servir em ministérios) não entra aqui.
+     */
+    public function shouldMaintainVolunteerRecord(): bool
+    {
+        if ((bool) ($this->is_volunteer ?? false)) {
+            return true;
+        }
+
+        if ((bool) ($this->is_ministry_leader ?? false)) {
+            return true;
+        }
+
+        if ($this->hasRole('lider_ministerio')) {
+            return true;
+        }
+
+        if ($this->canAccessAdminMenu()) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Espelho automático criado só para login — pode ser removido sem apagar o usuário.
+     */
+    public function volunteerRecordIsRemovableMirror(?\App\Models\Volunteer $volunteer = null): bool
+    {
+        $volunteer ??= $this->volunteerProfile()->first();
+        if ($volunteer === null) {
+            return false;
+        }
+
+        if ((bool) ($volunteer->app_access_only ?? false)) {
+            return true;
+        }
+
+        if ($volunteer->ministries()->exists()) {
+            return false;
+        }
+
+        foreach ([
+            'attendance_duration',
+            'is_official_member',
+            'member_record_at_nova_semente',
+            'has_previous_ministry_volunteer_experience',
+            'ministry_involvement',
+            'other_ministry_interest',
+            'gifts_to_develop',
+            'professional_area',
+        ] as $field) {
+            $value = $volunteer->{$field};
+            if ($value !== null && $value !== '' && $value !== false) {
+                return false;
+            }
+        }
+
+        if ($volunteer->churchPipelines()->exists()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Alinha `volunteers` com o papel do usuário: cria/atualiza espelho ou remove espelho só-app.
+     */
+    public function syncVolunteerRecord(): void
+    {
+        if ($this->shouldMaintainVolunteerRecord()) {
+            $this->ensureVolunteerProfile();
+
+            return;
+        }
+
+        $volunteer = $this->volunteerProfile()->first();
+        if ($volunteer !== null && $this->volunteerRecordIsRemovableMirror($volunteer)) {
+            app(\App\Domain\Volunteers\Actions\DeleteVolunteer::class)($volunteer, false);
+        }
+    }
+
+    /**
+     * Garante um registro em `volunteers` ligado a este usuário (espelho de contato / app).
      * Ministérios em que a pessoa **serve** vêm do cadastro de voluntário; só para `lider_ministerio`
      * espelhamos aqui os ministérios que a pessoa **lidera** (`ministry_user`).
      *
@@ -164,8 +247,12 @@ class User extends Authenticatable
 
         $volunteer->unsetRelation('ministries');
 
+        $appAccessOnly = (bool) ($this->is_volunteer ?? false)
+            ? false
+            : $this->volunteerRowIsAppAccessOnly($volunteer);
+
         $volunteer->forceFill([
-            'app_access_only' => $this->volunteerRowIsAppAccessOnly($volunteer),
+            'app_access_only' => $appAccessOnly,
         ])->save();
     }
 
@@ -214,7 +301,9 @@ class User extends Authenticatable
      */
     public function ministries(): BelongsToMany
     {
-        return $this->belongsToMany(\App\Models\Ministry::class, 'ministry_user')->withTimestamps();
+        return $this->belongsToMany(\App\Models\Ministry::class, 'ministry_user')
+            ->orderBy('ministries.name')
+            ->withTimestamps();
     }
 
     public function inboxNotifications(): HasMany

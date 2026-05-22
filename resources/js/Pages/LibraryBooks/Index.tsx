@@ -1,5 +1,5 @@
 import AdminLayout from '@/Layouts/AdminLayout';
-import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { BookOpenIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import AddButton from '@/Components/AddButton';
 import PageHeader from '@/Components/PageHeader';
@@ -96,6 +96,8 @@ export default function LibraryBooksIndex({
     librarySetupMessage = null,
 }: Props) {
     const page = usePage();
+    const canManageSettings =
+        (page.props as { auth?: { canManageSettings?: boolean } }).auth?.canManageSettings === true;
     const pageErrors = (page.props as { errors?: Record<string, string> }).errors ?? {};
     const hasLibraryValidationErrors = LIBRARY_FORM_KEYS.some((k) => Boolean(pageErrors[k]));
 
@@ -293,9 +295,19 @@ export default function LibraryBooksIndex({
                 }
                 actions={
                     canManage && !librarySetupMessage ? (
-                        <AddButton variant="icon" onClick={openCreateModal} title="Nova publicação">
-                            Nova publicação
-                        </AddButton>
+                        <div className="flex flex-wrap items-center gap-2">
+                            {canManageSettings ? (
+                                <Link
+                                    href={route('settings.index')}
+                                    className="inline-flex items-center rounded-xl border border-teal-600/40 bg-teal-50 px-3 py-2 text-sm font-semibold text-teal-900 transition hover:bg-teal-100 dark:border-teal-500/40 dark:bg-teal-950/50 dark:text-teal-100 dark:hover:bg-teal-900/60"
+                                >
+                                    Lição e meditação
+                                </Link>
+                            ) : null}
+                            <AddButton variant="icon" onClick={openCreateModal} title="Nova publicação">
+                                Nova publicação
+                            </AddButton>
+                        </div>
                     ) : undefined
                 }
             />

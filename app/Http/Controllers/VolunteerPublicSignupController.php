@@ -364,7 +364,8 @@ class VolunteerPublicSignupController extends Controller
             }
             $user->ministries()->detach();
             $user->syncRoleIdFromSpatieAssignments();
-            $user->ensureVolunteerProfile();
+            $user->forceFill(['is_volunteer' => true])->save();
+            $user->syncVolunteerRecord();
             $this->linkPreRegisteredVolunteerRecord($user);
             $user->load('volunteerProfile');
 
@@ -397,21 +398,51 @@ class VolunteerPublicSignupController extends Controller
                         app(VolunteerMinistryRosterNotifier::class)->notifyLeadersOfNewAttachments($volunteer->fresh(), $added);
                     }
                 }
-                VolunteerPipelineBootstrap::ensureRowForVolunteerInChurch($volunteer->fresh(), (int) $record->church_id);
+                VolunteerPipelineBootstrap::setInteressadoStageForVolunteer(
+                    $volunteer->fresh(),
+                    (int) $record->church_id
+                );
             }
 
-            $user->forceFill(['is_volunteer' => true])->save();
-            $user->ensureVolunteerProfile();
+            $user->syncVolunteerRecord();
 
             return $user->fresh();
         });
 
+        $emailNorm = VolunteerContactDuplicateChecker::normalizeEmail($validated['email']);
+        $persisted = $emailNorm !== null
+            ? User::query()->whereRaw('LOWER(TRIM(COALESCE(email, ""))) = ?', [$emailNorm])->first()
+            : null;
+
+        if ($persisted === null || trim((string) ($persisted->email ?? '')) === '') {
+            return redirect()
+                ->route('volunteers.public-signup.page')
+                ->with(
+                    'error',
+                    'Não foi possível concluir o cadastro da conta de acesso. Tente enviar o formulário novamente ou entre em contato com a equipe.'
+                );
+        }
+
+        $persisted->load('volunteerProfile');
+        $volunteerRecord = $persisted->volunteerProfile
+            ?? Volunteer::query()->where('user_id', $persisted->id)->first();
+
+        if ($volunteerRecord === null || ! VolunteerAppLogin::loginReady($volunteerRecord)) {
+            return redirect()
+                ->route('volunteers.public-signup.page')
+                ->with(
+                    'error',
+                    'Cadastro salvo, mas a conta de login ficou incompleta. Tente concluir o cadastro novamente com o mesmo e-mail.'
+                );
+        }
+
+        $welcomeMessage =
+            'Bem-vindo! Seu cadastro de voluntário foi concluído. Faça login com o e-mail e a senha que você definiu para acessar o aplicativo.';
+
         return redirect()
             ->route('login')
-            ->with(
-                'status',
-                'Parabéns! Seu cadastro de voluntário foi concluído com sucesso. Entre com seu e-mail e senha para acessar o aplicativo.'
-            );
+            ->with('status', $welcomeMessage)
+            ->with('volunteer_signup_welcome', true);
     }
 
     /**
@@ -419,32 +450,34 @@ class VolunteerPublicSignupController extends Controller
      */
     private function linkPreRegisteredVolunteerRecord(User $user): void
     {
-        $user->load('volunteerProfile');
-        $current = $user->volunteerProfile;
-        if ($current === null) {
-            return;
-        }
-
         $email = strtolower(trim((string) ($user->email ?? '')));
         if ($email === '') {
             return;
         }
 
-        $preRegistered = Volunteer::query()
-            ->where('id', '!=', $current->id)
+        $user->load('volunteerProfile');
+        $current = $user->volunteerProfile;
+
+        $preRegisteredQuery = Volunteer::query()
             ->whereRaw('lower(trim(COALESCE(email, ""))) = ?', [$email])
             ->whereNull('user_id')
-            ->orderByDesc('id')
-            ->first();
+            ->orderByDesc('id');
 
+        if ($current !== null) {
+            $preRegisteredQuery->where('id', '!=', $current->id);
+        }
+
+        $preRegistered = $preRegisteredQuery->first();
         if ($preRegistered === null) {
             return;
         }
 
-        Volunteer::query()
-            ->where('user_id', $user->id)
-            ->where('id', '!=', $preRegistered->id)
-            ->update(['user_id' => null]);
+        if ($current !== null) {
+            Volunteer::query()
+                ->where('user_id', $user->id)
+                ->where('id', '!=', $preRegistered->id)
+                ->update(['user_id' => null]);
+        }
 
         $name = trim((string) ($preRegistered->name ?? ''));
         if ($name === '') {
@@ -459,7 +492,9 @@ class VolunteerPublicSignupController extends Controller
 
         VolunteerAppLogin::syncLoginEmailFromVolunteer($user, $preRegistered);
 
-        $current->delete();
+        if ($current !== null && $current->id !== $preRegistered->id) {
+            $current->delete();
+        }
     }
 
     /**

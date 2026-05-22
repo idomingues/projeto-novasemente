@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Volunteers\ApplyVolunteerMinistryLeaderStatusUpdate;
 use App\Actions\Volunteers\BuildVolunteerMinistryInvitePlainCopy;
 use App\Actions\Volunteers\NotifyVolunteerMinistryInvitation;
 use App\Support\VolunteerInvitationStatusLabels;
+use App\Support\VolunteerPipelineBootstrap;
 use App\Models\Church;
 use App\Models\ChurchSolicitation;
 use App\Models\Ministry;
@@ -79,56 +81,7 @@ class MyMinistryVolunteersController extends Controller
 
     private function applyLeaderStatusUpdate(Request $request, VolunteerMinistryInvitation $invitation): RedirectResponse
     {
-        $churchId = (int) $invitation->church_id;
-        $user = $request->user();
-        $invitation->loadMissing(['ministry', 'volunteer']);
-
-        $fromStatus = $invitation->leader_status;
-
-        $valid = $request->validate([
-            'leader_status' => ['nullable', 'string', Rule::in(['denied', 'training', 'active'])],
-            'leader_note' => ['nullable', 'string', 'max:5000'],
-        ]);
-
-        if (($valid['leader_status'] ?? null) === 'denied') {
-            $note = trim((string) ($valid['leader_note'] ?? ''));
-            abort_unless(mb_strlen($note) >= 5, 422, 'Mensagem obrigatória para recusar.');
-        }
-
-        $invitation->forceFill([
-            'leader_status' => $valid['leader_status'] ?? null,
-            'leader_note' => ($valid['leader_status'] ?? null) === 'denied' ? ($valid['leader_note'] ?? null) : null,
-            'leader_status_set_by_user_id' => $user?->id,
-            'leader_status_set_at' => now(),
-        ])->save();
-
-        if ($fromStatus !== ($invitation->leader_status ?? null) || (($valid['leader_status'] ?? null) === 'denied')) {
-            VolunteerMinistryInvitationStatusHistory::create([
-                'invitation_id' => $invitation->id,
-                'church_id' => $invitation->church_id,
-                'ministry_id' => $invitation->ministry_id,
-                'volunteer_id' => $invitation->volunteer_id,
-                'changed_by_user_id' => $user?->id,
-                'from_status' => $fromStatus,
-                'to_status' => $invitation->leader_status,
-                'note' => ($invitation->leader_status === 'denied') ? $invitation->leader_note : null,
-            ]);
-        }
-
-        if (($valid['leader_status'] ?? null) === 'denied') {
-            $ministryName = $invitation->ministry?->name ?? 'Departamento';
-            $body = "Recusado pelo líder do departamento «{$ministryName}»:\n\n".trim((string) ($valid['leader_note'] ?? ''));
-            VolunteerLeaderNote::create([
-                'volunteer_id' => $invitation->volunteer_id,
-                'church_id' => $churchId,
-                'user_id' => $user?->id,
-                'body' => $body,
-            ]);
-        }
-
-        if (in_array(($valid['leader_status'] ?? null), ['training', 'active'], true) && $invitation->volunteer && $invitation->ministry) {
-            $invitation->volunteer->ministries()->syncWithoutDetaching([$invitation->ministry_id]);
-        }
+        app(ApplyVolunteerMinistryLeaderStatusUpdate::class)($request, $invitation);
 
         return back()->with('success', 'Status atualizado.');
     }
@@ -230,6 +183,10 @@ class MyMinistryVolunteersController extends Controller
                 ];
                 });
             })
+            ->sortBy([
+                fn (array $row) => mb_strtolower((string) ($row['volunteer']['name'] ?? '')),
+                fn (array $row) => mb_strtolower((string) ($row['ministryName'] ?? '')),
+            ])
             ->values()
             ->all();
     }
@@ -353,8 +310,11 @@ class MyMinistryVolunteersController extends Controller
         if ($u->hasRole(['admin', 'super_admin'])) {
             return;
         }
-        // Líder é definido por checkbox no cadastro do usuário.
-        abort_unless((bool) ($u->is_ministry_leader ?? false), 403);
+        // Alinhado ao app e a VolunteerRequestSolicitationController: papel Spatie ou checkbox no cadastro.
+        abort_unless(
+            (bool) ($u->is_ministry_leader ?? false) || $u->hasRole('lider_ministerio'),
+            403,
+        );
     }
 
     public function removeVolunteerFromMinistry(Request $request, Volunteer $volunteer, Ministry $ministry): RedirectResponse
@@ -413,6 +373,10 @@ class MyMinistryVolunteersController extends Controller
         $leaderMinistries = $this->leaderMinistriesWithRoles((int) $churchId, $ministryIds);
 
         $invites = VolunteerMinistryInvitation::queryLatestPerVolunteerMinistry((int) $churchId, array_map('intval', $ministryIds))
+            ->join('volunteers', 'volunteers.id', '=', 'volunteer_ministry_invitations.volunteer_id')
+            ->orderBy('volunteers.name')
+            ->orderBy('volunteer_ministry_invitations.id')
+            ->select('volunteer_ministry_invitations.*')
             ->with([
                 'volunteer' => function ($q): void {
                     $q->select(
@@ -443,7 +407,6 @@ class MyMinistryVolunteersController extends Controller
                 'ministry:id,name',
                 'church:id,ministry_invitation_intro',
             ])
-            ->orderByDesc('created_at')
             ->paginate(25)
             ->withQueryString();
 

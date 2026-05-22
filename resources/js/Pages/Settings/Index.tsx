@@ -13,6 +13,9 @@ type HandlerOption = { value: number; label: string };
 
 type Props = {
     churchName: string;
+    canEditSolicitationsHandler?: boolean;
+    canEditYoutubeLive?: boolean;
+    canEditLibraryUrls?: boolean;
     solicitationsHandlerVolunteerId: number | null;
     solicitationsHandlerOptions: HandlerOption[];
     updateSolicitationsHandlerUrl: string;
@@ -26,6 +29,9 @@ type Props = {
 
 export default function SettingsIndex({
     churchName,
+    canEditSolicitationsHandler = true,
+    canEditYoutubeLive = true,
+    canEditLibraryUrls = true,
     solicitationsHandlerVolunteerId,
     solicitationsHandlerOptions,
     updateSolicitationsHandlerUrl,
@@ -79,6 +85,7 @@ export default function SettingsIndex({
             <PageHeader title="Configurações" />
 
             <div className="max-w-2xl space-y-8">
+                {canEditSolicitationsHandler ? (
                 <section className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6 shadow-sm">
                     <h2 className="text-base font-semibold text-zinc-900 dark:text-white">Atendimento Pastoral</h2>
                     <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
@@ -122,7 +129,9 @@ export default function SettingsIndex({
                         </div>
                     </form>
                 </section>
+                ) : null}
 
+                {canEditYoutubeLive ? (
                 <section className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6 shadow-sm">
                     <h2 className="text-base font-semibold text-zinc-900 dark:text-white">App mobile — Culto ao vivo</h2>
                     <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
@@ -157,7 +166,9 @@ export default function SettingsIndex({
                         </div>
                     </form>
                 </section>
+                ) : null}
 
+                {canEditLibraryUrls ? (
                 <section className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6 shadow-sm">
                     <h2 className="text-base font-semibold text-zinc-900 dark:text-white">App mobile — Biblioteca</h2>
                     <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
@@ -208,6 +219,7 @@ export default function SettingsIndex({
                         </form>
                     </div>
                 </section>
+                ) : null}
             </div>
         </AdminLayout>
     );

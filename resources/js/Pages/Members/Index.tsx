@@ -47,6 +47,8 @@ interface Member {
     created_at: string;
     role_name?: string | null;
     role_label?: string | null;
+    profile_kind?: 'app_only' | 'volunteer';
+    volunteer_profile_id?: number | null;
 }
 
 interface Props {
@@ -63,6 +65,7 @@ interface Props {
     filters?: {
         search?: string;
         leaders_only?: string;
+        app_members_only?: string;
         ministry_id?: string;
     };
     canManageLeaderSignupLink?: boolean;
@@ -109,12 +112,19 @@ export default function Index({
     const [editingId, setEditingId] = useState<number | null>(null);
     const [search, setSearch] = useState(filters?.search ?? '');
     const [leaderFilter, setLeaderFilter] = useState(filters?.leaders_only ?? '');
+    const [appMembersFilter, setAppMembersFilter] = useState(filters?.app_members_only ?? '');
     const [ministryFilter, setMinistryFilter] = useState(filters?.ministry_id ?? '');
 
-    const listFilterParams = (overrides?: { search?: string; leaders_only?: string; ministry_id?: string }) => {
+    const listFilterParams = (overrides?: {
+        search?: string;
+        leaders_only?: string;
+        app_members_only?: string;
+        ministry_id?: string;
+    }) => {
         const params: Record<string, string> = {};
         const s = overrides?.search ?? search;
         const l = overrides?.leaders_only ?? leaderFilter;
+        const a = overrides?.app_members_only ?? appMembersFilter;
         const m = overrides?.ministry_id ?? ministryFilter;
         if (s.trim() !== '') {
             params.search = s.trim();
@@ -122,13 +132,21 @@ export default function Index({
         if (l === '1') {
             params.leaders_only = '1';
         }
+        if (a === '1') {
+            params.app_members_only = '1';
+        }
         if (m !== '') {
             params.ministry_id = m;
         }
         return params;
     };
 
-    const applyListFilters = (overrides?: { search?: string; leaders_only?: string; ministry_id?: string }) => {
+    const applyListFilters = (overrides?: {
+        search?: string;
+        leaders_only?: string;
+        app_members_only?: string;
+        ministry_id?: string;
+    }) => {
         router.get(route('members.index'), listFilterParams(overrides), {
             preserveState: true,
             replace: true,
@@ -458,19 +476,18 @@ export default function Index({
 
     return (
         <AdminLayout>
-            <Head title="Usuários" />
+            <Head title="Membros do app" />
 
             <PageHeader
-                title="Usuários"
+                title="Membros do app"
                 subtitle={
                     <>
-                        Acesso e login baseiam-se na tabela de usuários (
-                        <strong className="font-medium text-zinc-700 dark:text-zinc-300">users</strong>); a ficha na igreja é{' '}
-                        <strong className="font-medium text-zinc-700 dark:text-zinc-300">members</strong>. O mesmo núcleo do registro público «Criar conta»: nome e e-mail obrigatórios; telefone e data de nascimento são opcionais.{' '}
-                        <strong className="font-medium text-zinc-700 dark:text-zinc-300">Endereço não é pedida nesta fase.</strong>
+                        Pessoas com conta para entrar no aplicativo (papel <strong className="font-medium">membro</strong> da igreja,
+                        líderes ou equipe). Quem <strong className="font-medium">serve em ministérios</strong> deve também ter ficha em{' '}
+                        <strong className="font-medium">Cadastro de voluntários</strong> — são cadastros complementares, não o mesmo menu.
                     </>
                 }
-                actions={<AddButton variant="icon" onClick={openCreateModal} title="Novo usuário">Novo usuário</AddButton>}
+                actions={<AddButton variant="icon" onClick={openCreateModal} title="Novo membro">Novo membro</AddButton>}
             >
                 <div className="flex w-full flex-col gap-3">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -511,8 +528,23 @@ export default function Index({
                                 }}
                                 className="w-full"
                             >
-                                <option value="">Todos os usuários</option>
+                                <option value="">Todos os membros</option>
                                 <option value="1">Apenas líderes de departamento</option>
+                            </SelectInput>
+                        </div>
+                        <div className="w-full sm:w-52">
+                            <InputLabel value="Tipo" className="mb-1" />
+                            <SelectInput
+                                value={appMembersFilter}
+                                onChange={(e) => {
+                                    const v = e.target.value;
+                                    setAppMembersFilter(v);
+                                    applyListFilters({ app_members_only: v });
+                                }}
+                                className="w-full"
+                            >
+                                <option value="">Todos</option>
+                                <option value="1">Só app (sem voluntário)</option>
                             </SelectInput>
                         </div>
                         <div className="w-full sm:flex-1 sm:max-w-xs">
@@ -622,9 +654,25 @@ export default function Index({
                                         </div>
                                     </td>
                                     <td className="px-4 py-4 sm:px-6 sm:py-6 whitespace-nowrap">
-                                        <span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                                            {member.is_volunteer ? 'Sim' : '—'}
-                                        </span>
+                                        {member.profile_kind === 'volunteer' ? (
+                                            <div className="flex flex-col gap-1">
+                                                <span className="inline-flex w-fit rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-100">
+                                                    Também voluntário
+                                                </span>
+                                                {member.volunteer_profile_id ? (
+                                                    <Link
+                                                        href={route('volunteers.index', { voluntario: member.volunteer_profile_id })}
+                                                        className="text-xs text-zinc-500 underline-offset-2 hover:text-zinc-800 hover:underline dark:text-zinc-400 dark:hover:text-zinc-200"
+                                                    >
+                                                        Ver cadastro
+                                                    </Link>
+                                                ) : null}
+                                            </div>
+                                        ) : (
+                                            <span className="inline-flex w-fit rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+                                                Só app
+                                            </span>
+                                        )}
                                     </td>
                                     <td className="px-4 py-4 sm:px-6 sm:py-6 whitespace-nowrap">
                                         <span className={activeInactivePillClass(member.status === 'active')}>
@@ -661,7 +709,7 @@ export default function Index({
                 
                 {members.data.length === 0 && (
                     <div className="p-12 text-center text-zinc-500">
-                        Nenhum usuário encontrado.
+                        Nenhum membro encontrado.
                     </div>
                 )}
             </Card>
@@ -690,7 +738,7 @@ export default function Index({
                 <div className="flex max-h-[min(92dvh,calc(100dvh-1rem))] min-h-0 flex-col bg-white dark:bg-zinc-900">
                     <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-4 pt-10 sm:px-6 sm:pb-6 sm:pt-11">
                     <h2 className="text-lg font-semibold text-zinc-900 dark:text-white sm:text-xl pr-8">
-                        {isEditing ? 'Editar usuário' : 'Novo usuário'}
+                        {isEditing ? 'Editar membro' : 'Novo membro'}
                     </h2>
                     <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1 mb-5">
                         {isEditing
@@ -1038,8 +1086,9 @@ export default function Index({
                                     onChange={(e) => setData('is_ministry_leader', e.target.checked)}
                                 />
                                 <span className="text-sm leading-snug text-zinc-700 dark:text-zinc-200">
-                                    <span className="font-semibold text-zinc-900 dark:text-white">Líder</span> — habilita a opção{' '}
-                                    <span className="font-medium">Meus voluntários</span> (no menu “Mais”) para gerir o status dos encaminhados.
+                                    <span className="font-semibold text-zinc-900 dark:text-white">Líder</span> — aplica o perfil{' '}
+                                    <span className="font-medium">Líder de ministério</span> na conta e habilita{' '}
+                                    <span className="font-medium">Meus voluntários</span> (menu “Mais”) para gerir encaminhados. Selecione os departamentos abaixo.
                                 </span>
                             </label>
                             <InputError message={errors.is_ministry_leader} className="mt-2" />

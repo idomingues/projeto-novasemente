@@ -3,6 +3,7 @@
 namespace App\Actions\Volunteers;
 
 use App\Models\VolunteerMinistryInvitation;
+use App\Support\VolunteerPipelineBootstrap;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -50,11 +51,24 @@ final class RespondToVolunteerMinistryInvitation
 
         $reason = trim((string) $request->input('decline_reason', ''));
 
-        $inv->forceFill([
-            'status' => 'declined',
-            'declined_at' => now(),
-            'decline_reason' => $reason !== '' ? $reason : null,
-        ])->save();
+        DB::transaction(function () use ($inv, $reason): void {
+            $inv->loadMissing(['volunteer']);
+            $inv->forceFill([
+                'status' => 'declined',
+                'declined_at' => now(),
+                'decline_reason' => $reason !== '' ? $reason : null,
+            ])->save();
+
+            $volunteer = $inv->volunteer;
+            $churchId = (int) $inv->church_id;
+            if ($volunteer && $churchId > 0) {
+                VolunteerPipelineBootstrap::moveVolunteerToStageByNormalizedName(
+                    $volunteer,
+                    $churchId,
+                    VolunteerPipelineBootstrap::STAGE_RECUSADO_VOLUNTARIO
+                );
+            }
+        });
 
         return redirect()
             ->route('volunteers.ministry-invite.show', ['token' => $inv->token])

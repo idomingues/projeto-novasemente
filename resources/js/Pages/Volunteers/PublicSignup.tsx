@@ -501,7 +501,11 @@ export default function PublicSignup({ token, churchName, ministries }: Props) {
             setPage(0);
             return;
         }
-        post(route('volunteers.self-signup.store'), { forceFormData: true });
+        post(route('volunteers.self-signup.store'), {
+            forceFormData: true,
+            preserveState: false,
+            preserveScroll: false,
+        });
     };
 
     const err = (key: string) =>

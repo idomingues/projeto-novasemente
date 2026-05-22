@@ -6,6 +6,8 @@ use App\Models\Church;
 use App\Models\Ministry;
 use App\Models\User;
 use App\Models\Volunteer;
+use App\Models\VolunteerChurchPipeline;
+use App\Models\VolunteerPipelineStage;
 use App\Models\VolunteerSelfSignupToken;
 use Database\Seeders\ChurchSeeder;
 use Database\Seeders\MinistrySeeder;
@@ -59,6 +61,8 @@ class VolunteerPublicSignupTest extends TestCase
 
         $response->assertRedirect(route('login'));
         $response->assertSessionHas('status');
+        $response->assertSessionHas('volunteer_signup_welcome', true);
+        $this->assertStringContainsString('Bem-vindo', (string) session('status'));
         $this->assertGuest();
 
         $this->assertDatabaseHas('users', [
@@ -74,6 +78,18 @@ class VolunteerPublicSignupTest extends TestCase
         $this->assertNotNull($volunteer);
         $this->assertSame($ministry->name, $volunteer->other_ministry_interest);
         $this->assertTrue($volunteer->ministries()->where('ministries.id', $ministry->id)->exists());
+
+        $interessadoStageId = VolunteerPipelineStage::query()
+            ->where('church_id', $churchId)
+            ->whereRaw('LOWER(TRIM(name)) = ?', ['interessado'])
+            ->value('id');
+        $this->assertNotNull($interessadoStageId);
+        $pipeline = VolunteerChurchPipeline::query()
+            ->where('volunteer_id', $volunteer->id)
+            ->where('church_id', $churchId)
+            ->first();
+        $this->assertNotNull($pipeline);
+        $this->assertSame((int) $interessadoStageId, (int) $pipeline->stage_id);
     }
 
     public function test_volunteer_can_login_after_public_signup(): void
@@ -147,6 +163,29 @@ class VolunteerPublicSignupTest extends TestCase
         $this->assertSame(1, User::query()->where('email', 'admin.equipe@example.com')->count());
         $admin->refresh();
         $this->assertTrue($admin->hasRole('admin'));
+    }
+
+    public function test_login_shows_hint_when_volunteer_exists_without_user_account(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class, MinistrySeeder::class]);
+
+        Volunteer::query()->create([
+            'name' => 'Só Ficha',
+            'email' => 'ivan@iresult22.com.br',
+            'active' => true,
+            'user_id' => null,
+        ]);
+
+        $response = $this->post('/login', [
+            'login' => 'ivan@iresult22.com.br',
+            'password' => 'Password1!xx',
+        ]);
+
+        $response->assertSessionHasErrors('login');
+        $errors = session('errors');
+        $this->assertNotNull($errors);
+        $message = (string) $errors->get('login')[0];
+        $this->assertStringContainsString('sem conta de acesso', $message);
     }
 
     public function test_public_signup_assigns_only_membro_role(): void

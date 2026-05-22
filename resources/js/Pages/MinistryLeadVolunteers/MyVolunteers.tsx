@@ -23,6 +23,20 @@ import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState, type FormEventHandler } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
 
+function compareVolunteerRows(a: VolunteerRow, b: VolunteerRow): number {
+    const nameCmp = (a.volunteer.name ?? '').localeCompare(b.volunteer.name ?? '', 'pt-BR', {
+        sensitivity: 'base',
+    });
+    if (nameCmp !== 0) {
+        return nameCmp;
+    }
+    return (a.ministryName ?? '').localeCompare(b.ministryName ?? '', 'pt-BR', { sensitivity: 'base' });
+}
+
+function sortVolunteerRows(rows: VolunteerRow[]): VolunteerRow[] {
+    return [...rows].sort(compareVolunteerRows);
+}
+
 type VolunteerRow = {
     id: number | string;
     ministryId?: number;
@@ -140,11 +154,14 @@ export default function MyVolunteers() {
     const resendInviteForm = useForm({});
 
     const newRows = useMemo(
-        () => invitations.data.filter((item) => item.leaderStatus === null || item.leaderStatus === ''),
+        () =>
+            sortVolunteerRows(
+                invitations.data.filter((item) => item.leaderStatus === null || item.leaderStatus === ''),
+            ),
         [invitations.data],
     );
     const trainingRows = useMemo(
-        () => invitations.data.filter((item) => item.leaderStatus === 'training'),
+        () => sortVolunteerRows(invitations.data.filter((item) => item.leaderStatus === 'training')),
         [invitations.data],
     );
     const activeRows = useMemo(() => {
@@ -192,7 +209,7 @@ export default function MyVolunteers() {
             }
         });
 
-        return Array.from(byVolunteerMinistry.values());
+        return sortVolunteerRows(Array.from(byVolunteerMinistry.values()));
     }, [invitations.data, activeVolunteers]);
 
     useEffect(() => {
@@ -457,7 +474,7 @@ export default function MyVolunteers() {
     };
 
     const statusLabel = (s: string | null) => {
-        if (s === 'denied') return 'Recusado';
+        if (s === 'denied') return 'Recusado pelo líder';
         if (s === 'training') return 'Treinamento';
         if (s === 'active') return 'Atuante';
         return '—';
@@ -468,7 +485,7 @@ export default function MyVolunteers() {
         (item.inviteStatus === 'accepted'
             ? 'Aceito'
             : item.inviteStatus === 'declined'
-              ? 'Rejeitado'
+              ? 'Recusado pelo voluntário'
               : item.inviteStatus === 'pending'
                 ? item.inviteSentAt
                     ? item.volunteerHasLinkedUser
@@ -901,7 +918,7 @@ export default function MyVolunteers() {
                                         className="mt-1 block h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
                                     >
                                         <option value="">—</option>
-                                        <option value="denied">Recusar</option>
+                                        <option value="denied">Recusado pelo líder</option>
                                         <option value="training">Treinamento</option>
                                         <option value="active">Atuante</option>
                                     </select>

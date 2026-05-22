@@ -63,7 +63,7 @@ class MissionVolunteerController extends Controller
         }
 
         $volunteers = $query
-            ->latest()
+            ->orderBy('full_name')
             ->paginate(20)
             ->withQueryString()
             ->through(fn (MissionVolunteer $v) => [

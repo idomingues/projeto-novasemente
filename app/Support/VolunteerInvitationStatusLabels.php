@@ -26,7 +26,7 @@ final class VolunteerInvitationStatusLabels
     {
         return match ($status) {
             'accepted' => 'Aceito',
-            'declined' => 'Rejeitado',
+            'declined' => 'Recusado pelo voluntário',
             'pending' => $sent
                 ? ($hasLinkedUser ? 'Aguardando resposta' : 'Aguardando cadastro')
                 : 'Convite não enviado',

@@ -14,7 +14,7 @@ class UserFactory extends Factory
     public function configure(): static
     {
         return $this->afterCreating(function (\App\Models\User $user): void {
-            $user->ensureVolunteerProfile();
+            $user->syncVolunteerRecord();
         });
     }
 

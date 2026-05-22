@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Volunteers\Actions\DeleteVolunteer;
 use App\Domain\Volunteers\Actions\SyncVolunteerMinistryAttachments;
 use App\Http\Requests\StoreVolunteerRequest;
 use App\Http\Requests\UpdateVolunteerRequest;
@@ -11,6 +12,7 @@ use App\Models\Ministry;
 use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerSelfSignupToken;
+use App\Support\MemberRoleAssignment;
 use App\Support\VolunteerChurchRosterBuilder;
 use App\Support\VolunteerContactDuplicateChecker;
 use App\Support\VolunteerPipelineBootstrap;
@@ -18,10 +20,13 @@ use App\Support\VolunteerSignupDetailPresenter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Support\StorageUrl;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Role;
@@ -61,28 +66,39 @@ class VolunteerController extends Controller
 
     private function applyAppProfile(User $user, Request $request): void
     {
-        if ($user->hasRole('super_admin') || $user->isPrivilegedTeamAccount()) {
+        if ($user->hasRole('super_admin') || $user->canAccessAdminMenu()) {
             return;
         }
 
-        $appRole = $request->input('app_role');
-        if (is_string($appRole) && trim($appRole) !== '') {
+        $appRole = trim((string) $request->input('app_role', ''));
+
+        if ($appRole !== '') {
             $user->syncRoles([$appRole]);
         } else {
             $guard = (string) config('auth.defaults.guard');
-            if (Role::query()->where('name', 'membro')->where('guard_name', $guard)->exists()) {
-                $user->syncRoles(['membro']);
-            } else {
-                $user->syncRoles([]);
-            }
+            $defaultMembro = $request->filled('app_password')
+                && Role::query()->where('name', 'membro')->where('guard_name', $guard)->exists();
+            $user->syncRoles($defaultMembro ? ['membro'] : []);
         }
         $user->syncRoleIdFromSpatieAssignments();
 
         if ($appRole === 'lider_ministerio') {
             $user->ministries()->sync($request->input('app_ministry_ids', []));
+            $user->forceFill(['is_ministry_leader' => true])->save();
+            MemberRoleAssignment::applyMinistryLeaderRole($user->fresh());
         } else {
             $user->ministries()->detach();
+            $user->forceFill(['is_ministry_leader' => false])->save();
         }
+    }
+
+    /** Conta no app ligada a um cadastro de voluntário (serviço em ministérios). */
+    private function linkUserToVolunteerService(User $user): void
+    {
+        if (! $user->is_volunteer) {
+            $user->forceFill(['is_volunteer' => true])->save();
+        }
+        $user->syncVolunteerRecord();
     }
 
     private function assertVolunteerAppUserLinkable(User $user, Request $request): void
@@ -125,8 +141,9 @@ class VolunteerController extends Controller
                     $user->password = $password;
                 }
                 $user->save();
+                $this->syncLinkedUserAccountFields($request, $user, $volunteer);
                 $this->applyAppProfile($user, $request);
-                $user->ensureVolunteerProfile();
+                $this->linkUserToVolunteerService($user);
             }
 
             return;
@@ -149,8 +166,9 @@ class VolunteerController extends Controller
                 $existingUser->password = $password;
             }
             $existingUser->save();
+            $this->syncLinkedUserAccountFields($request, $existingUser, $volunteer);
             $this->applyAppProfile($existingUser, $request);
-            $existingUser->ensureVolunteerProfile();
+            $this->linkUserToVolunteerService($existingUser);
 
             return;
         }
@@ -164,7 +182,7 @@ class VolunteerController extends Controller
             return;
         }
 
-        // Sem evento "created": evita ensureVolunteerProfile() criar outro volunteer com o mesmo user_id.
+        // Sem evento "created": evita criar outro volunteer com o mesmo user_id.
         $user = User::withoutEvents(function () use ($name, $email, $password) {
             return User::create([
                 'name' => trim($name),
@@ -173,9 +191,66 @@ class VolunteerController extends Controller
             ]);
         });
         $this->applyAppProfile($user, $request);
+        $this->syncLinkedUserAccountFields($request, $user, $volunteer);
         $this->releaseVolunteerUserIdForOtherVolunteers((int) $user->id, $volunteer);
         $volunteer->forceFill(['user_id' => $user->id])->save();
-        $user->ensureVolunteerProfile();
+        $this->linkUserToVolunteerService($user);
+    }
+
+    private function syncLinkedUserAccountFields(Request $request, User $user, Volunteer $volunteer): void
+    {
+        if ($user->hasRole('super_admin')) {
+            return;
+        }
+
+        $name = trim((string) $request->input('name', ''));
+        if ($name !== '') {
+            $user->name = $name;
+        }
+
+        if ($request->has('phone')) {
+            $user->phone = $request->input('phone');
+        }
+
+        if ($request->filled('user_status')) {
+            $user->status = (string) $request->input('user_status');
+        }
+
+        if ($request->has('birth_date')) {
+            $user->birth_date = $request->input('birth_date') ?: null;
+        }
+
+        foreach (['notify_via_app', 'notify_via_email', 'notify_via_whatsapp'] as $key) {
+            if ($request->has($key)) {
+                $user->{$key} = $request->boolean($key);
+            }
+        }
+
+        if ($request->hasFile('photo')) {
+            $this->deleteStoredUserPhoto($user->photo_url);
+            $user->photo_url = $this->storeUserPhoto($request->file('photo'));
+        }
+
+        $user->save();
+
+        if ($request->has('birth_date')) {
+            $volunteer->forceFill(['birth_date' => $request->input('birth_date') ?: null])->save();
+        }
+    }
+
+    private function storeUserPhoto(UploadedFile $file): string
+    {
+        $path = $file->store('users/photos', 'public');
+
+        return StorageUrl::publicMediaUrl($path);
+    }
+
+    private function deleteStoredUserPhoto(?string $photoUrl): void
+    {
+        $relative = StorageUrl::relativePathFromAnyPublicUrl($photoUrl);
+        if ($relative !== null) {
+            Storage::disk('public')->delete($relative);
+        }
     }
 
     private function resolveOrCreateAppUserForInvite(Volunteer $volunteer): ?User
@@ -188,7 +263,7 @@ class VolunteerController extends Controller
         if ($existing) {
             $this->releaseVolunteerUserIdForOtherVolunteers((int) $existing->id, $volunteer);
             $volunteer->forceFill(['user_id' => $existing->id])->save();
-            $existing->ensureVolunteerProfile();
+            $this->linkUserToVolunteerService($existing);
 
             return $existing;
         }
@@ -210,7 +285,7 @@ class VolunteerController extends Controller
 
         $this->releaseVolunteerUserIdForOtherVolunteers((int) $user->id, $volunteer);
         $volunteer->forceFill(['user_id' => $user->id])->save();
-        $user->ensureVolunteerProfile();
+        $this->linkUserToVolunteerService($user);
 
         return $user;
     }
@@ -223,7 +298,12 @@ class VolunteerController extends Controller
         $volunteersQuery = ($churchId === null
             ? Volunteer::query()->whereRaw('1 = 0')
             : VolunteerChurchRosterBuilder::volunteersVisibleInChurchQuery((int) $churchId)
-        )->with(['ministries', 'user:id,email', 'user.roles:id,name', 'user.ministries:id,name']);
+        )->with([
+            'ministries',
+            'user:id,email,is_ministry_leader,status,birth_date,photo_url,phone,notify_via_app,notify_via_email,notify_via_whatsapp',
+            'user.roles:id,name',
+            'user.ministries:id,name',
+        ]);
 
         if ($search !== '') {
             $volunteersQuery->where(function ($q) use ($search) {
@@ -234,7 +314,7 @@ class VolunteerController extends Controller
         }
 
         $volunteers = $volunteersQuery
-            ->latest()
+            ->orderBy('name')
             ->paginate(10)
             ->withQueryString()
             ->through(function (Volunteer $v) {
@@ -253,6 +333,14 @@ class VolunteerController extends Controller
                     'user' => $v->user ? [
                         'id' => $v->user->id,
                         'email' => $v->user->email,
+                        'is_ministry_leader' => (bool) ($v->user->is_ministry_leader ?? false),
+                        'status' => $v->user->status ?? 'active',
+                        'birth_date' => $v->user->birth_date?->format('Y-m-d'),
+                        'photo_url' => $v->user->photo_url,
+                        'phone' => $v->user->phone,
+                        'notify_via_app' => (bool) ($v->user->notify_via_app ?? true),
+                        'notify_via_email' => (bool) ($v->user->notify_via_email ?? true),
+                        'notify_via_whatsapp' => (bool) ($v->user->notify_via_whatsapp ?? false),
                         'roles' => $v->user->roles->pluck('name')->values()->all(),
                         'ministry_ids' => $v->user->ministries->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
                     ] : null,
@@ -318,7 +406,18 @@ class VolunteerController extends Controller
 
     public function store(StoreVolunteerRequest $request)
     {
-        $data = collect($request->validated())->except('ministry_ids', 'app_role', 'app_ministry_ids', 'app_password', 'app_password_confirmation')->all();
+        $data = collect($request->validated())->except(
+            'ministry_ids',
+            'app_role',
+            'app_ministry_ids',
+            'app_password',
+            'app_password_confirmation',
+            'user_status',
+            'notify_via_app',
+            'notify_via_email',
+            'notify_via_whatsapp',
+            'photo',
+        )->all();
         $volunteer = Volunteer::create($data);
         $this->syncVolunteerMinistries($request, $volunteer);
 
@@ -326,7 +425,7 @@ class VolunteerController extends Controller
 
         $churchId = $this->currentChurchId($request);
         if ($churchId !== null) {
-            VolunteerPipelineBootstrap::ensureRowForVolunteerInChurch($volunteer->fresh(), $churchId);
+            VolunteerPipelineBootstrap::setInteressadoStageForVolunteer($volunteer->fresh(), $churchId);
         }
 
         $redirect = redirect()->route('volunteers.index')->with('success', 'Voluntário cadastrado com sucesso!');
@@ -336,7 +435,18 @@ class VolunteerController extends Controller
 
     public function update(UpdateVolunteerRequest $request, Volunteer $volunteer)
     {
-        $data = collect($request->validated())->except('ministry_ids', 'app_role', 'app_ministry_ids', 'app_password', 'app_password_confirmation')->all();
+        $data = collect($request->validated())->except(
+            'ministry_ids',
+            'app_role',
+            'app_ministry_ids',
+            'app_password',
+            'app_password_confirmation',
+            'user_status',
+            'notify_via_app',
+            'notify_via_email',
+            'notify_via_whatsapp',
+            'photo',
+        )->all();
         $volunteer->update($data);
         $this->syncVolunteerMinistries($request, $volunteer);
 
@@ -371,12 +481,16 @@ class VolunteerController extends Controller
             }
         }
 
-        DB::transaction(function () use ($volunteer, $linkedUser) {
-            $volunteer->delete();
-            if ($linkedUser) {
-                $linkedUser->delete();
-            }
-        });
+        try {
+            app(DeleteVolunteer::class)($volunteer, $deleteLinkedUser && $linkedUser !== null);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return redirect()->route('volunteers.index')->with(
+                'error',
+                'Não foi possível excluir o voluntário. Tente novamente ou contate a equipe técnica.'
+            );
+        }
 
         $message = ($deleteLinkedUser && $linkedUser)
             ? 'Voluntário e conta de usuário removidos com sucesso.'

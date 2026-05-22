@@ -47,7 +47,7 @@ class SolicitationAssignees
             ->where('active', true)
             ->whereHas('ministries', fn ($q) => $q->where('church_id', $churchId))
             ->with(['user:id,name', 'ministries:id,name,church_id'])
-            ->orderBy('id')
+            ->orderBy('name')
             ->get()
             ->map(function (Volunteer $v) use ($churchId) {
                 $name = $v->display_name;
@@ -88,7 +88,7 @@ class SolicitationAssignees
                     ->where('ministries.id', $ministryId));
             })
             ->with(['user:id,name,is_ministry_leader', 'user.ministries:id,name,church_id', 'user.roles:id,name'])
-            ->orderBy('id')
+            ->orderBy('name')
             ->get()
             ->map(function (Volunteer $v) {
                 return ['value' => (int) $v->id, 'label' => $v->display_name];

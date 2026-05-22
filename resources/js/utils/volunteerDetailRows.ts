@@ -12,8 +12,13 @@ const ATTENDANCE_LABELS: Record<string, string> = {
 export type VolunteerDetailData = {
     id: number;
     name: string | null;
+    photo_url?: string | null;
     email: string | null;
+    display_email?: string | null;
     phone: string | null;
+    display_phone?: string | null;
+    has_app_account?: boolean;
+    app_login_ready?: boolean;
     birth_date?: string | null;
     has_whatsapp?: boolean | null;
     has_social_networks?: boolean | null;
@@ -39,7 +44,16 @@ export type VolunteerDetailData = {
         id: number;
         email: string | null;
         name: string;
+        phone?: string | null;
+        photo_url?: string | null;
+        is_ministry_leader?: boolean;
+        status?: 'active' | 'inactive' | string | null;
+        birth_date?: string | null;
+        notify_via_app?: boolean;
+        notify_via_email?: boolean;
+        notify_via_whatsapp?: boolean;
         roles?: string[];
+        led_ministries?: { id: number; name: string }[];
     } | null;
 };
 
@@ -75,67 +89,140 @@ function submittedAtLabel(iso: string | null | undefined): string {
     }
 }
 
-/** Seções da ficha de cadastro de voluntário (formulário público). */
+function appAccessLabel(v: VolunteerDetailData): string {
+    if (!v.has_app_account) {
+        return 'Sem conta no aplicativo (apenas ficha de voluntário)';
+    }
+    if (v.app_login_ready) {
+        return 'Pode entrar no app com o e-mail acima';
+    }
+    return 'Conta criada — falta e-mail de login ou convite pendente';
+}
+
+/** Seções da ficha: voluntário e conta no app numa visão só (sem telas separadas). */
 export function volunteerDetailSections(v: VolunteerDetailData): RecordDetailSection[] {
-    const ministries = (v.ministries ?? []).map((m) => m.name).join(', ') || '—';
+    const serveMinistries = (v.ministries ?? []).map((m) => m.name).join(', ') || '—';
     const roles = (v.user?.roles ?? []).map((r) => appRoleLabel(r)).join(', ') || '—';
+    const ledMinistries =
+        (v.user?.led_ministries ?? []).map((m) => m.name).join(', ') ||
+        (v.user?.is_ministry_leader ? '—' : '');
+    const showMemberNovaSemente =
+        v.is_official_member === true || v.is_official_member === 1 || v.is_official_member === '1';
+    const showOtherChurch =
+        showMemberNovaSemente &&
+        (v.member_record_at_nova_semente === false ||
+            v.member_record_at_nova_semente === 0 ||
+            v.member_record_at_nova_semente === '0');
+
+    const profileRows: { label: string; value: string }[] = [
+        { label: 'Nome', value: text(v.user?.name ?? v.name) },
+        { label: 'E-mail (login no app)', value: text(v.display_email ?? v.user?.email ?? v.email) },
+        { label: 'Telefone', value: text(v.display_phone ?? v.phone ?? v.user?.phone) },
+        { label: 'Acesso ao aplicativo', value: appAccessLabel(v) },
+    ];
+
+    if (v.has_app_account) {
+        const accountStatus =
+            v.user?.status === 'inactive' ? 'Inativa (não pode entrar no app)' : 'Ativa';
+        profileRows.push({ label: 'Situação da conta no app', value: accountStatus });
+        profileRows.push({ label: 'Papéis no app', value: roles });
+        if (v.user?.is_ministry_leader || (v.user?.led_ministries?.length ?? 0) > 0) {
+            profileRows.push({
+                label: 'Líder de departamento',
+                value: v.user?.is_ministry_leader ? 'Sim' : '—',
+            });
+            if ((v.user?.led_ministries?.length ?? 0) > 0) {
+                profileRows.push({ label: 'Departamentos que lidera', value: ledMinistries || '—' });
+            }
+        }
+    }
+
+    profileRows.push(
+        { label: 'Data de nascimento', value: formatDateBr(v.birth_date) },
+        { label: 'Este número tem WhatsApp?', value: yn(v.has_whatsapp) },
+        {
+            label: 'Redes sociais (Instagram, Facebook ou TikTok)',
+            value: yn(v.has_social_networks),
+        },
+    );
 
     return [
         {
-            title: 'Identificação e contatos',
+            title: 'Perfil (voluntário e conta no app)',
+            rows: profileRows,
+        },
+        {
+            title: 'Nova Semente',
             rows: [
-                { label: 'Nome completo', value: text(v.name) },
-                { label: 'E-mail do cadastro', value: text(v.email) },
-                { label: 'Telefone', value: text(v.phone) },
-                { label: 'Data de nascimento', value: formatDateBr(v.birth_date) },
-                { label: 'Indicou WhatsApp?', value: yn(v.has_whatsapp) },
-                { label: 'Redes sociais (formulário)', value: yn(v.has_social_networks) },
+                {
+                    label: 'Há quanto tempo frequenta a Nova Semente?',
+                    value: formatAttendance(v.attendance_duration),
+                },
+                { label: 'Membro oficial da igreja adventista?', value: yn(v.is_official_member) },
+                ...(showMemberNovaSemente
+                    ? [
+                          {
+                              label: 'Registro de membro está na Nova Semente?',
+                              value: yn(v.member_record_at_nova_semente),
+                          },
+                      ]
+                    : []),
+                ...(showOtherChurch
+                    ? [{ label: 'Em qual igreja está o registro de membro?', value: text(v.member_record_church) }]
+                    : []),
             ],
         },
         {
-            title: 'Frequência e membro',
+            title: 'Experiência e ministérios',
             rows: [
-                { label: 'Há quanto tempo frequenta / serve', value: formatAttendance(v.attendance_duration) },
-                { label: 'Membro com cartão oficial?', value: yn(v.is_official_member) },
-                { label: 'Registro em Nova Semente', value: yn(v.member_record_at_nova_semente) },
-                { label: 'Outra igreja / detalhe de registro', value: text(v.member_record_church) },
-            ],
-        },
-        {
-            title: 'Experiência e interesses',
-            rows: [
-                { label: 'Já serviu em ministério antes?', value: yn(v.has_previous_ministry_volunteer_experience) },
-                { label: 'Ministérios em que já serviu', value: text(v.previous_ministry_details) },
-                { label: 'Ministérios em que é atuante', value: text(v.ministry_involvement) },
-                { label: 'Interesse em outros ministérios', value: text(v.other_ministry_interest) },
-                { label: 'Dons ou habilidades a desenvolver', value: text(v.gifts_to_develop) },
-                { label: 'Área profissional', value: text(v.professional_area) },
-                { label: 'Consentimento LGPD', value: yn(v.lgpd_data_consent) },
+                {
+                    label: 'Já foi voluntário em algum ministério da igreja?',
+                    value: yn(v.has_previous_ministry_volunteer_experience),
+                },
+                ...(v.has_previous_ministry_volunteer_experience === true ||
+                v.has_previous_ministry_volunteer_experience === 1 ||
+                v.has_previous_ministry_volunteer_experience === '1'
+                    ? [
+                          {
+                              label: 'Ministérios em que já serviu',
+                              value: text(v.previous_ministry_details),
+                          },
+                      ]
+                    : []),
+                {
+                    label: 'É atuante de algum ministério da Nova Semente?',
+                    value: v.ministry_involvement === 'Não' ? 'Não' : text(v.ministry_involvement),
+                },
+                {
+                    label: 'Gostaria de servir em outro ministério?',
+                    value: v.other_ministry_interest === 'Não' ? 'Não' : text(v.other_ministry_interest),
+                },
+                {
+                    label: 'Dons ou habilidades a desenvolver no servir',
+                    value: text(v.gifts_to_develop),
+                },
+                { label: 'Área de atuação profissional', value: text(v.professional_area) },
+                { label: 'Consentimento para uso de dados (LGPD)', value: yn(v.lgpd_data_consent) },
             ],
         },
         {
             title: 'Departamentos e função',
             rows: [
                 { label: 'Cargo (função)', value: text(v.role) },
-                { label: 'Estado', value: v.active === false ? 'Inativo' : v.active === true ? 'Ativo' : '—' },
-                { label: 'Departamentos', value: ministries },
+                {
+                    label: 'Ativo nas escalas',
+                    value:
+                        v.active === false
+                            ? 'Não — oculto na seleção de escalas'
+                            : v.active === true
+                              ? 'Sim — pode ser escalado'
+                              : '—',
+                },
+                { label: 'Departamentos em que serve', value: serveMinistries },
                 ...(v.app_access_only
-                    ? [{ label: 'Tipo de cadastro', value: 'Usuário do app (sem ministérios no cadastro)' }]
+                    ? [{ label: 'Observação', value: 'Conta no app sem departamentos de serviço vinculados' }]
                     : []),
             ],
-        },
-        {
-            title: 'Conta no aplicativo',
-            rows: v.user
-                ? [
-                      { label: 'Usuário', value: text(v.user.name) },
-                      {
-                          label: 'E-mail da conta',
-                          value: v.user.email ? text(v.user.email) : '— (convite pendente)',
-                      },
-                      { label: 'Papéis no app', value: roles },
-                  ]
-                : [{ label: 'Conta', value: 'Sem conta associada' }],
         },
         {
             title: 'Registro',

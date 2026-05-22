@@ -17,9 +17,15 @@ class SettingsController extends Controller
         abort_unless($churchId, 404, 'Nenhuma igreja ativa.');
 
         $church = Church::query()->findOrFail($churchId);
+        $user = $request->user();
+        $isSuperAdmin = $user?->hasRole('super_admin') ?? false;
+        $canEditLibraryUrls = $isSuperAdmin || ($user?->hasPermissionTo('library.manage') ?? false);
 
         return Inertia::render('Settings/Index', [
             'churchName' => $church->name,
+            'canEditSolicitationsHandler' => $isSuperAdmin,
+            'canEditYoutubeLive' => $isSuperAdmin,
+            'canEditLibraryUrls' => $canEditLibraryUrls,
             'solicitationsHandlerVolunteerId' => $church->solicitations_handler_volunteer_id,
             'solicitationsHandlerOptions' => SolicitationHandlerAssignee::volunteerOptionsForChurch($churchId),
             'updateSolicitationsHandlerUrl' => route('settings.solicitations-handler.update'),

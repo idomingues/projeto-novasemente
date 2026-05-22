@@ -283,7 +283,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // Members Resource Routes (restricted to users with appropriate permission)
+    // Membros do app (conta no aplicativo; podem ou não ser voluntários).
     Route::resource('members', MemberController::class)
         ->except(['create', 'edit'])
         ->parameters(['members' => 'user'])
@@ -437,6 +437,9 @@ Route::middleware('auth')->group(function () {
     Route::patch('/lideranca/voluntarios/{volunteer}/departamentos', [VolunteerPipelineLeadController::class, 'syncMinistries'])
         ->name('ministry-lead.volunteers.pipeline.ministries.sync')
         ->middleware('permission:volunteers.ministry_operate|volunteers.manage');
+    Route::patch('/lideranca/voluntarios/{volunteer}/ministerio/{ministry}/status-lider', [VolunteerPipelineLeadController::class, 'updateMinistryLeaderStatus'])
+        ->name('ministry-lead.volunteers.pipeline.ministry-leader-status')
+        ->middleware('permission:volunteers.ministry_operate|volunteers.manage');
     Route::delete('/lideranca/voluntarios/{volunteer}', [VolunteerPipelineLeadController::class, 'destroyVolunteer'])
         ->name('ministry-lead.volunteers.pipeline.destroy')
         ->middleware('permission:volunteers.manage');
@@ -525,7 +528,7 @@ Route::middleware('auth')->group(function () {
         return Inertia::render('Dashboard');
     })->name('services.index');
     Route::get('/acervo', [AcervoController::class, 'index'])->name('acervo.index')->middleware('permission:music.manage');
-    Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index')->middleware('role:super_admin');
+    Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index')->middleware('role_or_permission:super_admin|library.manage');
     Route::put('/settings/solicitations-handler', [SettingsController::class, 'updateSolicitationsHandler'])
         ->name('settings.solicitations-handler.update')
         ->middleware('role:super_admin');
@@ -534,10 +537,10 @@ Route::middleware('auth')->group(function () {
         ->middleware('role:super_admin');
     Route::put('/settings/library/meditation', [SettingsController::class, 'updateLibraryMeditationUrl'])
         ->name('settings.library-meditation.update')
-        ->middleware('role:super_admin');
+        ->middleware('role_or_permission:super_admin|library.manage');
     Route::put('/settings/library/lesson', [SettingsController::class, 'updateLibraryLessonUrl'])
         ->name('settings.library-lesson.update')
-        ->middleware('role:super_admin');
+        ->middleware('role_or_permission:super_admin|library.manage');
     Route::post('/acervo', [AcervoController::class, 'store'])->name('acervo.store')->middleware('permission:music.manage');
     Route::put('/acervo/{acervo}', [AcervoController::class, 'update'])->name('acervo.update')->middleware('permission:music.manage');
     Route::delete('/acervo/{acervo}', [AcervoController::class, 'destroy'])->name('acervo.destroy')->middleware('permission:music.manage');

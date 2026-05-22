@@ -23,10 +23,13 @@ import {
     TrashIcon,
 } from '@heroicons/react/24/outline';
 import PublicVolunteerSignupShareModal from '@/Components/Volunteers/PublicVolunteerSignupShareModal';
-import { confirmAction } from '@/utils/confirmDialog';
+import VolunteerDeleteConfirmBlock from '@/Components/Volunteers/VolunteerDeleteConfirmBlock';
+import MinistryLeaderStatusSection, {
+    type MinistryLeaderStatusSectionData,
+} from '@/Components/Volunteers/MinistryLeaderStatusSection';
+import VolunteerSignupPhoto from '@/Components/Volunteers/VolunteerSignupPhoto';
 import { formatListPreview } from '@/utils/formatListPreview';
 import RecordDetailSections from '@/Components/RecordDetail/RecordDetailSections';
-import { volunteerLeaderStatusLabel } from '@/lib/volunteerLeaderStatusLabels';
 import { volunteerDetailSections, type VolunteerDetailData } from '@/utils/volunteerDetailRows';
 
 type StageRow = { id: number; name: string; sort_order: number; volunteer_count: number };
@@ -111,28 +114,11 @@ type DetailNote = { id: number; body: string; authorName: string; createdAt: str
 
 type MinistryOption = { id: number; name: string; attached: boolean; canEdit: boolean };
 
-type MinistryStatusHistoryRow = {
-    id: number;
-    fromStatus: string | null;
-    toStatus: string | null;
-    fromStatusLabel?: string;
-    toStatusLabel?: string;
-    note: string | null;
-    changedAt: string | null;
-    changedBy: string | null;
-};
-
-type MinistryStatusHistorySection = {
-    ministryId: number;
-    ministryName: string;
-    currentLeaderStatus: string | null;
-    currentLeaderStatusLabel?: string;
-    history: MinistryStatusHistoryRow[];
-};
+type MinistryStatusHistorySection = MinistryLeaderStatusSectionData;
 
 type DetailJson = {
     volunteer: DetailVolunteer;
-    pipeline: { stageId?: number; stageName?: string };
+    pipeline: { stageId?: number; stageName?: string; adminWorkflowStageId?: number };
     stages: { id: number; name: string; sort_order: number }[];
     statusHistoryByMinistry?: MinistryStatusHistorySection[];
     notes: DetailNote[];
@@ -300,7 +286,14 @@ export default function Pipeline({
             });
             const j = (await r.json()) as DetailJson;
             setDetail(j);
-            const sid = j.pipeline?.stageId;
+            const workflowStages = j.stages ?? [];
+            const allowedIds = new Set(workflowStages.map((s) => s.id));
+            const sid =
+                j.pipeline?.adminWorkflowStageId ??
+                (j.pipeline?.stageId != null && allowedIds.has(j.pipeline.stageId)
+                    ? j.pipeline.stageId
+                    : workflowStages.find((s) => s.name.toLowerCase().trim() === 'interessado')?.id ??
+                      workflowStages[0]?.id);
             stageMoveForm.setData('stage_id', sid != null ? String(sid) : '');
             const attachedIds = (j.ministryOptions ?? []).filter((o) => o.attached).map((o) => o.id);
             ministriesForm.setData('ministry_ids', attachedIds);
@@ -309,49 +302,6 @@ export default function Pipeline({
         } finally {
             setDetailLoading(false);
         }
-    };
-
-    const handlePipelineDestroyVolunteer = async () => {
-        if (!detail?.destroyVolunteerUrl) return;
-        const linked = detail.volunteer.user as { id?: number; email?: string | null } | null | undefined;
-        const ok = await confirmAction({
-            title: 'Excluir voluntário?',
-            text:
-                linked != null && linked.id != null
-                    ? 'O registro de voluntário será removido. Na pergunta seguinte pode escolher se remove também a conta de acesso ao app.'
-                    : 'Esta ação não pode ser desfeita.',
-            confirmButtonText: 'Excluir',
-            danger: true,
-            icon: 'warning',
-        });
-        if (!ok) return;
-
-        let deleteLinkedUser = false;
-        if (linked != null && linked.id != null) {
-            const emailHint = linked.email ?? String(detail.volunteer.email ?? '');
-            const alsoUser = await confirmAction({
-                title: 'Apagar também a conta do usuário?',
-                text: emailHint
-                    ? `Existe usuário ligado (${emailHint}). Confirmar remove voluntário e conta. Cancelar remove só o registro de voluntário.`
-                    : 'Existe usuário ligado. Confirmar remove voluntário e conta. Cancelar remove só o registro de voluntário.',
-                confirmButtonText: 'Sim, apagar usuário também',
-                cancelButtonText: 'Não, só voluntário',
-                danger: true,
-                icon: 'warning',
-            });
-            deleteLinkedUser = alsoUser;
-        }
-
-        router.delete(detail.destroyVolunteerUrl, {
-            preserveScroll: true,
-            data: { delete_linked_user: deleteLinkedUser },
-            onSuccess: () => {
-                setModalOpen(false);
-                setDetail(null);
-                setSelectedId(null);
-                router.reload({ only: ['volunteers', 'stages'] });
-            },
-        });
     };
 
     const applyFilters: FormEventHandler = (e) => {
@@ -1162,7 +1112,9 @@ export default function Pipeline({
                                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                     <div>
                                         <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">{detail.volunteer.name}</h2>
-                                        <p className="text-xs text-zinc-500">Dados do formulário de inscrição</p>
+                                        <p className="text-xs text-zinc-500">
+                                            Voluntário e conta no app (visão unificada)
+                                        </p>
                                     </div>
                                     {canPipelineMutate ? (
                                         <form onSubmit={submitStageMove} className="flex flex-wrap items-end gap-2">
@@ -1179,6 +1131,14 @@ export default function Pipeline({
                                                         </option>
                                                     ))}
                                                 </SelectInput>
+                                                {detail.pipeline?.stageName &&
+                                                detail.pipeline.stageId != null &&
+                                                !detail.stages.some((s) => s.id === detail.pipeline?.stageId) ? (
+                                                    <p className="mt-1 max-w-[220px] text-[11px] text-amber-700 dark:text-amber-300">
+                                                        Fase no quadro: {detail.pipeline.stageName}. Recusas são por departamento
+                                                        (aba Histórico e status).
+                                                    </p>
+                                                ) : null}
                                             </div>
                                             <PrimaryButton type="submit" disabled={stageMoveForm.processing}>
                                                 {canVolunteerManage ? 'Salvar status' : 'Salvar fase'}
@@ -1228,7 +1188,7 @@ export default function Pipeline({
                                                 : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
                                         }`}
                                     >
-                                        Histórico
+                                        Histórico e status
                                     </button>
                                     <button
                                         type="button"
@@ -1246,90 +1206,56 @@ export default function Pipeline({
 
                             <div className="min-h-0 flex-1 overflow-y-auto p-4">
                                 {detailTab === 'ficha' ? (
-                                    <>
+                                    <div className="space-y-4">
+                                        <VolunteerSignupPhoto
+                                            name={detail.volunteer.name as string | null}
+                                            photoUrl={
+                                                (detail.volunteer as VolunteerDetailData).photo_url ??
+                                                (detail.volunteer.user as { photo_url?: string | null } | null)?.photo_url ??
+                                                null
+                                            }
+                                        />
                                         <RecordDetailSections
                                             sections={volunteerDetailSections(detail.volunteer as VolunteerDetailData)}
                                         />
 
-                                                                                {detail.destroyVolunteerUrl ? (
-                                            <div className="mt-6 rounded-xl border border-red-200 bg-red-50/50 p-4 dark:border-red-900/50 dark:bg-red-950/20">
-                                                <p className="text-sm font-semibold text-red-900 dark:text-red-200">Remover cadastro</p>
-                                                <p className="mt-1 text-xs text-red-800/90 dark:text-red-300/90">
-                                                    Apaga o voluntário do sistema (igual à tela de Voluntários). Se existir conta no app pode optar por apagar também na confirmação seguinte.
-                                                </p>
-                                                <button
-                                                    type="button"
-                                                    className="mt-3 inline-flex items-center gap-2 rounded-xl border border-red-300 bg-white px-4 py-2.5 text-sm font-semibold text-red-700 shadow-sm transition hover:bg-red-50 dark:border-red-800 dark:bg-zinc-900 dark:text-red-300 dark:hover:bg-red-950/40"
-                                                    onClick={() => void handlePipelineDestroyVolunteer()}
-                                                >
-                                                    <TrashIcon className="h-5 w-5 shrink-0" aria-hidden />
-                                                    Apagar voluntário…
-                                                </button>
-                                            </div>
+                                        {detail.destroyVolunteerUrl ? (
+                                            <VolunteerDeleteConfirmBlock
+                                                className="mt-6"
+                                                destroyUrl={detail.destroyVolunteerUrl}
+                                                volunteerName={detail.volunteer.name ?? 'Voluntário'}
+                                                volunteerEmail={detail.volunteer.email}
+                                                linkedUser={detail.volunteer.user as { id?: number; email?: string | null } | null}
+                                                onSuccess={() => {
+                                                    setModalOpen(false);
+                                                    setDetail(null);
+                                                    setSelectedId(null);
+                                                    router.visit(route('ministry-lead.volunteers.index'), {
+                                                        preserveScroll: true,
+                                                    });
+                                                }}
+                                            />
                                         ) : null}
-                                    </>
+                                    </div>
                                 ) : detailTab === 'historico' ? (
                                     <div className="space-y-4">
                                         <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                            Histórico de status do líder, separado por departamento. O status geral do voluntário
-                                            (Interessado, Encaminhado, Finalizado) é alterado no topo desta ficha.
+                                            Altere o status do líder em cada departamento e consulte o histórico. O status geral do
+                                            voluntário (Interessado, Encaminhado, Finalizado) fica no topo desta ficha.
                                         </p>
                                         {(detail.statusHistoryByMinistry ?? []).length === 0 ? (
-                                            <p className="text-sm text-zinc-500">Nenhum encaminhamento a departamentos ainda.</p>
+                                            <p className="text-sm text-zinc-500">
+                                                Nenhum departamento vinculado ou encaminhamento registrado ainda.
+                                            </p>
                                         ) : (
                                             (detail.statusHistoryByMinistry ?? []).map((section) => (
-                                                <section
+                                                <MinistryLeaderStatusSection
                                                     key={section.ministryId}
-                                                    className="rounded-xl border border-zinc-200 bg-zinc-50/80 dark:border-zinc-700 dark:bg-zinc-900/40"
-                                                >
-                                                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-700">
-                                                        <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">
-                                                            {section.ministryName}
-                                                        </h3>
-                                                        <span
-                                                            className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                                                                section.currentLeaderStatus === 'denied'
-                                                                    ? 'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-200'
-                                                                    : 'bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200'
-                                                            }`}
-                                                        >
-                                                            {section.currentLeaderStatusLabel ??
-                                                                volunteerLeaderStatusLabel(section.currentLeaderStatus)}
-                                                        </span>
-                                                    </div>
-                                                    <ul className="max-h-[min(32vh,240px)] space-y-2 overflow-y-auto p-3 text-sm">
-                                                        {section.history.length === 0 ? (
-                                                            <li className="text-zinc-500">Sem alterações registradas.</li>
-                                                        ) : (
-                                                            section.history.map((h) => (
-                                                                <li
-                                                                    key={h.id}
-                                                                    className="rounded-lg border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
-                                                                >
-                                                                    <div className="text-xs text-zinc-500">
-                                                                        {(h.changedBy ?? 'Sistema') +
-                                                                            ' · ' +
-                                                                            (h.changedAt
-                                                                                ? formatDateTime(h.changedAt)
-                                                                                : '—')}
-                                                                    </div>
-                                                                    <div className="mt-1 font-medium text-zinc-900 dark:text-zinc-100">
-                                                                        {(h.fromStatusLabel ??
-                                                                            volunteerLeaderStatusLabel(h.fromStatus)) +
-                                                                            ' → ' +
-                                                                            (h.toStatusLabel ??
-                                                                                volunteerLeaderStatusLabel(h.toStatus))}
-                                                                    </div>
-                                                                    {h.note ? (
-                                                                        <div className="mt-2 whitespace-pre-wrap text-sm text-zinc-700 dark:text-zinc-200">
-                                                                            {h.note}
-                                                                        </div>
-                                                                    ) : null}
-                                                                </li>
-                                                            ))
-                                                        )}
-                                                    </ul>
-                                                </section>
+                                                    section={section}
+                                                    onSaved={() => {
+                                                        if (selectedId) void openVolunteer(selectedId, 'historico');
+                                                    }}
+                                                />
                                             ))
                                         )}
                                     </div>

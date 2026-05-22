@@ -76,8 +76,8 @@ export const adminSidebarRoutePermissions: Record<string, string[]> = {
     'photo-albums.index': ['photos.manage'],
     'library-books.index': ['library.manage'],
     'services.index': [],
-    /** Visibilidade real: só `super_admin` via auth.canManageSettings no Sidebar (bloco ADM). */
-    'settings.index': [],
+    /** Visibilidade: `auth.canManageSettings` (super admin ou `library.manage`). */
+    'settings.index': ['library.manage'],
     'support.index': ['support.view', 'support.manage'],
     'solicitations.index': ['solicitations.view', 'solicitations.manage'],
     'pastors.index': ['pastors.view', 'pastors.manage'],

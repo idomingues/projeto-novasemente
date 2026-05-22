@@ -200,7 +200,7 @@ class MinistryLeadVolunteerController extends Controller
 
         $this->applyBoardFilters($request, $q, $ministry);
 
-        $volunteers = $q->orderByDesc('volunteers.created_at')->paginate(20)->withQueryString();
+        $volunteers = $q->orderBy('volunteers.name')->paginate(20)->withQueryString();
 
         $criteria = VolunteerClearanceCriterion::query()
             ->where('ministry_id', $ministry->id)

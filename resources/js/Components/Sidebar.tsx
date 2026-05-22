@@ -104,7 +104,8 @@ const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'Escalas', route: 'escalas.index', icon: CalendarIcon },
     { name: 'Inventários', route: 'inventory.index', icon: ArchiveBoxIcon },
     { name: 'Voluntários', route: 'ministry-lead.volunteers.index', icon: UserGroupIcon },
-    { name: 'Usuários', route: 'members.index', icon: UsersIcon },
+    { name: 'Cadastro de voluntários', route: 'volunteers.index', icon: UserPlusIcon },
+    { name: 'Membros do app', route: 'members.index', icon: UsersIcon },
     { name: 'Oração', route: 'prayer.index', icon: PrayingHandsIcon },
     { name: 'News', route: 'news.index', icon: NewspaperIcon },
     { name: 'Saúde', route: 'health.index', icon: HeartIcon },
@@ -118,7 +119,7 @@ const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'Salas', route: 'rooms.index', icon: BuildingOfficeIcon },
     { name: 'Departamentos', route: 'departments.index', icon: BuildingOffice2Icon },
     { name: 'Pastores', route: 'pastors.index', icon: UserCircleIcon },
-    { name: 'Contas do app', route: 'users.index', icon: SparklesIcon },
+    { name: 'Contas do app (equipe)', route: 'users.index', icon: SparklesIcon },
     { name: 'Igrejas', route: 'churches.index', icon: BuildingOfficeIcon },
     { name: 'Operações', route: 'operations.index', icon: ChartBarSquareIcon },
     { name: 'Perfis', route: 'roles.index', icon: KeyIcon },
@@ -195,9 +196,10 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
         'musica.index',
         'photo-albums.index',
         'library-books.index',
+        'settings.index',
         'notifications.manage',
     ]);
-    const cadastroRoutes = new Set(['rooms.index', 'departments.index', 'pastors.index', 'users.index']);
+    const cadastroRoutes = new Set(['rooms.index', 'departments.index', 'pastors.index']);
 
     const [isCadastroOpen, setIsCadastroOpen] = useState(true);
 
@@ -261,7 +263,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
                 if (item.route === 'pastoral-agenda.index' && !showPastoralAgendaInSidebar) {
                     return false;
                 }
-                /** Lista de usuários (cadastro `members`): visível para equipe do painel ou quem tem members.view/manage. */
+                /** Membros do app: quem só acessa o aplicativo (e equipe com papel membro), sem substituir voluntários. */
                 if (item.route === 'members.index') {
                     return canAccessAdminMenu || canAccess('members.index');
                 }
@@ -284,9 +286,9 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, routeToPerm
         'churches.index',
         'operations.index',
         'roles.index',
+        'users.index',
         'support.index',
         'app-versions.index',
-        'settings.index',
     ] as const;
     /** Inclui `mobile.support.index` quando o item Suporte é remapeado (evita duplicar na lista principal). */
     const admRoutes = new Set<string>([...admRouteOrder, 'mobile.support.index']);

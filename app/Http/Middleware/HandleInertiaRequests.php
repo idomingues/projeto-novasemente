@@ -89,8 +89,12 @@ class HandleInertiaRequests extends Middleware
         $appName = ($currentChurch ? $currentChurch['name'] : null) ?? Church::where('active', true)->orderBy('name')->value('name') ?? config('app.name');
         $faviconUrl = ($currentChurch ? $currentChurch['logo_url'] : null) ?? $appLogoUrl;
 
-        /** Definições da igreja no painel (`/settings`): apenas super admin (bloco ADM). */
-        $canManageSettings = $request->user()?->hasRole('super_admin') ?? false;
+        /** Definições da igreja (`/settings`): super admin (completo) ou quem gere a biblioteca (links Meditação/Lição). */
+        $user = $request->user();
+        $canManageSettings = $user !== null && (
+            $user->hasRole('super_admin')
+            || $user->hasPermissionTo('library.manage')
+        );
 
         $appVersionHistory = [];
         if (Schema::hasTable('app_versions')) {

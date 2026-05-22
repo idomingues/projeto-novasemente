@@ -93,4 +93,54 @@ final class MemberRoleAssignment
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         $target->syncRoleIdFromSpatieAssignments();
     }
+
+    /**
+     * Líder de ministério usa o papel Spatie `lider_ministerio` (não aparece no select de membros).
+     */
+    public static function applyMinistryLeaderRole(User $user): void
+    {
+        if ($user->isPrivilegedTeamAccount()) {
+            $user->forceFill(['is_ministry_leader' => true])->save();
+
+            return;
+        }
+
+        $guard = (string) config('auth.defaults.guard');
+        if (! Role::query()->where('name', 'lider_ministerio')->where('guard_name', $guard)->exists()) {
+            $user->forceFill(['is_ministry_leader' => true])->save();
+
+            return;
+        }
+
+        $user->syncRoles(['lider_ministerio']);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $user->syncRoleIdFromSpatieAssignments();
+        $user->forceFill(['is_ministry_leader' => true])->save();
+        $user->syncVolunteerRecord();
+    }
+
+    /**
+     * Remove papel de líder quando o cadastro deixa de ser líder (contas de equipe não são alteradas).
+     */
+    public static function clearMinistryLeaderRole(User $user): void
+    {
+        if ($user->isPrivilegedTeamAccount()) {
+            $user->forceFill(['is_ministry_leader' => false])->save();
+
+            return;
+        }
+
+        if ($user->hasRole('lider_ministerio')) {
+            $guard = (string) config('auth.defaults.guard');
+            $fallback = Role::query()->where('name', 'membro')->where('guard_name', $guard)->exists()
+                ? ['membro']
+                : [];
+            $user->syncRoles($fallback);
+            app(PermissionRegistrar::class)->forgetCachedPermissions();
+            $user->syncRoleIdFromSpatieAssignments();
+        }
+
+        $user->forceFill(['is_ministry_leader' => false])->save();
+        $user->syncVolunteerRecord();
+    }
 }
