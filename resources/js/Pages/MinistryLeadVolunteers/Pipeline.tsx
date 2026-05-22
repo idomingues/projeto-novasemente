@@ -1224,7 +1224,7 @@ export default function Pipeline({
                                                 className="mt-6"
                                                 destroyUrl={detail.destroyVolunteerUrl}
                                                 volunteerName={detail.volunteer.name ?? 'Voluntário'}
-                                                volunteerEmail={detail.volunteer.email}
+                                                volunteerEmail={(detail.volunteer as VolunteerDetailData).email}
                                                 linkedUser={detail.volunteer.user as { id?: number; email?: string | null } | null}
                                                 onSuccess={() => {
                                                     setModalOpen(false);

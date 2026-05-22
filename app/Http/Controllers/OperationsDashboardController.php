@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\AuthLoginEvent;
+use App\Models\Church;
+use App\Services\PageViewAnalytics;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -69,11 +71,11 @@ class OperationsDashboardController extends Controller
                 'id' => $e->id,
                 'outcome' => $e->outcome,
                 'outcomeLabel' => match ($e->outcome) {
-                    AuthLoginEvent::OUTCOME_SUCCESS => 'Login OK',
-                    AuthLoginEvent::OUTCOME_FAILED => 'Falha',
-                    AuthLoginEvent::OUTCOME_LOCKOUT => 'Bloqueio (conta)',
-                    AuthLoginEvent::OUTCOME_IP_BLOCKED => 'Bloqueio (IP)',
-                    AuthLoginEvent::OUTCOME_HONEYPOT => 'Honeypot',
+                    AuthLoginEvent::OUTCOME_SUCCESS => 'Login bem-sucedido',
+                    AuthLoginEvent::OUTCOME_FAILED => 'Credenciais inválidas',
+                    AuthLoginEvent::OUTCOME_LOCKOUT => 'Excesso de tentativas (conta)',
+                    AuthLoginEvent::OUTCOME_IP_BLOCKED => 'Excesso de tentativas (IP)',
+                    AuthLoginEvent::OUTCOME_HONEYPOT => 'Tentativa bloqueada (bot)',
                     default => $e->outcome,
                 },
                 'userName' => $e->user?->name,
@@ -85,7 +87,24 @@ class OperationsDashboardController extends Controller
             ->values()
             ->all();
 
+        $activeTab = in_array($request->input('tab'), ['pages', 'security'], true)
+            ? (string) $request->input('tab')
+            : 'security';
+
+        $churchId = Church::resolveWorkingId($request);
+        $churchName = $churchId !== null
+            ? Church::query()->whereKey($churchId)->value('name')
+            : null;
+
+        $pageViews = PageViewAnalytics::monthlyGroupedForChurch(
+            $churchId !== null ? (int) $churchId : null,
+            $request->input('month'),
+        );
+
         return Inertia::render('Operations/Index', [
+            'activeTab' => $activeTab,
+            'churchName' => $churchName,
+            'pageViews' => $pageViews,
             'sessionDriver' => $sessionDriver,
             'sessionActiveWindowMinutes' => $activeMinutes,
             'sessionsTotalApprox' => $sessionsTotal,

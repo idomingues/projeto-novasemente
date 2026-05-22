@@ -18,4 +18,7 @@ return [
 
     /** Janela do limite por IP (segundos). */
     'login_ip_decay_seconds' => (int) env('LOGIN_IP_DECAY_SECONDS', 900),
+
+    /** Meses disponíveis no seletor da aba «Páginas mais acessadas» (Operações). */
+    'page_views_months' => (int) env('OPERATIONS_PAGE_VIEWS_MONTHS', 12),
 ];

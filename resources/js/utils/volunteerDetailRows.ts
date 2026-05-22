@@ -57,9 +57,17 @@ export type VolunteerDetailData = {
     } | null;
 };
 
+function isYes(v: unknown): boolean {
+    return v === true || v === 1 || v === '1';
+}
+
+function isNo(v: unknown): boolean {
+    return v === false || v === 0 || v === '0';
+}
+
 function yn(v: unknown): string {
-    if (v === true || v === 1 || v === '1') return 'Sim';
-    if (v === false || v === 0 || v === '0') return 'Não';
+    if (isYes(v)) return 'Sim';
+    if (isNo(v)) return 'Não';
     return '—';
 }
 
@@ -106,13 +114,8 @@ export function volunteerDetailSections(v: VolunteerDetailData): RecordDetailSec
     const ledMinistries =
         (v.user?.led_ministries ?? []).map((m) => m.name).join(', ') ||
         (v.user?.is_ministry_leader ? '—' : '');
-    const showMemberNovaSemente =
-        v.is_official_member === true || v.is_official_member === 1 || v.is_official_member === '1';
-    const showOtherChurch =
-        showMemberNovaSemente &&
-        (v.member_record_at_nova_semente === false ||
-            v.member_record_at_nova_semente === 0 ||
-            v.member_record_at_nova_semente === '0');
+    const showMemberNovaSemente = isYes(v.is_official_member);
+    const showOtherChurch = showMemberNovaSemente && isNo(v.member_record_at_nova_semente);
 
     const profileRows: { label: string; value: string }[] = [
         { label: 'Nome', value: text(v.user?.name ?? v.name) },
@@ -179,9 +182,7 @@ export function volunteerDetailSections(v: VolunteerDetailData): RecordDetailSec
                     label: 'Já foi voluntário em algum ministério da igreja?',
                     value: yn(v.has_previous_ministry_volunteer_experience),
                 },
-                ...(v.has_previous_ministry_volunteer_experience === true ||
-                v.has_previous_ministry_volunteer_experience === 1 ||
-                v.has_previous_ministry_volunteer_experience === '1'
+                ...(isYes(v.has_previous_ministry_volunteer_experience)
                     ? [
                           {
                               label: 'Ministérios em que já serviu',
