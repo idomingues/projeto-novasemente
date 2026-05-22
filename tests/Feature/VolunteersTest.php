@@ -57,6 +57,10 @@ class VolunteersTest extends TestCase
             'id' => $volunteer->user_id,
             'email' => 'voluntario.teste@example.com',
         ]);
+
+        $appUser = User::query()->findOrFail($volunteer->user_id);
+        $this->assertTrue($appUser->hasRole('membro'));
+        $this->assertFalse($appUser->canAccessAdminMenu());
     }
 
     public function test_requires_password_when_user_does_not_exist(): void
@@ -87,6 +91,28 @@ class VolunteersTest extends TestCase
         $payload = [
             'name' => 'Duplicado',
             'email' => 'duplicado@example.com',
+            'ministry_ids' => [],
+            'active' => '1',
+            'app_password' => 'secret123',
+            'app_password_confirmation' => 'secret123',
+        ];
+
+        $response = $this->actingAs($user)->post('/volunteers', $payload);
+
+        $response->assertRedirect();
+        $response->assertSessionHasErrors(['email']);
+    }
+
+    public function test_rejects_privileged_email_on_panel_store(): void
+    {
+        $user = $this->actingAsAdmin();
+
+        User::factory()->create(['email' => 'lider.existente@example.com'])
+            ->assignRole(Role::firstOrCreate(['name' => 'lider_ministerio']));
+
+        $payload = [
+            'name' => 'Tentativa',
+            'email' => 'lider.existente@example.com',
             'ministry_ids' => [],
             'active' => '1',
             'app_password' => 'secret123',

@@ -142,12 +142,11 @@ export default function Show({ volunteer: v }: Props) {
                         <DetailRow label="Já serviu / voluntariou em ministério antes?">
                             {formatBool(v.has_previous_ministry_volunteer_experience)}
                         </DetailRow>
-                        <DetailRow label="Detalhes da experiência anterior">{formatText(v.previous_ministry_details)}</DetailRow>
-                        <DetailRow label="Envolvimento / atuação em ministérios">{formatText(v.ministry_involvement)}</DetailRow>
-                        <DetailRow label="Outro ministério ou área de interesse">{formatText(v.other_ministry_interest)}</DetailRow>
+                        <DetailRow label="Ministérios em que já serviu">{formatText(v.previous_ministry_details)}</DetailRow>
+                        <DetailRow label="Ministérios em que é atuante">{formatText(v.ministry_involvement)}</DetailRow>
+                        <DetailRow label="Interesse em outros ministérios">{formatText(v.other_ministry_interest)}</DetailRow>
                         <DetailRow label="Dons ou habilidades a desenvolver">{formatText(v.gifts_to_develop)}</DetailRow>
                         <DetailRow label="Área profissional">{formatText(v.professional_area)}</DetailRow>
-                        <DetailRow label="Deseja orientação pastoral?">{formatBool(v.needs_pastoral_guidance)}</DetailRow>
                         <DetailRow label="Consentimento de dados (LGPD)">{formatBool(v.lgpd_data_consent)}</DetailRow>
                     </div>
                 </Card>

@@ -67,6 +67,12 @@ class StoreVolunteerRequest extends FormRequest
                 $existingUser = User::query()->whereRaw('LOWER(email) = ?', [strtolower($email)])->first();
             }
 
+            if ($existingUser !== null) {
+                if ($msg = VolunteerContactDuplicateChecker::privilegedAccountVolunteerLinkMessage($existingUser, $this->user()?->id)) {
+                    $validator->errors()->add('email', $msg);
+                }
+            }
+
             if (! $existingUser && ! $this->filled('app_password')) {
                 $validator->errors()->add('app_password', 'Defina uma senha para criar a conta de acesso.');
             }

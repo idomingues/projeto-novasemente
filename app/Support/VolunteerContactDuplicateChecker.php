@@ -210,4 +210,32 @@ class VolunteerContactDuplicateChecker
     ): ?string {
         return self::emailConflicts($request, $emailNorm, $excludeVolunteerId, $excludeChurchUserId, $excludeUserId);
     }
+
+    /**
+     * Impede vincular cadastro de voluntário a contas da equipe ou à própria sessão.
+     */
+    public static function privilegedAccountVolunteerLinkMessage(?User $user, ?int $actingUserId = null): ?string
+    {
+        if ($user === null) {
+            return null;
+        }
+
+        if ($actingUserId !== null && (int) $user->id === (int) $actingUserId) {
+            return 'Não é possível usar o e-mail da sua própria conta de equipe neste cadastro de voluntário.';
+        }
+
+        if ($user->hasRole('super_admin')) {
+            return 'Este e-mail pertence a um super administrador. Use outro e-mail para o cadastro de voluntário.';
+        }
+
+        if ($user->canAccessAdminMenu()) {
+            return 'Este e-mail já pertence a uma conta da equipe (administração, secretaria ou pastoral). Use outro e-mail ou peça ajuda ao administrador.';
+        }
+
+        if ($user->hasRole('lider_ministerio')) {
+            return 'Este e-mail já pertence a uma conta de líder de ministério. Use outro e-mail para o cadastro de voluntário.';
+        }
+
+        return null;
+    }
 }

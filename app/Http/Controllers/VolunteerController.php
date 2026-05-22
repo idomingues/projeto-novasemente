@@ -18,6 +18,7 @@ use App\Support\VolunteerSignupDetailPresenter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -60,7 +61,7 @@ class VolunteerController extends Controller
 
     private function applyAppProfile(User $user, Request $request): void
     {
-        if ($user->hasRole('super_admin')) {
+        if ($user->hasRole('super_admin') || $user->isPrivilegedTeamAccount()) {
             return;
         }
 
@@ -68,7 +69,12 @@ class VolunteerController extends Controller
         if (is_string($appRole) && trim($appRole) !== '') {
             $user->syncRoles([$appRole]);
         } else {
-            $user->syncRoles([]);
+            $guard = (string) config('auth.defaults.guard');
+            if (Role::query()->where('name', 'membro')->where('guard_name', $guard)->exists()) {
+                $user->syncRoles(['membro']);
+            } else {
+                $user->syncRoles([]);
+            }
         }
         $user->syncRoleIdFromSpatieAssignments();
 
@@ -76,6 +82,16 @@ class VolunteerController extends Controller
             $user->ministries()->sync($request->input('app_ministry_ids', []));
         } else {
             $user->ministries()->detach();
+        }
+    }
+
+    private function assertVolunteerAppUserLinkable(User $user, Request $request): void
+    {
+        $msg = VolunteerContactDuplicateChecker::privilegedAccountVolunteerLinkMessage($user, $request->user()?->id);
+        if ($msg !== null) {
+            throw ValidationException::withMessages([
+                'email' => [$msg],
+            ]);
         }
     }
 
@@ -123,6 +139,7 @@ class VolunteerController extends Controller
                 ->first();
         }
         if ($existingUser) {
+            $this->assertVolunteerAppUserLinkable($existingUser, $request);
             $this->releaseVolunteerUserIdForOtherVolunteers((int) $existingUser->id, $volunteer);
             $volunteer->forceFill(['user_id' => $existingUser->id])->save();
             if ($resolvedEmail !== '') {

@@ -8,12 +8,14 @@ use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerSelfSignupToken;
 use App\Services\VolunteerMinistryRosterNotifier;
+use App\Support\StorageUrl;
 use App\Support\VolunteerAppLogin;
 use App\Support\VolunteerContactDuplicateChecker;
 use App\Support\VolunteerPipelineBootstrap;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -25,6 +27,56 @@ use Spatie\Permission\Models\Role;
 
 class VolunteerPublicSignupController extends Controller
 {
+    private function storeUserPhoto(UploadedFile $file): string
+    {
+        $path = $file->store('users/photos', 'public');
+
+        return StorageUrl::publicMediaUrl($path);
+    }
+
+    /**
+     * @param  array<int, mixed>  $ids
+     */
+    private function ministryNamesForChurch(array $ids, int $churchId): string
+    {
+        $normalized = array_values(array_unique(array_map('intval', $ids)));
+        if ($normalized === []) {
+            return '';
+        }
+
+        return Ministry::query()
+            ->where('church_id', $churchId)
+            ->whereIn('id', $normalized)
+            ->orderBy('name')
+            ->pluck('name')
+            ->join(', ');
+    }
+
+    /**
+     * @param  array<int, mixed>  $ids
+     * @return array<int, int>
+     */
+    private function validateMinistryIdsForChurch(array $ids, int $churchId, string $errorKey): array
+    {
+        $normalized = array_values(array_unique(array_filter(array_map('intval', $ids), fn ($id) => $id > 0)));
+        if ($normalized === []) {
+            return [];
+        }
+
+        $allowedCount = Ministry::query()
+            ->where('church_id', $churchId)
+            ->whereIn('id', $normalized)
+            ->count();
+
+        if ($allowedCount !== count($normalized)) {
+            throw ValidationException::withMessages([
+                $errorKey => ['Selecione apenas departamentos válidos desta igreja.'],
+            ]);
+        }
+
+        return $normalized;
+    }
+
     /**
      * Cadastro Voluntário público (sem token na URL): usa a primeira igreja ativa e o token guardado na base.
      */
@@ -141,6 +193,7 @@ class VolunteerPublicSignupController extends Controller
 
         $validated = $request->validate([
             'token' => ['required', 'string'],
+            'photo_file' => ['required', 'image', 'max:4096'],
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:155'],
             'birth_date' => ['required', 'date'],
@@ -153,16 +206,18 @@ class VolunteerPublicSignupController extends Controller
             'member_record_at_nova_semente' => ['nullable', 'boolean'],
             'member_record_church' => ['nullable', 'string', 'max:255'],
             'has_previous_ministry_volunteer_experience' => ['required', 'boolean'],
-            'previous_ministry_details' => ['nullable', 'string', 'max:2000'],
-            'ministry_involvement' => ['nullable', 'string', 'max:5000'],
-            'other_ministry_interest' => ['required', 'string', 'max:5000'],
+            'previous_ministry_ids' => ['nullable', 'array'],
+            'previous_ministry_ids.*' => ['integer'],
+            'is_active_in_ministry' => ['required', 'boolean'],
+            'active_ministry_ids' => ['nullable', 'array'],
+            'active_ministry_ids.*' => ['integer'],
+            'wants_other_ministry' => ['required', 'boolean'],
+            'other_ministry_ids' => ['nullable', 'array'],
+            'other_ministry_ids.*' => ['integer'],
             'gifts_to_develop' => ['nullable', 'string', 'max:5000'],
             'professional_area' => ['nullable', 'string', 'max:5000'],
-            'needs_pastoral_guidance' => ['required', 'boolean'],
             'lgpd_data_consent' => ['required', 'boolean'],
             'password' => ['required', 'confirmed', Password::defaults()],
-            'ministry_ids' => ['nullable', 'array'],
-            'ministry_ids.*' => ['integer'],
         ]);
 
         if (($validated['is_official_member'] ?? false) === true) {
@@ -181,13 +236,52 @@ class VolunteerPublicSignupController extends Controller
             }
         }
 
+        $record = VolunteerSelfSignupToken::query()->where('token', $validated['token'])->firstOrFail();
+        $churchId = (int) $record->church_id;
+
         if (($validated['has_previous_ministry_volunteer_experience'] ?? false) === true) {
-            $details = trim((string) ($validated['previous_ministry_details'] ?? ''));
-            if ($details === '') {
+            $previousIds = $this->validateMinistryIdsForChurch(
+                $validated['previous_ministry_ids'] ?? [],
+                $churchId,
+                'previous_ministry_ids'
+            );
+            if ($previousIds === []) {
                 throw ValidationException::withMessages([
-                    'previous_ministry_details' => ['Descreva em quais ministérios você já serviu e o que mais gostava ao servir.'],
+                    'previous_ministry_ids' => ['Selecione em quais ministérios você já serviu.'],
                 ]);
             }
+        } else {
+            $previousIds = [];
+        }
+
+        if (($validated['is_active_in_ministry'] ?? false) === true) {
+            $activeIds = $this->validateMinistryIdsForChurch(
+                $validated['active_ministry_ids'] ?? [],
+                $churchId,
+                'active_ministry_ids'
+            );
+            if ($activeIds === []) {
+                throw ValidationException::withMessages([
+                    'active_ministry_ids' => ['Selecione pelo menos um ministério em que você é atuante.'],
+                ]);
+            }
+        } else {
+            $activeIds = [];
+        }
+
+        if (($validated['wants_other_ministry'] ?? false) === true) {
+            $otherIds = $this->validateMinistryIdsForChurch(
+                $validated['other_ministry_ids'] ?? [],
+                $churchId,
+                'other_ministry_ids'
+            );
+            if ($otherIds === []) {
+                throw ValidationException::withMessages([
+                    'other_ministry_ids' => ['Selecione pelo menos um ministério em que gostaria de servir.'],
+                ]);
+            }
+        } else {
+            $otherIds = [];
         }
 
         if (($validated['lgpd_data_consent'] ?? false) !== true) {
@@ -196,40 +290,54 @@ class VolunteerPublicSignupController extends Controller
             ]);
         }
 
-        $record = VolunteerSelfSignupToken::query()->where('token', $validated['token'])->firstOrFail();
+        $previousMinistryDetails = ($validated['has_previous_ministry_volunteer_experience'] ?? false)
+            ? $this->ministryNamesForChurch($previousIds, $churchId)
+            : null;
+        $ministryInvolvement = ($validated['is_active_in_ministry'] ?? false)
+            ? $this->ministryNamesForChurch($activeIds, $churchId)
+            : 'Não';
+        $otherMinistryInterest = ($validated['wants_other_ministry'] ?? false)
+            ? $this->ministryNamesForChurch($otherIds, $churchId)
+            : 'Não';
+
+        $ministryIds = array_values(array_unique(array_merge($activeIds, $otherIds)));
 
         $emailNorm = VolunteerContactDuplicateChecker::normalizeEmail($validated['email']);
-
-        $rawMinistryIds = $validated['ministry_ids'] ?? [];
-        $ministryIds = is_array($rawMinistryIds)
-            ? array_values(array_unique(array_map('intval', $rawMinistryIds)))
-            : [];
-        if ($ministryIds !== []) {
-            $allowedCount = Ministry::query()
-                ->where('church_id', $record->church_id)
-                ->whereIn('id', $ministryIds)
-                ->count();
-
-            if ($allowedCount !== count($ministryIds)) {
-                throw ValidationException::withMessages([
-                    'ministry_ids' => ['Selecione apenas departamentos válidos desta igreja.'],
-                ]);
-            }
-        }
+        $photoUrl = $request->hasFile('photo_file')
+            ? $this->storeUserPhoto($request->file('photo_file'))
+            : null;
 
         $name = trim($validated['first_name'].' '.$validated['last_name']);
 
-        $user = DB::transaction(function () use ($validated, $name, $ministryIds, $record, $emailNorm) {
-            $existingUser = $emailNorm
-                ? User::query()->whereRaw('LOWER(TRIM(COALESCE(email, ""))) = ?', [$emailNorm])->first()
-                : null;
+        $existingUser = $emailNorm
+            ? User::query()->whereRaw('LOWER(TRIM(COALESCE(email, ""))) = ?', [$emailNorm])->first()
+            : null;
 
-            $user = User::withoutEvents(function () use ($validated, $name, $record, $existingUser, $emailNorm) {
+        if ($msg = VolunteerContactDuplicateChecker::privilegedAccountVolunteerLinkMessage($existingUser, $request->user()?->id)) {
+            throw ValidationException::withMessages([
+                'email' => [$msg],
+            ]);
+        }
+
+        $user = DB::transaction(function () use (
+            $validated,
+            $name,
+            $ministryIds,
+            $record,
+            $emailNorm,
+            $existingUser,
+            $photoUrl,
+            $previousMinistryDetails,
+            $ministryInvolvement,
+            $otherMinistryInterest,
+        ) {
+            $user = User::withoutEvents(function () use ($validated, $name, $record, $existingUser, $emailNorm, $photoUrl) {
                 if ($existingUser) {
                     $existingUser->forceFill([
                         'name' => $name,
                         'email' => $emailNorm ?? VolunteerContactDuplicateChecker::normalizeEmail($validated['email']),
                         'password' => $validated['password'],
+                        'photo_url' => $photoUrl ?? $existingUser->photo_url,
                     ]);
                     if (! $existingUser->church_id) {
                         $existingUser->church_id = $record->church_id;
@@ -244,13 +352,17 @@ class VolunteerPublicSignupController extends Controller
                     'email' => $emailNorm ?? VolunteerContactDuplicateChecker::normalizeEmail($validated['email']),
                     'password' => $validated['password'],
                     'church_id' => $record->church_id,
+                    'photo_url' => $photoUrl,
                 ]);
             });
 
             $guard = (string) config('auth.defaults.guard');
             if (Role::query()->where('name', 'membro')->where('guard_name', $guard)->exists()) {
-                $user->assignRole('membro');
+                $user->syncRoles(['membro']);
+            } else {
+                $user->syncRoles([]);
             }
+            $user->ministries()->detach();
             $user->syncRoleIdFromSpatieAssignments();
             $user->ensureVolunteerProfile();
             $this->linkPreRegisteredVolunteerRecord($user);
@@ -270,12 +382,12 @@ class VolunteerPublicSignupController extends Controller
                         : null,
                     'member_record_church' => $validated['member_record_church'] ?? null,
                     'has_previous_ministry_volunteer_experience' => (bool) $validated['has_previous_ministry_volunteer_experience'],
-                    'previous_ministry_details' => $validated['previous_ministry_details'] ?? null,
-                    'ministry_involvement' => $validated['ministry_involvement'] ?? null,
-                    'other_ministry_interest' => $validated['other_ministry_interest'] ?? null,
+                    'previous_ministry_details' => $previousMinistryDetails,
+                    'ministry_involvement' => $ministryInvolvement,
+                    'other_ministry_interest' => $otherMinistryInterest,
                     'gifts_to_develop' => $validated['gifts_to_develop'] ?? null,
                     'professional_area' => $validated['professional_area'] ?? null,
-                    'needs_pastoral_guidance' => (bool) $validated['needs_pastoral_guidance'],
+                    'needs_pastoral_guidance' => false,
                     'lgpd_data_consent' => (bool) $validated['lgpd_data_consent'],
                 ])->save();
                 if ($ministryIds !== []) {

@@ -3,23 +3,28 @@
 namespace Tests\Feature;
 
 use App\Models\Church;
+use App\Models\Ministry;
 use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerSelfSignupToken;
 use Database\Seeders\ChurchSeeder;
+use Database\Seeders\MinistrySeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class VolunteerPublicSignupTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function signupPayload(string $token, string $email = 'novo.voluntario@example.com'): array
+    private function signupPayload(string $token, string $email = 'novo.voluntario@example.com', ?int $otherMinistryId = null): array
     {
         return [
             'token' => $token,
+            'photo_file' => UploadedFile::fake()->image('foto.jpg'),
             'first_name' => 'Maria',
             'last_name' => 'Silva',
             'birth_date' => '1990-01-15',
@@ -30,8 +35,9 @@ class VolunteerPublicSignupTest extends TestCase
             'attendance_duration' => 'years_1_3',
             'is_official_member' => false,
             'has_previous_ministry_volunteer_experience' => false,
-            'other_ministry_interest' => 'Louvor',
-            'needs_pastoral_guidance' => false,
+            'is_active_in_ministry' => false,
+            'wants_other_ministry' => $otherMinistryId !== null,
+            'other_ministry_ids' => $otherMinistryId !== null ? [$otherMinistryId] : [],
             'lgpd_data_consent' => true,
             'password' => 'Password1!xx',
             'password_confirmation' => 'Password1!xx',
@@ -40,15 +46,16 @@ class VolunteerPublicSignupTest extends TestCase
 
     public function test_public_signup_creates_user_and_redirects_to_login_with_congrats(): void
     {
-        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class, MinistrySeeder::class]);
 
         $churchId = (int) Church::query()->orderBy('id')->value('id');
+        $ministry = Ministry::query()->where('church_id', $churchId)->orderBy('name')->firstOrFail();
         $token = VolunteerSelfSignupToken::query()->create([
             'church_id' => $churchId,
             'token' => (string) Str::uuid(),
         ])->token;
 
-        $response = $this->post(route('volunteers.self-signup.store'), $this->signupPayload($token));
+        $response = $this->post(route('volunteers.self-signup.store'), $this->signupPayload($token, 'novo.voluntario@example.com', $ministry->id));
 
         $response->assertRedirect(route('login'));
         $response->assertSessionHas('status');
@@ -62,14 +69,16 @@ class VolunteerPublicSignupTest extends TestCase
         ]);
 
         $user = User::query()->where('email', 'novo.voluntario@example.com')->firstOrFail();
+        $this->assertNotNull($user->photo_url);
         $volunteer = Volunteer::query()->where('user_id', $user->id)->first();
         $this->assertNotNull($volunteer);
-        $this->assertSame('Louvor', $volunteer->other_ministry_interest);
+        $this->assertSame($ministry->name, $volunteer->other_ministry_interest);
+        $this->assertTrue($volunteer->ministries()->where('ministries.id', $ministry->id)->exists());
     }
 
     public function test_volunteer_can_login_after_public_signup(): void
     {
-        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class, MinistrySeeder::class]);
 
         $churchId = (int) Church::query()->orderBy('id')->value('id');
         $token = VolunteerSelfSignupToken::query()->create([
@@ -93,7 +102,7 @@ class VolunteerPublicSignupTest extends TestCase
 
     public function test_public_signup_links_pre_registered_volunteer_without_user(): void
     {
-        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class, MinistrySeeder::class]);
 
         $churchId = (int) Church::query()->orderBy('id')->value('id');
         $token = VolunteerSelfSignupToken::query()->create([
@@ -117,5 +126,45 @@ class VolunteerPublicSignupTest extends TestCase
             'email' => 'precadastro@example.com',
         ]);
         $this->assertSame(1, Volunteer::query()->where('email', 'precadastro@example.com')->count());
+    }
+
+    public function test_public_signup_rejects_existing_admin_email(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class, MinistrySeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+        $token = VolunteerSelfSignupToken::query()->create([
+            'church_id' => $churchId,
+            'token' => (string) Str::uuid(),
+        ])->token;
+
+        $admin = User::factory()->create(['email' => 'admin.equipe@example.com']);
+        $admin->assignRole(Role::firstOrCreate(['name' => 'admin']));
+
+        $response = $this->post(route('volunteers.self-signup.store'), $this->signupPayload($token, 'admin.equipe@example.com'));
+
+        $response->assertSessionHasErrors(['email']);
+        $this->assertSame(1, User::query()->where('email', 'admin.equipe@example.com')->count());
+        $admin->refresh();
+        $this->assertTrue($admin->hasRole('admin'));
+    }
+
+    public function test_public_signup_assigns_only_membro_role(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class, MinistrySeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+        $token = VolunteerSelfSignupToken::query()->create([
+            'church_id' => $churchId,
+            'token' => (string) Str::uuid(),
+        ])->token;
+
+        $this->post(route('volunteers.self-signup.store'), $this->signupPayload($token, 'somente.membro@example.com'));
+
+        $user = User::query()->where('email', 'somente.membro@example.com')->firstOrFail();
+        $this->assertTrue($user->hasRole('membro'));
+        $this->assertFalse($user->canAccessAdminMenu());
+        $this->assertFalse($user->hasRole('admin'));
+        $this->assertCount(1, $user->roles);
     }
 }

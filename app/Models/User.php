@@ -105,6 +105,14 @@ class User extends Authenticatable
         return ! empty(array_intersect($this->getRoleNames()->map(fn ($n) => (string) $n)->all(), $adminRoles));
     }
 
+    /**
+     * Conta da equipe ou líder — não deve ser reutilizada nem ter papéis alterados pelo cadastro de voluntário.
+     */
+    public function isPrivilegedTeamAccount(): bool
+    {
+        return $this->canAccessAdminMenu() || $this->hasRole('lider_ministerio');
+    }
+
     public function volunteerProfile(): HasOne
     {
         return $this->hasOne(\App\Models\Volunteer::class);
@@ -138,7 +146,7 @@ class User extends Authenticatable
             'active' => true,
             'name' => $name,
             'email' => $this->email,
-            'role' => $volunteer?->role ?? ($this->getRoleNames()->first() ?: null),
+            'role' => $volunteer?->role ?? $this->volunteerRoleMirrorForProfile(),
         ];
 
         if (! $volunteer) {
@@ -148,7 +156,7 @@ class User extends Authenticatable
             $volunteer->save();
         }
 
-        if ($this->hasRole('lider_ministerio')) {
+        if ($this->shouldMirrorLedMinistriesToVolunteerProfile()) {
             $ledMinistryIds = $this->ministries()->pluck('ministries.id')->map(fn ($id) => (int) $id)->values()->all();
             $attachedIds = $volunteer->ministries()->pluck('ministries.id')->map(fn ($id) => (int) $id)->values()->all();
             $volunteer->ministries()->sync(array_values(array_unique(array_merge($ledMinistryIds, $attachedIds))));
@@ -159,6 +167,30 @@ class User extends Authenticatable
         $volunteer->forceFill([
             'app_access_only' => $this->volunteerRowIsAppAccessOnly($volunteer),
         ])->save();
+    }
+
+    /**
+     * Papel espelhado em volunteers.role — não copia papéis de equipe.
+     */
+    private function volunteerRoleMirrorForProfile(): ?string
+    {
+        if ($this->hasRole('super_admin') || $this->canAccessAdminMenu()) {
+            return null;
+        }
+
+        $first = $this->getRoleNames()->first();
+
+        return $first !== null ? (string) $first : null;
+    }
+
+    /**
+     * Só líder de ministério (sem painel de equipe) espelha departamentos liderados no registro de voluntário.
+     */
+    private function shouldMirrorLedMinistriesToVolunteerProfile(): bool
+    {
+        return $this->hasRole('lider_ministerio')
+            && ! $this->hasRole('super_admin')
+            && ! $this->canAccessAdminMenu();
     }
 
     /**

@@ -70,8 +70,14 @@ class UpdateVolunteerRequest extends FormRequest
 
             $email = trim((string) $this->input('email', ''));
             $existingUser = null;
-            if (! $existingUser && $email !== '') {
+            if ($email !== '') {
                 $existingUser = User::query()->whereRaw('LOWER(email) = ?', [strtolower($email)])->first();
+            }
+
+            if ($existingUser !== null && (int) $existingUser->id !== (int) ($excludeUserId ?? 0)) {
+                if ($msg = VolunteerContactDuplicateChecker::privilegedAccountVolunteerLinkMessage($existingUser, $this->user()?->id)) {
+                    $validator->errors()->add('email', $msg);
+                }
             }
 
             if (! $existingUser && ! $this->filled('app_password')) {
