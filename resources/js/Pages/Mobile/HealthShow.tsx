@@ -9,6 +9,7 @@ export default function MobileHealthShow(props: WrappedProps) {
             config={{
                 listRoute: 'mobile.health',
                 listLabel: 'publicações de saúde',
+                showRoute: 'mobile.health.show',
             }}
         />
     );

@@ -3,6 +3,8 @@
 namespace App\Support;
 
 use App\Models\AppNotification;
+use App\Models\User;
+use App\Models\UserDismissedAppNotification;
 use App\Models\UserInboxNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -29,19 +31,26 @@ class NotificationFeed
     }
 
     /**
-     * @return array<int, array{id: string, title: string, body: string, created_at: string, author: mixed, href: string, kind: string, inbox_notification_id?: int, inbox_unread?: bool}>
+     * @return array<int, array{id: string, title: string, body: string, created_at: string, author: mixed, href: string, kind: string, inbox_notification_id?: int, inbox_unread?: bool, app_notification_id?: int, can_remove?: bool}>
      */
     public static function mergedForUser(Request $request, ?int $churchId, int $limit = 50): array
     {
-        $app = AppNotification::recentForChurch($churchId, $limit)->map(fn (array $n) => [
-            'id' => 'app-'.$n['id'],
-            'title' => $n['title'],
-            'body' => $n['body'],
-            'created_at' => $n['created_at'],
-            'author' => $n['author'] ?? null,
-            'href' => route('varios.notifications'),
-            'kind' => 'app',
-        ]);
+        $user = $request->user();
+        $dismissedAppIds = self::dismissedAppNotificationIdsForUser($user);
+
+        $app = AppNotification::recentForChurch($churchId, $limit)
+            ->reject(fn (array $n) => in_array((int) $n['id'], $dismissedAppIds, true))
+            ->map(fn (array $n) => [
+                'id' => 'app-'.$n['id'],
+                'title' => $n['title'],
+                'body' => $n['body'],
+                'created_at' => $n['created_at'],
+                'author' => $n['author'] ?? null,
+                'href' => route('varios.notifications'),
+                'kind' => 'app',
+                'app_notification_id' => (int) $n['id'],
+                'can_remove' => $user !== null,
+            ]);
 
         $inbox = collect();
         if ($request->user()) {
@@ -61,6 +70,7 @@ class NotificationFeed
                     'kind' => 'inbox',
                     'inbox_notification_id' => $n->id,
                     'inbox_unread' => $n->read_at === null,
+                    'can_remove' => true,
                 ];
             });
         }
@@ -73,6 +83,8 @@ class NotificationFeed
      */
     public static function mergedTotalCountForUser(Request $request, ?int $churchId): int
     {
+        $dismissedAppIds = self::dismissedAppNotificationIdsForUser($request->user());
+
         $appCount = 0;
         if (Schema::hasTable('app_notifications')) {
             $appCount = (int) AppNotification::query()
@@ -82,6 +94,7 @@ class NotificationFeed
                         $q->orWhere('church_id', $churchId);
                     }
                 })
+                ->when($dismissedAppIds !== [], fn ($q) => $q->whereNotIn('id', $dismissedAppIds))
                 ->count();
         }
 
@@ -105,5 +118,22 @@ class NotificationFeed
             ->where('user_id', $request->user()->id)
             ->whereNull('read_at')
             ->count();
+    }
+
+    /**
+     * @return list<int>
+     */
+    private static function dismissedAppNotificationIdsForUser(?User $user): array
+    {
+        if ($user === null || ! Schema::hasTable('user_dismissed_app_notifications')) {
+            return [];
+        }
+
+        return UserDismissedAppNotification::query()
+            ->where('user_id', $user->id)
+            ->pluck('app_notification_id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
     }
 }

@@ -24,6 +24,9 @@ class News extends Model
     /** Publicação estilo feed (imagem + legenda), listada em coluna no app. */
     public const TYPE_INSTAGRAM_FEED = 'instagram_feed';
 
+    /** Publicação com link para abrir no Instagram (post, reel ou IGTV). */
+    public const TYPE_INSTAGRAM_LINK = 'instagram_link';
+
     protected $fillable = [
         'church_id',
         'section',
@@ -33,6 +36,7 @@ class News extends Model
         'excerpt',
         'body',
         'youtube_url',
+        'instagram_url',
         'pdf_path',
         'video_path',
         'image_url',

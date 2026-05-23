@@ -58,6 +58,41 @@ class MyMinistryVolunteersTest extends TestCase
         $this->assertSame('active', $invitation->leader_status);
     }
 
+    public function test_leader_can_open_my_volunteers_index_with_joined_volunteers(): void
+    {
+        $this->seed();
+
+        $church = Church::query()->firstOrFail();
+        $ministry = Ministry::query()->where('church_id', $church->id)->firstOrFail();
+
+        $leader = User::factory()->create([
+            'church_id' => $church->id,
+            'is_ministry_leader' => false,
+        ]);
+        $leader->assignRole(Role::firstOrCreate(['name' => 'lider_ministerio']));
+        $leader->ministries()->sync([$ministry->id]);
+
+        $volunteer = Volunteer::query()->create([
+            'name' => 'Voluntário Lista',
+            'email' => 'lista.voluntario@example.com',
+            'active' => true,
+        ]);
+
+        VolunteerMinistryInvitation::query()->create([
+            'church_id' => $church->id,
+            'volunteer_id' => $volunteer->id,
+            'ministry_id' => $ministry->id,
+            'invited_by_user_id' => $leader->id,
+            'token' => VolunteerMinistryInvitation::createToken(),
+            'status' => 'accepted',
+        ]);
+
+        $this->actingAs($leader)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('ministry-lead.my-volunteers.index'))
+            ->assertOk();
+    }
+
     public function test_non_leader_cannot_access_my_volunteers_index(): void
     {
         $this->seed();

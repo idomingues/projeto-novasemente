@@ -577,6 +577,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/mobile/settings', [MobileController::class, 'settings'])->name('mobile.settings');
     Route::post('/notifications/inbox/read', [MobileController::class, 'markInboxNotificationRead'])
         ->name('notifications.inbox.read');
+    Route::post('/notifications/remove', [MobileController::class, 'removeNotification'])
+        ->name('notifications.remove');
 
     // Suporte (Admin) — permissões dedicadas; item «A desenvolver» só admin/super_admin
     Route::get('/suporte', [SupportAdminController::class, 'index'])

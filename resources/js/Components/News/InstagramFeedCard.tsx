@@ -2,6 +2,7 @@ import { Link, usePage } from '@inertiajs/react';
 import { PlayCircleIcon } from '@heroicons/react/24/solid';
 import FeedCaptionBody from '@/Components/News/FeedCaptionBody';
 import FeedPostHeader, { type FeedPostAuthor } from '@/Components/News/FeedPostHeader';
+import { InstagramBrandIcon } from '@/Components/SocialBrandIcons';
 import { feedCaptionText } from '@/utils/feedCaption';
 
 function mediaSrc(url: string | null, appUrl: string): string {
@@ -20,6 +21,7 @@ export interface InstagramFeedPost {
     image_url: string | null;
     cover_url: string | null;
     video_url?: string | null;
+    instagram_url?: string | null;
     published_at: string | null;
     author?: FeedPostAuthor | null;
 }
@@ -33,6 +35,7 @@ interface Props {
     appUrl: string;
     /** Lista no feed: legenda truncada; detalhe: texto completo */
     variant?: 'feed' | 'detail';
+    showRoute?: 'mobile.news.show' | 'mobile.health.show';
 }
 
 function FeedMedia({
@@ -117,7 +120,12 @@ function FeedMedia({
     );
 }
 
-export default function InstagramFeedCard({ post, appUrl, variant = 'feed' }: Props) {
+export default function InstagramFeedCard({
+    post,
+    appUrl,
+    variant = 'feed',
+    showRoute = 'mobile.news.show',
+}: Props) {
     const { currentChurch, defaultBrandLogoUrl } = usePage().props as {
         currentChurch?: { name: string; logo_url?: string | null } | null;
         defaultBrandLogoUrl?: string;
@@ -126,8 +134,9 @@ export default function InstagramFeedCard({ post, appUrl, variant = 'feed' }: Pr
     const publisherLogoUrl = currentChurch?.logo_url ?? defaultBrandLogoUrl ?? '/logo-ns.png';
 
     const caption = captionForPost(post);
-    const showHref = route('mobile.news.show', post.slug);
+    const showHref = route(showRoute, post.slug);
     const isDetail = variant === 'detail';
+    const instagramUrl = post.instagram_url?.trim() || '';
 
     return (
         <article className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
@@ -141,8 +150,8 @@ export default function InstagramFeedCard({ post, appUrl, variant = 'feed' }: Pr
 
             <FeedMedia post={post} appUrl={appUrl} variant={variant} showHref={showHref} />
 
-            {(caption || !isDetail) && (
-                <div className="px-4 py-3">
+            {(caption || instagramUrl || !isDetail) && (
+                <div className="space-y-3 px-4 py-3">
                     {caption ? (
                         <FeedCaptionBody caption={caption} clampLines={!isDetail} />
                     ) : !isDetail ? (
@@ -150,6 +159,21 @@ export default function InstagramFeedCard({ post, appUrl, variant = 'feed' }: Pr
                             Ver publicação
                         </Link>
                     ) : null}
+                    {instagramUrl && (
+                        <a
+                            href={instagramUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={
+                                isDetail
+                                    ? 'flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:from-pink-500 hover:to-purple-500'
+                                    : 'inline-flex items-center gap-1.5 text-sm font-semibold text-pink-600 hover:underline dark:text-pink-400'
+                            }
+                        >
+                            <InstagramBrandIcon className={isDetail ? 'h-5 w-5 shrink-0' : 'h-4 w-4'} />
+                            Abrir no Instagram
+                        </a>
+                    )}
                 </div>
             )}
         </article>

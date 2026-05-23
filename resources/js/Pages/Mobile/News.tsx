@@ -2,6 +2,7 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import InstagramFeedCard, { type InstagramFeedPost } from '@/Components/News/InstagramFeedCard';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { DocumentTextIcon, NewspaperIcon, PhotoIcon, PlayCircleIcon } from '@heroicons/react/24/outline';
+import { InstagramBrandIcon } from '@/Components/SocialBrandIcons';
 
 function imageSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
@@ -16,7 +17,7 @@ interface PaginationLink {
     active: boolean;
 }
 
-type ContentType = 'article' | 'youtube' | 'pdf' | 'image' | 'instagram_feed';
+type ContentType = 'article' | 'youtube' | 'pdf' | 'image' | 'instagram_feed' | 'instagram_link';
 
 interface Post {
     id: number;
@@ -61,6 +62,7 @@ function previewSnippet(p: Post): string {
         if (p.content_type === 'youtube') return 'Vídeo no YouTube';
         if (p.content_type === 'pdf') return 'Documento PDF';
         if (p.content_type === 'image') return 'Imagem';
+        if (p.content_type === 'instagram_link') return 'Publicação no Instagram';
         return '';
     }
     const plain = raw.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -89,6 +91,14 @@ function TypeCornerBadge({ type }: { type: ContentType }) {
             <span className="absolute left-2 top-2 flex items-center gap-1 rounded-lg bg-black/60 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
                 <PhotoIcon className="h-3.5 w-3.5" aria-hidden />
                 Imagem
+            </span>
+        );
+    }
+    if (type === 'instagram_link') {
+        return (
+            <span className="absolute left-2 top-2 flex items-center gap-1 rounded-lg bg-pink-900/85 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
+                <InstagramBrandIcon className="h-3.5 w-3.5" aria-hidden />
+                Instagram
             </span>
         );
     }
@@ -124,7 +134,12 @@ export default function MobileNews({ feedPosts, posts, config }: Props) {
                                 <ul className="mx-auto flex max-w-md flex-col gap-6">
                                     {feedPosts.map((p) => (
                                         <li key={p.id}>
-                                            <InstagramFeedCard post={p} appUrl={appUrl} variant="feed" />
+                                            <InstagramFeedCard
+                                                post={p}
+                                                appUrl={appUrl}
+                                                variant="feed"
+                                                showRoute={showRoute}
+                                            />
                                         </li>
                                     ))}
                                 </ul>
@@ -184,9 +199,19 @@ export default function MobileNews({ feedPosts, posts, config }: Props) {
                                                         href={route(showRoute, p.slug)}
                                                         className="block rounded-t-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"
                                                     >
-                                                        <div className="relative flex h-32 items-center justify-center bg-gradient-to-br from-rose-100 via-zinc-100 to-amber-50 dark:from-rose-950/30 dark:via-zinc-800 dark:to-amber-950/20">
+                                                        <div
+                                                            className={`relative flex h-32 items-center justify-center ${
+                                                                p.content_type === 'instagram_link'
+                                                                    ? 'bg-gradient-to-br from-pink-100 via-purple-50 to-rose-100 dark:from-pink-950/30 dark:via-zinc-800 dark:to-purple-950/20'
+                                                                    : 'bg-gradient-to-br from-rose-100 via-zinc-100 to-amber-50 dark:from-rose-950/30 dark:via-zinc-800 dark:to-amber-950/20'
+                                                            }`}
+                                                        >
                                                             <TypeCornerBadge type={p.content_type} />
-                                                            <DocumentTextIcon className="h-12 w-12 text-rose-500/70 dark:text-rose-400/60" />
+                                                            {p.content_type === 'instagram_link' ? (
+                                                                <InstagramBrandIcon className="h-12 w-12 text-pink-600/80 dark:text-pink-400/70" />
+                                                            ) : (
+                                                                <DocumentTextIcon className="h-12 w-12 text-rose-500/70 dark:text-rose-400/60" />
+                                                            )}
                                                             <span className="absolute bottom-2 right-2 rounded-lg bg-black/50 px-2 py-1 text-xs text-white">
                                                                 {formatDate(p.published_at)}
                                                             </span>

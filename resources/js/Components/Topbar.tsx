@@ -3,6 +3,7 @@ import { notificationLinkHref } from '@/utils/notificationLinkHref';
 import { BellIcon, SunIcon, MoonIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import Dropdown from '@/Components/Dropdown';
 import MarkInboxNotificationReadButton from '@/Components/MarkInboxNotificationReadButton';
+import DismissNotificationButton from '@/Components/DismissNotificationButton';
 import AppVersionTrigger from '@/Components/AppVersionTrigger';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { useEffect, useState } from 'react';
@@ -17,6 +18,8 @@ interface NotificationItem {
     kind?: string;
     inbox_notification_id?: number;
     inbox_unread?: boolean;
+    app_notification_id?: number;
+    can_remove?: boolean;
 }
 
 function formatTimeAgo(iso: string): string {
@@ -231,6 +234,14 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
                                                     n.kind === 'inbox' &&
                                                     n.inbox_unread &&
                                                     typeof inboxId === 'number';
+                                                const removeTarget =
+                                                    n.can_remove && n.kind === 'inbox' && typeof inboxId === 'number'
+                                                        ? ({ kind: 'inbox' as const, id: inboxId })
+                                                        : n.can_remove &&
+                                                            n.kind === 'app' &&
+                                                            typeof n.app_notification_id === 'number'
+                                                          ? ({ kind: 'app' as const, id: n.app_notification_id })
+                                                          : null;
 
                                                 return (
                                                     <div
@@ -245,6 +256,12 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
                                                         </Link>
                                                         {showMark ? (
                                                             <MarkInboxNotificationReadButton notificationId={inboxId} />
+                                                        ) : null}
+                                                        {removeTarget ? (
+                                                            <DismissNotificationButton
+                                                                kind={removeTarget.kind}
+                                                                recordId={removeTarget.id}
+                                                            />
                                                         ) : null}
                                                     </div>
                                                 );

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Church;
 use App\Models\Musica;
 use App\Models\News;
+use App\Support\InstagramUrl;
 use App\Support\StorageUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -65,10 +66,12 @@ class HealthController extends Controller
                 News::TYPE_PDF,
                 News::TYPE_IMAGE,
                 News::TYPE_INSTAGRAM_FEED,
+                News::TYPE_INSTAGRAM_LINK,
             ])],
             'excerpt' => ['nullable', 'string', 'max:500'],
             'body' => ['nullable', 'string', 'max:65000'],
             'youtube_url' => ['nullable', 'string', 'max:500'],
+            'instagram_url' => ['nullable', 'string', 'max:500'],
             'image_url' => ['nullable', 'string', 'max:1024'],
             'image_file' => ['nullable', 'image', 'max:2048'],
             'video_file' => ['nullable', 'file', 'mimes:mp4,mov,quicktime,webm', 'max:51200'],
@@ -97,6 +100,22 @@ class HealthController extends Controller
                 ]);
             }
             $data['youtube_url'] = $url;
+        }
+
+        if ($type === News::TYPE_INSTAGRAM_LINK) {
+            $url = trim((string) ($data['instagram_url'] ?? ''));
+            if ($url === '') {
+                throw ValidationException::withMessages([
+                    'instagram_url' => 'Informe o link da publicação no Instagram.',
+                ]);
+            }
+            $normalized = InstagramUrl::normalize($url);
+            if ($normalized === null) {
+                throw ValidationException::withMessages([
+                    'instagram_url' => 'Link do Instagram inválido. Use um link de post, reel ou IGTV.',
+                ]);
+            }
+            $data['instagram_url'] = $normalized;
         }
 
         if ($type === News::TYPE_PDF) {
@@ -133,9 +152,39 @@ class HealthController extends Controller
                     'video_file' => 'Adicione uma imagem ou um vídeo para a publicação.',
                 ]);
             }
+
+            $this->normalizeOptionalInstagramUrl($data);
         }
 
         return $data;
+    }
+
+    /** @param  array<string, mixed>  $data */
+    private function normalizeOptionalInstagramUrl(array &$data): void
+    {
+        $url = trim((string) ($data['instagram_url'] ?? ''));
+        if ($url === '') {
+            $data['instagram_url'] = null;
+
+            return;
+        }
+
+        $normalized = InstagramUrl::normalize($url);
+        if ($normalized === null) {
+            throw ValidationException::withMessages([
+                'instagram_url' => 'Link do Instagram inválido. Use um link de post, reel ou IGTV.',
+            ]);
+        }
+
+        $data['instagram_url'] = $normalized;
+    }
+
+    private function instagramUrlForSave(string $contentType, ?string $instagramUrl): ?string
+    {
+        return match ($contentType) {
+            News::TYPE_INSTAGRAM_LINK, News::TYPE_INSTAGRAM_FEED => $instagramUrl,
+            default => null,
+        };
     }
 
     public function index(Request $request): Response
@@ -245,6 +294,7 @@ class HealthController extends Controller
             'excerpt' => $data['content_type'] === News::TYPE_INSTAGRAM_FEED ? null : ($data['excerpt'] ?? null),
             'body' => $this->normalizeBody((string) ($data['body'] ?? '')),
             'youtube_url' => $data['content_type'] === News::TYPE_YOUTUBE ? ($data['youtube_url'] ?? null) : null,
+            'instagram_url' => $this->instagramUrlForSave($data['content_type'], $data['instagram_url'] ?? null),
             'pdf_path' => $data['content_type'] === News::TYPE_PDF ? $pdfPath : null,
             'video_path' => $data['content_type'] === News::TYPE_INSTAGRAM_FEED ? $videoPath : null,
             'image_url' => $imageUrl,
@@ -308,6 +358,7 @@ class HealthController extends Controller
             'excerpt' => $data['content_type'] === News::TYPE_INSTAGRAM_FEED ? null : ($data['excerpt'] ?? null),
             'body' => $this->normalizeBody((string) ($data['body'] ?? '')),
             'youtube_url' => $data['content_type'] === News::TYPE_YOUTUBE ? ($data['youtube_url'] ?? null) : null,
+            'instagram_url' => $this->instagramUrlForSave($data['content_type'], $data['instagram_url'] ?? null),
             'pdf_path' => $pdfPath,
             'video_path' => $videoPath,
             'image_url' => $imageUrl,

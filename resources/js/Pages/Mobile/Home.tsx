@@ -68,6 +68,7 @@ function cardSnippet(n: NewsCard): string {
     if (n.content_type === 'youtube') return 'Vídeo no YouTube';
     if (n.content_type === 'pdf') return 'Documento PDF';
     if (n.content_type === 'image') return 'Imagem';
+    if (n.content_type === 'instagram_link') return 'Publicação no Instagram';
     return '';
 }
 

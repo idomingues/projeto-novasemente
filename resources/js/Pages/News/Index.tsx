@@ -25,7 +25,13 @@ import ImageDownloadButton from '@/Components/ImageDownloadButton';
 import { youtubeThumbUrlFromVideoUrl } from '@/utils/youtube';
 import FeedCaptionBody from '@/Components/News/FeedCaptionBody';
 import FeedPostHeader, { type FeedPostAuthor } from '@/Components/News/FeedPostHeader';
+import { InstagramBrandIcon } from '@/Components/SocialBrandIcons';
 import { feedCaptionText } from '@/utils/feedCaption';
+import {
+    NEWS_INSTAGRAM_FEED_IMAGE_SPECS,
+    NEWS_INSTAGRAM_FEED_VIDEO_SPECS,
+    NEWS_STANDARD_COVER_SPECS,
+} from '@/constants/mediaCoverSpecs';
 
 function imageSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
@@ -33,7 +39,7 @@ function imageSrc(url: string | null, appUrl: string): string {
     return url;
 }
 
-type ContentType = 'article' | 'youtube' | 'pdf' | 'image' | 'instagram_feed';
+type ContentType = 'article' | 'youtube' | 'pdf' | 'image' | 'instagram_feed' | 'instagram_link';
 
 interface NewsPost {
     id: number;
@@ -43,6 +49,7 @@ interface NewsPost {
     excerpt: string | null;
     body: string;
     youtube_url: string | null;
+    instagram_url: string | null;
     image_url: string | null;
     cover_url: string | null;
     pdf_url: string | null;
@@ -89,17 +96,12 @@ function typeShortLabel(t: ContentType): string {
             return 'Imagem';
         case 'instagram_feed':
             return 'Feed';
+        case 'instagram_link':
+            return 'Instagram';
         default:
             return 'Artigo';
     }
 }
-
-/** Orientação exibida ao criar publicações tipo Feed Instagram */
-const INSTAGRAM_FEED_IMAGE_SPECS =
-    'Imagem — proporção 4:5. Resolução recomendada: 1080 × 1350 px. JPG ou PNG, até 2 MB. Opcional se enviar vídeo (pode servir de capa).';
-
-const INSTAGRAM_FEED_VIDEO_SPECS =
-    'Vídeo — proporção 9:16. Resolução recomendada: 1080 × 1920 px. MP4, MOV ou WebM, até 50 MB. Use imagem ou vídeo (pelo menos um).';
 
 function cardSummary(p: NewsPost): string {
     if (p.excerpt?.trim()) return p.excerpt.trim();
@@ -113,6 +115,9 @@ function cardSummary(p: NewsPost): string {
     if (p.content_type === 'image') return 'Publicação com imagem';
     if (p.content_type === 'instagram_feed') {
         return p.video_url ? 'Vídeo no feed' : 'Publicação no feed';
+    }
+    if (p.content_type === 'instagram_link') {
+        return 'Link para o Instagram';
     }
     return '';
 }
@@ -149,6 +154,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
         excerpt: '',
         body: '',
         youtube_url: '',
+        instagram_url: '',
         image_url: '',
         published_at: '',
         image_file: null as File | null,
@@ -235,6 +241,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
             excerpt: p.excerpt ?? '',
             body: p.body ?? '',
             youtube_url: p.youtube_url ?? '',
+            instagram_url: p.instagram_url ?? '',
             image_url: p.image_url ?? '',
             published_at: p.published_at ? p.published_at.substring(0, 16) : '',
         });
@@ -278,6 +285,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
     };
 
     const isInstagramFeed = data.content_type === 'instagram_feed';
+    const isInstagramLink = data.content_type === 'instagram_link';
 
     const previewVideoSrc = videoPreviewUrl || (isInstagramFeed && existingVideoUrl ? existingVideoUrl : '');
     const previewHasVideo = Boolean(previewVideoSrc);
@@ -285,10 +293,12 @@ export default function Index({ posts, filters, canManage, config }: Props) {
     const imageFieldLabel = isInstagramFeed
         ? 'Imagem (opcional — 1080 × 1350 px, 4:5; capa do vídeo)'
         : data.content_type === 'image'
-          ? 'Imagem (obrigatória)'
+          ? 'Imagem (obrigatória — 16:10)'
           : data.content_type === 'youtube'
-            ? 'Imagem de capa (opcional — se vazio, usa a miniatura do YouTube)'
-            : 'Imagem de capa (opcional)';
+            ? 'Imagem de capa (opcional — 16:10; se vazio, usa miniatura do YouTube)'
+            : isInstagramLink
+              ? 'Imagem de capa (opcional — 16:10)'
+              : 'Imagem de capa (opcional — 16:10)';
 
     const bodyLabel = data.content_type === 'article'
         ? 'Conteúdo'
@@ -331,7 +341,9 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                   ? 'Imagem'
                   : data.content_type === 'instagram_feed'
                     ? 'Legenda do feed'
-                    : 'Resumo aparecerá aqui.');
+                    : isInstagramLink
+                      ? 'Publicação no Instagram'
+                      : 'Resumo aparecerá aqui.');
 
     return (
         <AdminLayout>
@@ -420,6 +432,13 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                         PDF
                                     </span>
                                 </div>
+                            ) : p.content_type === 'instagram_link' ? (
+                                <div className="relative flex h-40 w-full flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-pink-100 via-purple-50 to-rose-100 dark:from-pink-950/40 dark:via-zinc-800 dark:to-purple-950/30 md:h-48">
+                                    <InstagramBrandIcon className="h-14 w-14 text-pink-600/80 dark:text-pink-400/70" />
+                                    <span className="absolute left-2 top-2 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
+                                        Instagram
+                                    </span>
+                                </div>
                             ) : null}
                             <div className="flex flex-1 flex-col gap-2">
                                 <div className="flex items-start justify-between gap-3">
@@ -464,12 +483,26 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                 {cardSummary(p) && (
                                     <p className="text-sm text-zinc-600 dark:text-zinc-300">{cardSummary(p)}</p>
                                 )}
-                                <Link
-                                    href={route(mobileShowRoute, p.slug)}
-                                    className="text-xs font-medium text-zinc-500 underline-offset-2 hover:text-zinc-800 hover:underline dark:text-zinc-400 dark:hover:text-zinc-200"
-                                >
-                                    Ver na app
-                                </Link>
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <Link
+                                        href={route(mobileShowRoute, p.slug)}
+                                        className="text-xs font-medium text-zinc-500 underline-offset-2 hover:text-zinc-800 hover:underline dark:text-zinc-400 dark:hover:text-zinc-200"
+                                    >
+                                        Ver na app
+                                    </Link>
+                                    {(p.content_type === 'instagram_link' || p.content_type === 'instagram_feed') &&
+                                        p.instagram_url && (
+                                        <a
+                                            href={p.instagram_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1 text-xs font-medium text-pink-600 hover:underline dark:text-pink-400"
+                                        >
+                                            <InstagramBrandIcon className="h-4 w-4" />
+                                            Abrir no Instagram
+                                        </a>
+                                    )}
+                                </div>
                             </div>
                         </Card>
                     );
@@ -536,6 +569,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                     <option value="pdf">Documento PDF</option>
                                     <option value="image">Só imagem</option>
                                     <option value="instagram_feed">Feed Instagram</option>
+                                    <option value="instagram_link">Link do Instagram</option>
                                 </SelectInput>
                                 {isInstagramFeed && (
                                     <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
@@ -567,6 +601,24 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                         className="mt-1 block w-full"
                                     />
                                     <InputError message={errors.excerpt} className="mt-1" />
+                                </div>
+                            )}
+
+                            {isInstagramLink && (
+                                <div>
+                                    <InputLabel htmlFor="instagram_url" value="Link do Instagram" />
+                                    <TextInput
+                                        id="instagram_url"
+                                        value={data.instagram_url}
+                                        onChange={(e) => setData('instagram_url', e.target.value)}
+                                        className="mt-1 block w-full"
+                                        placeholder="https://www.instagram.com/p/… ou …/reel/…"
+                                    />
+                                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                        Cole o link do post, reel ou IGTV. Na app, o usuário poderá abrir direto no
+                                        Instagram.
+                                    </p>
+                                    <InputError message={errors.instagram_url} className="mt-1" />
                                 </div>
                             )}
 
@@ -635,12 +687,19 @@ export default function Index({ posts, filters, canManage, config }: Props) {
 
                             <div>
                                 <InputLabel htmlFor="image_url" value={imageFieldLabel} />
-                                {isInstagramFeed && (
+                                {isInstagramFeed ? (
                                     <p
                                         id="instagram_feed_image_specs"
                                         className="mt-1.5 rounded-xl border border-amber-200/80 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/35 dark:text-amber-100"
                                     >
-                                        <span className="font-semibold">Imagem:</span> {INSTAGRAM_FEED_IMAGE_SPECS}
+                                        <span className="font-semibold">Imagem:</span> {NEWS_INSTAGRAM_FEED_IMAGE_SPECS}
+                                    </p>
+                                ) : (
+                                    <p
+                                        id="news_cover_specs"
+                                        className="mt-1.5 rounded-xl border border-teal-200/80 bg-teal-50 px-3 py-2 text-xs leading-relaxed text-teal-950 dark:border-teal-900/50 dark:bg-teal-950/35 dark:text-teal-100"
+                                    >
+                                        <span className="font-semibold">Capa no app:</span> {NEWS_STANDARD_COVER_SPECS}
                                     </p>
                                 )}
                                 <div className="mt-1 space-y-3">
@@ -674,7 +733,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                                 type="file"
                                                 accept={isInstagramFeed ? 'image/jpeg,image/png,image/webp' : 'image/*'}
                                                 aria-describedby={
-                                                    isInstagramFeed ? 'instagram_feed_image_specs' : undefined
+                                                    isInstagramFeed ? 'instagram_feed_image_specs' : 'news_cover_specs'
                                                 }
                                                 onChange={(e) => {
                                                     const file = e.target.files?.[0] ?? null;
@@ -698,12 +757,30 @@ export default function Index({ posts, filters, canManage, config }: Props) {
 
                             {isInstagramFeed && (
                                 <div>
+                                    <InputLabel htmlFor="instagram_url_feed" value="Link no Instagram (opcional)" />
+                                    <TextInput
+                                        id="instagram_url_feed"
+                                        value={data.instagram_url}
+                                        onChange={(e) => setData('instagram_url', e.target.value)}
+                                        className="mt-1 block w-full"
+                                        placeholder="https://www.instagram.com/p/… ou …/reel/…"
+                                    />
+                                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                        Se a publicação original estiver no Instagram, cole o link para exibir o botão
+                                        «Abrir no Instagram» na app (além da imagem ou vídeo enviados acima).
+                                    </p>
+                                    <InputError message={errors.instagram_url} className="mt-1" />
+                                </div>
+                            )}
+
+                            {isInstagramFeed && (
+                                <div>
                                     <InputLabel htmlFor="video_file" value="Vídeo do post (opcional — 1080 × 1920 px, 9:16)" />
                                     <p
                                         id="instagram_feed_video_specs"
                                         className="mt-1.5 rounded-xl border border-violet-200/80 bg-violet-50 px-3 py-2 text-xs leading-relaxed text-violet-950 dark:border-violet-900/50 dark:bg-violet-950/35 dark:text-violet-100"
                                     >
-                                        <span className="font-semibold">Tamanho do vídeo:</span> {INSTAGRAM_FEED_VIDEO_SPECS}
+                                        <span className="font-semibold">Tamanho do vídeo:</span> {NEWS_INSTAGRAM_FEED_VIDEO_SPECS}
                                     </p>
                                     <input
                                         id="video_file"
@@ -793,6 +870,24 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                 ) : data.content_type === 'pdf' && (data.pdf_file || existingPdfUrl) ? (
                                     <div className="flex h-40 items-center justify-center bg-gradient-to-br from-rose-100 via-zinc-100 to-amber-50 dark:from-rose-950/35 dark:via-zinc-900 dark:to-amber-950/25">
                                         <DocumentTextIcon className="h-14 w-14 text-rose-500/70 dark:text-rose-400/50" />
+                                    </div>
+                                ) : isInstagramLink ? (
+                                    <div className="flex h-40 flex-col items-center justify-center gap-3 bg-gradient-to-br from-pink-100 via-purple-50 to-rose-100 px-4 dark:from-pink-950/40 dark:via-zinc-900 dark:to-purple-950/30">
+                                        <InstagramBrandIcon className="h-12 w-12 text-pink-600 dark:text-pink-400" />
+                                        {data.instagram_url?.trim() ? (
+                                            <a
+                                                href={data.instagram_url.trim()}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="rounded-full bg-zinc-900 px-4 py-2 text-xs font-semibold text-white dark:bg-white dark:text-zinc-900"
+                                            >
+                                                Abrir no Instagram
+                                            </a>
+                                        ) : (
+                                            <p className="text-center text-xs text-zinc-600 dark:text-zinc-400">
+                                                Cole o link do Instagram acima
+                                            </p>
+                                        )}
                                     </div>
                                 ) : null}
                                 <div className="p-4">

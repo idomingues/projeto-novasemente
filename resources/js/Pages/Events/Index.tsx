@@ -23,6 +23,7 @@ import Textarea from '@/Components/Textarea';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
+import { EVENT_COVER_SPECS } from '@/constants/mediaCoverSpecs';
 import { useState, FormEventHandler, useMemo } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
 
@@ -633,8 +634,14 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
                         </div>
                         <div>
                             <InputLabel htmlFor="image_url">Imagem de capa / fundo</InputLabel>
-                            <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                                Envie um arquivo ou cole o link da imagem (banner no app).
+                            <p
+                                id="event_cover_specs"
+                                className="mt-1.5 rounded-xl border border-teal-200/80 bg-teal-50 px-3 py-2 text-xs leading-relaxed text-teal-950 dark:border-teal-900/50 dark:bg-teal-950/35 dark:text-teal-100"
+                            >
+                                <span className="font-semibold">Capa no app:</span> {EVENT_COVER_SPECS}
+                            </p>
+                            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                Envie um arquivo ou cole o link da imagem.
                             </p>
                             <div className="mt-2 space-y-3">
                                 <div className="flex items-center gap-3">
@@ -660,6 +667,7 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
                                             id="image_file"
                                             type="file"
                                             accept="image/*"
+                                            aria-describedby="event_cover_specs"
                                             onChange={(e) => {
                                                 const file = e.target.files?.[0] ?? null;
                                                 setData('image_file', file);

@@ -182,12 +182,27 @@ class VolunteerMinistryInvitation extends Model
      */
     public static function queryLatestPerVolunteerMinistry(int $churchId, array $ministryIds): \Illuminate\Database\Eloquent\Builder
     {
+        if ($ministryIds === []) {
+            return static::query()->whereRaw('0 = 1');
+        }
+
         $latestIds = static::query()
             ->where('church_id', $churchId)
             ->whereIn('ministry_id', $ministryIds)
-            ->selectRaw('MAX(id) as id')
-            ->groupBy('volunteer_id', 'ministry_id');
+            ->selectRaw('MAX(id) as latest_id')
+            ->groupBy('volunteer_id', 'ministry_id')
+            ->pluck('latest_id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
 
-        return static::query()->whereIn('id', $latestIds);
+        if ($latestIds === []) {
+            return static::query()->whereRaw('0 = 1');
+        }
+
+        return static::query()->whereIn(
+            (new static)->qualifyColumn('id'),
+            $latestIds,
+        );
     }
 }

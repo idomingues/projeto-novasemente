@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AppNotification;
 use App\Models\AcervoItem;
 use App\Models\Church;
 use App\Models\ChurchService;
@@ -17,6 +18,7 @@ use App\Models\PastoralAppointment;
 use App\Models\PhotoAlbum;
 use App\Models\ScheduleCheckinDate;
 use App\Models\User;
+use App\Models\UserDismissedAppNotification;
 use App\Models\UserInboxNotification;
 use App\Models\Volunteer;
 use App\Services\DriveFolderCoverService;
@@ -180,6 +182,7 @@ class MobileController extends Controller
                     News::TYPE_PDF => 'PDF',
                     News::TYPE_IMAGE => 'IMAGEM',
                     News::TYPE_INSTAGRAM_FEED => 'FEED',
+                    News::TYPE_INSTAGRAM_LINK => 'INSTAGRAM',
                     default => 'NOTÍCIA',
                 };
 
@@ -371,6 +374,7 @@ class MobileController extends Controller
                 'content_type' => $p->content_type ?? News::TYPE_ARTICLE,
                 'youtube_url' => $p->youtube_url,
                 'youtube_embed_url' => $p->youtube_embed_url,
+                'instagram_url' => $p->instagram_url,
                 'pdf_url' => $p->resolvedPdfUrl($baseUrl),
                 'video_url' => $p->resolvedVideoUrl($baseUrl),
                 'image_url' => $imageUrl,
@@ -458,6 +462,7 @@ class MobileController extends Controller
                 'content_type' => $news->content_type ?? News::TYPE_ARTICLE,
                 'youtube_url' => $news->youtube_url,
                 'youtube_embed_url' => $news->youtube_embed_url,
+                'instagram_url' => $news->instagram_url,
                 'pdf_url' => $news->resolvedPdfUrl($baseUrl),
                 'video_url' => $news->resolvedVideoUrl($baseUrl),
                 'image_url' => $imageUrl,
@@ -500,6 +505,7 @@ class MobileController extends Controller
                 'content_type' => $p->content_type ?? News::TYPE_ARTICLE,
                 'youtube_url' => $p->youtube_url,
                 'youtube_embed_url' => $p->youtube_embed_url,
+                'instagram_url' => $p->instagram_url,
                 'pdf_url' => $p->resolvedPdfUrl($baseUrl),
                 'video_url' => $p->resolvedVideoUrl($baseUrl),
                 'image_url' => $imageUrl,
@@ -587,6 +593,7 @@ class MobileController extends Controller
                 'content_type' => $health->content_type ?? News::TYPE_ARTICLE,
                 'youtube_url' => $health->youtube_url,
                 'youtube_embed_url' => $health->youtube_embed_url,
+                'instagram_url' => $health->instagram_url,
                 'pdf_url' => $health->resolvedPdfUrl($baseUrl),
                 'video_url' => $health->resolvedVideoUrl($baseUrl),
                 'image_url' => $imageUrl,
@@ -806,6 +813,34 @@ class MobileController extends Controller
             ->firstOrFail();
 
         $n->update(['read_at' => now()]);
+
+        return back();
+    }
+
+    public function removeNotification(Request $request)
+    {
+        $user = $request->user();
+        abort_unless($user, 401);
+
+        $valid = $request->validate([
+            'kind' => ['required', 'string', 'in:inbox,app'],
+            'id' => ['required', 'integer', 'min:1'],
+        ]);
+
+        if ($valid['kind'] === 'inbox') {
+            UserInboxNotification::query()
+                ->where('id', $valid['id'])
+                ->where('user_id', $user->id)
+                ->delete();
+        } else {
+            $exists = AppNotification::query()->whereKey($valid['id'])->exists();
+            abort_unless($exists, 404);
+
+            UserDismissedAppNotification::query()->firstOrCreate([
+                'user_id' => $user->id,
+                'app_notification_id' => $valid['id'],
+            ]);
+        }
 
         return back();
     }

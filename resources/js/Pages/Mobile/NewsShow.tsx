@@ -2,6 +2,7 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import InstagramFeedCard from '@/Components/News/InstagramFeedCard';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { ArrowLeftIcon, NewspaperIcon, PlayCircleIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import { InstagramBrandIcon } from '@/Components/SocialBrandIcons';
 function imageSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
@@ -9,7 +10,7 @@ function imageSrc(url: string | null, appUrl: string): string {
     return `${base}${url}`;
 }
 
-type ContentType = 'article' | 'youtube' | 'pdf' | 'image' | 'instagram_feed';
+type ContentType = 'article' | 'youtube' | 'pdf' | 'image' | 'instagram_feed' | 'instagram_link';
 
 interface Post {
     id: number;
@@ -20,6 +21,7 @@ interface Post {
     content_type: ContentType;
     youtube_url: string | null;
     youtube_embed_url: string | null;
+    instagram_url: string | null;
     pdf_url: string | null;
     image_url: string | null;
     cover_url: string | null;
@@ -31,6 +33,7 @@ interface Props {
     config?: {
         listRoute?: 'mobile.news' | 'mobile.health';
         listLabel?: string;
+        showRoute?: 'mobile.news.show' | 'mobile.health.show';
     };
 }
 
@@ -59,6 +62,8 @@ function typeLabel(t: ContentType): string {
             return 'Imagem';
         case 'instagram_feed':
             return 'Notícia';
+        case 'instagram_link':
+            return 'Instagram';
         default:
             return 'Notícia';
     }
@@ -68,11 +73,13 @@ export default function MobileNewsShow({ post, config }: Props) {
     const resolvedConfig = config ?? {};
     const listRoute = resolvedConfig.listRoute ?? 'mobile.news';
     const listLabel = resolvedConfig.listLabel ?? 'notícias';
+    const showRoute = resolvedConfig.showRoute ?? 'mobile.news.show';
     const appUrl = (usePage().props as { appUrl?: string }).appUrl ?? '';
     const cover = post.cover_url;
     const isYoutube = post.content_type === 'youtube';
     const isPdf = post.content_type === 'pdf';
     const isInstagramFeed = post.content_type === 'instagram_feed';
+    const isInstagramLink = post.content_type === 'instagram_link';
 
     if (isInstagramFeed) {
         return (
@@ -86,7 +93,7 @@ export default function MobileNewsShow({ post, config }: Props) {
                         <ArrowLeftIcon className="h-4 w-4" aria-hidden />
                         {`Voltar às ${listLabel}`}
                     </Link>
-                    <InstagramFeedCard post={post} appUrl={appUrl} variant="detail" />
+                    <InstagramFeedCard post={post} appUrl={appUrl} variant="detail" showRoute={showRoute} />
                 </div>
             </MobileLayout>
         );
@@ -140,6 +147,10 @@ export default function MobileNewsShow({ post, config }: Props) {
                                 <span className="text-sm font-medium">Documento PDF</span>
                             </div>
                         </div>
+                    ) : isInstagramLink ? (
+                        <div className="flex aspect-[16/10] items-center justify-center bg-gradient-to-br from-pink-100 via-purple-50 to-rose-100 dark:from-pink-950/40 dark:via-zinc-900 dark:to-purple-950/30">
+                            <InstagramBrandIcon className="h-16 w-16 text-pink-600/85 dark:text-pink-400/80" />
+                        </div>
                     ) : (
                         <div className="flex h-40 items-center justify-center bg-gradient-to-br from-zinc-200 to-zinc-300 dark:from-zinc-700 dark:to-zinc-800">
                             <NewspaperIcon className="h-14 w-14 text-zinc-400 dark:text-zinc-500" />
@@ -173,6 +184,20 @@ export default function MobileNewsShow({ post, config }: Props) {
                                         allowFullScreen
                                     />
                                 </div>
+                            </div>
+                        )}
+
+                        {isInstagramLink && post.instagram_url && (
+                            <div className="mt-6">
+                                <a
+                                    href={post.instagram_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:from-pink-500 hover:to-purple-500"
+                                >
+                                    <InstagramBrandIcon className="h-5 w-5 shrink-0" />
+                                    Abrir no Instagram
+                                </a>
                             </div>
                         )}
 
