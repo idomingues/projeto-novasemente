@@ -2,7 +2,7 @@ import { Link, usePage } from '@inertiajs/react';
 import { PlayCircleIcon } from '@heroicons/react/24/solid';
 import FeedCaptionBody from '@/Components/News/FeedCaptionBody';
 import FeedPostHeader, { type FeedPostAuthor } from '@/Components/News/FeedPostHeader';
-import { InstagramBrandIcon } from '@/Components/SocialBrandIcons';
+import CoverWithVideoLink from '@/Components/News/CoverWithVideoLink';
 import { feedCaptionText } from '@/utils/feedCaption';
 
 function mediaSrc(url: string | null, appUrl: string): string {
@@ -43,17 +43,20 @@ function FeedMedia({
     appUrl,
     variant,
     showHref,
+    instagramUrl,
 }: {
     post: InstagramFeedPost;
     appUrl: string;
     variant: 'feed' | 'detail';
     showHref: string;
+    instagramUrl: string;
 }) {
     const videoUrl = post.video_url ? mediaSrc(post.video_url, appUrl) : '';
     const posterUrl = post.cover_url || post.image_url;
     const poster = posterUrl ? mediaSrc(posterUrl, appUrl) : undefined;
     const isDetail = variant === 'detail';
     const aspectClass = videoUrl ? 'aspect-[9/16]' : 'aspect-[4/5]';
+    const imageLinksToInstagram = !videoUrl && Boolean(poster && instagramUrl);
 
     if (videoUrl) {
         const video = (
@@ -96,16 +99,31 @@ function FeedMedia({
         return null;
     }
 
+    const image = (
+        <img
+            src={thumb}
+            alt=""
+            className="h-full w-full object-cover"
+            loading={isDetail ? 'eager' : 'lazy'}
+            decoding="async"
+        />
+    );
+
+    if (imageLinksToInstagram) {
+        return (
+            <CoverWithVideoLink
+                videoHref={instagramUrl}
+                className={`w-full bg-zinc-100 dark:bg-zinc-800 ${aspectClass}`}
+            >
+                {image}
+            </CoverWithVideoLink>
+        );
+    }
+
     if (isDetail) {
         return (
             <div className={`relative w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800 ${aspectClass}`}>
-                <img
-                    src={thumb}
-                    alt=""
-                    className="h-full w-full object-cover"
-                    loading="eager"
-                    decoding="async"
-                />
+                {image}
             </div>
         );
     }
@@ -115,7 +133,7 @@ function FeedMedia({
             href={showHref}
             className={`relative block w-full overflow-hidden bg-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500 dark:bg-zinc-800 ${aspectClass}`}
         >
-            <img src={thumb} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
+            {image}
         </Link>
     );
 }
@@ -137,6 +155,7 @@ export default function InstagramFeedCard({
     const showHref = route(showRoute, post.slug);
     const isDetail = variant === 'detail';
     const instagramUrl = post.instagram_url?.trim() || '';
+    const posterUrl = post.cover_url || post.image_url;
 
     return (
         <article className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
@@ -148,9 +167,15 @@ export default function InstagramFeedCard({
                 publishedAt={post.published_at}
             />
 
-            <FeedMedia post={post} appUrl={appUrl} variant={variant} showHref={showHref} />
+            <FeedMedia
+                post={post}
+                appUrl={appUrl}
+                variant={variant}
+                showHref={showHref}
+                instagramUrl={instagramUrl}
+            />
 
-            {(caption || instagramUrl || !isDetail) && (
+            {(caption || (!instagramUrl && !isDetail) || (instagramUrl && !posterUrl && !post.video_url)) && (
                 <div className="space-y-3 px-4 py-3">
                     {caption ? (
                         <FeedCaptionBody caption={caption} clampLines={!isDetail} />
@@ -159,20 +184,13 @@ export default function InstagramFeedCard({
                             Ver publicação
                         </Link>
                     ) : null}
-                    {instagramUrl && (
-                        <a
-                            href={instagramUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={
-                                isDetail
-                                    ? 'flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:from-pink-500 hover:to-purple-500'
-                                    : 'inline-flex items-center gap-1.5 text-sm font-semibold text-pink-600 hover:underline dark:text-pink-400'
-                            }
+                    {instagramUrl && !post.video_url && !(post.cover_url || post.image_url) && (
+                        <CoverWithVideoLink
+                            videoHref={instagramUrl}
+                            className="flex aspect-[4/5] w-full items-center justify-center rounded-xl bg-gradient-to-br from-pink-100 via-purple-50 to-rose-100 dark:from-pink-950/40 dark:via-zinc-900 dark:to-purple-950/30"
                         >
-                            <InstagramBrandIcon className={isDetail ? 'h-5 w-5 shrink-0' : 'h-4 w-4'} />
-                            Ver vídeo
-                        </a>
+                            <span className="sr-only">Ver vídeo</span>
+                        </CoverWithVideoLink>
                     )}
                 </div>
             )}

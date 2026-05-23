@@ -1,7 +1,9 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import InstagramFeedCard from '@/Components/News/InstagramFeedCard';
 import { Head, Link, usePage } from '@inertiajs/react';
-import { ArrowLeftIcon, NewspaperIcon, PlayCircleIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, NewspaperIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import CoverWithVideoLink from '@/Components/News/CoverWithVideoLink';
+import VideoPlayOverlay from '@/Components/News/VideoPlayOverlay';
 import { InstagramBrandIcon } from '@/Components/SocialBrandIcons';
 function imageSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
@@ -80,6 +82,8 @@ export default function MobileNewsShow({ post, config }: Props) {
     const isPdf = post.content_type === 'pdf';
     const isInstagramFeed = post.content_type === 'instagram_feed';
     const isInstagramLink = post.content_type === 'instagram_link';
+    const instagramVideoUrl = post.instagram_url?.trim() || '';
+    const hasInstagramVideoLink = Boolean(instagramVideoUrl);
 
     if (isInstagramFeed) {
         return (
@@ -113,33 +117,57 @@ export default function MobileNewsShow({ post, config }: Props) {
 
                 <article className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
                     {cover ? (
-                        <div className="relative aspect-[16/10] overflow-hidden bg-zinc-200 dark:bg-zinc-800">
-                            <img
-                                src={imageSrc(cover, appUrl)}
-                                alt=""
-                                className="h-full w-full object-cover"
-                                loading="eager"
-                                decoding="async"
-                                onError={(e) => {
-                                    const el = e.currentTarget;
-                                    el.style.display = 'none';
-                                    const next = el.nextElementSibling as HTMLElement | null;
-                                    if (next) next.style.display = 'flex';
-                                }}
-                            />
-                            <div
-                                className="absolute inset-0 hidden items-center justify-center bg-zinc-200 dark:bg-zinc-700"
-                                style={{ display: 'none' }}
-                                aria-hidden
+                        hasInstagramVideoLink ? (
+                            <CoverWithVideoLink
+                                videoHref={instagramVideoUrl}
+                                className="relative aspect-[16/10] bg-zinc-200 dark:bg-zinc-800"
                             >
-                                <NewspaperIcon className="h-12 w-12 text-zinc-400" />
-                            </div>
-                            {isYoutube && (
-                                <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20">
-                                    <PlayCircleIcon className="h-16 w-16 text-white drop-shadow-lg sm:h-20 sm:w-20" aria-hidden />
+                                <img
+                                    src={imageSrc(cover, appUrl)}
+                                    alt=""
+                                    className="h-full w-full object-cover"
+                                    loading="eager"
+                                    decoding="async"
+                                    onError={(e) => {
+                                        const el = e.currentTarget;
+                                        el.style.display = 'none';
+                                        const next = el.nextElementSibling as HTMLElement | null;
+                                        if (next) next.style.display = 'flex';
+                                    }}
+                                />
+                                <div
+                                    className="absolute inset-0 hidden items-center justify-center bg-zinc-200 dark:bg-zinc-700"
+                                    style={{ display: 'none' }}
+                                    aria-hidden
+                                >
+                                    <NewspaperIcon className="h-12 w-12 text-zinc-400" />
                                 </div>
-                            )}
-                        </div>
+                            </CoverWithVideoLink>
+                        ) : (
+                            <div className="group relative aspect-[16/10] overflow-hidden bg-zinc-200 dark:bg-zinc-800">
+                                <img
+                                    src={imageSrc(cover, appUrl)}
+                                    alt=""
+                                    className="h-full w-full object-cover"
+                                    loading="eager"
+                                    decoding="async"
+                                    onError={(e) => {
+                                        const el = e.currentTarget;
+                                        el.style.display = 'none';
+                                        const next = el.nextElementSibling as HTMLElement | null;
+                                        if (next) next.style.display = 'flex';
+                                    }}
+                                />
+                                <div
+                                    className="absolute inset-0 hidden items-center justify-center bg-zinc-200 dark:bg-zinc-700"
+                                    style={{ display: 'none' }}
+                                    aria-hidden
+                                >
+                                    <NewspaperIcon className="h-12 w-12 text-zinc-400" />
+                                </div>
+                                {isYoutube && <VideoPlayOverlay />}
+                            </div>
+                        )
                     ) : isPdf ? (
                         <div className="flex aspect-[16/10] items-center justify-center bg-gradient-to-br from-rose-100 via-zinc-100 to-amber-50 dark:from-rose-950/40 dark:via-zinc-900 dark:to-amber-950/30">
                             <div className="flex flex-col items-center gap-2 text-zinc-600 dark:text-zinc-400">
@@ -147,10 +175,13 @@ export default function MobileNewsShow({ post, config }: Props) {
                                 <span className="text-sm font-medium">Documento PDF</span>
                             </div>
                         </div>
-                    ) : isInstagramLink ? (
-                        <div className="flex aspect-[16/10] items-center justify-center bg-gradient-to-br from-pink-100 via-purple-50 to-rose-100 dark:from-pink-950/40 dark:via-zinc-900 dark:to-purple-950/30">
+                    ) : isInstagramLink && hasInstagramVideoLink ? (
+                        <CoverWithVideoLink
+                            videoHref={instagramVideoUrl}
+                            className="flex aspect-[16/10] items-center justify-center bg-gradient-to-br from-pink-100 via-purple-50 to-rose-100 dark:from-pink-950/40 dark:via-zinc-900 dark:to-purple-950/30"
+                        >
                             <InstagramBrandIcon className="h-16 w-16 text-pink-600/85 dark:text-pink-400/80" />
-                        </div>
+                        </CoverWithVideoLink>
                     ) : (
                         <div className="flex h-40 items-center justify-center bg-gradient-to-br from-zinc-200 to-zinc-300 dark:from-zinc-700 dark:to-zinc-800">
                             <NewspaperIcon className="h-14 w-14 text-zinc-400 dark:text-zinc-500" />
@@ -184,20 +215,6 @@ export default function MobileNewsShow({ post, config }: Props) {
                                         allowFullScreen
                                     />
                                 </div>
-                            </div>
-                        )}
-
-                        {isInstagramLink && post.instagram_url && (
-                            <div className="mt-6">
-                                <a
-                                    href={post.instagram_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:from-pink-500 hover:to-purple-500"
-                                >
-                                    <InstagramBrandIcon className="h-5 w-5 shrink-0" />
-                                    Ver vídeo
-                                </a>
                             </div>
                         )}
 

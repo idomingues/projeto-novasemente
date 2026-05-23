@@ -2,6 +2,7 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import InstagramFeedCard, { type InstagramFeedPost } from '@/Components/News/InstagramFeedCard';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { DocumentTextIcon, NewspaperIcon, PhotoIcon, PlayCircleIcon } from '@heroicons/react/24/outline';
+import CoverWithVideoLink from '@/Components/News/CoverWithVideoLink';
 import { InstagramBrandIcon } from '@/Components/SocialBrandIcons';
 
 function imageSrc(url: string | null, appUrl: string): string {
@@ -28,6 +29,7 @@ interface Post {
     content_type: ContentType;
     image_url: string | null;
     cover_url: string | null;
+    instagram_url?: string | null;
     published_at: string | null;
 }
 
@@ -155,6 +157,8 @@ export default function MobileNews({ feedPosts, posts, config }: Props) {
                                     {posts.data.map((p) => {
                                         const thumb = p.cover_url || p.image_url;
                                         const snippet = previewSnippet(p);
+                                        const instagramVideoUrl = p.instagram_url?.trim() || '';
+                                        const hasInstagramVideoLink = Boolean(instagramVideoUrl);
                                         return (
                                             <li
                                                 key={p.id}
@@ -162,45 +166,82 @@ export default function MobileNews({ feedPosts, posts, config }: Props) {
                                             >
                                                 {thumb ? (
                                                     <div className="relative">
-                                                        <Link
-                                                            href={route(showRoute, p.slug)}
-                                                            className="block rounded-t-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"
-                                                        >
-                                                            <div className="relative aspect-[16/10] overflow-hidden bg-zinc-200 dark:bg-zinc-800">
-                                                                <TypeCornerBadge type={p.content_type} />
-                                                                <img
-                                                                    src={imageSrc(thumb, appUrl)}
-                                                                    alt=""
-                                                                    className="h-full w-full object-cover"
-                                                                    loading="lazy"
-                                                                    decoding="async"
-                                                                    onError={(e) => {
-                                                                        const el = e.currentTarget;
-                                                                        el.style.display = 'none';
-                                                                        const next = el.nextElementSibling as HTMLElement | null;
-                                                                        if (next) next.style.display = 'flex';
-                                                                    }}
-                                                                />
-                                                                <div
-                                                                    className="absolute inset-0 hidden items-center justify-center bg-zinc-200 dark:bg-zinc-700"
-                                                                    style={{ display: 'none' }}
-                                                                    aria-hidden
-                                                                >
-                                                                    <NewspaperIcon className="h-12 w-12 text-zinc-400" />
+                                                        {hasInstagramVideoLink ? (
+                                                            <CoverWithVideoLink
+                                                                videoHref={instagramVideoUrl}
+                                                                className="block rounded-t-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"
+                                                            >
+                                                                <div className="relative aspect-[16/10] overflow-hidden bg-zinc-200 dark:bg-zinc-800">
+                                                                    <TypeCornerBadge type={p.content_type} />
+                                                                    <img
+                                                                        src={imageSrc(thumb, appUrl)}
+                                                                        alt=""
+                                                                        className="h-full w-full object-cover"
+                                                                        loading="lazy"
+                                                                        decoding="async"
+                                                                        onError={(e) => {
+                                                                            const el = e.currentTarget;
+                                                                            el.style.display = 'none';
+                                                                            const next = el.nextElementSibling as HTMLElement | null;
+                                                                            if (next) next.style.display = 'flex';
+                                                                        }}
+                                                                    />
+                                                                    <div
+                                                                        className="absolute inset-0 hidden items-center justify-center bg-zinc-200 dark:bg-zinc-700"
+                                                                        style={{ display: 'none' }}
+                                                                        aria-hidden
+                                                                    >
+                                                                        <NewspaperIcon className="h-12 w-12 text-zinc-400" />
+                                                                    </div>
+                                                                    <span className="pointer-events-none absolute bottom-2 right-2 z-10 rounded-lg bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
+                                                                        {formatDate(p.published_at)}
+                                                                    </span>
                                                                 </div>
-                                                                <span className="absolute bottom-2 right-2 rounded-lg bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
-                                                                    {formatDate(p.published_at)}
-                                                                </span>
-                                                            </div>
-                                                        </Link>
+                                                            </CoverWithVideoLink>
+                                                        ) : (
+                                                            <Link
+                                                                href={route(showRoute, p.slug)}
+                                                                className="block rounded-t-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"
+                                                            >
+                                                                <div className="group relative aspect-[16/10] overflow-hidden bg-zinc-200 dark:bg-zinc-800">
+                                                                    <TypeCornerBadge type={p.content_type} />
+                                                                    <img
+                                                                        src={imageSrc(thumb, appUrl)}
+                                                                        alt=""
+                                                                        className="h-full w-full object-cover"
+                                                                        loading="lazy"
+                                                                        decoding="async"
+                                                                        onError={(e) => {
+                                                                            const el = e.currentTarget;
+                                                                            el.style.display = 'none';
+                                                                            const next = el.nextElementSibling as HTMLElement | null;
+                                                                            if (next) next.style.display = 'flex';
+                                                                        }}
+                                                                    />
+                                                                    <div
+                                                                        className="absolute inset-0 hidden items-center justify-center bg-zinc-200 dark:bg-zinc-700"
+                                                                        style={{ display: 'none' }}
+                                                                        aria-hidden
+                                                                    >
+                                                                        <NewspaperIcon className="h-12 w-12 text-zinc-400" />
+                                                                    </div>
+                                                                    {p.content_type === 'youtube' && (
+                                                                        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20 opacity-100 transition md:bg-black/0 md:opacity-0 md:group-hover:bg-black/30 md:group-hover:opacity-100">
+                                                                            <PlayCircleIcon className="h-14 w-14 text-white drop-shadow-lg" aria-hidden />
+                                                                        </div>
+                                                                    )}
+                                                                    <span className="absolute bottom-2 right-2 rounded-lg bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
+                                                                        {formatDate(p.published_at)}
+                                                                    </span>
+                                                                </div>
+                                                            </Link>
+                                                        )}
                                                     </div>
                                                 ) : (
-                                                    <Link
-                                                        href={route(showRoute, p.slug)}
-                                                        className="block rounded-t-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"
-                                                    >
-                                                        <div
-                                                            className={`relative flex h-32 items-center justify-center ${
+                                                    hasInstagramVideoLink ? (
+                                                        <CoverWithVideoLink
+                                                            videoHref={instagramVideoUrl}
+                                                            className={`relative flex h-32 items-center justify-center rounded-t-2xl ${
                                                                 p.content_type === 'instagram_link'
                                                                     ? 'bg-gradient-to-br from-pink-100 via-purple-50 to-rose-100 dark:from-pink-950/30 dark:via-zinc-800 dark:to-purple-950/20'
                                                                     : 'bg-gradient-to-br from-rose-100 via-zinc-100 to-amber-50 dark:from-rose-950/30 dark:via-zinc-800 dark:to-amber-950/20'
@@ -212,11 +253,34 @@ export default function MobileNews({ feedPosts, posts, config }: Props) {
                                                             ) : (
                                                                 <DocumentTextIcon className="h-12 w-12 text-rose-500/70 dark:text-rose-400/60" />
                                                             )}
-                                                            <span className="absolute bottom-2 right-2 rounded-lg bg-black/50 px-2 py-1 text-xs text-white">
+                                                            <span className="pointer-events-none absolute bottom-2 right-2 z-10 rounded-lg bg-black/50 px-2 py-1 text-xs text-white">
                                                                 {formatDate(p.published_at)}
                                                             </span>
-                                                        </div>
-                                                    </Link>
+                                                        </CoverWithVideoLink>
+                                                    ) : (
+                                                        <Link
+                                                            href={route(showRoute, p.slug)}
+                                                            className="block rounded-t-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"
+                                                        >
+                                                            <div
+                                                                className={`relative flex h-32 items-center justify-center ${
+                                                                    p.content_type === 'instagram_link'
+                                                                        ? 'bg-gradient-to-br from-pink-100 via-purple-50 to-rose-100 dark:from-pink-950/30 dark:via-zinc-800 dark:to-purple-950/20'
+                                                                        : 'bg-gradient-to-br from-rose-100 via-zinc-100 to-amber-50 dark:from-rose-950/30 dark:via-zinc-800 dark:to-amber-950/20'
+                                                                }`}
+                                                            >
+                                                                <TypeCornerBadge type={p.content_type} />
+                                                                {p.content_type === 'instagram_link' ? (
+                                                                    <InstagramBrandIcon className="h-12 w-12 text-pink-600/80 dark:text-pink-400/70" />
+                                                                ) : (
+                                                                    <DocumentTextIcon className="h-12 w-12 text-rose-500/70 dark:text-rose-400/60" />
+                                                                )}
+                                                                <span className="absolute bottom-2 right-2 rounded-lg bg-black/50 px-2 py-1 text-xs text-white">
+                                                                    {formatDate(p.published_at)}
+                                                                </span>
+                                                            </div>
+                                                        </Link>
+                                                    )
                                                 )}
                                                 <Link
                                                     href={route(showRoute, p.slug)}

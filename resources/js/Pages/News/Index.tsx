@@ -25,6 +25,7 @@ import ImageDownloadButton from '@/Components/ImageDownloadButton';
 import { youtubeThumbUrlFromVideoUrl } from '@/utils/youtube';
 import FeedCaptionBody from '@/Components/News/FeedCaptionBody';
 import FeedPostHeader, { type FeedPostAuthor } from '@/Components/News/FeedPostHeader';
+import VideoPlayOverlay from '@/Components/News/VideoPlayOverlay';
 import { InstagramBrandIcon } from '@/Components/SocialBrandIcons';
 import { feedCaptionText } from '@/utils/feedCaption';
 import {
@@ -390,7 +391,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                 </div>
                             ) : hero ? (
                                 <div
-                                    className={`relative w-full flex-shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800 ${
+                                    className={`group relative w-full flex-shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800 ${
                                         p.content_type === 'instagram_feed'
                                             ? `${feedAspect} max-h-80 md:max-h-96`
                                             : 'h-40 md:h-48'
@@ -413,7 +414,8 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                     >
                                         <PhotoIcon className="h-12 w-12 text-zinc-400" />
                                     </div>
-                                    <span className="absolute left-2 top-2 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
+                                    {p.instagram_url && <VideoPlayOverlay />}
+                                    <span className="absolute left-2 top-2 z-10 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
                                         {typeShortLabel(p.content_type ?? 'article')}
                                     </span>
                                     {p.image_url && (
@@ -433,8 +435,9 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                     </span>
                                 </div>
                             ) : p.content_type === 'instagram_link' ? (
-                                <div className="relative flex h-40 w-full flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-pink-100 via-purple-50 to-rose-100 dark:from-pink-950/40 dark:via-zinc-800 dark:to-purple-950/30 md:h-48">
+                                <div className="group relative flex h-40 w-full flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-pink-100 via-purple-50 to-rose-100 dark:from-pink-950/40 dark:via-zinc-800 dark:to-purple-950/30 md:h-48">
                                     <InstagramBrandIcon className="h-14 w-14 text-pink-600/80 dark:text-pink-400/70" />
+                                    {p.instagram_url && <VideoPlayOverlay />}
                                     <span className="absolute left-2 top-2 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
                                         Instagram
                                     </span>
@@ -843,7 +846,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                         />
                                     </div>
                                 ) : previewThumbSrc ? (
-                                    <div className="relative">
+                                    <div className="group relative">
                                         <img
                                             src={previewThumbSrc}
                                             alt=""
@@ -851,6 +854,8 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                                 isInstagramFeed ? 'aspect-[4/5]' : 'h-40'
                                             }`}
                                         />
+                                        {data.instagram_url?.trim() &&
+                                            (isInstagramFeed || isInstagramLink) && <VideoPlayOverlay />}
                                         {data.content_type === 'youtube' && (
                                             <span className="absolute left-2 top-2 flex items-center gap-1 rounded-lg bg-black/65 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
                                                 <PlayCircleIcon className="h-3.5 w-3.5" />
@@ -871,19 +876,12 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                         <DocumentTextIcon className="h-14 w-14 text-rose-500/70 dark:text-rose-400/50" />
                                     </div>
                                 ) : isInstagramLink ? (
-                                    <div className="flex h-40 flex-col items-center justify-center gap-3 bg-gradient-to-br from-pink-100 via-purple-50 to-rose-100 px-4 dark:from-pink-950/40 dark:via-zinc-900 dark:to-purple-950/30">
+                                    <div className="group relative flex h-40 flex-col items-center justify-center bg-gradient-to-br from-pink-100 via-purple-50 to-rose-100 px-4 dark:from-pink-950/40 dark:via-zinc-900 dark:to-purple-950/30">
                                         <InstagramBrandIcon className="h-12 w-12 text-pink-600 dark:text-pink-400" />
                                         {data.instagram_url?.trim() ? (
-                                            <a
-                                                href={data.instagram_url.trim()}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="rounded-full bg-zinc-900 px-4 py-2 text-xs font-semibold text-white dark:bg-white dark:text-zinc-900"
-                                            >
-                                                Ver vídeo
-                                            </a>
+                                            <VideoPlayOverlay />
                                         ) : (
-                                            <p className="text-center text-xs text-zinc-600 dark:text-zinc-400">
+                                            <p className="relative z-10 text-center text-xs text-zinc-600 dark:text-zinc-400">
                                                 Cole o link do Instagram acima
                                             </p>
                                         )}
