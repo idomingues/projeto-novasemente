@@ -93,7 +93,7 @@ class HandleInertiaRequests extends Middleware
         $user = $request->user();
         $canManageSettings = $user !== null && (
             $user->hasRole('super_admin')
-            || $user->hasPermissionTo('library.manage')
+            || \App\Support\SpatiePermissionCheck::userHas($user, 'library.manage')
         );
 
         $appVersionHistory = [];

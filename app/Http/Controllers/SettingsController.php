@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Church;
+use App\Support\SpatiePermissionCheck;
 use App\Support\SolicitationHandlerAssignee;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,7 +20,7 @@ class SettingsController extends Controller
         $church = Church::query()->findOrFail($churchId);
         $user = $request->user();
         $isSuperAdmin = $user?->hasRole('super_admin') ?? false;
-        $canEditLibraryUrls = $isSuperAdmin || ($user?->hasPermissionTo('library.manage') ?? false);
+        $canEditLibraryUrls = $isSuperAdmin || ($user !== null && SpatiePermissionCheck::userHas($user, 'library.manage'));
 
         return Inertia::render('Settings/Index', [
             'churchName' => $church->name,
