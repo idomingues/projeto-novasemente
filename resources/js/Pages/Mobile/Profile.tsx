@@ -151,25 +151,23 @@ export default function MobileProfile({ church, user, profileCounts }: Props) {
      */
     const showMyPastoralAgenda = linkedPastor !== null;
 
-    /**
-     * Painel web «Atendimento Pastoral» (solicitations.index): apenas pastores.
-     * Mesmo que a conta seja admin/secretaria, não deve aparecer no Profile se não houver pastor ligado.
-     */
+  /** Painel web «Atendimento Pastoral» — equipe com acesso ao painel (não fica em Mais). */
     const adminUnrestricted = auth?.adminSidebarUnrestricted === true;
     const canShowAtendimentoPainel =
-        linkedPastor !== null &&
         canAccessAdminMenu &&
+        route().has('solicitations.index') &&
         (adminUnrestricted ||
             permissions.includes('solicitations.view') ||
             permissions.includes('solicitations.manage'));
     const isMinistryLeader = auth?.isMinistryLeaderAccount === true;
-    const canAccessCommunicationRequests =
+    const canShowComunicacaoPainel =
         route().has('communication-requests.index') &&
-        (isMinistryLeader ||
-            (canAccessAdminMenu &&
-                (adminUnrestricted ||
-                    permissions.includes('solicitations.view') ||
-                    permissions.includes('solicitations.manage'))));
+        canAccessAdminMenu &&
+        (adminUnrestricted ||
+            permissions.includes('solicitations.view') ||
+            permissions.includes('solicitations.manage'));
+    const canShowComunicacaoLider =
+        route().has('communication-requests.index') && isMinistryLeader && !canShowComunicacaoPainel;
 
     const memberRows: Row[] = [
         {
@@ -216,14 +214,29 @@ export default function MobileProfile({ church, user, profileCounts }: Props) {
                   },
               ] as Row[])
             : []),
-        {
-            title: 'Solicitações',
-            description: 'Batismo, apresentação, visita pastoral',
-            icon: SparklesIcon,
-            href: route('mobile.solicitations.hub'),
-            tone: 'member',
-        },
-        ...(canAccessCommunicationRequests
+        ...(route().has('mobile.solicitations.hub')
+            ? ([
+                  {
+                      title: 'Solicitações',
+                      description: 'Batismo, apresentação, visita pastoral e outros pedidos',
+                      icon: SparklesIcon,
+                      href: route('mobile.solicitations.hub'),
+                      tone: 'member',
+                  },
+              ] as Row[])
+            : []),
+        ...(route().has('mobile.pastoral-appointments.request')
+            ? ([
+                  {
+                      title: 'Agendamento pastoral',
+                      description: 'Marque um horário com um pastor da igreja',
+                      icon: ClockIcon,
+                      href: route('mobile.pastoral-appointments.request'),
+                      tone: 'member',
+                  },
+              ] as Row[])
+            : []),
+        ...(canShowComunicacaoLider
             ? ([
                   {
                       title: 'Solicitações de Comunicação',
@@ -265,6 +278,17 @@ export default function MobileProfile({ church, user, profileCounts }: Props) {
                             typeof profileCounts.atendimento_open === 'number'
                                 ? profileCounts.atendimento_open
                                 : null,
+                  },
+              ] as Row[])
+            : []),
+        ...(canShowComunicacaoPainel
+            ? ([
+                  {
+                      title: 'Comunicação',
+                      description: 'Solicitações e acompanhamento (painel)',
+                      icon: ChatBubbleLeftRightIcon,
+                      href: route('communication-requests.index'),
+                      tone: 'critical',
                   },
               ] as Row[])
             : []),

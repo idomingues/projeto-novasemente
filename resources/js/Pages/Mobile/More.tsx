@@ -1,6 +1,6 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import SobreOAppNavItem from '@/Components/Mobile/SobreOAppNavItem';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import {
     ClockIcon,
     MapPinIcon,
@@ -15,7 +15,6 @@ import {
     FilmIcon,
     HandRaisedIcon,
     NewspaperIcon,
-    ChatBubbleLeftRightIcon,
     HeartIcon,
     GlobeAltIcon,
     BanknotesIcon,
@@ -34,16 +33,6 @@ interface Props {
     latestMusicas?: unknown[];
     latestPrayerRequests?: unknown[];
 }
-
-type PageProps = {
-    auth?: {
-        user?: unknown | null;
-        permissions?: string[];
-        adminSidebarUnrestricted?: boolean;
-        canAccessAdminMenu?: boolean;
-        isMinistryLeaderAccount?: boolean;
-    };
-};
 
 const items: MoreMenuItem[] = [
     { name: 'Notícias', description: 'Notícias e comunicados da igreja', route: 'mobile.news', icon: NewspaperIcon },
@@ -96,28 +85,6 @@ const items: MoreMenuItem[] = [
 ];
 
 export default function MobileMore(_: Props) {
-    const { auth } = usePage().props as unknown as PageProps;
-    const isAuthenticated = !!auth?.user;
-    const permissions = auth?.permissions ?? [];
-    const unrestricted = auth?.adminSidebarUnrestricted === true;
-
-    const can = (perm: string) => unrestricted || permissions.includes(perm);
-    const canAccessAdminMenu = auth?.canAccessAdminMenu === true;
-    const showMyVolunteers =
-        isAuthenticated &&
-        route().has('ministry-lead.my-volunteers.index') &&
-        auth?.isMinistryLeaderAccount === true;
-    /** «Atendimento Pastoral» abre o painel web completo — só equipe pastoral/secretaria/admin. */
-    const showMySolicitations =
-        isAuthenticated &&
-        route().has('solicitations.index') &&
-        canAccessAdminMenu &&
-        (can('solicitations.view') || can('solicitations.manage'));
-    const showCommunicationRequests =
-        isAuthenticated &&
-        route().has('communication-requests.index') &&
-        (auth?.isMinistryLeaderAccount === true ||
-            (canAccessAdminMenu && (can('solicitations.view') || can('solicitations.manage'))));
     return (
         <MobileLayout>
             <Head title="Mais" />
@@ -133,56 +100,6 @@ export default function MobileMore(_: Props) {
                         .
                     </p>
                 </div>
-
-                {(showMyVolunteers || showMySolicitations || showCommunicationRequests) ? (
-                    <div className="space-y-2">
-                        <p className="text-sm font-semibold text-zinc-900 dark:text-white">Área de liderança</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-4">
-                            {showMySolicitations ? (
-                                <Link
-                                    href={route('solicitations.index')}
-                                    className="flex items-center gap-4 p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 active:bg-zinc-50 dark:active:bg-zinc-800 transition-colors"
-                                >
-                                    <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-zinc-100 dark:bg-zinc-800">
-                                        <UserCircleIcon className="w-6 h-6 text-zinc-600 dark:text-zinc-400" />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <span className="font-semibold text-zinc-900 dark:text-white block">Atendimento Pastoral</span>
-                                        <span className="text-sm text-zinc-500 dark:text-zinc-400">Solicitações e conversas no painel web</span>
-                                    </div>
-                                </Link>
-                            ) : null}
-                            {showMyVolunteers ? (
-                                <Link
-                                    href={route('ministry-lead.my-volunteers.index')}
-                                    className="flex items-center gap-4 p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 active:bg-zinc-50 dark:active:bg-zinc-800 transition-colors"
-                                >
-                                    <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-zinc-100 dark:bg-zinc-800">
-                                        <UserGroupIcon className="w-6 h-6 text-zinc-600 dark:text-zinc-400" />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <span className="font-semibold text-zinc-900 dark:text-white block">Meus voluntários</span>
-                                        <span className="text-sm text-zinc-500 dark:text-zinc-400">Status (Recusar/Treinamento/Atuante)</span>
-                                    </div>
-                                </Link>
-                            ) : null}
-                            {showCommunicationRequests ? (
-                                <Link
-                                    href={route('communication-requests.index')}
-                                    className="flex items-center gap-4 p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 active:bg-zinc-50 dark:active:bg-zinc-800 transition-colors"
-                                >
-                                    <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-zinc-100 dark:bg-zinc-800">
-                                        <ChatBubbleLeftRightIcon className="w-6 h-6 text-zinc-600 dark:text-zinc-400" />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <span className="font-semibold text-zinc-900 dark:text-white block">Comunicação</span>
-                                        <span className="text-sm text-zinc-500 dark:text-zinc-400">Solicitações e acompanhamento</span>
-                                    </div>
-                                </Link>
-                            ) : null}
-                        </div>
-                    </div>
-                ) : null}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-4">
                     {items.map((item) => {

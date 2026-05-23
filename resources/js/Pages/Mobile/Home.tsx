@@ -127,7 +127,7 @@ function QuickActionGlyph({ icon: Icon }: { icon: MenuIcon }) {
     return <Icon className="h-5 w-5" aria-hidden strokeWidth={2.05} />;
 }
 
-const quickActions: QuickAction[] = [
+const quickActionsGuest: QuickAction[] = [
     {
         label: 'Batismo',
         subtitle: 'Ainda não é batizado? Faça parte da família NS',
@@ -172,11 +172,22 @@ const quickActions: QuickAction[] = [
     },
 ];
 
+const quickActionSolicitations: QuickAction = {
+    label: 'Solicitações',
+    subtitle: 'Batismo, visita pastoral, apresentação e outros',
+    route: 'mobile.solicitations.hub',
+    icon: SparklesIcon,
+};
+
 export default function MobileHome({ latestNews, upcomingEvents }: Props) {
     const page = usePage();
     const { appUrl = '', auth } = page.props as unknown as PageProps;
     const user = auth?.user ?? null;
     const displayName = user?.name ? firstName(user.name) : '';
+    const quickActions =
+        user && route().has('mobile.solicitations.hub')
+            ? [quickActionSolicitations, ...quickActionsGuest]
+            : quickActionsGuest;
 
     return (
         <MobileLayout>
