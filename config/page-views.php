@@ -34,7 +34,6 @@ return [
     'ignored_routes' => [
         'favicon',
         'media.public',
-        'media.ns-splash',
         'up',
     ],
 ];

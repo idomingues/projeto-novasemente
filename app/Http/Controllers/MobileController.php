@@ -143,17 +143,6 @@ class MobileController extends Controller
     }
 
     /**
-     * Splash screen (vídeo) ao abrir /mobile.
-     */
-    public function splash(Request $request): Response
-    {
-        return Inertia::render('Mobile/Splash', [
-            'videoSrc' => route('media.ns-splash'),
-            'nextUrl' => route('mobile.home', [], false),
-        ]);
-    }
-
-    /**
      * Início da app (substitui News como tela principal): atalhos + últimas notícias.
      */
     public function home(Request $request): Response

@@ -10,7 +10,7 @@ class ExampleTest extends TestCase
     use RefreshDatabase;
 
     /**
-     * A raiz da app redireciona para o Splash do mobile.
+     * A raiz da app redireciona para o início do mobile.
      */
     public function test_the_application_returns_a_successful_response(): void
     {

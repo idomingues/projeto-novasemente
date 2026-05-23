@@ -94,23 +94,6 @@ Route::post('/pedidos-oracao/{prayer}/orou', [PrayerRequestController::class, 'a
     ->name('prayer.amen');
 Route::get('/mobile/oracao', [PrayerRequestController::class, 'mobile'])->name('mobile.prayer');
 
-// Splash (vídeo) ao abrir a app (desativado: a app abre direto no /mobile/inicio)
-Route::get('/media/ns.mp4', function () {
-    $path = base_path('assets/NS.MP4');
-    if (! file_exists($path)) {
-        // fallback: alguns deploys só enviam ficheiros em /public
-        $path = public_path('ns.mp4');
-    }
-    abort_unless(file_exists($path), 404);
-
-    return response()
-        ->file($path, [
-            'Content-Type' => 'video/mp4',
-            'Cache-Control' => 'public, max-age=86400',
-            'Accept-Ranges' => 'bytes',
-        ]);
-})->name('media.ns-splash');
-
 Route::get('/mobile', [MobileController::class, 'home'])->name('mobile.index');
 Route::get('/mobile/inicio', [MobileController::class, 'home'])->name('mobile.home');
 Route::get('/mobile/culto', [MobileController::class, 'culto'])->name('mobile.culto');

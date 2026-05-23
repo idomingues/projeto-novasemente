@@ -179,7 +179,7 @@ export default function MobileHome({ latestNews, upcomingEvents }: Props) {
                 <header className="flex items-center justify-between gap-4">
                     <div className="min-w-0">
                         <p className="truncate text-lg font-bold leading-snug text-zinc-900 dark:text-white lg:text-2xl lg:font-semibold">
-                            {user ? <>Bem-vindo, {displayName}! 👋</> : <>Bem-vindo! 👋</>}
+                            {user ? <>Bem-vindo, {displayName}!</> : <>Bem-vindo!</>}
                         </p>
                         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400 lg:mt-2 lg:max-w-2xl lg:text-base">
                             Fique por dentro de tudo que acontece na Nova Semente.
@@ -262,7 +262,7 @@ export default function MobileHome({ latestNews, upcomingEvents }: Props) {
                                                     <CoverWithVideoLink
                                                         videoHref={instagramVideoUrl}
                                                         compactPlay
-                                                        className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800"
+                                                        className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800"
                                                     >
                                                         <img src={src} alt="" className="h-full w-full object-cover" />
                                                     </CoverWithVideoLink>
@@ -278,7 +278,7 @@ export default function MobileHome({ latestNews, upcomingEvents }: Props) {
                                                     href={route('mobile.news.show', n.slug)}
                                                     className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-zinc-200 transition hover:bg-zinc-50 dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60"
                                                 >
-                                                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800">
+                                                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
                                                         {src ? (
                                                             <img src={src} alt="" className="h-full w-full object-cover" />
                                                         ) : (
@@ -326,7 +326,7 @@ export default function MobileHome({ latestNews, upcomingEvents }: Props) {
                                                 href={route('mobile.events')}
                                                 className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-zinc-200 transition hover:bg-zinc-50 dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60"
                                             >
-                                                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800">
+                                                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
                                                     {src ? (
                                                         <img src={src} alt="" className="h-full w-full object-cover" />
                                                     ) : (
