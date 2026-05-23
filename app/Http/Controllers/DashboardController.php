@@ -4,11 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Church;
 use App\Models\Event;
-use App\Models\PageViewDailyStat;
 use App\Models\PrayerRequest;
 use App\Models\User;
 use App\Models\Volunteer;
-use App\Support\PageViewRouteLabels;
+use App\Services\PageViewAnalytics;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
@@ -72,22 +71,8 @@ class DashboardController extends Controller
             && Schema::hasTable('page_view_daily_stats')
             && $churchId !== null
         ) {
-            $since = now()->subDays($pageViewsDays - 1)->startOfDay();
             $limit = max(1, (int) config('page-views.dashboard_top_limit', 12));
-            $rows = PageViewDailyStat::query()
-                ->where('church_id', (int) $churchId)
-                ->where('visited_on', '>=', $since->toDateString())
-                ->selectRaw('route_name, SUM(views) as total_views')
-                ->groupBy('route_name')
-                ->orderByDesc('total_views')
-                ->limit($limit)
-                ->get();
-
-            $topPages = $rows->map(fn ($row) => [
-                'routeName' => $row->route_name,
-                'label' => PageViewRouteLabels::label((string) $row->route_name),
-                'views' => (int) $row->total_views,
-            ])->values()->all();
+            $topPages = PageViewAnalytics::topPagesForChurch((int) $churchId, $pageViewsDays, $limit);
         }
 
         return Inertia::render('Dashboard', [

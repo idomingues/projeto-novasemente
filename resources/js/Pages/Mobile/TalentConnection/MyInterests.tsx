@@ -8,6 +8,7 @@ import SelectInput from '@/Components/SelectInput';
 import TextInput from '@/Components/TextInput';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { useState } from 'react';
+import { CHAT_MESSAGE_SENDS_EMAIL_SUBTITLE } from '@/constants/chatEmailNotice';
 
 interface InterestRow {
     id: number;
@@ -65,7 +66,7 @@ function InterestCard({ row }: { row: InterestRow }) {
             </div>
 
             <form
-                className="mt-3 flex gap-2"
+                className="mt-3 space-y-2"
                 onSubmit={(e) => {
                     e.preventDefault();
                     messageForm.post(route('mobile.talents.interest.messages', row.id), {
@@ -73,6 +74,8 @@ function InterestCard({ row }: { row: InterestRow }) {
                     });
                 }}
             >
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">{CHAT_MESSAGE_SENDS_EMAIL_SUBTITLE}</p>
+                <div className="flex gap-2">
                 <TextInput
                     className="flex-1"
                     placeholder="Enviar mensagem..."
@@ -80,6 +83,7 @@ function InterestCard({ row }: { row: InterestRow }) {
                     onChange={(e) => messageForm.setData('body', e.target.value)}
                 />
                 <PrimaryButton disabled={messageForm.processing}>Enviar</PrimaryButton>
+                </div>
             </form>
 
             <Modal show={statusOpen} onClose={() => setStatusOpen(false)}>
@@ -150,7 +154,7 @@ export default function TalentConnectionMyInterests({ asInterested, asPublisher 
             <FlashMessages />
             <div className="mx-auto max-w-3xl space-y-8">
                 <Link href={route('mobile.talents.index')} className="text-sm font-medium text-brand-600">
-                    ← Conexão de Talentos
+                    ← Central de Serviços
                 </Link>
                 <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Meus interesses</h1>
 

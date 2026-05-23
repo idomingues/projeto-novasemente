@@ -35,7 +35,12 @@ function formatTimeAgo(iso: string): string {
 
 interface TopbarProps {
     onMenuClick?: () => void;
+    /** Recuo do topo quando a sidebar fica fixa em telas md+ (`md:left-72`). */
     hasSidebar?: boolean;
+    /** Se false, o botão de menu aparece em qualquer largura (sidebar só como overlay). */
+    sidebarPersistOnDesktop?: boolean;
+    /** Menu lateral recolhido no desktop — mostra botão para abrir em md+. */
+    desktopSidebarCollapsed?: boolean;
 }
 
 interface AuthUser {
@@ -55,7 +60,13 @@ type PageProps = {
     unreadInboxNotificationsCount?: number;
 };
 
-export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) {
+export default function Topbar({
+    onMenuClick,
+    hasSidebar = true,
+    sidebarPersistOnDesktop = true,
+    desktopSidebarCollapsed = false,
+}: TopbarProps) {
+    const showMenuButtonOnDesktop = sidebarPersistOnDesktop && desktopSidebarCollapsed;
     const { auth, recentNotifications = [], unreadInboxNotificationsCount = 0 } = usePage().props as PageProps;
     const [liveNotifications, setLiveNotifications] = useState<NotificationItem[]>(
         Array.isArray(recentNotifications) ? recentNotifications : [],
@@ -119,12 +130,14 @@ export default function Topbar({ onMenuClick, hasSidebar = true }: TopbarProps) 
             <div className="flex items-center justify-between h-16 md:h-24 px-4 md:px-8">
                 {/* Menu button (mobile) + Search / Title */}
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                    {hasSidebar && onMenuClick ? (
+                    {onMenuClick ? (
                         <button
                             type="button"
                             onClick={onMenuClick}
-                            className="md:hidden p-2.5 rounded-xl text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex-shrink-0"
-                            aria-label="Abrir menu"
+                            className={`flex-shrink-0 rounded-xl p-2.5 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800 ${
+                                sidebarPersistOnDesktop && !showMenuButtonOnDesktop ? 'md:hidden' : ''
+                            }`}
+                            aria-label="Abrir menu lateral"
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />

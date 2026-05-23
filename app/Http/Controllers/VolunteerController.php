@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerSelfSignupToken;
 use App\Support\MemberRoleAssignment;
+use App\Support\StorageUrl;
 use App\Support\VolunteerChurchRosterBuilder;
 use App\Support\VolunteerContactDuplicateChecker;
 use App\Support\VolunteerPipelineBootstrap;
@@ -21,12 +22,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use App\Support\StorageUrl;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Role;
@@ -505,12 +504,12 @@ class VolunteerController extends Controller
 
         if (! $result['ok']) {
             return match ($result['error']) {
-                'no_user' => redirect()->route('volunteers.index')->with('error', 'Não foi possível gerar convite. Informe um nome válido para o voluntário.'),
-                'has_email' => redirect()->route('volunteers.index')->with('error', 'Este voluntário já possui acesso (e-mail definido).'),
+                'no_user' => redirect()->back(fallback: route('volunteers.index'))->with('error', 'Não foi possível gerar convite. Informe um nome válido para o voluntário.'),
+                'has_email' => redirect()->back(fallback: route('volunteers.index'))->with('error', 'Este voluntário já possui acesso (e-mail definido).'),
             };
         }
 
-        return redirect()->route('volunteers.index')
+        return redirect()->back(fallback: route('volunteers.index'))
             ->with('success', 'Convite criado. Encaminhe o link para o voluntário finalizar o cadastro (e-mail e senha).')
             ->with('invitation_link', $result['link'])
             ->with('invitation_for_name', $result['name']);

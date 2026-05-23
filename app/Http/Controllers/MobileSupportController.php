@@ -173,6 +173,8 @@ class MobileSupportController extends Controller
             && AppSupportTicket::isActiveStatus((string) $ticket->status)
             && ($isAdmin || $isOwner || $isSupportStaff || $isPastoralStaff);
 
+        $staffReplySendsOwnerEmail = $canChat && ($isAdmin || $isSupportStaff || $isPastoralStaff);
+
         $messages = $this->ticketMessagesPayload($ticket);
 
         return Inertia::render('Mobile/SupportTicket', [
@@ -192,6 +194,7 @@ class MobileSupportController extends Controller
             'messages' => $messages,
             'canChat' => $canChat,
             'isAdmin' => $isAdmin,
+            'staffReplySendsOwnerEmail' => $staffReplySendsOwnerEmail,
             'isAuthenticated' => (bool) $user,
             'showMessages' => (bool) $hasOwner && (bool) ($isAdmin || $isOwner || $isSupportStaff || $isPastoralStaff),
             'hideFromMyAppUrl' => ($isOwner && ! $isAdmin)

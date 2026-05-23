@@ -25,7 +25,62 @@ class ChurchSolicitationModalPayloadPresenter
             'canManage' => $canManage,
             'staffCanReply' => $canView && $s->allowsChat(),
             'canChat' => $s->allowsChat(),
+        ], self::staffArchiveUrls($s, $canManage));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function forBaptismAdmin(ChurchSolicitation $s, ?User $user, bool $canManage, bool $canView): array
+    {
+        return array_merge(self::forSolicitationsAdmin($s, $user, $canManage, $canView), [
+            'statusChangeOptions' => BaptismSolicitationStatus::changeOptions(),
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function forPastoralAdmin(ChurchSolicitation $s, ?User $user, bool $canManage, bool $canView): array
+    {
+        return array_merge(self::forSolicitationsAdmin($s, $user, $canManage, $canView), [
+            'statusChangeOptions' => PastoralSolicitationStatus::changeOptions($s->type),
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function staffArchiveUrls(ChurchSolicitation $s, bool $canManage): array
+    {
+        if (! $canManage) {
+            return [];
+        }
+
+        $archiveRoute = match ($s->type) {
+            'baptism' => null,
+            MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST => 'volunteer-requests.staff.archive',
+            MobileChurchSolicitationController::TYPE_COMMUNICATION_REQUEST => 'communication-requests.archive',
+            default => null,
+        };
+        $unarchiveRoute = match ($s->type) {
+            'baptism' => null,
+            MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST => 'volunteer-requests.staff.unarchive',
+            MobileChurchSolicitationController::TYPE_COMMUNICATION_REQUEST => 'communication-requests.unarchive',
+            default => null,
+        };
+
+        if ($archiveRoute === null || $unarchiveRoute === null) {
+            return [];
+        }
+
+        $archived = $s->staff_archived_at !== null;
+
+        return [
+            'staffArchivedAt' => $s->staff_archived_at?->toIso8601String(),
+            'archiveStaffUrl' => ! $archived ? route($archiveRoute, $s) : null,
+            'unarchiveStaffUrl' => $archived ? route($unarchiveRoute, $s) : null,
+        ];
     }
 
     /**
@@ -36,6 +91,10 @@ class ChurchSolicitationModalPayloadPresenter
         $base = self::base($s);
         $canManage = $user !== null && $user->can('manageVolunteerRequestAsStaff', $s);
 
+        $canSuggestVolunteers = $canManage
+            && $s->status === 'pending'
+            && empty(($s->meta ?? [])['fulfilled_invitation_id']);
+
         return array_merge($base, [
             /** Gestão interna (estado, notas, datas): mesmo PATCH que Atendimento Pastoral — não o PUT de conteúdo do pedido. */
             'updateUrl' => route('solicitations.update', $s),
@@ -43,7 +102,10 @@ class ChurchSolicitationModalPayloadPresenter
             'canManage' => $canManage,
             'staffCanReply' => $canManage && $s->allowsChat(),
             'canChat' => $s->allowsChat(),
-        ]);
+            'suggestVolunteersUrl' => $canSuggestVolunteers
+                ? route('volunteer-requests.staff.suggest-volunteers', $s)
+                : null,
+        ], self::staffArchiveUrls($s, $canManage));
     }
 
     /**
@@ -111,9 +173,18 @@ class ChurchSolicitationModalPayloadPresenter
                 'type' => $s->type,
                 'typeLabel' => MobileChurchSolicitationController::typeLabel($s->type),
                 'status' => $s->status,
-                'statusLabel' => $s->type === 'leader_chat'
-                    ? MobileChurchSolicitationController::leaderChatStatusLabel($s->status)
-                    : MobileChurchSolicitationController::statusLabel($s->status),
+                'statusLabel' => match (true) {
+                    $s->type === 'baptism' => BaptismSolicitationStatus::label((string) $s->status),
+                    $s->type === 'leader_chat' => PastoralSolicitationStatus::label((string) $s->status, 'leader_chat'),
+                    in_array($s->type, [
+                        'bible_study',
+                        'baby_presentation',
+                        'pastor_visit',
+                        'other',
+                        MobileChurchSolicitationController::TYPE_PASTORAL_INFORMAL,
+                    ], true) => PastoralSolicitationStatus::label((string) $s->status),
+                    default => MobileChurchSolicitationController::statusLabel($s->status),
+                },
                 'subject' => $s->subject,
                 'message' => $s->message,
                 'meta' => $s->meta,
@@ -125,7 +196,8 @@ class ChurchSolicitationModalPayloadPresenter
                 'assignedVolunteerName' => $s->assignedVolunteer?->display_name,
                 'createdAt' => $s->created_at?->toIso8601String(),
                 'completedAt' => $s->completed_at?->toIso8601String(),
-                'memberLabel' => $s->user?->name ?? 'Usuário #'.$s->user_id,
+                'memberLabel' => $s->memberDisplayName(),
+                'isInformalPastoral' => $s->type === MobileChurchSolicitationController::TYPE_PASTORAL_INFORMAL,
             ],
             'messages' => $messages,
         ];

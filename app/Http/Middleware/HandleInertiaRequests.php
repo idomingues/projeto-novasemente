@@ -199,6 +199,7 @@ class HandleInertiaRequests extends Middleware
                         ->where('church_id', (int) $cid)
                         ->whereNotIn('type', MobileChurchSolicitationController::TYPES_OUTSIDE_PASTORAL_INDEX)
                         ->whereIn('status', ['pending', 'in_progress'])
+                        ->whereNull('staff_archived_at')
                         ->count();
                 } catch (\Throwable) {
                     $openSolicitationsCount = 0;
@@ -219,6 +220,7 @@ class HandleInertiaRequests extends Middleware
                         ->where('church_id', (int) $cidVr)
                         ->where('type', MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST)
                         ->whereIn('status', ['pending', 'in_progress'])
+                        ->whereNull('staff_archived_at')
                         ->count();
                 } catch (\Throwable) {
                     $openVolunteerRequestsCount = 0;

@@ -88,6 +88,13 @@ class CommunicationRequestController extends Controller
 
         if ($mode === 'leader') {
             $query->where('user_id', $user->id);
+        } else {
+            $showArchived = $request->query('arquivados') === '1';
+            if ($showArchived) {
+                $query->whereNotNull('staff_archived_at');
+            } else {
+                $query->whereNull('staff_archived_at');
+            }
         }
 
         $status = $request->query('status');
@@ -126,9 +133,6 @@ class CommunicationRequestController extends Controller
                 $canEdit = $mode === 'staff'
                     ? $user->can('manageCommunicationRequestAsStaff', $s)
                     : $user->can('updateCommunicationRequestAsSubmitter', $s);
-                $canDelete = $mode === 'staff'
-                    ? $user->can('manageCommunicationRequestAsStaff', $s)
-                    : $user->can('deleteCommunicationRequestAsSubmitter', $s);
 
                 return [
                     'id' => (int) $s->id,
@@ -146,8 +150,6 @@ class CommunicationRequestController extends Controller
                     'priority_label' => CommunicationRequestOptions::priorityLabel($priority),
                     'requester_name' => $s->user?->name,
                     'can_edit' => $canEdit,
-                    'can_delete' => $canDelete,
-                    'destroy_url' => $canDelete ? route('communication-requests.destroy', $s) : null,
                     'panel_json_url' => route('communication-requests.panel', $s),
                 ];
             })
@@ -168,6 +170,7 @@ class CommunicationRequestController extends Controller
                 'demand_type' => is_string($demandType) ? $demandType : '',
                 'priority' => is_string($priority) ? $priority : '',
                 'q' => is_string($q) ? $q : '',
+                'arquivados' => $mode === 'staff' && $request->query('arquivados') === '1',
             ],
             'indexUrl' => route('communication-requests.index'),
         ]);
@@ -339,6 +342,40 @@ class CommunicationRequestController extends Controller
         $solicitation->save();
 
         return redirect()->route('communication-requests.index')->with('success', 'Pedido atualizado.');
+    }
+
+    public function archiveStaff(Request $request, ChurchSolicitation $solicitation): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user instanceof User, 401);
+        $churchId = $this->churchId($request);
+        abort_unless($churchId, 404, 'Nenhuma igreja ativa.');
+        $this->assertCommunicationRequest($solicitation, (int) $churchId);
+        $this->accessMode($user);
+        $this->authorize('archiveCommunicationRequestAsStaff', $solicitation);
+
+        $solicitation->update(['staff_archived_at' => now()]);
+
+        return redirect()
+            ->route('communication-requests.index')
+            ->with('success', 'Solicitação de comunicação arquivada.');
+    }
+
+    public function unarchiveStaff(Request $request, ChurchSolicitation $solicitation): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user instanceof User, 401);
+        $churchId = $this->churchId($request);
+        abort_unless($churchId, 404, 'Nenhuma igreja ativa.');
+        $this->assertCommunicationRequest($solicitation, (int) $churchId);
+        $this->accessMode($user);
+        $this->authorize('archiveCommunicationRequestAsStaff', $solicitation);
+
+        $solicitation->update(['staff_archived_at' => null]);
+
+        return redirect()
+            ->route('communication-requests.index', ['arquivados' => '1'])
+            ->with('success', 'Solicitação de comunicação restaurada na lista ativa.');
     }
 
     public function destroy(Request $request, ChurchSolicitation $solicitation): RedirectResponse

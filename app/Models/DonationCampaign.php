@@ -28,6 +28,7 @@ class DonationCampaign extends Model
         'story_video_url',
         'thanks_message',
         'thanks_published_at',
+        'thanks_donors_notified_at',
         'allow_over_goal',
         'created_by',
     ];
@@ -38,6 +39,7 @@ class DonationCampaign extends Model
         'ends_at' => 'date',
         'allow_over_goal' => 'boolean',
         'thanks_published_at' => 'datetime',
+        'thanks_donors_notified_at' => 'datetime',
     ];
 
     protected function coverImageUrl(): Attribute

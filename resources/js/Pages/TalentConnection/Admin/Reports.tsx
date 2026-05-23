@@ -43,7 +43,7 @@ export default function TalentConnectionAdminReports({ reports }: Props) {
 
     return (
         <AdminLayout>
-            <Head title="Denúncias — Conexão de Talentos" />
+            <Head title="Denúncias — Central de Serviços" />
             <FlashMessages />
             <PageHeader
                 lead={

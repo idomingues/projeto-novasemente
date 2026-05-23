@@ -45,6 +45,11 @@ class ChurchSolicitationPolicy
         }
 
         if ((int) $solicitation->user_id === (int) $user->id) {
+            if ($solicitation->type === MobileChurchSolicitationController::TYPE_PASTORAL_INFORMAL
+                && $solicitation->informalPastoralLinkedMemberUserId() === null) {
+                return $this->isStaff($user);
+            }
+
             return $solicitation->member_hidden_at === null;
         }
 
@@ -72,6 +77,10 @@ class ChurchSolicitationPolicy
     /** Membro edita o próprio texto/datas enquanto o pedido está pendente. */
     public function updateAsMember(User $user, ChurchSolicitation $solicitation): bool
     {
+        if ($solicitation->type === MobileChurchSolicitationController::TYPE_PASTORAL_INFORMAL) {
+            return false;
+        }
+
         if ((int) $solicitation->user_id !== (int) $user->id) {
             return false;
         }
@@ -199,6 +208,54 @@ class ChurchSolicitationPolicy
     public function deleteCommunicationRequestAsSubmitter(User $user, ChurchSolicitation $solicitation): bool
     {
         return $this->updateCommunicationRequestAsSubmitter($user, $solicitation);
+    }
+
+    /** Secretaria arquiva pedidos de batismo ou de voluntário no painel (lista ativa vs arquivados). */
+    public function archiveBaptismAsStaff(User $user, ChurchSolicitation $solicitation): bool
+    {
+        return $this->archiveSolicitationAsStaff($user, $solicitation, ['baptism']);
+    }
+
+    public function archiveVolunteerRequestAsStaff(User $user, ChurchSolicitation $solicitation): bool
+    {
+        return $this->archiveSolicitationAsStaff($user, $solicitation, [
+            MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST,
+        ]);
+    }
+
+    public function archiveCommunicationRequestAsStaff(User $user, ChurchSolicitation $solicitation): bool
+    {
+        return $this->archiveSolicitationAsStaff($user, $solicitation, [
+            MobileChurchSolicitationController::TYPE_COMMUNICATION_REQUEST,
+        ]);
+    }
+
+    /**
+     * @param  list<string>  $types
+     */
+    private function archiveSolicitationAsStaff(User $user, ChurchSolicitation $solicitation, array $types): bool
+    {
+        if (! in_array($solicitation->type, $types, true)) {
+            return false;
+        }
+
+        if ($user->hasAnyRole(['super_admin', 'admin'])) {
+            return true;
+        }
+
+        if (! $user->hasPermissionTo('solicitations.manage')) {
+            return false;
+        }
+
+        if ($solicitation->church_id === null) {
+            return false;
+        }
+
+        if ($user->church_id !== null && (int) $user->church_id !== (int) $solicitation->church_id) {
+            return false;
+        }
+
+        return true;
     }
 
     /** Secretaria / admin com `solicitations.manage` gere pedidos de voluntário da igreja. */

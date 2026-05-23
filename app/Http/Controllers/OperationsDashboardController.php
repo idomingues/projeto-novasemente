@@ -35,7 +35,7 @@ class OperationsDashboardController extends Controller
                 ->selectRaw('count(distinct user_id) as c')
                 ->value('c');
         } else {
-            $sessionsNote = 'Sessões em tempo real requerem SESSION_DRIVER=database e tabela `sessions`. Driver actual: '.$sessionDriver.'.';
+            $sessionsNote = 'Sessões em tempo real requerem SESSION_DRIVER=database e tabela `sessions`. Driver atual: '.$sessionDriver.'.';
         }
 
         $todayStart = now()->startOfDay();
@@ -96,7 +96,7 @@ class OperationsDashboardController extends Controller
             ? Church::query()->whereKey($churchId)->value('name')
             : null;
 
-        $pageViews = PageViewAnalytics::monthlyGroupedForChurch(
+        $pageViews = PageViewAnalytics::monthlyForChurch(
             $churchId !== null ? (int) $churchId : null,
             $request->input('month'),
         );

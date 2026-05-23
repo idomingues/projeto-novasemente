@@ -37,6 +37,7 @@ interface Campaign {
     thanks_message: string | null;
     thanks_is_published: boolean;
     thanks_published_at: string | null;
+    thanks_donors_notified_at?: string | null;
     thanks_photos: CampaignPhoto[];
 }
 
@@ -103,6 +104,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
 
     const thanksForm = useForm({
         thanks_message: '',
+        notify_donors: false,
     });
 
     const adjustForm = useForm({
@@ -314,10 +316,10 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
 
     return (
         <AdminLayout>
-            <Head title="Campanhas de doação" />
+            <Head title="Doação" />
             <PageHeader
-                title="Campanhas de doação"
-                subtitle="Publique metas específicas e acompanhe o progresso das arrecadações."
+                title="Doação"
+                subtitle="Mobilize a igreja com causas que tocam o coração e transformam vidas."
                 actions={
                     canManage ? (
                         <AddButton variant="icon" onClick={openCreateModal} title="Nova campanha">
@@ -839,6 +841,12 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                                         : '—'}
                                 </p>
                             )}
+                            {mediaCampaign?.thanks_donors_notified_at && (
+                                <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                                    E-mail e notificação enviados aos doadores em{' '}
+                                    {new Date(mediaCampaign.thanks_donors_notified_at).toLocaleString('pt-BR')}.
+                                </p>
+                            )}
                             <form onSubmit={submitThanks} className="space-y-3">
                                 <div>
                                     <InputLabel htmlFor="thanks_message" value="Mensagem de agradecimento" />
@@ -852,9 +860,27 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                                     />
                                     <InputError message={thanksForm.errors.thanks_message} className="mt-1" />
                                 </div>
+                                <label className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                                    <input
+                                        type="checkbox"
+                                        className="mt-0.5"
+                                        checked={thanksForm.data.notify_donors}
+                                        onChange={(e) => thanksForm.setData('notify_donors', e.target.checked)}
+                                    />
+                                    <span>
+                                        Enviar esta mensagem por e-mail e notificação no app a todos os doadores com
+                                        conta (respeita as preferências de contato de cada usuário).
+                                    </span>
+                                </label>
                                 <div className="flex flex-wrap gap-2">
                                     <PrimaryButton type="submit" disabled={thanksForm.processing}>
-                                        {mediaCampaign?.thanks_is_published ? 'Republicar' : 'Publicar no app'}
+                                        {mediaCampaign?.thanks_is_published
+                                            ? thanksForm.data.notify_donors
+                                                ? 'Republicar e notificar doadores'
+                                                : 'Republicar no app'
+                                            : thanksForm.data.notify_donors
+                                              ? 'Publicar e notificar doadores'
+                                              : 'Publicar no app'}
                                     </PrimaryButton>
                                     {mediaCampaign?.thanks_is_published && (
                                         <SecondaryButton type="button" onClick={unpublishThanks}>

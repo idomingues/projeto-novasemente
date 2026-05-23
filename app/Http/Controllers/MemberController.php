@@ -8,6 +8,7 @@ use App\Domain\Users\Actions\UpdateChurchUserProfile;
 use App\Http\Requests\StoreMemberRequest;
 use App\Http\Requests\UpdateMemberRequest;
 use App\Models\Church;
+use App\Models\Invitation;
 use App\Models\LeaderSelfSignupToken;
 use App\Models\Ministry;
 use App\Models\User;
@@ -18,6 +19,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
+use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 class MemberController extends Controller
@@ -110,10 +112,48 @@ class MemberController extends Controller
             $leaderSelfSignupChurch = Church::query()->whereKey($churchId)->value('name');
         }
 
-        return Inertia::render('Members/Index', [
+        $canManageUsers = $request->user()?->can('users.manage') ?? false;
+        $canManageMembers = $request->user()?->can('members.manage') ?? false;
+
+        $invitations = collect();
+        if ($churchId !== null && $canManageUsers) {
+            $invitations = Invitation::query()
+                ->with('user')
+                ->where(function ($q) use ($churchId) {
+                    $q->whereNull('user_id')
+                        ->orWhereHas('user', fn ($uq) => $uq->where('church_id', $churchId));
+                })
+                ->orderByDesc('id')
+                ->limit(100)
+                ->get();
+        }
+
+        $guard = (string) config('auth.defaults.guard');
+        $inviteRoles = $canManageUsers
+            ? Role::query()->where('guard_name', $guard)->orderBy('name')->get(['id', 'name'])
+            : collect();
+
+        return Inertia::render('Users/Index', [
+            'canManageUsers' => $canManageUsers,
+            'canManageMembers' => $canManageMembers,
             'canManageLeaderSignupLink' => $canManageLeaderSignupLink,
             'leaderSelfSignupUrl' => $leaderSelfSignupUrl,
             'leaderSelfSignupChurch' => $leaderSelfSignupChurch,
+            'invitations' => $invitations->map(function (Invitation $i) {
+                $link = route('register', ['invitation' => $i->token], absolute: true);
+
+                return [
+                    'id' => $i->id,
+                    'email' => $i->email,
+                    'user_name' => $i->user?->name,
+                    'role' => $i->role,
+                    'token' => $i->token,
+                    'expires_at' => $i->expires_at?->toIso8601String(),
+                    'used_at' => $i->used_at?->toIso8601String(),
+                    'link' => $link,
+                ];
+            })->values()->all(),
+            'inviteRoles' => $inviteRoles->map(fn (Role $r) => ['id' => $r->id, 'name' => $r->name])->values()->all(),
             'members' => $users->through(function (User $user) {
                 $volunteerMinistryIds = $user->volunteerProfile
                     ? $user->volunteerProfile->ministries()->pluck('ministries.id')->map(fn ($id) => (int) $id)->values()->all()
@@ -128,10 +168,13 @@ class MemberController extends Controller
                     ? 'volunteer'
                     : 'app_only';
 
+                $email = $user->email;
+
                 return [
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
+                    'needs_registration' => $email === null || trim((string) $email) === '',
                     'phone' => $user->phone,
                     'birth_date' => $user->birth_date?->toIso8601String(),
                     'address' => $user->address,
@@ -168,7 +211,7 @@ class MemberController extends Controller
     {
         $churchId = $this->currentChurchId($request);
         if ($churchId === null) {
-            return redirect()->route('members.index')->with('error', 'Nenhuma igreja ativa. Selecione uma igreja para trabalhar.');
+            return redirect()->route('users.index')->with('error', 'Nenhuma igreja ativa. Selecione uma igreja para trabalhar.');
         }
         $validated = $request->validated();
         $assignable = MemberRoleAssignment::assignableRoleNames($request->user());
@@ -195,7 +238,7 @@ class MemberController extends Controller
             MemberRoleAssignment::applyMinistryLeaderRole($user->fresh());
         }
 
-        return redirect()->route('members.index')->with('success', 'Usuário criado com sucesso!');
+        return redirect()->route('users.index')->with('success', 'Usuário criado com sucesso!');
     }
 
     public function show(Request $request, User $user)
@@ -274,7 +317,7 @@ class MemberController extends Controller
             // Evita auto-rebaixamento/acesso perdido no tela de membros.
             if ((int) $request->user()->id === (int) $user->id && $normalizedCurrentRole !== $normalizedNextRole) {
                 return redirect()
-                    ->route('members.index')
+                    ->route('users.index')
                     ->with('error', 'Não pode alterar o seu próprio perfil de acesso. Peça a outro administrador.');
             }
 
@@ -298,7 +341,7 @@ class MemberController extends Controller
             MemberRoleAssignment::clearMinistryLeaderRole($user->fresh());
         }
 
-        return redirect()->route('members.index')->with('success', 'Usuário atualizado com sucesso!');
+        return redirect()->route('users.index')->with('success', 'Usuário atualizado com sucesso!');
     }
 
     public function destroy(Request $request, User $user, DeleteChurchUserProfile $deleteChurchUserProfile)
@@ -306,7 +349,7 @@ class MemberController extends Controller
         $this->assertUserBelongsToWorkingChurch($request, $user);
         $deleteChurchUserProfile($user);
 
-        return redirect()->route('members.index')->with('success', 'Usuário removido com sucesso!');
+        return redirect()->route('users.index')->with('success', 'Usuário removido com sucesso!');
     }
 
     private function storeUserPhoto(UploadedFile $file): string

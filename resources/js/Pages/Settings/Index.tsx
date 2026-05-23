@@ -238,7 +238,7 @@ export default function SettingsIndex({
 
                 {canEditTalentsModeratorEmail ? (
                 <section className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6 shadow-sm">
-                    <h2 className="text-base font-semibold text-zinc-900 dark:text-white">Conexão de Talentos — e-mail do aprovador</h2>
+                    <h2 className="text-base font-semibold text-zinc-900 dark:text-white">Central de Serviços — e-mail do aprovador</h2>
                     <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
                         Igreja ativa: <strong className="text-zinc-900 dark:text-white">{churchName}</strong>.
                         Quando um membro publica um talento ou serviço, enviamos um e-mail para este endereço com o

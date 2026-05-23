@@ -74,12 +74,12 @@ export default function TalentConnectionIndex({
 
     return (
         <MobileLayout>
-            <Head title="Conexão de Talentos" />
+            <Head title="Central de Serviços" />
             <FlashMessages />
             <div className="mx-auto max-w-3xl space-y-6">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
-                        Conexão de Talentos
+                        Central de Serviços
                     </h1>
                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                         Conecte habilidades, serviços e colaboração entre membros da comunidade — com apoio mútuo e

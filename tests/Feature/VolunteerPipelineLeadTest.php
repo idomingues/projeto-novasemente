@@ -167,4 +167,50 @@ class VolunteerPipelineLeadTest extends TestCase
                 ->count(),
         );
     }
+
+    public function test_staff_volunteer_requests_index_redirects_to_pipeline_pedidos_tab(): void
+    {
+        $admin = $this->actingAsAdmin();
+        $church = Church::query()->firstOrFail();
+
+        $this->actingAs($admin)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('volunteer-requests.staff.index'))
+            ->assertRedirect(route('ministry-lead.volunteers.index', ['secao' => 'pedidos']));
+    }
+
+    public function test_pipeline_index_includes_volunteer_request_props_for_admin(): void
+    {
+        $admin = $this->actingAsAdmin();
+        $church = Church::query()->firstOrFail();
+
+        $this->actingAs($admin)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('ministry-lead.volunteers.index', ['secao' => 'pedidos']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('MinistryLeadVolunteers/Pipeline')
+                ->where('secao', 'pedidos')
+                ->where('canManageVolunteerRequests', true)
+                ->has('volunteerRequestRows')
+                ->has('volunteerRequestMinistries')
+                ->has('volunteerRequestStoreUrl')
+                ->has('volunteersForAttach')
+                ->has('attachVolunteerPickerUrl'));
+    }
+
+    public function test_pipeline_pedidos_tab_redirects_without_solicitations_manage(): void
+    {
+        $this->seed();
+
+        $user = User::factory()->create();
+        $user->givePermissionTo('volunteers.view');
+
+        $church = Church::query()->firstOrFail();
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('ministry-lead.volunteers.index', ['secao' => 'pedidos']))
+            ->assertRedirect(route('ministry-lead.volunteers.index', ['secao' => 'quadro']));
+    }
 }

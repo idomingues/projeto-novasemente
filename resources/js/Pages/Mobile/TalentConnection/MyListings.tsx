@@ -107,7 +107,7 @@ export default function TalentConnectionMyListings({ listings, categories }: Pro
             <FlashMessages />
             <div className="mx-auto max-w-3xl space-y-6">
                 <Link href={route('mobile.talents.index')} className="text-sm font-medium text-brand-600">
-                    ← Conexão de Talentos
+                    ← Central de Serviços
                 </Link>
                 <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Minhas publicações</h1>
 

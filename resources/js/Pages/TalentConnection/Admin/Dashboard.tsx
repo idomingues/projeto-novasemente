@@ -18,9 +18,9 @@ interface Props {
 export default function TalentConnectionAdminDashboard({ metrics, canModerate }: Props) {
     return (
         <AdminLayout>
-            <Head title="Conexão de Talentos" />
+            <Head title="Central de Serviços" />
             <FlashMessages />
-            <PageHeader title="Conexão de Talentos" subtitle="Colaboração e conexão de habilidades entre membros" />
+            <PageHeader title="Central de Serviços" subtitle="Serviços, habilidades e colaboração entre membros" />
 
             <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <MetricCard label="Publicações" value={metrics.listings_total} />

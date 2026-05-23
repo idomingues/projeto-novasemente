@@ -8,11 +8,16 @@ use App\Models\ChurchSolicitationMessage;
 use App\Models\PastoralAppointment;
 use App\Models\User;
 use App\Services\SolicitationChatNotifier;
+use App\Support\BaptismSolicitationStatus;
 use App\Support\ChurchSolicitationModalPayloadPresenter;
+use App\Support\PastoralSolicitationStatus;
 use App\Support\SolicitationAssignees;
 use App\Support\SupportTicketAdminPresenter;
+use App\Support\VolunteerRequestStaffRoutes;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -42,13 +47,18 @@ class SolicitationAdminController extends Controller
     private function solicitationModalPayload(ChurchSolicitation $s, ?User $user = null): array
     {
         $user = $user ?? request()->user();
+        $canManage = $user ? $this->canManage($user) : false;
+        $canView = $user ? $this->canView($user) : false;
 
-        return ChurchSolicitationModalPayloadPresenter::forSolicitationsAdmin(
-            $s,
-            $user,
-            $user ? $this->canManage($user) : false,
-            $user ? $this->canView($user) : false,
-        );
+        if ($s->type === 'baptism') {
+            return ChurchSolicitationModalPayloadPresenter::forBaptismAdmin($s, $user, $canManage, $canView);
+        }
+
+        if (in_array($s->type, MobileChurchSolicitationController::TYPES_OUTSIDE_PASTORAL_INDEX, true)) {
+            return ChurchSolicitationModalPayloadPresenter::forSolicitationsAdmin($s, $user, $canManage, $canView);
+        }
+
+        return ChurchSolicitationModalPayloadPresenter::forPastoralAdmin($s, $user, $canManage, $canView);
     }
 
     private function canViewPastoral(User $user): bool
@@ -64,10 +74,38 @@ class SolicitationAdminController extends Controller
             'modal_id' => (string) $solicitation->id,
         ];
         if ($solicitation->type === 'baptism') {
-            $params['type'] = 'baptism';
+            return route('baptism-requests.index', $this->baptismIndexQueryFromRequest($request, [
+                'modal_kind' => 'solicitation',
+                'modal_id' => (string) $solicitation->id,
+            ]));
         }
 
-        return route('solicitations.index', $params);
+        return route('solicitations.index', $this->solicitationsIndexQueryFromRequest($request, $params));
+    }
+
+    /**
+     * @param  array<string, string|null>  $overrides
+     * @return array<string, string>
+     */
+    private function solicitationsIndexQueryFromRequest(Request $request, array $overrides = []): array
+    {
+        $params = [];
+        foreach (['aba', 'type', 'q', 'kind', 'modal_kind', 'modal_id'] as $key) {
+            if (array_key_exists($key, $overrides)) {
+                $val = $overrides[$key];
+                if (is_string($val) && $val !== '') {
+                    $params[$key] = $val;
+                }
+
+                continue;
+            }
+            $val = $request->query($key);
+            if (is_string($val) && $val !== '') {
+                $params[$key] = $val;
+            }
+        }
+
+        return $params;
     }
 
     private function staffSolicitationModalRedirect(Request $request, ChurchSolicitation $solicitation): RedirectResponse
@@ -84,6 +122,14 @@ class SolicitationAdminController extends Controller
         $kindStr = is_string($kind) ? $kind : '';
         $type = $request->query('type');
 
+        $aba = (string) $request->query('aba', 'pendente');
+        if (! array_key_exists($aba, PastoralSolicitationStatus::tabLabels())) {
+            $aba = 'pendente';
+        }
+
+        $q = $request->query('q');
+        $qStr = is_string($q) ? (string) $q : '';
+
         $solRows = [];
         if ($kindStr !== 'pastoral') {
             $query = ChurchSolicitation::query()->with([
@@ -95,20 +141,16 @@ class SolicitationAdminController extends Controller
                 $query->where('church_id', $churchId);
             }
 
-            $query->whereNotIn('type', MobileChurchSolicitationController::TYPES_OUTSIDE_PASTORAL_INDEX);
+            $query->whereNotIn('type', MobileChurchSolicitationController::TYPES_OUTSIDE_PASTORAL_INDEX)
+                ->where('type', '!=', 'baptism')
+                ->whereIn('status', PastoralSolicitationStatus::statusesForTab($aba));
 
             if (is_string($type) && $type !== '') {
                 $query->where('type', $type);
             }
 
-            $status = $request->query('status');
-            if (is_string($status) && $status !== '') {
-                $query->where('status', $status);
-            }
-
-            $q = $request->query('q');
-            if (is_string($q) && trim($q) !== '') {
-                $needle = '%'.str_replace(['%', '_'], ['\\%', '\\_'], trim($q)).'%';
+            if (trim($qStr) !== '') {
+                $needle = '%'.str_replace(['%', '_'], ['\\%', '\\_'], trim($qStr)).'%';
                 $query->where(function ($sub) use ($needle) {
                     $sub->where('message', 'like', $needle)
                         ->orWhere('subject', 'like', $needle)
@@ -127,11 +169,13 @@ class SolicitationAdminController extends Controller
                     'type' => $s->type,
                     'typeLabel' => MobileChurchSolicitationController::typeLabel($s->type),
                     'status' => $s->status,
-                    'statusLabel' => MobileChurchSolicitationController::statusLabel($s->status),
+                    'statusLabel' => $s->type === 'leader_chat'
+                        ? PastoralSolicitationStatus::label((string) $s->status, 'leader_chat')
+                        : PastoralSolicitationStatus::label((string) $s->status),
                     'messageExcerpt' => mb_strimwidth(strip_tags($s->message), 0, 100, '…'),
                     'preferredDate' => $s->preferred_date?->format('Y-m-d'),
                     'updatedAt' => $s->updated_at?->toIso8601String(),
-                    'memberLabel' => $s->user?->name ?? 'Usuário',
+                    'memberLabel' => $s->memberDisplayName(),
                 ])
                 ->values()
                 ->all();
@@ -146,14 +190,15 @@ class SolicitationAdminController extends Controller
                 ->orderByDesc('updated_at')
                 ->limit(100);
 
-            $pStatus = $request->query('status');
-            if (is_string($pStatus) && $pStatus !== '' && in_array($pStatus, ['pending', 'confirmed', 'cancelled', 'completed'], true)) {
-                $pQuery->where('status', $pStatus);
+            $aptStatuses = PastoralSolicitationStatus::pastoralAppointmentStatusesForTab($aba);
+            if ($aptStatuses !== null && $aptStatuses !== []) {
+                $pQuery->whereIn('status', $aptStatuses);
+            } elseif ($aptStatuses === []) {
+                $pQuery->whereRaw('1 = 0');
             }
 
-            $pNeedle = $request->query('q');
-            if (is_string($pNeedle) && trim($pNeedle) !== '') {
-                $needle = '%'.str_replace(['%', '_'], ['\\%', '\\_'], trim($pNeedle)).'%';
+            if (trim($qStr) !== '') {
+                $needle = '%'.str_replace(['%', '_'], ['\\%', '\\_'], trim($qStr)).'%';
                 $pQuery->where(function ($sub) use ($needle) {
                     $sub->where('subject', 'like', $needle)
                         ->orWhere('notes', 'like', $needle)
@@ -236,53 +281,360 @@ class SolicitationAdminController extends Controller
             }
         }
 
+        $countBase = ChurchSolicitation::query()
+            ->whereNotIn('type', MobileChurchSolicitationController::TYPES_OUTSIDE_PASTORAL_INDEX)
+            ->where('type', '!=', 'baptism');
+        if ($churchId !== null) {
+            $countBase->where('church_id', $churchId);
+        }
+        if (is_string($type) && $type !== '') {
+            $countBase->where('type', $type);
+        }
+        $tabCounts = [];
+        foreach (PastoralSolicitationStatus::tabLabels() as $tabKey => $tabLabel) {
+            $tabCounts[$tabKey] = (clone $countBase)
+                ->whereIn('status', PastoralSolicitationStatus::statusesForTab($tabKey))
+                ->count();
+            if ($this->canViewPastoral($user)) {
+                $aptStatuses = PastoralSolicitationStatus::pastoralAppointmentStatusesForTab($tabKey);
+                if ($aptStatuses !== null && $aptStatuses !== []) {
+                    $tabCounts[$tabKey] += PastoralAppointment::query()
+                        ->whereIn('status', $aptStatuses)
+                        ->count();
+                }
+            }
+        }
+
         return Inertia::render('Solicitations/Index', [
             'demands' => $rows,
             'solicitationsIndexUrl' => route('solicitations.index'),
             'modalDetail' => $modalDetail,
             'canManage' => $this->canManage($user),
             'filters' => [
+                'aba' => $aba,
                 'type' => is_string($type) ? $type : '',
-                'status' => is_string($request->query('status')) ? (string) $request->query('status') : '',
-                'q' => is_string($request->query('q')) ? (string) $request->query('q') : '',
+                'q' => $qStr,
+                'kind' => $kindStr,
             ],
+            'tabCounts' => $tabCounts,
+            'tabs' => collect(PastoralSolicitationStatus::tabLabels())
+                ->map(fn (string $label, string $key) => ['key' => $key, 'label' => $label])
+                ->values()
+                ->all(),
             'typeOptions' => [
                 ['value' => '', 'label' => 'Todos os tipos'],
-                ['value' => 'baptism', 'label' => 'Pedido de batismo'],
+                ['value' => 'bible_study', 'label' => 'Estudo bíblico'],
                 ['value' => 'baby_presentation', 'label' => 'Apresentação de bebé'],
                 ['value' => 'pastor_visit', 'label' => 'Visita aos pastores'],
                 ['value' => 'leader_chat', 'label' => 'Conversa com líder'],
+                ['value' => MobileChurchSolicitationController::TYPE_PASTORAL_INFORMAL, 'label' => 'Atendimento informal'],
+                ['value' => 'other', 'label' => 'Outros'],
             ],
-            'statusOptions' => [
-                ['value' => '', 'label' => 'Todos os estados'],
-                ['value' => 'pending', 'label' => 'Pendente'],
-                ['value' => 'in_progress', 'label' => 'Em tratamento'],
-                ['value' => 'completed', 'label' => 'Concluído'],
-                ['value' => 'cancelled', 'label' => 'Cancelado'],
-            ],
+            'informalPastoralStoreUrl' => $this->canManage($user)
+                ? route('solicitations.informal-pastoral.store')
+                : null,
+            'pastorOptions' => SolicitationAssignees::pastorOptions($churchId),
+            'memberUserOptions' => $this->memberUserOptionsForInformalPastoral($churchId),
         ]);
     }
 
     /**
-     * URL legada: redireciona para o painel unificado de solicitações (filtro batismo).
+     * @return list<array{value: int, label: string}>
      */
-    public function baptismIndex(Request $request): RedirectResponse
+    private function memberUserOptionsForInformalPastoral(?int $churchId): array
+    {
+        if ($churchId === null) {
+            return [];
+        }
+
+        return User::query()
+            ->where('church_id', $churchId)
+            ->orderBy('name')
+            ->limit(500)
+            ->get(['id', 'name'])
+            ->map(fn (User $u) => ['value' => (int) $u->id, 'label' => (string) $u->name])
+            ->values()
+            ->all();
+    }
+
+    public function storeInformalPastoral(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user && $this->canManage($user), 403);
+
+        $churchId = Church::resolveWorkingId($request);
+        abort_unless($churchId !== null, 404, 'Nenhuma igreja ativa.');
+
+        $valid = $request->validate([
+            'requester_user_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('users', 'id')->where(fn ($q) => $q->where('church_id', $churchId)),
+            ],
+            'requester_name' => ['nullable', 'string', 'max:200'],
+            'assigned_pastor_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('pastors', 'id')->where(fn ($q) => $q->where('church_id', $churchId)),
+            ],
+            'subject' => ['nullable', 'string', 'max:255'],
+            'message' => ['required', 'string', 'max:5000'],
+            'internal_notes' => ['nullable', 'string', 'max:10000'],
+            'preferred_date' => ['nullable', 'date'],
+            'status' => ['required', 'in:'.PastoralSolicitationStatus::PENDING.','.PastoralSolicitationStatus::COMPLETED],
+        ]);
+
+        $requesterUserId = isset($valid['requester_user_id']) ? (int) $valid['requester_user_id'] : null;
+        $requesterName = trim((string) ($valid['requester_name'] ?? ''));
+
+        if ($requesterUserId === null && $requesterName === '') {
+            throw ValidationException::withMessages([
+                'requester_name' => 'Informe o membro (conta na app) ou o nome de quem foi atendido.',
+            ]);
+        }
+
+        if ($requesterUserId !== null) {
+            $member = User::query()->whereKey($requesterUserId)->first(['id', 'name']);
+            $requesterName = $member?->name ?? $requesterName;
+        }
+
+        $status = (string) $valid['status'];
+        $subject = trim((string) ($valid['subject'] ?? ''));
+        if ($subject === '') {
+            $subject = 'Atendimento pastoral informal';
+        }
+
+        $solicitation = ChurchSolicitation::create([
+            'church_id' => $churchId,
+            'user_id' => $requesterUserId ?? (int) $user->id,
+            'type' => MobileChurchSolicitationController::TYPE_PASTORAL_INFORMAL,
+            'status' => $status,
+            'subject' => $subject,
+            'message' => trim((string) $valid['message']),
+            'preferred_date' => $valid['preferred_date'] ?? null,
+            'assigned_pastor_id' => isset($valid['assigned_pastor_id']) ? (int) $valid['assigned_pastor_id'] : null,
+            'assigned_volunteer_id' => null,
+            'meta' => [
+                'informal' => true,
+                'requester_name' => $requesterName !== '' ? $requesterName : null,
+                'requester_user_id' => $requesterUserId,
+                'created_by_user_id' => (int) $user->id,
+            ],
+            'internal_notes' => $valid['internal_notes'] ?? null,
+            'completed_at' => $status === PastoralSolicitationStatus::COMPLETED ? now() : null,
+        ]);
+
+        $aba = PastoralSolicitationStatus::tabForStatus($status);
+
+        return redirect()
+            ->route('solicitations.index', $this->solicitationsIndexQueryFromRequest($request, [
+                'aba' => $aba,
+                'modal_kind' => 'solicitation',
+                'modal_id' => (string) $solicitation->id,
+            ]))
+            ->with('success', 'Atendimento pastoral registrado.');
+    }
+
+    public function baptismIndex(Request $request): Response
     {
         $user = $request->user();
         abort_unless($user && $this->canView($user), 403);
+        $churchId = Church::resolveWorkingId($request);
 
-        $carry = [];
-        foreach (['modal_kind', 'modal_id', 'modal', 'status', 'q'] as $key) {
+        $aba = (string) $request->query('aba', 'pendente');
+        if (! array_key_exists($aba, BaptismSolicitationStatus::tabLabels())) {
+            $aba = 'pendente';
+        }
+        $statusFilter = BaptismSolicitationStatus::statusForTab($aba);
+
+        $query = ChurchSolicitation::query()
+            ->with([
+                'user:id,name',
+                'assignedPastor:id,name',
+                'assignedVolunteer.user:id,name',
+            ])
+            ->where('type', 'baptism')
+            ->where('status', $statusFilter);
+
+        if ($churchId !== null) {
+            $query->where('church_id', $churchId);
+        }
+
+        $q = $request->query('q');
+        if (is_string($q) && trim($q) !== '') {
+            $needle = '%'.str_replace(['%', '_'], ['\\%', '\\_'], trim($q)).'%';
+            $query->where(function ($sub) use ($needle) {
+                $sub->where('message', 'like', $needle)
+                    ->orWhere('subject', 'like', $needle)
+                    ->orWhereHas('user', fn ($uq) => $uq->where('name', 'like', $needle));
+            });
+        }
+
+        $rows = $query
+            ->orderByDesc('updated_at')
+            ->limit(100)
+            ->get()
+            ->map(fn (ChurchSolicitation $s) => [
+                'kind' => 'solicitation',
+                'id' => $s->id,
+                'tagLabel' => BaptismSolicitationStatus::label((string) $s->status),
+                'type' => $s->type,
+                'typeLabel' => MobileChurchSolicitationController::typeLabel($s->type),
+                'status' => $s->status,
+                'statusLabel' => BaptismSolicitationStatus::label((string) $s->status),
+                'messageExcerpt' => mb_strimwidth(strip_tags($s->message), 0, 100, '…'),
+                'preferredDate' => $s->preferred_date?->format('Y-m-d'),
+                'updatedAt' => $s->updated_at?->toIso8601String(),
+                'memberLabel' => $s->user?->name ?? 'Usuário',
+            ])
+            ->values()
+            ->all();
+
+        $countBase = ChurchSolicitation::query()->where('type', 'baptism');
+        if ($churchId !== null) {
+            $countBase->where('church_id', $churchId);
+        }
+        $tabCounts = [];
+        foreach (BaptismSolicitationStatus::tabLabels() as $tabKey => $tabLabel) {
+            $tabCounts[$tabKey] = (clone $countBase)
+                ->where('status', BaptismSolicitationStatus::statusForTab($tabKey))
+                ->count();
+        }
+
+        $modalDetail = $this->resolveBaptismModalDetail($request, $user, $churchId);
+
+        return Inertia::render('BaptismRequests/Index', [
+            'demands' => $rows,
+            'baptismIndexUrl' => route('baptism-requests.index'),
+            'baptismStoreUrl' => route('mobile.solicitations.store'),
+            'modalDetail' => $modalDetail,
+            'canManage' => $this->canManage($user),
+            'filters' => [
+                'aba' => $aba,
+                'q' => is_string($q) ? (string) $q : '',
+            ],
+            'tabCounts' => $tabCounts,
+            'tabs' => collect(BaptismSolicitationStatus::tabLabels())
+                ->map(fn (string $label, string $key) => ['key' => $key, 'label' => $label])
+                ->values()
+                ->all(),
+        ]);
+    }
+
+    public function archiveBaptism(Request $request, ChurchSolicitation $solicitation): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user && $this->canManage($user), 403);
+        abort_unless($solicitation->type === 'baptism', 404);
+        $this->authorize('archiveBaptismAsStaff', $solicitation);
+
+        $churchId = Church::resolveWorkingId($request);
+        if ($churchId !== null && (int) $solicitation->church_id !== (int) $churchId) {
+            abort(404);
+        }
+
+        $solicitation->update([
+            'status' => BaptismSolicitationStatus::ARCHIVED,
+            'staff_archived_at' => null,
+            'completed_at' => $solicitation->completed_at ?? now(),
+        ]);
+
+        return redirect()
+            ->route('baptism-requests.index', $this->baptismIndexQueryFromRequest($request, [
+                'aba' => 'arquivados',
+                'modal_kind' => '',
+                'modal_id' => '',
+            ]))
+            ->with('success', 'Registro de batismo arquivado.');
+    }
+
+    public function unarchiveBaptism(Request $request, ChurchSolicitation $solicitation): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user && $this->canManage($user), 403);
+        abort_unless($solicitation->type === 'baptism', 404);
+        $this->authorize('archiveBaptismAsStaff', $solicitation);
+
+        $churchId = Church::resolveWorkingId($request);
+        if ($churchId !== null && (int) $solicitation->church_id !== (int) $churchId) {
+            abort(404);
+        }
+
+        $solicitation->update([
+            'status' => BaptismSolicitationStatus::PENDING,
+            'staff_archived_at' => null,
+            'completed_at' => null,
+        ]);
+
+        return redirect()
+            ->route('baptism-requests.index', $this->baptismIndexQueryFromRequest($request, ['aba' => 'pendente']))
+            ->with('success', 'Registro de batismo restaurado como pendente.');
+    }
+
+    /**
+     * @param  array<string, string|null>  $overrides
+     * @return array<string, string>
+     */
+    private function baptismIndexQueryFromRequest(Request $request, array $overrides = []): array
+    {
+        $params = [];
+        foreach (['aba', 'q', 'modal_kind', 'modal_id'] as $key) {
+            if (array_key_exists($key, $overrides)) {
+                $val = $overrides[$key];
+                if (is_string($val) && $val !== '') {
+                    $params[$key] = $val;
+                }
+
+                continue;
+            }
             $val = $request->query($key);
             if (is_string($val) && $val !== '') {
-                $carry[$key] = $val;
+                $params[$key] = $val;
             }
         }
 
-        return redirect()->route('solicitations.index', array_merge(
-            ['type' => 'baptism'],
-            $carry
-        ));
+        return $params;
+    }
+
+    /**
+     * @return array{kind: string, payload: array<string, mixed>}|null
+     */
+    private function resolveBaptismModalDetail(Request $request, User $user, ?int $churchId): ?array
+    {
+        $modalKind = $request->query('modal_kind');
+        $modalId = $request->query('modal_id');
+        if (! is_string($modalId) || $modalId === '' || ! ctype_digit($modalId)) {
+            $legacyModal = $request->query('modal');
+            if (is_string($legacyModal) && $legacyModal !== '' && ctype_digit($legacyModal)) {
+                $modalId = $legacyModal;
+                $modalKind = 'solicitation';
+            } else {
+                return null;
+            }
+        }
+
+        if ($modalKind !== null && $modalKind !== '' && $modalKind !== 'solicitation') {
+            return null;
+        }
+
+        $modalQuery = ChurchSolicitation::query()->where('type', 'baptism');
+        if ($churchId !== null) {
+            $modalQuery->where('church_id', $churchId);
+        }
+        $modal = $modalQuery->find((int) $modalId);
+        if ($modal === null) {
+            return null;
+        }
+
+        return [
+            'kind' => 'solicitation',
+            'payload' => ChurchSolicitationModalPayloadPresenter::forBaptismAdmin(
+                $modal,
+                $user,
+                $this->canManage($user),
+                $this->canView($user),
+            ),
+        ];
     }
 
     public function update(Request $request, ChurchSolicitation $solicitation): RedirectResponse
@@ -298,8 +650,15 @@ class SolicitationAdminController extends Controller
             ? ['sometimes', 'nullable', 'string', 'max:5000']
             : ['sometimes', 'required', 'string', 'max:5000'];
 
+        $statusRule = match ($solicitation->type) {
+            'baptism' => ['sometimes', 'in:'.implode(',', BaptismSolicitationStatus::all())],
+            MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST,
+            MobileChurchSolicitationController::TYPE_COMMUNICATION_REQUEST => ['sometimes', 'in:pending,in_progress,completed,cancelled'],
+            default => ['sometimes', 'in:'.implode(',', PastoralSolicitationStatus::all())],
+        };
+
         $valid = $request->validate(array_merge([
-            'status' => ['sometimes', 'in:pending,in_progress,completed,cancelled'],
+            'status' => $statusRule,
             'internal_notes' => ['nullable', 'string', 'max:10000'],
             'message' => $messageRules,
         ], SolicitationAssignees::assignmentRules($churchId)));
@@ -314,10 +673,28 @@ class SolicitationAdminController extends Controller
         }
         if (array_key_exists('status', $valid)) {
             $solicitation->status = $valid['status'];
-            if ($valid['status'] === 'completed') {
-                $solicitation->completed_at = now();
-            } elseif (in_array($valid['status'], ['pending', 'in_progress'], true)) {
-                $solicitation->completed_at = null;
+            if ($solicitation->type === 'baptism') {
+                if ($valid['status'] === BaptismSolicitationStatus::BAPTIZED) {
+                    $solicitation->completed_at = now();
+                } elseif (in_array($valid['status'], [BaptismSolicitationStatus::PENDING, BaptismSolicitationStatus::WAITING], true)) {
+                    $solicitation->completed_at = null;
+                }
+                $solicitation->staff_archived_at = null;
+            } elseif (in_array($solicitation->type, MobileChurchSolicitationController::TYPES_OUTSIDE_PASTORAL_INDEX, true)) {
+                if ($valid['status'] === 'completed') {
+                    $solicitation->completed_at = now();
+                } elseif (in_array($valid['status'], ['pending', 'in_progress'], true)) {
+                    $solicitation->completed_at = null;
+                }
+            } else {
+                if ($valid['status'] === PastoralSolicitationStatus::COMPLETED) {
+                    $solicitation->completed_at = now();
+                } elseif (in_array($valid['status'], [PastoralSolicitationStatus::PENDING, PastoralSolicitationStatus::CANCELLED], true)) {
+                    $solicitation->completed_at = null;
+                } elseif ($valid['status'] === PastoralSolicitationStatus::ARCHIVED) {
+                    $solicitation->completed_at = $solicitation->completed_at ?? now();
+                }
+                $solicitation->staff_archived_at = null;
             }
         }
         if (array_key_exists('preferred_date', $valid)) {
@@ -335,10 +712,34 @@ class SolicitationAdminController extends Controller
         $solicitation->save();
 
         if ($solicitation->type === MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST) {
-            return redirect()->route('volunteer-requests.staff.index')->with('success', 'Pedido atualizado.');
+            return redirect()->to(VolunteerRequestStaffRoutes::pipelinePedidosUrl())->with('success', 'Pedido atualizado.');
         }
         if ($solicitation->type === MobileChurchSolicitationController::TYPE_COMMUNICATION_REQUEST) {
             return redirect()->route('communication-requests.index')->with('success', 'Pedido atualizado.');
+        }
+
+        if ($solicitation->type === 'baptism') {
+            $aba = BaptismSolicitationStatus::tabForStatus((string) $solicitation->status);
+
+            return redirect()
+                ->route('baptism-requests.index', $this->baptismIndexQueryFromRequest($request, [
+                    'aba' => $aba,
+                    'modal_kind' => 'solicitation',
+                    'modal_id' => (string) $solicitation->id,
+                ]))
+                ->with('success', 'Registro de batismo atualizado.');
+        }
+
+        if (! in_array($solicitation->type, MobileChurchSolicitationController::TYPES_OUTSIDE_PASTORAL_INDEX, true)) {
+            $aba = PastoralSolicitationStatus::tabForStatus((string) $solicitation->status);
+
+            return redirect()
+                ->route('solicitations.index', $this->solicitationsIndexQueryFromRequest($request, [
+                    'aba' => $aba,
+                    'modal_kind' => 'solicitation',
+                    'modal_id' => (string) $solicitation->id,
+                ]))
+                ->with('success', 'Pedido atualizado.');
         }
 
         return $this->staffSolicitationModalRedirect($request, $solicitation);
@@ -362,8 +763,8 @@ class SolicitationAdminController extends Controller
             'content' => $valid['content'],
         ]);
 
-        if (in_array($solicitation->status, ['pending'], true)) {
-            $solicitation->update(['status' => 'in_progress']);
+        if ($solicitation->type === 'baptism' && $solicitation->status === BaptismSolicitationStatus::PENDING) {
+            $solicitation->update(['status' => BaptismSolicitationStatus::WAITING]);
         } else {
             $solicitation->touch();
         }
@@ -377,11 +778,12 @@ class SolicitationAdminController extends Controller
             );
         }
 
-        $fallback = $solicitation->type === MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST
-            ? route('volunteer-requests.staff.index')
-            : ($solicitation->type === MobileChurchSolicitationController::TYPE_COMMUNICATION_REQUEST
-                ? route('communication-requests.index')
-                : $this->staffSolicitationModalUrl($request, $solicitation));
+        $fallback = match ($solicitation->type) {
+            MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST => VolunteerRequestStaffRoutes::pipelinePedidosUrl(),
+            MobileChurchSolicitationController::TYPE_COMMUNICATION_REQUEST => route('communication-requests.index'),
+            'baptism' => $this->staffSolicitationModalUrl($request, $solicitation),
+            default => $this->staffSolicitationModalUrl($request, $solicitation),
+        };
 
         return redirect()->back(fallback: $fallback);
     }

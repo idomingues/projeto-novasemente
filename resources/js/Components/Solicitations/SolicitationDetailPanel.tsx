@@ -11,6 +11,7 @@ import SelectInput from '@/Components/SelectInput';
 import { confirmAction } from '@/utils/confirmDialog';
 import PastorVisitScheduleSection from '@/Components/Solicitations/PastorVisitScheduleSection';
 import type { PastoralPastorOpt } from '@/Components/PastoralAppointment/PastoralAppointmentForm';
+import { CHAT_MESSAGE_SENDS_EMAIL_SUBTITLE } from '@/constants/chatEmailNotice';
 
 /** Mesmo formato que `PastoralBookingInertiaProps` (agenda pastoral). */
 export type MemberPastoralBookingPayload = {
@@ -114,6 +115,11 @@ export type SolicitationDetailPanelProps = {
      * (ex.: alterar pedido + anexar voluntário no fluxo unificado de voluntários).
      */
     detailsBeforeAdminFooter?: ReactNode;
+    archiveStaffUrl?: string | null;
+    unarchiveStaffUrl?: string | null;
+    staffArchivedAt?: string | null;
+    /** Botões de estado (ex.: batismo) em vez do select genérico. */
+    statusChangeOptions?: { value: string; label: string; description: string }[];
 };
 
 function formatTime(iso: string): string {
@@ -149,6 +155,30 @@ function modalityShort(m: string | null | undefined): string {
     return '';
 }
 
+function solicitationStatusButtonClass(value: string, active: boolean): string {
+    const base =
+        'flex min-w-0 flex-1 flex-col gap-0.5 rounded-xl border px-3 py-2.5 text-left transition-all disabled:cursor-not-allowed disabled:opacity-60 ';
+    if (!active) {
+        return `${base}border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-zinc-600`;
+    }
+    const activeByValue: Record<string, string> = {
+        pending:
+            'border-amber-400 bg-amber-50 ring-2 ring-amber-400/25 dark:border-amber-600 dark:bg-amber-950/40 dark:ring-amber-500/30',
+        waiting:
+            'border-sky-400 bg-sky-50 ring-2 ring-sky-400/25 dark:border-sky-600 dark:bg-sky-950/40 dark:ring-sky-500/30',
+        baptized:
+            'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500/25 dark:border-emerald-600 dark:bg-emerald-950/40 dark:ring-emerald-500/30',
+        completed:
+            'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500/25 dark:border-emerald-600 dark:bg-emerald-950/40 dark:ring-emerald-500/30',
+        cancelled:
+            'border-rose-400 bg-rose-50 ring-2 ring-rose-400/25 dark:border-rose-600 dark:bg-rose-950/40 dark:ring-rose-500/30',
+        archived:
+            'border-zinc-400 bg-zinc-100 ring-2 ring-zinc-400/20 dark:border-zinc-500 dark:bg-zinc-800/80 dark:ring-zinc-500/25',
+    };
+
+    return base + (activeByValue[value] ?? activeByValue.archived);
+}
+
 export default function SolicitationDetailPanel({
     solicitation,
     messages,
@@ -177,6 +207,7 @@ export default function SolicitationDetailPanel({
     preserveStateOnPanelActions = false,
     onPanelActionSuccess,
     detailsBeforeAdminFooter,
+    statusChangeOptions,
 }: SolicitationDetailPanelProps) {
     const inertiaScrollOpts = { preserveScroll: true };
     const isModal = variant === 'modal';
@@ -204,7 +235,7 @@ export default function SolicitationDetailPanel({
             internal_notes: solicitation.internalNotes ?? '',
             preferred_date: solicitation.preferredDate ?? '',
         });
-        // eslint-disable-next-line react-hooks/exhaustive-deps -- sincronizar quando abrimos outro pedido
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- só ao trocar de pedido (evita apagar seleção local de situação)
     }, [solicitation.id]);
 
     const pvMod = solicitation.preferredPastoralModality;
@@ -316,6 +347,11 @@ export default function SolicitationDetailPanel({
                 onPanelActionSuccess?.();
             },
         });
+    };
+
+    const selectStatusFromButtons = (next: string) => {
+        if (adminForm.processing) return;
+        adminForm.setData('status', next);
     };
 
     const isStaffBubble = (senderType: string) => senderType === 'staff';
@@ -596,8 +632,55 @@ export default function SolicitationDetailPanel({
                             Estado e notas só para a equipe. Responda ao membro no aba <strong className="font-semibold">Chat</strong>.
                         </p>
                     </div>
-                    <div className={`grid grid-cols-1 gap-4 ${isVolunteerRequest ? '' : 'sm:grid-cols-2'}`}>
-                        <div>
+                    {statusChangeOptions && statusChangeOptions.length > 0 ? (
+                        <div className="space-y-2">
+                            <InputLabel
+                                value={
+                                    solicitation.type === 'baptism' ? 'Situação do batismo' : 'Situação do pedido'
+                                }
+                            />
+                            <p className="text-xs text-indigo-900/70 dark:text-indigo-200/70">
+                                Selecione a situação desejada e confirme em{' '}
+                                <strong className="font-semibold">Salvar gestão</strong>. Notas e data são salvas no mesmo
+                                envio.
+                            </p>
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                {statusChangeOptions.map((opt) => {
+                                    const active = adminForm.data.status === opt.value;
+                                    return (
+                                        <button
+                                            key={opt.value}
+                                            type="button"
+                                            disabled={adminForm.processing}
+                                            aria-pressed={active}
+                                            onClick={() => selectStatusFromButtons(opt.value)}
+                                            className={solicitationStatusButtonClass(opt.value, active)}
+                                        >
+                                            <span
+                                                className={`text-sm font-semibold ${
+                                                    active
+                                                        ? 'text-zinc-900 dark:text-white'
+                                                        : 'text-zinc-800 dark:text-zinc-100'
+                                                }`}
+                                            >
+                                                {opt.label}
+                                                {active ? (
+                                                    <span className="ml-1.5 text-[10px] font-bold uppercase tracking-wide text-indigo-600 dark:text-indigo-300">
+                                                        Atual
+                                                    </span>
+                                                ) : null}
+                                            </span>
+                                            <span className="text-[11px] leading-snug text-zinc-600 dark:text-zinc-400">
+                                                {opt.description}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            <InputError message={adminForm.errors.status} className="mt-1" />
+                        </div>
+                    ) : (
+                        <div className={isVolunteerRequest ? '' : 'sm:max-w-xs'}>
                             <InputLabel htmlFor="sol_status" value="Estado do pedido" />
                             <SelectInput
                                 id="sol_status"
@@ -612,20 +695,20 @@ export default function SolicitationDetailPanel({
                             </SelectInput>
                             <InputError message={adminForm.errors.status} className="mt-1" />
                         </div>
-                        {!isVolunteerRequest ? (
-                            <div>
-                                <InputLabel htmlFor="sol_pref_date" value="Data preferida ou agendada" />
-                                <input
-                                    id="sol_pref_date"
-                                    type="date"
-                                    value={adminForm.data.preferred_date}
-                                    onChange={(e) => adminForm.setData('preferred_date', e.target.value)}
-                                    className="mt-1 block h-11 w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 text-sm text-zinc-900 dark:text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/25 dark:focus:border-indigo-400 dark:focus:ring-indigo-400/30"
-                                />
-                                <InputError message={adminForm.errors.preferred_date} className="mt-1" />
-                            </div>
-                        ) : null}
-                    </div>
+                    )}
+                    {!isVolunteerRequest ? (
+                        <div className={statusChangeOptions ? 'max-w-sm' : ''}>
+                            <InputLabel htmlFor="sol_pref_date" value="Data preferida ou agendada" />
+                            <input
+                                id="sol_pref_date"
+                                type="date"
+                                value={adminForm.data.preferred_date}
+                                onChange={(e) => adminForm.setData('preferred_date', e.target.value)}
+                                className="mt-1 block h-11 w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 text-sm text-zinc-900 dark:text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/25 dark:focus:border-indigo-400 dark:focus:ring-indigo-400/30"
+                            />
+                            <InputError message={adminForm.errors.preferred_date} className="mt-1" />
+                        </div>
+                    ) : null}
                     {!isVolunteerRequest ? (
                         <div>
                             <InputLabel htmlFor="sol_internal" value="Notas internas (confidenciais)" />
@@ -662,11 +745,19 @@ export default function SolicitationDetailPanel({
                         <div className="flex items-start gap-2">
                             <ChatBubbleLeftRightIcon className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
                             <div className="min-w-0">
-                                <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">Conversa com o membro</h2>
+                                <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">
+                                    {composerRole === 'staff'
+                                        ? 'Conversa com o membro'
+                                        : isLeaderChat
+                                          ? 'Conversa com o líder'
+                                          : 'Conversa com a igreja'}
+                                </h2>
                                 <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                                    {canChat
-                                        ? 'Histórico abaixo — escreva a resposta no fim. O membro vê no celular e por email.'
-                                        : 'Este pedido está encerrado — histórico só para consulta.'}
+                                    {!canChat
+                                        ? 'Este pedido está encerrado — histórico só para consulta.'
+                                        : composerRole === 'staff'
+                                          ? `Histórico abaixo — escreva a resposta no fim. ${CHAT_MESSAGE_SENDS_EMAIL_SUBTITLE}`
+                                          : 'Histórico abaixo — escreva a sua mensagem no fim do chat.'}
                                 </p>
                             </div>
                         </div>

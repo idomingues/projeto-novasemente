@@ -6,8 +6,8 @@ use App\Models\Church;
 use App\Models\Ministry;
 use App\Models\User;
 use App\Models\Volunteer;
+use App\Models\VolunteerChurchPipeline;
 use App\Models\VolunteerPipelineStage;
-use App\Support\VolunteerPipelineBootstrap;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -109,6 +109,7 @@ class VolunteerChurchRosterBuilder
             ]);
 
         VolunteerLeadRosterFilters::apply($request, $q, $churchId);
+        self::applyStaffArchivedFilter($q, $churchId, VolunteerLeadRosterFilters::showsArchivedRoster($request));
 
         $volunteers = $q->orderBy('volunteers.name')->paginate($perPage)->withQueryString();
 
@@ -126,6 +127,7 @@ class VolunteerChurchRosterBuilder
             ->withCount([
                 'churchPipelines as volunteer_count' => fn ($sq) => $sq
                     ->where('church_id', $churchId)
+                    ->whereNull('staff_archived_at')
                     ->whereHas('volunteer', fn ($vq) => $vq->where('app_access_only', false)),
             ])
             ->get()
@@ -137,6 +139,15 @@ class VolunteerChurchRosterBuilder
             ])
             ->values()
             ->all();
+
+        $archivedVolunteerCount = 0;
+        if (Schema::hasColumn('volunteer_church_pipelines', 'staff_archived_at')) {
+            $archivedVolunteerCount = VolunteerChurchPipeline::query()
+                ->where('church_id', $churchId)
+                ->whereNotNull('staff_archived_at')
+                ->whereHas('volunteer', fn ($vq) => $vq->where('app_access_only', false))
+                ->count();
+        }
 
         $volunteers->setCollection(
             $volunteers->getCollection()->map(function (Volunteer $v) use ($user, $churchId, $alwaysShowFullContact, $forwardedMinistryIdsByVolunteer) {
@@ -188,6 +199,7 @@ class VolunteerChurchRosterBuilder
 
         return [
             'stages' => $stages,
+            'archivedVolunteerCount' => $archivedVolunteerCount,
             'volunteers' => $volunteers,
             'filters' => VolunteerLeadRosterFilters::filterState($request),
             'ministries' => $ministries,
@@ -197,5 +209,30 @@ class VolunteerChurchRosterBuilder
     public static function volunteersTableExists(): bool
     {
         return Schema::hasTable('volunteers');
+    }
+
+    /**
+     * @param  Builder<Volunteer>  $q
+     */
+    public static function applyStaffArchivedFilter(Builder $q, int $churchId, bool $showArchived): void
+    {
+        if (! Schema::hasColumn('volunteer_church_pipelines', 'staff_archived_at')) {
+            return;
+        }
+
+        if ($showArchived) {
+            $q->whereHas('churchPipelines', fn ($p) => $p
+                ->where('church_id', $churchId)
+                ->whereNotNull('staff_archived_at'));
+
+            return;
+        }
+
+        $q->where(function ($sub) use ($churchId) {
+            $sub->whereDoesntHave('churchPipelines', fn ($p) => $p->where('church_id', $churchId))
+                ->orWhereHas('churchPipelines', fn ($p) => $p
+                    ->where('church_id', $churchId)
+                    ->whereNull('staff_archived_at'));
+        });
     }
 }

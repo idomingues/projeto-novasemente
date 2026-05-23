@@ -28,7 +28,7 @@ final class PageViewRouteLabels
         'mobile.prayer' => 'Oração',
         'mobile.more' => 'Mais',
         'mobile.baptism' => 'Batismo',
-        'volunteers.public-signup.page' => 'Cadastro de voluntário',
+        'volunteers.public-signup.page' => 'Voluntário',
         'prayer.index' => 'Oração (lista web)',
 
         // —— Topbar ——
@@ -49,17 +49,17 @@ final class PageViewRouteLabels
         'mission.index' => 'Missão — gestão',
         'mission.show' => 'Missão — cadastro',
         'mobile.offerings' => 'Dízimos e ofertas',
-        'mobile.campaigns.index' => 'Campanhas de doação',
-        'mobile.campaigns.show' => 'Campanhas de doação — detalhe',
+        'mobile.campaigns.index' => 'Doação',
+        'mobile.campaigns.show' => 'Doação — detalhe',
         'mobile.campaigns.my-donations' => 'Minhas doações',
-        'mobile.talents.index' => 'Conexão de Talentos',
-        'mobile.talents.show' => 'Conexão de Talentos — detalhe',
-        'mobile.talents.my-listings' => 'Minhas publicações (talentos)',
-        'mobile.talents.my-interests' => 'Meus interesses (talentos)',
-        'talents.admin.dashboard' => 'Conexão de Talentos (painel)',
-        'talents.admin.listings' => 'Conexão de Talentos — publicações',
-        'talents.admin.reports' => 'Conexão de Talentos — denúncias',
-        'donation-campaigns.index' => 'Campanhas de doação (painel)',
+        'mobile.talents.index' => 'Central de Serviços',
+        'mobile.talents.show' => 'Central de Serviços — detalhe',
+        'mobile.talents.my-listings' => 'Minhas publicações (Central de Serviços)',
+        'mobile.talents.my-interests' => 'Meus interesses (Central de Serviços)',
+        'talents.admin.dashboard' => 'Central de Serviços (painel)',
+        'talents.admin.listings' => 'Central de Serviços — publicações',
+        'talents.admin.reports' => 'Central de Serviços — denúncias',
+        'donation-campaigns.index' => 'Doação (painel)',
         'finance.treasurer' => 'Painel do tesoureiro',
         'mobile.musica' => 'Música',
         'mobile.musica.show' => 'Música — vídeo',
@@ -129,6 +129,33 @@ final class PageViewRouteLabels
         'operations.index' => 'Operações',
         'notifications.manage' => 'Gestão de notificações',
 
+        // —— Painel — operação e voluntários ——
+        'baptism-requests.index' => 'Batismo',
+        'communication-requests.index' => 'Comunicação',
+        'room-bookings.index' => 'Agendamento de salas',
+        'inventory.index' => 'Inventários',
+        'ministry-lead.volunteers.index' => 'Voluntários',
+        'ministry-lead.volunteers.board' => 'Voluntários — quadro do ministério',
+        'ministry-lead.volunteers.show' => 'Voluntários — ficha',
+        'volunteer-requests.staff.index' => 'Pedidos de voluntário',
+        'members.index' => 'Membros do app',
+        'users.index' => 'Usuários',
+        'roles.index' => 'Perfis',
+        'churches.index' => 'Igrejas',
+        'rooms.index' => 'Salas (cadastro)',
+        'departments.index' => 'Departamentos',
+        'pastors.index' => 'Pastores',
+        'events.index' => 'Eventos (painel)',
+        'news.index' => 'Notícias (painel)',
+        'photo-albums.index' => 'Fotos (painel)',
+        'library-books.index' => 'Biblioteca (painel)',
+        'culto.index' => 'Culto (painel)',
+        'acervo.index' => 'Acervo (painel)',
+        'settings.index' => 'Configurações',
+        'support.index' => 'Suporte APP',
+        'app-versions.index' => 'Versão do APP',
+        'talents.admin.dashboard' => 'Serviços (painel)',
+
         // —— Políticas / legais ——
         'privacy-policy' => 'Política de privacidade',
         'privacy-policy.en' => 'Privacy policy',
@@ -142,8 +169,33 @@ final class PageViewRouteLabels
             return self::MAP[$routeName];
         }
 
+        $fromSidebar = self::labelFromAdminSidebar($routeName);
+        if ($fromSidebar !== null) {
+            return $fromSidebar;
+        }
+
         $human = str_replace(['.', '-', '_'], ' ', $routeName);
 
         return $human !== '' ? mb_convert_case($human, MB_CASE_TITLE, 'UTF-8') : $routeName;
+    }
+
+    private static function labelFromAdminSidebar(string $routeName): ?string
+    {
+        static $byRoute = null;
+
+        if ($byRoute === null) {
+            $byRoute = [];
+            /** @var array<int, array{name: string, route: string}> $items */
+            $items = config('admin_sidebar.items', []);
+            foreach ($items as $item) {
+                $route = $item['route'] ?? '';
+                $name = $item['name'] ?? '';
+                if ($route !== '' && $name !== '') {
+                    $byRoute[$route] = $name === 'News' ? 'Notícias' : $name;
+                }
+            }
+        }
+
+        return $byRoute[$routeName] ?? null;
     }
 }

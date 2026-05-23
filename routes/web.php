@@ -275,9 +275,12 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // Membros do app (conta no aplicativo; podem ou não ser voluntários).
+    // Usuários da igreja (app + equipe); listagem unificada em users.index.
+    Route::get('/members', fn (\Illuminate\Http\Request $request) => redirect()->route('users.index', $request->query()))
+        ->name('members.index')
+        ->middleware('permission:members.view|members.manage|users.view|users.manage');
     Route::resource('members', MemberController::class)
-        ->except(['create', 'edit'])
+        ->except(['create', 'edit', 'index'])
         ->parameters(['members' => 'user'])
         ->middleware('permission:members.view|members.manage');
 
@@ -374,6 +377,12 @@ Route::middleware('auth')->group(function () {
     Route::patch('/comunicacao/solicitacoes/{solicitation}', [CommunicationRequestController::class, 'update'])
         ->name('communication-requests.update')
         ->middleware('auth');
+    Route::post('/comunicacao/solicitacoes/{solicitation}/arquivar', [CommunicationRequestController::class, 'archiveStaff'])
+        ->name('communication-requests.archive')
+        ->middleware('auth');
+    Route::post('/comunicacao/solicitacoes/{solicitation}/desarquivar', [CommunicationRequestController::class, 'unarchiveStaff'])
+        ->name('communication-requests.unarchive')
+        ->middleware('auth');
     Route::delete('/comunicacao/solicitacoes/{solicitation}', [CommunicationRequestController::class, 'destroy'])
         ->name('communication-requests.destroy')
         ->middleware('auth');
@@ -435,6 +444,12 @@ Route::middleware('auth')->group(function () {
     Route::delete('/lideranca/voluntarios/{volunteer}', [VolunteerPipelineLeadController::class, 'destroyVolunteer'])
         ->name('ministry-lead.volunteers.pipeline.destroy')
         ->middleware('permission:volunteers.manage');
+    Route::post('/lideranca/voluntarios/{volunteer}/arquivar', [VolunteerPipelineLeadController::class, 'archiveVolunteer'])
+        ->name('ministry-lead.volunteers.pipeline.archive')
+        ->middleware('permission:volunteers.manage');
+    Route::post('/lideranca/voluntarios/{volunteer}/desarquivar', [VolunteerPipelineLeadController::class, 'unarchiveVolunteer'])
+        ->name('ministry-lead.volunteers.pipeline.unarchive')
+        ->middleware('permission:volunteers.manage');
 
     // Salas (CRUD) — por andar
     Route::get('/rooms', [\App\Http\Controllers\RoomController::class, 'index'])->name('rooms.index')->middleware('permission:rooms.view|rooms.manage');
@@ -455,7 +470,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/inventory/{item}', [InventoryController::class, 'destroy'])->name('inventory.destroy')->middleware('permission:inventory.manage');
     Route::get('/mobile/inventario', [InventoryController::class, 'mobile'])->name('mobile.inventory')->middleware('permission:inventory.view|inventory.manage');
     // Usuários e convites
-    Route::get('/users', [\App\Http\Controllers\UserController::class, 'index'])->name('users.index')->middleware('permission:users.view|users.manage');
+    Route::get('/users', [MemberController::class, 'index'])->name('users.index')->middleware('permission:members.view|members.manage|users.view|users.manage');
     Route::post('/users/leader-signup-link/rotate', [\App\Http\Controllers\LeaderPublicSignupController::class, 'rotateToken'])
         ->name('leaders.self-signup.rotate')
         ->middleware('permission:members.manage|users.manage');
@@ -728,6 +743,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/pedidos-batismo', [SolicitationAdminController::class, 'baptismIndex'])
         ->name('baptism-requests.index')
         ->middleware('role_or_permission:super_admin|admin|solicitations.view|solicitations.manage');
+    Route::post('/pedidos-batismo/{solicitation}/arquivar', [SolicitationAdminController::class, 'archiveBaptism'])
+        ->name('baptism-requests.archive')
+        ->middleware('role_or_permission:super_admin|admin|solicitations.manage');
+    Route::post('/pedidos-batismo/{solicitation}/desarquivar', [SolicitationAdminController::class, 'unarchiveBaptism'])
+        ->name('baptism-requests.unarchive')
+        ->middleware('role_or_permission:super_admin|admin|solicitations.manage');
+    Route::post('/solicitacoes/atendimento-informal', [SolicitationAdminController::class, 'storeInformalPastoral'])
+        ->name('solicitations.informal-pastoral.store')
+        ->middleware('role_or_permission:super_admin|admin|solicitations.manage');
     Route::patch('/solicitacoes/{solicitation}', [SolicitationAdminController::class, 'update'])
         ->name('solicitations.update')
         ->middleware('role_or_permission:super_admin|admin|solicitations.manage');
@@ -742,6 +766,9 @@ Route::middleware('auth')->group(function () {
         ->middleware('role_or_permission:super_admin|admin|solicitations.manage');
     Route::get('/solicitar-voluntario/{solicitation}/painel', [VolunteerRequestSolicitationController::class, 'solicitationPanelJson'])
         ->name('volunteer-requests.staff.panel')
+        ->middleware('role_or_permission:super_admin|admin|solicitations.manage');
+    Route::get('/solicitar-voluntario/{solicitation}/sugerir-voluntarios', [VolunteerRequestSolicitationController::class, 'suggestVolunteersStaff'])
+        ->name('volunteer-requests.staff.suggest-volunteers')
         ->middleware('role_or_permission:super_admin|admin|solicitations.manage');
     Route::post('/solicitar-voluntario/{solicitation}/mensagens', [VolunteerRequestSolicitationController::class, 'storeChatMessageStaff'])
         ->name('volunteer-requests.staff.messages.store')
@@ -760,6 +787,12 @@ Route::middleware('auth')->group(function () {
         ->middleware('role_or_permission:super_admin|admin|solicitations.manage');
     Route::post('/solicitar-voluntario/{solicitation}/desanexar-voluntario', [VolunteerRequestSolicitationController::class, 'detachVolunteerStaff'])
         ->name('volunteer-requests.staff.detach-volunteer')
+        ->middleware('role_or_permission:super_admin|admin|solicitations.manage');
+    Route::post('/solicitar-voluntario/{solicitation}/arquivar', [VolunteerRequestSolicitationController::class, 'archiveStaff'])
+        ->name('volunteer-requests.staff.archive')
+        ->middleware('role_or_permission:super_admin|admin|solicitations.manage');
+    Route::post('/solicitar-voluntario/{solicitation}/desarquivar', [VolunteerRequestSolicitationController::class, 'unarchiveStaff'])
+        ->name('volunteer-requests.staff.unarchive')
         ->middleware('role_or_permission:super_admin|admin|solicitations.manage');
 
     // Versões do App (Admin) — admin/super_admin (admin pode complementar notas pós-deploy)

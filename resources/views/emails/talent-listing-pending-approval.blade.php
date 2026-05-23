@@ -5,7 +5,7 @@
 <x-mail::message>
 # Publicação aguardando aprovação
 
-**{{ $authorName }}** enviou uma publicação na **Conexão de Talentos** que precisa da sua análise.
+**{{ $authorName }}** enviou uma publicação na **Central de Serviços** que precisa da sua análise.
 
 **Título:** {{ $listing->title }}
 

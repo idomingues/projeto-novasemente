@@ -18,7 +18,7 @@ import TextInput from '@/Components/TextInput';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { confirmAction } from '@/utils/confirmDialog';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { FunnelIcon, InboxIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { ArchiveBoxIcon, ChatBubbleLeftRightIcon, ChevronRightIcon, FunnelIcon, InboxIcon } from '@heroicons/react/24/outline';
 import { FormEventHandler, useMemo, useState } from 'react';
 
 type CommunicationRow = {
@@ -37,8 +37,6 @@ type CommunicationRow = {
     priority_label: string;
     requester_name: string | null;
     can_edit: boolean;
-    can_delete: boolean;
-    destroy_url: string | null;
     panel_json_url: string;
 };
 
@@ -61,7 +59,17 @@ interface Props {
         demand_type: string;
         priority: string;
         q: string;
+        arquivados: boolean;
     };
+}
+
+function listTabClass(active: boolean): string {
+    return [
+        'flex-1 min-w-[8rem] px-4 py-3 text-sm font-semibold border-b-2 transition-colors -mb-px text-center',
+        active
+            ? 'border-teal-600 text-teal-800 dark:border-teal-400 dark:text-teal-200'
+            : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200',
+    ].join(' ');
 }
 
 function dateLabel(iso: string | null): string {
@@ -139,9 +147,14 @@ export default function CommunicationRequestsIndex({
                 demand_type: merged.demand_type || undefined,
                 priority: merged.priority || undefined,
                 q: merged.q.trim() || undefined,
+                arquivados: merged.arquivados ? '1' : undefined,
             },
             { preserveScroll: true, replace: true },
         );
+    };
+
+    const goToListTab = (arquivados: boolean) => {
+        applyFilters({ arquivados });
     };
 
     const openRequestModal = () => {
@@ -217,17 +230,31 @@ export default function CommunicationRequestsIndex({
         });
     };
 
-    const handleDelete = async (row: CommunicationRow) => {
-        if (!row.destroy_url) return;
+    const handleArchiveStaff = async () => {
+        const url = panelPayload?.archiveStaffUrl;
+        if (!url) return;
         const ok = await confirmAction({
-            title: 'Excluir solicitação?',
-            text: 'A solicitação será removida permanentemente.',
-            confirmButtonText: 'Excluir',
-            danger: true,
-            icon: 'warning',
+            title: 'Arquivar solicitação?',
+            text: 'A solicitação deixa de aparecer na lista ativa. Você pode consultá-la em «Arquivados».',
+            confirmButtonText: 'Arquivar',
+            icon: 'question',
         });
         if (ok) {
-            router.delete(row.destroy_url, { preserveScroll: true });
+            router.post(url, {}, { preserveScroll: true, onSuccess: () => closePanel() });
+        }
+    };
+
+    const handleUnarchiveStaff = async () => {
+        const url = panelPayload?.unarchiveStaffUrl;
+        if (!url) return;
+        const ok = await confirmAction({
+            title: 'Restaurar solicitação?',
+            text: 'A solicitação voltará à lista ativa de comunicação.',
+            confirmButtonText: 'Restaurar',
+            icon: 'question',
+        });
+        if (ok) {
+            router.post(url, {}, { preserveScroll: true, onSuccess: () => closePanel() });
         }
     };
 
@@ -251,6 +278,20 @@ export default function CommunicationRequestsIndex({
                     </AddButton>
                 }
             />
+
+            {canManage ? (
+                <div className="mb-4 flex border-b border-zinc-200 dark:border-zinc-800">
+                    <button type="button" className={listTabClass(!filters.arquivados)} onClick={() => goToListTab(false)}>
+                        Ativos
+                    </button>
+                    <button type="button" className={listTabClass(filters.arquivados)} onClick={() => goToListTab(true)}>
+                        <span className="inline-flex items-center justify-center gap-2">
+                            <ArchiveBoxIcon className="h-4 w-4 shrink-0" aria-hidden />
+                            Arquivados
+                        </span>
+                    </button>
+                </div>
+            ) : null}
 
             <Card className="mb-4 p-4">
                 <div className="grid gap-3 md:grid-cols-4">
@@ -322,14 +363,22 @@ export default function CommunicationRequestsIndex({
                     </Card>
                 ) : (
                     rows.map((row) => (
-                        <Card key={row.id} className="p-4 sm:p-5">
-                            <div className="flex flex-wrap items-start justify-between gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => void openPanel(row)}
-                                    className="min-w-0 flex-1 rounded-lg text-left"
-                                >
-                                    <div className="text-base font-semibold text-zinc-900 dark:text-white">{row.subject}</div>
+                        <button
+                            key={row.id}
+                            type="button"
+                            onClick={() => void openPanel(row)}
+                            aria-label={`Abrir solicitação: ${row.subject}`}
+                            className="group w-full cursor-pointer touch-manipulation rounded-2xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50 active:scale-[0.998] dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/40 sm:p-5"
+                        >
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <ChatBubbleLeftRightIcon className="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-400" aria-hidden />
+                                        <span className="text-base font-semibold text-zinc-900 dark:text-white">{row.subject}</span>
+                                        <span className="inline-flex rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800/70 dark:text-zinc-300">
+                                            {row.status_label}
+                                        </span>
+                                    </div>
                                     <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
                                         {mode === 'staff' && row.requester_name ? <span>Por {row.requester_name}</span> : null}
                                         <span>{row.demand_type_label}</span>
@@ -338,28 +387,19 @@ export default function CommunicationRequestsIndex({
                                         {row.ministry_name ? <span>{row.ministry_name}</span> : null}
                                         {row.preferred_date ? <span>Prazo: {row.preferred_date}</span> : null}
                                     </div>
-                                </button>
-                                <div className="flex items-center gap-2">
-                                    {row.can_delete ? (
-                                        <button
-                                            type="button"
-                                            onClick={() => handleDelete(row)}
-                                            title="Excluir solicitação"
-                                            className="rounded-lg p-2 text-zinc-500 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
-                                        >
-                                            <TrashIcon className="h-5 w-5" />
-                                        </button>
-                                    ) : null}
-                                    <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
-                                        {row.status_label}
-                                    </span>
+                                    <p className="mt-2 line-clamp-3 whitespace-pre-wrap text-sm text-zinc-700 dark:text-zinc-200">
+                                        {row.message_preview}
+                                    </p>
+                                    <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                                        Criado em: {dateLabel(row.created_at)}
+                                    </p>
                                 </div>
+                                <ChevronRightIcon
+                                    className="h-5 w-5 shrink-0 text-zinc-400 transition-transform group-hover:translate-x-0.5 group-hover:text-zinc-600 dark:text-zinc-500 dark:group-hover:text-zinc-300"
+                                    aria-hidden
+                                />
                             </div>
-                            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">{row.message_preview}</p>
-                            <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                                Criado em: {dateLabel(row.created_at)}
-                            </p>
-                        </Card>
+                        </button>
                     ))
                 )}
             </div>
@@ -463,6 +503,30 @@ export default function CommunicationRequestsIndex({
                                     <p className="text-sm text-red-600 dark:text-red-400">Não foi possível carregar o painel.</p>
                                 )}
                             </div>
+
+                            {canManage && panelPayload && !panelLoading ? (
+                                <div className="shrink-0 border-t border-zinc-200 px-5 py-3 dark:border-zinc-800 sm:px-6">
+                                    {panelPayload.archiveStaffUrl ? (
+                                        <SecondaryButton
+                                            type="button"
+                                            className="w-full justify-center sm:w-auto"
+                                            onClick={() => void handleArchiveStaff()}
+                                        >
+                                            <ArchiveBoxIcon className="mr-2 h-4 w-4" aria-hidden />
+                                            Arquivar solicitação
+                                        </SecondaryButton>
+                                    ) : null}
+                                    {panelPayload.unarchiveStaffUrl ? (
+                                        <SecondaryButton
+                                            type="button"
+                                            className="w-full justify-center sm:w-auto"
+                                            onClick={() => void handleUnarchiveStaff()}
+                                        >
+                                            Restaurar na lista ativa
+                                        </SecondaryButton>
+                                    ) : null}
+                                </div>
+                            ) : null}
                         </>
                     )}
                 </div>

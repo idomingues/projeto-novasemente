@@ -47,7 +47,7 @@ const items: MoreMenuItem[] = [
     { name: 'Quem somos', description: 'História e significado do nome', route: 'mobile.quem-somos', icon: UserGroupIcon },
     { name: 'Em que acreditamos', description: '28 princípios de fé (IASD)', route: 'mobile.beliefs', icon: BookOpenIcon },
     {
-        name: 'Cadastro de voluntário',
+        name: 'Voluntário',
         description: 'Quero servir em ministérios (formulário completo)',
         route: 'volunteers.public-signup.page',
         icon: UserPlusIcon,

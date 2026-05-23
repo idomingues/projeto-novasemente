@@ -1,6 +1,5 @@
 import RecordDetailHeader from '@/Components/RecordDetail/RecordDetailHeader';
 import RecordDetailSections from '@/Components/RecordDetail/RecordDetailSections';
-import VolunteerSignupPhoto from '@/Components/Volunteers/VolunteerSignupPhoto';
 import { volunteerDetailSections, type VolunteerDetailData } from '@/utils/volunteerDetailRows';
 import type { ReactNode } from 'react';
 
@@ -25,8 +24,13 @@ export default function VolunteerRecordDetailBody({
 
     return (
         <div className="space-y-4">
-            <RecordDetailHeader title={title} subtitle={resolvedSubtitle} badge={badge} onClose={onClose} />
-            <VolunteerSignupPhoto name={volunteer.name} photoUrl={photoUrl} />
+            <RecordDetailHeader
+                title={title}
+                subtitle={resolvedSubtitle}
+                photoUrl={photoUrl}
+                badge={badge}
+                onClose={onClose}
+            />
             <RecordDetailSections sections={sections} />
             {footer}
         </div>

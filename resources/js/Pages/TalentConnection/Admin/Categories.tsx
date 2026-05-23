@@ -41,7 +41,7 @@ export default function TalentConnectionAdminCategories({ categories }: Props) {
 
     return (
         <AdminLayout>
-            <Head title="Categorias — Conexão de Talentos" />
+            <Head title="Categorias — Central de Serviços" />
             <FlashMessages />
             <PageHeader
                 lead={

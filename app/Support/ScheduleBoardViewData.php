@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Church;
 use App\Models\Ministry;
+use App\Models\ScheduleAssignment;
 use App\Models\ScheduleCheckinDate;
 use App\Models\ScheduleRole;
 use App\Models\User;
@@ -70,7 +71,7 @@ class ScheduleBoardViewData
      *     month: int,
      *     year: int,
      *     ministryId: int|null,
-     *     ministries: array<int, array{id: int, name: string}>,
+     *     ministries: array<int, array{id: int, name: string, usesSchedule: bool}>,
      *     canEdit: bool,
      *     scheduleVolunteers: array<int, array{volunteerId: int, memberId: int|null, name: string}>,
      *     scheduleRoles: array<int, array{id: int, name: string, ministryId: int|null}>
@@ -114,6 +115,9 @@ class ScheduleBoardViewData
 
         /** @var Collection<int, Ministry> $ministries */
         $ministries = $ministriesQuery->get(['id', 'name']);
+
+        $ministryIds = $ministries->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $usesScheduleMinistryIds = self::ministryIdsUsingSchedule($ministryIds);
 
         // Se só há 1 departamento disponível, seleciona automaticamente (evita tela em branco).
         if ($ministries->count() === 1 && $ministryId === null) {
@@ -177,10 +181,36 @@ class ScheduleBoardViewData
             'month' => $month,
             'year' => $year,
             'ministryId' => $ministryId,
-            'ministries' => $ministries->map(fn (Ministry $m) => ['id' => $m->id, 'name' => $m->name])->values()->all(),
+            'ministries' => $ministries->map(fn (Ministry $m) => [
+                'id' => $m->id,
+                'name' => $m->name,
+                'usesSchedule' => in_array((int) $m->id, $usesScheduleMinistryIds, true),
+            ])->values()->all(),
             'canEdit' => $canEdit,
             'scheduleVolunteers' => $scheduleVolunteers,
             'scheduleRoles' => $scheduleRoles,
         ];
+    }
+
+    /**
+     * Departamentos com pelo menos uma atribuição com usuário ou voluntário vinculado.
+     *
+     * @param  array<int, int>  $ministryIds
+     * @return array<int, int>
+     */
+    private static function ministryIdsUsingSchedule(array $ministryIds): array
+    {
+        if ($ministryIds === []) {
+            return [];
+        }
+
+        return ScheduleAssignment::query()
+            ->whereIn('ministry_id', $ministryIds)
+            ->where(fn ($q) => $q->whereNotNull('user_id')->orWhereNotNull('volunteer_id'))
+            ->distinct()
+            ->pluck('ministry_id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
     }
 }

@@ -68,6 +68,7 @@ class DonationCampaignController extends Controller
                 'thanks_message' => $c->thanks_message,
                 'thanks_is_published' => $c->thanksIsPublished(),
                 'thanks_published_at' => $c->thanks_published_at?->toIso8601String(),
+                'thanks_donors_notified_at' => $c->thanks_donors_notified_at?->toIso8601String(),
                 'thanks_photos' => $c->photosPayload(DonationCampaignPhoto::KIND_THANKS),
             ]);
 

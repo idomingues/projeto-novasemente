@@ -47,7 +47,7 @@ export type Assignment = {
     checkedInAt: string | null;
 };
 
-interface Ministry { id: number; name: string; }
+interface Ministry { id: number; name: string; usesSchedule?: boolean; }
 
 interface Props {
     assignments: Assignment[];
@@ -284,23 +284,42 @@ export default function EscalasIndex({
 
                 {ministries.length > 1 && (
                     <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6 shadow-sm">
-                        <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-4">
+                        <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                             Selecione o departamento para ver e editar a escala de voluntários
                         </p>
+                        <p className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
+                            <span className="inline-flex items-center gap-1.5">
+                                <span className="h-3 w-3 rounded border border-emerald-300 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-950/40" aria-hidden />
+                                Com pessoas na escala
+                            </span>
+                            <span className="inline-flex items-center gap-1.5">
+                                <span className="h-3 w-3 rounded border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-800/50" aria-hidden />
+                                Sem pessoas na escala
+                            </span>
+                        </p>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                            {ministries.map((m) => (
+                            {ministries.map((m) => {
+                                const isSelected = ministryId === m.id;
+                                const usesSchedule = m.usesSchedule === true;
+                                return (
                                 <button
                                     key={m.id}
                                     type="button"
-                                    onClick={() => selectDepartment(ministryId === m.id ? '' : m.id)}
+                                    onClick={() => selectDepartment(isSelected ? '' : m.id)}
                                     className={`rounded-xl border-2 p-4 flex flex-col items-center gap-2 transition-all text-left ${
-                                        ministryId === m.id
+                                        isSelected
                                             ? 'border-zinc-900 dark:border-white bg-zinc-100 dark:bg-zinc-800 shadow-inner'
-                                            : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 hover:border-zinc-400 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+                                            : usesSchedule
+                                              ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 hover:border-emerald-400 dark:hover:border-emerald-600 hover:bg-emerald-100/80 dark:hover:bg-emerald-950/50'
+                                              : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 hover:border-zinc-400 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800'
                                     }`}
                                 >
                                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                                        ministryId === m.id ? 'bg-zinc-900 dark:bg-white text-white dark:text-black' : 'bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-400'
+                                        isSelected
+                                            ? 'bg-zinc-900 dark:bg-white text-white dark:text-black'
+                                            : usesSchedule
+                                              ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300'
+                                              : 'bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-400'
                                     }`}>
                                         {(() => {
                                             const Icon = getMinistryIcon(m.name);
@@ -308,12 +327,17 @@ export default function EscalasIndex({
                                         })()}
                                     </div>
                                     <span className={`font-medium text-sm truncate w-full text-center ${
-                                        ministryId === m.id ? 'text-zinc-900 dark:text-white' : 'text-zinc-700 dark:text-zinc-300'
+                                        isSelected
+                                            ? 'text-zinc-900 dark:text-white'
+                                            : usesSchedule
+                                              ? 'text-emerald-900 dark:text-emerald-100'
+                                              : 'text-zinc-700 dark:text-zinc-300'
                                     }`}>
                                         {m.name}
                                     </span>
                                 </button>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 )}

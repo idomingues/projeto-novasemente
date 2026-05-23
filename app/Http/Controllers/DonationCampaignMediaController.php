@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\DonationCampaign;
 use App\Models\DonationCampaignPhoto;
 use App\Models\User;
+use App\Services\CampaignThanksNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -101,6 +102,7 @@ class DonationCampaignMediaController extends Controller
 
         $data = $request->validate([
             'thanks_message' => ['required', 'string', 'max:10000'],
+            'notify_donors' => ['boolean'],
         ]);
 
         $donationCampaign->update([
@@ -108,7 +110,27 @@ class DonationCampaignMediaController extends Controller
             'thanks_published_at' => now(),
         ]);
 
-        return redirect()->back()->with('success', 'Agradecimento publicado no app.');
+        $success = 'Agradecimento publicado no app.';
+
+        if ($request->boolean('notify_donors')) {
+            $donationCampaign->loadMissing(['church']);
+            $result = app(CampaignThanksNotifier::class)->notifyAllDonors($donationCampaign);
+
+            if ($result['users_notified'] === 0 && $result['emails_sent'] === 0) {
+                $success .= ' Nenhum doador com conta no app recebeu notificação ou e-mail (verifique preferências de contato).';
+            } else {
+                $parts = [];
+                if ($result['users_notified'] > 0) {
+                    $parts[] = $result['users_notified'].' notificação(ões) no app';
+                }
+                if ($result['emails_sent'] > 0) {
+                    $parts[] = $result['emails_sent'].' e-mail(s)';
+                }
+                $success .= ' Enviado: '.implode(' e ', $parts).'.';
+            }
+        }
+
+        return redirect()->back()->with('success', $success);
     }
 
     public function unpublishThanks(Request $request, DonationCampaign $donationCampaign): RedirectResponse

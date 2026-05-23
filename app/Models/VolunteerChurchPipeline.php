@@ -11,7 +11,15 @@ class VolunteerChurchPipeline extends Model
         'volunteer_id',
         'church_id',
         'stage_id',
+        'staff_archived_at',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'staff_archived_at' => 'datetime',
+        ];
+    }
 
     public function volunteer(): BelongsTo
     {

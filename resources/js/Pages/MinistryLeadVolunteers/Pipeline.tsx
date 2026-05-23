@@ -22,12 +22,18 @@ import {
     PlusIcon,
     TrashIcon,
 } from '@heroicons/react/24/outline';
+import VolunteerRequestsStaffSection, {
+    type VolunteerRequestRow,
+} from '@/Components/Volunteers/VolunteerRequestsStaffSection';
 import PublicVolunteerSignupShareModal from '@/Components/Volunteers/PublicVolunteerSignupShareModal';
+import VolunteerInviteShareModal from '@/Components/Volunteers/VolunteerInviteShareModal';
+import VolunteerAppInviteButton, { volunteerEncaminharButtonClass } from '@/Components/Volunteers/VolunteerAppInviteButton';
 import VolunteerDeleteConfirmBlock from '@/Components/Volunteers/VolunteerDeleteConfirmBlock';
+import { confirmAction } from '@/utils/confirmDialog';
 import MinistryLeaderStatusSection, {
     type MinistryLeaderStatusSectionData,
 } from '@/Components/Volunteers/MinistryLeaderStatusSection';
-import VolunteerSignupPhoto from '@/Components/Volunteers/VolunteerSignupPhoto';
+import RecordDetailHeader from '@/Components/RecordDetail/RecordDetailHeader';
 import { formatListPreview } from '@/utils/formatListPreview';
 import RecordDetailSections from '@/Components/RecordDetail/RecordDetailSections';
 import { volunteerDetailSections, type VolunteerDetailData } from '@/utils/volunteerDetailRows';
@@ -79,7 +85,29 @@ type BoardFilters = {
     ministry_ids: string;
     text_interest: string;
     pipeline_stage_id: string;
+    arquivados?: boolean;
 };
+
+const PIPELINE_STAGE_ARCHIVED = 'arquivados';
+
+function pipelineVolunteersQuery(
+    filters: BoardFilters,
+    search: string,
+    extra: Record<string, string> = {},
+): Record<string, string> {
+    const out: Record<string, string> = { secao: 'quadro', ...extra };
+    const merged = { ...filters, search };
+    for (const [key, value] of Object.entries(merged)) {
+        if (key === 'arquivados') {
+            continue;
+        }
+        if (value !== '' && value !== null && value !== undefined) {
+            out[key] = String(value);
+        }
+    }
+
+    return out;
+}
 
 interface Paginated<T> {
     data: T[];
@@ -127,10 +155,35 @@ type DetailJson = {
     storeNoteUrl: string;
     syncMinistriesUrl?: string | null;
     destroyVolunteerUrl?: string | null;
+    archiveVolunteerUrl?: string | null;
+    unarchiveVolunteerUrl?: string | null;
+};
+
+type VolunteerRequestMinistryOption = {
+    id: number;
+    name: string;
+    schedule_roles: Array<{ id: number; name: string }>;
+};
+
+type VolunteerAttachOption = {
+    id: number;
+    name: string;
+    email: string | null;
 };
 
 interface Props {
+    secao?: 'quadro' | 'pedidos';
+    canManageVolunteerRequests?: boolean;
+    volunteerRequestRows?: VolunteerRequestRow[];
+    volunteerRequestMinistries?: VolunteerRequestMinistryOption[];
+    volunteerRequestStoreUrl?: string;
+    volunteersForAttach?: VolunteerAttachOption[];
+    attachVolunteerPickerUrl?: string;
+    volunteerRequestFilters?: { arquivados: boolean };
+    volunteerRequestArchivedCount?: number;
+    volunteerRequestActiveCount?: number;
     stages: StageRow[];
+    archivedVolunteerCount?: number;
     volunteers: Paginated<VolunteerListRow>;
     filters: BoardFilters;
     ministries: { id: number; name: string }[];
@@ -140,6 +193,15 @@ interface Props {
     canPipelineMutate: boolean;
     volunteersAdminUrl: string;
     publicVolunteerSignupUrl: string | null;
+}
+
+function pipelineTabButtonClass(active: boolean): string {
+    return [
+        'flex-1 min-w-[10rem] px-4 py-3 text-sm font-semibold border-b-2 transition-colors -mb-px text-center',
+        active
+            ? 'border-teal-600 text-teal-800 dark:border-teal-400 dark:text-teal-200'
+            : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200',
+    ].join(' ');
 }
 
 const tri = (
@@ -174,7 +236,18 @@ function formatDateTime(iso: string): string {
 }
 
 export default function Pipeline({
+    secao: initialSecao = 'quadro',
+    canManageVolunteerRequests = false,
+    volunteerRequestRows = [],
+    volunteerRequestMinistries = [],
+    volunteerRequestStoreUrl = '',
+    volunteersForAttach = [],
+    attachVolunteerPickerUrl,
+    volunteerRequestFilters = { arquivados: false },
+    volunteerRequestArchivedCount = 0,
+    volunteerRequestActiveCount = 0,
     stages,
+    archivedVolunteerCount = 0,
     volunteers,
     filters,
     ministries,
@@ -185,7 +258,34 @@ export default function Pipeline({
     volunteersAdminUrl,
     publicVolunteerSignupUrl,
 }: Props) {
+    const secao = initialSecao === 'pedidos' ? 'pedidos' : 'quadro';
+
     const page = usePage();
+    const authProps = page.props as { auth?: { openVolunteerRequestsCount?: number } };
+    const openVolunteerRequestsCount =
+        typeof authProps.auth?.openVolunteerRequestsCount === 'number' ? authProps.auth.openVolunteerRequestsCount : 0;
+
+    const goToSecao = (next: 'quadro' | 'pedidos') => {
+        if (next === 'pedidos') {
+            router.get(
+                route('ministry-lead.volunteers.index'),
+                { secao: 'pedidos' },
+                { preserveState: true, preserveScroll: false, replace: true },
+            );
+            return;
+        }
+        router.get(route('ministry-lead.volunteers.index'), pipelineVolunteersQuery(filters, filters.search ?? ''), {
+            preserveState: true,
+            replace: true,
+        });
+    };
+
+    const flash = (page.props as {
+        flash?: {
+            invitation_link?: string | null;
+            invitation_for_name?: string | null;
+        };
+    }).flash;
     const csrf = (page.props as { csrf_token?: string }).csrf_token ?? '';
     const currentChurch = (page.props as { currentChurch?: { name?: string } | null }).currentChurch;
     const churchName = currentChurch?.name ?? 'Igreja';
@@ -214,15 +314,23 @@ export default function Pipeline({
         }
         const timeout = window.setTimeout(() => {
             lastAppliedSearchRef.current = searchQuery;
-            const data = Object.fromEntries(
-                Object.entries({ ...filtersRef.current, search: searchQuery }).filter(
-                    ([, v]) => v !== '' && v !== null && v !== undefined,
-                ),
-            ) as Record<string, string>;
-            router.get(route('ministry-lead.volunteers.index'), data, { preserveState: true, replace: true });
+            router.get(
+                route('ministry-lead.volunteers.index'),
+                pipelineVolunteersQuery(filtersRef.current, searchQuery),
+                { preserveState: true, replace: true },
+            );
         }, SEARCH_DEBOUNCE_MS);
         return () => window.clearTimeout(timeout);
     }, [searchQuery]);
+
+    useEffect(() => {
+        const link = flash?.invitation_link;
+        const name = flash?.invitation_for_name;
+        if (typeof link === 'string' && link.length > 0) {
+            setInviteShare({ link, name: typeof name === 'string' ? name : '' });
+            setInviteShareOpen(true);
+        }
+    }, [flash?.invitation_link, flash?.invitation_for_name]);
 
     const stageForm = useForm({ name: '' });
     const [stageManageOpen, setStageManageOpen] = useState(false);
@@ -236,6 +344,9 @@ export default function Pipeline({
     const [selectedId, setSelectedId] = useState<number | null>(null);
     const [detailTab, setDetailTab] = useState<'ficha' | 'notas' | 'departamentos' | 'historico'>('ficha');
     const [publicInviteOpen, setPublicInviteOpen] = useState(false);
+    const [inviteShareOpen, setInviteShareOpen] = useState(false);
+    const [inviteShare, setInviteShare] = useState<{ link: string; name: string } | null>(null);
+    const [invitingVolunteerId, setInvitingVolunteerId] = useState<number | null>(null);
     const [inviteOpen, setInviteOpen] = useRemember(false, 'pipeline.inviteOpen');
     const [inviteVolunteer, setInviteVolunteer] = useRemember<VolunteerListRow | null>(null, 'pipeline.inviteVolunteer');
     const [inviteMinistryIds, setInviteMinistryIds] = useRemember<number[]>([], 'pipeline.inviteMinistryIds');
@@ -307,29 +418,36 @@ export default function Pipeline({
     const applyFilters: FormEventHandler = (e) => {
         e.preventDefault();
         lastAppliedSearchRef.current = searchQuery;
-        const data = Object.fromEntries(
-            Object.entries({ ...filterForm.data, search: searchQuery }).filter(
-                ([, v]) => v !== '' && v !== null && v !== undefined,
-            ),
-        ) as Record<string, string>;
-        router.get(route('ministry-lead.volunteers.index'), data, { preserveState: true, replace: true });
+        router.get(
+            route('ministry-lead.volunteers.index'),
+            pipelineVolunteersQuery(filterForm.data, searchQuery),
+            { preserveState: true, replace: true },
+        );
     };
 
     const clearFilters = () => {
         lastAppliedSearchRef.current = '';
         setSearchQuery('');
-        router.get(route('ministry-lead.volunteers.index'), {}, { preserveState: true, replace: true });
+        router.get(
+            route('ministry-lead.volunteers.index'),
+            pipelineVolunteersQuery({ ...filterForm.data, search: '', pipeline_stage_id: '' }, ''),
+            { preserveState: true, replace: true },
+        );
     };
 
-    const pickStage = (stageId: number | '') => {
+    const pickStage = (stageId: number | '' | typeof PIPELINE_STAGE_ARCHIVED) => {
         lastAppliedSearchRef.current = searchQuery;
-        const next = {
-            ...filterForm.data,
-            search: searchQuery,
-            pipeline_stage_id: stageId === '' ? '' : String(stageId),
-        };
-        const data = Object.fromEntries(Object.entries(next).filter(([, v]) => v !== '')) as Record<string, string>;
-        router.get(route('ministry-lead.volunteers.index'), data, { preserveState: true, replace: true });
+        router.get(
+            route('ministry-lead.volunteers.index'),
+            pipelineVolunteersQuery(
+                {
+                    ...filterForm.data,
+                    pipeline_stage_id: stageId === '' ? '' : String(stageId),
+                },
+                searchQuery,
+            ),
+            { preserveState: true, replace: true },
+        );
     };
 
     const submitNewStage: FormEventHandler = (e) => {
@@ -491,7 +609,12 @@ export default function Pipeline({
     const activeFiltersCount = useMemo(() => {
         const entries = Object.entries(filters) as [string, unknown][];
         return entries.filter(([k, v]) => {
-            if (k === 'pipeline_stage_id' || k === 'search') return false;
+            if (k === 'pipeline_stage_id' || k === 'search' || k === 'arquivados') {
+                return false;
+            }
+            if (typeof v === 'boolean') {
+                return v;
+            }
             return v !== '' && v !== null && v !== undefined;
         }).length;
     }, [filters]);
@@ -505,9 +628,13 @@ export default function Pipeline({
             <FlashMessages />
             <PageHeader
                 title="Voluntários"
-                subtitle="Quadro por fases: inscrição, treino até servir. Toque numa linha para abrir a ficha ou as anotações."
+                subtitle={
+                    secao === 'pedidos'
+                        ? 'Pedidos de líderes e da secretaria. Abra um pedido para detalhes, chat ou anexar voluntário.'
+                        : 'Voluntários por fases: inscrição, treino até servir. Toque numa linha para abrir a ficha ou as anotações.'
+                }
                 actions={
-                    canVolunteerManage ? (
+                    secao === 'quadro' && canVolunteerManage ? (
                         <Link
                             href={`${volunteersAdminUrl}?modal=create`}
                             className={titleBarAddIconClass}
@@ -519,27 +646,76 @@ export default function Pipeline({
                     ) : undefined
                 }
             >
-                <div className="flex flex-wrap items-center gap-2">
-                    {canVolunteerManage ? (
-                        <Link
-                            href={volunteersAdminUrl}
-                            className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
-                        >
-                            Cadastro secretaria
-                        </Link>
-                    ) : null}
-                    {publicVolunteerSignupUrl && canPipelineMutate ? (
-                        <button
-                            type="button"
-                            onClick={() => setPublicInviteOpen(true)}
-                            className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
-                        >
-                            Link cadastro público
-                        </button>
-                    ) : null}
-                </div>
+                {secao === 'quadro' ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                        {canVolunteerManage ? (
+                            <Link
+                                href={volunteersAdminUrl}
+                                className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                            >
+                                Cadastro completo
+                            </Link>
+                        ) : null}
+                        {publicVolunteerSignupUrl && canPipelineMutate ? (
+                            <button
+                                type="button"
+                                onClick={() => setPublicInviteOpen(true)}
+                                className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                            >
+                                Link cadastro público
+                            </button>
+                        ) : null}
+                    </div>
+                ) : null}
             </PageHeader>
 
+            {canManageVolunteerRequests ? (
+                <nav
+                    role="tablist"
+                    aria-label="Seções de voluntários"
+                    className="sticky top-0 z-10 -mx-1 mb-6 flex flex-wrap border-b border-zinc-200 bg-zinc-50/95 px-1 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/90"
+                >
+                    <button
+                        type="button"
+                        role="tab"
+                        aria-selected={secao === 'quadro'}
+                        className={pipelineTabButtonClass(secao === 'quadro')}
+                        onClick={() => goToSecao('quadro')}
+                    >
+                        Voluntários
+                    </button>
+                    <button
+                        type="button"
+                        role="tab"
+                        aria-selected={secao === 'pedidos'}
+                        className={`${pipelineTabButtonClass(secao === 'pedidos')} inline-flex items-center justify-center gap-2`}
+                        onClick={() => goToSecao('pedidos')}
+                    >
+                        Pedidos
+                        {openVolunteerRequestsCount > 0 ? (
+                            <span className="inline-flex min-h-[1.25rem] min-w-[1.25rem] items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white">
+                                {openVolunteerRequestsCount > 99 ? '99+' : openVolunteerRequestsCount}
+                            </span>
+                        ) : null}
+                    </button>
+                </nav>
+            ) : null}
+
+            {secao === 'pedidos' && canManageVolunteerRequests ? (
+                <VolunteerRequestsStaffSection
+                    rows={volunteerRequestRows}
+                    ministries={volunteerRequestMinistries}
+                    storeUrl={volunteerRequestStoreUrl}
+                    volunteersForAttach={volunteersForAttach}
+                    attachVolunteerPickerUrl={attachVolunteerPickerUrl}
+                    filters={volunteerRequestFilters}
+                    archivedCount={volunteerRequestArchivedCount}
+                    activeCount={volunteerRequestActiveCount}
+                />
+            ) : null}
+
+            {secao === 'quadro' ? (
+            <>
             <div className="flex flex-col gap-6 lg:flex-row">
                 <aside className="lg:w-64 shrink-0 space-y-4">
                     <Card className="p-4">
@@ -602,6 +778,33 @@ export default function Pipeline({
                                     </li>
                                 );
                             })}
+                            {canVolunteerManage ? (
+                                <li>
+                                    <button
+                                        type="button"
+                                        onClick={() => pickStage(PIPELINE_STAGE_ARCHIVED)}
+                                        aria-pressed={currentStageFilter === PIPELINE_STAGE_ARCHIVED}
+                                        className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm ${
+                                            currentStageFilter === PIPELINE_STAGE_ARCHIVED
+                                                ? 'bg-brand-600 font-medium text-white shadow-sm ring-2 ring-brand-800/40 dark:bg-brand-500 dark:ring-brand-300/35'
+                                                : 'text-zinc-800 ring-1 ring-transparent hover:bg-zinc-100 hover:ring-zinc-200 dark:text-zinc-100 dark:hover:bg-zinc-800 dark:hover:ring-zinc-600'
+                                        }`}
+                                    >
+                                        <span className="truncate pr-2">Arquivados</span>
+                                        <span
+                                            className={`shrink-0 tabular-nums text-xs ${
+                                                currentStageFilter === PIPELINE_STAGE_ARCHIVED
+                                                    ? 'text-white/90'
+                                                    : archivedVolunteerCount === 0
+                                                      ? 'text-zinc-400 dark:text-zinc-500'
+                                                      : 'text-zinc-500 dark:text-zinc-400'
+                                            }`}
+                                        >
+                                            {archivedVolunteerCount}
+                                        </span>
+                                    </button>
+                                </li>
+                            ) : null}
                         </ul>
                     </Card>
                     {canPipelineMutate ? (
@@ -948,7 +1151,8 @@ export default function Pipeline({
                                         <th className="pb-2 pr-3 font-semibold">Cadastro</th>
                                         <th className="pb-2 pr-3 font-semibold">Contato</th>
                                         <th className="pb-2 pr-3 font-semibold">Interesses</th>
-                                        <th className="pb-2 font-semibold">Ministérios</th>
+                                        <th className="pb-2 pr-3 font-semibold">Ministérios</th>
+                                        <th className="pb-2 font-semibold text-right">Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -984,16 +1188,36 @@ export default function Pipeline({
                                                 {formatListPreview(v.ministryNames) || '—'}
                                             </td>
                                             <td className="cursor-default py-2 text-right" onClick={(ev) => ev.stopPropagation()}>
-                                                <button
-                                                    type="button"
-                                                    onClick={(ev) => {
-                                                        ev.stopPropagation();
-                                                        openInvite(v);
-                                                    }}
-                                                    className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-800 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
-                                                >
-                                                    Encaminhar
-                                                </button>
+                                                <div className="flex flex-wrap items-center justify-end gap-2">
+                                                    {canVolunteerManage && !v.email?.trim() ? (
+                                                        <VolunteerAppInviteButton
+                                                            disabled={invitingVolunteerId === v.id}
+                                                            onClick={() => {
+                                                                setInvitingVolunteerId(v.id);
+                                                                router.post(
+                                                                    route('volunteers.invite', v.id),
+                                                                    {},
+                                                                    {
+                                                                        preserveScroll: true,
+                                                                        onFinish: () => setInvitingVolunteerId(null),
+                                                                    },
+                                                                );
+                                                            }}
+                                                        />
+                                                    ) : null}
+                                                    {canPipelineMutate ? (
+                                                        <button
+                                                            type="button"
+                                                            onClick={(ev) => {
+                                                                ev.stopPropagation();
+                                                                openInvite(v);
+                                                            }}
+                                                            className={volunteerEncaminharButtonClass}
+                                                        >
+                                                            Encaminhar
+                                                        </button>
+                                                    ) : null}
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -1026,13 +1250,29 @@ export default function Pipeline({
                                                 {v.stageName} · {formatShortDate(v.createdAt)}
                                             </div>
                                         </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => openInvite(v)}
-                                            className="shrink-0 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-800 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
-                                        >
-                                            Encaminhar
-                                        </button>
+                                        {canPipelineMutate ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => openInvite(v)}
+                                                className={`${volunteerEncaminharButtonClass} shrink-0`}
+                                            >
+                                                Encaminhar
+                                            </button>
+                                        ) : null}
+                                    </div>
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                        {canVolunteerManage && !v.email?.trim() ? (
+                                            <VolunteerAppInviteButton
+                                                disabled={invitingVolunteerId === v.id}
+                                                onClick={() => {
+                                                    setInvitingVolunteerId(v.id);
+                                                    router.post(route('volunteers.invite', v.id), {}, {
+                                                        preserveScroll: true,
+                                                        onFinish: () => setInvitingVolunteerId(null),
+                                                    });
+                                                }}
+                                            />
+                                        ) : null}
                                     </div>
                                     <div className="mt-2 text-xs text-zinc-600 dark:text-zinc-300 space-y-1">
                                         {v.email ? <div className="truncate">{v.email}</div> : null}
@@ -1058,9 +1298,15 @@ export default function Pipeline({
 
                         {volunteers.data.length === 0 ? (
                             <div className="mt-4 rounded-2xl border border-dashed border-zinc-200 p-6 text-center text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
-                                <div className="font-semibold text-zinc-900 dark:text-white">Nenhum voluntário encontrado</div>
+                                <div className="font-semibold text-zinc-900 dark:text-white">
+                                    {currentStageFilter === PIPELINE_STAGE_ARCHIVED
+                                        ? 'Nenhum voluntário arquivado'
+                                        : 'Nenhum voluntário encontrado'}
+                                </div>
                                 <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                    Ajuste a fase selecionada ou limpe os filtros para ver mais resultados.
+                                    {currentStageFilter === PIPELINE_STAGE_ARCHIVED
+                                        ? 'Voluntários arquivados pela equipe aparecem aqui.'
+                                        : 'Ajuste a fase selecionada ou limpe os filtros para ver mais resultados.'}
                                 </div>
                                 <div className="mt-4 flex justify-center gap-2">
                                     <SecondaryButton type="button" onClick={clearFilters}>
@@ -1099,23 +1345,45 @@ export default function Pipeline({
                     </Card>
                 </div>
             </div>
+            </>
+            ) : null}
 
             <Modal show={modalOpen} onClose={() => setModalOpen(false)} maxWidth="2xl">
                 <div className="flex max-h-[85vh] flex-col">
                     {detailLoading ? (
                         <div className="p-6">
-                            <p className="text-sm text-zinc-500">A carregar…</p>
+                            <p className="text-sm text-zinc-500">Carregando…</p>
                         </div>
                     ) : detail?.volunteer ? (
                         <>
-                            <div className="shrink-0 border-b border-zinc-200 p-4 dark:border-zinc-700">
-                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                    <div>
-                                        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">{detail.volunteer.name}</h2>
-                                        <p className="text-xs text-zinc-500">
-                                            Voluntário e conta no app (visão unificada)
-                                        </p>
-                                    </div>
+                            <div className="shrink-0 space-y-4 border-b border-zinc-200 p-4 dark:border-zinc-700">
+                                <RecordDetailHeader
+                                    title={
+                                        (detail.volunteer.name as string | null)?.trim() ||
+                                        (detail.volunteer as VolunteerDetailData).user?.name?.trim() ||
+                                        'Voluntário'
+                                    }
+                                    subtitle="Voluntário e conta no app (mesma pessoa)."
+                                    photoUrl={
+                                        (detail.volunteer as VolunteerDetailData).photo_url ??
+                                        (detail.volunteer.user as { photo_url?: string | null } | null)?.photo_url ??
+                                        null
+                                    }
+                                    badge={(() => {
+                                        const v = detail.volunteer as VolunteerDetailData;
+                                        const parts: string[] = [];
+                                        if (v.active === false) {
+                                            parts.push('Escalas: inativo');
+                                        } else if (v.active === true) {
+                                            parts.push('Escalas: ativo');
+                                        }
+                                        if (detail.pipeline?.stageName) {
+                                            parts.push(`Fase: ${detail.pipeline.stageName}`);
+                                        }
+                                        return parts.length > 0 ? parts.join(' · ') : null;
+                                    })()}
+                                    onClose={() => setModalOpen(false)}
+                                />
                                     {canPipelineMutate ? (
                                         <form onSubmit={submitStageMove} className="flex flex-wrap items-end gap-2">
                                             <div>
@@ -1146,7 +1414,7 @@ export default function Pipeline({
                                             <InputError message={stageMoveForm.errors.stage_id} />
                                         </form>
                                     ) : (
-                                        <div className="text-right text-sm text-zinc-600 dark:text-zinc-300">
+                                        <div className="text-sm text-zinc-600 dark:text-zinc-300">
                                             <div className="text-xs font-medium text-zinc-500">
                                                 {canVolunteerManage ? 'Status geral' : 'Fase / pasta'}
                                             </div>
@@ -1155,8 +1423,7 @@ export default function Pipeline({
                                             </div>
                                         </div>
                                     )}
-                                </div>
-                                <div className="mt-4 flex gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800">
+                                <div className="flex gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800">
                                     <button
                                         type="button"
                                         onClick={() => setDetailTab('ficha')}
@@ -1166,7 +1433,7 @@ export default function Pipeline({
                                                 : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
                                         }`}
                                     >
-                                        Ficha do cadastro
+                                        Ficha
                                     </button>
                                     <button
                                         type="button"
@@ -1207,17 +1474,54 @@ export default function Pipeline({
                             <div className="min-h-0 flex-1 overflow-y-auto p-4">
                                 {detailTab === 'ficha' ? (
                                     <div className="space-y-4">
-                                        <VolunteerSignupPhoto
-                                            name={detail.volunteer.name as string | null}
-                                            photoUrl={
-                                                (detail.volunteer as VolunteerDetailData).photo_url ??
-                                                (detail.volunteer.user as { photo_url?: string | null } | null)?.photo_url ??
-                                                null
-                                            }
-                                        />
                                         <RecordDetailSections
                                             sections={volunteerDetailSections(detail.volunteer as VolunteerDetailData)}
                                         />
+
+                                        {detail.archiveVolunteerUrl || detail.unarchiveVolunteerUrl ? (
+                                            <div className="flex flex-wrap gap-2">
+                                                {detail.archiveVolunteerUrl ? (
+                                                    <SecondaryButton
+                                                        type="button"
+                                                        onClick={async () => {
+                                                            const ok = await confirmAction({
+                                                                title: 'Arquivar voluntário?',
+                                                                text: 'O cadastro deixa de aparecer na lista ativa desta igreja. Você pode restaurá-lo em «Arquivados».',
+                                                                confirmButtonText: 'Arquivar',
+                                                                icon: 'question',
+                                                            });
+                                                            if (ok) {
+                                                                router.post(detail.archiveVolunteerUrl!, {}, {
+                                                                    preserveScroll: true,
+                                                                });
+                                                            }
+                                                        }}
+                                                    >
+                                                        Arquivar voluntário
+                                                    </SecondaryButton>
+                                                ) : null}
+                                                {detail.unarchiveVolunteerUrl ? (
+                                                    <SecondaryButton
+                                                        type="button"
+                                                        onClick={async () => {
+                                                            const ok = await confirmAction({
+                                                                title: 'Restaurar voluntário?',
+                                                                text: 'O cadastro voltará à lista ativa de voluntários.',
+                                                                confirmButtonText: 'Restaurar',
+                                                                icon: 'question',
+                                                            });
+                                                            if (ok) {
+                                                                router.post(detail.unarchiveVolunteerUrl!, {}, {
+                                                                    preserveScroll: true,
+                                                                });
+                                                            }
+                                                        }}
+                                                    >
+                                                        Restaurar na lista ativa
+                                                    </SecondaryButton>
+                                                ) : null}
+                                            </div>
+                                        ) : null}
 
                                         {detail.destroyVolunteerUrl ? (
                                             <VolunteerDeleteConfirmBlock
@@ -1356,6 +1660,16 @@ export default function Pipeline({
                     )}
                 </div>
             </Modal>
+
+            <VolunteerInviteShareModal
+                show={inviteShareOpen && !!inviteShare}
+                link={inviteShare?.link ?? ''}
+                inviteeName={inviteShare?.name}
+                onClose={() => {
+                    setInviteShareOpen(false);
+                    setInviteShare(null);
+                }}
+            />
 
             {publicVolunteerSignupUrl && canPipelineMutate ? (
                 <PublicVolunteerSignupShareModal

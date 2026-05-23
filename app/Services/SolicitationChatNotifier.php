@@ -145,12 +145,14 @@ class SolicitationChatNotifier
         $isVolunteerRequest = $solicitation->type === MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST;
         $isCommunicationRequest = $solicitation->type === MobileChurchSolicitationController::TYPE_COMMUNICATION_REQUEST;
         $staffRoute = $isVolunteerRequest
-            ? 'volunteer-requests.staff.index'
+            ? 'ministry-lead.volunteers.index'
             : ($isCommunicationRequest ? 'communication-requests.index' : 'solicitations.index');
-        $staffParams = ($isVolunteerRequest || $isCommunicationRequest) ? [] : [
-            'modal_kind' => 'solicitation',
-            'modal_id' => $solicitation->id,
-        ];
+        $staffParams = $isVolunteerRequest
+            ? ['secao' => 'pedidos']
+            : ($isCommunicationRequest ? [] : [
+                'modal_kind' => 'solicitation',
+                'modal_id' => $solicitation->id,
+            ]);
 
         foreach ($staffUsers as $user) {
             $this->pushInboxForUser(
@@ -251,12 +253,14 @@ class SolicitationChatNotifier
         $isVolunteerRequest = $solicitation->type === MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST;
         $isCommunicationRequest = $solicitation->type === MobileChurchSolicitationController::TYPE_COMMUNICATION_REQUEST;
         $staffInboxRoute = $isVolunteerRequest
-            ? 'volunteer-requests.staff.index'
+            ? 'ministry-lead.volunteers.index'
             : ($isCommunicationRequest ? 'communication-requests.index' : 'solicitations.index');
-        $staffInboxParams = ($isVolunteerRequest || $isCommunicationRequest) ? [] : [
-            'modal_kind' => 'solicitation',
-            'modal_id' => $solicitation->id,
-        ];
+        $staffInboxParams = $isVolunteerRequest
+            ? ['secao' => 'pedidos']
+            : ($isCommunicationRequest ? [] : [
+                'modal_kind' => 'solicitation',
+                'modal_id' => $solicitation->id,
+            ]);
 
         $church = Church::query()->find($churchId);
         $handlerVolunteerId = $church?->solicitations_handler_volunteer_id;

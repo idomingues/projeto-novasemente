@@ -5,25 +5,25 @@
  * Textos e ordem vêm daqui — atualizam com deploy PHP sem rebuild obrigatório do Vite.
  * A filtragem por permissão continua no Sidebar (adminSidebarRoutePermissions).
  *
- * Secções (Sidebar.tsx): itens que não estão em publicationRoutes/cadastroRoutes/admRoutes
- * aparecem em «Menu Principal» — mantenha esse bloco contíguo no topo desta lista.
+ * Secções (Sidebar.tsx): Dashboard (fixo no topo); PASTOR (pastorRoutes); OPERAÇÃO (restante);
+ * depois Publicação, Cadastro e ADM.
  *
  * @var array<int, array{name: string, route: string, icon: string}>
  */
 return [
     'items' => [
-        // Menu principal (ordem fixa pedida pela equipe)
+        // OPERAÇÃO
         ['name' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'home'],
-        ['name' => 'Atendimento Pastoral', 'route' => 'solicitations.index', 'icon' => 'inbox'],
-        ['name' => 'Pedido de voluntários', 'route' => 'volunteer-requests.staff.index', 'icon' => 'user-plus'],
-        ['name' => 'Solicitações Comunicação', 'route' => 'communication-requests.index', 'icon' => 'chat-bubble'],
-        ['name' => 'Agenda Pastoral', 'route' => 'pastoral-agenda.index', 'icon' => 'clock'],
-        ['name' => 'Agendamento de Salas', 'route' => 'room-bookings.index', 'icon' => 'rectangle-stack'],
+        ['name' => 'Comunicação', 'route' => 'communication-requests.index', 'icon' => 'chat-bubble'],
+        // PASTOR (ordem fixa em Sidebar.tsx — pastorRouteOrder)
+        ['name' => 'Atendimento', 'route' => 'solicitations.index', 'icon' => 'inbox'],
+        ['name' => 'Batismo', 'route' => 'baptism-requests.index', 'icon' => 'sparkles'],
+        ['name' => 'Agenda', 'route' => 'pastoral-agenda.index', 'icon' => 'clock'],
+        ['name' => 'Salas', 'route' => 'room-bookings.index', 'icon' => 'rectangle-stack'],
         ['name' => 'Escalas', 'route' => 'escalas.index', 'icon' => 'calendar'],
         ['name' => 'Inventários', 'route' => 'inventory.index', 'icon' => 'archive-box'],
         ['name' => 'Voluntários', 'route' => 'ministry-lead.volunteers.index', 'icon' => 'user-group'],
-        ['name' => 'Cadastro de voluntários', 'route' => 'volunteers.index', 'icon' => 'user-plus'],
-        ['name' => 'Membros do app', 'route' => 'members.index', 'icon' => 'users'],
+        ['name' => 'Usuários', 'route' => 'users.index', 'icon' => 'users'],
         ['name' => 'Missão', 'route' => 'mission.index', 'icon' => 'globe-alt'],
         ['name' => 'Oração', 'route' => 'prayer.index', 'icon' => 'praying-hands'],
         // Publicação
@@ -35,8 +35,8 @@ return [
         ['name' => 'Fotos', 'route' => 'photo-albums.index', 'icon' => 'camera'],
         ['name' => 'Biblioteca', 'route' => 'library-books.index', 'icon' => 'book-open'],
         ['name' => 'Culto', 'route' => 'culto.index', 'icon' => 'film'],
-        ['name' => 'Campanhas de doação', 'route' => 'donation-campaigns.index', 'icon' => 'banknotes'],
-        ['name' => 'Conexão de Talentos', 'route' => 'talents.admin.dashboard', 'icon' => 'user-group'],
+        ['name' => 'Doação', 'route' => 'donation-campaigns.index', 'icon' => 'banknotes'],
+        ['name' => 'Serviços', 'route' => 'talents.admin.dashboard', 'icon' => 'user-group'],
         ['name' => 'Tesoureiro', 'route' => 'finance.treasurer', 'icon' => 'chart-bar-square'],
         ['name' => 'Notificações', 'route' => 'notifications.manage', 'icon' => 'bell-alert'],
         // Cadastro
@@ -44,7 +44,6 @@ return [
         ['name' => 'Departamentos', 'route' => 'departments.index', 'icon' => 'building-office-2'],
         ['name' => 'Pastores', 'route' => 'pastors.index', 'icon' => 'user-circle'],
         // ADM (ordem fixa em Sidebar.tsx — admRouteOrder)
-        ['name' => 'Contas do app (equipe)', 'route' => 'users.index', 'icon' => 'sparkles'],
         ['name' => 'Igrejas', 'route' => 'churches.index', 'icon' => 'building-office'],
         ['name' => 'Operações', 'route' => 'operations.index', 'icon' => 'chart-bar-square'],
         ['name' => 'Perfis', 'route' => 'roles.index', 'icon' => 'key'],

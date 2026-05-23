@@ -1,6 +1,7 @@
 import { Dialog, DialogBackdrop, DialogPanel } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import { PropsWithChildren, ReactNode } from 'react';
+import { PropsWithChildren, ReactNode, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 export default function Modal({
     children,
@@ -29,6 +30,21 @@ export default function Modal({
     disableBodyScroll?: boolean;
     onClose: CallableFunction;
 }>) {
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    useEffect(() => {
+        if (!show) return;
+        const prev = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = prev;
+        };
+    }, [show]);
+
     const close = () => {
         if (closeable) {
             onClose();
@@ -44,18 +60,17 @@ export default function Modal({
         '7xl': 'sm:max-w-7xl',
     }[maxWidth];
 
-    return (
-        <Dialog open={show} onClose={close} className="relative z-[200]">
+    const dialog = (
+        <Dialog open={show} onClose={close} className="relative z-[250]">
             <DialogBackdrop
                 transition
-                className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm transition-opacity duration-300 ease-out data-closed:opacity-0 dark:bg-black/80"
+                className="fixed inset-0 z-[250] bg-black/60 backdrop-blur-sm transition-opacity duration-300 ease-out data-closed:opacity-0 dark:bg-black/85"
             />
             {/*
-              Mobile: sem overflow no contentor externo — evita o “salto” do sheet ao focar inputs
-              (teclado + scrollIntoView). O scroll fica dentro do painel / conteúdo.
-              Desktop: mantém scroll no overlay para modais muito altos.
+              Portal em document.body: cobre sidebar (z-50) e barra inferior.
+              Mobile: sem overflow no contentor externo — evita o “salto” do sheet ao focar inputs.
             */}
-            <div className="fixed inset-0 z-[201] w-screen max-w-[100vw] max-sm:flex max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:flex-col max-sm:overflow-hidden max-sm:overscroll-none sm:overflow-y-auto">
+            <div className="fixed inset-0 z-[251] w-screen max-w-[100vw] max-sm:flex max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:flex-col max-sm:overflow-hidden max-sm:overscroll-none sm:overflow-y-auto">
                 <div className="flex items-end justify-center p-0 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] text-center max-sm:h-full max-sm:min-h-0 max-sm:flex-1 sm:min-h-full sm:items-center sm:p-4 sm:pb-4">
                     <DialogPanel
                         transition
@@ -88,4 +103,10 @@ export default function Modal({
             </div>
         </Dialog>
     );
+
+    if (!mounted) {
+        return null;
+    }
+
+    return createPortal(dialog, document.body);
 }

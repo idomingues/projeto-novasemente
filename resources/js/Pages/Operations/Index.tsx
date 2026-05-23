@@ -19,12 +19,6 @@ type PageViewPage = {
     views: number;
 };
 
-type PageViewGroup = {
-    groupLabel: string;
-    totalViews: number;
-    pages: PageViewPage[];
-};
-
 type PageViewsPayload = {
     enabled: boolean;
     note: string | null;
@@ -32,7 +26,7 @@ type PageViewsPayload = {
     selectedMonthLabel: string;
     availableMonths: { key: string; label: string }[];
     totalViews: number;
-    groups: PageViewGroup[];
+    pages: PageViewPage[];
 };
 
 interface Props {
@@ -257,8 +251,8 @@ export default function OperationsIndex({
                                 ) : null}
                             </p>
                             <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                                A contagem é feita após enviar a página ao usuário; rotas de login, ficheiros e debug não entram no
-                                ranking.
+                                A contagem é feita após enviar a página ao usuário; rotas de login, arquivos, debug e itens de
+                                abas da barra inferior (Início, Culto, Eventos, etc.) não entram no ranking.
                             </p>
                         </div>
 
@@ -291,50 +285,35 @@ export default function OperationsIndex({
                                     <StatCard
                                         title={`Total em ${pageViews.selectedMonthLabel}`}
                                         value={pageViews.totalViews.toLocaleString('pt-BR')}
-                                        hint="Soma de todas as rotas registadas no mês."
+                                        hint="Soma das páginas de conteúdo no mês (sem hubs de navegação)."
                                     />
                                 </div>
 
-                                {pageViews.groups.length === 0 ? (
+                                {pageViews.pages.length === 0 ? (
                                     <p className="text-sm text-zinc-500 dark:text-zinc-400">
                                         Nenhuma visualização registrada neste mês para esta igreja.
                                     </p>
                                 ) : (
-                                    <div className="space-y-5">
-                                        {pageViews.groups.map((group) => (
-                                            <section
-                                                key={group.groupLabel}
-                                                className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 overflow-hidden shadow-sm"
-                                            >
-                                                <div className="flex items-center justify-between gap-4 border-b border-zinc-200 bg-zinc-50 px-5 py-3 dark:border-zinc-800 dark:bg-zinc-800/50">
-                                                    <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">
-                                                        {group.groupLabel}
-                                                    </h3>
-                                                    <span className="rounded-full bg-teal-100 px-3 py-1 text-sm font-semibold tabular-nums text-teal-900 dark:bg-teal-950 dark:text-teal-100">
-                                                        {group.totalViews.toLocaleString('pt-BR')}
+                                    <section className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 overflow-hidden shadow-sm">
+                                        <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                                            {pageViews.pages.map((page) => (
+                                                <li
+                                                    key={page.routeName}
+                                                    className="flex items-center justify-between gap-4 px-5 py-3"
+                                                >
+                                                    <div className="min-w-0">
+                                                        <p className="truncate font-medium text-zinc-900 dark:text-zinc-100">
+                                                            {page.label}
+                                                        </p>
+                                                        <p className="truncate font-mono text-xs text-zinc-500">{page.routeName}</p>
+                                                    </div>
+                                                    <span className="shrink-0 rounded-full bg-zinc-100 px-3 py-1 text-sm font-semibold tabular-nums text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
+                                                        {page.views.toLocaleString('pt-BR')}
                                                     </span>
-                                                </div>
-                                                <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
-                                                    {group.pages.map((page) => (
-                                                        <li
-                                                            key={page.routeName}
-                                                            className="flex items-center justify-between gap-4 px-5 py-3"
-                                                        >
-                                                            <div className="min-w-0">
-                                                                <p className="truncate font-medium text-zinc-900 dark:text-zinc-100">
-                                                                    {page.label}
-                                                                </p>
-                                                                <p className="truncate font-mono text-xs text-zinc-500">{page.routeName}</p>
-                                                            </div>
-                                                            <span className="shrink-0 rounded-full bg-zinc-100 px-3 py-1 text-sm font-semibold tabular-nums text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
-                                                                {page.views.toLocaleString('pt-BR')}
-                                                            </span>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            </section>
-                                        ))}
-                                    </div>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </section>
                                 )}
                             </>
                         ) : null}

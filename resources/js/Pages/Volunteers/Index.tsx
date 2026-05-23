@@ -1,6 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm, router, Link, usePage } from '@inertiajs/react';
-import { PencilIcon, TrashIcon, ChatBubbleLeftRightIcon, UserPlusIcon, CameraIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, UserPlusIcon, CameraIcon } from '@heroicons/react/24/outline';
+import VolunteerAppInviteButton from '@/Components/Volunteers/VolunteerAppInviteButton';
 import VolunteerInviteShareModal from '@/Components/Volunteers/VolunteerInviteShareModal';
 import PublicVolunteerSignupShareModal from '@/Components/Volunteers/PublicVolunteerSignupShareModal';
 import AddButton from '@/Components/AddButton';
@@ -154,6 +155,11 @@ export default function Index({
     });
 
     const openCreateModal = () => {
+        if (avatarPreviewSrc?.startsWith('blob:')) {
+            URL.revokeObjectURL(avatarPreviewSrc);
+        }
+        setAvatarPreviewSrc(null);
+        lastSavedPhotoRef.current = null;
         setIsEditing(false);
         setEditingId(null);
         reset();
@@ -545,8 +551,9 @@ export default function Index({
                                     </td>
                                     <td className="cursor-default px-4 md:px-8 py-3 md:py-4 align-middle" onClick={(e) => e.stopPropagation()}>
                                         {!v.user?.email ? (
-                                            <button
-                                                type="button"
+                                            <VolunteerAppInviteButton
+                                                className="w-full sm:w-auto"
+                                                disabled={invitingVolunteerId === v.id}
                                                 onClick={() => {
                                                     setInvitingVolunteerId(v.id);
                                                     router.post(
@@ -558,13 +565,7 @@ export default function Index({
                                                         },
                                                     );
                                                 }}
-                                                disabled={invitingVolunteerId === v.id}
-                                                className="inline-flex w-full min-w-[8.5rem] items-center justify-center gap-2 rounded-full border border-emerald-600/80 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900 shadow-sm transition hover:bg-emerald-100 disabled:opacity-60 dark:border-emerald-500/70 dark:bg-emerald-950/40 dark:text-emerald-100 dark:hover:bg-emerald-900/50 sm:w-auto"
-                                                title="Gera o link e abre a tela para copiar ou enviar pelo WhatsApp"
-                                            >
-                                                <ChatBubbleLeftRightIcon className="h-4 w-4 shrink-0" aria-hidden />
-                                                Convidar
-                                            </button>
+                                            />
                                         ) : (
                                             <span className="text-xs text-zinc-400 dark:text-zinc-500">—</span>
                                         )}
@@ -641,300 +642,158 @@ export default function Index({
                                 {submitToast.message}
                             </div>
                         )}
-                        <form onSubmit={submit} className="space-y-4">
-                            <div className="space-y-4">
-                        <div>
-                            <InputLabel htmlFor="name" value="Nome completo" />
-                            <TextInput
-                                id="name"
-                                value={data.name}
-                                onChange={(e) => setData('name', e.target.value)}
-                                className="mt-1 block w-full"
-                                placeholder="Nome e sobrenome"
-                            />
-                            <InputError message={errors.name} className="mt-1" />
-                        </div>
-                        {/* Em mobile, uma coluna evita “saltos” quando o teclado abre e o Safari recalcula a grade. */}
-                        <div className="flex flex-col gap-4 sm:grid sm:grid-cols-2">
-                            <div>
-                                <InputLabel htmlFor="phone" value="Telefone (opcional)" />
-                                <TextInput
-                                    id="phone"
-                                    value={data.phone}
-                                    onChange={(e) => setData('phone', e.target.value)}
-                                    className="mt-1 block w-full"
-                                />
-                                <InputError message={errors.phone} className="mt-1" />
-                            </div>
-                            <div className="flex flex-col gap-2 rounded-xl border border-zinc-100 bg-zinc-50/80 px-3 py-3 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 dark:border-zinc-800 dark:bg-zinc-900/40 sm:dark:bg-transparent">
-                                <div className="flex items-center justify-between gap-3 sm:items-end sm:pb-0.5">
-                                    <div className="min-w-0 flex-1">
-                                        <InputLabel value="Ativar voluntário" />
-                                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                            Se desativado, não aparece para seleção em escalas.
-                                        </p>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => setData('active', !data.active)}
-                                        className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors ${
-                                            data.active ? 'bg-emerald-600' : 'bg-zinc-300 dark:bg-zinc-700'
-                                        }`}
-                                        role="switch"
-                                        aria-checked={data.active}
-                                    >
-                                        <span
-                                            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
-                                                data.active ? 'translate-x-6' : 'translate-x-1'
-                                            }`}
+                        <form onSubmit={submit} className="space-y-5">
+                            {/* Foto — primeiro (criação e edição) */}
+                            <section className="rounded-2xl border border-zinc-200 bg-zinc-50/90 p-4 dark:border-zinc-700 dark:bg-zinc-800/40">
+                                <p className="text-sm font-semibold text-zinc-900 dark:text-white">Foto</p>
+                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                    Aparece no app e no painel. No celular pode usar a câmera; no computador, escolha uma imagem.
+                                </p>
+                                <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start">
+                                    {avatarPreviewSrc ? (
+                                        <img
+                                            src={avatarPreviewSrc}
+                                            alt=""
+                                            className="h-20 w-20 shrink-0 rounded-2xl object-cover border border-zinc-200 dark:border-zinc-600"
                                         />
-                                    </button>
+                                    ) : (
+                                        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800">
+                                            <CameraIcon className="h-8 w-8 text-zinc-400" aria-hidden />
+                                        </div>
+                                    )}
+                                    <div className="min-w-0 flex-1 space-y-2">
+                                        <input
+                                            id="volunteer_face_photo"
+                                            type="file"
+                                            accept="image/*"
+                                            capture="user"
+                                            className="block w-full text-sm text-zinc-600 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-900 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white hover:file:bg-zinc-800 dark:text-zinc-400 dark:file:bg-zinc-100 dark:file:text-zinc-900"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0] ?? null;
+                                                if (avatarPreviewSrc?.startsWith('blob:')) {
+                                                    URL.revokeObjectURL(avatarPreviewSrc);
+                                                }
+                                                setData('photo', file);
+                                                if (file) {
+                                                    setAvatarPreviewSrc(URL.createObjectURL(file));
+                                                } else {
+                                                    setAvatarPreviewSrc(lastSavedPhotoRef.current);
+                                                }
+                                                e.target.value = '';
+                                            }}
+                                        />
+                                        {data.photo ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (avatarPreviewSrc?.startsWith('blob:')) {
+                                                        URL.revokeObjectURL(avatarPreviewSrc);
+                                                    }
+                                                    setData('photo', null);
+                                                    setAvatarPreviewSrc(lastSavedPhotoRef.current);
+                                                }}
+                                                className="text-xs font-semibold text-primary-600 underline dark:text-primary-400"
+                                            >
+                                                Remover foto nova
+                                            </button>
+                                        ) : null}
+                                        <InputError message={errors.photo} className="!mt-1" />
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-                        <div>
-                            <InputLabel htmlFor="email" value="E-mail (login)" />
-                            <TextInput
-                                id="email"
-                                type="email"
-                                value={data.email}
-                                onChange={(e) => setData('email', e.target.value)}
-                                className="mt-1 block w-full"
-                                placeholder="usuario@exemplo.com"
-                            />
-                            <InputError message={errors.email} className="mt-1" />
-                        </div>
+                            </section>
 
-                        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/80 dark:bg-zinc-900/40 p-4 space-y-4">
-                            <div>
-                                <p className="text-sm font-semibold text-zinc-900 dark:text-white">Perfil da conta no app</p>
-                                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                                    Situação da conta, <span className="font-medium">perfil de acesso</span>, foto e preferências — como em Membros do app.
-                                </p>
-                            </div>
-                            <div>
-                                <InputLabel htmlFor="app_role" value="Perfil de acesso no app" />
-                                {editingUserIsSuperAdmin ? (
-                                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 px-3 py-2.5">
-                                        Este usuário é <strong className="font-medium">super administrador</strong>: o perfil é gerido em Usuários do sistema.
+                            {/* Identificação */}
+                            <section className="space-y-4">
+                                <div>
+                                    <p className="text-sm font-semibold text-zinc-900 dark:text-white">Dados do voluntário</p>
+                                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                        Nome e contatos da ficha; o e-mail também serve para login no app.
                                     </p>
-                                ) : editingUserIsPanelTeam ? (
-                                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 px-3 py-2.5">
-                                        Conta da equipe do painel — altere o perfil em <span className="font-medium">Contas do app (equipe)</span>.
-                                    </p>
-                                ) : (
-                                    <SelectInput
-                                        id="app_role"
-                                        value={data.app_role}
-                                        onChange={(e) => {
-                                            const role = e.target.value;
-                                            setData((prev) => ({
-                                                ...prev,
-                                                app_role: role,
-                                                app_ministry_ids:
-                                                    role === 'lider_ministerio' ? prev.app_ministry_ids : [],
-                                            }));
-                                        }}
-                                        className="mt-1 block w-full"
-                                    >
-                                        <option value="">Sem perfil (só conta até definir permissões)</option>
-                                        {appRoles.map((r) => (
-                                            <option key={r.id} value={r.name}>
-                                                {appRoleLabel(r.name)}
-                                            </option>
-                                        ))}
-                                    </SelectInput>
-                                )}
-                                <InputError message={errors.app_role} className="mt-1" />
-                            </div>
-                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                </div>
                                 <div>
-                                    <InputLabel htmlFor="birth_date" value="Data de nascimento (opcional)" />
+                                    <InputLabel htmlFor="name" value="Nome completo" />
                                     <TextInput
-                                        id="birth_date"
-                                        type="date"
-                                        value={data.birth_date}
-                                        onChange={(e) => setData('birth_date', e.target.value)}
+                                        id="name"
+                                        value={data.name}
+                                        onChange={(e) => setData('name', e.target.value)}
                                         className="mt-1 block w-full"
+                                        placeholder="Nome e sobrenome"
                                     />
-                                    <InputError message={errors.birth_date} className="mt-1" />
+                                    <InputError message={errors.name} className="mt-1" />
                                 </div>
-                                <div>
-                                    <InputLabel htmlFor="user_status" value="Situação da conta no app" />
-                                    <SelectInput
-                                        id="user_status"
-                                        value={data.user_status}
-                                        onChange={(e) =>
-                                            setData('user_status', e.target.value as 'active' | 'inactive')
-                                        }
-                                        className="mt-1 block w-full"
-                                    >
-                                        <option value="active">Ativa (pode entrar no app)</option>
-                                        <option value="inactive">Inativa (bloqueia login)</option>
-                                    </SelectInput>
-                                    <InputError message={errors.user_status} className="mt-1" />
-                                </div>
-                            </div>
-                            <div className="flex items-start gap-3">
-                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-zinc-200 dark:bg-zinc-700">
-                                    <CameraIcon className="h-5 w-5 text-zinc-600 dark:text-zinc-300" aria-hidden />
-                                </div>
-                                <div className="min-w-0 flex-1 space-y-2">
-                                    <InputLabel htmlFor="volunteer_face_photo" value="Foto do usuário (opcional)" />
-                                    <input
-                                        id="volunteer_face_photo"
-                                        type="file"
-                                        accept="image/*"
-                                        capture="user"
-                                        className="block w-full max-w-md text-sm text-zinc-600 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-900 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white hover:file:bg-zinc-800 dark:text-zinc-400 dark:file:bg-zinc-100 dark:file:text-zinc-900"
-                                        onChange={(e) => {
-                                            const file = e.target.files?.[0] ?? null;
-                                            if (avatarPreviewSrc?.startsWith('blob:')) {
-                                                URL.revokeObjectURL(avatarPreviewSrc);
-                                            }
-                                            setData('photo', file);
-                                            if (file) {
-                                                setAvatarPreviewSrc(URL.createObjectURL(file));
-                                            } else {
-                                                setAvatarPreviewSrc(lastSavedPhotoRef.current);
-                                            }
-                                            e.target.value = '';
-                                        }}
-                                    />
-                                    <InputError message={errors.photo} className="mt-1" />
-                                </div>
-                            </div>
-                            {avatarPreviewSrc ? (
-                                <img
-                                    src={avatarPreviewSrc}
-                                    alt=""
-                                    className="h-16 w-16 rounded-2xl object-cover border border-zinc-200 dark:border-zinc-600"
-                                />
-                            ) : null}
-                            <div className="space-y-2 border-t border-zinc-200 pt-3 dark:border-zinc-600">
-                                <p className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Comunicações</p>
-                                <label className="flex cursor-pointer items-center gap-2">
-                                    <Checkbox
-                                        checked={data.notify_via_app}
-                                        onChange={(e) => setData('notify_via_app', e.target.checked)}
-                                    />
-                                    <span className="text-sm text-zinc-700 dark:text-zinc-200">Notificações na app</span>
-                                </label>
-                                <label className="flex cursor-pointer items-center gap-2">
-                                    <Checkbox
-                                        checked={data.notify_via_email}
-                                        onChange={(e) => setData('notify_via_email', e.target.checked)}
-                                    />
-                                    <span className="text-sm text-zinc-700 dark:text-zinc-200">E-mail</span>
-                                </label>
-                                <label className="flex cursor-pointer items-center gap-2">
-                                    <Checkbox
-                                        checked={data.notify_via_whatsapp}
-                                        onChange={(e) => setData('notify_via_whatsapp', e.target.checked)}
-                                    />
-                                    <span className="text-sm text-zinc-700 dark:text-zinc-200">WhatsApp</span>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/80 dark:bg-zinc-900/40 p-4">
-                            <p className="text-sm font-semibold text-zinc-900 dark:text-white">Senha (app)</p>
-                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                                Defina a senha de acesso ao aplicativo.
-                            </p>
-                            <div className="mt-3 flex flex-col gap-4 sm:grid sm:grid-cols-2">
-                                <div>
-                                    <InputLabel htmlFor="app_password" value="Senha" />
-                                    <TextInput
-                                        id="app_password"
-                                        type="password"
-                                        value={data.app_password}
-                                        onChange={(e) => setData('app_password', e.target.value)}
-                                        className="mt-1 block w-full"
-                                        autoComplete="new-password"
-                                        placeholder={isEditing ? 'Deixe em branco para não alterar' : ''}
-                                    />
-                                    <InputError message={errors.app_password} className="mt-1" />
-                                </div>
-                                <div>
-                                    <InputLabel htmlFor="app_password_confirmation" value="Confirmar senha" />
-                                    <TextInput
-                                        id="app_password_confirmation"
-                                        type="password"
-                                        value={data.app_password_confirmation}
-                                        onChange={(e) => setData('app_password_confirmation', e.target.value)}
-                                        className="mt-1 block w-full"
-                                        autoComplete="new-password"
-                                    />
-                                    <InputError message={errors.app_password_confirmation} className="mt-1" />
-                                </div>
-                            </div>
-                            <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
-                                Se já existir usuário com o mesmo e-mail, a conta é reutilizada; só precisa de senha ao criar usuário novo.
-                            </p>
-                        </div>
-
-                        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900/40 p-4 space-y-3">
-                            <div>
-                                <p className="text-sm font-semibold text-zinc-900 dark:text-white">Acesso e permissões</p>
-                                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                                    Uma conta pode existir <strong className="font-medium text-zinc-700 dark:text-zinc-300">sem perfil</strong> no
-                                    painel até o administrador definir permissões. Quem for <strong className="font-medium text-zinc-700 dark:text-zinc-300">líder de ministério</strong> recebe automaticamente o perfil <strong className="font-medium text-zinc-700 dark:text-zinc-300">Líder de ministério</strong> e deve ter ao menos um departamento a gerir.
-                                </p>
-                                {isSuperAdmin ? (
-                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">
-                                        Para criar perfis novos ou alterar o que cada perfil pode fazer:{' '}
-                                        <Link
-                                            href={route('roles.index')}
-                                            className="font-medium text-primary-600 underline dark:text-primary-400"
+                                <div className="flex flex-col gap-4 sm:grid sm:grid-cols-2">
+                                    <div>
+                                        <InputLabel htmlFor="phone" value="Telefone (opcional)" />
+                                        <TextInput
+                                            id="phone"
+                                            value={data.phone}
+                                            onChange={(e) => setData('phone', e.target.value)}
+                                            className="mt-1 block w-full"
+                                        />
+                                        <InputError message={errors.phone} className="mt-1" />
+                                    </div>
+                                    <div className="flex items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-zinc-50/80 px-3 py-3 dark:border-zinc-700 dark:bg-zinc-900/40">
+                                        <div className="min-w-0 flex-1">
+                                            <InputLabel value="Ativar voluntário" />
+                                            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                                Se desativado, não aparece em escalas.
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setData('active', !data.active)}
+                                            className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors ${
+                                                data.active ? 'bg-emerald-600' : 'bg-zinc-300 dark:bg-zinc-700'
+                                            }`}
+                                            role="switch"
+                                            aria-checked={data.active}
                                         >
-                                            Perfis de acesso
-                                        </Link>
-                                        .
-                                    </p>
-                                ) : null}
-                            </div>
-                            <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
-                                <input
-                                    type="checkbox"
-                                    checked={isMinistryLeader}
-                                    disabled={editingUserIsSuperAdmin || editingUserIsPanelTeam}
-                                    onChange={(e) => {
-                                        const checked = e.target.checked;
-                                        if (checked) {
-                                            setData('app_role', 'lider_ministerio');
-                                        } else {
-                                            setData((prev) => ({
-                                                ...prev,
-                                                app_role: prev.app_role === 'lider_ministerio' ? '' : prev.app_role,
-                                                app_ministry_ids: [],
-                                            }));
-                                        }
-                                    }}
-                                    className="rounded border-zinc-300 dark:border-zinc-600 text-zinc-900 focus:ring-zinc-500 disabled:opacity-50"
-                                />
-                                <span className="font-medium">É líder de ministério</span>
-                            </label>
-                            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                Atalho: marca o perfil <span className="font-medium">Líder de ministério</span> no campo acima. Também pode escolher outro perfil diretamente na lista.
-                            </p>
-
-                            {isMinistryLeader && (
+                                            <span
+                                                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                                                    data.active ? 'translate-x-6' : 'translate-x-1'
+                                                }`}
+                                            />
+                                        </button>
+                                    </div>
+                                </div>
                                 <div>
-                                    <InputLabel value="Departamentos que este líder gerirá" />
-                                    <div className="mt-2 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 max-h-48 overflow-y-auto space-y-2">
-                                        {ministries.map((m) => (
-                                            <label key={m.id} className="flex items-center gap-2 cursor-pointer">
+                                    <InputLabel htmlFor="email" value="E-mail (login)" />
+                                    <TextInput
+                                        id="email"
+                                        type="email"
+                                        value={data.email}
+                                        onChange={(e) => setData('email', e.target.value)}
+                                        className="mt-1 block w-full"
+                                        placeholder="usuario@exemplo.com"
+                                    />
+                                    <InputError message={errors.email} className="mt-1" />
+                                </div>
+                            </section>
+
+                            {/* Ministérios em que serve */}
+                            <section className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900/40 p-4">
+                                <InputLabel value="Departamentos em que serve (opcional)" />
+                                <p className="mt-1 mb-2 text-xs text-zinc-500 dark:text-zinc-400">
+                                    Ministérios ligados à ficha de voluntário (escalas e operação).
+                                </p>
+                                <div className="max-h-48 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-900/50 space-y-2">
+                                    {ministries.length === 0 ? (
+                                        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                                            Nenhum departamento cadastrado.
+                                        </p>
+                                    ) : (
+                                        ministries.map((m) => (
+                                            <label key={m.id} className="flex cursor-pointer items-center gap-2">
                                                 <input
                                                     type="checkbox"
-                                                    checked={data.app_ministry_ids.includes(m.id)}
+                                                    checked={data.ministry_ids.includes(m.id)}
                                                     onChange={(e) => {
                                                         if (e.target.checked) {
-                                                            setData('app_ministry_ids', [...data.app_ministry_ids, m.id]);
+                                                            setData('ministry_ids', [...data.ministry_ids, m.id]);
                                                         } else {
                                                             setData(
-                                                                'app_ministry_ids',
-                                                                data.app_ministry_ids.filter((id) => id !== m.id),
+                                                                'ministry_ids',
+                                                                data.ministry_ids.filter((id) => id !== m.id),
                                                             );
                                                         }
                                                     }}
@@ -942,38 +801,214 @@ export default function Index({
                                                 />
                                                 <span className="text-sm text-zinc-900 dark:text-white">{m.name}</span>
                                             </label>
-                                        ))}
-                                    </div>
-                                    <InputError message={errors.app_ministry_ids} className="mt-1" />
+                                        ))
+                                    )}
                                 </div>
-                            )}
+                                <InputError message={errors.ministry_ids} className="mt-1" />
+                            </section>
 
-                        </div>
-
-                        <div>
-                            <InputLabel value="Departamentos (opcional)" />
-                            <div className="mt-2 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 max-h-48 overflow-y-auto space-y-2">
-                                {ministries.map((m) => (
-                                    <label key={m.id} className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={data.ministry_ids.includes(m.id)}
+                            {/* Conta no app */}
+                            <section className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/80 dark:bg-zinc-900/40 p-4 space-y-4">
+                                <div>
+                                    <p className="text-sm font-semibold text-zinc-900 dark:text-white">Conta no app</p>
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                                        Perfil de acesso, situação da conta e preferências de comunicação.
+                                    </p>
+                                </div>
+                                <div>
+                                    <InputLabel htmlFor="app_role" value="Perfil de acesso" />
+                                    {editingUserIsSuperAdmin ? (
+                                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 px-3 py-2.5">
+                                            Este usuário é <strong className="font-medium">super administrador</strong>: o perfil é gerido em Usuários.
+                                        </p>
+                                    ) : editingUserIsPanelTeam ? (
+                                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 px-3 py-2.5">
+                                            Conta da equipe do painel — altere o perfil em <span className="font-medium">Usuários</span>.
+                                        </p>
+                                    ) : (
+                                        <SelectInput
+                                            id="app_role"
+                                            value={data.app_role}
                                             onChange={(e) => {
-                                                if (e.target.checked) {
-                                                    setData('ministry_ids', [...data.ministry_ids, m.id]);
-                                                } else {
-                                                    setData('ministry_ids', data.ministry_ids.filter((id) => id !== m.id));
-                                                }
+                                                const role = e.target.value;
+                                                setData((prev) => ({
+                                                    ...prev,
+                                                    app_role: role,
+                                                    app_ministry_ids:
+                                                        role === 'lider_ministerio' ? prev.app_ministry_ids : [],
+                                                }));
                                             }}
-                                            className="rounded border-zinc-300 dark:border-zinc-600 text-zinc-900 focus:ring-zinc-500"
+                                            className="mt-1 block w-full"
+                                        >
+                                            <option value="">Sem perfil (só conta até definir permissões)</option>
+                                            {appRoles.map((r) => (
+                                                <option key={r.id} value={r.name}>
+                                                    {appRoleLabel(r.name)}
+                                                </option>
+                                            ))}
+                                        </SelectInput>
+                                    )}
+                                    <InputError message={errors.app_role} className="mt-1" />
+                                </div>
+                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <InputLabel htmlFor="birth_date" value="Data de nascimento (opcional)" />
+                                        <TextInput
+                                            id="birth_date"
+                                            type="date"
+                                            value={data.birth_date}
+                                            onChange={(e) => setData('birth_date', e.target.value)}
+                                            className="mt-1 block w-full"
                                         />
-                                        <span className="text-sm text-zinc-900 dark:text-white">{m.name}</span>
+                                        <InputError message={errors.birth_date} className="mt-1" />
+                                    </div>
+                                    <div>
+                                        <InputLabel htmlFor="user_status" value="Situação da conta" />
+                                        <SelectInput
+                                            id="user_status"
+                                            value={data.user_status}
+                                            onChange={(e) =>
+                                                setData('user_status', e.target.value as 'active' | 'inactive')
+                                            }
+                                            className="mt-1 block w-full"
+                                        >
+                                            <option value="active">Ativa (pode entrar no app)</option>
+                                            <option value="inactive">Inativa (bloqueia login)</option>
+                                        </SelectInput>
+                                        <InputError message={errors.user_status} className="mt-1" />
+                                    </div>
+                                </div>
+                                <div className="space-y-2 border-t border-zinc-200 pt-3 dark:border-zinc-600">
+                                    <p className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Comunicações</p>
+                                    <label className="flex cursor-pointer items-center gap-2">
+                                        <Checkbox
+                                            checked={data.notify_via_app}
+                                            onChange={(e) => setData('notify_via_app', e.target.checked)}
+                                        />
+                                        <span className="text-sm text-zinc-700 dark:text-zinc-200">Notificações na app</span>
                                     </label>
-                                ))}
-                            </div>
-                            <InputError message={errors.ministry_ids} className="mt-1" />
-                        </div>
-                            </div>
+                                    <label className="flex cursor-pointer items-center gap-2">
+                                        <Checkbox
+                                            checked={data.notify_via_email}
+                                            onChange={(e) => setData('notify_via_email', e.target.checked)}
+                                        />
+                                        <span className="text-sm text-zinc-700 dark:text-zinc-200">E-mail</span>
+                                    </label>
+                                    <label className="flex cursor-pointer items-center gap-2">
+                                        <Checkbox
+                                            checked={data.notify_via_whatsapp}
+                                            onChange={(e) => setData('notify_via_whatsapp', e.target.checked)}
+                                        />
+                                        <span className="text-sm text-zinc-700 dark:text-zinc-200">WhatsApp</span>
+                                    </label>
+                                </div>
+                            </section>
+
+                            <section className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/80 dark:bg-zinc-900/40 p-4">
+                                <p className="text-sm font-semibold text-zinc-900 dark:text-white">Senha (app)</p>
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                                    {isEditing
+                                        ? 'Deixe em branco para manter a senha atual.'
+                                        : 'Obrigatória ao criar conta nova com e-mail.'}
+                                </p>
+                                <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <InputLabel htmlFor="app_password" value="Senha" />
+                                        <TextInput
+                                            id="app_password"
+                                            type="password"
+                                            value={data.app_password}
+                                            onChange={(e) => setData('app_password', e.target.value)}
+                                            className="mt-1 block w-full"
+                                            autoComplete="new-password"
+                                            placeholder={isEditing ? 'Não alterar' : ''}
+                                        />
+                                        <InputError message={errors.app_password} className="mt-1" />
+                                    </div>
+                                    <div>
+                                        <InputLabel htmlFor="app_password_confirmation" value="Confirmar senha" />
+                                        <TextInput
+                                            id="app_password_confirmation"
+                                            type="password"
+                                            value={data.app_password_confirmation}
+                                            onChange={(e) => setData('app_password_confirmation', e.target.value)}
+                                            className="mt-1 block w-full"
+                                            autoComplete="new-password"
+                                        />
+                                        <InputError message={errors.app_password_confirmation} className="mt-1" />
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900/40 p-4 space-y-3">
+                                <div>
+                                    <p className="text-sm font-semibold text-zinc-900 dark:text-white">Liderança de ministério</p>
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                                        Quem lidera departamentos no painel deve ter ao menos um departamento a gerir.
+                                    </p>
+                                    {isSuperAdmin ? (
+                                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">
+                                            Perfis do sistema:{' '}
+                                            <Link
+                                                href={route('roles.index')}
+                                                className="font-medium text-primary-600 underline dark:text-primary-400"
+                                            >
+                                                Perfis de acesso
+                                            </Link>
+                                            .
+                                        </p>
+                                    ) : null}
+                                </div>
+                                <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-900/50">
+                                    <input
+                                        type="checkbox"
+                                        checked={isMinistryLeader}
+                                        disabled={editingUserIsSuperAdmin || editingUserIsPanelTeam}
+                                        onChange={(e) => {
+                                            const checked = e.target.checked;
+                                            if (checked) {
+                                                setData('app_role', 'lider_ministerio');
+                                            } else {
+                                                setData((prev) => ({
+                                                    ...prev,
+                                                    app_role: prev.app_role === 'lider_ministerio' ? '' : prev.app_role,
+                                                    app_ministry_ids: [],
+                                                }));
+                                            }
+                                        }}
+                                        className="rounded border-zinc-300 dark:border-zinc-600 text-zinc-900 focus:ring-zinc-500 disabled:opacity-50"
+                                    />
+                                    <span className="font-medium text-zinc-900 dark:text-white">É líder de ministério</span>
+                                </label>
+                                {isMinistryLeader ? (
+                                    <div>
+                                        <InputLabel value="Departamentos que este líder gerirá" />
+                                        <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-900/50 space-y-2">
+                                            {ministries.map((m) => (
+                                                <label key={`lead-${m.id}`} className="flex cursor-pointer items-center gap-2">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={data.app_ministry_ids.includes(m.id)}
+                                                        onChange={(e) => {
+                                                            if (e.target.checked) {
+                                                                setData('app_ministry_ids', [...data.app_ministry_ids, m.id]);
+                                                            } else {
+                                                                setData(
+                                                                    'app_ministry_ids',
+                                                                    data.app_ministry_ids.filter((id) => id !== m.id),
+                                                                );
+                                                            }
+                                                        }}
+                                                        className="rounded border-zinc-300 dark:border-zinc-600 text-zinc-900 focus:ring-zinc-500"
+                                                    />
+                                                    <span className="text-sm text-zinc-900 dark:text-white">{m.name}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                        <InputError message={errors.app_ministry_ids} className="mt-1" />
+                                    </div>
+                                ) : null}
+                            </section>
                             <div className="sticky bottom-0 z-10 -mx-4 mt-4 flex flex-col-reverse gap-3 border-t border-zinc-100 bg-white/95 px-4 pb-2 pt-4 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-900/95 sm:-mx-6 sm:flex-row sm:justify-end sm:px-6 sm:pb-0 sm:pt-5">
                                 <SecondaryButton type="button" onClick={closeModal} className="justify-center sm:w-auto">
                                     Cancelar

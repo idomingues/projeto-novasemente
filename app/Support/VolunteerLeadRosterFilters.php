@@ -8,6 +8,27 @@ use Illuminate\Http\Request;
 
 class VolunteerLeadRosterFilters
 {
+    /** Filtro especial na barra «Fases» (não é registro em volunteer_pipeline_stages). */
+    public const PIPELINE_STAGE_ARCHIVED = 'arquivados';
+
+    public static function showsArchivedRoster(Request $request): bool
+    {
+        if ($request->input('pipeline_stage_id') === self::PIPELINE_STAGE_ARCHIVED) {
+            return true;
+        }
+
+        return $request->query('arquivados') === '1';
+    }
+
+    public static function normalizedPipelineStageId(Request $request): string
+    {
+        if (self::showsArchivedRoster($request)) {
+            return self::PIPELINE_STAGE_ARCHIVED;
+        }
+
+        return trim((string) $request->input('pipeline_stage_id', ''));
+    }
+
     /**
      * @param  Builder<Volunteer>  $q
      */
@@ -155,7 +176,7 @@ class VolunteerLeadRosterFilters
         }
 
         $sid = $request->input('pipeline_stage_id');
-        if ($sid !== null && $sid !== '' && is_numeric($sid)) {
+        if ($sid !== null && $sid !== '' && $sid !== self::PIPELINE_STAGE_ARCHIVED && is_numeric($sid)) {
             $q->whereHas('churchPipelines', fn ($p) => $p->where('church_id', $churchId)->where('stage_id', (int) $sid));
         }
     }
@@ -191,7 +212,8 @@ class VolunteerLeadRosterFilters
             'professional_area' => trim((string) $request->input('professional_area', '')),
             'ministry_ids' => (string) $request->input('ministry_ids', ''),
             'text_interest' => trim((string) $request->input('text_interest', '')),
-            'pipeline_stage_id' => (string) $request->input('pipeline_stage_id', ''),
+            'pipeline_stage_id' => self::normalizedPipelineStageId($request),
+            'arquivados' => self::showsArchivedRoster($request),
         ];
     }
 }

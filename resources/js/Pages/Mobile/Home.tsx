@@ -159,8 +159,8 @@ const quickActions: QuickAction[] = [
         icon: PhotoIcon,
     },
     {
-        label: 'Campanhas',
-        subtitle: 'Doe para causas específicas da igreja',
+        label: 'Doação',
+        subtitle: 'Seu gesto de amor pode transformar vidas e renovar esperanças',
         route: 'mobile.campaigns.index',
         icon: BanknotesIcon,
     },

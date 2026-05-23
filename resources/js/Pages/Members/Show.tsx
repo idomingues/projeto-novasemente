@@ -30,7 +30,7 @@ export default function Show({ member }: Props) {
                 title="Detalhes do usuário"
                 lead={
                     <Link
-                        href={route('members.index')}
+                        href={route('users.index')}
                         className="text-sm font-medium text-zinc-500 underline-offset-2 hover:text-zinc-800 hover:underline dark:text-zinc-400 dark:hover:text-zinc-200"
                     >
                         Voltar para lista

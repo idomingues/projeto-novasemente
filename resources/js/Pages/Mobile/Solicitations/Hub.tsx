@@ -1,5 +1,5 @@
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
 import {
     BookOpenIcon,
     ChevronLeftIcon,
@@ -71,6 +71,8 @@ interface Props {
     singleBaptismType?: boolean;
     /** Redirecionamento após «excluir da minha app» (batismo vs hub geral). */
     hideConversationReturnTo?: 'hub' | 'baptism_hub';
+    /** Equipe com permissão de gestão: atalho para o painel admin de batismo. */
+    staffBaptismManageUrl?: string | null;
 }
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
@@ -118,6 +120,7 @@ export default function Hub({
     pageSubtitle,
     singleBaptismType = false,
     hideConversationReturnTo = 'hub',
+    staffBaptismManageUrl = null,
 }: Props) {
     const [createOpen, setCreateOpen] = useState(false);
     const [step, setStep] = useState<'pick' | 'form'>('pick');
@@ -164,7 +167,7 @@ export default function Hub({
         return true;
     }, [pastorVisitPastor, data.preferred_start, data.preferred_modality]);
 
-    const openCreate = () => {
+    const openCreate = useCallback(() => {
         reset();
         if (singleBaptismType && types.length === 1) {
             const t = types[0].type;
@@ -176,7 +179,7 @@ export default function Hub({
             setTypeLabel('');
         }
         setCreateOpen(true);
-    };
+    }, [reset, setData, singleBaptismType, types, typeLabelByType]);
 
     const closeCreate = () => {
         setCreateOpen(false);
@@ -215,6 +218,12 @@ export default function Hub({
         const params = new URLSearchParams(window.location.search);
         const sid = params.get('solicitacao');
         const painel = params.get('painel');
+        const shouldOpenCreate = params.get('novo') === '1';
+
+        if (shouldOpenCreate) {
+            openCreate();
+        }
+
         if (sid) {
             const row = mySolicitations.find((r) => String(r.solicitation.id) === sid);
             if (row) {
@@ -224,10 +233,10 @@ export default function Hub({
         if (params.get('lista') === '1' && listRef.current) {
             listRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
-        if (sid || params.get('lista')) {
+        if (sid || params.get('lista') || shouldOpenCreate) {
             window.history.replaceState({}, '', window.location.pathname);
         }
-    }, [mySolicitations, openDetail]);
+    }, [mySolicitations, openDetail, openCreate]);
 
     const tabBtn = (active: boolean) =>
         `flex-1 px-3 py-2.5 text-sm font-semibold border-b-2 transition-colors -mb-px text-center ${
@@ -242,16 +251,33 @@ export default function Hub({
         'Batismo, apresentação, visita pastoral. Toque num pedido para editar ou conversar.';
 
     const listHeading = singleBaptismType ? 'Os meus pedidos de batismo' : 'Os meus pedidos';
+    const modalOverlayOpen = createOpen || detailOpen;
 
     return (
-        <MobileLayout>
+        <MobileLayout modalOverlayOpen={modalOverlayOpen}>
             <Head title={heading} />
-            <div className="space-y-4">
+            <div className={`space-y-4 ${modalOverlayOpen ? 'hidden' : ''}`} aria-hidden={modalOverlayOpen}>
                 <PageHeader
                     title={heading}
                     subtitle={<span className="text-zinc-600 dark:text-zinc-400">{sub}</span>}
                     actions={<AddButton variant="icon" onClick={openCreate} title="Nova solicitação">Nova solicitação</AddButton>}
                 />
+
+                {staffBaptismManageUrl ? (
+                    <div className="rounded-2xl border border-teal-200 bg-teal-50/90 px-4 py-3 text-sm text-teal-950 dark:border-teal-800/60 dark:bg-teal-950/40 dark:text-teal-100">
+                        <p className="font-medium">Gestão da igreja</p>
+                        <p className="mt-1 text-xs leading-relaxed opacity-90">
+                            Esta tela é a visão do membro. Para alterar situação, notas internas e acompanhar todos os pedidos,
+                            use o painel da equipe.
+                        </p>
+                        <Link
+                            href={staffBaptismManageUrl}
+                            className="mt-3 inline-flex text-xs font-semibold text-teal-800 underline dark:text-teal-200"
+                        >
+                            Abrir gestão de batismo
+                        </Link>
+                    </div>
+                ) : null}
 
                 <div ref={listRef} id="lista-solicitacoes" className="scroll-mt-24">
                     <h2 className="text-sm font-semibold text-zinc-900 dark:text-white mb-3">{listHeading}</h2>
@@ -352,21 +378,23 @@ export default function Hub({
                     </div>
                 ) : (
                     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain p-6 sm:p-8">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setStep('pick');
-                                setData('type', '');
-                                setData('preferred_start', '');
-                                setData('preferred_modality', '');
-                                setData('assigned_pastor_id', '');
-                                setTypeLabel('');
-                            }}
-                            className="mb-4 inline-flex items-center gap-1 text-sm font-medium !text-zinc-900 dark:!text-zinc-100 hover:underline"
-                        >
-                            <ChevronLeftIcon className="h-4 w-4" aria-hidden />
-                            Tipos de pedido
-                        </button>
+                        {!singleBaptismType ? (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setStep('pick');
+                                    setData('type', '');
+                                    setData('preferred_start', '');
+                                    setData('preferred_modality', '');
+                                    setData('assigned_pastor_id', '');
+                                    setTypeLabel('');
+                                }}
+                                className="mb-4 inline-flex items-center gap-1 text-sm font-medium !text-zinc-900 dark:!text-zinc-100 hover:underline"
+                            >
+                                <ChevronLeftIcon className="h-4 w-4" aria-hidden />
+                                Tipos de pedido
+                            </button>
+                        ) : null}
 
                         <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">{typeLabel}</h2>
                         <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1 mb-6">

@@ -19,7 +19,7 @@ interface Props {
 export default function TalentConnectionAdminLogs({ logs }: Props) {
     return (
         <AdminLayout>
-            <Head title="Logs — Conexão de Talentos" />
+            <Head title="Logs — Central de Serviços" />
             <FlashMessages />
             <PageHeader
                 lead={

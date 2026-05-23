@@ -3,8 +3,8 @@
 namespace App\Services;
 
 use App\Models\PageViewDailyStat;
-use App\Support\PageViewRouteGrouper;
 use App\Support\PageViewRouteLabels;
+use App\Support\PageViewShellRoutes;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -20,10 +20,10 @@ final class PageViewAnalytics
      *   selectedMonthLabel: string,
      *   availableMonths: list<array{key: string, label: string}>,
      *   totalViews: int,
-     *   groups: list<array{groupLabel: string, totalViews: int, pages: list<array{routeName: string, label: string, views: int}>}>
+     *   pages: list<array{routeName: string, label: string, views: int}>
      * }
      */
-    public static function monthlyGroupedForChurch(?int $churchId, ?string $monthParam = null): array
+    public static function monthlyForChurch(?int $churchId, ?string $monthParam = null): array
     {
         $empty = [
             'enabled' => config('page-views.enabled', true),
@@ -32,7 +32,7 @@ final class PageViewAnalytics
             'selectedMonthLabel' => self::monthLabel(self::normalizeMonthKey($monthParam)),
             'availableMonths' => [],
             'totalViews' => 0,
-            'groups' => [],
+            'pages' => [],
         ];
 
         if (! config('page-views.enabled', true)) {
@@ -73,41 +73,23 @@ final class PageViewAnalytics
             ->orderByDesc('total_views')
             ->get();
 
-        $grouped = [];
+        $pages = [];
+        $totalViews = 0;
         foreach ($rows as $row) {
             $routeName = (string) $row->route_name;
-            $views = (int) $row->total_views;
-            $groupLabel = PageViewRouteGrouper::group($routeName);
-            if (! isset($grouped[$groupLabel])) {
-                $grouped[$groupLabel] = [
-                    'groupLabel' => $groupLabel,
-                    'totalViews' => 0,
-                    'pages' => [],
-                ];
+            if (PageViewShellRoutes::isExcluded($routeName)) {
+                continue;
             }
-            $grouped[$groupLabel]['totalViews'] += $views;
-            $grouped[$groupLabel]['pages'][] = [
+            $views = (int) $row->total_views;
+            $totalViews += $views;
+            $pages[] = [
                 'routeName' => $routeName,
                 'label' => PageViewRouteLabels::label($routeName),
                 'views' => $views,
             ];
         }
 
-        foreach ($grouped as &$group) {
-            usort(
-                $group['pages'],
-                fn (array $a, array $b) => $b['views'] <=> $a['views']
-            );
-        }
-        unset($group);
-
-        $order = array_flip(PageViewRouteGrouper::orderedGroupLabels());
-        $groups = collect($grouped)
-            ->sortBy(fn (array $g) => $order[$g['groupLabel']] ?? 999)
-            ->values()
-            ->all();
-
-        $totalViews = (int) $rows->sum('total_views');
+        usort($pages, fn (array $a, array $b) => $b['views'] <=> $a['views']);
 
         return [
             'enabled' => true,
@@ -116,8 +98,48 @@ final class PageViewAnalytics
             'selectedMonthLabel' => self::monthLabel($selectedMonth),
             'availableMonths' => $availableMonths,
             'totalViews' => $totalViews,
-            'groups' => $groups,
+            'pages' => $pages,
         ];
+    }
+
+    /**
+     * Ranking para o widget do dashboard (exclui hubs de navegação e rotas técnicas).
+     *
+     * @return list<array{routeName: string, label: string, views: int}>
+     */
+    public static function topPagesForChurch(int $churchId, int $days, int $limit): array
+    {
+        if ($limit < 1 || $days < 1) {
+            return [];
+        }
+
+        $since = now()->subDays($days - 1)->startOfDay();
+
+        $rows = PageViewDailyStat::query()
+            ->where('church_id', $churchId)
+            ->where('visited_on', '>=', $since->toDateString())
+            ->selectRaw('route_name, SUM(views) as total_views')
+            ->groupBy('route_name')
+            ->orderByDesc('total_views')
+            ->get();
+
+        $pages = [];
+        foreach ($rows as $row) {
+            $routeName = (string) $row->route_name;
+            if (PageViewShellRoutes::isExcluded($routeName)) {
+                continue;
+            }
+            $pages[] = [
+                'routeName' => $routeName,
+                'label' => PageViewRouteLabels::label($routeName),
+                'views' => (int) $row->total_views,
+            ];
+            if (count($pages) >= $limit) {
+                break;
+            }
+        }
+
+        return $pages;
     }
 
     public static function normalizeMonthKey(?string $raw): string

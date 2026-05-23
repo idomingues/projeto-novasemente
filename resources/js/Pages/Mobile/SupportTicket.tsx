@@ -8,6 +8,7 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import InputLabel from '@/Components/InputLabel';
 import Textarea from '@/Components/Textarea';
 import InputError from '@/Components/InputError';
+import { CHAT_MESSAGE_SENDS_EMAIL_SUBTITLE } from '@/constants/chatEmailNotice';
 
 type ChatMessage = {
     id: number;
@@ -38,6 +39,7 @@ interface Props {
     showMessages: boolean;
     isAuthenticated: boolean;
     isAdmin: boolean;
+    staffReplySendsOwnerEmail?: boolean;
     hideFromMyAppUrl?: string | null;
 }
 
@@ -52,6 +54,7 @@ export default function MobileSupportTicket({
     canChat,
     showMessages,
     isAdmin,
+    staffReplySendsOwnerEmail = false,
     hideFromMyAppUrl = null,
 }: Props) {
     const inertiaScrollOpts = { preserveScroll: true };
@@ -212,6 +215,17 @@ export default function MobileSupportTicket({
 
                 {canChat && (
                     <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4">
+                        {staffReplySendsOwnerEmail ? (
+                            <div className="mb-3 flex items-start gap-2">
+                                <ChatBubbleLeftRightIcon className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                                <div className="min-w-0">
+                                    <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Responder</h3>
+                                    <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                                        {CHAT_MESSAGE_SENDS_EMAIL_SUBTITLE}
+                                    </p>
+                                </div>
+                            </div>
+                        ) : null}
                         <form onSubmit={sendMessage} className="space-y-3">
                             <div>
                                 <InputLabel value="Responder" />

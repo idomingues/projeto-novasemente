@@ -7,6 +7,7 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import InputLabel from '@/Components/InputLabel';
 import Textarea from '@/Components/Textarea';
 import InputError from '@/Components/InputError';
+import { CHAT_MESSAGE_SENDS_EMAIL_SUBTITLE } from '@/constants/chatEmailNotice';
 
 export type SupportMessageRow = {
     id: number;
@@ -406,7 +407,7 @@ export default function SupportTicketDetailPanel({
                             <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
                                 {internalCoordination
                                     ? 'O pedido não tem conta na app; use este espaço para alinhar entre a equipe pastoral e secretaria.'
-                                    : 'Respostas enviadas aqui aparecem no histórico deste chamado na app (usuário com sessão iniciada).'}
+                                    : `Respostas enviadas aqui aparecem no histórico deste chamado na app (usuário com sessão iniciada). ${CHAT_MESSAGE_SENDS_EMAIL_SUBTITLE}`}
                             </p>
                         </div>
                     </div>
@@ -447,7 +448,7 @@ export default function SupportTicketDetailPanel({
                                 <div>
                                     <div className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">Escrever resposta</div>
                                     <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 mb-2">
-                                        A mensagem segue para o histórico do chamado; use &quot;Encerrar&quot; quando o assunto estiver tratado.
+                                        A mensagem segue para o histórico do chamado; use «Encerrar» quando o assunto estiver tratado.
                                     </p>
                                     <Textarea
                                         value={data.content}

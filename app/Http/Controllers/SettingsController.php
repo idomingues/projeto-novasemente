@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Church;
-use App\Support\SpatiePermissionCheck;
 use App\Support\SolicitationHandlerAssignee;
+use App\Support\SpatiePermissionCheck;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -82,7 +82,7 @@ class SettingsController extends Controller
             'talents_moderator_notification_email' => $raw !== '' ? $raw : null,
         ]);
 
-        return redirect()->route('settings.index')->with('success', 'E-mail do aprovador de talentos atualizado.');
+        return redirect()->route('settings.index')->with('success', 'E-mail do aprovador da Central de Serviços atualizado.');
     }
 
     public function updateSolicitationsHandler(Request $request): RedirectResponse

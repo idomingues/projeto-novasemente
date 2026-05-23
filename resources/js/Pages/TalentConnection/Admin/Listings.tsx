@@ -144,7 +144,7 @@ export default function TalentConnectionAdminListings({
 
     return (
         <AdminLayout>
-            <Head title="Publicações — Conexão de Talentos" />
+            <Head title="Publicações — Central de Serviços" />
             <FlashMessages />
             <PageHeader
                 lead={
@@ -263,7 +263,7 @@ export default function TalentConnectionAdminListings({
                         <InputError message={errors.user_id} />
                         {publisherOptions.length === 0 && (
                             <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
-                                Nenhum membro encontrado para a igreja ativa. Cadastre usuários em Membros do app.
+                                Nenhum membro encontrado para a igreja ativa. Cadastre usuários em Usuários.
                             </p>
                         )}
                     </div>

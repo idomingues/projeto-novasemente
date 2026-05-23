@@ -63,7 +63,7 @@ class TalentConnectionNotifier
             $this->pushInbox(
                 $moderator,
                 'Publicação aguardando aprovação',
-                $authorName.' enviou «'.$listing->title.'» na Conexão de Talentos.',
+                $authorName.' enviou «'.$listing->title.'» na Central de Serviços.',
                 'talents.admin.listings',
                 ['status' => TalentListing::STATUS_PENDING],
             );
@@ -111,7 +111,7 @@ class TalentConnectionNotifier
             $intro,
             'mobile.talents.my-listings',
             [],
-            'Conexão de Talentos — '.$title,
+            'Central de Serviços — '.$title,
             $intro,
             $detail,
             'Ver minhas publicações',
@@ -143,11 +143,11 @@ class TalentConnectionNotifier
 
             $this->notifyMember(
                 $user,
-                'Atualização na conexão de talentos',
+                'Atualização na Central de Serviços',
                 $intro,
                 'mobile.talents.my-interests',
                 [],
-                'Conexão de Talentos — atualização',
+                'Central de Serviços — atualização',
                 $intro,
                 'Status da sua conexão: '.TalentInterest::statusLabel($interest->status),
                 'Ver meus interesses',
@@ -184,7 +184,7 @@ class TalentConnectionNotifier
             'mobile.talents.my-interests',
             [],
             'Novo interesse — '.$listing->title,
-            $interested->name.' demonstrou interesse na Conexão de Talentos.',
+            $interested->name.' demonstrou interesse na Central de Serviços.',
             $detail,
             'Ver interessados',
         );
@@ -216,7 +216,7 @@ class TalentConnectionNotifier
             $actorName.' atualizou a conexão em «'.$listing->title.'» para: '.$statusLabel.'.',
             'mobile.talents.my-interests',
             [],
-            'Conexão de Talentos — '.$statusLabel,
+            'Central de Serviços — '.$statusLabel,
             $actorName.' atualizou o status da conexão.',
             'Publicação: '.$listing->title."\nNovo status: ".$statusLabel,
             'Ver conexão',
@@ -249,7 +249,7 @@ class TalentConnectionNotifier
             $senderName.' enviou uma mensagem sobre «'.$listing->title.'».',
             'mobile.talents.my-interests',
             [],
-            'Nova mensagem — Conexão de Talentos',
+            'Nova mensagem — Central de Serviços',
             $senderName.' escreveu na conversa da publicação «'.$listing->title.'».',
             $preview,
             'Responder na app',
@@ -288,7 +288,7 @@ class TalentConnectionNotifier
             $reviewer->name.' avaliou sua colaboração em «'.$review->listing?->title.'».',
             'mobile.talents.my-interests',
             [],
-            'Nova avaliação na Conexão de Talentos',
+            'Nova avaliação na Central de Serviços',
             $reviewer->name.' deixou uma avaliação sobre a conexão.',
             $detail,
             'Ver na app',
@@ -325,7 +325,7 @@ class TalentConnectionNotifier
         if ($configuredEmail !== '' && filter_var($configuredEmail, FILTER_VALIDATE_EMAIL)) {
             $this->sendMemberEmail(
                 $configuredEmail,
-                'Nova denúncia — Conexão de Talentos',
+                'Nova denúncia — Central de Serviços',
                 'Denúncia para análise',
                 $body,
                 $detail,
@@ -341,7 +341,7 @@ class TalentConnectionNotifier
                 && strcasecmp($treasurerEmail, $configuredEmail) !== 0) {
                 $this->sendMemberEmail(
                     $treasurerEmail,
-                    'Denúncia de abuso comercial — talentos',
+                    'Denúncia de abuso comercial — Central de Serviços',
                     'Aviso ao tesoureiro',
                     $body,
                     $detail,
@@ -359,7 +359,7 @@ class TalentConnectionNotifier
                 if ($email !== null && strcasecmp($email, $configuredEmail) !== 0) {
                     $this->sendMemberEmail(
                         $email,
-                        'Nova denúncia — Conexão de Talentos',
+                        'Nova denúncia — Central de Serviços',
                         'Denúncia para análise',
                         $body,
                         $detail,
@@ -399,10 +399,10 @@ class TalentConnectionNotifier
             $intro,
             'mobile.talents.index',
             [],
-            'Conexão de Talentos — denúncia',
+            'Central de Serviços — denúncia',
             $intro,
             $detail,
-            'Abrir Conexão de Talentos',
+            'Abrir Central de Serviços',
         );
     }
 
@@ -475,7 +475,7 @@ class TalentConnectionNotifier
                 $buttonLabel,
             ));
         } catch (\Throwable $e) {
-            Log::warning('Falha ao enviar e-mail da Conexão de Talentos.', [
+            Log::warning('Falha ao enviar e-mail da Central de Serviços.', [
                 'email' => $email,
                 'subject' => $subject,
                 'error' => $e->getMessage(),
@@ -492,7 +492,7 @@ class TalentConnectionNotifier
         try {
             Mail::to($email)->send(new TalentListingPendingApprovalMail($listing, $authorName, $approvalUrl));
         } catch (\Throwable $e) {
-            Log::warning('Falha ao enviar e-mail de aprovação de talentos.', [
+            Log::warning('Falha ao enviar e-mail de aprovação da Central de Serviços.', [
                 'listing_id' => $listing->id,
                 'email' => $email,
                 'error' => $e->getMessage(),

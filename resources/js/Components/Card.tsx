@@ -1,8 +1,13 @@
-import { PropsWithChildren } from 'react';
+import { ComponentPropsWithoutRef, PropsWithChildren } from 'react';
 
-export default function Card({ children, className = '' }: PropsWithChildren<{ className?: string }>) {
+type CardProps = PropsWithChildren<{ className?: string }> & ComponentPropsWithoutRef<'div'>;
+
+export default function Card({ children, className = '', ...rest }: CardProps) {
     return (
-        <div className={`bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-8 shadow-sm ${className}`}>
+        <div
+            className={`rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 ${className}`}
+            {...rest}
+        >
             {children}
         </div>
     );

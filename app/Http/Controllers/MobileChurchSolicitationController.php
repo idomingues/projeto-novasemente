@@ -8,6 +8,7 @@ use App\Models\ChurchSolicitationMessage;
 use App\Models\Pastor;
 use App\Models\PastoralAvailability;
 use App\Services\SolicitationChatNotifier;
+use App\Support\BaptismSolicitationStatus;
 use App\Support\PastoralBookingInertiaProps;
 use App\Support\SolicitationAssignees;
 use Carbon\Carbon;
@@ -27,7 +28,11 @@ class MobileChurchSolicitationController extends Controller
 
     /** Criado só via fluxo dedicado (líder/admin), não pelo hub móvel de membros. */
     public const TYPE_VOLUNTEER_REQUEST = 'volunteer_request';
+
     public const TYPE_COMMUNICATION_REQUEST = 'communication_request';
+
+    /** Registrado pela equipe (pastor/admin) quando o atendimento não passou pelo app. */
+    public const TYPE_PASTORAL_INFORMAL = 'pastoral_informal';
 
     /** Tipos com painel próprio — não listar em Atendimento Pastoral (`solicitations.index`). */
     public const TYPES_OUTSIDE_PASTORAL_INDEX = [
@@ -43,13 +48,14 @@ class MobileChurchSolicitationController extends Controller
     public static function typeLabel(string $type): string
     {
         return match ($type) {
-            'baptism' => 'Pedido de batismo',
+            'baptism' => 'Batismo',
             'bible_study' => 'Pedido de estudo bíblico',
             'baby_presentation' => 'Apresentação de bebé',
             'pastor_visit' => 'Visita aos pastores',
             'leader_chat' => 'Conversa com líder de ministério',
             'volunteer_request' => 'Pedido de voluntário',
             'communication_request' => 'Solicitação de comunicação',
+            self::TYPE_PASTORAL_INFORMAL => 'Atendimento pastoral (informal)',
             'other' => 'Outros',
             default => $type,
         };
@@ -59,7 +65,8 @@ class MobileChurchSolicitationController extends Controller
     {
         return match ($status) {
             'pending' => 'Pendente',
-            'in_progress' => 'Em tratamento',
+            'in_progress' => 'Pendente',
+            'archived' => 'Arquivado',
             'completed' => 'Concluído',
             'cancelled' => 'Cancelado',
             default => $status,
@@ -71,7 +78,8 @@ class MobileChurchSolicitationController extends Controller
     {
         return match ($status) {
             'pending' => 'Assunto aberto',
-            'in_progress' => 'Assunto em curso',
+            'in_progress' => 'Assunto aberto',
+            'archived' => 'Arquivada',
             'completed' => 'Assunto finalizado',
             'cancelled' => 'Cancelada',
             default => self::statusLabel($status),
@@ -194,7 +202,7 @@ class MobileChurchSolicitationController extends Controller
     /**
      * App mobile: só pedidos de batismo (+ lista + modal no mesmo padrão do hub).
      */
-    public function baptismHub(Request $request): Response
+    public function baptismHub(Request $request): Response|RedirectResponse
     {
         $churchId = $this->currentChurchId($request);
         $user = $request->user();
@@ -205,6 +213,20 @@ class MobileChurchSolicitationController extends Controller
                 'redirectAfterLogin' => route('mobile.baptism', [], false),
                 'redirectAfterLoginStudy' => route('mobile.solicitations.create', ['type' => 'bible_study'], false),
             ]);
+        }
+
+        if (
+            $request->query('membro') !== '1'
+            && ($user->hasAnyRole(['super_admin', 'admin']) || $user->can('solicitations.manage'))
+        ) {
+            $adminParams = [];
+            $solicitacao = $request->query('solicitacao');
+            if (is_string($solicitacao) && $solicitacao !== '' && ctype_digit($solicitacao)) {
+                $adminParams['modal_kind'] = 'solicitation';
+                $adminParams['modal_id'] = $solicitacao;
+            }
+
+            return redirect()->route('baptism-requests.index', $adminParams);
         }
 
         $types = [
@@ -243,6 +265,11 @@ class MobileChurchSolicitationController extends Controller
             ->values()
             ->all();
 
+        $staffBaptismManageUrl = null;
+        if ($user->hasAnyRole(['super_admin', 'admin']) || $user->can('solicitations.manage')) {
+            $staffBaptismManageUrl = route('baptism-requests.index');
+        }
+
         return Inertia::render('Mobile/Solicitations/Hub', [
             'types' => $types,
             'mineUrl' => $hubUrl,
@@ -251,10 +278,11 @@ class MobileChurchSolicitationController extends Controller
             'mySolicitations' => $mySolicitations,
             'pastoralBooking' => PastoralBookingInertiaProps::forRequest($request),
             'pastoralAgendaUrl' => route('mobile.pastoral-appointments.request', [], false),
-            'pageTitle' => 'Pedido de batismo',
+            'pageTitle' => 'Batismo',
             'pageSubtitle' => 'Toque num pedido para editar ou conversar com a igreja.',
             'singleBaptismType' => true,
             'hideConversationReturnTo' => 'baptism_hub',
+            'staffBaptismManageUrl' => $staffBaptismManageUrl,
         ]);
     }
 
@@ -293,6 +321,7 @@ class MobileChurchSolicitationController extends Controller
             'type' => ['required', 'in:'.implode(',', self::TYPES)],
             'message' => $messageRules,
             'meta' => ['nullable', 'array'],
+            'return_to' => ['nullable', 'string', Rule::in(['baptism_admin'])],
         ], SolicitationAssignees::assignmentRules($churchId));
 
         if ($typeInput === 'pastor_visit') {
@@ -375,11 +404,22 @@ class MobileChurchSolicitationController extends Controller
         }
 
         $ref = (string) $request->headers->get('referer', '');
-        if ($solicitation->type === 'baptism' && str_contains($ref, '/mobile/batismo')) {
-            return redirect()->route('mobile.baptism', [
-                'solicitacao' => $solicitation->id,
-                'painel' => 'detalhes',
-            ])->with('success', 'Pedido enviado.');
+        if ($solicitation->type === 'baptism') {
+            if (($valid['return_to'] ?? '') === 'baptism_admin' || str_contains($ref, '/pedidos-batismo')) {
+                return redirect()
+                    ->route('baptism-requests.index', [
+                        'aba' => 'pendente',
+                        'modal_kind' => 'solicitation',
+                        'modal_id' => (string) $solicitation->id,
+                    ])
+                    ->with('success', 'Pedido de batismo registrado.');
+            }
+            if (str_contains($ref, '/mobile/batismo')) {
+                return redirect()->route('mobile.baptism', [
+                    'solicitacao' => $solicitation->id,
+                    'painel' => 'detalhes',
+                ])->with('success', 'Pedido enviado.');
+            }
         }
 
         return redirect()->route('mobile.solicitations.hub', [
@@ -472,7 +512,11 @@ class MobileChurchSolicitationController extends Controller
                 'type' => $s->type,
                 'typeLabel' => self::typeLabel($s->type),
                 'status' => $s->status,
-                'statusLabel' => $isLeaderChat ? self::leaderChatStatusLabel($s->status) : self::statusLabel($s->status),
+                'statusLabel' => match (true) {
+                    $isLeaderChat => self::leaderChatStatusLabel($s->status),
+                    $s->type === 'baptism' => BaptismSolicitationStatus::label((string) $s->status),
+                    default => self::statusLabel($s->status),
+                },
                 'subject' => $s->subject,
                 'message' => $s->message,
                 'meta' => $s->meta,
@@ -668,6 +712,13 @@ class MobileChurchSolicitationController extends Controller
             ])->with('success', 'Pedido atualizado.');
         }
 
+        if ($solicitation->type === 'baptism') {
+            return redirect()->route('mobile.baptism', [
+                'solicitacao' => $solicitation->id,
+                'painel' => 'detalhes',
+            ])->with('success', 'Pedido atualizado.');
+        }
+
         return redirect()->route('mobile.solicitations.hub', [
             'solicitacao' => $solicitation->id,
             'painel' => 'detalhes',
@@ -695,6 +746,13 @@ class MobileChurchSolicitationController extends Controller
         app(SolicitationChatNotifier::class)->notifyStaffOfMemberMessage($solicitation, $request->user());
 
         if (($valid['return_to'] ?? '') === 'hub') {
+            if ($solicitation->type === 'baptism') {
+                return redirect()->route('mobile.baptism', [
+                    'solicitacao' => $solicitation->id,
+                    'painel' => 'chat',
+                ]);
+            }
+
             return redirect()->route('mobile.solicitations.hub', [
                 'solicitacao' => $solicitation->id,
                 'painel' => 'chat',

@@ -30,6 +30,7 @@ class ChurchSolicitation extends Model
         'completed_at',
         'member_hidden_at',
         'leader_hidden_at',
+        'staff_archived_at',
     ];
 
     protected function casts(): array
@@ -40,6 +41,7 @@ class ChurchSolicitation extends Model
             'completed_at' => 'datetime',
             'member_hidden_at' => 'datetime',
             'leader_hidden_at' => 'datetime',
+            'staff_archived_at' => 'datetime',
         ];
     }
 
@@ -70,6 +72,53 @@ class ChurchSolicitation extends Model
 
     public function allowsChat(): bool
     {
-        return in_array($this->status, ['pending', 'in_progress'], true);
+        if ($this->type === 'baptism') {
+            return \App\Support\BaptismSolicitationStatus::allowsChat((string) $this->status);
+        }
+
+        if (in_array($this->type, [
+            \App\Http\Controllers\MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST,
+            \App\Http\Controllers\MobileChurchSolicitationController::TYPE_COMMUNICATION_REQUEST,
+        ], true)) {
+            return in_array($this->status, ['pending', 'in_progress'], true);
+        }
+
+        if ($this->type === \App\Http\Controllers\MobileChurchSolicitationController::TYPE_PASTORAL_INFORMAL) {
+            return $this->informalPastoralLinkedMemberUserId() !== null
+                && \App\Support\PastoralSolicitationStatus::allowsChat((string) $this->status);
+        }
+
+        return \App\Support\PastoralSolicitationStatus::allowsChat((string) $this->status);
+    }
+
+    public function memberDisplayName(): string
+    {
+        if ($this->type === \App\Http\Controllers\MobileChurchSolicitationController::TYPE_PASTORAL_INFORMAL) {
+            $name = trim((string) data_get($this->meta, 'requester_name', ''));
+            if ($name !== '') {
+                return $name;
+            }
+        }
+
+        return $this->user?->name ?? 'Usuário #'.$this->user_id;
+    }
+
+    public function informalPastoralLinkedMemberUserId(): ?int
+    {
+        if ($this->type !== \App\Http\Controllers\MobileChurchSolicitationController::TYPE_PASTORAL_INFORMAL) {
+            return null;
+        }
+
+        $uid = data_get($this->meta, 'requester_user_id');
+        if (is_numeric($uid)) {
+            return (int) $uid;
+        }
+
+        $createdBy = data_get($this->meta, 'created_by_user_id');
+        if ((int) $this->user_id !== (int) $createdBy) {
+            return (int) $this->user_id;
+        }
+
+        return null;
     }
 }

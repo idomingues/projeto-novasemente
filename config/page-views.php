@@ -30,10 +30,12 @@ return [
         'ignition',
     ],
 
-    /** Nomes de rota ignorados (ficheiros, health, auth raramente úteis para ranking de conteúdo). */
+    /** Nomes de rota ignorados (arquivos, health, feeds JSON, auth). */
     'ignored_routes' => [
         'favicon',
         'media.public',
         'up',
+        'notifications.feed',
+        'ministry-lead.volunteers.pipeline.detail',
     ],
 ];

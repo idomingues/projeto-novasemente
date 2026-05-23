@@ -1,7 +1,17 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { ChatBubbleLeftRightIcon, InboxIcon, PencilIcon, TrashIcon, UserMinusIcon, UserPlusIcon } from '@heroicons/react/24/outline';
-import { FormEventHandler, useEffect, useMemo, useRef, useState } from 'react';
+import {
+    ArchiveBoxArrowDownIcon,
+    ArchiveBoxIcon,
+    SparklesIcon,
+    ChatBubbleLeftRightIcon,
+    InboxIcon,
+    PencilIcon,
+    TrashIcon,
+    UserMinusIcon,
+    UserPlusIcon,
+} from '@heroicons/react/24/outline';
+import { FormEventHandler, KeyboardEvent, MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
 import AddButton from '@/Components/AddButton';
 import Card from '@/Components/Card';
 import FlashMessages from '@/Components/FlashMessages';
@@ -14,7 +24,7 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import SelectInput from '@/Components/SelectInput';
 import Textarea from '@/Components/Textarea';
 import TextInput from '@/Components/TextInput';
-import AttachVolunteerPickerModal from '@/Components/VolunteerRequests/AttachVolunteerPickerModal';
+import VolunteerRequestAttachModal from '@/Components/VolunteerRequests/VolunteerRequestAttachModal';
 import SolicitationDetailPanel, { type SolicitationDetailPanelProps } from '@/Components/Solicitations/SolicitationDetailPanel';
 import { confirmAction } from '@/utils/confirmDialog';
 
@@ -75,18 +85,25 @@ type VolunteerRequestRow = {
     can_delete: boolean;
     update_url: string | null;
     destroy_url: string | null;
+    can_archive: boolean;
+    archive_url: string | null;
+    can_unarchive: boolean;
+    unarchive_url: string | null;
     can_attach_volunteer: boolean;
     attach_volunteer_url: string | null;
+    suggest_volunteers_url: string | null;
     can_detach_volunteer: boolean;
     detach_volunteer_url: string | null;
     panel_json_url: string;
 };
 
-type VolunteerPanelPayload = Omit<SolicitationDetailPanelProps, 'variant' | 'section' | 'composerRole'>;
+type VolunteerPanelPayload = Omit<SolicitationDetailPanelProps, 'variant' | 'section' | 'composerRole'> & {
+    suggestVolunteersUrl?: string | null;
+};
 
 type OpenPanelOpts = {
     tab?: 'detalhes' | 'chat';
-    scrollTo?: 'edit' | 'attach';
+    scrollTo?: 'edit';
 };
 
 interface Props {
@@ -127,21 +144,21 @@ export default function VolunteerRequestsIndex({
     const csrf = (page.props as { csrf_token?: string }).csrf_token ?? '';
 
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [attachPickerOpen, setAttachPickerOpen] = useState(false);
-    /** Voluntário escolhido no modal «Filtros» pode não existir na lista rápida (400). */
-    const [attachPickerChoice, setAttachPickerChoice] = useState<{ id: number; name: string } | null>(null);
+    const [attachModalOpen, setAttachModalOpen] = useState(false);
+    const [attachModalRow, setAttachModalRow] = useState<VolunteerRequestRow | null>(null);
+    const [attachModalAutoSuggest, setAttachModalAutoSuggest] = useState(false);
     const [panelOpen, setPanelOpen] = useState(false);
     const [panelRow, setPanelRow] = useState<VolunteerRequestRow | null>(null);
     const [profileVolunteer, setProfileVolunteer] = useState<VolunteerRequestRow['attached_volunteer_profile'] | null>(null);
     const [panelLoading, setPanelLoading] = useState(false);
     const [panelPayload, setPanelPayload] = useState<VolunteerPanelPayload | null>(null);
     const [panelTab, setPanelTab] = useState<'detalhes' | 'chat'>('detalhes');
-    const [panelScrollTarget, setPanelScrollTarget] = useState<'edit' | 'attach' | null>(null);
-    const [groupByArea, setGroupByArea] = useState(false);
+    const [panelScrollTarget, setPanelScrollTarget] = useState<'edit' | null>(null);
+    const [viewTab, setViewTab] = useState<'lista' | 'por-area'>('lista');
     const [selectedArea, setSelectedArea] = useState<string | null>(null);
+    const groupByArea = viewTab === 'por-area';
     const prevPanelSolicitationIdRef = useRef<number | null>(null);
     const panelEditSectionRef = useRef<HTMLDivElement | null>(null);
-    const panelAttachSectionRef = useRef<HTMLDivElement | null>(null);
 
     const createForm = useForm({
         ministry_id: '' as '' | number,
@@ -154,10 +171,6 @@ export default function VolunteerRequestsIndex({
         ministry_id: '' as '' | number,
         schedule_role_id: '' as '' | number,
         message: '',
-    });
-
-    const attachForm = useForm({
-        volunteer_id: '' as '' | number,
     });
 
     const ministryOptions = useMemo(
@@ -258,15 +271,16 @@ export default function VolunteerRequestsIndex({
         createForm.clearErrors();
     };
 
-    const submitAttach: FormEventHandler = (e) => {
-        e.preventDefault();
-        if (!panelRow?.attach_volunteer_url) return;
-        attachForm.post(panelRow.attach_volunteer_url, {
-            preserveScroll: true,
-            onSuccess: () => {
-                closePanel();
-            },
-        });
+    const openAttachModal = (row: VolunteerRequestRow, autoSuggest = false) => {
+        setAttachModalRow(row);
+        setAttachModalAutoSuggest(autoSuggest);
+        setAttachModalOpen(true);
+    };
+
+    const closeAttachModal = () => {
+        setAttachModalOpen(false);
+        setAttachModalRow(null);
+        setAttachModalAutoSuggest(false);
     };
 
     const handleDelete = async (row: VolunteerRequestRow) => {
@@ -281,6 +295,36 @@ export default function VolunteerRequestsIndex({
         if (ok) {
             router.delete(row.destroy_url, { preserveScroll: true });
         }
+    };
+
+    const handleArchiveFromList = async (row: VolunteerRequestRow) => {
+        if (!row.archive_url) return;
+        const ok = await confirmAction({
+            title: 'Arquivar pedido?',
+            text: 'O pedido deixa de aparecer na lista ativa. Você pode consultá-lo em «Arquivados».',
+            confirmButtonText: 'Arquivar',
+            icon: 'question',
+        });
+        if (ok) {
+            router.post(row.archive_url, {}, { preserveScroll: true });
+        }
+    };
+
+    const handleUnarchiveFromList = async (row: VolunteerRequestRow) => {
+        if (!row.unarchive_url) return;
+        const ok = await confirmAction({
+            title: 'Restaurar pedido?',
+            text: 'O pedido voltará à lista ativa de pedidos de voluntário.',
+            confirmButtonText: 'Restaurar',
+            icon: 'question',
+        });
+        if (ok) {
+            router.post(row.unarchive_url, {}, { preserveScroll: true });
+        }
+    };
+
+    const stopRowClick = (e: MouseEvent | KeyboardEvent) => {
+        e.stopPropagation();
     };
 
     const handleDetachVolunteer = async (row: VolunteerRequestRow) => {
@@ -329,7 +373,7 @@ export default function VolunteerRequestsIndex({
         return map[raw] ?? raw;
     };
 
-    const title = mode === 'staff' ? 'Registar pedido de voluntário' : 'Solicitar voluntário';
+    const title = mode === 'staff' ? 'Pedidos de voluntário' : 'Solicitar voluntário';
     const subtitle =
         mode === 'staff'
             ? 'Pedidos ordenados por data (mais antigos primeiro). Abra um pedido para ver detalhes, chat, alterar dados ou anexar voluntário no mesmo painel. Se na criação indicar quantidade > 1, o sistema gera uma linha por pessoa. Use + para novos pedidos.'
@@ -344,10 +388,6 @@ export default function VolunteerRequestsIndex({
         setPanelTab('detalhes');
         setPanelLoading(false);
         setPanelScrollTarget(null);
-        setAttachPickerOpen(false);
-        setAttachPickerChoice(null);
-        attachForm.reset();
-        attachForm.clearErrors();
         prevPanelSolicitationIdRef.current = null;
     };
 
@@ -395,11 +435,6 @@ export default function VolunteerRequestsIndex({
             });
             panelEditForm.clearErrors();
         }
-        attachForm.reset();
-        attachForm.clearErrors();
-        attachForm.setData('volunteer_id', '');
-        setAttachPickerChoice(null);
-        setAttachPickerOpen(false);
         setPanelPayload(null);
         setPanelLoading(true);
         try {
@@ -444,8 +479,6 @@ export default function VolunteerRequestsIndex({
         const t = window.setTimeout(() => {
             if (target === 'edit') {
                 panelEditSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            } else if (target === 'attach') {
-                panelAttachSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
             setPanelScrollTarget(null);
         }, 120);
@@ -476,16 +509,23 @@ export default function VolunteerRequestsIndex({
     const panelComposerRole = mode === 'staff' ? 'staff' : 'member';
 
     const renderRequestCard = (row: VolunteerRequestRow) => (
-        <Card key={row.id} className="p-4 sm:p-5">
+        <Card
+            key={row.id}
+            role="button"
+            tabIndex={0}
+            aria-label={`Abrir pedido: ${row.subject}`}
+            onClick={() => void openPanel(row)}
+            onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    void openPanel(row);
+                }
+            }}
+            className="cursor-pointer touch-manipulation p-4 transition-colors hover:border-zinc-300 hover:bg-zinc-50/80 active:scale-[0.998] focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/40 dark:focus-visible:ring-zinc-500 sm:p-5"
+        >
             <div className="flex flex-wrap items-start justify-between gap-2">
-                <button
-                    type="button"
-                    onClick={() => void openPanel(row)}
-                    className="min-w-0 flex-1 rounded-lg text-left text-base font-semibold text-zinc-900 transition hover:text-zinc-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:text-white dark:hover:text-zinc-300 dark:focus-visible:ring-zinc-500"
-                >
-                    {row.subject}
-                </button>
-                <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                <p className="min-w-0 flex-1 text-base font-semibold text-zinc-900 dark:text-white">{row.subject}</p>
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5" onClick={stopRowClick} onKeyDown={stopRowClick}>
                     <button
                         type="button"
                         onClick={() => void openPanel(row, { tab: 'chat' })}
@@ -494,11 +534,21 @@ export default function VolunteerRequestsIndex({
                     >
                         <ChatBubbleLeftRightIcon className="h-5 w-5" aria-hidden />
                     </button>
-                    {row.can_attach_volunteer ? (
+                    {mode === 'staff' && row.can_attach_volunteer && row.suggest_volunteers_url ? (
                         <button
                             type="button"
-                            onClick={() => void openPanel(row, { tab: 'detalhes', scrollTo: 'attach' })}
-                            title="Abrir painel — anexar voluntário"
+                            onClick={() => openAttachModal(row, true)}
+                            title="Vincular com sugestão inteligente"
+                            className="rounded-lg p-2 text-violet-600 transition hover:bg-violet-50 hover:text-violet-800 dark:text-violet-400 dark:hover:bg-violet-950/40 dark:hover:text-violet-300"
+                        >
+                            <SparklesIcon className="h-5 w-5" aria-hidden />
+                        </button>
+                    ) : null}
+                    {row.can_attach_volunteer && row.attach_volunteer_url ? (
+                        <button
+                            type="button"
+                            onClick={() => openAttachModal(row, false)}
+                            title="Vincular voluntário"
                             className="rounded-lg p-2 text-zinc-500 transition hover:bg-emerald-50 hover:text-emerald-800 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-300"
                         >
                             <UserPlusIcon className="h-5 w-5" aria-hidden />
@@ -524,7 +574,27 @@ export default function VolunteerRequestsIndex({
                             <PencilIcon className="h-5 w-5" aria-hidden />
                         </button>
                     ) : null}
-                    {row.can_delete ? (
+                    {mode === 'staff' && row.can_archive ? (
+                        <button
+                            type="button"
+                            onClick={() => void handleArchiveFromList(row)}
+                            title="Arquivar"
+                            className="rounded-lg p-2 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-white"
+                        >
+                            <ArchiveBoxIcon className="h-5 w-5" aria-hidden />
+                        </button>
+                    ) : null}
+                    {mode === 'staff' && row.can_unarchive ? (
+                        <button
+                            type="button"
+                            onClick={() => void handleUnarchiveFromList(row)}
+                            title="Restaurar na lista ativa"
+                            className="rounded-lg p-2 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-white"
+                        >
+                            <ArchiveBoxArrowDownIcon className="h-5 w-5" aria-hidden />
+                        </button>
+                    ) : null}
+                    {mode === 'leader' && row.can_delete ? (
                         <button
                             type="button"
                             onClick={() => handleDelete(row)}
@@ -565,7 +635,10 @@ export default function VolunteerRequestsIndex({
                         {row.attached_volunteer_profile ? (
                             <button
                                 type="button"
-                                onClick={() => setProfileVolunteer(row.attached_volunteer_profile)}
+                                onClick={(e) => {
+                                    stopRowClick(e);
+                                    setProfileVolunteer(row.attached_volunteer_profile);
+                                }}
                                 className="ml-1 inline-flex items-center rounded-md border border-emerald-300 bg-white/80 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-emerald-800 transition hover:bg-white dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200 dark:hover:bg-emerald-950/50"
                             >
                                 Ver dados
@@ -586,19 +659,6 @@ export default function VolunteerRequestsIndex({
                 subtitle={subtitle}
                 actions={
                     <div className="flex items-center gap-2">
-                        <button
-                            type="button"
-                            onClick={() =>
-                                setGroupByArea((prev) => {
-                                    const next = !prev;
-                                    if (!next) setSelectedArea(null);
-                                    return next;
-                                })
-                            }
-                            className="inline-flex items-center rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
-                        >
-                            {groupByArea ? 'Lista única' : 'Agrupar por área'}
-                        </button>
                         <AddButton
                             variant="icon"
                             onClick={openModal}
@@ -631,6 +691,36 @@ export default function VolunteerRequestsIndex({
                     )}
                 </Card>
             ) : null}
+
+            <Card className="mb-4 p-2">
+                <div className="flex gap-2 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setViewTab('lista');
+                            setSelectedArea(null);
+                        }}
+                        className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                            viewTab === 'lista'
+                                ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
+                                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+                        }`}
+                    >
+                        Lista ({rows.length})
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setViewTab('por-area')}
+                        className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                            viewTab === 'por-area'
+                                ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
+                                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+                        }`}
+                    >
+                        Por área ({groupedRows.length})
+                    </button>
+                </div>
+            </Card>
 
             <div className="space-y-4">
                 {rows.length === 0 ? (
@@ -1019,140 +1109,41 @@ export default function VolunteerRequestsIndex({
                                                                     </form>
                                                                 </div>
                                                             ) : null}
-                                                            {mode === 'staff' &&
-                                                            panelRow?.can_attach_volunteer &&
-                                                            panelRow.attach_volunteer_url ? (
-                                                        <div
-                                                            ref={panelAttachSectionRef}
-                                                            className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/25 sm:p-5"
-                                                        >
-                                                            <h3 className="text-sm font-semibold uppercase tracking-wide text-emerald-800 dark:text-emerald-200">
-                                                                Concluir: anexar voluntário
-                                                            </h3>
-                                                            <p className="mt-1 text-sm text-emerald-900/90 dark:text-emerald-100/90">
-                                                                Será criado o convite ao departamento indicado no pedido (como no
-                                                                encaminhamento manual). O pedido passa a{' '}
-                                                                <strong className="font-semibold">concluído</strong>, fica registro no
-                                                                histórico e o voluntário entra na fase «Encaminhado» no cadastro,
-                                                                quando essa fase existir.
-                                                            </p>
-                                                            <form
-                                                                id="attach-volunteer-inline-form"
-                                                                onSubmit={submitAttach}
-                                                                className="mt-4 space-y-4"
-                                                            >
-                                                                {volunteersForAttach.length === 0 && !attachVolunteerPickerUrl ? (
-                                                                    <p className="text-sm text-amber-800 dark:text-amber-200">
-                                                                        Não há voluntários listáveis nesta igreja. Crie ou associe
-                                                                        cadastros em <strong>Voluntários</strong> antes de anexar.
+                                                            {panelRow?.can_attach_volunteer && panelRow.attach_volunteer_url ? (
+                                                                <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/40 px-4 py-3 dark:border-emerald-900/50 dark:bg-emerald-950/20">
+                                                                    <p className="text-sm text-emerald-900 dark:text-emerald-100">
+                                                                        Para <strong>vincular voluntário</strong>, use os ícones na lista
+                                                                        {mode === 'staff' ? (
+                                                                            <>
+                                                                                :{' '}
+                                                                                <SparklesIcon className="inline h-4 w-4 text-violet-600" aria-hidden />{' '}
+                                                                                sugestão ou{' '}
+                                                                                <UserPlusIcon className="inline h-4 w-4" aria-hidden /> manual
+                                                                            </>
+                                                                        ) : (
+                                                                            <> (+)</>
+                                                                        )}
+                                                                        .
                                                                     </p>
-                                                                ) : volunteersForAttach.length === 0 && attachVolunteerPickerUrl ? (
-                                                                    <div className="space-y-3">
-                                                                        <p className="text-sm text-zinc-700 dark:text-zinc-300">
-                                                                            A lista rápida está vazia. Abra o quadro completo (como na
-                                                                            página Voluntários) para procurar e escolher o voluntário.
-                                                                        </p>
-                                                                        <SecondaryButton type="button" onClick={() => setAttachPickerOpen(true)}>
-                                                                            Filtros
-                                                                        </SecondaryButton>
-                                                                        {attachForm.data.volunteer_id !== '' ? (
-                                                                            <p className="text-sm font-medium text-zinc-800 dark:text-zinc-100">
-                                                                                Selecionado:{' '}
-                                                                                {attachPickerChoice?.id === attachForm.data.volunteer_id
-                                                                                    ? attachPickerChoice.name
-                                                                                    : `ID ${String(attachForm.data.volunteer_id)}`}
-                                                                            </p>
+                                                                    <div className="mt-3 flex flex-wrap gap-2">
+                                                                        {mode === 'staff' && panelRow.suggest_volunteers_url ? (
+                                                                            <SecondaryButton
+                                                                                type="button"
+                                                                                onClick={() => openAttachModal(panelRow, true)}
+                                                                            >
+                                                                                <SparklesIcon className="mr-1.5 h-4 w-4" aria-hidden />
+                                                                                Sugestão inteligente
+                                                                            </SecondaryButton>
                                                                         ) : null}
-                                                                        <InputError className="mt-2" message={attachForm.errors.volunteer_id} />
+                                                                        <SecondaryButton
+                                                                            type="button"
+                                                                            onClick={() => openAttachModal(panelRow, false)}
+                                                                        >
+                                                                            Vincular voluntário
+                                                                        </SecondaryButton>
                                                                     </div>
-                                                                ) : (
-                                                                    <div>
-                                                                        <InputLabel htmlFor="attach_volunteer_id_inline" value="Voluntário" />
-                                                                        <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-end">
-                                                                            <div className="min-w-0 flex-1">
-                                                                                <SelectInput
-                                                                                    id="attach_volunteer_id_inline"
-                                                                                    name="volunteer_id"
-                                                                                    value={
-                                                                                        attachForm.data.volunteer_id === ''
-                                                                                            ? ''
-                                                                                            : String(attachForm.data.volunteer_id)
-                                                                                    }
-                                                                                    className="block w-full"
-                                                                                    onChange={(e) => {
-                                                                                        const v = e.target.value;
-                                                                                        const id = v === '' ? '' : Number(v);
-                                                                                        attachForm.setData(
-                                                                                            'volunteer_id',
-                                                                                            id === '' || Number.isNaN(id) ? '' : id,
-                                                                                        );
-                                                                                        if (v === '') {
-                                                                                            setAttachPickerChoice(null);
-                                                                                        } else {
-                                                                                            const fromList = volunteersForAttach.find(
-                                                                                                (x) => x.id === id,
-                                                                                            );
-                                                                                            if (fromList) {
-                                                                                                setAttachPickerChoice(null);
-                                                                                            }
-                                                                                        }
-                                                                                    }}
-                                                                                >
-                                                                                    <option value="">Selecione o voluntário…</option>
-                                                                                    {attachPickerChoice &&
-                                                                                    !volunteersForAttach.some(
-                                                                                        (x) => x.id === attachPickerChoice.id,
-                                                                                    ) ? (
-                                                                                        <option value={String(attachPickerChoice.id)}>
-                                                                                            {attachPickerChoice.name.trim() ||
-                                                                                                `Voluntário #${attachPickerChoice.id}`}{' '}
-                                                                                            (quadro detalhado)
-                                                                                        </option>
-                                                                                    ) : null}
-                                                                                    {volunteersForAttach.map((v) => (
-                                                                                        <option key={v.id} value={String(v.id)}>
-                                                                                            {v.name}
-                                                                                            {v.email ? ` — ${v.email}` : ''}
-                                                                                        </option>
-                                                                                    ))}
-                                                                                </SelectInput>
-                                                                            </div>
-                                                                            {attachVolunteerPickerUrl ? (
-                                                                                <SecondaryButton
-                                                                                    type="button"
-                                                                                    onClick={() => setAttachPickerOpen(true)}
-                                                                                >
-                                                                                    Filtros
-                                                                                </SecondaryButton>
-                                                                            ) : null}
-                                                                        </div>
-                                                                        <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
-                                                                            Use{' '}
-                                                                            <strong className="font-medium text-zinc-700 dark:text-zinc-300">
-                                                                                Filtros
-                                                                            </strong>{' '}
-                                                                            para o quadro completo (fase, contato, ministérios, etc.),
-                                                                            como na página Voluntários.
-                                                                        </p>
-                                                                        <InputError className="mt-2" message={attachForm.errors.volunteer_id} />
-                                                                    </div>
-                                                                )}
-                                                                <div className="flex flex-wrap justify-end gap-2 pt-2">
-                                                                    <PrimaryButton
-                                                                        type="submit"
-                                                                        disabled={
-                                                                            attachForm.processing ||
-                                                                            (attachForm.data.volunteer_id === '' &&
-                                                                                volunteersForAttach.length === 0 &&
-                                                                                !attachVolunteerPickerUrl)
-                                                                        }
-                                                                    >
-                                                                        Anexar e concluir
-                                                                    </PrimaryButton>
                                                                 </div>
-                                                            </form>
-                                                        </div>
-                                                    ) : null}
+                                                            ) : null}
                                                 </>
                                             ) : undefined
                                             }
@@ -1182,17 +1173,24 @@ export default function VolunteerRequestsIndex({
                 </div>
             </Modal>
 
-            {mode === 'staff' && attachVolunteerPickerUrl ? (
-                <AttachVolunteerPickerModal
-                    open={attachPickerOpen}
-                    onClose={() => setAttachPickerOpen(false)}
-                    pickerUrl={attachVolunteerPickerUrl}
-                    onSelectVolunteer={(id, name) => {
-                        const label = (name ?? '').trim() || `Voluntário #${id}`;
-                        setAttachPickerChoice({ id, name: label });
-                        attachForm.setData('volunteer_id', id);
-                        attachForm.clearErrors();
-                    }}
+            {mode === 'staff' ? (
+                <VolunteerRequestAttachModal
+                    open={attachModalOpen}
+                    onClose={closeAttachModal}
+                    row={
+                        attachModalRow?.attach_volunteer_url
+                            ? {
+                                  id: attachModalRow.id,
+                                  subject: attachModalRow.subject,
+                                  attach_volunteer_url: attachModalRow.attach_volunteer_url,
+                                  suggest_volunteers_url: attachModalRow.suggest_volunteers_url,
+                              }
+                            : null
+                    }
+                    volunteersForAttach={volunteersForAttach}
+                    attachVolunteerPickerUrl={attachVolunteerPickerUrl}
+                    csrf={csrf}
+                    autoLoadSuggestions={attachModalAutoSuggest}
                 />
             ) : null}
 

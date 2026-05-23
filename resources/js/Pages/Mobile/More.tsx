@@ -50,10 +50,10 @@ const items: MoreMenuItem[] = [
     { name: 'Saúde', description: 'Conteúdos de saúde e bem-estar', route: 'mobile.health', icon: HeartIcon },
     { name: 'Missão', description: 'Cadastro missionário', route: 'mobile.mission', icon: GlobeAltIcon },
     { name: 'Oração', description: 'Pedidos de oração', route: 'mobile.prayer', icon: PrayingHandsIcon },
-    { name: 'Campanhas de doação', description: 'Metas específicas com barra de progresso', route: 'mobile.campaigns.index', icon: BanknotesIcon },
+    { name: 'Doação', description: 'Seu gesto de amor pode transformar vidas e renovar esperanças', route: 'mobile.campaigns.index', icon: BanknotesIcon },
     {
-        name: 'Conexão de Talentos',
-        description: 'Colaboração, habilidades e apoio mútuo entre membros',
+        name: 'Central de Serviços',
+        description: 'Serviços, habilidades e apoio mútuo entre membros',
         route: 'mobile.talents.index',
         icon: SparklesIcon,
     },
@@ -81,7 +81,7 @@ const items: MoreMenuItem[] = [
     { name: 'Quem somos', description: 'História e significado do nome', route: 'mobile.quem-somos', icon: UserGroupIcon },
     { name: 'Em que acreditamos', description: '28 princípios de fé (IASD)', route: 'mobile.beliefs', icon: BookOpenIcon },
     {
-        name: 'Cadastro de voluntário',
+        name: 'Voluntário',
         description: 'Quero servir em ministérios (formulário completo)',
         route: 'volunteers.public-signup.page',
         icon: UserPlusIcon,

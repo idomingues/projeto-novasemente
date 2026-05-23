@@ -24,14 +24,14 @@ interface Props {
 export default function MobileDonationCampaignsIndex({ campaigns }: Props) {
     return (
         <MobileLayout>
-            <Head title="Campanhas de doação" />
+            <Head title="Doação" />
             <div className="mx-auto max-w-3xl space-y-6">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
-                        Campanhas de doação
+                        Doação
                     </h1>
                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                        Contribua com causas específicas da igreja e acompanhe o progresso em tempo real.
+                        Cada contribuição é um abraço à missão. Participe com o coração e veja o impacto da sua generosidade.
                     </p>
                 </div>
 

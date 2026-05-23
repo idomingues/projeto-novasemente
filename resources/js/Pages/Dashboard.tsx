@@ -71,18 +71,18 @@ export default function Dashboard({
 }) {
     const statCards = [
         {
-            name: 'Membros do app',
+            name: 'Usuários',
             value: formatStat(stats.members),
             icon: UsersIcon,
-            href: route('members.index'),
+            href: route('users.index'),
             linkLabel: 'Ver membros',
         },
         {
             name: 'Voluntários',
             value: formatStat(stats.volunteers),
             icon: UserGroupIcon,
-            href: route('volunteers.index'),
-            linkLabel: 'Cadastro de voluntários',
+            href: route('ministry-lead.volunteers.index'),
+            linkLabel: 'Ver voluntários',
         },
         {
             name: 'Pedidos de oração',
@@ -144,14 +144,14 @@ export default function Dashboard({
                             <div>
                                 <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Páginas mais vistas</h3>
                                 <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                                    Rotas mais abertas nos últimos {pageViewsPeriodDays} dias (app e web), por igreja em
-                                    contexto. Contagem leve (após enviar a página).
+                                    Páginas de conteúdo mais abertas nos últimos {pageViewsPeriodDays} dias (sem abas da
+                                    barra inferior, Dashboard nem feeds técnicos).
                                 </p>
                             </div>
                         </div>
                         {topPages.length === 0 ? (
                             <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                                Ainda não há visualizações registadas neste período.
+                                Ainda não há visualizações registradas neste período.
                             </p>
                         ) : (
                             <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">

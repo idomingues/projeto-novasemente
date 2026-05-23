@@ -35,9 +35,9 @@ class MembersTest extends TestCase
         $churchId = Church::query()->value('id');
         User::factory()->count(2)->create(['church_id' => $churchId]);
 
-        $response = $this->actingAs($user)->get('/members');
+        $response = $this->actingAs($user)->get('/users');
 
-        $response->assertStatus(200);
+        $response->assertOk();
     }
 
     public function test_admin_role_gets_assignable_roles_even_without_members_manage_permission(): void
@@ -113,7 +113,7 @@ class MembersTest extends TestCase
                 'notify_via_whatsapp' => false,
                 'lgpd_accepted' => true,
             ])
-            ->assertRedirect(route('members.index'));
+            ->assertRedirect(route('users.index'));
 
         $user = User::query()->where('email', 'com-depto-membro@example.com')->firstOrFail();
         $this->assertTrue($user->is_volunteer);
@@ -145,7 +145,7 @@ class MembersTest extends TestCase
                 'lgpd_accepted' => true,
                 'role_name' => 'pastor',
             ])
-            ->assertRedirect(route('members.index'));
+            ->assertRedirect(route('users.index'));
 
         $user = User::query()->where('email', 'pastor-role-member@example.com')->firstOrFail();
         $this->assertTrue($user->hasRole('pastor'));
@@ -176,7 +176,7 @@ class MembersTest extends TestCase
                 'lgpd_accepted' => true,
                 'role_name' => '',
             ])
-            ->assertRedirect(route('members.index'));
+            ->assertRedirect(route('users.index'));
 
         $user = User::query()->where('email', 'sem-perfil-member@example.com')->firstOrFail();
         $this->assertCount(0, $user->getRoleNames());
@@ -211,20 +211,20 @@ class MembersTest extends TestCase
         // PUT directo (cliente de testes) — o papel deve persistir.
         $putResponse = $this->actingAs($admin)
             ->withSession(['working_church_id' => $churchId])
-            ->from(route('members.index'))
+            ->from(route('users.index'))
             ->put(route('members.update', $member), $payload);
 
         $putResponse->assertSessionDoesntHaveErrors();
-        $putResponse->assertRedirect(route('members.index'));
+        $putResponse->assertRedirect(route('users.index'));
 
         $this->assertTrue($member->fresh()->hasRole('pastor'));
 
         // Mesmo fluxo que o painel com forceFormData: POST + _method (PHP preenche multipart em POST).
         $this->actingAs($admin)
             ->withSession(['working_church_id' => $churchId])
-            ->from(route('members.index'))
+            ->from(route('users.index'))
             ->post(route('members.update', $member), array_merge($payload, ['role_name' => 'secretaria', '_method' => 'PUT']))
-            ->assertRedirect(route('members.index'));
+            ->assertRedirect(route('users.index'));
 
         $this->assertTrue($member->fresh()->hasRole('secretaria'));
         $secretariaId = (int) Role::query()->where('name', 'secretaria')->where('guard_name', config('auth.defaults.guard'))->value('id');
@@ -261,9 +261,9 @@ class MembersTest extends TestCase
 
         $this->actingAs($admin)
             ->withSession(['working_church_id' => $churchId])
-            ->from(route('members.index'))
+            ->from(route('users.index'))
             ->post(route('members.update', $member), $payload)
-            ->assertRedirect(route('members.index'));
+            ->assertRedirect(route('users.index'));
 
         $this->assertTrue($member->fresh()->hasRole('pastor'));
     }
@@ -298,9 +298,9 @@ class MembersTest extends TestCase
 
         $this->actingAs($admin)
             ->withSession(['working_church_id' => $churchId])
-            ->from(route('members.index'))
+            ->from(route('users.index'))
             ->put(route('members.update', $member), $payload)
-            ->assertRedirect(route('members.index'));
+            ->assertRedirect(route('users.index'));
 
         $this->assertCount(0, $member->fresh()->getRoleNames());
         $this->assertNull($member->fresh()->role_id);
@@ -337,9 +337,9 @@ class MembersTest extends TestCase
 
         $this->actingAs($super)
             ->withSession(['working_church_id' => $churchId])
-            ->from(route('members.index'))
+            ->from(route('users.index'))
             ->put(route('members.update', $super), $payload)
-            ->assertRedirect(route('members.index'))
+            ->assertRedirect(route('users.index'))
             ->assertSessionHas('error');
 
         $this->assertTrue($super->fresh()->hasRole('super_admin'));
@@ -377,7 +377,7 @@ class MembersTest extends TestCase
             ->withSession(['working_church_id' => $churchId])
             ->put(route('members.update', $member), $payload)
             ->assertSessionDoesntHaveErrors()
-            ->assertRedirect(route('members.index'));
+            ->assertRedirect(route('users.index'));
 
         $this->assertTrue(Hash::check('Replaced-Password2!', $member->fresh()->password));
     }
@@ -419,7 +419,7 @@ class MembersTest extends TestCase
             ->withSession(['working_church_id' => $churchId])
             ->put(route('members.update', $member), $payload)
             ->assertSessionDoesntHaveErrors()
-            ->assertRedirect(route('members.index'));
+            ->assertRedirect(route('users.index'));
 
         $this->assertSame($hashBefore, $member->fresh()->password);
         $this->assertFalse(Hash::check('Hacker-Password2!', $member->fresh()->password));
@@ -456,17 +456,17 @@ class MembersTest extends TestCase
 
         $this->actingAs($admin)
             ->withSession($session)
-            ->get(route('members.index', ['leaders_only' => 1]))
+            ->get(route('users.index', ['leaders_only' => 1]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('Members/Index')
+                ->component('Users/Index')
                 ->where('filters.leaders_only', '1')
                 ->has('members.data', 1)
                 ->where('members.data.0.email', 'lider-filtro@example.com'));
 
         $this->actingAs($admin)
             ->withSession($session)
-            ->get(route('members.index', ['ministry_id' => $ministryA->id]))
+            ->get(route('users.index', ['ministry_id' => $ministryA->id]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->has('members.data', 1)

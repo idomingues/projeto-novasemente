@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Mail\CampaignDonationDonorMail;
 use App\Mail\CampaignDonationTreasurerMail;
+use App\Mail\CampaignThanksDonorMail;
 use App\Models\CampaignDonation;
 use App\Models\Church;
 use App\Models\DonationCampaign;
@@ -461,6 +462,73 @@ class DonationCampaignTest extends TestCase
         $campaign->refresh();
         $this->assertNotNull($campaign->thanks_published_at);
         $this->assertSame('Obrigado a todos que contribuíram!', $campaign->thanks_message);
+    }
+
+    public function test_publishing_thanks_can_notify_donors_by_email_and_inbox(): void
+    {
+        Mail::fake();
+        $this->ensureCampaignPermissions();
+        [$admin, $church] = $this->adminWithChurch();
+
+        $donorWithEmail = User::factory()->create([
+            'church_id' => $church->id,
+            'notify_via_app' => true,
+            'notify_via_email' => true,
+        ]);
+        $donorInboxOnly = User::factory()->create([
+            'church_id' => $church->id,
+            'notify_via_app' => true,
+            'notify_via_email' => false,
+        ]);
+
+        $campaign = DonationCampaign::create([
+            'church_id' => $church->id,
+            'title' => 'Campanha com doadores',
+            'goal_amount' => 1000,
+            'raised_amount' => 150,
+            'status' => 'closed',
+            'created_by' => $admin->id,
+        ]);
+
+        foreach ([$donorWithEmail, $donorInboxOnly] as $donor) {
+            CampaignDonation::create([
+                'campaign_id' => $campaign->id,
+                'source' => CampaignDonation::SOURCE_APP,
+                'user_id' => $donor->id,
+                'amount' => 75,
+                'receipt_path' => 'donations/receipts/test-'.$donor->id.'.jpg',
+                'receipt_hash' => hash('sha256', 'receipt-'.$donor->id),
+                'confirmed_at' => now(),
+            ]);
+        }
+
+        $this->actingAs($admin)
+            ->withSession(['working_church_id' => $church->id])
+            ->post(route('donation-campaigns.thanks.publish', $campaign), [
+                'thanks_message' => 'Gratidão a cada um que contribuiu!',
+                'notify_donors' => true,
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $campaign->refresh();
+        $this->assertNotNull($campaign->thanks_published_at);
+        $this->assertNotNull($campaign->thanks_donors_notified_at);
+
+        Mail::assertQueued(CampaignThanksDonorMail::class, 1);
+        Mail::assertQueued(CampaignThanksDonorMail::class, function (CampaignThanksDonorMail $mail) use ($donorWithEmail, $campaign) {
+            return $mail->donor->id === $donorWithEmail->id
+                && $mail->campaign->id === $campaign->id;
+        });
+
+        $this->assertDatabaseHas('user_inbox_notifications', [
+            'user_id' => $donorWithEmail->id,
+            'title' => 'Agradecimento pela sua doação',
+        ]);
+        $this->assertDatabaseHas('user_inbox_notifications', [
+            'user_id' => $donorInboxOnly->id,
+            'title' => 'Agradecimento pela sua doação',
+        ]);
     }
 
     public function test_mobile_show_includes_story_and_thanks_content(): void

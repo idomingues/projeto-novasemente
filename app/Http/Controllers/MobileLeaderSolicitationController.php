@@ -76,11 +76,7 @@ class MobileLeaderSolicitationController extends Controller
             'content' => $valid['content'],
         ]);
 
-        if (in_array($solicitation->status, ['pending'], true)) {
-            $solicitation->update(['status' => 'in_progress']);
-        } else {
-            $solicitation->touch();
-        }
+        $solicitation->touch();
 
         app(SolicitationChatNotifier::class)->notifyMemberOfStaffMessage($solicitation, $request->user(), $valid['content']);
 

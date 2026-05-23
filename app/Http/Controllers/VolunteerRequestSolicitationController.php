@@ -20,6 +20,8 @@ use App\Support\ChurchSolicitationModalPayloadPresenter;
 use App\Support\VolunteerChurchRosterBuilder;
 use App\Support\VolunteerLeadRosterFilters;
 use App\Support\VolunteerPipelineBootstrap;
+use App\Support\VolunteerRequestStaffRoutes;
+use App\Support\VolunteerRequestVolunteerSuggester;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -103,6 +105,7 @@ class VolunteerRequestSolicitationController extends Controller
         bool $includeRequesterName,
         User $authUser,
         string $accessMode,
+        bool $showArchived = false,
     ): array {
         $q = ChurchSolicitation::query()
             ->where('church_id', $churchId)
@@ -110,6 +113,12 @@ class VolunteerRequestSolicitationController extends Controller
             ->orderBy('created_at')
             ->orderBy('id')
             ->limit(100);
+
+        if ($showArchived) {
+            $q->whereNotNull('staff_archived_at');
+        } else {
+            $q->whereNull('staff_archived_at');
+        }
 
         if ($onlyUserId !== null) {
             $q->where('user_id', $onlyUserId);
@@ -122,7 +131,7 @@ class VolunteerRequestSolicitationController extends Controller
 
         return $q
             ->get(['id', 'subject', 'message', 'status', 'created_at', 'user_id', 'meta', 'assigned_volunteer_id', 'completed_at'])
-            ->map(function (ChurchSolicitation $s) use ($includeRequesterName, $authUser, $accessMode) {
+            ->map(function (ChurchSolicitation $s) use ($includeRequesterName, $authUser, $accessMode, $showArchived) {
                 $meta = $s->meta ?? [];
                 $ministryIdMeta = isset($meta['ministry_id']) ? (int) $meta['ministry_id'] : null;
                 $scheduleRoleIdMeta = isset($meta['schedule_role_id']) ? (int) $meta['schedule_role_id'] : null;
@@ -200,6 +209,9 @@ class VolunteerRequestSolicitationController extends Controller
                     ? 'ministry-lead.volunteer-requests.panel'
                     : 'volunteer-requests.staff.panel';
 
+                $canArchiveStaff = $accessMode === 'staff'
+                    && $authUser->can('archiveVolunteerRequestAsStaff', $s);
+
                 return [
                     'id' => (int) $s->id,
                     'subject' => (string) $s->subject,
@@ -218,11 +230,16 @@ class VolunteerRequestSolicitationController extends Controller
                     'ministry_id' => $ministryIdMeta,
                     'schedule_role_id' => $scheduleRoleIdMeta > 0 ? $scheduleRoleIdMeta : null,
                     'can_edit' => $canMutate,
-                    'can_delete' => $canMutate,
+                    'can_delete' => $accessMode === 'leader' && $canMutate,
                     'update_url' => $canMutate ? route($updateRoute, $s) : null,
-                    'destroy_url' => $canMutate ? route($destroyRoute, $s) : null,
+                    'destroy_url' => $accessMode === 'leader' && $canMutate ? route($destroyRoute, $s) : null,
+                    'can_archive' => $canArchiveStaff && ! $showArchived,
+                    'archive_url' => $canArchiveStaff && ! $showArchived ? route('volunteer-requests.staff.archive', $s) : null,
+                    'can_unarchive' => $canArchiveStaff && $showArchived,
+                    'unarchive_url' => $canArchiveStaff && $showArchived ? route('volunteer-requests.staff.unarchive', $s) : null,
                     'can_attach_volunteer' => $canAttach,
                     'attach_volunteer_url' => $canAttach ? route('volunteer-requests.staff.attach-volunteer', $s) : null,
+                    'suggest_volunteers_url' => $canAttach ? route('volunteer-requests.staff.suggest-volunteers', $s) : null,
                     'can_detach_volunteer' => $canDetach,
                     'detach_volunteer_url' => $canDetach ? route('volunteer-requests.staff.detach-volunteer', $s) : null,
                     'panel_json_url' => route($panelRoute, $s),
@@ -343,23 +360,119 @@ class VolunteerRequestSolicitationController extends Controller
         );
     }
 
-    public function indexStaff(Request $request): Response
+    /**
+     * @return array<string, mixed>
+     */
+    public function staffIndexPayload(Request $request, int $churchId): array
+    {
+        $user = $request->user();
+        abort_unless($user instanceof User, 401);
+
+        $showArchived = $request->query('arquivados') === '1';
+
+        $archivedCount = ChurchSolicitation::query()
+            ->where('church_id', $churchId)
+            ->where('type', MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST)
+            ->whereNotNull('staff_archived_at')
+            ->count();
+
+        $activeCount = ChurchSolicitation::query()
+            ->where('church_id', $churchId)
+            ->where('type', MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST)
+            ->whereNull('staff_archived_at')
+            ->count();
+
+        return [
+            'volunteerRequestRows' => $this->volunteerRequestRowsForChurch($churchId, null, true, $user, 'staff', $showArchived),
+            'volunteerRequestMinistries' => $this->ministriesWithRolesForChurch($churchId, null),
+            'volunteerRequestStoreUrl' => route('volunteer-requests.staff.store'),
+            'volunteersForAttach' => $this->volunteersForAttachDropdown($churchId),
+            'attachVolunteerPickerUrl' => route('volunteer-requests.staff.attach-picker-volunteers'),
+            'volunteerRequestFilters' => [
+                'arquivados' => $showArchived,
+            ],
+            'volunteerRequestArchivedCount' => $archivedCount,
+            'volunteerRequestActiveCount' => $activeCount,
+        ];
+    }
+
+    public function archiveStaff(Request $request, ChurchSolicitation $solicitation): RedirectResponse
+    {
+        $this->canManageSolicitations($request);
+        abort_unless($solicitation->type === MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST, 404);
+        $this->authorize('archiveVolunteerRequestAsStaff', $solicitation);
+
+        $churchId = $this->churchId($request);
+        if ($churchId !== null && (int) $solicitation->church_id !== (int) $churchId) {
+            abort(404);
+        }
+
+        $solicitation->update(['staff_archived_at' => now()]);
+
+        return redirect()
+            ->to(VolunteerRequestStaffRoutes::pipelinePedidosUrl())
+            ->with('success', 'Pedido de voluntário arquivado.');
+    }
+
+    public function unarchiveStaff(Request $request, ChurchSolicitation $solicitation): RedirectResponse
+    {
+        $this->canManageSolicitations($request);
+        abort_unless($solicitation->type === MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST, 404);
+        $this->authorize('archiveVolunteerRequestAsStaff', $solicitation);
+
+        $churchId = $this->churchId($request);
+        if ($churchId !== null && (int) $solicitation->church_id !== (int) $churchId) {
+            abort(404);
+        }
+
+        $solicitation->update(['staff_archived_at' => null]);
+
+        return redirect()
+            ->route('ministry-lead.volunteers.index', ['secao' => 'pedidos', 'arquivados' => '1'])
+            ->with('success', 'Pedido de voluntário restaurado na lista ativa.');
+    }
+
+    public function indexStaff(Request $request): RedirectResponse
     {
         $this->canManageSolicitations($request);
         $churchId = $this->churchId($request);
         abort_unless($churchId, 404, 'Nenhuma igreja ativa.');
 
-        $user = $request->user();
-        abort_unless($user instanceof User, 401);
+        return redirect()->to(VolunteerRequestStaffRoutes::pipelinePedidosUrl());
+    }
 
-        return Inertia::render('VolunteerRequests/Index', [
-            'mode' => 'staff',
-            'rows' => $this->volunteerRequestRowsForChurch((int) $churchId, null, true, $user, 'staff'),
-            'ministries' => $this->ministriesWithRolesForChurch($churchId, null),
-            'storeUrl' => route('volunteer-requests.staff.store'),
-            'volunteersForAttach' => $this->volunteersForAttachDropdown((int) $churchId),
-            'attachVolunteerPickerUrl' => route('volunteer-requests.staff.attach-picker-volunteers'),
-        ]);
+    public function suggestVolunteersStaff(Request $request, ChurchSolicitation $solicitation): JsonResponse
+    {
+        $this->canManageSolicitations($request);
+        $churchId = $this->churchId($request);
+        abort_unless($churchId, 404, 'Nenhuma igreja ativa.');
+        $this->assertVolunteerRequest($solicitation, (int) $churchId);
+        $this->authorize('manageVolunteerRequestAsStaff', $solicitation);
+
+        if ($solicitation->status !== 'pending') {
+            return response()->json([
+                'suggestions' => [],
+                'ministryName' => null,
+                'roleName' => null,
+                'candidatesEvaluated' => 0,
+                'message' => 'Sugestões só estão disponíveis para pedidos pendentes.',
+            ]);
+        }
+
+        $meta = $solicitation->meta ?? [];
+        if (! empty($meta['fulfilled_invitation_id'])) {
+            return response()->json([
+                'suggestions' => [],
+                'ministryName' => null,
+                'roleName' => null,
+                'candidatesEvaluated' => 0,
+                'message' => 'Este pedido já tem voluntário anexado.',
+            ]);
+        }
+
+        return response()->json(
+            VolunteerRequestVolunteerSuggester::suggest($solicitation, (int) $churchId),
+        );
     }
 
     public function attachVolunteerPicker(Request $request): JsonResponse
@@ -468,7 +581,7 @@ class VolunteerRequestSolicitationController extends Controller
         }
 
         $fallback = $senderType === 'staff'
-            ? route('volunteer-requests.staff.index')
+            ? VolunteerRequestStaffRoutes::pipelinePedidosUrl()
             : route('ministry-lead.my-volunteers.index');
 
         return redirect()->back(fallback: $fallback);
@@ -571,7 +684,7 @@ class VolunteerRequestSolicitationController extends Controller
         });
 
         return redirect()
-            ->route('volunteer-requests.staff.index')
+            ->VolunteerRequestStaffRoutes::pipelinePedidosUrl()
             ->with('success', 'Voluntário anexado: convite criado para o líder, pedido concluído e fase do voluntário atualizada.');
     }
 
@@ -639,7 +752,7 @@ class VolunteerRequestSolicitationController extends Controller
         });
 
         return redirect()
-            ->route('volunteer-requests.staff.index')
+            ->VolunteerRequestStaffRoutes::pipelinePedidosUrl()
             ->with('success', 'Voluntário desanexado. O pedido voltou para pendente.');
     }
 
@@ -652,12 +765,15 @@ class VolunteerRequestSolicitationController extends Controller
             return [];
         }
 
-        return Volunteer::query()
+        $q = Volunteer::query()
             ->where(function ($q2) use ($churchId) {
                 $q2->whereDoesntHave('ministries')
                     ->orWhereHas('ministries', fn ($mq) => $mq->where('church_id', $churchId));
-            })
-            ->orderBy('name')
+            });
+
+        VolunteerChurchRosterBuilder::applyStaffArchivedFilter($q, $churchId, false);
+
+        return $q->orderBy('name')
             ->limit(400)
             ->get(['id', 'name', 'email'])
             ->map(fn (Volunteer $v) => [
@@ -750,7 +866,7 @@ class VolunteerRequestSolicitationController extends Controller
         $solicitation->delete();
 
         return redirect()
-            ->route('volunteer-requests.staff.index')
+            ->VolunteerRequestStaffRoutes::pipelinePedidosUrl()
             ->with('success', 'Pedido removido.');
     }
 
@@ -828,7 +944,7 @@ class VolunteerRequestSolicitationController extends Controller
                 : 'Pedido de voluntário registrado.';
 
             return redirect()
-                ->route('volunteer-requests.staff.index')
+                ->VolunteerRequestStaffRoutes::pipelinePedidosUrl()
                 ->with('success', $msg);
         }
 
