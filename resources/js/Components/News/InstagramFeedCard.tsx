@@ -171,7 +171,7 @@ export default function InstagramFeedCard({
                             }
                         >
                             <InstagramBrandIcon className={isDetail ? 'h-5 w-5 shrink-0' : 'h-4 w-4'} />
-                            Abrir no Instagram
+                            Ver vídeo
                         </a>
                     )}
                 </div>

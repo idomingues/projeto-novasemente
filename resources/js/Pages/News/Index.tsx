@@ -499,7 +499,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                             className="inline-flex items-center gap-1 text-xs font-medium text-pink-600 hover:underline dark:text-pink-400"
                                         >
                                             <InstagramBrandIcon className="h-4 w-4" />
-                                            Abrir no Instagram
+                                            Ver vídeo
                                         </a>
                                     )}
                                 </div>
@@ -615,8 +615,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                         placeholder="https://www.instagram.com/p/… ou …/reel/…"
                                     />
                                     <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                        Cole o link do post, reel ou IGTV. Na app, o usuário poderá abrir direto no
-                                        Instagram.
+                                        Cole o link do post, reel ou IGTV. Na app, aparecerá o botão «Ver vídeo».
                                     </p>
                                     <InputError message={errors.instagram_url} className="mt-1" />
                                 </div>
@@ -767,7 +766,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                     />
                                     <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                                         Se a publicação original estiver no Instagram, cole o link para exibir o botão
-                                        «Abrir no Instagram» na app (além da imagem ou vídeo enviados acima).
+                                        «Ver vídeo» na app (além da imagem ou vídeo enviados acima).
                                     </p>
                                     <InputError message={errors.instagram_url} className="mt-1" />
                                 </div>
@@ -881,7 +880,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                                 rel="noopener noreferrer"
                                                 className="rounded-full bg-zinc-900 px-4 py-2 text-xs font-semibold text-white dark:bg-white dark:text-zinc-900"
                                             >
-                                                Abrir no Instagram
+                                                Ver vídeo
                                             </a>
                                         ) : (
                                             <p className="text-center text-xs text-zinc-600 dark:text-zinc-400">

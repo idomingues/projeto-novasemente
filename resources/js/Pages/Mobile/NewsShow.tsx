@@ -196,7 +196,7 @@ export default function MobileNewsShow({ post, config }: Props) {
                                     className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:from-pink-500 hover:to-purple-500"
                                 >
                                     <InstagramBrandIcon className="h-5 w-5 shrink-0" />
-                                    Abrir no Instagram
+                                    Ver vídeo
                                 </a>
                             </div>
                         )}
