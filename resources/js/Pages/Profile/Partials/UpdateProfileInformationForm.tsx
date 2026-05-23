@@ -2,7 +2,9 @@ import Checkbox from '@/Components/Checkbox';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
+import ProfilePhotoPicker from '@/Components/ProfilePhotoPicker';
 import TextInput from '@/Components/TextInput';
+import { bibleAvatarKeyFromPhotoUrl } from '@/constants/bibleAvatars';
 import { compressImageForUpload, ImageCompressError } from '@/utils/compressImageForUpload';
 import { Transition } from '@headlessui/react';
 import { Link, useForm, usePage } from '@inertiajs/react';
@@ -48,6 +50,7 @@ export default function UpdateProfileInformation({
             name: user.name,
             email: user.email,
             photo_file: null as File | null,
+            avatar_key: '' as string,
             notify_via_app: user.notify_via_app !== false,
             notify_via_email: user.notify_via_email !== false,
             notify_via_whatsapp: user.notify_via_whatsapp === true,
@@ -62,6 +65,47 @@ export default function UpdateProfileInformation({
 
     const [photoPreparing, setPhotoPreparing] = useState(false);
     const [photoClientError, setPhotoClientError] = useState<string | null>(null);
+    const [photoPreview, setPhotoPreview] = useState<string | null>(user.photo_url ?? null);
+
+    const handlePhotoFile = async (raw: File | null) => {
+        setPhotoClientError(null);
+        if (!raw) {
+            setData('photo_file', null);
+            if (!data.avatar_key) setPhotoPreview(user.photo_url ?? null);
+            return;
+        }
+        setData('avatar_key', '');
+        setPhotoPreparing(true);
+        try {
+            const prepared = await compressImageForUpload(raw);
+            setData('photo_file', prepared);
+            setPhotoPreview(URL.createObjectURL(prepared));
+        } catch (err) {
+            setData('photo_file', null);
+            setPhotoPreview(user.photo_url ?? null);
+            const msg =
+                err instanceof ImageCompressError
+                    ? err.message
+                    : 'Não foi possível preparar a imagem para envio.';
+            setPhotoClientError(msg);
+        } finally {
+            setPhotoPreparing(false);
+        }
+    };
+
+    const handleAvatarSelect = (key: string | null, previewUrl: string | null) => {
+        setPhotoClientError(null);
+        setData('avatar_key', key ?? '');
+        setData('photo_file', null);
+        setPhotoPreview(previewUrl);
+    };
+
+    const handlePhotoClear = () => {
+        setData('photo_file', null);
+        setData('avatar_key', '');
+        setPhotoPreview(null);
+        setPhotoClientError(null);
+    };
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
@@ -83,55 +127,25 @@ export default function UpdateProfileInformation({
 
             <form onSubmit={submit} className="mt-6 space-y-6">
                 <div>
-                    <InputLabel htmlFor="photo_file" value="Foto de perfil" />
-                    <div className="mt-2 flex items-center gap-4">
-                        <div className="h-14 w-14 rounded-full overflow-hidden bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-sm font-semibold text-zinc-600 dark:text-zinc-300">
-                            {user.photo_url ? (
-                                <img src={user.photo_url} alt="" className="h-full w-full object-cover" />
-                            ) : (
-                                user.name?.charAt(0)?.toUpperCase() ?? '?'
-                            )}
-                        </div>
-                        <input
-                            id="photo_file"
-                            type="file"
-                            accept="image/*"
-                            disabled={photoPreparing}
-                            onChange={async (e) => {
-                                const input = e.currentTarget;
-                                const raw = input.files?.[0] ?? null;
-                                setPhotoClientError(null);
-                                if (!raw) {
-                                    setData('photo_file', null);
-                                    return;
-                                }
-                                setPhotoPreparing(true);
-                                try {
-                                    const prepared = await compressImageForUpload(raw);
-                                    setData('photo_file', prepared);
-                                } catch (err) {
-                                    setData('photo_file', null);
-                                    input.value = '';
-                                    const msg =
-                                        err instanceof ImageCompressError
-                                            ? err.message
-                                            : 'Não foi possível preparar a imagem para envio.';
-                                    setPhotoClientError(msg);
-                                } finally {
-                                    setPhotoPreparing(false);
-                                }
-                            }}
-                            className="block w-full text-sm text-zinc-600 dark:text-zinc-300 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-100 dark:file:bg-zinc-800 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-zinc-700 dark:file:text-zinc-100 hover:file:bg-zinc-200 dark:hover:file:bg-zinc-700 disabled:opacity-60"
+                    <InputLabel value="Foto de perfil" />
+                    <div className="mt-2">
+                        <ProfilePhotoPicker
+                            previewUrl={photoPreview}
+                            selectedAvatarKey={
+                                data.avatar_key || bibleAvatarKeyFromPhotoUrl(user.photo_url) || null
+                            }
+                            photoPreparing={photoPreparing}
+                            clientError={photoClientError}
+                            serverPhotoError={errors.photo_file}
+                            serverAvatarError={errors.avatar_key}
+                            required={false}
+                            inputId="photo_file"
+                            description="Tire ou envie uma nova foto, ou escolha um avatar. Fotos grandes são reduzidas automaticamente (cerca de 500 KB) para o envio no celular."
+                            onPhotoFile={handlePhotoFile}
+                            onAvatarSelect={handleAvatarSelect}
+                            onClear={handlePhotoClear}
                         />
                     </div>
-                    {photoPreparing ? (
-                        <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">A preparar a imagem…</p>
-                    ) : null}
-                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                        Fotos grandes são reduzidas automaticamente (cerca de 500 KB) para o envio correr bem no celular.
-                    </p>
-                    <InputError className="mt-2" message={photoClientError ?? undefined} />
-                    <InputError className="mt-2" message={errors.photo_file} />
                 </div>
 
                 <div>

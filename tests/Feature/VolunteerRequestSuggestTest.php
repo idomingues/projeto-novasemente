@@ -84,6 +84,9 @@ class VolunteerRequestSuggestTest extends TestCase
         $this->assertSame($strong->id, $top['id']);
         $this->assertGreaterThanOrEqual(12, $top['score']);
         $this->assertNotEmpty($top['reasons']);
+        $this->assertArrayHasKey('profile', $top);
+        $this->assertSame($strong->id, $top['profile']['id']);
+        $this->assertSame('maria.recepcao@example.com', $top['profile']['email']);
     }
 
     public function test_suggest_requires_ministry_on_request(): void

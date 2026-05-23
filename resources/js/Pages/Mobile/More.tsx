@@ -57,7 +57,12 @@ const items: MoreMenuItem[] = [
         route: 'mobile.talents.index',
         icon: SparklesIcon,
     },
-    { name: 'Minhas doações', description: 'Acompanhe e solicite revisão das suas contribuições', route: 'mobile.campaigns.my-donations', icon: BanknotesIcon },
+    {
+        name: 'Doar Talentos',
+        description: 'Compartilhe talentos, aprendizado e apoio gratuito na comunidade',
+        route: 'mobile.shared-talents.index',
+        icon: UserGroupIcon,
+    },
     { name: 'Dízimos e Ofertas', description: 'Contribuições e ofertas', route: 'mobile.offerings', icon: HandRaisedIcon },
     { name: 'Culto', description: 'Vídeos do culto online', route: 'mobile.culto', icon: FilmIcon },
     { name: 'Música', description: 'Vídeos de música no YouTube', route: 'mobile.musica', icon: MusicalNoteIcon },

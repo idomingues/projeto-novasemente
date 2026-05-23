@@ -7,6 +7,7 @@ use App\Http\Requests\ProfileUpdateRequest;
 use App\Models\Church;
 use App\Models\Ministry;
 use App\Support\StorageUrl;
+use App\Support\UserProfilePhotoResolver;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -69,6 +70,7 @@ class ProfileController extends Controller
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
         $validated = $request->validated();
+        UserProfilePhotoResolver::assertExclusivePhotoOrAvatar($request);
         $redirectTo = $this->resolveRedirectRoute($request);
         $user = $request->user();
         $user->fill(collect($validated)->except('photo_file', 'volunteer_ministry_ids', 'redirect_to')->all());
@@ -78,8 +80,14 @@ class ProfileController extends Controller
         }
 
         if ($request->hasFile('photo_file')) {
-            $this->deleteStoredUserPhoto($user->photo_url);
-            $user->photo_url = $this->storeUserPhoto($request->file('photo_file'));
+            UserProfilePhotoResolver::deleteStoredUploadIfAny($user->photo_url);
+            $user->photo_url = UserProfilePhotoResolver::storeUploadedPhoto($request->file('photo_file'));
+        } elseif ($request->filled('avatar_key')) {
+            $newUrl = UserProfilePhotoResolver::resolveFromRequest($request);
+            if ($newUrl !== null && $newUrl !== $user->photo_url) {
+                UserProfilePhotoResolver::deleteStoredUploadIfAny($user->photo_url);
+                $user->photo_url = $newUrl;
+            }
         }
 
         $user->save();

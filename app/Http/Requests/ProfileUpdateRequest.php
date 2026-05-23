@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\Church;
 use App\Models\User;
+use App\Support\UserProfilePhotoResolver;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -40,7 +41,7 @@ class ProfileUpdateRequest extends FormRequest
             $ministryItemRules[] = 'exists:ministries,id';
         }
 
-        return [
+        return array_merge([
             'redirect_to' => ['nullable', 'string', 'max:120'],
             'name' => ['required', 'string', 'max:255'],
             'email' => [
@@ -51,12 +52,11 @@ class ProfileUpdateRequest extends FormRequest
                 'max:255',
                 Rule::unique(User::class)->ignore($this->user()->id),
             ],
-            'photo_file' => ['nullable', 'image', 'max:4096'],
             'notify_via_app' => ['sometimes', 'boolean'],
             'notify_via_email' => ['sometimes', 'boolean'],
             'notify_via_whatsapp' => ['sometimes', 'boolean'],
             'volunteer_ministry_ids' => ['nullable', 'array'],
             'volunteer_ministry_ids.*' => $ministryItemRules,
-        ];
+        ], UserProfilePhotoResolver::validationRules(required: false));
     }
 }

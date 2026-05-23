@@ -268,6 +268,7 @@ final class VolunteerRequestVolunteerSuggester
             'clearanceStatus' => $clearance,
             'interestPreview' => self::truncateInterestPreview($volunteer),
             'ministryNames' => $volunteer->ministries->pluck('name')->values()->all(),
+            'profile' => VolunteerQuestionnaireProfilePayload::fromVolunteer($volunteer),
         ];
     }
 

@@ -9,6 +9,7 @@ use App\Models\Volunteer;
 use App\Models\VolunteerChurchPipeline;
 use App\Models\VolunteerPipelineStage;
 use App\Models\VolunteerSelfSignupToken;
+use App\Support\BibleAvatarCatalog;
 use Database\Seeders\ChurchSeeder;
 use Database\Seeders\MinistrySeeder;
 use Database\Seeders\RolePermissionSeeder;
@@ -44,6 +45,27 @@ class VolunteerPublicSignupTest extends TestCase
             'password' => 'Password1!xx',
             'password_confirmation' => 'Password1!xx',
         ];
+    }
+
+    public function test_public_signup_accepts_bible_avatar_instead_of_photo(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class, MinistrySeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+        $token = VolunteerSelfSignupToken::query()->create([
+            'church_id' => $churchId,
+            'token' => (string) Str::uuid(),
+        ])->token;
+
+        $payload = $this->signupPayload($token, 'avatar.voluntario@example.com');
+        unset($payload['photo_file']);
+        $payload['avatar_key'] = 'female:esther';
+
+        $response = $this->post(route('volunteers.self-signup.store'), $payload);
+
+        $response->assertRedirect(route('login'));
+        $user = User::query()->where('email', 'avatar.voluntario@example.com')->firstOrFail();
+        $this->assertSame(BibleAvatarCatalog::urlForKey('female:esther'), $user->photo_url);
     }
 
     public function test_public_signup_creates_user_and_redirects_to_login_with_congrats(): void

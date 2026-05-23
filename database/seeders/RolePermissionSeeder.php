@@ -60,6 +60,8 @@ class RolePermissionSeeder extends Seeder
             'campaigns.manage',
             'talents.moderate',
             'talents.treasurer',
+            'shared_talents.moderate',
+            'shared_talents.manage',
         ];
 
         $guard = config('auth.defaults.guard');
@@ -111,6 +113,8 @@ class RolePermissionSeeder extends Seeder
                 'finance.view',
                 'talents.moderate',
                 'talents.treasurer',
+                'shared_talents.moderate',
+                'shared_talents.manage',
             ],
             'secretaria' => [
                 'members.view',
@@ -151,6 +155,8 @@ class RolePermissionSeeder extends Seeder
                 'finance.view',
                 'talents.moderate',
                 'talents.treasurer',
+                'shared_talents.moderate',
+                'shared_talents.manage',
             ],
             'pastor' => [
                 'members.view',

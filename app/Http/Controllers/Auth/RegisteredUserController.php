@@ -11,11 +11,10 @@ use App\Models\Ministry;
 use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerMinistryInvitation;
-use App\Support\StorageUrl;
+use App\Support\UserProfilePhotoResolver;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -28,13 +27,6 @@ use Spatie\Permission\Models\Role;
 
 class RegisteredUserController extends Controller
 {
-    private function storeUserPhoto(UploadedFile $file): string
-    {
-        $path = $file->store('users/photos', 'public');
-
-        return StorageUrl::publicMediaUrl($path);
-    }
-
     /**
      * Display the registration view.
      */
@@ -141,10 +133,9 @@ class RegisteredUserController extends Controller
             $ministryIdRules[] = 'exists:ministries,id';
         }
 
-        $request->validate([
+        $request->validate(array_merge([
             'name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
-            'photo_file' => ['required', 'image', 'max:4096'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'invitation_token' => ['nullable', 'string'],
             'ministry_invite_token' => ['nullable', 'string'],
@@ -155,14 +146,17 @@ class RegisteredUserController extends Controller
             'notify_via_email' => ['required', 'boolean'],
             'notify_via_whatsapp' => ['required', 'boolean'],
             'lgpd_accepted' => ['required', 'accepted'],
-        ]);
+        ], UserProfilePhotoResolver::validationRules()));
+        UserProfilePhotoResolver::assertExclusivePhotoOrAvatar($request);
 
-        $user = User::withoutEvents(function () use ($request) {
+        $photoUrl = UserProfilePhotoResolver::resolveFromRequest($request);
+
+        $user = User::withoutEvents(function () use ($request, $photoUrl) {
             return User::create([
                 'name' => $request->name,
                 'email' => $request->email,
                 'password' => $request->password,
-                'photo_url' => $request->hasFile('photo_file') ? $this->storeUserPhoto($request->file('photo_file')) : null,
+                'photo_url' => $photoUrl,
                 'notify_via_app' => $request->boolean('notify_via_app'),
                 'notify_via_email' => $request->boolean('notify_via_email'),
                 'notify_via_whatsapp' => $request->boolean('notify_via_whatsapp'),
@@ -243,7 +237,7 @@ class RegisteredUserController extends Controller
             ]);
         }
 
-        $request->validate([
+        $request->validate(array_merge([
             'name' => ['required', 'string', 'max:255'],
             'email' => [
                 'required',
@@ -258,25 +252,27 @@ class RegisteredUserController extends Controller
                     }
                 },
             ],
-            'photo_file' => ['required', 'image', 'max:4096'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'ministry_invite_token' => ['required', 'string'],
             'notify_via_app' => ['required', 'boolean'],
             'notify_via_email' => ['required', 'boolean'],
             'notify_via_whatsapp' => ['required', 'boolean'],
             'lgpd_accepted' => ['required', 'accepted'],
-        ]);
+        ], UserProfilePhotoResolver::validationRules()));
+        UserProfilePhotoResolver::assertExclusivePhotoOrAvatar($request);
+
+        $photoUrl = UserProfilePhotoResolver::resolveFromRequest($request);
 
         $request->session()->put('working_church_id', (int) $invite->church_id);
         $request->merge(['already_volunteer' => true]);
 
-        $user = DB::transaction(function () use ($request, $invite, $volunteer, $ministry) {
-            $user = User::withoutEvents(function () use ($request) {
+        $user = DB::transaction(function () use ($request, $invite, $volunteer, $ministry, $photoUrl) {
+            $user = User::withoutEvents(function () use ($request, $photoUrl) {
                 return User::create([
                     'name' => $request->name,
                     'email' => $request->email,
                     'password' => $request->password,
-                    'photo_url' => $request->hasFile('photo_file') ? $this->storeUserPhoto($request->file('photo_file')) : null,
+                    'photo_url' => $photoUrl,
                     'notify_via_app' => $request->boolean('notify_via_app'),
                     'notify_via_email' => $request->boolean('notify_via_email'),
                     'notify_via_whatsapp' => $request->boolean('notify_via_whatsapp'),
@@ -464,23 +460,23 @@ class RegisteredUserController extends Controller
             return redirect()->route('login')->with('status', 'Este cadastro já foi concluído. Faça login com seu e-mail.');
         }
 
-        $validated = $request->validate([
+        $validated = $request->validate(array_merge([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
-            'photo_file' => ['required', 'image', 'max:4096'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'notify_via_app' => ['required', 'boolean'],
             'notify_via_email' => ['required', 'boolean'],
             'notify_via_whatsapp' => ['required', 'boolean'],
             'lgpd_accepted' => ['required', 'accepted'],
-        ]);
+        ], UserProfilePhotoResolver::validationRules()));
+        UserProfilePhotoResolver::assertExclusivePhotoOrAvatar($request);
 
         $user->name = $validated['name'];
         $user->email = $validated['email'];
         $user->password = $validated['password'];
-        if ($request->hasFile('photo_file')) {
-            // Não tentamos apagar o anterior aqui: em convites, geralmente é null.
-            $user->photo_url = $this->storeUserPhoto($request->file('photo_file'));
+        $photoUrl = UserProfilePhotoResolver::resolveFromRequest($request, $user->photo_url);
+        if ($photoUrl !== null) {
+            $user->photo_url = $photoUrl;
         }
         $user->notify_via_app = $request->boolean('notify_via_app');
         $user->notify_via_email = $request->boolean('notify_via_email');

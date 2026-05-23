@@ -8,14 +8,13 @@ use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerSelfSignupToken;
 use App\Services\VolunteerMinistryRosterNotifier;
-use App\Support\StorageUrl;
+use App\Support\UserProfilePhotoResolver;
 use App\Support\VolunteerAppLogin;
 use App\Support\VolunteerContactDuplicateChecker;
 use App\Support\VolunteerPipelineBootstrap;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -27,13 +26,6 @@ use Spatie\Permission\Models\Role;
 
 class VolunteerPublicSignupController extends Controller
 {
-    private function storeUserPhoto(UploadedFile $file): string
-    {
-        $path = $file->store('users/photos', 'public');
-
-        return StorageUrl::publicMediaUrl($path);
-    }
-
     /**
      * @param  array<int, mixed>  $ids
      */
@@ -191,9 +183,8 @@ class VolunteerPublicSignupController extends Controller
             return redirect()->route('mobile.home')->with('error', 'Cadastro público indisponível.');
         }
 
-        $validated = $request->validate([
+        $validated = $request->validate(array_merge([
             'token' => ['required', 'string'],
-            'photo_file' => ['required', 'image', 'max:4096'],
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:155'],
             'birth_date' => ['required', 'date'],
@@ -218,7 +209,8 @@ class VolunteerPublicSignupController extends Controller
             'professional_area' => ['nullable', 'string', 'max:5000'],
             'lgpd_data_consent' => ['required', 'boolean'],
             'password' => ['required', 'confirmed', Password::defaults()],
-        ]);
+        ], UserProfilePhotoResolver::validationRules()));
+        UserProfilePhotoResolver::assertExclusivePhotoOrAvatar($request);
 
         if (($validated['is_official_member'] ?? false) === true) {
             if (! array_key_exists('member_record_at_nova_semente', $validated) || $validated['member_record_at_nova_semente'] === null) {
@@ -303,9 +295,7 @@ class VolunteerPublicSignupController extends Controller
         $ministryIds = array_values(array_unique(array_merge($activeIds, $otherIds)));
 
         $emailNorm = VolunteerContactDuplicateChecker::normalizeEmail($validated['email']);
-        $photoUrl = $request->hasFile('photo_file')
-            ? $this->storeUserPhoto($request->file('photo_file'))
-            : null;
+        $photoUrl = UserProfilePhotoResolver::resolveFromRequest($request);
 
         $name = trim($validated['first_name'].' '.$validated['last_name']);
 

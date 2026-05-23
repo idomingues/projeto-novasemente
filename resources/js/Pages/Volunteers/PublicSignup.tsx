@@ -1,6 +1,6 @@
 import Checkbox from '@/Components/Checkbox';
 import InputError from '@/Components/InputError';
-import InputLabel from '@/Components/InputLabel';
+import ProfilePhotoPicker from '@/Components/ProfilePhotoPicker';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import TextInput from '@/Components/TextInput';
@@ -172,77 +172,6 @@ function MinistryCheckboxList({
     );
 }
 
-function VolunteerPhotoField({
-    previewUrl,
-    photoPreparing,
-    clientError,
-    serverError,
-    onFileChosen,
-    onClear,
-}: {
-    previewUrl: string | null;
-    photoPreparing: boolean;
-    clientError: string | null;
-    serverError?: string;
-    onFileChosen: (file: File | null) => void;
-    onClear: () => void;
-}) {
-    const displayError = clientError ?? serverError;
-
-    return (
-        <section
-            id="volunteer-photo"
-            className="scroll-mt-32 rounded-2xl border border-zinc-200/90 bg-white p-4 shadow-sm dark:border-zinc-700/80 dark:bg-zinc-900/60 sm:scroll-mt-36 sm:p-5"
-        >
-            <h3 className="mb-1 text-base font-semibold leading-snug text-zinc-900 dark:text-white">
-                Foto
-                <span className="ml-0.5 text-red-600 dark:text-red-400">*</span>
-            </h3>
-            <p className="mb-3 text-xs text-zinc-500 dark:text-zinc-400">
-                No celular você pode usar a câmera; no computador, escolha uma imagem (máx. 4 MB). A foto ajuda a equipe a
-                reconhecer você.
-            </p>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-                <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
-                    {previewUrl ? (
-                        <img src={previewUrl} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                        <span className="text-2xl font-semibold text-zinc-500 dark:text-zinc-400">?</span>
-                    )}
-                </div>
-                <div className="min-w-0 flex-1 space-y-2">
-                    <InputLabel htmlFor="volunteer_photo" value="Selecionar foto" className="sr-only" />
-                    <input
-                        id="volunteer_photo"
-                        type="file"
-                        accept="image/*"
-                        capture="user"
-                        disabled={photoPreparing}
-                        onChange={(e) => {
-                            const raw = e.currentTarget.files?.[0] ?? null;
-                            e.currentTarget.value = '';
-                            onFileChosen(raw);
-                        }}
-                        className="block w-full text-sm text-zinc-600 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-zinc-700 hover:file:bg-zinc-200 disabled:opacity-60 dark:text-zinc-300 dark:file:bg-zinc-800 dark:file:text-zinc-100 dark:hover:file:bg-zinc-700"
-                    />
-                    {photoPreparing ? (
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400">Preparando a imagem…</p>
-                    ) : previewUrl ? (
-                        <button
-                            type="button"
-                            onClick={onClear}
-                            className="text-xs font-semibold text-teal-700 underline dark:text-teal-400"
-                        >
-                            Remover foto
-                        </button>
-                    ) : null}
-                    {displayError ? <InputError message={displayError} /> : null}
-                </div>
-            </div>
-        </section>
-    );
-}
-
 function FormNav({
     page,
     goToPage,
@@ -305,6 +234,7 @@ export default function PublicSignup({ token, churchName, ministries }: Props) {
     const { data, setData, post, processing, errors, reset } = useForm({
         token,
         photo_file: null as File | null,
+        avatar_key: '' as string,
         full_name: '',
         first_name: '',
         last_name: '',
@@ -405,7 +335,13 @@ export default function PublicSignup({ token, churchName, ministries }: Props) {
     const handlePhotoFileChosen = async (raw: File | null) => {
         setPhotoClientError(null);
         clearClientError('photo_file');
-        if (!raw) return;
+        clearClientError('avatar_key');
+        if (!raw) {
+            setData('photo_file', null);
+            if (!data.avatar_key) setPhotoPreview(null);
+            return;
+        }
+        setData('avatar_key', '');
         setPhotoPreparing(true);
         try {
             const compressed = await compressImageForUpload(raw);
@@ -421,17 +357,30 @@ export default function PublicSignup({ token, churchName, ministries }: Props) {
         }
     };
 
+    const handleAvatarSelect = (key: string | null, previewUrl: string | null) => {
+        setPhotoClientError(null);
+        clearClientError('photo_file');
+        clearClientError('avatar_key');
+        setData('avatar_key', key ?? '');
+        setData('photo_file', null);
+        setPhotoPreview(previewUrl);
+    };
+
     const handlePhotoClear = () => {
         setData('photo_file', null);
+        setData('avatar_key', '');
         setPhotoPreview(null);
         setPhotoClientError(null);
         clearClientError('photo_file');
+        clearClientError('avatar_key');
     };
 
     const validatePage = (p: number): boolean => {
         const next: Record<string, string> = {};
         if (p === 0) {
-            if (!data.photo_file) next.photo_file = 'Envie uma foto antes de avançar.';
+            if (!data.photo_file && !data.avatar_key) {
+                next.photo_file = 'Tire ou envie uma foto, ou escolha um avatar, antes de avançar.';
+            }
             const parts = splitFullName(data.full_name);
             if (!parts) next.full_name = 'Informe o nome completo.';
             if (!data.birth_date) next.birth_date = 'Informe a data de nascimento.';
@@ -575,14 +524,27 @@ export default function PublicSignup({ token, churchName, ministries }: Props) {
                     <div className="space-y-4 sm:space-y-5">
                         {page === 0 ? (
                             <>
-                                <VolunteerPhotoField
-                                    previewUrl={photoPreview}
-                                    photoPreparing={photoPreparing}
-                                    clientError={photoClientError}
-                                    serverError={errors.photo_file}
-                                    onFileChosen={handlePhotoFileChosen}
-                                    onClear={handlePhotoClear}
-                                />
+                                <section
+                                    id="volunteer-photo"
+                                    className="scroll-mt-32 rounded-2xl border border-zinc-200/90 bg-white p-4 shadow-sm dark:border-zinc-700/80 dark:bg-zinc-900/60 sm:scroll-mt-36 sm:p-5"
+                                >
+                                    <h3 className="mb-3 text-base font-semibold leading-snug text-zinc-900 dark:text-white">
+                                        Foto
+                                        <span className="ml-0.5 text-red-600 dark:text-red-400">*</span>
+                                    </h3>
+                                    <ProfilePhotoPicker
+                                        previewUrl={photoPreview}
+                                        selectedAvatarKey={data.avatar_key || null}
+                                        photoPreparing={photoPreparing}
+                                        clientError={photoClientError}
+                                        serverPhotoError={errors.photo_file}
+                                        serverAvatarError={errors.avatar_key}
+                                        inputId="volunteer_photo"
+                                        onPhotoFile={handlePhotoFileChosen}
+                                        onAvatarSelect={handleAvatarSelect}
+                                        onClear={handlePhotoClear}
+                                    />
+                                </section>
                                 <Question number={++questionNumber} label="Nome completo" error={err('full_name') || err('first_name') || err('last_name')}>
                                     <TextInput
                                         className="w-full"

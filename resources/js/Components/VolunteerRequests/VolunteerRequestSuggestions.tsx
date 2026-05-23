@@ -1,6 +1,9 @@
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
-import { SparklesIcon } from '@heroicons/react/24/outline';
+import VolunteerQuestionnaireProfileModal, {
+    type VolunteerQuestionnaireProfile,
+} from '@/Components/Volunteers/VolunteerQuestionnaireProfileModal';
+import { DocumentTextIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { useCallback, useEffect, useState } from 'react';
 
 export type VolunteerSuggestionRow = {
@@ -13,6 +16,7 @@ export type VolunteerSuggestionRow = {
     clearanceStatus: string | null;
     interestPreview: string | null;
     ministryNames: string[];
+    profile: VolunteerQuestionnaireProfile;
 };
 
 type SuggestResponse = {
@@ -54,6 +58,7 @@ export default function VolunteerRequestSuggestions({
     const [loaded, setLoaded] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [payload, setPayload] = useState<SuggestResponse | null>(null);
+    const [profileView, setProfileView] = useState<VolunteerQuestionnaireProfile | null>(null);
 
     const loadSuggestions = useCallback(async () => {
         setLoading(true);
@@ -174,13 +179,26 @@ export default function VolunteerRequestSuggestions({
                                                     </p>
                                                 ) : null}
                                             </div>
-                                            <PrimaryButton
-                                                type="button"
-                                                className="shrink-0 text-xs"
-                                                onClick={() => onSelectVolunteer(row.id, row.name)}
-                                            >
-                                                {isSelected ? 'Selecionado' : 'Usar sugestão'}
-                                            </PrimaryButton>
+                                            <div className="flex shrink-0 flex-col gap-1.5 sm:flex-row sm:items-center">
+                                                <SecondaryButton
+                                                    type="button"
+                                                    className="text-xs"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setProfileView(row.profile);
+                                                    }}
+                                                >
+                                                    <DocumentTextIcon className="mr-1 h-4 w-4" aria-hidden />
+                                                    Ver cadastro
+                                                </SecondaryButton>
+                                                <PrimaryButton
+                                                    type="button"
+                                                    className="text-xs"
+                                                    onClick={() => onSelectVolunteer(row.id, row.name)}
+                                                >
+                                                    {isSelected ? 'Selecionado' : 'Usar sugestão'}
+                                                </PrimaryButton>
+                                            </div>
                                         </div>
                                         {row.reasons.length > 0 ? (
                                             <ul className="mt-2 list-inside list-disc space-y-0.5 text-xs text-zinc-600 dark:text-zinc-400">
@@ -196,6 +214,13 @@ export default function VolunteerRequestSuggestions({
                     ) : null}
                 </div>
             ) : null}
+
+            <VolunteerQuestionnaireProfileModal
+                show={profileView !== null}
+                onClose={() => setProfileView(null)}
+                profile={profileView}
+                subtitle="Questionário de cadastro"
+            />
         </div>
     );
 }

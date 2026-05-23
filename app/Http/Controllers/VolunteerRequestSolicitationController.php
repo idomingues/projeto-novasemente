@@ -20,6 +20,7 @@ use App\Support\ChurchSolicitationModalPayloadPresenter;
 use App\Support\VolunteerChurchRosterBuilder;
 use App\Support\VolunteerLeadRosterFilters;
 use App\Support\VolunteerPipelineBootstrap;
+use App\Support\VolunteerQuestionnaireProfilePayload;
 use App\Support\VolunteerRequestStaffRoutes;
 use App\Support\VolunteerRequestVolunteerSuggester;
 use Illuminate\Http\JsonResponse;
@@ -180,29 +181,7 @@ class VolunteerRequestSolicitationController extends Controller
                 }
                 $attachedVolunteerProfile = null;
                 if ($s->assignedVolunteer) {
-                    $attachedVolunteerProfile = [
-                        'id' => (int) $s->assignedVolunteer->id,
-                        'name' => $s->assignedVolunteer->name,
-                        'email' => $s->assignedVolunteer->email,
-                        'phone' => $s->assignedVolunteer->phone,
-                        'birthDate' => $s->assignedVolunteer->birth_date?->toDateString(),
-                        'hasWhatsapp' => $s->assignedVolunteer->has_whatsapp,
-                        'hasSocialNetworks' => $s->assignedVolunteer->has_social_networks,
-                        'attendanceDuration' => $s->assignedVolunteer->attendance_duration,
-                        'isOfficialMember' => $s->assignedVolunteer->is_official_member,
-                        'memberRecordAtNovaSemente' => $s->assignedVolunteer->member_record_at_nova_semente,
-                        'memberRecordChurch' => $s->assignedVolunteer->member_record_church,
-                        'hasPreviousMinistryVolunteerExperience' => $s->assignedVolunteer->has_previous_ministry_volunteer_experience,
-                        'previousMinistryDetails' => $s->assignedVolunteer->previous_ministry_details,
-                        'professionalArea' => $s->assignedVolunteer->professional_area,
-                        'ministryInvolvement' => $s->assignedVolunteer->ministry_involvement,
-                        'otherMinistryInterest' => $s->assignedVolunteer->other_ministry_interest,
-                        'giftsToDevelop' => $s->assignedVolunteer->gifts_to_develop,
-                        'needsPastoralGuidance' => $s->assignedVolunteer->needs_pastoral_guidance,
-                        'lgpdDataConsent' => $s->assignedVolunteer->lgpd_data_consent,
-                        'role' => $s->assignedVolunteer->role,
-                        'appAccessOnly' => (bool) ($s->assignedVolunteer->app_access_only ?? false),
-                    ];
+                    $attachedVolunteerProfile = VolunteerQuestionnaireProfilePayload::fromVolunteer($s->assignedVolunteer);
                 }
 
                 $panelRoute = $accessMode === 'leader'

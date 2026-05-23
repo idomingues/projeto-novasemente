@@ -38,6 +38,26 @@ class RegistrationTest extends TestCase
             ->assertOk();
     }
 
+    public function test_new_users_can_register_with_bible_avatar(): void
+    {
+        $response = $this->post('/register', [
+            'name' => 'Avatar User',
+            'email' => 'avatar.user@example.com',
+            'avatar_key' => 'male:peter',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+            'notify_via_app' => true,
+            'notify_via_email' => true,
+            'notify_via_whatsapp' => false,
+            'lgpd_accepted' => true,
+        ]);
+
+        $this->assertAuthenticated();
+        $user = \App\Models\User::query()->where('email', 'avatar.user@example.com')->firstOrFail();
+        $this->assertStringContainsString('bible-avatars/male/peter.svg', (string) $user->photo_url);
+        $response->assertRedirect(route('registration.welcome', absolute: false));
+    }
+
     public function test_registration_welcome_redirects_guests_to_login(): void
     {
         $this->get(route('registration.welcome', absolute: false))

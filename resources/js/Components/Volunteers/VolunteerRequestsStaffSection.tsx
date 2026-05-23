@@ -21,6 +21,9 @@ import SelectInput from '@/Components/SelectInput';
 import Textarea from '@/Components/Textarea';
 import TextInput from '@/Components/TextInput';
 import VolunteerRequestAttachModal from '@/Components/VolunteerRequests/VolunteerRequestAttachModal';
+import VolunteerQuestionnaireProfileModal, {
+    type VolunteerQuestionnaireProfile,
+} from '@/Components/Volunteers/VolunteerQuestionnaireProfileModal';
 import SolicitationDetailPanel, { type SolicitationDetailPanelProps } from '@/Components/Solicitations/SolicitationDetailPanel';
 import { confirmAction } from '@/utils/confirmDialog';
 
@@ -52,29 +55,7 @@ export type VolunteerRequestRow = {
     attached_volunteer_email: string | null;
     attached_volunteer_id: number | null;
     attached_volunteer_show_url: string | null;
-    attached_volunteer_profile: {
-        id: number;
-        name: string | null;
-        email: string | null;
-        phone: string | null;
-        birthDate: string | null;
-        hasWhatsapp: boolean | null;
-        hasSocialNetworks: boolean | null;
-        attendanceDuration: string | null;
-        isOfficialMember: boolean | null;
-        memberRecordAtNovaSemente: boolean | null;
-        memberRecordChurch: string | null;
-        hasPreviousMinistryVolunteerExperience: boolean | null;
-        previousMinistryDetails: string | null;
-        professionalArea: string | null;
-        ministryInvolvement: string | null;
-        otherMinistryInterest: string | null;
-        giftsToDevelop: string | null;
-        needsPastoralGuidance: boolean | null;
-        lgpdDataConsent: boolean | null;
-        role: string | null;
-        appAccessOnly: boolean | null;
-    } | null;
+    attached_volunteer_profile: VolunteerQuestionnaireProfile | null;
     ministry_id: number | null;
     schedule_role_id: number | null;
     can_edit: boolean;
@@ -157,7 +138,7 @@ export default function VolunteerRequestsStaffSection({
     const [attachModalAutoSuggest, setAttachModalAutoSuggest] = useState(false);
     const [panelOpen, setPanelOpen] = useState(false);
     const [panelRow, setPanelRow] = useState<VolunteerRequestRow | null>(null);
-    const [profileVolunteer, setProfileVolunteer] = useState<VolunteerRequestRow['attached_volunteer_profile'] | null>(null);
+    const [profileVolunteer, setProfileVolunteer] = useState<VolunteerQuestionnaireProfile | null>(null);
     const [panelLoading, setPanelLoading] = useState(false);
     const [panelPayload, setPanelPayload] = useState<VolunteerPanelPayload | null>(null);
     const [panelTab, setPanelTab] = useState<'detalhes' | 'chat'>('detalhes');
@@ -347,28 +328,6 @@ export default function VolunteerRequestsStaffSection({
                 closeModal();
             },
         });
-    };
-
-    const boolLabel = (v: boolean | null | undefined) => {
-        if (v === null || v === undefined) return 'Não informado';
-        return v ? 'Sim' : 'Não';
-    };
-
-    const textLabel = (v: string | null | undefined) => {
-        if (!v || v.trim() === '') return '—';
-        return v;
-    };
-
-    const attendanceLabel = (raw: string | null | undefined) => {
-        if (!raw) return '—';
-        const map: Record<string, string> = {
-            less_than_3_months: 'Menos de 3 meses',
-            months_3_6: '3 a 6 meses',
-            months_6_12: '6 meses a 1 ano',
-            years_1_3: '1 a 3 anos',
-            more_than_3_years: 'Mais de 3 anos',
-        };
-        return map[raw] ?? raw;
     };
 
     const canAdd = ministries.length > 0;
@@ -1250,111 +1209,11 @@ export default function VolunteerRequestsStaffSection({
                 autoLoadSuggestions={attachModalAutoSuggest}
             />
 
-            <Modal show={!!profileVolunteer} onClose={() => setProfileVolunteer(null)} maxWidth="lg">
-                {profileVolunteer ? (
-                    <div className="space-y-4 p-6">
-                        <div className="flex items-start justify-between gap-3">
-                            <div>
-                                <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Dados do voluntário</h2>
-                                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{profileVolunteer.name ?? 'Voluntário'}</p>
-                            </div>
-                            <SecondaryButton type="button" onClick={() => setProfileVolunteer(null)}>
-                                Fechar
-                            </SecondaryButton>
-                        </div>
-
-                        <div className="grid gap-3 sm:grid-cols-2">
-                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-                                <div className="text-xs text-zinc-500">E-mail</div>
-                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{textLabel(profileVolunteer.email)}</div>
-                            </div>
-                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-                                <div className="text-xs text-zinc-500">Telefone</div>
-                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{textLabel(profileVolunteer.phone)}</div>
-                            </div>
-                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-                                <div className="text-xs text-zinc-500">Data de nascimento</div>
-                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{textLabel(profileVolunteer.birthDate)}</div>
-                            </div>
-                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-                                <div className="text-xs text-zinc-500">Área profissional</div>
-                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{textLabel(profileVolunteer.professionalArea)}</div>
-                            </div>
-                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-                                <div className="text-xs text-zinc-500">Este número tem WhatsApp?</div>
-                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{boolLabel(profileVolunteer.hasWhatsapp)}</div>
-                            </div>
-                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-                                <div className="text-xs text-zinc-500">Redes Sociais (Instagram, Facebook ou TikTok)</div>
-                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{boolLabel(profileVolunteer.hasSocialNetworks)}</div>
-                            </div>
-                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-                                <div className="text-xs text-zinc-500">Há quanto tempo você frequenta a Nova Semente?</div>
-                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{attendanceLabel(profileVolunteer.attendanceDuration)}</div>
-                            </div>
-                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-                                <div className="text-xs text-zinc-500">Você é membro oficial da igreja adventista?</div>
-                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{boolLabel(profileVolunteer.isOfficialMember)}</div>
-                            </div>
-                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-                                <div className="text-xs text-zinc-500">Seu registro de membro está na Nova Semente?</div>
-                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{boolLabel(profileVolunteer.memberRecordAtNovaSemente)}</div>
-                            </div>
-                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-                                <div className="text-xs text-zinc-500">Se não estiver, em qual igreja está?</div>
-                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{textLabel(profileVolunteer.memberRecordChurch)}</div>
-                            </div>
-                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-                                <div className="text-xs text-zinc-500">Você já foi voluntário em algum ministério da igreja?</div>
-                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{boolLabel(profileVolunteer.hasPreviousMinistryVolunteerExperience)}</div>
-                            </div>
-                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-                                <div className="text-xs text-zinc-500">Precisa de alguma orientação pastoral nesse momento?</div>
-                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{boolLabel(profileVolunteer.needsPastoralGuidance)}</div>
-                            </div>
-                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-                                <div className="text-xs text-zinc-500">Consentimento LGPD</div>
-                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{boolLabel(profileVolunteer.lgpdDataConsent)}</div>
-                            </div>
-                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-                                <div className="text-xs text-zinc-500">Função/cargo informado</div>
-                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{textLabel(profileVolunteer.role)}</div>
-                            </div>
-                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-                                <div className="text-xs text-zinc-500">Acesso somente app</div>
-                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">{boolLabel(profileVolunteer.appAccessOnly)}</div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-3">
-                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-                                <div className="text-xs text-zinc-500">Detalhes da experiência anterior</div>
-                                <div className="mt-1 whitespace-pre-wrap text-sm text-zinc-900 dark:text-white">
-                                    {textLabel(profileVolunteer.previousMinistryDetails)}
-                                </div>
-                            </div>
-                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-                                <div className="text-xs text-zinc-500">Envolvimento em ministérios</div>
-                                <div className="mt-1 whitespace-pre-wrap text-sm text-zinc-900 dark:text-white">
-                                    {textLabel(profileVolunteer.ministryInvolvement)}
-                                </div>
-                            </div>
-                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-                                <div className="text-xs text-zinc-500">Outros interesses ministeriais</div>
-                                <div className="mt-1 whitespace-pre-wrap text-sm text-zinc-900 dark:text-white">
-                                    {textLabel(profileVolunteer.otherMinistryInterest)}
-                                </div>
-                            </div>
-                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-                                <div className="text-xs text-zinc-500">Dons a desenvolver</div>
-                                <div className="mt-1 whitespace-pre-wrap text-sm text-zinc-900 dark:text-white">
-                                    {textLabel(profileVolunteer.giftsToDevelop)}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                ) : null}
-            </Modal>
+            <VolunteerQuestionnaireProfileModal
+                show={profileVolunteer !== null}
+                onClose={() => setProfileVolunteer(null)}
+                profile={profileVolunteer}
+            />
         </div>
     );
 }

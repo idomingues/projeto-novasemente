@@ -44,6 +44,8 @@ use App\Http\Controllers\PushTokenController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\RoomBookingController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\SharedTalentAdminController;
+use App\Http\Controllers\SharedTalentController;
 use App\Http\Controllers\SolicitationAdminController;
 use App\Http\Controllers\SupportAdminController;
 use App\Http\Controllers\TalentConnectionAdminController;
@@ -596,6 +598,50 @@ Route::middleware('auth')->group(function () {
     Route::get('/conexao-talentos/logs', [TalentConnectionAdminController::class, 'logs'])
         ->name('talents.admin.logs')
         ->middleware('permission:talents.moderate');
+
+    Route::get('/doar-talentos', [SharedTalentAdminController::class, 'dashboard'])
+        ->name('shared-talents.admin.dashboard')
+        ->middleware('permission:shared_talents.moderate|shared_talents.manage');
+    Route::get('/doar-talentos/publicacoes', [SharedTalentAdminController::class, 'listings'])
+        ->name('shared-talents.admin.listings')
+        ->middleware('permission:shared_talents.moderate|shared_talents.manage');
+    Route::post('/doar-talentos/publicacoes', [SharedTalentAdminController::class, 'storeListing'])
+        ->name('shared-talents.admin.listings.store')
+        ->middleware('permission:shared_talents.moderate|shared_talents.manage');
+    Route::put('/doar-talentos/publicacoes/{sharedTalentListing}', [SharedTalentAdminController::class, 'updateListing'])
+        ->name('shared-talents.admin.listings.update')
+        ->middleware('permission:shared_talents.moderate|shared_talents.manage');
+    Route::post('/doar-talentos/publicacoes/{sharedTalentListing}/moderar', [SharedTalentAdminController::class, 'moderateListing'])
+        ->name('shared-talents.admin.listings.moderate')
+        ->middleware('permission:shared_talents.moderate|shared_talents.manage');
+    Route::get('/doar-talentos/inscricoes', [SharedTalentAdminController::class, 'enrollments'])
+        ->name('shared-talents.admin.enrollments')
+        ->middleware('permission:shared_talents.moderate|shared_talents.manage');
+    Route::get('/doar-talentos/denuncias', [SharedTalentAdminController::class, 'reports'])
+        ->name('shared-talents.admin.reports')
+        ->middleware('permission:shared_talents.moderate|shared_talents.manage');
+    Route::patch('/doar-talentos/denuncias/{sharedTalentReport}', [SharedTalentAdminController::class, 'resolveReport'])
+        ->name('shared-talents.admin.reports.resolve')
+        ->middleware('permission:shared_talents.moderate|shared_talents.manage');
+    Route::get('/doar-talentos/categorias', [SharedTalentAdminController::class, 'categories'])
+        ->name('shared-talents.admin.categories')
+        ->middleware('permission:shared_talents.moderate|shared_talents.manage');
+    Route::post('/doar-talentos/categorias', [SharedTalentAdminController::class, 'storeCategory'])
+        ->name('shared-talents.admin.categories.store')
+        ->middleware('permission:shared_talents.moderate|shared_talents.manage');
+    Route::put('/doar-talentos/categorias/{sharedTalentCategory}', [SharedTalentAdminController::class, 'updateCategory'])
+        ->name('shared-talents.admin.categories.update')
+        ->middleware('permission:shared_talents.moderate|shared_talents.manage');
+    Route::get('/doar-talentos/avaliacoes', [SharedTalentAdminController::class, 'reviews'])
+        ->name('shared-talents.admin.reviews')
+        ->middleware('permission:shared_talents.moderate|shared_talents.manage');
+    Route::post('/doar-talentos/avaliacoes/{sharedTalentReview}/ocultar', [SharedTalentAdminController::class, 'hideReview'])
+        ->name('shared-talents.admin.reviews.hide')
+        ->middleware('permission:shared_talents.moderate|shared_talents.manage');
+    Route::get('/doar-talentos/logs', [SharedTalentAdminController::class, 'logs'])
+        ->name('shared-talents.admin.logs')
+        ->middleware('permission:shared_talents.manage');
+
     Route::patch('/financeiro/doacoes/{campaignDonation}', [CampaignDonationController::class, 'updateAmount'])
         ->name('finance.donations.update')
         ->middleware('permission:finance.view|campaigns.manage');
@@ -718,6 +764,21 @@ Route::middleware('auth')->group(function () {
     Route::patch('/mobile/talentos/interesses/{talentInterest}/status', [TalentConnectionController::class, 'updateInterestStatus'])->name('mobile.talents.interest.status');
     Route::post('/mobile/talentos/interesses/{talentInterest}/mensagens', [TalentConnectionController::class, 'storeMessage'])->name('mobile.talents.interest.messages');
     Route::post('/mobile/talentos/interesses/{talentInterest}/avaliacao', [TalentConnectionController::class, 'storeReview'])->name('mobile.talents.interest.review');
+
+    Route::get('/mobile/doar-talentos', [SharedTalentController::class, 'index'])->name('mobile.shared-talents.index');
+    Route::get('/mobile/doar-talentos/minhas-publicacoes', [SharedTalentController::class, 'myListings'])->name('mobile.shared-talents.my-listings');
+    Route::get('/mobile/doar-talentos/minhas-inscricoes', [SharedTalentController::class, 'myEnrollments'])->name('mobile.shared-talents.my-enrollments');
+    Route::get('/mobile/doar-talentos/participantes', [SharedTalentController::class, 'enrollments'])->name('mobile.shared-talents.enrollments');
+    Route::post('/mobile/doar-talentos', [SharedTalentController::class, 'store'])->name('mobile.shared-talents.store');
+    Route::put('/mobile/doar-talentos/{sharedTalentListing}', [SharedTalentController::class, 'update'])->name('mobile.shared-talents.update');
+    Route::patch('/mobile/doar-talentos/{sharedTalentListing}/status', [SharedTalentController::class, 'updateStatus'])->name('mobile.shared-talents.status');
+    Route::get('/mobile/doar-talentos/{sharedTalentListing}', [SharedTalentController::class, 'show'])->name('mobile.shared-talents.show');
+    Route::post('/mobile/doar-talentos/{sharedTalentListing}/inscricao', [SharedTalentController::class, 'enroll'])->name('mobile.shared-talents.enroll');
+    Route::post('/mobile/doar-talentos/{sharedTalentListing}/denuncia', [SharedTalentController::class, 'storeReport'])->name('mobile.shared-talents.report');
+    Route::post('/mobile/doar-talentos/{sharedTalentListing}/comunicados', [SharedTalentController::class, 'storeAnnouncement'])->name('mobile.shared-talents.announcements');
+    Route::patch('/mobile/doar-talentos/inscricoes/{sharedTalentEnrollment}/status', [SharedTalentController::class, 'updateEnrollmentStatus'])->name('mobile.shared-talents.enrollment.status');
+    Route::post('/mobile/doar-talentos/inscricoes/{sharedTalentEnrollment}/mensagens', [SharedTalentController::class, 'storeMessage'])->name('mobile.shared-talents.enrollment.messages');
+    Route::post('/mobile/doar-talentos/inscricoes/{sharedTalentEnrollment}/avaliacao', [SharedTalentController::class, 'storeReview'])->name('mobile.shared-talents.enrollment.review');
 
     Route::get('/mobile/solicitacoes/meus-pedidos', [MobileChurchSolicitationController::class, 'mine'])->name('mobile.solicitations.mine');
     Route::get('/mobile/solicitacoes/novo/{type}', [MobileChurchSolicitationController::class, 'create'])->name('mobile.solicitations.create');

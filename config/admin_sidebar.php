@@ -37,6 +37,7 @@ return [
         ['name' => 'Culto', 'route' => 'culto.index', 'icon' => 'film'],
         ['name' => 'Doação', 'route' => 'donation-campaigns.index', 'icon' => 'banknotes'],
         ['name' => 'Serviços', 'route' => 'talents.admin.dashboard', 'icon' => 'user-group'],
+        ['name' => 'Talentos', 'route' => 'shared-talents.admin.dashboard', 'icon' => 'sparkles'],
         ['name' => 'Tesoureiro', 'route' => 'finance.treasurer', 'icon' => 'chart-bar-square'],
         ['name' => 'Notificações', 'route' => 'notifications.manage', 'icon' => 'bell-alert'],
         // Cadastro
