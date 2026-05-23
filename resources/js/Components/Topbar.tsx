@@ -35,12 +35,6 @@ function formatTimeAgo(iso: string): string {
 
 interface TopbarProps {
     onMenuClick?: () => void;
-    /** Recuo do topo quando a sidebar fica fixa em telas md+ (`md:left-72`). */
-    hasSidebar?: boolean;
-    /** Se false, o botão de menu aparece em qualquer largura (sidebar só como overlay). */
-    sidebarPersistOnDesktop?: boolean;
-    /** Menu lateral recolhido no desktop — mostra botão para abrir em md+. */
-    desktopSidebarCollapsed?: boolean;
 }
 
 interface AuthUser {
@@ -60,13 +54,7 @@ type PageProps = {
     unreadInboxNotificationsCount?: number;
 };
 
-export default function Topbar({
-    onMenuClick,
-    hasSidebar = true,
-    sidebarPersistOnDesktop = true,
-    desktopSidebarCollapsed = false,
-}: TopbarProps) {
-    const showMenuButtonOnDesktop = sidebarPersistOnDesktop && desktopSidebarCollapsed;
+export default function Topbar({ onMenuClick }: TopbarProps) {
     const { auth, recentNotifications = [], unreadInboxNotificationsCount = 0 } = usePage().props as PageProps;
     const [liveNotifications, setLiveNotifications] = useState<NotificationItem[]>(
         Array.isArray(recentNotifications) ? recentNotifications : [],
@@ -124,7 +112,7 @@ export default function Topbar({
 
     return (
         <header
-            className={`bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 fixed top-0 right-0 left-0 z-40 transition-all duration-300 h-[calc(4rem+env(safe-area-inset-top,0px))] md:h-[calc(6rem+env(safe-area-inset-top,0px))] ${hasSidebar ? 'md:left-72' : ''}`}
+            className="bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 fixed top-0 right-0 left-0 z-40 transition-all duration-300 h-[calc(4rem+env(safe-area-inset-top,0px))] md:h-[calc(6rem+env(safe-area-inset-top,0px))]"
             style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
         >
             <div className="flex items-center justify-between h-16 md:h-24 px-4 md:px-8">
@@ -134,9 +122,7 @@ export default function Topbar({
                         <button
                             type="button"
                             onClick={onMenuClick}
-                            className={`flex-shrink-0 rounded-xl p-2.5 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800 ${
-                                sidebarPersistOnDesktop && !showMenuButtonOnDesktop ? 'md:hidden' : ''
-                            }`}
+                            className="flex-shrink-0 rounded-xl p-2.5 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
                             aria-label="Abrir menu lateral"
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>

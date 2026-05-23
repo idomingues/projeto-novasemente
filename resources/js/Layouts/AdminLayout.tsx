@@ -6,7 +6,6 @@ import FlashMessages from '@/Components/FlashMessages';
 import InboxNotificationPoller from '@/Components/InboxNotificationPoller';
 import MobileBottomNav from '@/Components/MobileBottomNav';
 import { adminSidebarRoutePermissions } from '@/constants/adminSidebarPermissions';
-import { useAdminSidebarCollapsed } from '@/hooks/useAdminSidebarCollapsed';
 
 export default function AdminLayout({
     children,
@@ -15,49 +14,28 @@ export default function AdminLayout({
     modalOverlayOpen = false,
 }: PropsWithChildren<{ wideLayout?: boolean; modalOverlayOpen?: boolean }>) {
     const { props, url } = usePage();
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const { collapsed: desktopSidebarCollapsed, collapse: collapseDesktopSidebar, expand: expandDesktopSidebar } =
-        useAdminSidebarCollapsed();
+    const [menuOpen, setMenuOpen] = useState(false);
     const auth = (props as { auth?: { user?: unknown; canAccessAdminMenu?: boolean } }).auth;
     const isAuthenticated = !!auth?.user;
     const canAccessAdminMenu = auth?.canAccessAdminMenu === true;
-    const sidebarInset = isAuthenticated && canAccessAdminMenu && !desktopSidebarCollapsed;
 
     useEffect(() => {
-        setMobileMenuOpen(false);
+        setMenuOpen(false);
     }, [url]);
-
-    const openSidebar = () => {
-        if (typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches) {
-            expandDesktopSidebar();
-            return;
-        }
-        setMobileMenuOpen(true);
-    };
 
     return (
         <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-black">
             {isAuthenticated && canAccessAdminMenu && !modalOverlayOpen && (
                 <Sidebar
-                    mobileOpen={mobileMenuOpen}
-                    onMobileClose={() => setMobileMenuOpen(false)}
+                    mobileOpen={menuOpen}
+                    onMobileClose={() => setMenuOpen(false)}
                     routeToPermissions={adminSidebarRoutePermissions}
-                    desktopCollapsed={desktopSidebarCollapsed}
-                    onDesktopCollapse={collapseDesktopSidebar}
                 />
             )}
 
-            <div
-                className={`flex h-[100dvh] flex-col overflow-hidden transition-all duration-300 ${
-                    sidebarInset && !modalOverlayOpen ? 'md:pl-72' : ''
-                }`}
-            >
+            <div className="flex h-[100dvh] flex-col overflow-hidden">
                 {!modalOverlayOpen ? (
-                    <Topbar
-                        onMenuClick={canAccessAdminMenu ? openSidebar : undefined}
-                        hasSidebar={sidebarInset}
-                        desktopSidebarCollapsed={desktopSidebarCollapsed}
-                    />
+                    <Topbar onMenuClick={canAccessAdminMenu ? () => setMenuOpen(true) : undefined} />
                 ) : null}
 
                 <main
@@ -74,7 +52,7 @@ export default function AdminLayout({
                     </div>
                 </main>
 
-                {!modalOverlayOpen ? <MobileBottomNav insetForSidebar={sidebarInset} /> : null}
+                {!modalOverlayOpen ? <MobileBottomNav /> : null}
 
                 <FlashMessages />
                 {isAuthenticated && <InboxNotificationPoller />}

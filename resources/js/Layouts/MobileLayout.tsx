@@ -7,7 +7,6 @@ import InboxNotificationPoller from '@/Components/InboxNotificationPoller';
 import MobileBottomNav from '@/Components/MobileBottomNav';
 import { adminSidebarRoutePermissions } from '@/constants/adminSidebarPermissions';
 import GuestAppBar from '@/Components/GuestAppBar';
-import { useAdminSidebarCollapsed } from '@/hooks/useAdminSidebarCollapsed';
 
 export default function MobileLayout({
     children,
@@ -17,44 +16,26 @@ export default function MobileLayout({
     const auth = (props as { auth?: { user?: { name: string }; canAccessAdminMenu?: boolean } }).auth;
     const isAuthenticated = !!auth?.user;
     const canAccessAdminMenu = auth?.canAccessAdminMenu === true;
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const { collapsed: desktopSidebarCollapsed, collapse: collapseDesktopSidebar } = useAdminSidebarCollapsed();
-    /** Layout mobile: menu lateral só como gaveta — sem coluna fixa nem recuo do conteúdo. */
-    const sidebarInset = false;
+    const [menuOpen, setMenuOpen] = useState(false);
 
     useEffect(() => {
-        setMobileMenuOpen(false);
+        setMenuOpen(false);
     }, [url]);
-
-    const openSidebar = () => {
-        setMobileMenuOpen(true);
-    };
 
     if (isAuthenticated) {
         return (
             <div className="h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-black">
                 {canAccessAdminMenu && !modalOverlayOpen ? (
                     <Sidebar
-                        mobileOpen={mobileMenuOpen}
-                        onMobileClose={() => setMobileMenuOpen(false)}
+                        mobileOpen={menuOpen}
+                        onMobileClose={() => setMenuOpen(false)}
                         routeToPermissions={adminSidebarRoutePermissions}
-                        persistOnDesktop={false}
-                        desktopCollapsed={desktopSidebarCollapsed}
-                        onDesktopCollapse={collapseDesktopSidebar}
                     />
                 ) : null}
 
-                <div
-                    className={`flex h-full min-h-0 flex-col overflow-hidden transition-all duration-300 ${
-                        sidebarInset && !modalOverlayOpen ? 'md:pl-72' : ''
-                    }`}
-                >
+                <div className="flex h-full min-h-0 flex-col overflow-hidden">
                     {!modalOverlayOpen ? (
-                        <Topbar
-                            onMenuClick={canAccessAdminMenu ? openSidebar : undefined}
-                            hasSidebar={false}
-                            desktopSidebarCollapsed={desktopSidebarCollapsed}
-                        />
+                        <Topbar onMenuClick={canAccessAdminMenu ? () => setMenuOpen(true) : undefined} />
                     ) : null}
 
                     <main
@@ -69,7 +50,7 @@ export default function MobileLayout({
                         </div>
                     </main>
 
-                    {!modalOverlayOpen ? <MobileBottomNav insetForSidebar={sidebarInset} /> : null}
+                    {!modalOverlayOpen ? <MobileBottomNav /> : null}
 
                     <FlashMessages />
                     <InboxNotificationPoller />

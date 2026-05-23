@@ -39,11 +39,6 @@ interface SidebarProps {
     mobileOpen?: boolean;
     onMobileClose?: () => void;
     routeToPermissions?: Record<string, string[]>;
-    /** Se false, a barra lateral só abre pelo botão (inclusive em telas grandes). Padrão: true (fixa em md+). */
-    persistOnDesktop?: boolean;
-    /** Recolhe a barra em telas md+ (painel). */
-    desktopCollapsed?: boolean;
-    onDesktopCollapse?: () => void;
 }
 
 interface ChurchInfo {
@@ -157,9 +152,6 @@ export default function Sidebar({
     mobileOpen = false,
     onMobileClose,
     routeToPermissions = {},
-    persistOnDesktop = true,
-    desktopCollapsed = false,
-    onDesktopCollapse,
 }: SidebarProps) {
     const { props, url } = usePage();
     const auth = props.auth as {
@@ -445,23 +437,15 @@ export default function Sidebar({
         return null;
     }
 
-    /** Em viewport pequena o menu só abre como gaveta (`mobileOpen`). Em md+ pode ficar fixo se `persistOnDesktop`. */
-    const desktopPersistVisible = persistOnDesktop && !desktopCollapsed;
-
     return (
         <>
-            {/* Mobile backdrop — só enquanto o drawer está aberto em viewport pequena */}
-            {mobileOpen && (
-                <div
-                    className={`fixed inset-0 z-40 bg-black/50 ${persistOnDesktop ? 'md:hidden' : ''}`}
-                    onClick={onMobileClose}
-                    aria-hidden
-                />
-            )}
+            {mobileOpen ? (
+                <div className="fixed inset-0 z-40 bg-black/50" onClick={onMobileClose} aria-hidden />
+            ) : null}
             <aside
                 className={`fixed left-0 top-0 z-50 flex h-screen w-72 flex-col border-r border-zinc-200 bg-white transition-transform duration-300 ease-out dark:border-zinc-800 dark:bg-zinc-950 ${
                     mobileOpen ? 'translate-x-0' : '-translate-x-full'
-                } ${desktopPersistVisible ? 'md:translate-x-0' : 'md:-translate-x-full'}`}
+                }`}
             >
                 {/* Logo Area */}
                 <div className="h-24 flex items-center justify-between px-6 md:px-8 border-b border-zinc-100 dark:border-zinc-900 flex-shrink-0">
@@ -482,28 +466,14 @@ export default function Sidebar({
                             </span>
                         </div>
                     </Link>
-                    <div className="flex shrink-0 items-center gap-1">
-                        {persistOnDesktop && onDesktopCollapse ? (
-                            <button
-                                type="button"
-                                onClick={onDesktopCollapse}
-                                className="hidden rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 md:block"
-                                aria-label="Fechar menu lateral"
-                            >
-                                <XMarkIcon className="h-6 w-6" />
-                            </button>
-                        ) : null}
-                        <button
-                            type="button"
-                            onClick={onMobileClose}
-                            className={`rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
-                                persistOnDesktop ? 'md:hidden' : ''
-                            }`}
-                            aria-label="Fechar menu"
-                        >
-                            <XMarkIcon className="h-6 w-6" />
-                        </button>
-                    </div>
+                    <button
+                        type="button"
+                        onClick={onMobileClose}
+                        className="shrink-0 rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                        aria-label="Fechar menu"
+                    >
+                        <XMarkIcon className="h-6 w-6" />
+                    </button>
                 </div>
 
                 {showChurchSwitcher && (

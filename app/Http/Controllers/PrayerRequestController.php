@@ -58,12 +58,8 @@ class PrayerRequestController extends Controller
 
     public function mobile(): Response
     {
-        $canManage = request()->user()?->can('prayer.manage') ?? false;
-        $requests = $this->getRequests(includeInactive: $canManage);
-
         return Inertia::render('Prayer/Mobile', [
-            'requests' => $requests,
-            'canManage' => $canManage,
+            'requests' => $this->getRequests(includeInactive: false),
         ]);
     }
 

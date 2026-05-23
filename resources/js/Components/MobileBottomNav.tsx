@@ -100,18 +100,11 @@ const navItems = [
     },
 ] as const;
 
-interface MobileBottomNavProps {
-    /** Com sidebar admin (md+): alinha à coluna de conteúdo (`md:left-72`). */
-    insetForSidebar?: boolean;
-}
-
 /** Barra inferior: Home, Assistir culto, Eventos, Oração, Mais (batismo e voluntário nos cartões do Início). */
-export default function MobileBottomNav({ insetForSidebar = false }: MobileBottomNavProps) {
+export default function MobileBottomNav() {
     return (
         <nav
-            className={`fixed bottom-0 right-0 z-40 border-t border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 ${
-                insetForSidebar ? 'left-0 md:left-72' : 'left-0'
-            }`}
+            className="fixed bottom-0 left-0 right-0 z-40 border-t border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
             aria-label="Menu principal"
         >
