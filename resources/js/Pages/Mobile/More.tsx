@@ -18,6 +18,8 @@ import {
     ChatBubbleLeftRightIcon,
     HeartIcon,
     GlobeAltIcon,
+    BanknotesIcon,
+    SparklesIcon,
 } from '@heroicons/react/24/outline';
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 import type { ComponentType, SVGProps } from 'react';
@@ -48,6 +50,14 @@ const items: MoreMenuItem[] = [
     { name: 'Saúde', description: 'Conteúdos de saúde e bem-estar', route: 'mobile.health', icon: HeartIcon },
     { name: 'Missão', description: 'Cadastro missionário', route: 'mobile.mission', icon: GlobeAltIcon },
     { name: 'Oração', description: 'Pedidos de oração', route: 'mobile.prayer', icon: PrayingHandsIcon },
+    { name: 'Campanhas de doação', description: 'Metas específicas com barra de progresso', route: 'mobile.campaigns.index', icon: BanknotesIcon },
+    {
+        name: 'Conexão de Talentos',
+        description: 'Colaboração, habilidades e apoio mútuo entre membros',
+        route: 'mobile.talents.index',
+        icon: SparklesIcon,
+    },
+    { name: 'Minhas doações', description: 'Acompanhe e solicite revisão das suas contribuições', route: 'mobile.campaigns.my-donations', icon: BanknotesIcon },
     { name: 'Dízimos e Ofertas', description: 'Contribuições e ofertas', route: 'mobile.offerings', icon: HandRaisedIcon },
     { name: 'Culto', description: 'Vídeos do culto online', route: 'mobile.culto', icon: FilmIcon },
     { name: 'Música', description: 'Vídeos de música no YouTube', route: 'mobile.musica', icon: MusicalNoteIcon },

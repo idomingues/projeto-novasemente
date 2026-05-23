@@ -56,6 +56,10 @@ class RolePermissionSeeder extends Seeder
             'roles.manage',
             'mission.view',
             'mission.manage',
+            'campaigns.view',
+            'campaigns.manage',
+            'talents.moderate',
+            'talents.treasurer',
         ];
 
         $guard = config('auth.defaults.guard');
@@ -102,6 +106,11 @@ class RolePermissionSeeder extends Seeder
                 'roles.manage',
                 'mission.view',
                 'mission.manage',
+                'campaigns.view',
+                'campaigns.manage',
+                'finance.view',
+                'talents.moderate',
+                'talents.treasurer',
             ],
             'secretaria' => [
                 'members.view',
@@ -137,6 +146,11 @@ class RolePermissionSeeder extends Seeder
                 'pastoral_appointments.manage',
                 'mission.view',
                 'mission.manage',
+                'campaigns.view',
+                'campaigns.manage',
+                'finance.view',
+                'talents.moderate',
+                'talents.treasurer',
             ],
             'pastor' => [
                 'members.view',
@@ -185,6 +199,11 @@ class RolePermissionSeeder extends Seeder
                 'pastors.manage',
                 'mission.view',
                 'mission.manage',
+            ],
+            'financeiro' => [
+                'finance.view',
+                'campaigns.view',
+                'talents.treasurer',
             ],
         ];
 

@@ -21,6 +21,10 @@ class SettingsController extends Controller
         $user = $request->user();
         $isSuperAdmin = $user?->hasRole('super_admin') ?? false;
         $canEditLibraryUrls = $isSuperAdmin || ($user !== null && SpatiePermissionCheck::userHas($user, 'library.manage'));
+        $canEditTreasurerEmail = $isSuperAdmin
+            || ($user !== null && ($user->hasAnyRole(['admin']) || SpatiePermissionCheck::userHas($user, 'campaigns.manage') || SpatiePermissionCheck::userHas($user, 'finance.view')));
+        $canEditTalentsModeratorEmail = $isSuperAdmin
+            || ($user !== null && ($user->hasAnyRole(['admin']) || SpatiePermissionCheck::userHas($user, 'talents.moderate')));
 
         return Inertia::render('Settings/Index', [
             'churchName' => $church->name,
@@ -36,7 +40,49 @@ class SettingsController extends Controller
             'libraryLessonUrl' => $church->library_lesson_url,
             'updateLibraryMeditationUrl' => route('settings.library-meditation.update'),
             'updateLibraryLessonUrl' => route('settings.library-lesson.update'),
+            'canEditTreasurerEmail' => $canEditTreasurerEmail,
+            'treasurerNotificationEmail' => $church->treasurer_notification_email,
+            'updateTreasurerEmailUrl' => route('settings.treasurer-email.update'),
+            'canEditTalentsModeratorEmail' => $canEditTalentsModeratorEmail,
+            'talentsModeratorNotificationEmail' => $church->talents_moderator_notification_email,
+            'updateTalentsModeratorEmailUrl' => route('settings.talents-moderator-email.update'),
         ]);
+    }
+
+    public function updateTreasurerEmail(Request $request): RedirectResponse
+    {
+        $churchId = Church::resolveWorkingId($request);
+        abort_unless($churchId, 404, 'Nenhuma igreja ativa.');
+
+        $church = Church::query()->findOrFail($churchId);
+
+        $validated = $request->validate([
+            'treasurer_notification_email' => ['nullable', 'email', 'max:255'],
+        ]);
+        $raw = trim((string) ($validated['treasurer_notification_email'] ?? ''));
+        $church->update([
+            'treasurer_notification_email' => $raw !== '' ? $raw : null,
+        ]);
+
+        return redirect()->route('settings.index')->with('success', 'E-mail do tesoureiro para doações atualizado.');
+    }
+
+    public function updateTalentsModeratorEmail(Request $request): RedirectResponse
+    {
+        $churchId = Church::resolveWorkingId($request);
+        abort_unless($churchId, 404, 'Nenhuma igreja ativa.');
+
+        $church = Church::query()->findOrFail($churchId);
+
+        $validated = $request->validate([
+            'talents_moderator_notification_email' => ['nullable', 'email', 'max:255'],
+        ]);
+        $raw = trim((string) ($validated['talents_moderator_notification_email'] ?? ''));
+        $church->update([
+            'talents_moderator_notification_email' => $raw !== '' ? $raw : null,
+        ]);
+
+        return redirect()->route('settings.index')->with('success', 'E-mail do aprovador de talentos atualizado.');
     }
 
     public function updateSolicitationsHandler(Request $request): RedirectResponse

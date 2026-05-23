@@ -5,6 +5,7 @@ namespace App\Support;
 /**
  * Rótulos PT-BR alinhados aos menus da app: barra inferior, topbar e tela «Mais».
  * Manter em sincronia com as rotas referidas em:
+ *
  * @see resources/js/Components/MobileBottomNav.tsx (activeRoutes)
  * @see resources/js/Components/Topbar.tsx
  * @see resources/js/Pages/Mobile/More.tsx
@@ -48,6 +49,18 @@ final class PageViewRouteLabels
         'mission.index' => 'Missão — gestão',
         'mission.show' => 'Missão — cadastro',
         'mobile.offerings' => 'Dízimos e ofertas',
+        'mobile.campaigns.index' => 'Campanhas de doação',
+        'mobile.campaigns.show' => 'Campanhas de doação — detalhe',
+        'mobile.campaigns.my-donations' => 'Minhas doações',
+        'mobile.talents.index' => 'Conexão de Talentos',
+        'mobile.talents.show' => 'Conexão de Talentos — detalhe',
+        'mobile.talents.my-listings' => 'Minhas publicações (talentos)',
+        'mobile.talents.my-interests' => 'Meus interesses (talentos)',
+        'talents.admin.dashboard' => 'Conexão de Talentos (painel)',
+        'talents.admin.listings' => 'Conexão de Talentos — publicações',
+        'talents.admin.reports' => 'Conexão de Talentos — denúncias',
+        'donation-campaigns.index' => 'Campanhas de doação (painel)',
+        'finance.treasurer' => 'Painel do tesoureiro',
         'mobile.musica' => 'Música',
         'mobile.musica.show' => 'Música — vídeo',
         'mobile.services' => 'Cultos e horários',

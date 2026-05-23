@@ -35,6 +35,9 @@ return [
         ['name' => 'Fotos', 'route' => 'photo-albums.index', 'icon' => 'camera'],
         ['name' => 'Biblioteca', 'route' => 'library-books.index', 'icon' => 'book-open'],
         ['name' => 'Culto', 'route' => 'culto.index', 'icon' => 'film'],
+        ['name' => 'Campanhas de doação', 'route' => 'donation-campaigns.index', 'icon' => 'banknotes'],
+        ['name' => 'Conexão de Talentos', 'route' => 'talents.admin.dashboard', 'icon' => 'user-group'],
+        ['name' => 'Tesoureiro', 'route' => 'finance.treasurer', 'icon' => 'chart-bar-square'],
         ['name' => 'Notificações', 'route' => 'notifications.manage', 'icon' => 'bell-alert'],
         // Cadastro
         ['name' => 'Salas', 'route' => 'rooms.index', 'icon' => 'building-office'],

@@ -3,10 +3,14 @@
 use App\Http\Controllers\AcervoController;
 use App\Http\Controllers\AppNotificationController;
 use App\Http\Controllers\AppVersionController;
+use App\Http\Controllers\CampaignDonationController;
 use App\Http\Controllers\ChurchController;
 use App\Http\Controllers\CommunicationRequestController;
 use App\Http\Controllers\CultoController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DonationCampaignController;
+use App\Http\Controllers\DonationCampaignMediaController;
+use App\Http\Controllers\DonationCampaignMobileController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\FaviconController;
 use App\Http\Controllers\HealthController;
@@ -15,10 +19,10 @@ use App\Http\Controllers\LibraryBookController;
 use App\Http\Controllers\LibraryBookExternalContentController;
 use App\Http\Controllers\LibraryConfigExternalContentController;
 use App\Http\Controllers\MemberController;
-use App\Http\Controllers\MissionFormController;
-use App\Http\Controllers\MissionVolunteerController;
 use App\Http\Controllers\MinistryController;
 use App\Http\Controllers\MinistryLeadVolunteerController;
+use App\Http\Controllers\MissionFormController;
+use App\Http\Controllers\MissionVolunteerController;
 use App\Http\Controllers\MobileAnoBiblicoController;
 use App\Http\Controllers\MobileBibleController;
 use App\Http\Controllers\MobileChurchSolicitationController;
@@ -42,6 +46,9 @@ use App\Http\Controllers\RoomBookingController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SolicitationAdminController;
 use App\Http\Controllers\SupportAdminController;
+use App\Http\Controllers\TalentConnectionAdminController;
+use App\Http\Controllers\TalentConnectionController;
+use App\Http\Controllers\TreasurerDashboardController;
 use App\Http\Controllers\VariosController;
 use App\Http\Controllers\VolunteerController;
 use App\Http\Controllers\VolunteerPipelineLeadController;
@@ -178,6 +185,8 @@ Route::get('/mobile/biblioteca/{libraryBook}', [MobileController::class, 'biblio
 Route::get('/mobile/localizacao', [MobileController::class, 'location'])->name('mobile.location');
 Route::get('/mobile/pastores', [MobileController::class, 'pastors'])->name('mobile.pastors');
 Route::get('/mobile/offerings', [MobileController::class, 'offerings'])->name('mobile.offerings');
+Route::get('/mobile/campanhas', [DonationCampaignMobileController::class, 'index'])->name('mobile.campaigns.index');
+Route::get('/mobile/campanhas/{donationCampaign}', [DonationCampaignMobileController::class, 'show'])->name('mobile.campaigns.show');
 Route::get('/mobile/notifications', [MobileController::class, 'notifications'])->name('mobile.notifications');
 Route::get('/mobile/profile', [MobileController::class, 'profile'])
     ->middleware('auth')
@@ -491,6 +500,94 @@ Route::middleware('auth')->group(function () {
     Route::put('/events/{event}', [EventController::class, 'update'])->name('events.update')->middleware('permission:events.manage');
     Route::delete('/events/{event}', [EventController::class, 'destroy'])->name('events.destroy')->middleware('permission:events.manage');
     /** admin|super_admin: hasAnyRole; resto: permissão culto.manage (evita 403 quando Gate/BD ficam desalinhados). */
+    Route::post('/mobile/campanhas/{donationCampaign}/receipt', [DonationCampaignMobileController::class, 'uploadReceipt'])
+        ->name('mobile.campaigns.receipt');
+    Route::post('/mobile/campanhas/{donationCampaign}/donate', [DonationCampaignMobileController::class, 'confirmDonation'])
+        ->name('mobile.campaigns.donate');
+    Route::get('/mobile/minhas-doacoes', [DonationCampaignMobileController::class, 'myDonations'])
+        ->name('mobile.campaigns.my-donations');
+    Route::post('/mobile/minhas-doacoes/{campaignDonation}/reclamacao', [DonationCampaignMobileController::class, 'submitDispute'])
+        ->name('mobile.campaigns.dispute');
+
+    Route::get('/campanhas', [DonationCampaignController::class, 'index'])
+        ->name('donation-campaigns.index')
+        ->middleware('permission:campaigns.view|campaigns.manage|finance.view');
+    Route::post('/campanhas', [DonationCampaignController::class, 'store'])
+        ->name('donation-campaigns.store')
+        ->middleware('permission:campaigns.manage');
+    Route::put('/campanhas/{donationCampaign}', [DonationCampaignController::class, 'update'])
+        ->name('donation-campaigns.update')
+        ->middleware('permission:campaigns.manage');
+    Route::delete('/campanhas/{donationCampaign}', [DonationCampaignController::class, 'destroy'])
+        ->name('donation-campaigns.destroy')
+        ->middleware('permission:campaigns.manage');
+    Route::get('/campanhas/{donationCampaign}/doacoes', [DonationCampaignController::class, 'donationsJson'])
+        ->name('donation-campaigns.donations')
+        ->middleware('permission:campaigns.view|campaigns.manage|finance.view');
+    Route::post('/campanhas/{donationCampaign}/doacoes/manual', [CampaignDonationController::class, 'storeManual'])
+        ->name('donation-campaigns.donations.manual')
+        ->middleware('permission:campaigns.manage|finance.view');
+
+    Route::patch('/campanhas/{donationCampaign}/historia', [DonationCampaignMediaController::class, 'updateStory'])
+        ->name('donation-campaigns.story.update')
+        ->middleware('permission:campaigns.manage|finance.view');
+    Route::post('/campanhas/{donationCampaign}/fotos', [DonationCampaignMediaController::class, 'storePhoto'])
+        ->name('donation-campaigns.photos.store')
+        ->middleware('permission:campaigns.manage|finance.view');
+    Route::delete('/campanhas/{donationCampaign}/fotos/{photo}', [DonationCampaignMediaController::class, 'destroyPhoto'])
+        ->name('donation-campaigns.photos.destroy')
+        ->middleware('permission:campaigns.manage|finance.view');
+    Route::post('/campanhas/{donationCampaign}/agradecimento/publicar', [DonationCampaignMediaController::class, 'publishThanks'])
+        ->name('donation-campaigns.thanks.publish')
+        ->middleware('permission:campaigns.manage|finance.view');
+    Route::post('/campanhas/{donationCampaign}/agradecimento/ocultar', [DonationCampaignMediaController::class, 'unpublishThanks'])
+        ->name('donation-campaigns.thanks.unpublish')
+        ->middleware('permission:campaigns.manage|finance.view');
+
+    Route::get('/financeiro', [TreasurerDashboardController::class, 'index'])
+        ->name('finance.treasurer')
+        ->middleware('permission:finance.view');
+
+    Route::get('/conexao-talentos', [TalentConnectionAdminController::class, 'dashboard'])
+        ->name('talents.admin.dashboard')
+        ->middleware('permission:talents.treasurer|talents.moderate|finance.view');
+    Route::get('/conexao-talentos/publicacoes', [TalentConnectionAdminController::class, 'listings'])
+        ->name('talents.admin.listings')
+        ->middleware('permission:talents.moderate');
+    Route::post('/conexao-talentos/publicacoes', [TalentConnectionAdminController::class, 'storeListing'])
+        ->name('talents.admin.listings.store')
+        ->middleware('permission:talents.moderate');
+    Route::put('/conexao-talentos/publicacoes/{talentListing}', [TalentConnectionAdminController::class, 'updateListing'])
+        ->name('talents.admin.listings.update')
+        ->middleware('permission:talents.moderate');
+    Route::post('/conexao-talentos/publicacoes/{talentListing}/moderar', [TalentConnectionAdminController::class, 'moderateListing'])
+        ->name('talents.admin.listings.moderate')
+        ->middleware('permission:talents.moderate');
+    Route::get('/conexao-talentos/denuncias', [TalentConnectionAdminController::class, 'reports'])
+        ->name('talents.admin.reports')
+        ->middleware('permission:talents.moderate|talents.treasurer|finance.view');
+    Route::patch('/conexao-talentos/denuncias/{talentReport}', [TalentConnectionAdminController::class, 'resolveReport'])
+        ->name('talents.admin.reports.resolve')
+        ->middleware('permission:talents.moderate');
+    Route::get('/conexao-talentos/categorias', [TalentConnectionAdminController::class, 'categories'])
+        ->name('talents.admin.categories')
+        ->middleware('permission:talents.moderate');
+    Route::post('/conexao-talentos/categorias', [TalentConnectionAdminController::class, 'storeCategory'])
+        ->name('talents.admin.categories.store')
+        ->middleware('permission:talents.moderate');
+    Route::put('/conexao-talentos/categorias/{talentCategory}', [TalentConnectionAdminController::class, 'updateCategory'])
+        ->name('talents.admin.categories.update')
+        ->middleware('permission:talents.moderate');
+    Route::get('/conexao-talentos/logs', [TalentConnectionAdminController::class, 'logs'])
+        ->name('talents.admin.logs')
+        ->middleware('permission:talents.moderate');
+    Route::patch('/financeiro/doacoes/{campaignDonation}', [CampaignDonationController::class, 'updateAmount'])
+        ->name('finance.donations.update')
+        ->middleware('permission:finance.view|campaigns.manage');
+    Route::post('/financeiro/doacoes/{campaignDonation}/resolver-reclamacao', [CampaignDonationController::class, 'resolveDispute'])
+        ->name('finance.donations.resolve-dispute')
+        ->middleware('permission:finance.view|campaigns.manage');
+
     Route::get('/culto', [CultoController::class, 'index'])->name('culto.index')->middleware('role_or_permission:super_admin|admin|culto.manage');
     Route::post('/culto', [CultoController::class, 'store'])->name('culto.store')->middleware('role_or_permission:super_admin|admin|culto.manage');
     Route::put('/culto/{culto}', [CultoController::class, 'update'])->name('culto.update')->middleware('role_or_permission:super_admin|admin|culto.manage');
@@ -511,7 +608,7 @@ Route::middleware('auth')->group(function () {
         return Inertia::render('Dashboard');
     })->name('services.index');
     Route::get('/acervo', [AcervoController::class, 'index'])->name('acervo.index')->middleware('permission:music.manage');
-    Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index')->middleware('role_or_permission:super_admin|library.manage');
+    Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index')->middleware('role_or_permission:super_admin|library.manage|campaigns.manage|finance.view');
     Route::put('/settings/solicitations-handler', [SettingsController::class, 'updateSolicitationsHandler'])
         ->name('settings.solicitations-handler.update')
         ->middleware('role:super_admin');
@@ -524,6 +621,12 @@ Route::middleware('auth')->group(function () {
     Route::put('/settings/library/lesson', [SettingsController::class, 'updateLibraryLessonUrl'])
         ->name('settings.library-lesson.update')
         ->middleware('role_or_permission:super_admin|library.manage');
+    Route::put('/settings/treasurer-email', [SettingsController::class, 'updateTreasurerEmail'])
+        ->name('settings.treasurer-email.update')
+        ->middleware('role_or_permission:super_admin|admin|campaigns.manage|finance.view');
+    Route::put('/settings/talents-moderator-email', [SettingsController::class, 'updateTalentsModeratorEmail'])
+        ->name('settings.talents-moderator-email.update')
+        ->middleware('role_or_permission:super_admin|admin|talents.moderate');
     Route::post('/acervo', [AcervoController::class, 'store'])->name('acervo.store')->middleware('permission:music.manage');
     Route::put('/acervo/{acervo}', [AcervoController::class, 'update'])->name('acervo.update')->middleware('permission:music.manage');
     Route::delete('/acervo/{acervo}', [AcervoController::class, 'destroy'])->name('acervo.destroy')->middleware('permission:music.manage');
@@ -587,6 +690,20 @@ Route::middleware('auth')->group(function () {
         ->middleware('role:super_admin');
 
     // Solicitações (membro — requer login para enviar/acompanhar)
+    Route::get('/mobile/talentos', [TalentConnectionController::class, 'index'])->name('mobile.talents.index');
+    Route::get('/mobile/talentos/minhas-publicacoes', [TalentConnectionController::class, 'myListings'])->name('mobile.talents.my-listings');
+    Route::get('/mobile/talentos/meus-interesses', [TalentConnectionController::class, 'myInterests'])->name('mobile.talents.my-interests');
+    Route::post('/mobile/talentos', [TalentConnectionController::class, 'store'])->name('mobile.talents.store');
+    Route::put('/mobile/talentos/{talentListing}', [TalentConnectionController::class, 'update'])->name('mobile.talents.update');
+    Route::patch('/mobile/talentos/{talentListing}/status', [TalentConnectionController::class, 'updateStatus'])->name('mobile.talents.status');
+    Route::delete('/mobile/talentos/{talentListing}', [TalentConnectionController::class, 'destroy'])->name('mobile.talents.destroy');
+    Route::get('/mobile/talentos/{talentListing}', [TalentConnectionController::class, 'show'])->name('mobile.talents.show');
+    Route::post('/mobile/talentos/{talentListing}/interesse', [TalentConnectionController::class, 'expressInterest'])->name('mobile.talents.interest');
+    Route::post('/mobile/talentos/{talentListing}/denuncia', [TalentConnectionController::class, 'storeReport'])->name('mobile.talents.report');
+    Route::patch('/mobile/talentos/interesses/{talentInterest}/status', [TalentConnectionController::class, 'updateInterestStatus'])->name('mobile.talents.interest.status');
+    Route::post('/mobile/talentos/interesses/{talentInterest}/mensagens', [TalentConnectionController::class, 'storeMessage'])->name('mobile.talents.interest.messages');
+    Route::post('/mobile/talentos/interesses/{talentInterest}/avaliacao', [TalentConnectionController::class, 'storeReview'])->name('mobile.talents.interest.review');
+
     Route::get('/mobile/solicitacoes/meus-pedidos', [MobileChurchSolicitationController::class, 'mine'])->name('mobile.solicitations.mine');
     Route::get('/mobile/solicitacoes/novo/{type}', [MobileChurchSolicitationController::class, 'create'])->name('mobile.solicitations.create');
     Route::post('/mobile/solicitacoes', [MobileChurchSolicitationController::class, 'store'])->name('mobile.solicitations.store');

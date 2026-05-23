@@ -159,6 +159,12 @@ const quickActions: QuickAction[] = [
         icon: PhotoIcon,
     },
     {
+        label: 'Campanhas',
+        subtitle: 'Doe para causas específicas da igreja',
+        route: 'mobile.campaigns.index',
+        icon: BanknotesIcon,
+    },
+    {
         label: 'Oferta',
         subtitle: 'Faça sua oferta de forma simples',
         route: 'mobile.offerings',

@@ -32,6 +32,8 @@ class Church extends Model
         'address',
         'pix_key',
         'donation_url',
+        'treasurer_notification_email',
+        'talents_moderator_notification_email',
         'youtube_playlist_url',
         'youtube_live_url',
         'library_meditation_url',

@@ -25,6 +25,12 @@ type Props = {
     updateLibraryMeditationUrl: string;
     libraryLessonUrl: string | null;
     updateLibraryLessonUrl: string;
+    canEditTreasurerEmail?: boolean;
+    treasurerNotificationEmail: string | null;
+    updateTreasurerEmailUrl: string;
+    canEditTalentsModeratorEmail?: boolean;
+    talentsModeratorNotificationEmail: string | null;
+    updateTalentsModeratorEmailUrl: string;
 };
 
 export default function SettingsIndex({
@@ -41,6 +47,12 @@ export default function SettingsIndex({
     updateLibraryMeditationUrl,
     libraryLessonUrl,
     updateLibraryLessonUrl,
+    canEditTreasurerEmail = false,
+    treasurerNotificationEmail,
+    updateTreasurerEmailUrl,
+    canEditTalentsModeratorEmail = false,
+    talentsModeratorNotificationEmail,
+    updateTalentsModeratorEmailUrl,
 }: Props) {
     const form = useForm({
         solicitations_handler_volunteer_id:
@@ -56,6 +68,14 @@ export default function SettingsIndex({
     });
     const lessonForm = useForm({
         library_lesson_url: libraryLessonUrl ?? 'https://mais.cpb.com.br/licao/vida-de-oracao-2o-trimestre-2026/',
+    });
+
+    const treasurerForm = useForm({
+        treasurer_notification_email: treasurerNotificationEmail ?? '',
+    });
+
+    const talentsModeratorForm = useForm({
+        talents_moderator_notification_email: talentsModeratorNotificationEmail ?? '',
     });
 
     const submitHandler: FormEventHandler = (e) => {
@@ -76,6 +96,16 @@ export default function SettingsIndex({
     const submitLesson: FormEventHandler = (e) => {
         e.preventDefault();
         lessonForm.put(updateLibraryLessonUrl, { preserveScroll: true });
+    };
+
+    const submitTreasurer: FormEventHandler = (e) => {
+        e.preventDefault();
+        treasurerForm.put(updateTreasurerEmailUrl, { preserveScroll: true });
+    };
+
+    const submitTalentsModerator: FormEventHandler = (e) => {
+        e.preventDefault();
+        talentsModeratorForm.put(updateTalentsModeratorEmailUrl, { preserveScroll: true });
     };
 
     return (
@@ -161,6 +191,81 @@ export default function SettingsIndex({
                         </div>
                         <div className="flex justify-end">
                             <PrimaryButton type="submit" disabled={liveForm.processing}>
+                                Salvar
+                            </PrimaryButton>
+                        </div>
+                    </form>
+                </section>
+                ) : null}
+
+                {canEditTreasurerEmail ? (
+                <section className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6 shadow-sm">
+                    <h2 className="text-base font-semibold text-zinc-900 dark:text-white">Doações — e-mail do tesoureiro</h2>
+                    <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                        Igreja ativa: <strong className="text-zinc-900 dark:text-white">{churchName}</strong>.
+                        A cada doação confirmada em campanhas, enviamos um e-mail automático para este endereço.
+                    </p>
+                    <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-zinc-600 dark:text-zinc-400">
+                        <li>O e-mail inclui: valor, nome do doador (ou «Anônimo») e data.</li>
+                        <li>O comprovante <strong>não</strong> vai no e-mail — fica apenas no painel interno.</li>
+                        <li>Informe os doadores no app sobre este aviso automático (texto de transparência no fluxo de doação).</li>
+                    </ul>
+                    <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-500">
+                        Deixe em branco para não enviar avisos automáticos por e-mail.
+                    </p>
+
+                    <form onSubmit={submitTreasurer} className="mt-6 space-y-4">
+                        <div>
+                            <InputLabel htmlFor="treasurer_notification_email" value="E-mail do tesoureiro" />
+                            <TextInput
+                                id="treasurer_notification_email"
+                                type="email"
+                                className="mt-1 block w-full"
+                                value={treasurerForm.data.treasurer_notification_email}
+                                onChange={(e) => treasurerForm.setData('treasurer_notification_email', e.target.value)}
+                                placeholder="tesoureiro@igreja.org"
+                            />
+                            <InputError message={treasurerForm.errors.treasurer_notification_email} className="mt-1" />
+                        </div>
+                        <div className="flex justify-end">
+                            <PrimaryButton type="submit" disabled={treasurerForm.processing}>
+                                Salvar
+                            </PrimaryButton>
+                        </div>
+                    </form>
+                </section>
+                ) : null}
+
+                {canEditTalentsModeratorEmail ? (
+                <section className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6 shadow-sm">
+                    <h2 className="text-base font-semibold text-zinc-900 dark:text-white">Conexão de Talentos — e-mail do aprovador</h2>
+                    <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                        Igreja ativa: <strong className="text-zinc-900 dark:text-white">{churchName}</strong>.
+                        Quando um membro publica um talento ou serviço, enviamos um e-mail para este endereço com o
+                        resumo e um link para <strong className="text-zinc-900 dark:text-white">aprovar ou rejeitar</strong> no painel.
+                    </p>
+                    <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-500">
+                        Deixe em branco para não enviar ao e-mail configurado (moderadores com permissão ainda recebem
+                        aviso na caixa de entrada do app, se ativado no perfil).
+                    </p>
+
+                    <form onSubmit={submitTalentsModerator} className="mt-6 space-y-4">
+                        <div>
+                            <InputLabel htmlFor="talents_moderator_notification_email" value="E-mail do aprovador" />
+                            <TextInput
+                                id="talents_moderator_notification_email"
+                                type="email"
+                                className="mt-1 block w-full"
+                                value={talentsModeratorForm.data.talents_moderator_notification_email}
+                                onChange={(e) =>
+                                    talentsModeratorForm.setData('talents_moderator_notification_email', e.target.value)
+                                }
+                                placeholder="moderacao@igreja.org"
+                            />
+                            <InputError message={talentsModeratorForm.errors.talents_moderator_notification_email} className="mt-1" />
+                        </div>
+                        <div className="flex justify-end">
+                            <PrimaryButton type="submit" disabled={talentsModeratorForm.processing}>
                                 Salvar
                             </PrimaryButton>
                         </div>

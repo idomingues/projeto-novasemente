@@ -11,3 +11,6 @@ export const NEWS_INSTAGRAM_FEED_VIDEO_SPECS =
 
 export const EVENT_COVER_SPECS =
     'Proporção recomendada 16:10 no celular e 2:1 em telas maiores (ex.: 1920 × 1080 px ou 1600 × 1000 px). JPG ou PNG, até 4 MB. A imagem é exibida em largura total e pode recortar nas bordas.';
+
+export const DONATION_CAMPAIGN_COVER_SPECS =
+    'Proporção recomendada 16:9 ou 2:1 (ex.: 1920 × 1080 px ou 1600 × 900 px). JPG, PNG ou WebP, até 5 MB. No app a capa aparece em largura total na lista e no detalhe; no painel, em miniatura quadrada — evite textos muito pequenos nas bordas, pois a imagem pode ser recortada.';

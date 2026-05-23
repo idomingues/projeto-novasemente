@@ -29,6 +29,7 @@ import {
     UserPlusIcon,
     HeartIcon,
     GlobeAltIcon,
+    BanknotesIcon,
 } from '@heroicons/react/24/outline';
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 import { useMemo, useState } from 'react';
@@ -88,6 +89,7 @@ const ICON_MAP: Record<string, MenuIcon> = {
     'user-plus': UserPlusIcon,
     heart: HeartIcon,
     'globe-alt': GlobeAltIcon,
+    banknotes: BanknotesIcon,
 };
 
 /**
