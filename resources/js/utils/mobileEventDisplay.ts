@@ -11,9 +11,25 @@ export type MobileEventListItem = {
     location: string | null;
     price: string | null;
     purchase_url: string | null;
+    video_type: 'youtube' | 'instagram' | null;
+    video_url: string | null;
+    youtube_embed_url?: string | null;
     image_url: string | null;
     color: string | null;
 };
+
+export function eventInstagramVideoUrl(ev: MobileEventListItem): string | null {
+    if (ev.video_type !== 'instagram') {
+        return null;
+    }
+    const url = ev.video_url?.trim() ?? '';
+
+    return url !== '' ? url : null;
+}
+
+export function eventHasYoutubeVideo(ev: MobileEventListItem): boolean {
+    return ev.video_type === 'youtube' && Boolean(ev.youtube_embed_url || ev.video_url?.trim());
+}
 
 /** Texto descritivo de valor (aceita string vinda da API ou undefined em caches antigos). */
 export function priceText(value: string | null | undefined): string | null {

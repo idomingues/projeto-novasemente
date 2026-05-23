@@ -11,10 +11,15 @@ import {
 } from '@heroicons/react/24/outline';
 import Modal from '@/Components/Modal';
 import ImageDownloadButton from '@/Components/ImageDownloadButton';
+import EventCardMedia from '@/Components/Events/EventCardMedia';
+import CoverWithVideoLink from '@/Components/News/CoverWithVideoLink';
+import NewsPostCover from '@/Components/News/NewsPostCover';
 import {
     formatWhenLine,
     getDayMonth,
     priceText,
+    eventHasYoutubeVideo,
+    eventInstagramVideoUrl,
     type MobileEventListItem,
 } from '@/utils/mobileEventDisplay';
 import { useState, useCallback } from 'react';
@@ -33,25 +38,25 @@ export default function MobileEvents({ events }: Props) {
             <div className="space-y-6">
                 {events.length === 0 ? (
                     <div className="py-12 text-center">
-                        <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-4">
-                            <CalendarDaysIcon className="w-8 h-8 text-zinc-400 dark:text-zinc-500" />
+                        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-100 dark:bg-zinc-800">
+                            <CalendarDaysIcon className="h-8 w-8 text-zinc-400 dark:text-zinc-500" />
                         </div>
-                        <p className="text-zinc-600 dark:text-zinc-400 font-medium">Nenhum evento cadastrado</p>
-                        <p className="text-sm text-zinc-500 dark:text-zinc-500 mt-1">Os eventos aparecerão aqui.</p>
+                        <p className="font-medium text-zinc-600 dark:text-zinc-400">Nenhum evento cadastrado</p>
+                        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">Os eventos aparecerão aqui.</p>
                     </div>
                 ) : (
-                    <ul className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5 sm:gap-6">
+                    <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 xl:grid-cols-3">
                         {events.map((ev) => {
                             const { day, month } = getDayMonth(ev.starts_at);
                             const accent = ev.color || '#059669';
                             return (
                                 <li key={ev.id} className="h-full min-w-0">
-                                    <button
-                                        type="button"
-                                        onClick={() => setSelected(ev)}
-                                        className="group flex h-full w-full min-h-0 flex-col overflow-hidden rounded-2xl border border-zinc-200/90 bg-white text-left shadow-sm ring-0 transition-all hover:border-zinc-300 hover:shadow-md active:scale-[0.99] dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"
-                                    >
-                                        <div className="flex min-h-[7.5rem] flex-1">
+                                    <div className="group flex h-full w-full min-h-0 flex-col overflow-hidden rounded-2xl border border-zinc-200/90 bg-white text-left shadow-sm transition-all hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-600">
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelected(ev)}
+                                            className="flex min-h-[7.5rem] flex-1 touch-manipulation text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
+                                        >
                                             <div
                                                 className="flex w-[4.25rem] shrink-0 flex-col items-center justify-center px-2 py-3 text-white sm:w-[4.5rem]"
                                                 style={{ backgroundColor: accent }}
@@ -88,25 +93,9 @@ export default function MobileEvents({ events }: Props) {
                                                     </p>
                                                 )}
                                             </div>
-                                        </div>
-                                        {ev.image_url ? (
-                                            <div className="relative border-t border-zinc-100 dark:border-zinc-800">
-                                                <img
-                                                    src={ev.image_url}
-                                                    alt=""
-                                                    className="aspect-[16/10] w-full object-cover sm:aspect-[2/1]"
-                                                    loading="lazy"
-                                                />
-                                                <ImageDownloadButton
-                                                    src={ev.image_url}
-                                                    filenameBase={`evento-${ev.id}`}
-                                                    className="absolute bottom-2 right-2 z-10"
-                                                    stopPropagation
-                                                    size="sm"
-                                                />
-                                            </div>
-                                        ) : null}
-                                    </button>
+                                        </button>
+                                        <EventCardMedia ev={ev} onOpenDetail={() => setSelected(ev)} />
+                                    </div>
                                 </li>
                             );
                         })}
@@ -119,11 +108,32 @@ export default function MobileEvents({ events }: Props) {
                     <>
                         <div className="relative">
                             {selected.image_url ? (
-                                <img
-                                    src={selected.image_url}
-                                    alt=""
-                                    className="max-h-52 w-full object-cover sm:max-h-64"
-                                />
+                                eventInstagramVideoUrl(selected) ? (
+                                    <CoverWithVideoLink
+                                        videoHref={eventInstagramVideoUrl(selected)!}
+                                        className="block w-full"
+                                    >
+                                        <img
+                                            src={selected.image_url}
+                                            alt=""
+                                            className="max-h-52 w-full object-cover sm:max-h-64"
+                                        />
+                                    </CoverWithVideoLink>
+                                ) : (
+                                    <NewsPostCover
+                                        imageSrc={selected.image_url}
+                                        showYoutubePlayOverlay={eventHasYoutubeVideo(selected)}
+                                        aspectClass="max-h-52 w-full sm:max-h-64"
+                                        imageClassName="max-h-52 w-full object-cover sm:max-h-64"
+                                    />
+                                )
+                            ) : eventInstagramVideoUrl(selected) ? (
+                                <CoverWithVideoLink
+                                    videoHref={eventInstagramVideoUrl(selected)!}
+                                    className="flex aspect-[16/10] w-full items-center justify-center bg-gradient-to-br from-pink-100 via-purple-50 to-rose-100 dark:from-pink-950/40 dark:via-zinc-900 dark:to-purple-950/30"
+                                >
+                                    <span className="sr-only">Ver vídeo</span>
+                                </CoverWithVideoLink>
                             ) : null}
                             {selected.image_url ? (
                                 <ImageDownloadButton
@@ -136,7 +146,7 @@ export default function MobileEvents({ events }: Props) {
                             <button
                                 type="button"
                                 onClick={closeModal}
-                                className="absolute right-3 top-3 rounded-full bg-black/50 p-2 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
+                                className="absolute right-3 top-3 z-20 rounded-full bg-black/50 p-2 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
                                 aria-label="Fechar"
                             >
                                 <XMarkIcon className="h-5 w-5" />
@@ -176,6 +186,21 @@ export default function MobileEvents({ events }: Props) {
                             ) : (
                                 <p className="text-sm italic text-zinc-500 dark:text-zinc-500">Sem descrição adicional.</p>
                             )}
+
+                            {eventHasYoutubeVideo(selected) && selected.youtube_embed_url && (
+                                <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-black shadow-inner dark:border-zinc-700">
+                                    <div className="aspect-video w-full">
+                                        <iframe
+                                            title={selected.title}
+                                            src={`${selected.youtube_embed_url}?rel=0`}
+                                            className="h-full w-full"
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                            allowFullScreen
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
                             {selected.purchase_url && String(selected.purchase_url).trim() !== '' && (
                                 <a
                                     href={selected.purchase_url}

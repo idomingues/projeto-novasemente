@@ -23,6 +23,8 @@ import Textarea from '@/Components/Textarea';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
+import SelectInput from '@/Components/SelectInput';
+import NewsPostCover from '@/Components/News/NewsPostCover';
 import { EVENT_COVER_SPECS } from '@/constants/mediaCoverSpecs';
 import { useState, FormEventHandler, useMemo } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
@@ -65,9 +67,14 @@ interface EventItem {
     location: string | null;
     price: string | null;
     purchase_url: string | null;
+    video_type: 'youtube' | 'instagram' | null;
+    video_url: string | null;
+    youtube_embed_url?: string | null;
     image_url: string | null;
     color: string | null;
 }
+
+type EventVideoType = '' | 'youtube' | 'instagram';
 
 interface Props {
     events: EventItem[];
@@ -149,6 +156,8 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
         location: '',
         price: '',
         purchase_url: '',
+        video_type: '' as EventVideoType,
+        video_url: '',
         image_url: '',
         image_file: null as File | null,
         color: '',
@@ -169,6 +178,8 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
             location: '',
             price: '',
             purchase_url: '',
+            video_type: '',
+            video_url: '',
             image_url: '',
             color: '',
         });
@@ -195,6 +206,8 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
             location: ev.location ?? '',
             price: ev.price ?? '',
             purchase_url: ev.purchase_url ?? '',
+            video_type: (ev.video_type ?? '') as EventVideoType,
+            video_url: ev.video_url ?? '',
             image_url: ev.image_url ?? '',
             color: ev.color ?? '',
         });
@@ -633,6 +646,58 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
                             <InputError message={errors.purchase_url} />
                         </div>
                         <div>
+                            <InputLabel htmlFor="event_video_type" value="Vídeo do evento (opcional)" />
+                            <SelectInput
+                                id="event_video_type"
+                                value={data.video_type}
+                                className="mt-1"
+                                onChange={(e) => {
+                                    const next = e.target.value as EventVideoType;
+                                    setData('video_type', next);
+                                    if (next === '') {
+                                        setData('video_url', '');
+                                    }
+                                }}
+                            >
+                                <option value="">Sem vídeo</option>
+                                <option value="youtube">YouTube</option>
+                                <option value="instagram">Instagram</option>
+                            </SelectInput>
+                            <InputError message={errors.video_type} className="mt-1" />
+                        </div>
+                        {data.video_type === 'youtube' && (
+                            <div>
+                                <InputLabel htmlFor="event_video_url_youtube" value="Link do YouTube" />
+                                <TextInput
+                                    id="event_video_url_youtube"
+                                    value={data.video_url}
+                                    onChange={(e) => setData('video_url', e.target.value)}
+                                    className="mt-1 block w-full"
+                                    placeholder="https://www.youtube.com/watch?v=… ou https://youtu.be/…"
+                                />
+                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                    Na app, a capa exibe o ícone de play e o vídeo abre no detalhe do evento.
+                                </p>
+                                <InputError message={errors.video_url} className="mt-1" />
+                            </div>
+                        )}
+                        {data.video_type === 'instagram' && (
+                            <div>
+                                <InputLabel htmlFor="event_video_url_instagram" value="Link do Instagram" />
+                                <TextInput
+                                    id="event_video_url_instagram"
+                                    value={data.video_url}
+                                    onChange={(e) => setData('video_url', e.target.value)}
+                                    className="mt-1 block w-full"
+                                    placeholder="https://www.instagram.com/p/… ou …/reel/…"
+                                />
+                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                    Na app, a capa exibe o ícone de play e abre o vídeo no Instagram.
+                                </p>
+                                <InputError message={errors.video_url} className="mt-1" />
+                            </div>
+                        )}
+                        <div>
                             <InputLabel htmlFor="image_url">Imagem de capa / fundo</InputLabel>
                             <p
                                 id="event_cover_specs"
@@ -686,6 +751,24 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
                                 <InputError message={errors.image_url} />
                                 <InputError message={errors.image_file} />
                             </div>
+                            {(data.image_file || data.image_url) && data.video_type && data.video_url.trim() && (
+                                <div className="mt-3 overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700">
+                                    <p className="border-b border-zinc-100 bg-zinc-50 px-3 py-2 text-xs font-medium text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+                                        Pré-visualização na app
+                                    </p>
+                                    <NewsPostCover
+                                        imageSrc={
+                                            data.image_file
+                                                ? URL.createObjectURL(data.image_file)
+                                                : imageSrc(data.image_url, appUrl)
+                                        }
+                                        instagramVideoUrl={
+                                            data.video_type === 'instagram' ? data.video_url : null
+                                        }
+                                        showYoutubePlayOverlay={data.video_type === 'youtube'}
+                                    />
+                                </div>
+                            )}
                         </div>
                         <div>
                             <InputLabel htmlFor="color">Cor do evento</InputLabel>

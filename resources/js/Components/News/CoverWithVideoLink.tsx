@@ -5,6 +5,7 @@ interface Props {
     videoHref: string;
     className?: string;
     ariaLabel?: string;
+    compactPlay?: boolean;
     children: ReactNode;
 }
 
@@ -13,6 +14,7 @@ export default function CoverWithVideoLink({
     videoHref,
     className = '',
     ariaLabel = 'Ver vídeo',
+    compactPlay = false,
     children,
 }: Props) {
     return (
@@ -24,7 +26,7 @@ export default function CoverWithVideoLink({
             className={`group relative block overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset ${className}`}
         >
             {children}
-            <VideoPlayOverlay />
+            <VideoPlayOverlay compact={compactPlay} />
         </a>
     );
 }

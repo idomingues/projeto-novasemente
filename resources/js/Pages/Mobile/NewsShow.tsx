@@ -3,8 +3,7 @@ import InstagramFeedCard from '@/Components/News/InstagramFeedCard';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { ArrowLeftIcon, NewspaperIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import CoverWithVideoLink from '@/Components/News/CoverWithVideoLink';
-import VideoPlayOverlay from '@/Components/News/VideoPlayOverlay';
-import { InstagramBrandIcon } from '@/Components/SocialBrandIcons';
+import NewsPostCover from '@/Components/News/NewsPostCover';
 function imageSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
@@ -117,24 +116,18 @@ export default function MobileNewsShow({ post, config }: Props) {
 
                 <article className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
                     {cover ? (
-                        hasInstagramVideoLink ? (
-                            <CoverWithVideoLink
-                                videoHref={instagramVideoUrl}
-                                className="relative aspect-[16/10] bg-zinc-200 dark:bg-zinc-800"
-                            >
-                                <img
-                                    src={imageSrc(cover, appUrl)}
-                                    alt=""
-                                    className="h-full w-full object-cover"
-                                    loading="eager"
-                                    decoding="async"
-                                    onError={(e) => {
-                                        const el = e.currentTarget;
-                                        el.style.display = 'none';
-                                        const next = el.nextElementSibling as HTMLElement | null;
-                                        if (next) next.style.display = 'flex';
-                                    }}
-                                />
+                        <NewsPostCover
+                            imageSrc={imageSrc(cover, appUrl)}
+                            instagramVideoUrl={hasInstagramVideoLink ? instagramVideoUrl : null}
+                            showYoutubePlayOverlay={isYoutube && !hasInstagramVideoLink}
+                            imageLoading="eager"
+                            onImageError={(e) => {
+                                const el = e.currentTarget;
+                                el.style.display = 'none';
+                                const next = el.nextElementSibling as HTMLElement | null;
+                                if (next) next.style.display = 'flex';
+                            }}
+                            imageFallback={
                                 <div
                                     className="absolute inset-0 hidden items-center justify-center bg-zinc-200 dark:bg-zinc-700"
                                     style={{ display: 'none' }}
@@ -142,32 +135,8 @@ export default function MobileNewsShow({ post, config }: Props) {
                                 >
                                     <NewspaperIcon className="h-12 w-12 text-zinc-400" />
                                 </div>
-                            </CoverWithVideoLink>
-                        ) : (
-                            <div className="group relative aspect-[16/10] overflow-hidden bg-zinc-200 dark:bg-zinc-800">
-                                <img
-                                    src={imageSrc(cover, appUrl)}
-                                    alt=""
-                                    className="h-full w-full object-cover"
-                                    loading="eager"
-                                    decoding="async"
-                                    onError={(e) => {
-                                        const el = e.currentTarget;
-                                        el.style.display = 'none';
-                                        const next = el.nextElementSibling as HTMLElement | null;
-                                        if (next) next.style.display = 'flex';
-                                    }}
-                                />
-                                <div
-                                    className="absolute inset-0 hidden items-center justify-center bg-zinc-200 dark:bg-zinc-700"
-                                    style={{ display: 'none' }}
-                                    aria-hidden
-                                >
-                                    <NewspaperIcon className="h-12 w-12 text-zinc-400" />
-                                </div>
-                                {isYoutube && <VideoPlayOverlay />}
-                            </div>
-                        )
+                            }
+                        />
                     ) : isPdf ? (
                         <div className="flex aspect-[16/10] items-center justify-center bg-gradient-to-br from-rose-100 via-zinc-100 to-amber-50 dark:from-rose-950/40 dark:via-zinc-900 dark:to-amber-950/30">
                             <div className="flex flex-col items-center gap-2 text-zinc-600 dark:text-zinc-400">
@@ -175,12 +144,12 @@ export default function MobileNewsShow({ post, config }: Props) {
                                 <span className="text-sm font-medium">Documento PDF</span>
                             </div>
                         </div>
-                    ) : isInstagramLink && hasInstagramVideoLink ? (
+                    ) : hasInstagramVideoLink ? (
                         <CoverWithVideoLink
                             videoHref={instagramVideoUrl}
-                            className="flex aspect-[16/10] items-center justify-center bg-gradient-to-br from-pink-100 via-purple-50 to-rose-100 dark:from-pink-950/40 dark:via-zinc-900 dark:to-purple-950/30"
+                            className="flex aspect-[16/10] w-full items-center justify-center bg-gradient-to-br from-pink-100 via-purple-50 to-rose-100 dark:from-pink-950/40 dark:via-zinc-900 dark:to-purple-950/30"
                         >
-                            <InstagramBrandIcon className="h-16 w-16 text-pink-600/85 dark:text-pink-400/80" />
+                            <span className="sr-only">Ver vídeo</span>
                         </CoverWithVideoLink>
                     ) : (
                         <div className="flex h-40 items-center justify-center bg-gradient-to-br from-zinc-200 to-zinc-300 dark:from-zinc-700 dark:to-zinc-800">

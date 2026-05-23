@@ -10,6 +10,7 @@ import {
     UserPlusIcon,
 } from '@heroicons/react/24/outline';
 import type { ComponentType, SVGProps } from 'react';
+import CoverWithVideoLink from '@/Components/News/CoverWithVideoLink';
 
 type MenuIcon = ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
 
@@ -22,6 +23,7 @@ type NewsCard = {
     type_label: string;
     image_url: string | null;
     cover_url: string | null;
+    instagram_url?: string | null;
     published_at: string | null;
 };
 
@@ -233,34 +235,61 @@ export default function MobileHome({ latestNews, upcomingEvents }: Props) {
                                     const snippet = cardSnippet(n);
                                     const whenLine = timeAgoPtBr(n.published_at) || formatNewsWhen(n.published_at);
                                     const typeLabel = cardTypeLabel(n);
+                                    const instagramVideoUrl = n.instagram_url?.trim() || '';
+                                    const hasInstagramVideo = Boolean(instagramVideoUrl && src);
+                                    const textBlock = (
+                                        <div className="min-w-0 flex-1">
+                                            {typeLabel ? (
+                                                <p className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+                                                    {typeLabel}
+                                                </p>
+                                            ) : null}
+                                            <p className="mt-0.5 line-clamp-2 text-sm font-semibold leading-snug text-zinc-900 dark:text-white">
+                                                {n.title}
+                                            </p>
+                                            {snippet ? (
+                                                <p className="mt-1 line-clamp-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                                    {snippet}
+                                                </p>
+                                            ) : null}
+                                            <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">{whenLine}</p>
+                                        </div>
+                                    );
                                     return (
                                         <li key={n.id}>
-                                            <Link
-                                                href={route('mobile.news.show', n.slug)}
-                                                className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-zinc-200 transition hover:bg-zinc-50 dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60"
-                                            >
-                                                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800">
-                                                    {src ? (
+                                            {hasInstagramVideo ? (
+                                                <div className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
+                                                    <CoverWithVideoLink
+                                                        videoHref={instagramVideoUrl}
+                                                        compactPlay
+                                                        className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800"
+                                                    >
                                                         <img src={src} alt="" className="h-full w-full object-cover" />
-                                                    ) : (
-                                                        <div className="flex h-full w-full items-center justify-center text-[10px] font-medium text-zinc-400">
-                                                            Nova Semente
-                                                        </div>
-                                                    )}
+                                                    </CoverWithVideoLink>
+                                                    <Link
+                                                        href={route('mobile.news.show', n.slug)}
+                                                        className="min-w-0 flex-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded-lg"
+                                                    >
+                                                        {textBlock}
+                                                    </Link>
                                                 </div>
-                                                <div className="min-w-0 flex-1">
-                                                    {typeLabel ? (
-                                                        <p className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
-                                                            {typeLabel}
-                                                        </p>
-                                                    ) : null}
-                                                    <p className="mt-0.5 line-clamp-2 text-sm font-semibold leading-snug text-zinc-900 dark:text-white">
-                                                        {n.title}
-                                                    </p>
-                                                    {snippet ? <p className="mt-1 line-clamp-1 text-xs text-zinc-500 dark:text-zinc-400">{snippet}</p> : null}
-                                                    <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">{whenLine}</p>
-                                                </div>
-                                            </Link>
+                                            ) : (
+                                                <Link
+                                                    href={route('mobile.news.show', n.slug)}
+                                                    className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-zinc-200 transition hover:bg-zinc-50 dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60"
+                                                >
+                                                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800">
+                                                        {src ? (
+                                                            <img src={src} alt="" className="h-full w-full object-cover" />
+                                                        ) : (
+                                                            <div className="flex h-full w-full items-center justify-center text-[10px] font-medium text-zinc-400">
+                                                                Nova Semente
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    {textBlock}
+                                                </Link>
+                                            )}
                                         </li>
                                     );
                                 })}

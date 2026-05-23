@@ -3,7 +3,7 @@ import InstagramFeedCard, { type InstagramFeedPost } from '@/Components/News/Ins
 import { Head, Link, usePage } from '@inertiajs/react';
 import { DocumentTextIcon, NewspaperIcon, PhotoIcon, PlayCircleIcon } from '@heroicons/react/24/outline';
 import CoverWithVideoLink from '@/Components/News/CoverWithVideoLink';
-import { InstagramBrandIcon } from '@/Components/SocialBrandIcons';
+import NewsPostCover from '@/Components/News/NewsPostCover';
 
 function imageSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
@@ -20,21 +20,13 @@ interface PaginationLink {
 
 type ContentType = 'article' | 'youtube' | 'pdf' | 'image' | 'instagram_feed' | 'instagram_link';
 
-interface Post {
-    id: number;
-    title: string;
-    slug: string;
+interface Post extends InstagramFeedPost {
+    content_type: ContentType;
     excerpt: string | null;
     body: string;
-    content_type: ContentType;
-    image_url: string | null;
-    cover_url: string | null;
-    instagram_url?: string | null;
-    published_at: string | null;
 }
 
 interface Props {
-    feedPosts: InstagramFeedPost[];
     posts: {
         data: Post[];
         links: PaginationLink[];
@@ -96,31 +88,20 @@ function TypeCornerBadge({ type }: { type: ContentType }) {
             </span>
         );
     }
-    if (type === 'instagram_link') {
-        return (
-            <span className="absolute left-2 top-2 flex items-center gap-1 rounded-lg bg-pink-900/85 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
-                <InstagramBrandIcon className="h-3.5 w-3.5" aria-hidden />
-                Instagram
-            </span>
-        );
-    }
     return null;
 }
 
-export default function MobileNews({ feedPosts, posts, config }: Props) {
+export default function MobileNews({ posts, config }: Props) {
     const resolvedConfig = config ?? {};
     const pageTitle = resolvedConfig.pageTitle ?? 'Notícias';
     const showRoute = resolvedConfig.showRoute ?? 'mobile.news.show';
-    const sectionTitle = resolvedConfig.sectionTitle ?? 'Notícias';
     const appUrl = (usePage().props as { appUrl?: string }).appUrl ?? '';
-    const hasFeed = feedPosts.length > 0;
-    const hasGrid = posts.data.length > 0;
-    const isEmpty = !hasFeed && !hasGrid;
+    const isEmpty = posts.data.length === 0;
 
     return (
         <MobileLayout>
             <Head title={pageTitle} />
-            <div className="space-y-8">
+            <div className="mx-auto w-full max-w-lg space-y-8">
                 {isEmpty ? (
                     <div className="py-12 text-center">
                         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-100 dark:bg-zinc-800">
@@ -130,112 +111,70 @@ export default function MobileNews({ feedPosts, posts, config }: Props) {
                         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">As novidades aparecerão aqui.</p>
                     </div>
                 ) : (
-                    <>
-                        {hasFeed && (
-                            <section className="space-y-4">
-                                <ul className="mx-auto flex max-w-md flex-col gap-6">
-                                    {feedPosts.map((p) => (
-                                        <li key={p.id}>
-                                            <InstagramFeedCard
-                                                post={p}
-                                                appUrl={appUrl}
-                                                variant="feed"
-                                                showRoute={showRoute}
-                                            />
-                                        </li>
-                                    ))}
-                                </ul>
-                            </section>
-                        )}
+                    <ul className="flex flex-col gap-6">
+                        {posts.data.map((p) => {
+                            if (p.content_type === 'instagram_feed') {
+                                return (
+                                    <li key={p.id}>
+                                        <InstagramFeedCard
+                                            post={p}
+                                            appUrl={appUrl}
+                                            variant="feed"
+                                            showRoute={showRoute}
+                                        />
+                                    </li>
+                                );
+                            }
 
-                        {hasGrid && (
-                            <section className="space-y-4">
-                                {hasFeed && (
-                                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">{sectionTitle}</h2>
-                                )}
-                                <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                                    {posts.data.map((p) => {
-                                        const thumb = p.cover_url || p.image_url;
-                                        const snippet = previewSnippet(p);
-                                        const instagramVideoUrl = p.instagram_url?.trim() || '';
-                                        const hasInstagramVideoLink = Boolean(instagramVideoUrl);
-                                        return (
-                                            <li
-                                                key={p.id}
-                                                className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition-all hover:border-zinc-300 hover:shadow-md active:scale-[0.99] dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
-                                            >
+                            const thumb = p.cover_url || p.image_url;
+                            const snippet = previewSnippet(p);
+                            const instagramVideoUrl = p.instagram_url?.trim() || '';
+                            const hasInstagramVideoLink = Boolean(instagramVideoUrl);
+
+                            return (
+                                <li
+                                    key={p.id}
+                                    className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition-all hover:border-zinc-300 hover:shadow-md active:scale-[0.99] dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
+                                >
                                                 {thumb ? (
-                                                    <div className="relative">
-                                                        {hasInstagramVideoLink ? (
-                                                            <CoverWithVideoLink
-                                                                videoHref={instagramVideoUrl}
-                                                                className="block rounded-t-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"
-                                                            >
-                                                                <div className="relative aspect-[16/10] overflow-hidden bg-zinc-200 dark:bg-zinc-800">
-                                                                    <TypeCornerBadge type={p.content_type} />
-                                                                    <img
-                                                                        src={imageSrc(thumb, appUrl)}
-                                                                        alt=""
-                                                                        className="h-full w-full object-cover"
-                                                                        loading="lazy"
-                                                                        decoding="async"
-                                                                        onError={(e) => {
-                                                                            const el = e.currentTarget;
-                                                                            el.style.display = 'none';
-                                                                            const next = el.nextElementSibling as HTMLElement | null;
-                                                                            if (next) next.style.display = 'flex';
-                                                                        }}
-                                                                    />
-                                                                    <div
-                                                                        className="absolute inset-0 hidden items-center justify-center bg-zinc-200 dark:bg-zinc-700"
-                                                                        style={{ display: 'none' }}
-                                                                        aria-hidden
-                                                                    >
-                                                                        <NewspaperIcon className="h-12 w-12 text-zinc-400" />
-                                                                    </div>
+                                                    <div className="relative rounded-t-2xl">
+                                                        <NewsPostCover
+                                                            imageSrc={imageSrc(thumb, appUrl)}
+                                                            instagramVideoUrl={
+                                                                hasInstagramVideoLink ? instagramVideoUrl : null
+                                                            }
+                                                            detailHref={
+                                                                hasInstagramVideoLink
+                                                                    ? undefined
+                                                                    : route(showRoute, p.slug)
+                                                            }
+                                                            showYoutubePlayOverlay={p.content_type === 'youtube'}
+                                                            onImageError={(e) => {
+                                                                const el = e.currentTarget;
+                                                                el.style.display = 'none';
+                                                                const next = el.nextElementSibling as HTMLElement | null;
+                                                                if (next) next.style.display = 'flex';
+                                                            }}
+                                                            imageFallback={
+                                                                <div
+                                                                    className="absolute inset-0 hidden items-center justify-center bg-zinc-200 dark:bg-zinc-700"
+                                                                    style={{ display: 'none' }}
+                                                                    aria-hidden
+                                                                >
+                                                                    <NewspaperIcon className="h-12 w-12 text-zinc-400" />
+                                                                </div>
+                                                            }
+                                                            overlaySlot={
+                                                                <>
+                                                                    {!hasInstagramVideoLink && (
+                                                                        <TypeCornerBadge type={p.content_type} />
+                                                                    )}
                                                                     <span className="pointer-events-none absolute bottom-2 right-2 z-10 rounded-lg bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
                                                                         {formatDate(p.published_at)}
                                                                     </span>
-                                                                </div>
-                                                            </CoverWithVideoLink>
-                                                        ) : (
-                                                            <Link
-                                                                href={route(showRoute, p.slug)}
-                                                                className="block rounded-t-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"
-                                                            >
-                                                                <div className="group relative aspect-[16/10] overflow-hidden bg-zinc-200 dark:bg-zinc-800">
-                                                                    <TypeCornerBadge type={p.content_type} />
-                                                                    <img
-                                                                        src={imageSrc(thumb, appUrl)}
-                                                                        alt=""
-                                                                        className="h-full w-full object-cover"
-                                                                        loading="lazy"
-                                                                        decoding="async"
-                                                                        onError={(e) => {
-                                                                            const el = e.currentTarget;
-                                                                            el.style.display = 'none';
-                                                                            const next = el.nextElementSibling as HTMLElement | null;
-                                                                            if (next) next.style.display = 'flex';
-                                                                        }}
-                                                                    />
-                                                                    <div
-                                                                        className="absolute inset-0 hidden items-center justify-center bg-zinc-200 dark:bg-zinc-700"
-                                                                        style={{ display: 'none' }}
-                                                                        aria-hidden
-                                                                    >
-                                                                        <NewspaperIcon className="h-12 w-12 text-zinc-400" />
-                                                                    </div>
-                                                                    {p.content_type === 'youtube' && (
-                                                                        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20 opacity-100 transition md:bg-black/0 md:opacity-0 md:group-hover:bg-black/30 md:group-hover:opacity-100">
-                                                                            <PlayCircleIcon className="h-14 w-14 text-white drop-shadow-lg" aria-hidden />
-                                                                        </div>
-                                                                    )}
-                                                                    <span className="absolute bottom-2 right-2 rounded-lg bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
-                                                                        {formatDate(p.published_at)}
-                                                                    </span>
-                                                                </div>
-                                                            </Link>
-                                                        )}
+                                                                </>
+                                                            }
+                                                        />
                                                     </div>
                                                 ) : (
                                                     hasInstagramVideoLink ? (
@@ -247,12 +186,7 @@ export default function MobileNews({ feedPosts, posts, config }: Props) {
                                                                     : 'bg-gradient-to-br from-rose-100 via-zinc-100 to-amber-50 dark:from-rose-950/30 dark:via-zinc-800 dark:to-amber-950/20'
                                                             }`}
                                                         >
-                                                            <TypeCornerBadge type={p.content_type} />
-                                                            {p.content_type === 'instagram_link' ? (
-                                                                <InstagramBrandIcon className="h-12 w-12 text-pink-600/80 dark:text-pink-400/70" />
-                                                            ) : (
-                                                                <DocumentTextIcon className="h-12 w-12 text-rose-500/70 dark:text-rose-400/60" />
-                                                            )}
+                                                            <span className="sr-only">Ver vídeo</span>
                                                             <span className="pointer-events-none absolute bottom-2 right-2 z-10 rounded-lg bg-black/50 px-2 py-1 text-xs text-white">
                                                                 {formatDate(p.published_at)}
                                                             </span>
@@ -270,11 +204,7 @@ export default function MobileNews({ feedPosts, posts, config }: Props) {
                                                                 }`}
                                                             >
                                                                 <TypeCornerBadge type={p.content_type} />
-                                                                {p.content_type === 'instagram_link' ? (
-                                                                    <InstagramBrandIcon className="h-12 w-12 text-pink-600/80 dark:text-pink-400/70" />
-                                                                ) : (
-                                                                    <DocumentTextIcon className="h-12 w-12 text-rose-500/70 dark:text-rose-400/60" />
-                                                                )}
+                                                                <DocumentTextIcon className="h-12 w-12 text-rose-500/70 dark:text-rose-400/60" />
                                                                 <span className="absolute bottom-2 right-2 rounded-lg bg-black/50 px-2 py-1 text-xs text-white">
                                                                     {formatDate(p.published_at)}
                                                                 </span>
@@ -300,16 +230,13 @@ export default function MobileNews({ feedPosts, posts, config }: Props) {
                                                         </p>
                                                     )}
                                                     <span className="mt-3 inline-block text-sm font-semibold text-primary-600 dark:text-primary-400">
-                                                        Ver publicação
+                                                        Ler publicação
                                                     </span>
                                                 </Link>
-                                            </li>
-                                        );
-                                    })}
-                                </ul>
-                            </section>
-                        )}
-                    </>
+                                </li>
+                            );
+                        })}
+                    </ul>
                 )}
 
                 {posts.last_page > 1 && (

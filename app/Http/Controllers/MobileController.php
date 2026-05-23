@@ -193,6 +193,7 @@ class MobileController extends Controller
                     'excerpt' => $n->excerpt,
                     'content_type' => $type,
                     'type_label' => $typeLabel,
+                    'instagram_url' => $n->instagram_url,
                     'image_url' => $imageUrl,
                     'cover_url' => $n->resolvedCoverUrl($baseUrl),
                     'published_at' => $n->published_at?->toIso8601String(),
@@ -223,6 +224,9 @@ class MobileController extends Controller
                     'location' => $e->location,
                     'price' => $e->price,
                     'purchase_url' => $e->purchase_url,
+                    'video_type' => $e->video_type,
+                    'video_url' => $e->video_url,
+                    'youtube_embed_url' => $e->youtube_embed_url,
                     'image_url' => $imageUrl,
                     'color' => $e->color,
                 ];
@@ -384,37 +388,21 @@ class MobileController extends Controller
             ];
         };
 
-        $feedPosts = News::query()
-            ->with(['author:id,name,photo_url'])
-            ->where('section', News::SECTION_NEWS)
-            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
-            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
-            ->where('content_type', News::TYPE_INSTAGRAM_FEED)
-            ->whereNotNull('published_at')
-            ->where('published_at', '<=', now())
-            ->orderByDesc('published_at')
-            ->limit(60)
-            ->get()
-            ->map(fn (News $p) => $mapPost($p))
-            ->values()
-            ->all();
-
         $posts = News::query()
             ->with(['author:id,name,photo_url'])
             ->where('section', News::SECTION_NEWS)
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
-            ->where('content_type', '!=', News::TYPE_INSTAGRAM_FEED)
             ->whereNotNull('published_at')
             ->where('published_at', '<=', now())
             ->orderByDesc('published_at')
-            ->paginate(10)
+            ->orderByDesc('created_at')
+            ->paginate(15)
             ->withQueryString();
 
         $posts->getCollection()->transform(fn (News $p) => $mapPost($p));
 
         return Inertia::render('Mobile/News', [
-            'feedPosts' => $feedPosts,
             'posts' => $posts,
         ]);
     }
@@ -515,37 +503,21 @@ class MobileController extends Controller
             ];
         };
 
-        $feedPosts = News::query()
-            ->with(['author:id,name,photo_url'])
-            ->where('section', News::SECTION_HEALTH)
-            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
-            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
-            ->where('content_type', News::TYPE_INSTAGRAM_FEED)
-            ->whereNotNull('published_at')
-            ->where('published_at', '<=', now())
-            ->orderByDesc('published_at')
-            ->limit(60)
-            ->get()
-            ->map(fn (News $p) => $mapPost($p))
-            ->values()
-            ->all();
-
         $posts = News::query()
             ->with(['author:id,name,photo_url'])
             ->where('section', News::SECTION_HEALTH)
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
-            ->where('content_type', '!=', News::TYPE_INSTAGRAM_FEED)
             ->whereNotNull('published_at')
             ->where('published_at', '<=', now())
             ->orderByDesc('published_at')
-            ->paginate(10)
+            ->orderByDesc('created_at')
+            ->paginate(15)
             ->withQueryString();
 
         $posts->getCollection()->transform(fn (News $p) => $mapPost($p));
 
         return Inertia::render('Mobile/Health', [
-            'feedPosts' => $feedPosts,
             'posts' => $posts,
         ]);
     }
@@ -630,6 +602,9 @@ class MobileController extends Controller
                     'location' => $e->location,
                     'price' => $e->price,
                     'purchase_url' => $e->purchase_url,
+                    'video_type' => $e->video_type,
+                    'video_url' => $e->video_url,
+                    'youtube_embed_url' => $e->youtube_embed_url,
                     'image_url' => $imageUrl,
                     'color' => $e->color,
                 ];
