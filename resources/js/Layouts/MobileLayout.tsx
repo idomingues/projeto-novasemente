@@ -18,19 +18,15 @@ export default function MobileLayout({
     const isAuthenticated = !!auth?.user;
     const canAccessAdminMenu = auth?.canAccessAdminMenu === true;
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const { collapsed: desktopSidebarCollapsed, collapse: collapseDesktopSidebar, expand: expandDesktopSidebar } =
-        useAdminSidebarCollapsed();
-    const sidebarInset = canAccessAdminMenu && !desktopSidebarCollapsed;
+    const { collapsed: desktopSidebarCollapsed, collapse: collapseDesktopSidebar } = useAdminSidebarCollapsed();
+    /** Layout mobile: menu lateral só como gaveta — sem coluna fixa nem recuo do conteúdo. */
+    const sidebarInset = false;
 
     useEffect(() => {
         setMobileMenuOpen(false);
     }, [url]);
 
     const openSidebar = () => {
-        if (typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches) {
-            expandDesktopSidebar();
-            return;
-        }
         setMobileMenuOpen(true);
     };
 
@@ -42,6 +38,7 @@ export default function MobileLayout({
                         mobileOpen={mobileMenuOpen}
                         onMobileClose={() => setMobileMenuOpen(false)}
                         routeToPermissions={adminSidebarRoutePermissions}
+                        persistOnDesktop={false}
                         desktopCollapsed={desktopSidebarCollapsed}
                         onDesktopCollapse={collapseDesktopSidebar}
                     />
@@ -55,7 +52,7 @@ export default function MobileLayout({
                     {!modalOverlayOpen ? (
                         <Topbar
                             onMenuClick={canAccessAdminMenu ? openSidebar : undefined}
-                            hasSidebar={sidebarInset}
+                            hasSidebar={false}
                             desktopSidebarCollapsed={desktopSidebarCollapsed}
                         />
                     ) : null}

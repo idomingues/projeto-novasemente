@@ -445,23 +445,23 @@ export default function Sidebar({
         return null;
     }
 
-    const desktopVisible = persistOnDesktop && !desktopCollapsed;
-    const sidebarVisible = mobileOpen || desktopVisible;
+    /** Em viewport pequena o menu só abre como gaveta (`mobileOpen`). Em md+ pode ficar fixo se `persistOnDesktop`. */
+    const desktopPersistVisible = persistOnDesktop && !desktopCollapsed;
 
     return (
         <>
-            {/* Mobile backdrop */}
+            {/* Mobile backdrop — só enquanto o drawer está aberto em viewport pequena */}
             {mobileOpen && (
                 <div
-                    className={`fixed inset-0 bg-black/50 z-40 ${persistOnDesktop ? 'md:hidden' : ''}`}
+                    className={`fixed inset-0 z-40 bg-black/50 ${persistOnDesktop ? 'md:hidden' : ''}`}
                     onClick={onMobileClose}
                     aria-hidden
                 />
             )}
             <aside
-                className={`w-72 bg-white dark:bg-zinc-950 border-r border-zinc-200 dark:border-zinc-800 h-screen fixed left-0 top-0 z-50 transition-transform duration-300 ease-out flex flex-col ${
-                    sidebarVisible ? 'translate-x-0' : '-translate-x-full'
-                }`}
+                className={`fixed left-0 top-0 z-50 flex h-screen w-72 flex-col border-r border-zinc-200 bg-white transition-transform duration-300 ease-out dark:border-zinc-800 dark:bg-zinc-950 ${
+                    mobileOpen ? 'translate-x-0' : '-translate-x-full'
+                } ${desktopPersistVisible ? 'md:translate-x-0' : 'md:-translate-x-full'}`}
             >
                 {/* Logo Area */}
                 <div className="h-24 flex items-center justify-between px-6 md:px-8 border-b border-zinc-100 dark:border-zinc-900 flex-shrink-0">
