@@ -25,6 +25,7 @@ import InputError from '@/Components/InputError';
 import { useState, useEffect, useRef, FormEventHandler } from 'react';
 import { activeInactivePillClass } from '@/lib/statusBadges';
 import { confirmAction } from '@/utils/confirmDialog';
+import SortedMultiCheckboxList from '@/Components/SortedMultiCheckboxList';
 
 interface MinistryOption {
     id: number;
@@ -1332,33 +1333,19 @@ export default function Index({
                                 </p>
                                 {ministryOptions.length > 0 ? (
                                     <div className="border-t border-zinc-200 pt-3 dark:border-zinc-600 space-y-2">
-                                        <div className="space-y-2 pr-1 sm:max-h-48 sm:overflow-y-auto">
-                                            {ministryOptions.map((m) => (
-                                                <label key={m.id} className="flex cursor-pointer items-start gap-3">
-                                                    <Checkbox
-                                                        name={`department_${m.id}`}
-                                                        checked={data.department_ids.includes(m.id)}
-                                                        onChange={(e) => {
-                                                            const checked = e.target.checked;
-                                                            const next = new Set(data.department_ids);
-                                                            if (checked) {
-                                                                next.add(m.id);
-                                                            } else {
-                                                                next.delete(m.id);
-                                                            }
-                                                            setData('department_ids', [...next]);
-
-                                                            // Se começou a escolher departamentos, assumimos que este usuário
-                                                            // também deve ser marcado como voluntário (serve/irá servir).
-                                                            if (next.size > 0 && !data.is_volunteer) {
-                                                                setData('is_volunteer', true);
-                                                            }
-                                                        }}
-                                                    />
-                                                    <span className="text-sm text-zinc-700 dark:text-zinc-200">{m.name}</span>
-                                                </label>
-                                            ))}
-                                        </div>
+                                        <SortedMultiCheckboxList
+                                            options={ministryOptions.map((m) => ({ id: m.id, name: m.name }))}
+                                            selectedIds={data.department_ids}
+                                            onChange={(ids) => {
+                                                setData((prev) => ({
+                                                    ...prev,
+                                                    department_ids: ids,
+                                                    ...(ids.length > 0 && !prev.is_volunteer ? { is_volunteer: true } : {}),
+                                                }));
+                                            }}
+                                            maxHeightClass="sm:max-h-48"
+                                            emptyMessage="Ainda não há departamentos configurados para esta igreja."
+                                        />
                                         <InputError message={errors.volunteer_ministry_ids} className="!mt-1" />
                                         <InputError message={errors.app_ministry_ids} className="!mt-1" />
                                     </div>

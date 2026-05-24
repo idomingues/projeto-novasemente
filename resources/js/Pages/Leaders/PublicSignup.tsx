@@ -7,6 +7,7 @@ import TextInput from '@/Components/TextInput';
 import { Head, Link, useForm } from '@inertiajs/react';
 import axios from 'axios';
 import { FormEventHandler, useCallback, useState } from 'react';
+import SortedMultiCheckboxList from '@/Components/SortedMultiCheckboxList';
 
 interface Ministry {
     id: number;
@@ -59,16 +60,6 @@ export default function PublicSignup({ token, churchName, ministries }: Props) {
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         form.post(route('leaders.self-signup.store'));
-    };
-
-    const toggleMinistry = (id: number) => {
-        const set = new Set(form.data.ministry_ids);
-        if (set.has(id)) {
-            set.delete(id);
-        } else {
-            set.add(id);
-        }
-        form.setData('ministry_ids', Array.from(set));
     };
 
     return (
@@ -139,23 +130,20 @@ export default function PublicSignup({ token, churchName, ministries }: Props) {
                     <div>
                         <InputLabel value="Departamentos que irá gerir" />
                         <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Selecione pelo menos um.</p>
-                        <div className="mt-2 max-h-48 space-y-2 overflow-y-auto rounded-xl border border-zinc-200 p-3 dark:border-zinc-700">
-                            {ministries.length === 0 ? (
-                                <p className="text-sm text-zinc-500">Nenhum departamento disponível. Entre em contato a secretaria.</p>
-                            ) : (
-                                ministries.map((m) => (
-                                    <label key={m.id} className="flex cursor-pointer items-center gap-2">
-                                        <input
-                                            type="checkbox"
-                                            checked={form.data.ministry_ids.includes(m.id)}
-                                            onChange={() => toggleMinistry(m.id)}
-                                            className="rounded border-zinc-300 dark:border-zinc-600"
-                                        />
-                                        <span className="text-sm text-zinc-900 dark:text-white">{m.name}</span>
-                                    </label>
-                                ))
-                            )}
-                        </div>
+                        {ministries.length === 0 ? (
+                            <p className="mt-2 text-sm text-zinc-500">
+                                Nenhum departamento disponível. Entre em contato a secretaria.
+                            </p>
+                        ) : (
+                            <SortedMultiCheckboxList
+                                className="mt-2"
+                                options={ministries.map((m) => ({ id: m.id, name: m.name }))}
+                                selectedIds={form.data.ministry_ids}
+                                onChange={(ids) => form.setData('ministry_ids', ids)}
+                                maxHeightClass="max-h-48"
+                                emptyMessage="Nenhum departamento disponível. Entre em contato a secretaria."
+                            />
+                        )}
                         <InputError message={form.errors.ministry_ids} className="mt-1" />
                     </div>
                     <PrimaryButton type="submit" disabled={form.processing} className="w-full">

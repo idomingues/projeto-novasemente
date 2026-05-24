@@ -11,7 +11,6 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import SelectInput from '@/Components/SelectInput';
 import InputError from '@/Components/InputError';
-import Checkbox from '@/Components/Checkbox';
 import { Head, Link, router, useForm, usePage, useRemember } from '@inertiajs/react';
 import { FormEventHandler, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -42,6 +41,7 @@ import {
 } from '@/utils/volunteerMinistryPhasesInList';
 import RecordDetailSections from '@/Components/RecordDetail/RecordDetailSections';
 import { volunteerDetailSections, type VolunteerDetailData } from '@/utils/volunteerDetailRows';
+import SortedMultiCheckboxList from '@/Components/SortedMultiCheckboxList';
 
 type StageRow = { id: number; name: string; sort_order: number; volunteer_count: number };
 
@@ -256,6 +256,15 @@ function yn(v: unknown): string {
     return '—';
 }
 
+function listEmpty(value: string | null | undefined): string {
+    const trimmed = (value ?? '').trim();
+    if (trimmed === '' || trimmed === '—') {
+        return '?';
+    }
+
+    return trimmed;
+}
+
 function VolunteerMinistryDepartmentColumn({
     phases,
     valueKey,
@@ -264,7 +273,7 @@ function VolunteerMinistryDepartmentColumn({
     valueKey: 'inviteLabel' | 'departmentStatusLabel';
 }) {
     if (phases.length === 0) {
-        return <span className="text-zinc-400">—</span>;
+        return <span className="text-zinc-400">?</span>;
     }
 
     return (
@@ -273,7 +282,7 @@ function VolunteerMinistryDepartmentColumn({
                 <div key={row.ministryName} className="leading-snug">
                     <span className="font-medium text-zinc-800 dark:text-zinc-100">{row.ministryName}</span>
                     <span className="text-zinc-400 dark:text-zinc-500"> → </span>
-                    <span className="text-zinc-600 dark:text-zinc-300">{row[valueKey]}</span>
+                    <span className="text-zinc-600 dark:text-zinc-300">{listEmpty(row[valueKey])}</span>
                 </div>
             ))}
         </div>
@@ -599,19 +608,6 @@ export default function Pipeline({
         });
     };
 
-    const toggleInviteMinistry = (ministryId: number, checked: boolean) => {
-        if (inviteBlockedMinistryIds.has(ministryId)) return;
-        setInviteMinistryIds((prev) => {
-            const set = new Set(prev);
-            if (checked) {
-                set.add(ministryId);
-            } else {
-                set.delete(ministryId);
-            }
-            return Array.from(set);
-        });
-    };
-
     const postInvite = (channels: string[], closeOnSuccess: boolean) => {
         if (!inviteVolunteer || inviteMinistryIds.length === 0) return;
         router.post(
@@ -635,17 +631,6 @@ export default function Pipeline({
         if (!inviteVolunteer || inviteMinistryIds.length === 0) return;
         // Encaminhar não notifica o voluntário — o líder envia o convite em Meus voluntários.
         postInvite([], true);
-    };
-
-    const toggleVolunteerMinistry = (ministryId: number, checked: boolean, canEdit: boolean) => {
-        if (!canEdit) return;
-        const set = new Set(ministriesForm.data.ministry_ids);
-        if (checked) {
-            set.add(ministryId);
-        } else {
-            set.delete(ministryId);
-        }
-        ministriesForm.setData('ministry_ids', Array.from(set));
     };
 
     const submitMinistries: FormEventHandler = (e) => {
@@ -702,6 +687,31 @@ export default function Pipeline({
 
     const pipelineTotalCount = useMemo(() => stages.reduce((acc, s) => acc + s.volunteer_count, 0), [stages]);
     const resultsSummary = useMemo(() => formatVolunteerResultsSummary(volunteers), [volunteers]);
+
+    const volunteerMinistryCheckboxOptions = useMemo(
+        () =>
+            (detail?.ministryOptions ?? []).map((o) => ({
+                id: o.id,
+                name: o.name,
+                disabled: !o.canEdit,
+                trailing: !o.canEdit && ministriesForm.data.ministry_ids.includes(o.id) ? 'Só consulta' : null,
+            })),
+        [detail?.ministryOptions, ministriesForm.data.ministry_ids],
+    );
+
+    const encaminharMinistryCheckboxOptions = useMemo(
+        () =>
+            encaminharMinistries.map((m) => {
+                const isBlocked = inviteBlockedMinistryIds.has(m.id);
+                return {
+                    id: m.id,
+                    name: m.name,
+                    disabled: isBlocked,
+                    trailing: isBlocked ? 'Já encaminhado' : null,
+                };
+            }),
+        [encaminharMinistries, inviteBlockedMinistryIds],
+    );
 
     return (
         <AdminLayout>
@@ -1317,7 +1327,7 @@ export default function Pipeline({
                                             </td>
                                             <td className="cursor-pointer py-2 pr-3 text-zinc-700 dark:text-zinc-200">
                                                 {canVolunteerManage
-                                                    ? (v.adminWorkflowStageName ?? '—')
+                                                    ? listEmpty(v.adminWorkflowStageName)
                                                     : v.stageName}
                                             </td>
                                             <td className="cursor-pointer py-2 pr-3 max-w-[220px] text-xs">
@@ -1339,7 +1349,7 @@ export default function Pipeline({
                                                 <div>{v.email}</div>
                                                 {v.phone ? <div className="text-xs">{v.phone}</div> : null}
                                             </td>
-                                            <td className="cursor-pointer py-2 pr-3 max-w-[200px] text-xs text-zinc-500">{v.interestPreview ?? '—'}</td>
+                                            <td className="cursor-pointer py-2 pr-3 max-w-[200px] text-xs text-zinc-500">{listEmpty(v.interestPreview)}</td>
                                             <td className="cursor-default py-2 text-right" onClick={(ev) => ev.stopPropagation()}>
                                                 <div className="flex flex-wrap items-center justify-end gap-2">
                                                     {canVolunteerManage && !v.email?.trim() ? (
@@ -1400,7 +1410,7 @@ export default function Pipeline({
                                                 ) : null}
                                             </div>
                                             <div className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                                                {(canVolunteerManage ? (v.adminWorkflowStageName ?? '—') : v.stageName)} ·{' '}
+                                                {(canVolunteerManage ? listEmpty(v.adminWorkflowStageName) : v.stageName)} ·{' '}
                                                 {formatShortDate(v.createdAt)}
                                             </div>
                                         </button>
@@ -1761,33 +1771,13 @@ export default function Pipeline({
                                         {(detail.ministryOptions ?? []).length === 0 ? (
                                             <p className="text-sm text-zinc-500">Nenhum departamento cadastrado nesta igreja.</p>
                                         ) : (
-                                            <div className="max-h-[min(50vh,360px)] space-y-2 overflow-y-auto pr-1">
-                                                {(detail.ministryOptions ?? []).map((o) => {
-                                                    const checked = ministriesForm.data.ministry_ids.includes(o.id);
-                                                    return (
-                                                        <label
-                                                            key={o.id}
-                                                            className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm ${
-                                                                o.canEdit
-                                                                    ? 'cursor-pointer border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900'
-                                                                    : 'cursor-not-allowed border-zinc-100 bg-zinc-50 opacity-70 dark:border-zinc-800 dark:bg-zinc-900/50'
-                                                            }`}
-                                                        >
-                                                            <Checkbox
-                                                                checked={checked}
-                                                                disabled={!o.canEdit}
-                                                                onChange={(e) =>
-                                                                    toggleVolunteerMinistry(o.id, e.target.checked, o.canEdit)
-                                                                }
-                                                            />
-                                                            <span className="flex-1 text-zinc-800 dark:text-zinc-100">{o.name}</span>
-                                                            {!o.canEdit && checked ? (
-                                                                <span className="text-xs text-zinc-500">Só consulta</span>
-                                                            ) : null}
-                                                        </label>
-                                                    );
-                                                })}
-                                            </div>
+                                            <SortedMultiCheckboxList
+                                                options={volunteerMinistryCheckboxOptions}
+                                                selectedIds={ministriesForm.data.ministry_ids}
+                                                onChange={(ids) => ministriesForm.setData('ministry_ids', ids)}
+                                                maxHeightClass="max-h-[min(50vh,360px)]"
+                                                emptyMessage="Nenhum departamento cadastrado nesta igreja."
+                                            />
                                         )}
                                         <InputError message={ministriesForm.errors.ministry_ids} />
                                         {detail.syncMinistriesUrl && canPipelineMutate ? (
@@ -1889,41 +1879,22 @@ export default function Pipeline({
                     <form onSubmit={submitEncaminhar} className="space-y-4">
                         <div>
                             <InputLabel value="Departamentos *" />
-                            <div className="mt-2 max-h-[min(40vh,280px)] space-y-2 overflow-y-auto pr-1">
-                                {encaminharMinistries.length === 0 ? (
-                                    <p className="text-sm text-zinc-500">Nenhum departamento disponível para encaminhar.</p>
-                                ) : encaminharMinistries.every((m) => inviteBlockedMinistryIds.has(m.id)) ? (
-                                    <p className="text-sm text-zinc-500">
-                                        Este voluntário já foi encaminhado para todos os departamentos disponíveis.
-                                    </p>
-                                ) : (
-                                    encaminharMinistries.map((m) => {
-                                        const isBlocked = inviteBlockedMinistryIds.has(m.id);
-                                        return (
-                                            <label
-                                                key={m.id}
-                                                className={`flex items-center gap-3 rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-900 ${
-                                                    isBlocked
-                                                        ? 'cursor-not-allowed opacity-60'
-                                                        : 'cursor-pointer'
-                                                }`}
-                                            >
-                                                <Checkbox
-                                                    checked={!isBlocked && inviteMinistryIds.includes(m.id)}
-                                                    disabled={isBlocked}
-                                                    onChange={(e) => toggleInviteMinistry(m.id, e.target.checked)}
-                                                />
-                                                <span className="min-w-0 flex-1 text-zinc-800 dark:text-zinc-100">{m.name}</span>
-                                                {isBlocked ? (
-                                                    <span className="shrink-0 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                                                        Já encaminhado
-                                                    </span>
-                                                ) : null}
-                                            </label>
-                                        );
-                                    })
-                                )}
-                            </div>
+                            {encaminharMinistries.length === 0 ? (
+                                <p className="mt-2 text-sm text-zinc-500">Nenhum departamento disponível para encaminhar.</p>
+                            ) : encaminharMinistries.every((m) => inviteBlockedMinistryIds.has(m.id)) ? (
+                                <p className="mt-2 text-sm text-zinc-500">
+                                    Este voluntário já foi encaminhado para todos os departamentos disponíveis.
+                                </p>
+                            ) : (
+                                <SortedMultiCheckboxList
+                                    className="mt-2"
+                                    options={encaminharMinistryCheckboxOptions}
+                                    selectedIds={inviteMinistryIds}
+                                    onChange={setInviteMinistryIds}
+                                    maxHeightClass="max-h-[min(40vh,280px)]"
+                                    emptyMessage="Nenhum departamento disponível para encaminhar."
+                                />
+                            )}
                         </div>
 
                         <div className="flex justify-end gap-2">

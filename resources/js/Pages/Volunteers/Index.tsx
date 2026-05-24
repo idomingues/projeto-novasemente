@@ -24,6 +24,7 @@ import type { VolunteerDetailData } from '@/utils/volunteerDetailRows';
 import VolunteerDeleteConfirmBlock from '@/Components/Volunteers/VolunteerDeleteConfirmBlock';
 import { activeInactivePillClass } from '@/lib/statusBadges';
 import { appRoleLabel } from '@/lib/appRoleLabels';
+import SortedMultiCheckboxList from '@/Components/SortedMultiCheckboxList';
 
 interface Ministry { id: number; name: string; }
 interface AppRole { id: number; name: string; }
@@ -777,34 +778,19 @@ export default function Index({
                                 <p className="mt-1 mb-2 text-xs text-zinc-500 dark:text-zinc-400">
                                     Ministérios ligados à ficha de voluntário (escalas e operação).
                                 </p>
-                                <div className="max-h-48 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-900/50 space-y-2">
-                                    {ministries.length === 0 ? (
-                                        <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                                            Nenhum departamento cadastrado.
-                                        </p>
-                                    ) : (
-                                        ministries.map((m) => (
-                                            <label key={m.id} className="flex cursor-pointer items-center gap-2">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={data.ministry_ids.includes(m.id)}
-                                                    onChange={(e) => {
-                                                        if (e.target.checked) {
-                                                            setData('ministry_ids', [...data.ministry_ids, m.id]);
-                                                        } else {
-                                                            setData(
-                                                                'ministry_ids',
-                                                                data.ministry_ids.filter((id) => id !== m.id),
-                                                            );
-                                                        }
-                                                    }}
-                                                    className="rounded border-zinc-300 dark:border-zinc-600 text-zinc-900 focus:ring-zinc-500"
-                                                />
-                                                <span className="text-sm text-zinc-900 dark:text-white">{m.name}</span>
-                                            </label>
-                                        ))
-                                    )}
-                                </div>
+                                {ministries.length === 0 ? (
+                                    <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                                        Nenhum departamento cadastrado.
+                                    </p>
+                                ) : (
+                                    <SortedMultiCheckboxList
+                                        options={ministries.map((m) => ({ id: m.id, name: m.name }))}
+                                        selectedIds={data.ministry_ids}
+                                        onChange={(ids) => setData('ministry_ids', ids)}
+                                        maxHeightClass="max-h-48"
+                                        emptyMessage="Nenhum departamento cadastrado."
+                                    />
+                                )}
                                 <InputError message={errors.ministry_ids} className="mt-1" />
                             </section>
 
@@ -1007,28 +993,13 @@ export default function Index({
                                 {isMinistryLeader ? (
                                     <div>
                                         <InputLabel value="Departamentos que este líder gerirá" />
-                                        <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-900/50 space-y-2">
-                                            {ministries.map((m) => (
-                                                <label key={`lead-${m.id}`} className="flex cursor-pointer items-center gap-2">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={data.app_ministry_ids.includes(m.id)}
-                                                        onChange={(e) => {
-                                                            if (e.target.checked) {
-                                                                setData('app_ministry_ids', [...data.app_ministry_ids, m.id]);
-                                                            } else {
-                                                                setData(
-                                                                    'app_ministry_ids',
-                                                                    data.app_ministry_ids.filter((id) => id !== m.id),
-                                                                );
-                                                            }
-                                                        }}
-                                                        className="rounded border-zinc-300 dark:border-zinc-600 text-zinc-900 focus:ring-zinc-500"
-                                                    />
-                                                    <span className="text-sm text-zinc-900 dark:text-white">{m.name}</span>
-                                                </label>
-                                            ))}
-                                        </div>
+                                        <SortedMultiCheckboxList
+                                            options={ministries.map((m) => ({ id: m.id, name: m.name }))}
+                                            selectedIds={data.app_ministry_ids}
+                                            onChange={(ids) => setData('app_ministry_ids', ids)}
+                                            maxHeightClass="max-h-48"
+                                            emptyMessage="Nenhum departamento cadastrado."
+                                        />
                                         <InputError message={errors.app_ministry_ids} className="mt-1" />
                                     </div>
                                 ) : null}
