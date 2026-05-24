@@ -2,12 +2,15 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Models\User;
 use App\Models\Volunteer;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class PasswordResetTest extends TestCase
@@ -19,6 +22,51 @@ class PasswordResetTest extends TestCase
         $response = $this->get('/forgot-password');
 
         $response->assertStatus(200);
+    }
+
+    public function test_forgot_password_hides_mail_log_hint_in_production_even_with_log_mailer(): void
+    {
+        config(['mail.default' => 'log', 'app.env' => 'production']);
+        $this->app['env'] = 'production';
+
+        $this->get('/forgot-password')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Auth/ForgotPassword')
+                ->where('showMailLogHint', false));
+    }
+
+    public function test_forgot_password_shows_mail_log_hint_outside_production_with_log_mailer(): void
+    {
+        config(['mail.default' => 'log']);
+
+        $this->app->detectEnvironment(fn () => 'local');
+
+        $this->get('/forgot-password')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Auth/ForgotPassword')
+                ->where('showMailLogHint', true));
+    }
+
+    public function test_reset_password_link_is_blocked_in_production_when_mail_mailer_is_log(): void
+    {
+        Notification::fake();
+
+        config(['mail.default' => 'log', 'app.env' => 'production']);
+        $this->app['env'] = 'production';
+
+        $user = User::factory()->create();
+        $request = Request::create('/forgot-password', 'POST', ['email' => $user->email]);
+
+        try {
+            app(PasswordResetLinkController::class)->store($request);
+            $this->fail('Expected validation exception when mail is log in production.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('email', $exception->errors());
+        }
+
+        Notification::assertNothingSent();
     }
 
     public function test_reset_password_link_can_be_requested(): void

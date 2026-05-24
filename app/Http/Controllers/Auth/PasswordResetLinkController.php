@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Support\VolunteerAppLogin;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -20,7 +21,7 @@ class PasswordResetLinkController extends Controller
     {
         return Inertia::render('Auth/ForgotPassword', [
             'status' => session('status'),
-            'showMailLogHint' => config('mail.default') === 'log',
+            'showMailLogHint' => ! app()->isProduction() && config('mail.default') === 'log',
         ]);
     }
 
@@ -41,6 +42,17 @@ class PasswordResetLinkController extends Controller
         if ($user === null || trim((string) $user->email) === '') {
             throw ValidationException::withMessages([
                 'email' => [trans('passwords.user')],
+            ]);
+        }
+
+        if (app()->isProduction() && config('mail.default') === 'log') {
+            Log::critical('Recuperação de senha bloqueada: MAIL_MAILER=log em produção.', [
+                'login' => $validated['email'],
+                'user_email' => $user->email,
+            ]);
+
+            throw ValidationException::withMessages([
+                'email' => ['O envio de e-mail ainda não está configurado no servidor. Peça ajuda à equipe técnica.'],
             ]);
         }
 

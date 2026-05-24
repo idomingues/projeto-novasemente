@@ -129,6 +129,21 @@ php artisan config:cache
 
 Confirme que `APP_KEY`, `DB_*`, `MAIL_*`, etc. estão corretos no `.env` de produção. O dump **não** altera o `.env`.
 
+**E-mail (Brevo):** guia completo em [`scripts/brevo-setup.md`](brevo-setup.md). Resumo no `.env` de produção:
+
+```env
+MAIL_MAILER=smtp
+MAIL_HOST=smtp-relay.brevo.com
+MAIL_PORT=587
+MAIL_SCHEME=smtp
+MAIL_USERNAME=<login-brevo>
+MAIL_PASSWORD=<chave-smtp-brevo>
+MAIL_FROM_ADDRESS="noreply@novasemente.com.br"
+MAIL_FROM_NAME="Nova Semente"
+```
+
+Depois: `php artisan config:cache` e `php artisan mail:check --send=seu@email.com`.
+
 ---
 
 ## Migrations importantes (últimas alterações)
