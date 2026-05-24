@@ -112,6 +112,7 @@ class VolunteerPipelineLeadController extends Controller
         }
         $roster = VolunteerChurchRosterBuilder::paginated($request, (int) $churchId, $user, 25, false);
         $stages = $roster['stages'];
+        $adminWorkflowBlankVolunteerCount = $roster['adminWorkflowBlankVolunteerCount'] ?? 0;
         $archivedVolunteerCount = $roster['archivedVolunteerCount'];
         $volunteers = $roster['volunteers'];
         $ministries = $roster['ministries'];
@@ -140,6 +141,7 @@ class VolunteerPipelineLeadController extends Controller
             'secao' => $secao,
             'canManageVolunteerRequests' => $canManageVolunteerRequests,
             'stages' => $stages,
+            'adminWorkflowBlankVolunteerCount' => $adminWorkflowBlankVolunteerCount,
             'archivedVolunteerCount' => $archivedVolunteerCount,
             'volunteers' => $volunteers,
             'filters' => $filters,

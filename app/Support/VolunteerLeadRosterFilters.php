@@ -5,11 +5,27 @@ namespace App\Support;
 use App\Models\Volunteer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class VolunteerLeadRosterFilters
 {
     /** Filtro especial na barra «Fases» (não é registro em volunteer_pipeline_stages). */
     public const PIPELINE_STAGE_ARCHIVED = 'arquivados';
+
+    public const PIPELINE_STAGE_ADMIN_WORKFLOW_BLANK = 'sem-fase-principal';
+
+    public const SORT_NAME = 'name';
+
+    public const SORT_CREATED_AT = 'created_at';
+
+    /** Fase principal (admin); em líder de ministério usa a fase do quadro. */
+    public const SORT_WORKFLOW_STAGE = 'workflow_stage';
+
+    public const SORT_PIPELINE_STAGE = 'stage';
+
+    public const DEFAULT_SORT = self::SORT_NAME;
+
+    public const DEFAULT_SORT_DIR = 'asc';
 
     public static function showsArchivedRoster(Request $request): bool
     {
@@ -26,7 +42,12 @@ class VolunteerLeadRosterFilters
             return self::PIPELINE_STAGE_ARCHIVED;
         }
 
-        return trim((string) $request->input('pipeline_stage_id', ''));
+        $sid = trim((string) $request->input('pipeline_stage_id', ''));
+        if ($sid === self::PIPELINE_STAGE_ADMIN_WORKFLOW_BLANK) {
+            return self::PIPELINE_STAGE_ADMIN_WORKFLOW_BLANK;
+        }
+
+        return $sid;
     }
 
     /**
@@ -176,9 +197,91 @@ class VolunteerLeadRosterFilters
         }
 
         $sid = $request->input('pipeline_stage_id');
+        if ($sid === self::PIPELINE_STAGE_ADMIN_WORKFLOW_BLANK) {
+            $allowed = VolunteerPipelineBootstrap::adminWorkflowStageIdsForChurch($churchId);
+            if ($allowed === []) {
+                $allowed = [-1];
+            }
+
+            $q->whereHas('churchPipelines', function ($p) use ($churchId, $allowed) {
+                $p->where('church_id', $churchId)
+                    ->whereNull('admin_workflow_stage_id')
+                    ->where(function ($sub) use ($allowed) {
+                        $sub->whereNull('stage_id')->orWhereNotIn('stage_id', $allowed);
+                    });
+            });
+
+            return;
+        }
         if ($sid !== null && $sid !== '' && $sid !== self::PIPELINE_STAGE_ARCHIVED && is_numeric($sid)) {
             $q->whereHas('churchPipelines', fn ($p) => $p->where('church_id', $churchId)->where('stage_id', (int) $sid));
         }
+    }
+
+    public static function normalizedSort(Request $request): string
+    {
+        $sort = trim((string) $request->input('sort', self::DEFAULT_SORT));
+
+        return in_array($sort, [self::SORT_NAME, self::SORT_CREATED_AT, self::SORT_WORKFLOW_STAGE, self::SORT_PIPELINE_STAGE], true)
+            ? $sort
+            : self::DEFAULT_SORT;
+    }
+
+    public static function normalizedSortDir(Request $request): string
+    {
+        $dir = strtolower(trim((string) $request->input('sort_dir', self::DEFAULT_SORT_DIR)));
+
+        return $dir === 'desc' ? 'desc' : 'asc';
+    }
+
+    /**
+     * @param  Builder<Volunteer>  $q
+     */
+    public static function applySort(Request $request, Builder $q, int $churchId, bool $useAdminWorkflowStageSort): void
+    {
+        $sort = self::normalizedSort($request);
+        $dir = self::normalizedSortDir($request);
+
+        if ($sort === self::SORT_CREATED_AT) {
+            $q->orderBy('volunteers.created_at', $dir)->orderBy('volunteers.name');
+
+            return;
+        }
+
+        if ($sort === self::SORT_WORKFLOW_STAGE || $sort === self::SORT_PIPELINE_STAGE) {
+            self::applyStageSort($q, $churchId, $useAdminWorkflowStageSort && $sort === self::SORT_WORKFLOW_STAGE, $dir);
+
+            return;
+        }
+
+        $q->orderBy('volunteers.name', $dir)->orderBy('volunteers.id', $dir);
+    }
+
+    /**
+     * @param  Builder<Volunteer>  $q
+     */
+    private static function applyStageSort(Builder $q, int $churchId, bool $adminWorkflow, string $dir): void
+    {
+        $q->leftJoin('volunteer_church_pipelines as roster_pipe', function ($join) use ($churchId) {
+            $join->on('volunteers.id', '=', 'roster_pipe.volunteer_id')
+                ->where('roster_pipe.church_id', '=', $churchId);
+        });
+
+        if ($adminWorkflow && Schema::hasColumn('volunteer_church_pipelines', 'admin_workflow_stage_id')) {
+            $q->leftJoin('volunteer_pipeline_stages as roster_stage_admin', 'roster_pipe.admin_workflow_stage_id', '=', 'roster_stage_admin.id')
+                ->leftJoin('volunteer_pipeline_stages as roster_stage_pipe', 'roster_pipe.stage_id', '=', 'roster_stage_pipe.id');
+            $sortOrderExpr = 'COALESCE(roster_stage_admin.sort_order, roster_stage_pipe.sort_order, 999999)';
+            $nameExpr = "COALESCE(NULLIF(TRIM(roster_stage_admin.name), ''), NULLIF(TRIM(roster_stage_pipe.name), ''), 'zzz')";
+        } else {
+            $q->leftJoin('volunteer_pipeline_stages as roster_stage_pipe', 'roster_pipe.stage_id', '=', 'roster_stage_pipe.id');
+            $sortOrderExpr = 'COALESCE(roster_stage_pipe.sort_order, 999999)';
+            $nameExpr = "COALESCE(NULLIF(TRIM(roster_stage_pipe.name), ''), 'zzz')";
+        }
+
+        $q->select('volunteers.*')
+            ->orderByRaw("{$sortOrderExpr} {$dir}")
+            ->orderByRaw("{$nameExpr} {$dir}")
+            ->orderBy('volunteers.name');
     }
 
     /**
@@ -214,6 +317,8 @@ class VolunteerLeadRosterFilters
             'text_interest' => trim((string) $request->input('text_interest', '')),
             'pipeline_stage_id' => self::normalizedPipelineStageId($request),
             'arquivados' => self::showsArchivedRoster($request),
+            'sort' => self::normalizedSort($request),
+            'sort_dir' => self::normalizedSortDir($request),
         ];
     }
 }

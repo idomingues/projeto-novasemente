@@ -36,12 +36,16 @@ class MobileSupportGuestTest extends TestCase
         ]);
 
         $this->get(route('mobile.support.ticket', ['token' => $token]))
+            ->assertRedirect(route('mobile.support.index', ['modal' => $token]));
+
+        $this->get(route('mobile.support.index', ['modal' => $token]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('Mobile/SupportTicket')
-                ->where('isGuestTicket', true)
-                ->where('guestName', 'Visitante')
-                ->where('canChat', false)
+                ->component('Mobile/Support')
+                ->has('modalDetail')
+                ->where('modalDetail.isGuestTicket', true)
+                ->where('modalDetail.guestName', 'Visitante')
+                ->where('modalDetail.canChat', false)
             );
     }
 
@@ -72,12 +76,13 @@ class MobileSupportGuestTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->get(route('mobile.support.ticket', ['token' => $token]))
+            ->get(route('mobile.support.index', ['modal' => $token]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('Mobile/SupportTicket')
-                ->where('canChat', true)
-                ->where('isGuestTicket', false)
+                ->component('Mobile/Support')
+                ->has('modalDetail')
+                ->where('modalDetail.canChat', true)
+                ->where('modalDetail.isGuestTicket', false)
             );
     }
 }

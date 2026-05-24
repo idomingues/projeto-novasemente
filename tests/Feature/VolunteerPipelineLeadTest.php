@@ -335,6 +335,78 @@ class VolunteerPipelineLeadTest extends TestCase
             ->assertRedirect(route('ministry-lead.volunteers.index', ['secao' => 'quadro']));
     }
 
+    public function test_roster_shows_encaminhado_as_admin_workflow_stage_when_pipeline_stage_is_encaminhado(): void
+    {
+        $admin = $this->actingAsAdmin();
+        $church = Church::query()->firstOrFail();
+        $ministry = Ministry::query()->where('church_id', $church->id)->firstOrFail();
+
+        $this->actingAs($admin)->post('/volunteers', [
+            'name' => 'Lista Fase Principal',
+            'email' => 'lista.fase.principal@example.com',
+            'ministry_ids' => [$ministry->id],
+            'active' => '1',
+            'app_password' => 'secret123',
+            'app_password_confirmation' => 'secret123',
+        ]);
+
+        $volunteer = Volunteer::query()->where('email', 'lista.fase.principal@example.com')->firstOrFail();
+
+        \App\Support\VolunteerPipelineBootstrap::moveVolunteerToStageByNormalizedName($volunteer, (int) $church->id, 'encaminhado');
+
+        $encaminhadoId = \App\Models\VolunteerPipelineStage::query()
+            ->where('church_id', $church->id)
+            ->whereRaw('LOWER(TRIM(name)) = ?', ['encaminhado'])
+            ->value('id');
+
+        $this->assertNotNull($encaminhadoId);
+
+        $response = $this->actingAs($admin)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('ministry-lead.volunteers.index', [
+                'secao' => 'quadro',
+                'pipeline_stage_id' => (string) $encaminhadoId,
+            ]))
+            ->assertOk();
+
+        $row = collect($response->viewData('page')['props']['volunteers']['data'])
+            ->firstWhere('id', $volunteer->id);
+
+        $this->assertNotNull($row);
+        $this->assertSame('Encaminhado', $row['adminWorkflowStageName']);
+    }
+
+    public function test_admin_can_filter_sem_fase_principal(): void
+    {
+        $admin = $this->actingAsAdmin();
+        $church = Church::query()->firstOrFail();
+        $ministry = Ministry::query()->where('church_id', $church->id)->firstOrFail();
+
+        $this->actingAs($admin)->post('/volunteers', [
+            'name' => 'Filtro Sem Fase Principal',
+            'email' => 'filtro.sem.fase.principal@example.com',
+            'ministry_ids' => [$ministry->id],
+            'active' => '1',
+            'app_password' => 'secret123',
+            'app_password_confirmation' => 'secret123',
+        ]);
+
+        $volunteer = Volunteer::query()->where('email', 'filtro.sem.fase.principal@example.com')->firstOrFail();
+
+        \App\Support\VolunteerPipelineBootstrap::moveVolunteerToStageByNormalizedName($volunteer, (int) $church->id, 'em treinamento');
+
+        $response = $this->actingAs($admin)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('ministry-lead.volunteers.index', [
+                'secao' => 'quadro',
+                'pipeline_stage_id' => \App\Support\VolunteerLeadRosterFilters::PIPELINE_STAGE_ADMIN_WORKFLOW_BLANK,
+            ]))
+            ->assertOk();
+
+        $ids = collect($response->viewData('page')['props']['volunteers']['data'])->pluck('id')->all();
+        $this->assertContains($volunteer->id, $ids);
+    }
+
     public function test_admin_workflow_stage_is_empty_by_default_even_when_pipeline_stage_is_encaminhado(): void
     {
         $admin = $this->actingAsAdmin();
@@ -412,5 +484,115 @@ class VolunteerPipelineLeadTest extends TestCase
         $pipe->refresh();
         $this->assertNull($pipe->admin_workflow_stage_id);
         $this->assertSame((int) $finalizadoId, (int) $pipe->stage_id);
+    }
+
+    public function test_pipeline_index_exposes_default_sort_in_filters(): void
+    {
+        $admin = $this->actingAsAdmin();
+        $church = Church::query()->firstOrFail();
+
+        $response = $this->actingAs($admin)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('ministry-lead.volunteers.index', ['secao' => 'quadro']))
+            ->assertOk();
+
+        $response->assertInertia(fn ($page) => $page
+            ->where('filters.sort', 'name')
+            ->where('filters.sort_dir', 'asc'));
+    }
+
+    public function test_pipeline_list_includes_ministry_phases_as_department_arrow_phase(): void
+    {
+        $admin = $this->actingAsAdmin();
+        $church = Church::query()->firstOrFail();
+        $ministry = Ministry::query()->where('church_id', $church->id)->firstOrFail();
+
+        $this->actingAs($admin)->post('/volunteers', [
+            'name' => 'Fases Depto Lista',
+            'email' => 'fases.depto.lista@example.com',
+            'ministry_ids' => [$ministry->id],
+            'active' => '1',
+            'app_password' => 'secret123',
+            'app_password_confirmation' => 'secret123',
+        ]);
+
+        $volunteer = Volunteer::query()->where('email', 'fases.depto.lista@example.com')->firstOrFail();
+
+        VolunteerMinistryInvitation::query()->create([
+            'church_id' => $church->id,
+            'volunteer_id' => $volunteer->id,
+            'ministry_id' => $ministry->id,
+            'invited_by_user_id' => $admin->id,
+            'token' => VolunteerMinistryInvitation::createToken(),
+            'status' => 'accepted',
+            'accepted_at' => now(),
+            'leader_status' => 'training',
+            'leader_status_set_by_user_id' => $admin->id,
+            'leader_status_set_at' => now(),
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('ministry-lead.volunteers.index', ['secao' => 'quadro']))
+            ->assertOk();
+
+        $row = collect($response->viewData('page')['props']['volunteers']['data'])
+            ->firstWhere('id', $volunteer->id);
+
+        $this->assertNotNull($row);
+        $this->assertSame([
+            [
+                'ministryName' => $ministry->name,
+                'phaseLabel' => 'Em treinamento',
+            ],
+        ], $row['ministryPhases']);
+    }
+
+    public function test_pipeline_can_sort_volunteers_by_created_at_desc(): void
+    {
+        $admin = $this->actingAsAdmin();
+        $church = Church::query()->firstOrFail();
+        $ministry = Ministry::query()->where('church_id', $church->id)->firstOrFail();
+
+        $this->actingAs($admin)->post('/volunteers', [
+            'name' => 'Antigo Sort',
+            'email' => 'antigo.sort@example.com',
+            'ministry_ids' => [$ministry->id],
+            'active' => '1',
+            'app_password' => 'secret123',
+            'app_password_confirmation' => 'secret123',
+        ]);
+
+        $older = Volunteer::query()->where('email', 'antigo.sort@example.com')->firstOrFail();
+        $older->forceFill(['created_at' => now()->subDays(10)])->save();
+
+        $this->actingAs($admin)->post('/volunteers', [
+            'name' => 'Recente Sort',
+            'email' => 'recente.sort@example.com',
+            'ministry_ids' => [$ministry->id],
+            'active' => '1',
+            'app_password' => 'secret123',
+            'app_password_confirmation' => 'secret123',
+        ]);
+
+        $newer = Volunteer::query()->where('email', 'recente.sort@example.com')->firstOrFail();
+        $newer->forceFill(['created_at' => now()->subDay()])->save();
+
+        $response = $this->actingAs($admin)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('ministry-lead.volunteers.index', [
+                'secao' => 'quadro',
+                'sort' => 'created_at',
+                'sort_dir' => 'desc',
+            ]))
+            ->assertOk();
+
+        $names = collect($response->viewData('page')['props']['volunteers']['data'])->pluck('name')->all();
+        $recenteIndex = array_search('Recente Sort', $names, true);
+        $antigoIndex = array_search('Antigo Sort', $names, true);
+
+        $this->assertNotFalse($recenteIndex);
+        $this->assertNotFalse($antigoIndex);
+        $this->assertLessThan($antigoIndex, $recenteIndex);
     }
 }

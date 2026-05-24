@@ -102,10 +102,18 @@ class MobileSupportController extends Controller
                 ->all();
         }
 
+        $modalDetail = null;
+        $modalToken = $request->query('modal');
+        if (is_string($modalToken) && $modalToken !== '') {
+            $modalDetail = $this->ticketPagePayloadForModal($request, $modalToken);
+        }
+
         return Inertia::render('Mobile/Support', [
             'tickets' => $tickets,
             'isAuthenticated' => (bool) $user,
             'userName' => $user?->name,
+            'supportIndexUrl' => route('mobile.support.index', [], false),
+            'modalDetail' => $modalDetail,
         ]);
     }
 
@@ -146,40 +154,79 @@ class MobileSupportController extends Controller
 
         app(SupportTicketChatNotifier::class)->notifyStaffOfNewTicket($ticket, $user);
 
-        return redirect()->route('mobile.support.ticket', ['token' => $ticket->public_token]);
+        return redirect()->route('mobile.support.index', ['modal' => $ticket->public_token]);
     }
 
-    public function ticket(Request $request, string $token): Response
+    public function ticket(Request $request, string $token): RedirectResponse
     {
+        return redirect()->route('mobile.support.index', ['modal' => $token]);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function ticketPagePayloadForModal(Request $request, string $token): ?array
+    {
+        $ticket = AppSupportTicket::query()->where('public_token', $token)->first();
+        if (! $ticket) {
+            return null;
+        }
+
         $user = $request->user();
         $isAdmin = $this->isAdmin($user);
 
-        $ticket = AppSupportTicket::query()->where('public_token', $token)->firstOrFail();
-
         if ($ticket->type === 'development' && ! $isAdmin) {
-            abort(403);
+            return null;
         }
 
         $isOwner = $user && $ticket->user_id && (int) $ticket->user_id === (int) $user->id;
         if ($isOwner && $ticket->user_hidden_at) {
-            abort(403);
+            return null;
         }
+
         $isGuestTicket = empty($ticket->user_id);
         $hasOwner = ! empty($ticket->user_id);
         $isSupportStaff = $this->canReplyAsSupportStaff($user);
         $isPastoralStaff = $this->canReplyAsPastoralStaff($user, $ticket);
         $canAccess = $isAdmin || $isOwner || $isSupportStaff || $isPastoralStaff || $isGuestTicket;
-        abort_unless($canAccess, 403);
+        if (! $canAccess) {
+            return null;
+        }
 
+        return $this->buildTicketPageProps(
+            $request,
+            $ticket,
+            $user,
+            $isAdmin,
+            (bool) $isOwner,
+            $isGuestTicket,
+            $hasOwner,
+            $isSupportStaff,
+            $isPastoralStaff,
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildTicketPageProps(
+        Request $request,
+        AppSupportTicket $ticket,
+        ?User $user,
+        bool $isAdmin,
+        bool $isOwner,
+        bool $isGuestTicket,
+        bool $hasOwner,
+        bool $isSupportStaff,
+        bool $isPastoralStaff,
+    ): array {
         $canChat = (bool) $hasOwner
             && AppSupportTicket::isActiveStatus((string) $ticket->status)
             && ($isAdmin || $isOwner || $isSupportStaff || $isPastoralStaff);
 
         $staffReplySendsOwnerEmail = $canChat && ($isAdmin || $isSupportStaff || $isPastoralStaff);
 
-        $messages = $this->ticketMessagesPayload($ticket);
-
-        return Inertia::render('Mobile/SupportTicket', [
+        return [
             'ticket' => [
                 'publicToken' => $ticket->public_token,
                 'type' => $ticket->type,
@@ -194,7 +241,7 @@ class MobileSupportController extends Controller
                 'createdAt' => $ticket->created_at?->toIso8601String(),
                 'closedAt' => $ticket->closed_at?->toIso8601String(),
             ],
-            'messages' => $messages,
+            'messages' => $this->ticketMessagesPayload($ticket),
             'canChat' => $canChat,
             'isAdmin' => $isAdmin,
             'staffReplySendsOwnerEmail' => $staffReplySendsOwnerEmail,
@@ -205,7 +252,7 @@ class MobileSupportController extends Controller
             'hideFromMyAppUrl' => ($isOwner && ! $isAdmin)
                 ? route('mobile.support.ticket.hide', ['token' => $ticket->public_token], false)
                 : null,
-        ]);
+        ];
     }
 
     /**
@@ -338,7 +385,7 @@ class MobileSupportController extends Controller
             ]);
         }
 
-        return redirect()->route('mobile.support.ticket', ['token' => $ticket->public_token]);
+        return redirect()->route('mobile.support.index', ['modal' => $ticket->public_token]);
     }
 
     public function closeTicket(Request $request, string $token): Response
@@ -381,7 +428,7 @@ class MobileSupportController extends Controller
             );
         }
 
-        return redirect()->route('mobile.support.ticket', ['token' => $ticket->public_token]);
+        return redirect()->route('mobile.support.index', ['modal' => $ticket->public_token]);
     }
 
     public function hideFromUser(Request $request, string $token): RedirectResponse

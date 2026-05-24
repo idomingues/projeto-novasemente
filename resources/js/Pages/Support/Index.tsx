@@ -19,6 +19,7 @@ type TicketRow = {
     statusLabel: string;
     message: string;
     solutionText: string | null;
+    forecastAt: string | null;
     createdAt: string;
     updatedAt: string;
     ownerLabel: string;
@@ -112,6 +113,20 @@ export default function SupportIndex({
             day: date.toLocaleDateString('pt-BR', { day: '2-digit' }),
             month: date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''),
         };
+    };
+
+    const formatRequestDate = (iso: string) => {
+        try {
+            return new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+        } catch {
+            return '—';
+        }
+    };
+
+    const formatForecastDate = (isoDate: string) => {
+        const [y, m, d] = isoDate.split('-').map(Number);
+        const date = new Date(y, m - 1, d);
+        return date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
     };
 
     const statusTone = (status: string) => {
@@ -232,6 +247,24 @@ export default function SupportIndex({
                                         </div>
                                         <div className="text-sm text-zinc-700 dark:text-zinc-200 mt-2 whitespace-pre-wrap line-clamp-3">
                                             {t.message}
+                                        </div>
+                                        <div className="mt-2 space-y-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                            <p>
+                                                <span className="font-medium text-zinc-600 dark:text-zinc-300">Data do pedido:</span>{' '}
+                                                {formatRequestDate(t.createdAt)}
+                                            </p>
+                                            {t.forecastAt ? (
+                                                <p>
+                                                    <span className="font-medium text-zinc-600 dark:text-zinc-300">Previsão:</span>{' '}
+                                                    {formatForecastDate(t.forecastAt)}
+                                                </p>
+                                            ) : null}
+                                            {t.solutionText ? (
+                                                <p className="text-sm text-zinc-700 dark:text-zinc-200">
+                                                    <span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Solução:</span>{' '}
+                                                    <span className="whitespace-pre-wrap line-clamp-2">{t.solutionText}</span>
+                                                </p>
+                                            ) : null}
                                         </div>
                                     </div>
                                     <div className="flex items-start gap-2">

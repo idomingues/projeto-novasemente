@@ -3,6 +3,7 @@
 namespace Tests\Feature\Auth;
 
 use App\Models\User;
+use App\Models\Volunteer;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -121,6 +122,32 @@ class PasswordResetTest extends TestCase
 
         $login->assertRedirect(route('mobile.home'));
         $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_reset_password_link_can_be_requested_when_email_is_only_on_volunteer_record(): void
+    {
+        Notification::fake();
+
+        $user = User::withoutEvents(fn () => User::create([
+            'name' => 'Marly Domingues',
+            'email' => null,
+            'password' => Hash::make('123456'),
+        ]));
+
+        Volunteer::query()->create([
+            'name' => 'Marly Domingues',
+            'email' => 'marly@gmail.com.br',
+            'user_id' => $user->id,
+            'active' => true,
+        ]);
+
+        $response = $this->post('/forgot-password', ['email' => 'marly@gmail.com.br']);
+
+        $response->assertStatus(303);
+        $response->assertSessionHas('status');
+
+        Notification::assertSentTo($user->fresh(), ResetPassword::class);
+        $this->assertSame('marly@gmail.com.br', $user->fresh()->email);
     }
 
     public function test_unknown_email_shows_friendly_error(): void

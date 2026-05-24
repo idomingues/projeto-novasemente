@@ -1,0 +1,326 @@
+import { router, useForm } from '@inertiajs/react';
+import { useEffect, useState, FormEventHandler } from 'react';
+import { confirmAction } from '@/utils/confirmDialog';
+import { CheckCircleIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
+import PrimaryButton from '@/Components/PrimaryButton';
+import SecondaryButton from '@/Components/SecondaryButton';
+import InputLabel from '@/Components/InputLabel';
+import Textarea from '@/Components/Textarea';
+import InputError from '@/Components/InputError';
+import { CHAT_MESSAGE_SENDS_EMAIL_SUBTITLE } from '@/constants/chatEmailNotice';
+import { Link } from '@inertiajs/react';
+
+type ChatMessage = {
+    id: number;
+    senderType: 'admin' | 'user' | string;
+    senderUserId: number | null;
+    senderName?: string | null;
+    content: string;
+    createdAt: string;
+};
+
+export type MobileSupportTicketPanelTicket = {
+    publicToken: string;
+    typeLabel: string;
+    status: string;
+    statusLabel?: string;
+    message: string;
+    screenshotUrl?: string | null;
+    screenshotExternalUrl?: string | null;
+    solutionText: string | null;
+    forecastAt?: string | null;
+    createdAt: string;
+    closedAt: string | null;
+};
+
+export type MobileSupportTicketPanelProps = {
+    ticket: MobileSupportTicketPanelTicket;
+    messages: ChatMessage[];
+    canChat: boolean;
+    showMessages: boolean;
+    isAuthenticated: boolean;
+    isAdmin: boolean;
+    staffReplySendsOwnerEmail?: boolean;
+    hideFromMyAppUrl?: string | null;
+    isGuestTicket?: boolean;
+    guestName?: string | null;
+};
+
+function formatTime(iso: string): string {
+    const d = new Date(iso);
+    return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+function formatForecastDate(isoDate: string): string {
+    const [y, m, d] = isoDate.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    return date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+export default function MobileSupportTicketPanel({
+    ticket,
+    messages,
+    canChat,
+    showMessages,
+    isAuthenticated,
+    isAdmin,
+    staffReplySendsOwnerEmail = false,
+    hideFromMyAppUrl = null,
+    isGuestTicket = false,
+    guestName = null,
+}: MobileSupportTicketPanelProps) {
+    const inertiaScrollOpts = { preserveScroll: true };
+
+    const { data, setData, post, patch, processing, errors, reset } = useForm({
+        content: '',
+        solution_text: '',
+    });
+
+    const [showCloseModal, setShowCloseModal] = useState(false);
+
+    useEffect(() => {
+        if (!showCloseModal) {
+            setData('solution_text', '');
+        }
+    }, [showCloseModal]);
+
+    const isClosed = !['open', 'in_progress', 'waiting_user'].includes(ticket.status);
+
+    const sendMessage: FormEventHandler = (e) => {
+        e.preventDefault();
+        if (!data.content.trim()) return;
+        post(route('mobile.support.messages.store', { token: ticket.publicToken }), {
+            onSuccess: () => {
+                reset('content');
+            },
+            ...inertiaScrollOpts,
+        });
+    };
+
+    const closeTicket = () => {
+        patch(route('mobile.support.close', { token: ticket.publicToken }), {
+            onSuccess: () => setShowCloseModal(false),
+            ...inertiaScrollOpts,
+        });
+    };
+
+    return (
+        <div className="space-y-4">
+            <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                        <div className="text-sm font-semibold text-zinc-900 dark:text-white">{ticket.typeLabel}</div>
+                        <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                            {ticket.statusLabel ?? (isClosed ? 'Encerrado' : 'Em andamento')}
+                            {ticket.closedAt ? ` · ${formatTime(ticket.closedAt)}` : ''}
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+                        <ChatBubbleLeftRightIcon className="h-4 w-4" />
+                        {isClosed ? (
+                            <span className="inline-flex items-center gap-1">
+                                <CheckCircleIcon className="h-4 w-4" /> Concluído
+                            </span>
+                        ) : (
+                            'Aberto'
+                        )}
+                    </div>
+                </div>
+
+                {guestName ? (
+                    <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                        Enviado por <span className="font-medium text-zinc-700 dark:text-zinc-300">{guestName}</span>
+                    </p>
+                ) : null}
+
+                {ticket.forecastAt && !isClosed ? (
+                    <div className="mt-3 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-100">
+                        <span className="font-semibold">Previsão de atendimento:</span> {formatForecastDate(ticket.forecastAt)}
+                    </div>
+                ) : null}
+
+                <div className="mt-3 whitespace-pre-wrap text-sm text-zinc-700 dark:text-zinc-200">{ticket.message}</div>
+                {ticket.screenshotUrl ? (
+                    <a href={ticket.screenshotUrl} target="_blank" rel="noreferrer" className="mt-3 block">
+                        <img
+                            src={ticket.screenshotUrl}
+                            alt="Print anexado ao chamado"
+                            className="max-h-72 rounded-xl border border-zinc-200 object-contain dark:border-zinc-700"
+                        />
+                    </a>
+                ) : null}
+                {ticket.screenshotExternalUrl ? (
+                    <a
+                        href={ticket.screenshotExternalUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-3 inline-flex text-sm font-medium text-brand-700 underline dark:text-brand-300"
+                    >
+                        Abrir link do print
+                    </a>
+                ) : null}
+                {hideFromMyAppUrl ? (
+                    <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50/90 p-3 dark:border-zinc-700 dark:bg-zinc-800/50">
+                        <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
+                            <span className="font-semibold text-zinc-800 dark:text-zinc-200">Confidencialidade:</span> pode remover
+                            este chamado da sua lista na app. A equipe de suporte mantém o registro.
+                        </p>
+                        <button
+                            type="button"
+                            className="mt-2 w-full rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-800 hover:bg-red-50 dark:border-red-900/50 dark:bg-zinc-900 dark:text-red-200 dark:hover:bg-red-950/30"
+                            onClick={async () => {
+                                const ok = await confirmAction({
+                                    title: 'Remover este chamado da sua app?',
+                                    text: 'Deixa de aparecer em «Os meus chamados». A equipe continua a poder ver o histórico.',
+                                    icon: 'warning',
+                                    danger: true,
+                                    confirmButtonText: 'Sim, remover da minha app',
+                                    cancelButtonText: 'Cancelar',
+                                });
+                                if (!ok || !hideFromMyAppUrl) return;
+                                router.post(hideFromMyAppUrl, {}, { preserveScroll: true });
+                            }}
+                        >
+                            Excluir conversa da minha app
+                        </button>
+                    </div>
+                ) : null}
+            </div>
+
+            {showMessages && messages.length > 0 && (
+                <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                    <div className="mb-3 text-xs font-semibold text-zinc-500 dark:text-zinc-400">Conversa</div>
+                    <div className="space-y-3">
+                        {messages.map((m) => {
+                            const isAdminMsg = m.senderType === 'admin';
+                            return (
+                                <div key={m.id} className={`flex ${isAdminMsg ? 'justify-start' : 'justify-end'}`}>
+                                    <div
+                                        className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
+                                            isAdminMsg
+                                                ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100'
+                                                : 'bg-brand-50 text-zinc-900 dark:bg-brand-900/30 dark:text-brand-100'
+                                        }`}
+                                    >
+                                        <div className="whitespace-pre-wrap">{m.content}</div>
+                                        <div className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">{formatTime(m.createdAt)}</div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
+            {!showMessages && ticket.status !== 'open' && (
+                <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                    <div className="mb-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">Solução</div>
+                    <div className="whitespace-pre-wrap text-sm text-zinc-700 dark:text-zinc-200">
+                        {ticket.solutionText ?? 'Solução não informada.'}
+                    </div>
+                </div>
+            )}
+
+            {!isClosed && !canChat && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+                    {isGuestTicket && !isAuthenticated ? (
+                        <>
+                            Chamado registrado com sucesso. Para conversar com a equipe de suporte,{' '}
+                            <Link href={route('login')} className="font-semibold underline">
+                                faça login
+                            </Link>{' '}
+                            e abra um novo chamado ou aguarde contato por e-mail, se informou seus dados.
+                        </>
+                    ) : (
+                        <>Este chamado está em andamento. Para enviar respostas, faça login na sua conta.</>
+                    )}
+                </div>
+            )}
+
+            {['resolved', 'closed'].includes(ticket.status) && ticket.solutionText && showMessages && (
+                <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                    <div className="mb-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">Solução</div>
+                    <div className="whitespace-pre-wrap text-sm text-zinc-700 dark:text-zinc-200">{ticket.solutionText}</div>
+                </div>
+            )}
+
+            {canChat && (
+                <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                    {staffReplySendsOwnerEmail ? (
+                        <div className="mb-3 flex items-start gap-2">
+                            <ChatBubbleLeftRightIcon className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                            <div className="min-w-0">
+                                <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Responder</h3>
+                                <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{CHAT_MESSAGE_SENDS_EMAIL_SUBTITLE}</p>
+                            </div>
+                        </div>
+                    ) : null}
+                    <form onSubmit={sendMessage} className="space-y-3">
+                        <div>
+                            <InputLabel value="Responder" />
+                            <Textarea
+                                value={data.content}
+                                onChange={(e) => setData('content', e.target.value)}
+                                rows={3}
+                                placeholder="Digite sua resposta..."
+                            />
+                            <InputError message={errors.content} className="mt-1" />
+                        </div>
+                        <div className="flex gap-2">
+                            <PrimaryButton type="submit" disabled={processing} className="flex-1">
+                                Enviar
+                            </PrimaryButton>
+                            <SecondaryButton type="button" onClick={() => setShowCloseModal(true)}>
+                                Encerrar
+                            </SecondaryButton>
+                        </div>
+                    </form>
+                </div>
+            )}
+
+            {showCloseModal && (
+                <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/30">
+                    <div className="w-full max-w-xl rounded-t-3xl border-t border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                        <div className="mb-2 text-lg font-semibold text-zinc-900 dark:text-white">Encerrar chamado</div>
+                        <div className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+                            {isAdmin
+                                ? 'Informe a solução para encerrar.'
+                                : 'Encerrar sem solução (se necessário, peça à equipe que detalhe).'}
+                        </div>
+                        {isAdmin && (
+                            <div>
+                                <InputLabel value="Solução" />
+                                <Textarea
+                                    value={data.solution_text}
+                                    onChange={(e) => setData('solution_text', e.target.value)}
+                                    rows={4}
+                                    placeholder="Descreva a solução para o caso..."
+                                />
+                                <InputError message={errors.solution_text} className="mt-1" />
+                            </div>
+                        )}
+                        {!isAdmin && (
+                            <div>
+                                <InputLabel value="Observação (opcional)" />
+                                <Textarea
+                                    value={data.solution_text}
+                                    onChange={(e) => setData('solution_text', e.target.value)}
+                                    rows={3}
+                                    placeholder="Se quiser, deixe uma observação..."
+                                />
+                            </div>
+                        )}
+                        <div className="mt-4 flex gap-2">
+                            <SecondaryButton type="button" className="flex-1" onClick={() => setShowCloseModal(false)}>
+                                Cancelar
+                            </SecondaryButton>
+                            <PrimaryButton type="button" className="flex-1" onClick={closeTicket} disabled={processing}>
+                                Encerrar
+                            </PrimaryButton>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}

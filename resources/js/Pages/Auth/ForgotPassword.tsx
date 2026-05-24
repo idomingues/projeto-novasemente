@@ -38,7 +38,8 @@ export default function ForgotPassword({
                         Esqueceu a senha?
                     </h1>
                     <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                        Informe o seu e-mail e enviaremos um link para redefinir a senha.
+                        Informe o mesmo e-mail que você usa para entrar (o do cadastro de voluntário, se for o caso).
+                        Enviaremos um link para redefinir a senha.
                     </p>
                 </div>
 

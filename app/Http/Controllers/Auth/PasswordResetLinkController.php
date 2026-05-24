@@ -3,8 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
-use App\Support\VolunteerContactDuplicateChecker;
+use App\Support\VolunteerAppLogin;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
@@ -36,10 +35,8 @@ class PasswordResetLinkController extends Controller
             'email' => ['required', 'string', 'email', 'max:255'],
         ]);
 
-        $emailNorm = VolunteerContactDuplicateChecker::normalizeEmail($validated['email']);
-        $user = $emailNorm
-            ? User::query()->whereRaw('LOWER(TRIM(COALESCE(email, ""))) = ?', [$emailNorm])->first()
-            : null;
+        // Mesma resolução do login: e-mail em users ou espelhado do cadastro de voluntário.
+        $user = VolunteerAppLogin::findUserByLogin($validated['email']);
 
         if ($user === null || trim((string) $user->email) === '') {
             throw ValidationException::withMessages([

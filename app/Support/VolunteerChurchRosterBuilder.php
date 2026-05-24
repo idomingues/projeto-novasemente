@@ -105,13 +105,19 @@ class VolunteerChurchRosterBuilder
                 'user:id,email',
                 'ministries' => fn ($m) => $m->where('church_id', $churchId),
                 'churchPipelines' => fn ($p) => $p->where('church_id', $churchId)->with(['stage', 'adminWorkflowStage']),
-                'ministryInvitations' => fn ($i) => $i->where('church_id', $churchId)->where('status', 'pending')->with('ministry:id,name'),
+                'ministryInvitations' => fn ($i) => $i->where('church_id', $churchId)->with('ministry:id,name,church_id'),
             ]);
 
         VolunteerLeadRosterFilters::apply($request, $q, $churchId);
         self::applyStaffArchivedFilter($q, $churchId, VolunteerLeadRosterFilters::showsArchivedRoster($request));
+        VolunteerLeadRosterFilters::applySort(
+            $request,
+            $q,
+            $churchId,
+            (bool) $user?->can('volunteers.manage'),
+        );
 
-        $volunteers = $q->orderBy('volunteers.name')->paginate($perPage)->withQueryString();
+        $volunteers = $q->paginate($perPage)->withQueryString();
 
         $volunteerIds = $volunteers->getCollection()->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
         $forwardedMinistryIdsByVolunteer = Schema::hasTable('volunteer_ministry_invitations')
@@ -119,6 +125,22 @@ class VolunteerChurchRosterBuilder
             : [];
 
         VolunteerPipelineBootstrap::ensureRecusaStagesForChurch($churchId);
+        $adminWorkflowBlankVolunteerCount = 0;
+        if (Schema::hasColumn('volunteer_church_pipelines', 'admin_workflow_stage_id')) {
+            $allowed = VolunteerPipelineBootstrap::adminWorkflowStageIdsForChurch($churchId);
+            if ($allowed === []) {
+                $allowed = [-1];
+            }
+            $adminWorkflowBlankVolunteerCount = VolunteerChurchPipeline::query()
+                ->where('church_id', $churchId)
+                ->whereNull('staff_archived_at')
+                ->whereNull('admin_workflow_stage_id')
+                ->where(function ($sub) use ($allowed) {
+                    $sub->whereNull('stage_id')->orWhereNotIn('stage_id', $allowed);
+                })
+                ->whereHas('volunteer', fn ($vq) => $vq->where('app_access_only', false))
+                ->count();
+        }
 
         $stages = VolunteerPipelineStage::query()
             ->where('church_id', $churchId)
@@ -157,17 +179,24 @@ class VolunteerChurchRosterBuilder
                     ? ['email' => $v->email, 'phone' => $v->phone, 'piiMasked' => false]
                     : self::maskContactForUser($user, $v->email, $v->phone);
                 $signals = VolunteerRosterSignals::forVolunteer($v);
-                $hasPendingInvite = $v->ministryInvitations->isNotEmpty();
+                $hasPendingInvite = $v->ministryInvitations->contains(fn ($inv) => $inv->isPending());
                 $pendingInviteMinistryNames = $v->ministryInvitations
+                    ->filter(fn ($inv) => $inv->isPending())
                     ->map(fn ($inv) => (string) ($inv->ministry?->name ?? ''))
                     ->filter(fn ($name) => trim($name) !== '')
                     ->sortBy(fn ($name) => mb_strtolower($name))
                     ->values()
                     ->all();
+                $ministryPhases = self::ministryPhasesForVolunteer($v, $churchId);
 
                 $adminWorkflowStageId = VolunteerPipelineBootstrap::resolveAdminWorkflowStageId(
                     $churchId,
                     $pipe?->admin_workflow_stage_id,
+                );
+                $effectiveAdminWorkflowStageId = VolunteerPipelineBootstrap::effectiveAdminWorkflowStageId(
+                    $churchId,
+                    $pipe?->admin_workflow_stage_id,
+                    $pipe?->stage_id,
                 );
 
                 return [
@@ -181,13 +210,14 @@ class VolunteerChurchRosterBuilder
                     'stageId' => $stage?->id,
                     'stageName' => $stage?->name ?? 'Não definido',
                     'adminWorkflowStageId' => $adminWorkflowStageId,
-                    'adminWorkflowStageName' => $adminWorkflowStageId !== null
-                        ? ($pipe?->adminWorkflowStage?->name ?? null)
+                    'adminWorkflowStageName' => $effectiveAdminWorkflowStageId !== null
+                        ? ($pipe?->adminWorkflowStage?->name ?? $stage?->name)
                         : null,
                     'pendingInvite' => $hasPendingInvite,
                     'pendingInviteMinistryNames' => array_values(array_unique($pendingInviteMinistryNames)),
                     'forwardedMinistryIds' => $forwardedMinistryIdsByVolunteer[(int) $v->id] ?? [],
                     'ministryNames' => $v->ministries->pluck('name')->values()->all(),
+                    'ministryPhases' => $ministryPhases,
                     'interestPreview' => self::truncateInterestPreview($v),
                     'signals' => [
                         'memberNs' => $signals['memberNs'],
@@ -208,11 +238,62 @@ class VolunteerChurchRosterBuilder
 
         return [
             'stages' => $stages,
+            'adminWorkflowBlankVolunteerCount' => $adminWorkflowBlankVolunteerCount,
             'archivedVolunteerCount' => $archivedVolunteerCount,
             'volunteers' => $volunteers,
             'filters' => VolunteerLeadRosterFilters::filterState($request),
             'ministries' => $ministries,
         ];
+    }
+
+    /**
+     * @return list<array{ministryName: string, phaseLabel: string}>
+     */
+    public static function ministryPhasesForVolunteer(Volunteer $v, int $churchId): array
+    {
+        $attached = $v->ministries
+            ->filter(fn (Ministry $m) => (int) $m->church_id === $churchId)
+            ->keyBy('id');
+
+        $invitations = Schema::hasTable('volunteer_ministry_invitations')
+            ? $v->ministryInvitations
+                ->filter(fn ($inv) => (int) $inv->church_id === $churchId)
+                ->keyBy('ministry_id')
+            : collect();
+
+        $ministryIds = $attached->keys()
+            ->merge($invitations->keys())
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->sortBy(fn (int $id) => mb_strtolower(
+                (string) ($attached->get($id)?->name ?? $invitations->get($id)?->ministry?->name ?? '')
+            ))
+            ->values();
+
+        $rows = [];
+        foreach ($ministryIds as $ministryId) {
+            $ministry = $attached->get($ministryId) ?? $invitations->get($ministryId)?->ministry;
+            $name = trim((string) ($ministry?->name ?? ''));
+            if ($name === '') {
+                continue;
+            }
+
+            $inv = $invitations->get($ministryId);
+            if ($inv?->isPending()) {
+                $phaseLabel = 'Convite pendente';
+            } elseif ($inv?->leader_status !== null && $inv->leader_status !== '') {
+                $phaseLabel = VolunteerLeaderStatusLabels::label($inv->leader_status);
+            } else {
+                $phaseLabel = '—';
+            }
+
+            $rows[] = [
+                'ministryName' => $name,
+                'phaseLabel' => $phaseLabel,
+            ];
+        }
+
+        return $rows;
     }
 
     public static function volunteersTableExists(): bool

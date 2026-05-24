@@ -7,7 +7,7 @@ import TextInput from '@/Components/TextInput';
 import { compressImageForUpload, ImageCompressError } from '@/utils/compressImageForUpload';
 import { Transition } from '@headlessui/react';
 import { Link, useForm, usePage } from '@inertiajs/react';
-import { FormEventHandler, useState } from 'react';
+import { FormEventHandler, useEffect, useMemo, useState } from 'react';
 
 interface VolunteerMinistry {
     id: number;
@@ -45,8 +45,8 @@ export default function UpdateProfileInformation({
             ? (page.props as { profileRedirectTo?: string }).profileRedirectTo
             : 'profile.edit';
 
-    const { data, setData, patch, errors, processing, recentlySuccessful } =
-        useForm({
+    const initialFormData = useMemo(
+        () => ({
             name: user.name,
             email: user.email,
             photo_file: null as File | null,
@@ -54,11 +54,38 @@ export default function UpdateProfileInformation({
             notify_via_email: user.notify_via_email !== false,
             notify_via_whatsapp: user.notify_via_whatsapp === true,
             redirect_to: profileRedirectTo,
-        });
+        }),
+        [
+            user.name,
+            user.email,
+            user.notify_via_app,
+            user.notify_via_email,
+            user.notify_via_whatsapp,
+            profileRedirectTo,
+        ],
+    );
+
+    const { data, setData, patch, errors, processing, recentlySuccessful } = useForm(initialFormData);
 
     const [photoPreparing, setPhotoPreparing] = useState(false);
     const [photoClientError, setPhotoClientError] = useState<string | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(user.photo_url ?? null);
+
+    useEffect(() => {
+        setData(initialFormData);
+        setPhotoPreview(user.photo_url ?? null);
+        setPhotoClientError(null);
+    }, [initialFormData, setData, user.photo_url]);
+
+    const errorMessages = useMemo(() => {
+        const list: string[] = [];
+        for (const value of Object.values(errors)) {
+            if (typeof value === 'string' && value.trim() !== '') {
+                list.push(value);
+            }
+        }
+        return list;
+    }, [errors]);
 
     const handlePhotoFile = async (raw: File | null) => {
         setPhotoClientError(null);
@@ -94,7 +121,13 @@ export default function UpdateProfileInformation({
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
 
-        patch(route('profile.update'), { forceFormData: true });
+        patch(route('profile.update'), {
+            forceFormData: data.photo_file instanceof File,
+            preserveScroll: true,
+            onError: () => {
+                document.getElementById('profile-form-errors')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            },
+        });
     };
 
     return (
@@ -110,6 +143,21 @@ export default function UpdateProfileInformation({
             </header>
 
             <form onSubmit={submit} className="mt-6 space-y-6">
+                {errorMessages.length > 0 ? (
+                    <div
+                        id="profile-form-errors"
+                        role="alert"
+                        className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-100"
+                    >
+                        <p className="font-semibold">Não foi possível salvar</p>
+                        <ul className="mt-2 list-disc space-y-1 pl-5">
+                            {errorMessages.map((message) => (
+                                <li key={message}>{message}</li>
+                            ))}
+                        </ul>
+                    </div>
+                ) : null}
+
                 <div>
                     <InputLabel value="Foto de perfil" />
                     <div className="mt-2">
@@ -212,8 +260,10 @@ export default function UpdateProfileInformation({
                     </div>
                 )}
 
-                <div className="flex items-center gap-4">
-                    <PrimaryButton disabled={processing}>Salvar</PrimaryButton>
+                <div className="flex flex-wrap items-center gap-4">
+                    <PrimaryButton disabled={processing || photoPreparing}>
+                        {processing ? 'Salvando…' : 'Salvar'}
+                    </PrimaryButton>
 
                     <Transition
                         show={recentlySuccessful}
@@ -222,8 +272,8 @@ export default function UpdateProfileInformation({
                         leave="transition ease-in-out"
                         leaveTo="opacity-0"
                     >
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                            Salvo.
+                        <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                            Perfil salvo com sucesso.
                         </p>
                     </Transition>
                 </div>

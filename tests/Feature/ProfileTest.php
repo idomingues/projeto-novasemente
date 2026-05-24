@@ -79,6 +79,74 @@ class ProfileTest extends TestCase
         );
     }
 
+    public function test_mobile_profile_update_redirects_with_success_flash(): void
+    {
+        $user = User::factory()->create(['email' => 'admin@example.com']);
+
+        $response = $this
+            ->actingAs($user)
+            ->patch('/profile', [
+                'name' => 'Admin',
+                'email' => 'novo.admin@example.com',
+                'notify_via_app' => true,
+                'notify_via_email' => true,
+                'notify_via_whatsapp' => false,
+                'redirect_to' => 'mobile.profile.edit',
+            ]);
+
+        $response
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('mobile.profile.edit', absolute: false))
+            ->assertSessionHas('success');
+
+        $user->refresh();
+        $this->assertSame('novo.admin@example.com', $user->email);
+    }
+
+    public function test_profile_update_shows_validation_error_when_email_is_taken(): void
+    {
+        User::factory()->create(['email' => 'ocupado@example.com']);
+        $user = User::factory()->create(['email' => 'admin@example.com']);
+
+        $response = $this
+            ->actingAs($user)
+            ->from(route('mobile.profile.edit'))
+            ->patch('/profile', [
+                'name' => $user->name,
+                'email' => 'ocupado@example.com',
+                'redirect_to' => 'mobile.profile.edit',
+            ]);
+
+        $response
+            ->assertSessionHasErrors('email')
+            ->assertRedirect(route('mobile.profile.edit', absolute: false));
+
+        $this->assertSame('admin@example.com', $user->fresh()->email);
+    }
+
+    public function test_profile_update_accepts_inertia_form_data_style_fields_without_photo(): void
+    {
+        $user = User::factory()->create(['email' => 'antes@example.com']);
+
+        $response = $this
+            ->actingAs($user)
+            ->patch('/profile', [
+                'name' => 'Nome Atualizado',
+                'email' => 'depois@example.com',
+                'notify_via_app' => '1',
+                'notify_via_email' => '1',
+                'notify_via_whatsapp' => '0',
+                'redirect_to' => 'mobile.profile.edit',
+                'photo_file' => '',
+            ]);
+
+        $response->assertSessionHasNoErrors()->assertRedirect(route('mobile.profile.edit', absolute: false));
+
+        $user->refresh();
+        $this->assertSame('depois@example.com', $user->email);
+        $this->assertSame('Nome Atualizado', $user->name);
+    }
+
     public function test_email_verification_status_is_unchanged_when_the_email_address_is_unchanged(): void
     {
         $user = User::factory()->create();

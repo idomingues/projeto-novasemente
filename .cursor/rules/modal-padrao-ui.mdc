@@ -1,0 +1,39 @@
+---
+description: Padrão UI do projeto — telas de detalhe/edição em modal (não página cheia)
+alwaysApply: true
+---
+
+# Telas em modal por padrão
+
+No projeto Nova Semente, **detalhe, edição e criação** de registos devem abrir em **modal** sobre a lista ou hub, **não** em rota/página dedicada em tela cheia.
+
+## O que fazer
+
+1. **Lista ou hub** como página principal (`Index`, `Support`, `Pipeline`, etc.).
+2. **Abrir modal** ao clicar num item ou no botão **+** (`Modal` + `AddButton` `variant="icon"`).
+3. **Query `modal`** (ou estado local) para carregar o payload do detalhe na mesma rota da lista, quando fizer sentido com Inertia.
+4. **Fechar** o modal: limpar query/estado, repor formulário, manter scroll (`preserveScroll`).
+5. **Componente reutilizável** do conteúdo (`*DetailPanel`, `*Panel`) com `variant="modal"` — evitar duplicar UI entre página e modal.
+
+## O que evitar
+
+- Nova rota `Show.tsx` / `Edit.tsx` em tela cheia só para ver ou editar um registro.
+- `Link` que navega para outra página quando o padrão do módulo é lista + modal.
+- Pré-selecionar a primeira opção de um `<select>` quando «nada» (`—`) for válido.
+
+## Exceções (só com motivo forte)
+
+- Fluxo **mobile** muito longo ou com passos sequenciais que não cabem no modal.
+- **Auth**, onboarding, culto ao vivo, páginas públicas sem lista pai.
+- Requisito explícito de produto para URL dedicada ou impressão/PDF.
+
+## Referências no código
+
+- Admin suporte: `resources/js/Pages/Support/Index.tsx` + `SupportTicketDetailPanel` (`variant="modal"`).
+- Pedidos de voluntário: `resources/js/Pages/VolunteerRequests/Index.tsx`.
+- Pipeline voluntários: `resources/js/Pages/MinistryLeadVolunteers/Pipeline.tsx` (ficha no modal).
+- Criação em lista: regra `forms-list-modal.mdc`.
+
+## Ao implementar
+
+Antes de criar `Pages/.../Show.tsx` ou rota GET de detalhe, pergunte: **dá para ser modal na lista?** Na dúvida, **use modal**.

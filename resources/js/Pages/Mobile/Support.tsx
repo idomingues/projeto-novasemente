@@ -2,14 +2,17 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import Modal from '@/Components/Modal';
 import AddButton from '@/Components/AddButton';
 import PageHeader from '@/Components/PageHeader';
-import { Head, Link, useForm } from '@inertiajs/react';
+import SecondaryButton from '@/Components/SecondaryButton';
+import MobileSupportTicketPanel, {
+    type MobileSupportTicketPanelProps,
+} from '@/Components/Support/MobileSupportTicketPanel';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useMemo, useState, FormEventHandler, useEffect } from 'react';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import InputLabel from '@/Components/InputLabel';
 import Textarea from '@/Components/Textarea';
 import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
-import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
 
 type SupportTicketListItem = {
@@ -25,6 +28,8 @@ interface Props {
     tickets: SupportTicketListItem[];
     isAuthenticated: boolean;
     userName?: string | null;
+    supportIndexUrl: string;
+    modalDetail: MobileSupportTicketPanelProps | null;
 }
 
 function formatWhen(iso: string): string {
@@ -55,8 +60,14 @@ function statusTone(status: string): string {
     }
 }
 
-export default function MobileSupport({ tickets, isAuthenticated, userName }: Props) {
-    const [isModalOpen, setIsModalOpen] = useState(false);
+export default function MobileSupport({
+    tickets,
+    isAuthenticated,
+    userName,
+    supportIndexUrl,
+    modalDetail,
+}: Props) {
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
         type: 'problem' as 'problem' | 'suggestion' | 'praise',
         message: '',
@@ -74,16 +85,27 @@ export default function MobileSupport({ tickets, isAuthenticated, userName }: Pr
         setSelectedTypeLabel(v === 'problem' ? 'Relatar problema' : v === 'suggestion' ? 'Enviar sugestão' : 'Enviar elogio');
     };
 
-    const openModal = () => {
+    const openCreateModal = () => {
         clearErrors();
-        setIsModalOpen(true);
+        setIsCreateModalOpen(true);
     };
 
-    const closeModal = () => {
-        setIsModalOpen(false);
+    const closeCreateModal = () => {
+        setIsCreateModalOpen(false);
         reset();
         clearErrors();
     };
+
+    const closeTicketModal = () => {
+        router.get(supportIndexUrl, {}, { preserveScroll: true, replace: true });
+    };
+
+    const openTicketModal = (token: string) => {
+        router.get(supportIndexUrl, { modal: token }, { preserveScroll: true });
+    };
+
+    const showTicketModal = modalDetail !== null;
+    const showCreateModal = isCreateModalOpen && !showTicketModal;
 
     const screenshotPreview = useMemo(() => {
         if (!data.screenshot_file) return null;
@@ -101,7 +123,7 @@ export default function MobileSupport({ tickets, isAuthenticated, userName }: Pr
         post(route('mobile.support.store'), {
             forceFormData: true,
             onSuccess: () => {
-                closeModal();
+                closeCreateModal();
             },
         });
     };
@@ -138,7 +160,7 @@ export default function MobileSupport({ tickets, isAuthenticated, userName }: Pr
                             )}
                         </>
                     }
-                    actions={<AddButton variant="icon" onClick={openModal} title="Novo chamado de suporte">Novo chamado</AddButton>}
+                    actions={<AddButton variant="icon" onClick={openCreateModal} title="Novo chamado de suporte">Novo chamado</AddButton>}
                 />
 
                 <div>
@@ -159,9 +181,10 @@ export default function MobileSupport({ tickets, isAuthenticated, userName }: Pr
                         <ul className="space-y-3">
                             {tickets.map((t) => (
                                 <li key={t.publicToken}>
-                                    <Link
-                                        href={route('mobile.support.ticket', { token: t.publicToken })}
-                                        className="block overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition hover:border-zinc-300 hover:shadow-md active:scale-[0.99] dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-600"
+                                    <button
+                                        type="button"
+                                        onClick={() => openTicketModal(t.publicToken)}
+                                        className="block w-full overflow-hidden rounded-2xl border border-zinc-200 bg-white text-left shadow-sm transition hover:border-zinc-300 hover:shadow-md active:scale-[0.99] dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-600"
                                     >
                                         <div className="flex items-start justify-between gap-3 px-4 py-3">
                                             <div className="min-w-0 flex-1">
@@ -183,7 +206,7 @@ export default function MobileSupport({ tickets, isAuthenticated, userName }: Pr
                                                 {t.statusLabel ?? 'Aberto'}
                                             </span>
                                         </div>
-                                    </Link>
+                                    </button>
                                 </li>
                             ))}
                         </ul>
@@ -191,7 +214,7 @@ export default function MobileSupport({ tickets, isAuthenticated, userName }: Pr
                 </div>
             </div>
 
-            <Modal show={isModalOpen} onClose={closeModal} maxWidth="2xl">
+            <Modal show={showCreateModal} onClose={closeCreateModal} maxWidth="2xl">
                 <form onSubmit={submit} className="p-6">
                     <h2 className="mb-1 text-lg font-semibold text-zinc-900 dark:text-white">Novo chamado</h2>
                     <p className="mb-6 text-sm text-zinc-500 dark:text-zinc-400">
@@ -337,7 +360,7 @@ export default function MobileSupport({ tickets, isAuthenticated, userName }: Pr
                     </div>
 
                     <div className="mt-8 flex gap-2">
-                        <SecondaryButton type="button" className="flex-1" disabled={processing} onClick={closeModal}>
+                        <SecondaryButton type="button" className="flex-1" disabled={processing} onClick={closeCreateModal}>
                             Cancelar
                         </SecondaryButton>
                         <PrimaryButton type="submit" className="flex-1" disabled={processing}>
@@ -345,6 +368,22 @@ export default function MobileSupport({ tickets, isAuthenticated, userName }: Pr
                         </PrimaryButton>
                     </div>
                 </form>
+            </Modal>
+
+            <Modal show={showTicketModal} onClose={closeTicketModal} maxWidth="2xl">
+                <div className="flex max-h-[85vh] flex-col">
+                    <div className="flex shrink-0 items-center justify-between gap-3 border-b border-zinc-200 px-4 py-3 dark:border-zinc-700">
+                        <h2 className="text-base font-semibold text-zinc-900 dark:text-white">
+                            {modalDetail?.ticket.typeLabel ?? 'Chamado'}
+                        </h2>
+                        <SecondaryButton type="button" onClick={closeTicketModal}>
+                            Fechar
+                        </SecondaryButton>
+                    </div>
+                    <div className="min-h-0 flex-1 overflow-y-auto p-4">
+                        {modalDetail ? <MobileSupportTicketPanel {...modalDetail} /> : null}
+                    </div>
+                </div>
             </Modal>
         </MobileLayout>
     );

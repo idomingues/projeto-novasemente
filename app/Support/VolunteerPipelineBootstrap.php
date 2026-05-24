@@ -31,6 +31,18 @@ class VolunteerPipelineBootstrap
     ];
 
     /**
+     * @return list<int>
+     */
+    public static function adminWorkflowStageIdsForChurch(int $churchId): array
+    {
+        return collect(self::adminWorkflowStagesForChurch($churchId))
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+    }
+
+    /**
      * Garante as fases padrão quando a igreja ainda não tem nenhuma (ex.: igreja nova).
      */
     public static function seedDefaultStagesForChurch(int $churchId): void
@@ -136,6 +148,26 @@ class VolunteerPipelineBootstrap
         }
 
         return null;
+    }
+
+    /**
+     * Fase principal para exibição: valor explícito (admin_workflow_stage_id) ou stage_id
+     * quando corresponder a Interessado / Encaminhado / Finalizado.
+     */
+    public static function effectiveAdminWorkflowStageId(int $churchId, ?int $adminWorkflowStageId, ?int $pipelineStageId): ?int
+    {
+        $explicit = self::resolveAdminWorkflowStageId($churchId, $adminWorkflowStageId);
+        if ($explicit !== null) {
+            return $explicit;
+        }
+
+        if ($pipelineStageId === null) {
+            return null;
+        }
+
+        $allowedIds = self::adminWorkflowStageIdsForChurch($churchId);
+
+        return in_array((int) $pipelineStageId, $allowedIds, true) ? (int) $pipelineStageId : null;
     }
 
     /**

@@ -3,8 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
-use App\Support\VolunteerContactDuplicateChecker;
+use App\Support\VolunteerAppLogin;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -41,10 +40,7 @@ class NewPasswordController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
-        $emailNorm = VolunteerContactDuplicateChecker::normalizeEmail($validated['email']);
-        $matchedUser = $emailNorm
-            ? User::query()->whereRaw('LOWER(TRIM(COALESCE(email, ""))) = ?', [$emailNorm])->first()
-            : null;
+        $matchedUser = VolunteerAppLogin::findUserByLogin($validated['email']);
 
         $credentials = $request->only('password', 'password_confirmation', 'token');
         $credentials['email'] = $matchedUser?->email ?? $validated['email'];

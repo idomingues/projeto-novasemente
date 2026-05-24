@@ -36,7 +36,10 @@ import MinistryLeaderStatusSection, {
 } from '@/Components/Volunteers/MinistryLeaderStatusSection';
 import RecordDetailHeader from '@/Components/RecordDetail/RecordDetailHeader';
 import { formatListPreview } from '@/utils/formatListPreview';
-import { volunteerDepartmentsInList } from '@/utils/volunteerDepartmentsInList';
+import {
+    volunteerMinistryPhasesInList,
+    type VolunteerMinistryPhaseRow,
+} from '@/utils/volunteerMinistryPhasesInList';
 import RecordDetailSections from '@/Components/RecordDetail/RecordDetailSections';
 import { volunteerDetailSections, type VolunteerDetailData } from '@/utils/volunteerDetailRows';
 
@@ -58,6 +61,7 @@ type VolunteerListRow = {
     pendingInviteMinistryNames?: string[];
     forwardedMinistryIds?: number[];
     ministryNames: string[];
+    ministryPhases?: VolunteerMinistryPhaseRow[];
     interestPreview: string | null;
     signals: { memberNs: boolean; sixMonthsInChurchOrLetter: boolean; ministryExperienceDeclared: boolean };
 };
@@ -90,9 +94,37 @@ type BoardFilters = {
     text_interest: string;
     pipeline_stage_id: string;
     arquivados?: boolean;
+    sort: string;
+    sort_dir: string;
 };
 
 const PIPELINE_STAGE_ARCHIVED = 'arquivados';
+const PIPELINE_STAGE_ADMIN_WORKFLOW_BLANK = 'sem-fase-principal';
+
+const PIPELINE_SORT_DEFAULT = 'name';
+const PIPELINE_SORT_DIR_DEFAULT = 'asc';
+
+type PipelineSortOption = { value: string; label: string; sort: string; sort_dir: string };
+
+function pipelineSortOptions(canVolunteerManage: boolean): PipelineSortOption[] {
+    const stageSort = canVolunteerManage ? 'workflow_stage' : 'stage';
+    const stageLabel = canVolunteerManage ? 'Fase principal' : 'Fase';
+
+    return [
+        { value: 'name:asc', label: 'Nome (A–Z)', sort: 'name', sort_dir: 'asc' },
+        { value: 'name:desc', label: 'Nome (Z–A)', sort: 'name', sort_dir: 'desc' },
+        { value: 'created_at:desc', label: 'Cadastro (mais recente)', sort: 'created_at', sort_dir: 'desc' },
+        { value: 'created_at:asc', label: 'Cadastro (mais antigo)', sort: 'created_at', sort_dir: 'asc' },
+        { value: `${stageSort}:asc`, label: `${stageLabel} (A–Z)`, sort: stageSort, sort_dir: 'asc' },
+        { value: `${stageSort}:desc`, label: `${stageLabel} (Z–A)`, sort: stageSort, sort_dir: 'desc' },
+    ];
+}
+
+function pipelineSortSelectValue(sort: string | undefined, sortDir: string | undefined): string {
+    const s = sort && sort !== '' ? sort : PIPELINE_SORT_DEFAULT;
+    const d = sortDir === 'desc' ? 'desc' : PIPELINE_SORT_DIR_DEFAULT;
+    return `${s}:${d}`;
+}
 
 function pipelineVolunteersQuery(
     filters: BoardFilters,
@@ -188,6 +220,7 @@ interface Props {
     volunteerRequestArchivedCount?: number;
     volunteerRequestActiveCount?: number;
     stages: StageRow[];
+    adminWorkflowBlankVolunteerCount?: number;
     archivedVolunteerCount?: number;
     volunteers: Paginated<VolunteerListRow>;
     filters: BoardFilters;
@@ -223,6 +256,24 @@ function yn(v: unknown): string {
     return '—';
 }
 
+function VolunteerMinistryPhasesCell({ phases }: { phases: VolunteerMinistryPhaseRow[] }) {
+    if (phases.length === 0) {
+        return <span className="text-zinc-400">—</span>;
+    }
+
+    return (
+        <div className="space-y-1">
+            {phases.map((row) => (
+                <div key={row.ministryName} className="leading-snug">
+                    <span className="font-medium text-zinc-800 dark:text-zinc-100">{row.ministryName}</span>
+                    <span className="text-zinc-400 dark:text-zinc-500"> → </span>
+                    <span className="text-zinc-600 dark:text-zinc-300">{row.phaseLabel}</span>
+                </div>
+            ))}
+        </div>
+    );
+}
+
 function formatShortDate(iso: string | null): string {
     if (!iso) return '—';
     try {
@@ -252,6 +303,7 @@ export default function Pipeline({
     volunteerRequestArchivedCount = 0,
     volunteerRequestActiveCount = 0,
     stages,
+    adminWorkflowBlankVolunteerCount = 0,
     archivedVolunteerCount = 0,
     volunteers,
     filters,
@@ -402,7 +454,12 @@ export default function Pipeline({
             });
             const j = (await r.json()) as DetailJson;
             setDetail(j);
-            const sid = j.pipeline?.adminWorkflowStageId;
+            const explicitSid = j.pipeline?.adminWorkflowStageId;
+            const pipelineSid =
+                j.pipeline?.stageId != null && j.stages?.some((s) => s.id === j.pipeline?.stageId)
+                    ? j.pipeline.stageId
+                    : null;
+            const sid = explicitSid ?? pipelineSid;
             stageMoveForm.setData('stage_id', sid != null ? String(sid) : '');
             const attachedIds = (j.ministryOptions ?? []).filter((o) => o.attached).map((o) => o.id);
             ministriesForm.setData('ministry_ids', attachedIds);
@@ -433,7 +490,7 @@ export default function Pipeline({
         );
     };
 
-    const pickStage = (stageId: number | '' | typeof PIPELINE_STAGE_ARCHIVED) => {
+    const pickStage = (stageId: number | '' | typeof PIPELINE_STAGE_ARCHIVED | typeof PIPELINE_STAGE_ADMIN_WORKFLOW_BLANK) => {
         lastAppliedSearchRef.current = searchQuery;
         router.get(
             route('ministry-lead.volunteers.index'),
@@ -604,10 +661,30 @@ export default function Pipeline({
     };
 
     const currentStageFilter = filters.pipeline_stage_id ?? '';
+    const sortOptions = useMemo(() => pipelineSortOptions(canVolunteerManage), [canVolunteerManage]);
+    const currentSortValue = pipelineSortSelectValue(filters.sort, filters.sort_dir);
+
+    const applySortSelection = (combined: string) => {
+        const option = sortOptions.find((o) => o.value === combined) ?? sortOptions[0];
+        lastAppliedSearchRef.current = searchQuery;
+        router.get(
+            route('ministry-lead.volunteers.index'),
+            pipelineVolunteersQuery(
+                {
+                    ...filterForm.data,
+                    sort: option.sort,
+                    sort_dir: option.sort_dir,
+                },
+                searchQuery,
+            ),
+            { preserveState: true, replace: true },
+        );
+    };
+
     const activeFiltersCount = useMemo(() => {
         const entries = Object.entries(filters) as [string, unknown][];
         return entries.filter(([k, v]) => {
-            if (k === 'pipeline_stage_id' || k === 'search' || k === 'arquivados') {
+            if (k === 'pipeline_stage_id' || k === 'search' || k === 'arquivados' || k === 'sort' || k === 'sort_dir') {
                 return false;
             }
             if (typeof v === 'boolean') {
@@ -780,6 +857,33 @@ export default function Pipeline({
                                 <li>
                                     <button
                                         type="button"
+                                        onClick={() => pickStage(PIPELINE_STAGE_ADMIN_WORKFLOW_BLANK)}
+                                        aria-pressed={currentStageFilter === PIPELINE_STAGE_ADMIN_WORKFLOW_BLANK}
+                                        className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm ${
+                                            currentStageFilter === PIPELINE_STAGE_ADMIN_WORKFLOW_BLANK
+                                                ? 'bg-brand-600 font-medium text-white shadow-sm ring-2 ring-brand-800/40 dark:bg-brand-500 dark:ring-brand-300/35'
+                                                : 'text-zinc-800 ring-1 ring-transparent hover:bg-zinc-100 hover:ring-zinc-200 dark:text-zinc-100 dark:hover:bg-zinc-800 dark:hover:ring-zinc-600'
+                                        }`}
+                                    >
+                                        <span className="truncate pr-2">Sem fase principal</span>
+                                        <span
+                                            className={`shrink-0 tabular-nums text-xs ${
+                                                currentStageFilter === PIPELINE_STAGE_ADMIN_WORKFLOW_BLANK
+                                                    ? 'text-white/90'
+                                                    : adminWorkflowBlankVolunteerCount === 0
+                                                      ? 'text-zinc-400 dark:text-zinc-500'
+                                                      : 'text-zinc-500 dark:text-zinc-400'
+                                            }`}
+                                        >
+                                            {adminWorkflowBlankVolunteerCount}
+                                        </span>
+                                    </button>
+                                </li>
+                            ) : null}
+                            {canVolunteerManage ? (
+                                <li>
+                                    <button
+                                        type="button"
                                         onClick={() => pickStage(PIPELINE_STAGE_ARCHIVED)}
                                         aria-pressed={currentStageFilter === PIPELINE_STAGE_ARCHIVED}
                                         className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm ${
@@ -838,22 +942,53 @@ export default function Pipeline({
                             aria-label="Nome, e-mail ou telefone"
                         />
                     </div>
-                    <button
-                        type="button"
-                        onClick={() => setFiltersOpen((o) => !o)}
-                        className="flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-white px-4 py-3 text-left text-sm font-semibold text-zinc-900 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
-                    >
-                        <span className="flex items-center gap-2">
-                            <AdjustmentsHorizontalIcon className="h-5 w-5 text-zinc-500" aria-hidden />
-                            Filtros do cadastro
-                            {activeFiltersCount > 0 ? (
-                                <span className="ml-1 inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
-                                    {activeFiltersCount}
-                                </span>
-                            ) : null}
-                        </span>
-                        {filtersOpen ? <ChevronUpIcon className="h-5 w-5" /> : <ChevronDownIcon className="h-5 w-5" />}
-                    </button>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <button
+                            type="button"
+                            onClick={() => setFiltersOpen((o) => !o)}
+                            className="flex h-11 min-w-0 flex-1 items-center justify-between rounded-xl border border-zinc-200 bg-white px-4 text-left text-sm font-semibold text-zinc-900 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+                        >
+                            <span className="flex min-w-0 items-center gap-2">
+                                <AdjustmentsHorizontalIcon className="h-5 w-5 shrink-0 text-zinc-500" aria-hidden />
+                                <span className="truncate">Filtros do cadastro</span>
+                                {activeFiltersCount > 0 ? (
+                                    <span className="inline-flex shrink-0 items-center rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+                                        {activeFiltersCount}
+                                    </span>
+                                ) : null}
+                            </span>
+                            {filtersOpen ? (
+                                <ChevronUpIcon className="h-5 w-5 shrink-0" />
+                            ) : (
+                                <ChevronDownIcon className="h-5 w-5 shrink-0" />
+                            )}
+                        </button>
+                        <div className="relative flex h-11 w-full shrink-0 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900 sm:w-56">
+                            <span
+                                id="pipeline-sort-label"
+                                className="flex shrink-0 items-center border-r border-zinc-200 px-3 text-xs font-semibold text-zinc-600 dark:border-zinc-700 dark:text-zinc-300"
+                            >
+                                Ordenação
+                            </span>
+                            <select
+                                id="pipeline-sort"
+                                value={currentSortValue}
+                                onChange={(e) => applySortSelection(e.target.value)}
+                                aria-labelledby="pipeline-sort-label"
+                                className="h-full min-w-0 flex-1 appearance-none border-0 bg-transparent py-0 pl-2 pr-8 text-sm font-medium text-zinc-900 focus:border-transparent focus:outline-none focus:ring-0 dark:text-zinc-100"
+                            >
+                                {sortOptions.map((o) => (
+                                    <option key={o.value} value={o.value}>
+                                        {o.label}
+                                    </option>
+                                ))}
+                            </select>
+                            <ChevronDownIcon
+                                className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500 dark:text-zinc-400"
+                                aria-hidden
+                            />
+                        </div>
+                    </div>
                     {filtersOpen ? (
                         <Card className="p-4">
                             <form onSubmit={applyFilters} className="space-y-4">
@@ -1146,7 +1281,7 @@ export default function Pipeline({
                                     <tr className="border-b border-zinc-200 text-left dark:border-zinc-700">
                                         <th className="pb-2 pr-3 font-semibold">Nome</th>
                                         <th className="pb-2 pr-3 font-semibold">{canVolunteerManage ? 'Fase principal' : 'Fase'}</th>
-                                        <th className="pb-2 pr-3 font-semibold">Departamentos</th>
+                                        <th className="pb-2 pr-3 font-semibold">Fases Depto</th>
                                         <th className="pb-2 pr-3 font-semibold">Cadastro</th>
                                         <th className="pb-2 pr-3 font-semibold">Contato</th>
                                         <th className="pb-2 pr-3 font-semibold">Interesses</th>
@@ -1178,8 +1313,8 @@ export default function Pipeline({
                                                     ? (v.adminWorkflowStageName ?? '—')
                                                     : v.stageName}
                                             </td>
-                                            <td className="cursor-pointer py-2 pr-3 max-w-[220px] text-xs text-zinc-600 dark:text-zinc-300">
-                                                {volunteerDepartmentsInList(v) || '—'}
+                                            <td className="cursor-pointer py-2 pr-3 max-w-[260px] text-xs">
+                                                <VolunteerMinistryPhasesCell phases={volunteerMinistryPhasesInList(v)} />
                                             </td>
                                             <td className="cursor-pointer py-2 pr-3 whitespace-nowrap text-zinc-600 dark:text-zinc-400">
                                                 {formatShortDate(v.createdAt)}
@@ -1280,9 +1415,12 @@ export default function Pipeline({
                                     <div className="mt-2 text-xs text-zinc-600 dark:text-zinc-300 space-y-1">
                                         {v.email ? <div className="truncate">{v.email}</div> : null}
                                         {v.phone ? <div className="truncate">{v.phone}</div> : null}
-                                        {volunteerDepartmentsInList(v) ? (
-                                            <div className="truncate text-zinc-700 dark:text-zinc-200">
-                                                Departamentos: {volunteerDepartmentsInList(v)}
+                                        {volunteerMinistryPhasesInList(v).length > 0 ? (
+                                            <div className="text-zinc-700 dark:text-zinc-200">
+                                                <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                                    Fases Depto
+                                                </div>
+                                                <VolunteerMinistryPhasesCell phases={volunteerMinistryPhasesInList(v)} />
                                             </div>
                                         ) : null}
                                         {v.interestPreview ? (

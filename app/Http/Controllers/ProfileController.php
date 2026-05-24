@@ -84,7 +84,7 @@ class ProfileController extends Controller
         $user->save();
         $user->syncVolunteerRecord();
 
-        return Redirect::route($redirectTo);
+        return Redirect::route($redirectTo)->with('success', 'Perfil atualizado com sucesso.');
     }
 
     /**

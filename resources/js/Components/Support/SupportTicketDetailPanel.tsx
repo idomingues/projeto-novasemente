@@ -313,6 +313,42 @@ export default function SupportTicketDetailPanel({
             </div>
             )}
 
+            {showDetails && (
+            <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+                <div className="min-w-0">
+                    <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
+                        {isDevItem ? 'Item a desenvolver' : 'Problema'}
+                    </div>
+                    <div className="mt-2 text-sm text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap">{ticket.message}</div>
+                </div>
+            </div>
+            )}
+
+            {showDetails && (ticket.screenshotUrl || ticket.screenshotExternalUrl) && (
+                <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+                    <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Print anexado</div>
+                    {ticket.screenshotUrl ? (
+                        <a href={ticket.screenshotUrl} target="_blank" rel="noreferrer" className="mt-3 block">
+                            <img
+                                src={ticket.screenshotUrl}
+                                alt="Print anexado ao chamado"
+                                className="max-h-72 w-auto rounded-xl border border-zinc-200 object-contain dark:border-zinc-700"
+                            />
+                        </a>
+                    ) : null}
+                    {ticket.screenshotExternalUrl ? (
+                        <a
+                            href={ticket.screenshotExternalUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-3 inline-flex text-sm font-medium text-brand-700 underline dark:text-brand-300"
+                        >
+                            Abrir link do print
+                        </a>
+                    ) : null}
+                </div>
+            )}
+
             {showDetails && canManageTickets && isOpen && (
                 <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -330,28 +366,6 @@ export default function SupportTicketDetailPanel({
                         </div>
                         <PrimaryButton type="button" onClick={saveForecast} disabled={!forecastDirty}>
                             Salvar previsão
-                        </PrimaryButton>
-                    </div>
-                </div>
-            )}
-
-            {showDetails && canManageTickets && isOpen && (
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
-                    <InputLabel value="Solução" />
-                    <Textarea
-                        value={statusSolution}
-                        onChange={(e) => setStatusSolution(e.target.value)}
-                        rows={4}
-                        className="mt-1 w-full"
-                        placeholder="Descreva a solução (obrigatória ao finalizar o chamado)..."
-                    />
-                    <div className="mt-3 flex justify-end">
-                        <PrimaryButton
-                            type="button"
-                            onClick={saveSolutionDraft}
-                            disabled={statusSolution.trim() === (ticket.solutionText ?? '').trim()}
-                        >
-                            Salvar solução
                         </PrimaryButton>
                     </div>
                 </div>
@@ -398,39 +412,25 @@ export default function SupportTicketDetailPanel({
                 </div>
             )}
 
-            {showDetails && (
-            <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
-                <div className="min-w-0">
-                    <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
-                        {isDevItem ? 'Item a desenvolver' : 'Chamado original'}
-                    </div>
-                    <div className="mt-2 text-sm text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap">{ticket.message}</div>
-                </div>
-            </div>
-            )}
-
-            {showDetails && (ticket.screenshotUrl || ticket.screenshotExternalUrl) && (
+            {showDetails && canManageTickets && isOpen && (
                 <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
-                    <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Print anexado</div>
-                    {ticket.screenshotUrl ? (
-                        <a href={ticket.screenshotUrl} target="_blank" rel="noreferrer" className="mt-3 block">
-                            <img
-                                src={ticket.screenshotUrl}
-                                alt="Print anexado ao chamado"
-                                className="max-h-72 w-auto rounded-xl border border-zinc-200 object-contain dark:border-zinc-700"
-                            />
-                        </a>
-                    ) : null}
-                    {ticket.screenshotExternalUrl ? (
-                        <a
-                            href={ticket.screenshotExternalUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="mt-3 inline-flex text-sm font-medium text-brand-700 underline dark:text-brand-300"
+                    <InputLabel value="Solução" />
+                    <Textarea
+                        value={statusSolution}
+                        onChange={(e) => setStatusSolution(e.target.value)}
+                        rows={4}
+                        className="mt-1 w-full"
+                        placeholder="Descreva a solução (obrigatória ao finalizar o chamado)..."
+                    />
+                    <div className="mt-3 flex justify-end">
+                        <PrimaryButton
+                            type="button"
+                            onClick={saveSolutionDraft}
+                            disabled={statusSolution.trim() === (ticket.solutionText ?? '').trim()}
                         >
-                            Abrir link do print
-                        </a>
-                    ) : null}
+                            Salvar solução
+                        </PrimaryButton>
+                    </div>
                 </div>
             )}
 

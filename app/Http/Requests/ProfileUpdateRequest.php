@@ -41,4 +41,17 @@ class ProfileUpdateRequest extends FormRequest
             'notify_via_whatsapp' => ['sometimes', 'boolean'],
         ], UserProfilePhotoResolver::validationRules(required: false));
     }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'email.unique' => 'Este e-mail já está cadastrado em outra conta.',
+            'email.email' => 'Informe um endereço de e-mail válido.',
+            'photo_file.image' => 'A foto deve ser uma imagem (JPG, PNG ou similar).',
+            'photo_file.max' => 'A foto deve ter no máximo 4 MB.',
+        ];
+    }
 }
