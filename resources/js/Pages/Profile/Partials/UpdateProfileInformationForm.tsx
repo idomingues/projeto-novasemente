@@ -7,7 +7,7 @@ import TextInput from '@/Components/TextInput';
 import { compressImageForUpload, ImageCompressError } from '@/utils/compressImageForUpload';
 import { Transition } from '@headlessui/react';
 import { Link, useForm, usePage } from '@inertiajs/react';
-import { FormEventHandler, useEffect, useMemo, useState } from 'react';
+import { FormEventHandler, useMemo, useState } from 'react';
 
 interface VolunteerMinistry {
     id: number;
@@ -70,12 +70,6 @@ export default function UpdateProfileInformation({
     const [photoPreparing, setPhotoPreparing] = useState(false);
     const [photoClientError, setPhotoClientError] = useState<string | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(user.photo_url ?? null);
-
-    useEffect(() => {
-        setData(initialFormData);
-        setPhotoPreview(user.photo_url ?? null);
-        setPhotoClientError(null);
-    }, [initialFormData, setData, user.photo_url]);
 
     const errorMessages = useMemo(() => {
         const list: string[] = [];
@@ -184,7 +178,7 @@ export default function UpdateProfileInformation({
                         value={data.name}
                         onChange={(e) => setData('name', e.target.value)}
                         required
-                        isFocused
+                        autoFocus
                         autoComplete="name"
                     />
 
@@ -201,7 +195,8 @@ export default function UpdateProfileInformation({
                         value={data.email}
                         onChange={(e) => setData('email', e.target.value)}
                         required
-                        autoComplete="username"
+                        autoComplete="email"
+                        inputMode="email"
                     />
 
                     <InputError className="mt-2" message={errors.email} />
@@ -260,7 +255,7 @@ export default function UpdateProfileInformation({
                     </div>
                 )}
 
-                <div className="flex flex-wrap items-center gap-4">
+                <div className="flex flex-wrap items-center gap-4 pb-2 sm:pb-0 scroll-mt-28">
                     <PrimaryButton disabled={processing || photoPreparing}>
                         {processing ? 'Salvando…' : 'Salvar'}
                     </PrimaryButton>

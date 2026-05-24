@@ -17,8 +17,8 @@ export default function VolunteerSignupStatusCard({ completion, variant = 'mobil
 
     const missingLabel =
         completion.missing_count === 1
-            ? 'Falta 1 pergunta para concluir o cadastro.'
-            : `Faltam ${completion.missing_count} perguntas para concluir o cadastro.`;
+            ? 'Falta 1 pergunta obrigatória para concluir o cadastro.'
+            : `Faltam ${completion.missing_count} perguntas obrigatórias para concluir o cadastro.`;
 
     const titleClass =
         variant === 'desktop'

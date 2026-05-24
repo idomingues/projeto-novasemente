@@ -35,6 +35,79 @@ class VolunteerSignupCompletionTest extends TestCase
         $this->assertContains('birth_date', $completion['missing_fields']);
         $this->assertNotContains('password', $completion['missing_fields']);
         $this->assertNotContains('current_password', $completion['missing_fields']);
+        foreach (\App\Support\VolunteerSignupCompletion::OPTIONAL_FIELD_KEYS as $optional) {
+            $this->assertNotContains($optional, $completion['missing_fields'], "Campo opcional {$optional} não deve aparecer como pendente.");
+        }
+    }
+
+    public function test_legacy_ministry_text_counts_as_complete_without_mapped_ids(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+
+        $user = User::factory()->create([
+            'church_id' => $churchId,
+            'is_volunteer' => true,
+            'name' => 'Carlos Souza',
+            'email' => 'carlos.legacy@example.com',
+            'photo_url' => 'https://example.com/photos/carlos.jpg',
+        ]);
+
+        $volunteer = $user->fresh()->volunteerProfile;
+        $this->assertNotNull($volunteer);
+
+        $volunteer->forceFill([
+            'birth_date' => '1985-03-10',
+            'has_whatsapp' => true,
+            'has_social_networks' => true,
+            'attendance_duration' => 'years_1_3',
+            'is_official_member' => false,
+            'has_previous_ministry_volunteer_experience' => false,
+            'ministry_involvement' => 'Departamento antigo (nome fora do catálogo)',
+            'other_ministry_interest' => 'Não',
+            'lgpd_data_consent' => true,
+        ])->save();
+
+        $completion = VolunteerSignupCompletion::forUser($user->fresh());
+
+        $this->assertTrue($completion['is_complete'], 'Texto legado de ministério deve satisfazer a pergunta condicional.');
+        $this->assertNotContains('active_ministry_ids', $completion['missing_fields']);
+    }
+
+    public function test_whatsapp_not_required_when_phone_empty(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+
+        $user = User::factory()->create([
+            'church_id' => $churchId,
+            'is_volunteer' => true,
+            'name' => 'Paula Lima',
+            'email' => 'paula.sem.telefone@example.com',
+            'photo_url' => 'https://example.com/photos/paula.jpg',
+        ]);
+
+        $volunteer = $user->fresh()->volunteerProfile;
+        $this->assertNotNull($volunteer);
+
+        $volunteer->forceFill([
+            'phone' => null,
+            'has_whatsapp' => null,
+            'birth_date' => '1992-08-01',
+            'has_social_networks' => true,
+            'attendance_duration' => 'years_1_3',
+            'is_official_member' => false,
+            'has_previous_ministry_volunteer_experience' => false,
+            'ministry_involvement' => 'Não',
+            'other_ministry_interest' => 'Não',
+            'lgpd_data_consent' => true,
+        ])->save();
+
+        $completion = VolunteerSignupCompletion::forUser($user->fresh());
+
+        $this->assertNotContains('has_whatsapp', $completion['missing_fields']);
     }
 
     public function test_invalid_birth_date_counts_as_missing(): void

@@ -61,15 +61,19 @@ final class VolunteerSignupFormPrefill
             $ministries
         );
 
-        $hasPrevious = (bool) $volunteer->has_previous_ministry_volunteer_experience;
-        if (! $hasPrevious && $previousIds !== []) {
+        $hasPrevious = $volunteer->has_previous_ministry_volunteer_experience;
+        if ($hasPrevious === null && $previousIds !== []) {
             $hasPrevious = true;
         }
 
-        $isActive = $activeIds !== [] || ((string) ($volunteer->ministry_involvement ?? '')) !== ''
-            && mb_strtolower(trim((string) $volunteer->ministry_involvement)) !== 'não';
-        $wantsOther = $otherIds !== [] || ((string) ($volunteer->other_ministry_interest ?? '')) !== ''
-            && mb_strtolower(trim((string) $volunteer->other_ministry_interest)) !== 'não';
+        $isActive = VolunteerSignupMinistryMapper::inferYesNoFromStoredText(
+            $volunteer->ministry_involvement,
+            $activeIds !== []
+        );
+        $wantsOther = VolunteerSignupMinistryMapper::inferYesNoFromStoredText(
+            $volunteer->other_ministry_interest,
+            $otherIds !== []
+        );
 
         return [
             'photo_url' => $user->photo_url,
@@ -92,6 +96,9 @@ final class VolunteerSignupFormPrefill
             'active_ministry_ids' => $activeIds,
             'wants_other_ministry' => $wantsOther,
             'other_ministry_ids' => $otherIds,
+            'ministry_involvement' => (string) ($volunteer->ministry_involvement ?? ''),
+            'other_ministry_interest' => (string) ($volunteer->other_ministry_interest ?? ''),
+            'previous_ministry_details' => (string) ($volunteer->previous_ministry_details ?? ''),
             'gifts_to_develop' => (string) ($volunteer->gifts_to_develop ?? ''),
             'professional_area' => (string) ($volunteer->professional_area ?? ''),
             'lgpd_data_consent' => $volunteer->lgpd_data_consent,

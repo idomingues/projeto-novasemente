@@ -7,9 +7,21 @@ use Illuminate\Support\Carbon;
 
 /**
  * Progresso do questionário de cadastro/edição de voluntário (espelha validação do PublicSignup).
+ *
+ * Não entram no cálculo (opcionais): telefone, dons, área profissional, senha.
  */
 final class VolunteerSignupCompletion
 {
+    /** @var list<string> */
+    public const OPTIONAL_FIELD_KEYS = [
+        'phone',
+        'gifts_to_develop',
+        'professional_area',
+        'password',
+        'password_confirmation',
+        'current_password',
+    ];
+
     /**
      * @return array{
      *     is_complete: bool,
@@ -81,7 +93,8 @@ final class VolunteerSignupCompletion
         $birthDate = trim((string) ($initial['birth_date'] ?? ''));
         $track('birth_date', true, $birthDate !== '' && self::isBirthDateAtLeastMinAge($birthDate, 10));
 
-        $track('has_whatsapp', true, self::isBoolSet($initial['has_whatsapp'] ?? null));
+        $phoneFilled = trim((string) ($initial['phone'] ?? '')) !== '';
+        $track('has_whatsapp', $phoneFilled, $phoneFilled ? self::isBoolSet($initial['has_whatsapp'] ?? null) : true);
 
         $email = trim((string) ($initial['email'] ?? ''));
         $track('email', true, $email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) !== false);
@@ -110,21 +123,42 @@ final class VolunteerSignupCompletion
         $track('has_previous_ministry_volunteer_experience', true, $hasPrevious !== null);
 
         if ($hasPrevious === true) {
-            $track('previous_ministry_ids', true, self::hasPositiveIds($initial['previous_ministry_ids'] ?? []));
+            $track(
+                'previous_ministry_ids',
+                true,
+                VolunteerSignupMinistryMapper::hasMinistrySelection(
+                    $initial['previous_ministry_ids'] ?? [],
+                    isset($initial['previous_ministry_details']) ? (string) $initial['previous_ministry_details'] : null
+                )
+            );
         }
 
         $isActive = self::normalizeBool($initial['is_active_in_ministry'] ?? null);
         $track('is_active_in_ministry', true, $isActive !== null);
 
         if ($isActive === true) {
-            $track('active_ministry_ids', true, self::hasPositiveIds($initial['active_ministry_ids'] ?? []));
+            $track(
+                'active_ministry_ids',
+                true,
+                VolunteerSignupMinistryMapper::hasMinistrySelection(
+                    $initial['active_ministry_ids'] ?? [],
+                    isset($initial['ministry_involvement']) ? (string) $initial['ministry_involvement'] : null
+                )
+            );
         }
 
         $wantsOther = self::normalizeBool($initial['wants_other_ministry'] ?? null);
         $track('wants_other_ministry', true, $wantsOther !== null);
 
         if ($wantsOther === true) {
-            $track('other_ministry_ids', true, self::hasPositiveIds($initial['other_ministry_ids'] ?? []));
+            $track(
+                'other_ministry_ids',
+                true,
+                VolunteerSignupMinistryMapper::hasMinistrySelection(
+                    $initial['other_ministry_ids'] ?? [],
+                    isset($initial['other_ministry_interest']) ? (string) $initial['other_ministry_interest'] : null
+                )
+            );
         }
 
         $track('lgpd_data_consent', true, self::normalizeBool($initial['lgpd_data_consent'] ?? null) === true);

@@ -421,10 +421,11 @@ class MobileSupportController extends Controller
         ]);
 
         if ($staffActor && ! $isOwner) {
-            app(SupportTicketChatNotifier::class)->notifyOwnerOfFinalizedTicket(
+            app(SupportTicketChatNotifier::class)->notifyOwnerOfTicketUpdate(
                 $ticket->fresh(),
                 $user,
-                (string) ($solution ?? '')
+                true,
+                is_string($solution) && trim($solution) !== '',
             );
         }
 

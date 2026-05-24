@@ -148,7 +148,11 @@ class VolunteerSelfSignupEditController extends Controller
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:155'],
             'birth_date' => ['required', 'date', 'before_or_equal:'.$minBirthDate],
-            'has_whatsapp' => ['required', 'boolean'],
+            'has_whatsapp' => [
+                Rule::requiredIf(fn () => trim((string) $request->input('phone', '')) !== ''),
+                'nullable',
+                'boolean',
+            ],
             'email' => [
                 'required',
                 'string',

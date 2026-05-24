@@ -47,4 +47,39 @@ final class VolunteerSignupMinistryMapper
 
         return array_values(array_unique($ids));
     }
+
+    /**
+     * Inferência Sim/Não a partir do texto gravado em cadastros antigos (null = ainda não respondeu).
+     */
+    public static function inferYesNoFromStoredText(?string $stored, bool $hasMappedIds): ?bool
+    {
+        if ($hasMappedIds) {
+            return true;
+        }
+
+        $text = trim((string) $stored);
+        if ($text === '') {
+            return null;
+        }
+
+        return mb_strtolower($text) !== 'não';
+    }
+
+    /**
+     * IDs selecionados ou texto legado já gravado — evita alerta falso por nomes não mapeados ao catálogo.
+     *
+     * @param  array<int, mixed>  $ids
+     */
+    public static function hasMinistrySelection(array $ids, ?string $storedText): bool
+    {
+        foreach ($ids as $id) {
+            if ((int) $id > 0) {
+                return true;
+            }
+        }
+
+        $text = trim((string) $storedText);
+
+        return $text !== '' && mb_strtolower($text) !== 'não';
+    }
 }

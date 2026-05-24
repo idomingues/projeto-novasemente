@@ -17,11 +17,7 @@ class SupportTicketChatNotifier
     /** Resposta da equipe (painel ou app como staff) → utilizador dono do ticket na app (e e-mail informativo). */
     public function notifyOwnerOfStaffMessage(AppSupportTicket $ticket, User $staff, string $messageContent): void
     {
-        if (! $ticket->user_id) {
-            return;
-        }
-
-        $owner = User::query()->find($ticket->user_id);
+        $owner = $this->findTicketOwner($ticket);
         if (! $owner) {
             return;
         }
@@ -30,45 +26,14 @@ class SupportTicketChatNotifier
         $title = $ticket->type === 'pastoral' ? 'Nova mensagem sobre o seu agendamento' : 'Nova mensagem no suporte';
         $body = 'A equipe respondeu sobre: '.$typeLabel.'.';
 
-        if (UserMessagingPreferences::acceptsInbox($owner)) {
-            $row = UserInboxNotification::create([
-                'user_id' => $owner->id,
-                'title' => $title,
-                'body' => $body,
-                'action_url' => null,
-            ]);
-
-            $row->update([
-                'action_url' => route('mobile.support.ticket', [
-                    'token' => $ticket->public_token,
-                    'inbox' => $row->id,
-                ], absolute: true),
-            ]);
-        }
-
-        $selfMessage = (int) $ticket->user_id === (int) $staff->id;
-        if (! $selfMessage && is_string($owner->email) && filter_var($owner->email, FILTER_VALIDATE_EMAIL)) {
-            $owner->loadMissing('church:id,name');
-            $conversationUrl = route('mobile.support.ticket', ['token' => $ticket->public_token], absolute: true);
-            Mail::to($owner->email)->send(new SupportTicketStaffMessageMail(
-                $title,
-                $typeLabel,
-                $messageContent,
-                $conversationUrl,
-                $staff->name,
-                $owner->church?->name,
-            ));
-        }
+        $this->pushOwnerInbox($owner, $ticket, $title, $body);
+        $this->sendOwnerInformativeEmail($owner, $staff, $ticket, $title, $typeLabel, $messageContent);
     }
 
     /** Prazo/previsão definido pela equipe → notifica o usuário dono do ticket. */
     public function notifyOwnerOfForecastSet(AppSupportTicket $ticket, User $staff, CarbonInterface $forecastAt): void
     {
-        if (! $ticket->user_id) {
-            return;
-        }
-
-        $owner = User::query()->find($ticket->user_id);
+        $owner = $this->findTicketOwner($ticket);
         if (! $owner) {
             return;
         }
@@ -78,83 +43,61 @@ class SupportTicketChatNotifier
         $title = 'Prazo definido no seu chamado';
         $body = 'Informamos que o prazo previsto para o seu chamado "'.$typeLabel.'" é '.$dateLabel.'.';
 
-        if (UserMessagingPreferences::acceptsInbox($owner)) {
-            $row = UserInboxNotification::create([
-                'user_id' => $owner->id,
-                'title' => $title,
-                'body' => $body,
-                'action_url' => null,
-            ]);
-
-            $row->update([
-                'action_url' => route('mobile.support.ticket', [
-                    'token' => $ticket->public_token,
-                    'inbox' => $row->id,
-                ], absolute: true),
-            ]);
-        }
-
-        $selfAction = (int) $ticket->user_id === (int) $staff->id;
-        if (! $selfAction && is_string($owner->email) && filter_var($owner->email, FILTER_VALIDATE_EMAIL)) {
-            $owner->loadMissing('church:id,name');
-            $conversationUrl = route('mobile.support.ticket', ['token' => $ticket->public_token], absolute: true);
-            Mail::to($owner->email)->send(new SupportTicketStaffMessageMail(
-                $title,
-                $typeLabel,
-                $body,
-                $conversationUrl,
-                $staff->name,
-                $owner->church?->name,
-            ));
-        }
+        $this->pushOwnerInbox($owner, $ticket, $title, $body);
+        $this->sendOwnerInformativeEmail($owner, $staff, $ticket, $title, $typeLabel, $body);
     }
 
-    /** Finalização da demanda pela equipe → notificações ao utilizador dono do ticket. */
-    public function notifyOwnerOfFinalizedTicket(AppSupportTicket $ticket, User $staff, string $solutionText): void
-    {
-        if (! $ticket->user_id) {
+    /**
+     * Atualização de status e/ou solução pela equipe → caixa de entrada e e-mail (corpo com solução, se houver).
+     */
+    public function notifyOwnerOfTicketUpdate(
+        AppSupportTicket $ticket,
+        User $staff,
+        bool $statusChanged,
+        bool $solutionChanged,
+    ): void {
+        if (! $statusChanged && ! $solutionChanged) {
             return;
         }
 
-        $owner = User::query()->find($ticket->user_id);
+        $owner = $this->findTicketOwner($ticket);
         if (! $owner) {
             return;
         }
 
         $typeLabel = SupportTicketAdminPresenter::typeLabel((string) $ticket->type);
         $statusLabel = SupportTicketAdminPresenter::statusLabel((string) $ticket->status);
+        $solution = trim((string) ($ticket->solution_text ?? ''));
+
+        if ($solutionChanged && $solution === '' && ! $statusChanged) {
+            return;
+        }
+
         $title = 'Atualização no seu chamado';
-        $body = 'Seu chamado "'.$typeLabel.'" foi marcado como '.$statusLabel.'.';
+        $inboxBody = $statusChanged
+            ? 'Seu chamado "'.$typeLabel.'" foi marcado como '.$statusLabel.'.'
+            : 'A equipe atualizou a solução do seu chamado "'.$typeLabel.'".';
 
-        if (UserMessagingPreferences::acceptsInbox($owner)) {
-            $row = UserInboxNotification::create([
-                'user_id' => $owner->id,
-                'title' => $title,
-                'body' => $body,
-                'action_url' => null,
-            ]);
-
-            $row->update([
-                'action_url' => route('mobile.support.ticket', [
-                    'token' => $ticket->public_token,
-                    'inbox' => $row->id,
-                ], absolute: true),
-            ]);
+        $emailParts = [];
+        if ($statusChanged) {
+            $emailParts[] = 'Seu chamado "'.$typeLabel.'" foi marcado como '.$statusLabel.'.';
+        }
+        if ($solution !== '') {
+            $emailParts[] = $solution;
+        }
+        $emailContent = implode("\n\n", $emailParts);
+        if ($emailContent === '') {
+            return;
         }
 
-        $selfAction = (int) $ticket->user_id === (int) $staff->id;
-        if (! $selfAction && is_string($owner->email) && filter_var($owner->email, FILTER_VALIDATE_EMAIL)) {
-            $owner->loadMissing('church:id,name');
-            $conversationUrl = route('mobile.support.ticket', ['token' => $ticket->public_token], absolute: true);
-            Mail::to($owner->email)->send(new SupportTicketStaffMessageMail(
-                $title,
-                $typeLabel,
-                $solutionText,
-                $conversationUrl,
-                $staff->name,
-                $owner->church?->name,
-            ));
-        }
+        $this->pushOwnerInbox($owner, $ticket, $title, $inboxBody);
+        $this->sendOwnerInformativeEmail($owner, $staff, $ticket, $title, $typeLabel, $emailContent);
+    }
+
+    /** @deprecated Use {@see notifyOwnerOfTicketUpdate()} — mantido para chamadas legadas. */
+    public function notifyOwnerOfFinalizedTicket(AppSupportTicket $ticket, User $staff, string $solutionText): void
+    {
+        $this->notifyOwnerOfTicketUpdate($ticket, $staff, true, trim($solutionText) !== '');
     }
 
     /** Mensagem do membro na app → equipe de suporte (e pastoral, se aplicável). */
@@ -249,5 +192,73 @@ class SupportTicketChatNotifier
                 'inbox' => $row->id,
             ], absolute: true),
         ]);
+    }
+
+    private function findTicketOwner(AppSupportTicket $ticket): ?User
+    {
+        if (! $ticket->user_id) {
+            return null;
+        }
+
+        return User::query()->find($ticket->user_id);
+    }
+
+    private function pushOwnerInbox(User $owner, AppSupportTicket $ticket, string $title, string $body): void
+    {
+        if (! UserMessagingPreferences::acceptsInbox($owner)) {
+            return;
+        }
+
+        $row = UserInboxNotification::create([
+            'user_id' => $owner->id,
+            'title' => $title,
+            'body' => $body,
+            'action_url' => null,
+        ]);
+
+        $row->update([
+            'action_url' => route('mobile.support.ticket', [
+                'token' => $ticket->public_token,
+                'inbox' => $row->id,
+            ], absolute: true),
+        ]);
+    }
+
+    /** E-mail de cópia informativa: sempre que exista e-mail válido na conta (além da notificação na app). */
+    private function sendOwnerInformativeEmail(
+        User $owner,
+        User $staff,
+        AppSupportTicket $ticket,
+        string $title,
+        string $typeLabel,
+        string $messageContent,
+    ): void {
+        if ((int) $ticket->user_id === (int) $staff->id) {
+            return;
+        }
+
+        $email = $this->resolveOwnerEmail($owner);
+        if ($email === null) {
+            return;
+        }
+
+        $owner->loadMissing('church:id,name');
+        Mail::to($email)->send(new SupportTicketStaffMessageMail(
+            $title,
+            $typeLabel,
+            $messageContent,
+            route('mobile.support.ticket', ['token' => $ticket->public_token], absolute: true),
+            $staff->name,
+            $owner->church?->name,
+        ));
+    }
+
+    private function resolveOwnerEmail(User $owner): ?string
+    {
+        if (is_string($owner->email) && $owner->email !== '' && filter_var($owner->email, FILTER_VALIDATE_EMAIL)) {
+            return $owner->email;
+        }
+
+        return null;
     }
 }

@@ -28,6 +28,7 @@ type TicketRow = {
 type StatusOption = {
     value: string;
     label: string;
+    count: number;
 };
 
 type ModalPayload = Omit<SupportTicketDetailPanelProps, 'variant' | 'section'>;
@@ -203,13 +204,22 @@ export default function SupportIndex({
                                 key={opt.value}
                                 type="button"
                                 onClick={() => applyStatusFilter(opt.value)}
-                                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
                                     active
                                         ? `${statusFilterTone(opt.value)} ring-1 ring-current/20`
                                         : 'border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-600 dark:hover:bg-zinc-800'
                                 }`}
                             >
-                                {opt.label}
+                                <span>{opt.label}</span>
+                                <span
+                                    className={`inline-flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums ${
+                                        active
+                                            ? 'bg-black/10 text-current dark:bg-white/15'
+                                            : 'bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200'
+                                    }`}
+                                >
+                                    {opt.count > 99 ? '99+' : opt.count}
+                                </span>
                             </button>
                         );
                     })}

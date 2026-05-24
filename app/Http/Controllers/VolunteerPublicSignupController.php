@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -194,7 +195,11 @@ class VolunteerPublicSignupController extends Controller
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:155'],
             'birth_date' => ['required', 'date', 'before_or_equal:'.$minBirthDate],
-            'has_whatsapp' => ['required', 'boolean'],
+            'has_whatsapp' => [
+                Rule::requiredIf(fn () => trim((string) $request->input('phone', '')) !== ''),
+                'nullable',
+                'boolean',
+            ],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:50'],
             'has_social_networks' => ['required', 'boolean'],
@@ -218,7 +223,6 @@ class VolunteerPublicSignupController extends Controller
         ], UserProfilePhotoResolver::validationRules()), [
             'birth_date.before_or_equal' => 'O voluntário deve ter pelo menos 10 anos de idade.',
         ]);
-
 
         if (($validated['is_official_member'] ?? false) === true) {
             if (! array_key_exists('member_record_at_nova_semente', $validated) || $validated['member_record_at_nova_semente'] === null) {

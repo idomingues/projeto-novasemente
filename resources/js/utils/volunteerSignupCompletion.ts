@@ -10,6 +10,22 @@ export type VolunteerSignupCompletion = {
 
 const MIN_VOLUNTEER_AGE = 10;
 
+/** Campos que não entram no alerta de cadastro incompleto (espelha backend). */
+export const VOLUNTEER_SIGNUP_OPTIONAL_FIELD_KEYS = [
+    'phone',
+    'gifts_to_develop',
+    'professional_area',
+    'password',
+    'password_confirmation',
+    'current_password',
+] as const;
+
+function hasMinistrySelection(ids: unknown, storedText?: string | null): boolean {
+    if (hasPositiveIds(ids)) return true;
+    const text = (storedText ?? '').trim();
+    return text !== '' && text.toLowerCase() !== 'não';
+}
+
 type BoolLike = boolean | null | string | number | undefined;
 
 function normalizeBool(value: BoolLike): boolean | null {
@@ -73,7 +89,8 @@ export function computeVolunteerSignupCompletion(initial: VolunteerSignupInitial
 
     track('birth_date', true, isBirthDateAtLeastMinAge(initial.birth_date, MIN_VOLUNTEER_AGE));
 
-    track('has_whatsapp', true, isBoolSet(initial.has_whatsapp));
+    const phoneFilled = initial.phone.trim() !== '';
+    track('has_whatsapp', phoneFilled, phoneFilled ? isBoolSet(initial.has_whatsapp) : true);
 
     track('email', true, initial.email.trim() !== '' && isValidEmail(initial.email));
 
@@ -96,22 +113,26 @@ export function computeVolunteerSignupCompletion(initial: VolunteerSignupInitial
     const hasPrevious = normalizeBool(initial.has_previous_ministry_volunteer_experience);
     track('has_previous_ministry_volunteer_experience', true, hasPrevious !== null);
 
+    const previousDetails = (initial as VolunteerSignupInitial & { previous_ministry_details?: string })
+        .previous_ministry_details;
     if (hasPrevious === true) {
-        track('previous_ministry_ids', true, hasPositiveIds(initial.previous_ministry_ids));
+        track('previous_ministry_ids', true, hasMinistrySelection(initial.previous_ministry_ids, previousDetails));
     }
 
     const isActive = normalizeBool(initial.is_active_in_ministry);
     track('is_active_in_ministry', true, isActive !== null);
 
+    const ministryInvolvement = (initial as VolunteerSignupInitial & { ministry_involvement?: string }).ministry_involvement;
     if (isActive === true) {
-        track('active_ministry_ids', true, hasPositiveIds(initial.active_ministry_ids));
+        track('active_ministry_ids', true, hasMinistrySelection(initial.active_ministry_ids, ministryInvolvement));
     }
 
     const wantsOther = normalizeBool(initial.wants_other_ministry);
     track('wants_other_ministry', true, wantsOther !== null);
 
+    const otherInterest = (initial as VolunteerSignupInitial & { other_ministry_interest?: string }).other_ministry_interest;
     if (wantsOther === true) {
-        track('other_ministry_ids', true, hasPositiveIds(initial.other_ministry_ids));
+        track('other_ministry_ids', true, hasMinistrySelection(initial.other_ministry_ids, otherInterest));
     }
 
     track('lgpd_data_consent', true, normalizeBool(initial.lgpd_data_consent) === true);

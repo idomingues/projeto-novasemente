@@ -14,10 +14,22 @@ import {
     mergeVolunteerSignupWithInitial,
     visiblePagesForMissingFields,
 } from '@/utils/volunteerSignupCompletion';
+import {
+    clearVolunteerSignupDraft,
+    computeVolunteerSignupPageErrors,
+    mapVolunteerSignupServerErrors,
+    normalizeSignupBool,
+    readVolunteerSignupDraft,
+    shouldAskVolunteerWhatsapp,
+    splitVolunteerFullName,
+    writeVolunteerSignupDraft,
+    MIN_VOLUNTEER_SIGNUP_AGE,
+    maxBirthDateForMinVolunteerAge,
+} from '@/utils/volunteerSignupPageValidation';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { UserPlusIcon } from '@heroicons/react/24/outline';
 import axios from 'axios';
-import { FormEventHandler, MouseEvent, useCallback, useMemo, useRef, useState } from 'react';
+import { FormEventHandler, MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface Ministry {
     id: number;
@@ -71,8 +83,6 @@ type AttendanceDuration =
     | 'more_than_3_years';
 
 const PAGE_TITLES = ['Dados pessoais', 'Nova Semente', 'Experiência', 'Ministérios'];
-const ALL_PAGE_INDICES = [0, 1, 2, 3] as const;
-const MIN_VOLUNTEER_AGE = 10;
 
 const ATTENDANCE_OPTIONS: { value: AttendanceDuration; label: string }[] = [
     { value: 'less_than_3_months', label: 'Menos de 3 meses' },
@@ -81,16 +91,6 @@ const ATTENDANCE_OPTIONS: { value: AttendanceDuration; label: string }[] = [
     { value: 'years_1_3', label: '1–3 anos' },
     { value: 'more_than_3_years', label: '+ 3 anos' },
 ];
-
-function splitFullName(fullName: string): { first_name: string; last_name: string } | null {
-    const parts = fullName
-        .trim()
-        .split(/\s+/)
-        .map((p) => p.trim())
-        .filter(Boolean);
-    if (parts.length < 2) return null;
-    return { first_name: parts[0], last_name: parts.slice(1).join(' ') };
-}
 
 function resolveErrorPage(field: string): number {
     const base = field.split('.')[0];
@@ -173,31 +173,7 @@ function scrollToFirstError(errors: Record<string, string>) {
     });
 }
 
-function isValidEmail(value: string): boolean {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-}
-
-function maxBirthDateForMinAge(minYears: number): string {
-    const d = new Date();
-    d.setFullYear(d.getFullYear() - minYears);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
-}
-
-function isBirthDateAtLeastMinAge(birthDate: string, minYears: number): boolean {
-    if (!birthDate.trim()) return false;
-    return birthDate <= maxBirthDateForMinAge(minYears);
-}
-
 type BoolLike = boolean | null | string | number | undefined;
-
-function normalizeBool(value: BoolLike): boolean | null {
-    if (value === true || value === 1 || value === '1' || value === 'true') return true;
-    if (value === false || value === 0 || value === '0' || value === 'false') return false;
-    return null;
-}
 
 const SIGNUP_BOOL_FIELDS = [
     'has_whatsapp',
@@ -214,23 +190,27 @@ function prepareSignupPayload(form: Record<string, unknown>, firstName: string, 
     const out: Record<string, unknown> = { ...form, first_name: firstName, last_name: lastName };
 
     for (const field of SIGNUP_BOOL_FIELDS) {
-        out[field] = normalizeBool(out[field] as BoolLike);
+        out[field] = normalizeSignupBool(out[field] as BoolLike);
     }
 
-    if (normalizeBool(out.is_official_member as BoolLike) !== true) {
+    if (!shouldAskVolunteerWhatsapp(String(out.phone ?? ''))) {
+        out.has_whatsapp = false;
+    }
+
+    if (normalizeSignupBool(out.is_official_member as BoolLike) !== true) {
         delete out.member_record_at_nova_semente;
         delete out.member_record_church;
     }
 
-    if (normalizeBool(out.has_previous_ministry_volunteer_experience as BoolLike) !== true) {
+    if (normalizeSignupBool(out.has_previous_ministry_volunteer_experience as BoolLike) !== true) {
         out.previous_ministry_ids = [];
     }
 
-    if (normalizeBool(out.is_active_in_ministry as BoolLike) !== true) {
+    if (normalizeSignupBool(out.is_active_in_ministry as BoolLike) !== true) {
         out.active_ministry_ids = [];
     }
 
-    if (normalizeBool(out.wants_other_ministry as BoolLike) !== true) {
+    if (normalizeSignupBool(out.wants_other_ministry as BoolLike) !== true) {
         out.other_ministry_ids = [];
     }
 
@@ -299,7 +279,7 @@ function YesNoRadio({
     onChange: (v: boolean) => void;
 }) {
     const options = ['Não', 'Sim'] as const;
-    const normalized = normalizeBool(value);
+    const normalized = normalizeSignupBool(value);
     const selected = normalized === true ? 'Sim' : normalized === false ? 'Não' : '';
 
     return (
@@ -440,6 +420,7 @@ function buildFormDefaults(
     initial: VolunteerSignupInitial | undefined,
     redirectAfterSave: string,
 ) {
+    const draft = !isEdit ? readVolunteerSignupDraft(token) : null;
     const base = initial ?? {
         full_name: '',
         first_name: '',
@@ -464,31 +445,33 @@ function buildFormDefaults(
         lgpd_data_consent: null,
     };
 
+    const merged = draft ? { ...base, ...draft } : base;
+
     return {
         token: isEdit ? '' : token,
         redirect_after_save: redirectAfterSave,
         photo_file: null as File | null,
-        full_name: base.full_name,
-        first_name: base.first_name,
-        last_name: base.last_name,
-        birth_date: base.birth_date,
-        has_whatsapp: base.has_whatsapp,
-        email: base.email,
-        phone: base.phone,
-        has_social_networks: base.has_social_networks,
-        attendance_duration: base.attendance_duration,
-        is_official_member: base.is_official_member,
-        member_record_at_nova_semente: base.member_record_at_nova_semente,
-        member_record_church: base.member_record_church,
-        has_previous_ministry_volunteer_experience: base.has_previous_ministry_volunteer_experience,
-        previous_ministry_ids: base.previous_ministry_ids,
-        is_active_in_ministry: base.is_active_in_ministry,
-        active_ministry_ids: base.active_ministry_ids,
-        wants_other_ministry: base.wants_other_ministry,
-        other_ministry_ids: base.other_ministry_ids,
-        gifts_to_develop: base.gifts_to_develop,
-        professional_area: base.professional_area,
-        lgpd_data_consent: base.lgpd_data_consent,
+        full_name: merged.full_name,
+        first_name: merged.first_name,
+        last_name: merged.last_name,
+        birth_date: merged.birth_date,
+        has_whatsapp: merged.has_whatsapp,
+        email: merged.email,
+        phone: merged.phone,
+        has_social_networks: merged.has_social_networks,
+        attendance_duration: merged.attendance_duration,
+        is_official_member: merged.is_official_member,
+        member_record_at_nova_semente: merged.member_record_at_nova_semente,
+        member_record_church: merged.member_record_church,
+        has_previous_ministry_volunteer_experience: merged.has_previous_ministry_volunteer_experience,
+        previous_ministry_ids: merged.previous_ministry_ids ?? [],
+        is_active_in_ministry: merged.is_active_in_ministry,
+        active_ministry_ids: merged.active_ministry_ids ?? [],
+        wants_other_ministry: merged.wants_other_ministry,
+        other_ministry_ids: merged.other_ministry_ids ?? [],
+        gifts_to_develop: merged.gifts_to_develop,
+        professional_area: merged.professional_area,
+        lgpd_data_consent: merged.lgpd_data_consent,
         current_password: '',
         password: '',
         password_confirmation: '',
@@ -555,7 +538,7 @@ export default function PublicSignup({
         () => (visiblePages.length > 0 ? Math.round(((pageSlot + 1) / visiblePages.length) * 100) : 100),
         [pageSlot, visiblePages.length],
     );
-    const maxBirthDate = useMemo(() => maxBirthDateForMinAge(MIN_VOLUNTEER_AGE), []);
+    const maxBirthDate = useMemo(() => maxBirthDateForMinVolunteerAge(MIN_VOLUNTEER_SIGNUP_AGE), []);
 
     const serverErrorKeys = useMemo(() => {
         if (processing || !showSubmitErrors) return [];
@@ -584,8 +567,31 @@ export default function PublicSignup({
         clearClientError(field);
     };
 
+    useEffect(() => {
+        if (isEdit || processing) return;
+        writeVolunteerSignupDraft(data.token || token, data);
+    }, [data, isEdit, processing, token]);
+
+    const applyServerValidationErrors = useCallback(
+        (propsErrors: Record<string, string | string[] | undefined> | Record<string, string>) => {
+            const mapped = mapVolunteerSignupServerErrors(propsErrors);
+            const keys = Object.keys(mapped);
+            if (keys.length === 0) return;
+
+            setShowSubmitErrors(true);
+            setClientErrors(mapped);
+            setStepBlocked(true);
+            const errorPages = keys.map(resolveErrorPage);
+            const firstErrorPage = Math.min(...errorPages);
+            const slotForPage = visiblePages.indexOf(firstErrorPage);
+            setPageSlot(slotForPage >= 0 ? slotForPage : 0);
+            scrollToFirstError(mapped);
+        },
+        [visiblePages],
+    );
+
     const runDuplicateCheck = useCallback(async () => {
-        const parts = splitFullName(data.full_name);
+        const parts = splitVolunteerFullName(data.full_name);
         const fn = parts?.first_name ?? data.first_name.trim();
         const ln = parts?.last_name ?? data.last_name.trim();
         try {
@@ -624,7 +630,7 @@ export default function PublicSignup({
     };
 
     const syncNameParts = (full: string) => {
-        const parts = splitFullName(full);
+        const parts = splitVolunteerFullName(full);
         setData('first_name', parts?.first_name ?? '');
         setData('last_name', parts?.last_name ?? '');
     };
@@ -683,120 +689,16 @@ export default function PublicSignup({
                 emailHint: emailDuplicateHint,
                 phoneHint: phoneDuplicateHint,
             },
-        ): Record<string, string> => {
-            const next: Record<string, string> = {};
-            const visible = (fieldKey: string) =>
-                !focusMissingOnly || isVolunteerSignupFieldVisible(fieldKey, true, missingFields, data);
-
-            if (p === 0) {
-                if (visible('photo_file') && !data.photo_file && !(isEdit && hasExistingPhoto)) {
-                    next.photo_file = 'Tire ou envie uma foto antes de avançar.';
-                }
-                const parts = splitFullName(data.full_name);
-                if (visible('full_name') && !parts) next.full_name = 'Informe o nome completo (nome e sobrenome).';
-                if (visible('birth_date') && !data.birth_date) next.birth_date = 'Informe a data de nascimento.';
-                else if (visible('birth_date') && !isBirthDateAtLeastMinAge(data.birth_date, MIN_VOLUNTEER_AGE)) {
-                    next.birth_date = `O voluntário deve ter pelo menos ${MIN_VOLUNTEER_AGE} anos de idade.`;
-                }
-                if (visible('has_whatsapp') && normalizeBool(data.has_whatsapp) === null) {
-                    next.has_whatsapp = 'Informe se este número tem WhatsApp.';
-                }
-                if (visible('email') && !data.email.trim()) next.email = 'Informe o e-mail.';
-                else if (visible('email') && !isValidEmail(data.email)) next.email = 'Informe um e-mail válido.';
-                if (visible('has_social_networks') && normalizeBool(data.has_social_networks) === null) {
-                    next.has_social_networks = 'Informe se você usa redes sociais.';
-                }
-                if (visible('full_name') && duplicateHints.nameHint) next.full_name = duplicateHints.nameHint;
-                if (visible('email') && duplicateHints.emailHint) next.email = duplicateHints.emailHint;
-                if (duplicateHints.phoneHint) next.phone = duplicateHints.phoneHint;
-                if (!isEdit) {
-                    if (!data.password) next.password = 'Defina uma senha para acessar o aplicativo.';
-                    else if (data.password.length < 6) next.password = 'A senha deve ter pelo menos 6 caracteres.';
-                    if (!data.password_confirmation) next.password_confirmation = 'Confirme a senha.';
-                    if (data.password && data.password_confirmation && data.password !== data.password_confirmation) {
-                        next.password_confirmation = 'As senhas não coincidem.';
-                    }
-                } else {
-                    const changingPassword =
-                        data.password.trim() !== '' ||
-                        data.password_confirmation.trim() !== '' ||
-                        data.current_password.trim() !== '';
-                    if (changingPassword) {
-                        if (!data.current_password.trim()) {
-                            next.current_password = 'Informe a senha atual para alterar.';
-                        }
-                        if (!data.password.trim()) next.password = 'Informe a nova senha.';
-                        else if (data.password.length < 6) next.password = 'A senha deve ter pelo menos 6 caracteres.';
-                        if (!data.password_confirmation.trim()) next.password_confirmation = 'Confirme a nova senha.';
-                        if (data.password && data.password_confirmation && data.password !== data.password_confirmation) {
-                            next.password_confirmation = 'As senhas não coincidem.';
-                        }
-                    }
-                }
-            }
-            if (p === 1) {
-                if (visible('attendance_duration') && !data.attendance_duration) {
-                    next.attendance_duration = 'Selecione uma opção.';
-                }
-                if (visible('is_official_member') && normalizeBool(data.is_official_member) === null) {
-                    next.is_official_member = 'Selecione uma opção.';
-                }
-                if (visible('is_official_member') && normalizeBool(data.is_official_member) === true) {
-                    if (visible('member_record_at_nova_semente') && normalizeBool(data.member_record_at_nova_semente) === null) {
-                        next.member_record_at_nova_semente = 'Selecione uma opção.';
-                    }
-                    if (
-                        visible('member_record_church') &&
-                        normalizeBool(data.member_record_at_nova_semente) === false &&
-                        !data.member_record_church.trim()
-                    ) {
-                        next.member_record_church = 'Informe em qual igreja está o seu registro.';
-                    }
-                }
-            }
-            if (p === 2) {
-                if (visible('has_previous_ministry_volunteer_experience') && normalizeBool(data.has_previous_ministry_volunteer_experience) === null) {
-                    next.has_previous_ministry_volunteer_experience = 'Selecione uma opção.';
-                }
-                if (
-                    visible('previous_ministry_ids') &&
-                    normalizeBool(data.has_previous_ministry_volunteer_experience) === true &&
-                    data.previous_ministry_ids.length === 0
-                ) {
-                    next.previous_ministry_ids = 'Selecione em quais ministérios você já serviu.';
-                }
-            }
-            if (p === 3) {
-                if (visible('is_active_in_ministry') && normalizeBool(data.is_active_in_ministry) === null) {
-                    next.is_active_in_ministry = 'Selecione uma opção.';
-                }
-                if (
-                    visible('active_ministry_ids') &&
-                    normalizeBool(data.is_active_in_ministry) === true &&
-                    data.active_ministry_ids.length === 0
-                ) {
-                    next.active_ministry_ids = 'Selecione pelo menos um ministério.';
-                }
-                if (visible('wants_other_ministry') && normalizeBool(data.wants_other_ministry) === null) {
-                    next.wants_other_ministry = 'Selecione uma opção.';
-                }
-                if (
-                    visible('other_ministry_ids') &&
-                    normalizeBool(data.wants_other_ministry) === true &&
-                    data.other_ministry_ids.length === 0
-                ) {
-                    next.other_ministry_ids = 'Selecione pelo menos um ministério.';
-                }
-                if (visible('lgpd_data_consent') && normalizeBool(data.lgpd_data_consent) === null) {
-                    next.lgpd_data_consent = 'Selecione uma opção.';
-                }
-                if (visible('lgpd_data_consent') && normalizeBool(data.lgpd_data_consent) === false) {
-                    next.lgpd_data_consent = 'Para continuar, é necessário autorizar o uso dos dados (LGPD).';
-                }
-            }
-
-            return next;
-        },
+        ): Record<string, string> =>
+            computeVolunteerSignupPageErrors({
+                page: p,
+                data,
+                isEdit,
+                hasExistingPhoto,
+                focusMissingOnly,
+                missingFields,
+                duplicateHints,
+            }),
         [data, hasExistingPhoto, isEdit, nameDuplicateHint, emailDuplicateHint, phoneDuplicateHint, focusMissingOnly, missingFields],
     );
 
@@ -859,7 +761,7 @@ export default function PublicSignup({
             }
         }
 
-        const parts = splitFullName(data.full_name);
+        const parts = splitVolunteerFullName(data.full_name);
         if (!parts) {
             setClientErrors({ full_name: 'Informe o nome completo.' });
             setPageSlot(0);
@@ -887,34 +789,18 @@ export default function PublicSignup({
             return prepared;
         });
 
-        const onSubmitError = (page: { props: Record<string, unknown> }) => {
-            const propsErrors = (page.props as { errors?: Record<string, string | string[] | undefined> }).errors;
-            if (!propsErrors) return;
-
-            const keys = Object.keys(propsErrors).filter((k) => firstErrorMessage(propsErrors, k));
-            if (keys.length === 0) return;
-
-            const mapped: Record<string, string> = {};
-            for (const key of keys) {
-                const message = firstErrorMessage(propsErrors, key);
-                if (message) mapped[key] = message;
-            }
-
-            setShowSubmitErrors(true);
-            setClientErrors(mapped);
-            setStepBlocked(true);
-            const errorPages = keys.map(resolveErrorPage);
-            const firstErrorPage = Math.min(...errorPages);
-            const slotForPage = visiblePages.indexOf(firstErrorPage);
-            setPageSlot(slotForPage >= 0 ? slotForPage : 0);
-            scrollToFirstError(mapped);
-        };
-
         const submitOptions = {
             forceFormData: true,
             preserveState: true,
-            preserveScroll: false,
-            onSuccess: onSubmitError,
+            preserveScroll: true,
+            onError: (serverErrors: Record<string, string>) => {
+                applyServerValidationErrors(serverErrors);
+            },
+            onSuccess: () => {
+                if (!isEdit) {
+                    clearVolunteerSignupDraft(data.token || token);
+                }
+            },
         };
 
         if (isEdit) {
@@ -1050,6 +936,9 @@ export default function PublicSignup({
                                     setPhoneDuplicateHint(null);
                                     setPageSlot(0);
                                     setPhotoPreview(initial?.photo_url ?? null);
+                                    if (!isEdit) {
+                                        clearVolunteerSignupDraft(data.token || token);
+                                    }
                                     reset();
                                 }}
                                 className="text-xs font-medium text-zinc-600 underline dark:text-zinc-400"
@@ -1137,15 +1026,23 @@ export default function PublicSignup({
                                         autoComplete="tel"
                                         inputMode="tel"
                                         onChange={(e) => {
-                                            setData('phone', e.target.value);
+                                            const nextPhone = e.target.value;
+                                            setData((d) => ({
+                                                ...d,
+                                                phone: nextPhone,
+                                                has_whatsapp: shouldAskVolunteerWhatsapp(nextPhone) ? d.has_whatsapp : null,
+                                            }));
                                             setPhoneDuplicateHint(null);
                                             clearClientError('phone');
+                                            if (!shouldAskVolunteerWhatsapp(nextPhone)) {
+                                                clearClientError('has_whatsapp');
+                                            }
                                         }}
                                         onBlur={scheduleDuplicateCheck}
                                     />
                                 </Question>
                                 ) : null}
-                                {showField('has_whatsapp') ? (
+                                {(focusMissingOnly ? showField('has_whatsapp') : shouldAskVolunteerWhatsapp(data.phone)) ? (
                                 <Question fieldKey="has_whatsapp" number={++questionNumber} label="Este número tem WhatsApp?" error={err('has_whatsapp')}>
                                     <YesNoRadio
                                         name="has_whatsapp"
@@ -1319,7 +1216,7 @@ export default function PublicSignup({
                                 ) : null}
                                 {(focusMissingOnly
                                     ? showField('member_record_at_nova_semente') || showField('member_record_church')
-                                    : normalizeBool(data.is_official_member) === true) ? (
+                                    : normalizeSignupBool(data.is_official_member) === true) ? (
                                     <>
                                         {showField('member_record_at_nova_semente') ? (
                                         <Question
@@ -1344,7 +1241,7 @@ export default function PublicSignup({
                                         ) : null}
                                         {(focusMissingOnly
                                             ? showField('member_record_church')
-                                            : normalizeBool(data.member_record_at_nova_semente) === false) ? (
+                                            : normalizeSignupBool(data.member_record_at_nova_semente) === false) ? (
                                             <Question
                                                 fieldKey="member_record_church"
                                                 number={++questionNumber}
@@ -1391,7 +1288,7 @@ export default function PublicSignup({
                                 ) : null}
                                 {(focusMissingOnly
                                     ? showField('previous_ministry_ids')
-                                    : normalizeBool(data.has_previous_ministry_volunteer_experience) === true) ? (
+                                    : normalizeSignupBool(data.has_previous_ministry_volunteer_experience) === true) ? (
                                     <Question
                                         fieldKey="previous_ministry_ids"
                                         number={++questionNumber}
@@ -1433,7 +1330,7 @@ export default function PublicSignup({
                                 ) : null}
                                 {(focusMissingOnly
                                     ? showField('active_ministry_ids')
-                                    : normalizeBool(data.is_active_in_ministry) === true) ? (
+                                    : normalizeSignupBool(data.is_active_in_ministry) === true) ? (
                                     <Question fieldKey="active_ministry_ids" number={++questionNumber} label="Selecione os ministérios" error={err('active_ministry_ids')}>
                                         <MinistryCheckboxList
                                             ministries={ministries}
@@ -1465,7 +1362,7 @@ export default function PublicSignup({
                                 ) : null}
                                 {(focusMissingOnly
                                     ? showField('other_ministry_ids')
-                                    : normalizeBool(data.wants_other_ministry) === true) ? (
+                                    : normalizeSignupBool(data.wants_other_ministry) === true) ? (
                                     <Question fieldKey="other_ministry_ids" number={++questionNumber} label="Se sim, qual?" error={err('other_ministry_ids')}>
                                         <MinistryCheckboxList
                                             ministries={ministries}

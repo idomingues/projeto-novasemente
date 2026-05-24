@@ -14,8 +14,8 @@ export default function VolunteerSignupIncompleteBanner({ completion }: Props) {
 
     const missingLabel =
         completion.missing_count === 1
-            ? 'Falta 1 pergunta para concluir seu cadastro de voluntário.'
-            : `Faltam ${completion.missing_count} perguntas para concluir seu cadastro de voluntário.`;
+            ? 'Falta 1 pergunta obrigatória para concluir seu cadastro de voluntário.'
+            : `Faltam ${completion.missing_count} perguntas obrigatórias para concluir seu cadastro de voluntário.`;
 
     const pendingHint = describeMissingVolunteerSignupFields(completion.missing_fields);
 
