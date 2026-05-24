@@ -37,8 +37,9 @@ class NotificationFeed
     {
         $user = $request->user();
         $dismissedAppIds = self::dismissedAppNotificationIdsForUser($user);
+        $visibleSince = $user?->created_at;
 
-        $app = AppNotification::recentForChurch($churchId, $limit)
+        $app = AppNotification::recentForChurch($churchId, $limit, $visibleSince)
             ->reject(fn (array $n) => in_array((int) $n['id'], $dismissedAppIds, true))
             ->map(fn (array $n) => [
                 'id' => 'app-'.$n['id'],
@@ -83,7 +84,9 @@ class NotificationFeed
      */
     public static function mergedTotalCountForUser(Request $request, ?int $churchId): int
     {
-        $dismissedAppIds = self::dismissedAppNotificationIdsForUser($request->user());
+        $user = $request->user();
+        $dismissedAppIds = self::dismissedAppNotificationIdsForUser($user);
+        $visibleSince = $user?->created_at;
 
         $appCount = 0;
         if (Schema::hasTable('app_notifications')) {
@@ -94,6 +97,7 @@ class NotificationFeed
                         $q->orWhere('church_id', $churchId);
                     }
                 })
+                ->when($visibleSince !== null, fn ($q) => $q->where('created_at', '>=', $visibleSince))
                 ->when($dismissedAppIds !== [], fn ($q) => $q->whereNotIn('id', $dismissedAppIds))
                 ->count();
         }

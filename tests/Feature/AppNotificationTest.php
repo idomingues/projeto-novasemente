@@ -6,8 +6,10 @@ use App\Models\AppNotification;
 use App\Models\Church;
 use App\Models\User;
 use App\Models\UserInboxNotification;
+use App\Support\NotificationFeed;
 use Database\Seeders\ChurchSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -107,6 +109,53 @@ class AppNotificationTest extends TestCase
 
         $response->assertSessionHasErrors('user_id');
         $this->assertSame(0, UserInboxNotification::query()->count());
+    }
+
+    public function test_new_user_does_not_see_church_broadcasts_sent_before_registration(): void
+    {
+        $this->seed(ChurchSeeder::class);
+        $church = Church::query()->firstOrFail();
+
+        $broadcast = AppNotification::query()->create([
+            'church_id' => $church->id,
+            'title' => 'Aviso antigo',
+            'body' => 'Enviado antes do cadastro.',
+        ]);
+        $broadcast->created_at = now()->subMonth();
+        $broadcast->saveQuietly();
+
+        $user = User::factory()->create(['church_id' => $church->id]);
+
+        $request = Request::create('/');
+        $request->setUserResolver(fn () => $user);
+
+        $feed = NotificationFeed::mergedForUser($request, $church->id, 50);
+        $appItems = array_values(array_filter($feed, fn (array $n) => $n['kind'] === 'app'));
+
+        $this->assertSame([], $appItems);
+        $this->assertSame(0, NotificationFeed::mergedTotalCountForUser($request, $church->id));
+    }
+
+    public function test_user_sees_church_broadcasts_sent_after_registration(): void
+    {
+        $this->seed(ChurchSeeder::class);
+        $church = Church::query()->firstOrFail();
+        $user = User::factory()->create(['church_id' => $church->id]);
+
+        AppNotification::query()->create([
+            'church_id' => $church->id,
+            'title' => 'Aviso novo',
+            'body' => 'Enviado depois do cadastro.',
+        ]);
+
+        $request = Request::create('/');
+        $request->setUserResolver(fn () => $user);
+
+        $feed = NotificationFeed::mergedForUser($request, $church->id, 50);
+        $appItems = array_values(array_filter($feed, fn (array $n) => $n['kind'] === 'app'));
+
+        $this->assertCount(1, $appItems);
+        $this->assertSame('Aviso novo', $appItems[0]['title']);
     }
 
     public function test_user_can_dismiss_church_broadcast_from_their_feed(): void

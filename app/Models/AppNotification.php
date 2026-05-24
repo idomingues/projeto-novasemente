@@ -27,8 +27,11 @@ class AppNotification extends Model
     }
 
     /** Notificações recentes para exibir (igreja atual + globais). */
-    public static function recentForChurch(?int $churchId, int $limit = 50): \Illuminate\Support\Collection
-    {
+    public static function recentForChurch(
+        ?int $churchId,
+        int $limit = 50,
+        ?\DateTimeInterface $visibleSince = null,
+    ): \Illuminate\Support\Collection {
         return static::query()
             ->with('author')
             ->where(function ($q) use ($churchId) {
@@ -37,6 +40,7 @@ class AppNotification extends Model
                     $q->orWhere('church_id', $churchId);
                 }
             })
+            ->when($visibleSince !== null, fn ($q) => $q->where('created_at', '>=', $visibleSince))
             ->orderByDesc('created_at')
             ->limit($limit)
             ->get()
