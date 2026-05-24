@@ -18,6 +18,7 @@ import {
 interface Props {
     church: { name: string } | null;
     user: { name: string; email: string };
+    volunteerSignupCompletion?: { is_complete: boolean; missing_count: number } | null;
     profileCounts: {
         /** Pedidos em aberto no painel Atendimento Pastoral (null se o usuário não vê o painel). */
         atendimento_open: number | null;
@@ -128,7 +129,7 @@ function RowItem({ row }: { row: Row }) {
     );
 }
 
-export default function MobileProfile({ church, user, profileCounts }: Props) {
+export default function MobileProfile({ church, user, profileCounts, volunteerSignupCompletion = null }: Props) {
     const page = usePage();
     const auth = (page.props as {
         auth?: {
@@ -210,6 +211,17 @@ export default function MobileProfile({ church, user, profileCounts }: Props) {
                       description: 'Conversa com líder de ministério (membro logado)',
                       icon: ChatBubbleLeftRightIcon,
                       href: route('mobile.contact'),
+                      tone: 'member',
+                  },
+              ] as Row[])
+            : []),
+        ...(volunteerSignupCompletion !== null && route().has('volunteers.self-signup.edit')
+            ? ([
+                  {
+                      title: 'Cadastro de voluntário',
+                      description: 'Complete as perguntas que faltam no seu cadastro',
+                      icon: UserGroupIcon,
+                      href: route('volunteers.self-signup.edit'),
                       tone: 'member',
                   },
               ] as Row[])

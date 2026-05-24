@@ -125,6 +125,44 @@ class VolunteersTest extends TestCase
         $response->assertSessionHasErrors(['email']);
     }
 
+    public function test_admin_can_update_volunteer_password_on_edit(): void
+    {
+        $admin = $this->actingAsAdmin();
+
+        $this->actingAs($admin)->post('/volunteers', [
+            'name' => 'Com Senha',
+            'email' => 'senha.voluntario@example.com',
+            'ministry_ids' => [],
+            'active' => '1',
+            'app_role' => '',
+            'app_ministry_ids' => [],
+            'app_password' => 'secret123',
+            'app_password_confirmation' => 'secret123',
+        ])->assertRedirect('/volunteers');
+
+        $volunteer = Volunteer::query()->where('email', 'senha.voluntario@example.com')->firstOrFail();
+        $userId = (int) $volunteer->user_id;
+        $oldHash = User::query()->findOrFail($userId)->password;
+
+        $response = $this->actingAs($admin)->put("/volunteers/{$volunteer->id}", [
+            'name' => 'Com Senha',
+            'email' => 'senha.voluntario@example.com',
+            'ministry_ids' => [],
+            'active' => '1',
+            'app_role' => '',
+            'app_ministry_ids' => [],
+            'app_password' => 'novaSenha456',
+            'app_password_confirmation' => 'novaSenha456',
+        ]);
+
+        $response->assertRedirect('/volunteers');
+        $response->assertSessionHasNoErrors();
+
+        $newHash = User::query()->findOrFail($userId)->password;
+        $this->assertNotSame($oldHash, $newHash);
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('novaSenha456', $newHash));
+    }
+
     public function test_can_delete_volunteer_and_keeps_user_without_recreating_profile(): void
     {
         $admin = $this->actingAsAdmin();

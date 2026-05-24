@@ -1,5 +1,8 @@
 import MobileLayout from '@/Layouts/MobileLayout';
+import VolunteerSignupIncompleteBanner from '@/Components/Volunteers/VolunteerSignupIncompleteBanner';
+import type { VolunteerSignupCompletion } from '@/utils/volunteerSignupCompletion';
 import { Head, Link, usePage } from '@inertiajs/react';
+import { useEffect } from 'react';
 import { formatWhenLine, getDayMonth, type MobileEventListItem } from '@/utils/mobileEventDisplay';
 import {
     ArchiveBoxIcon,
@@ -30,6 +33,8 @@ type NewsCard = {
 interface Props {
     latestNews: NewsCard[];
     upcomingEvents: MobileEventListItem[];
+    showPostRegistrationBanner?: boolean;
+    volunteerSignupCompletion?: VolunteerSignupCompletion | null;
 }
 
 type PageProps = {
@@ -179,7 +184,12 @@ const quickActionSolicitations: QuickAction = {
     icon: SparklesIcon,
 };
 
-export default function MobileHome({ latestNews, upcomingEvents }: Props) {
+export default function MobileHome({
+    latestNews,
+    upcomingEvents,
+    showPostRegistrationBanner = false,
+    volunteerSignupCompletion = null,
+}: Props) {
     const page = usePage();
     const { appUrl = '', auth } = page.props as unknown as PageProps;
     const user = auth?.user ?? null;
@@ -189,10 +199,36 @@ export default function MobileHome({ latestNews, upcomingEvents }: Props) {
             ? [quickActionSolicitations, ...quickActionsGuest]
             : quickActionsGuest;
 
+    useEffect(() => {
+        if (!showPostRegistrationBanner || typeof window === 'undefined') {
+            return;
+        }
+        const u = new URL(window.location.href);
+        if (u.searchParams.has('reg_ok')) {
+            u.searchParams.delete('reg_ok');
+            const next = u.pathname + (u.searchParams.toString() ? `?${u.searchParams.toString()}` : '') + u.hash;
+            window.history.replaceState({}, '', next);
+        }
+    }, [showPostRegistrationBanner]);
+
     return (
         <MobileLayout>
             <Head title="Home" />
             <div className="mx-auto w-full max-w-lg space-y-7 pb-4 sm:max-w-xl md:max-w-2xl lg:max-w-none">
+                {showPostRegistrationBanner ? (
+                    <div
+                        className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-50"
+                        role="status"
+                    >
+                        <p className="font-semibold">Conta criada com sucesso</p>
+                        <p className="mt-1 text-emerald-900/90 dark:text-emerald-100/90">
+                            Você já está conectado(a). Explore notícias, eventos e o restante do aplicativo.
+                        </p>
+                    </div>
+                ) : null}
+                {volunteerSignupCompletion ? (
+                    <VolunteerSignupIncompleteBanner completion={volunteerSignupCompletion} />
+                ) : null}
                 <header className="flex items-center justify-between gap-4">
                     <div className="min-w-0">
                         <p className="truncate text-lg font-bold leading-snug text-zinc-900 dark:text-white lg:text-2xl lg:font-semibold">

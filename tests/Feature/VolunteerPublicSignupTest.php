@@ -9,7 +9,6 @@ use App\Models\Volunteer;
 use App\Models\VolunteerChurchPipeline;
 use App\Models\VolunteerPipelineStage;
 use App\Models\VolunteerSelfSignupToken;
-use App\Support\BibleAvatarCatalog;
 use Database\Seeders\ChurchSeeder;
 use Database\Seeders\MinistrySeeder;
 use Database\Seeders\RolePermissionSeeder;
@@ -47,27 +46,6 @@ class VolunteerPublicSignupTest extends TestCase
         ];
     }
 
-    public function test_public_signup_accepts_bible_avatar_instead_of_photo(): void
-    {
-        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class, MinistrySeeder::class]);
-
-        $churchId = (int) Church::query()->orderBy('id')->value('id');
-        $token = VolunteerSelfSignupToken::query()->create([
-            'church_id' => $churchId,
-            'token' => (string) Str::uuid(),
-        ])->token;
-
-        $payload = $this->signupPayload($token, 'avatar.voluntario@example.com');
-        unset($payload['photo_file']);
-        $payload['avatar_key'] = 'female:esther';
-
-        $response = $this->post(route('volunteers.self-signup.store'), $payload);
-
-        $response->assertRedirect(route('login'));
-        $user = User::query()->where('email', 'avatar.voluntario@example.com')->firstOrFail();
-        $this->assertSame(BibleAvatarCatalog::urlForKey('female:esther'), $user->photo_url);
-    }
-
     public function test_public_signup_creates_user_and_redirects_to_login_with_congrats(): void
     {
         $this->seed([RolePermissionSeeder::class, ChurchSeeder::class, MinistrySeeder::class]);
@@ -81,11 +59,17 @@ class VolunteerPublicSignupTest extends TestCase
 
         $response = $this->post(route('volunteers.self-signup.store'), $this->signupPayload($token, 'novo.voluntario@example.com', $ministry->id));
 
-        $response->assertRedirect(route('login'));
+        $response->assertRedirect(route('login', absolute: false));
         $response->assertSessionHas('status');
         $response->assertSessionHas('volunteer_signup_welcome', true);
         $this->assertStringContainsString('Bem-vindo', (string) session('status'));
         $this->assertGuest();
+
+        $this->get(route('login', absolute: false))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Auth/Login')
+                ->where('volunteerSignupWelcome', true));
 
         $this->assertDatabaseHas('users', [
             'email' => 'novo.voluntario@example.com',
@@ -114,6 +98,26 @@ class VolunteerPublicSignupTest extends TestCase
         $this->assertSame((int) $interessadoStageId, (int) $pipeline->stage_id);
     }
 
+    public function test_public_signup_inertia_request_redirects_to_login_via_location_header(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class, MinistrySeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+        $token = VolunteerSelfSignupToken::query()->create([
+            'church_id' => $churchId,
+            'token' => (string) Str::uuid(),
+        ])->token;
+
+        $response = $this->withHeaders([
+            'X-Inertia' => 'true',
+            'X-Requested-With' => 'XMLHttpRequest',
+        ])->post(route('volunteers.self-signup.store'), $this->signupPayload($token, 'inertia.voluntario@example.com'));
+
+        $response->assertStatus(409);
+        $response->assertHeader('X-Inertia-Location', route('login'));
+        $response->assertSessionHas('volunteer_signup_welcome', true);
+    }
+
     public function test_volunteer_can_login_after_public_signup(): void
     {
         $this->seed([RolePermissionSeeder::class, ChurchSeeder::class, MinistrySeeder::class]);
@@ -136,6 +140,34 @@ class VolunteerPublicSignupTest extends TestCase
 
         $login->assertRedirect(route('mobile.home'));
         $this->assertAuthenticated();
+    }
+
+    public function test_public_signup_recadastro_redirects_to_login_not_signup_form(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class, MinistrySeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+        $token = VolunteerSelfSignupToken::query()->create([
+            'church_id' => $churchId,
+            'token' => (string) Str::uuid(),
+        ])->token;
+
+        $email = 'recadastro.voluntario@example.com';
+        $this->post(route('volunteers.self-signup.store'), $this->signupPayload($token, $email));
+
+        $user = User::query()->where('email', $email)->firstOrFail();
+        $volunteer = Volunteer::query()->where('user_id', $user->id)->firstOrFail();
+        $volunteer->forceFill(['user_id' => null])->save();
+
+        $payload = $this->signupPayload($token, $email);
+        $payload['password'] = 'Password2!yy';
+        $payload['password_confirmation'] = 'Password2!yy';
+        $response = $this->post(route('volunteers.self-signup.store'), $payload);
+
+        $response->assertRedirect(route('login', absolute: false));
+        $response->assertSessionHas('volunteer_signup_welcome', true);
+        $volunteer->refresh();
+        $this->assertSame($user->id, $volunteer->user_id);
     }
 
     public function test_public_signup_links_pre_registered_volunteer_without_user(): void
@@ -164,6 +196,25 @@ class VolunteerPublicSignupTest extends TestCase
             'email' => 'precadastro@example.com',
         ]);
         $this->assertSame(1, Volunteer::query()->where('email', 'precadastro@example.com')->count());
+    }
+
+    public function test_public_signup_rejects_birth_date_under_ten_years(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class, MinistrySeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+        $token = VolunteerSelfSignupToken::query()->create([
+            'church_id' => $churchId,
+            'token' => (string) Str::uuid(),
+        ])->token;
+
+        $payload = $this->signupPayload($token, 'menor.voluntario@example.com');
+        $payload['birth_date'] = now()->subYears(5)->format('Y-m-d');
+
+        $response = $this->post(route('volunteers.self-signup.store'), $payload);
+
+        $response->assertSessionHasErrors(['birth_date']);
+        $this->assertDatabaseMissing('users', ['email' => 'menor.voluntario@example.com']);
     }
 
     public function test_public_signup_rejects_existing_admin_email(): void

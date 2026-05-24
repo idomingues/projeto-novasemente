@@ -29,6 +29,7 @@ use App\Services\VolunteerScheduleOverview;
 use App\Support\NotificationFeed;
 use App\Support\ScheduleBoardViewData;
 use App\Support\SolicitationAssignees;
+use App\Support\VolunteerSignupCompletion;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -221,9 +222,16 @@ class MobileController extends Controller
                 ];
             });
 
+        $user = $request->user();
+        $volunteerSignupCompletion = ($user !== null && $user->is_volunteer && \Illuminate\Support\Facades\Route::has('volunteers.self-signup.edit'))
+            ? VolunteerSignupCompletion::incompleteForUser($user)
+            : null;
+
         return Inertia::render('Mobile/Home', [
             'latestNews' => $latestNews,
             'upcomingEvents' => $upcomingEvents,
+            'showPostRegistrationBanner' => $request->boolean('reg_ok') && $request->user() !== null,
+            'volunteerSignupCompletion' => $volunteerSignupCompletion,
         ]);
     }
 
@@ -1388,6 +1396,10 @@ class MobileController extends Controller
 
         $notificationsTotal = NotificationFeed::mergedTotalCountForUser($request, $churchId);
 
+        $volunteerSignupCompletion = ($user->is_volunteer && \Illuminate\Support\Facades\Route::has('volunteers.self-signup.edit'))
+            ? VolunteerSignupCompletion::incompleteForUser($user)
+            : null;
+
         return Inertia::render('Mobile/Profile', [
             'church' => $church ? [
                 'name' => $church->name,
@@ -1401,6 +1413,7 @@ class MobileController extends Controller
                 'pastoral_agenda' => $pastoralAgendaItems,
                 'notifications' => $notificationsTotal,
             ],
+            'volunteerSignupCompletion' => $volunteerSignupCompletion,
         ]);
     }
 
@@ -1417,21 +1430,27 @@ class MobileController extends Controller
             }
         }
 
-        $ministryOptions = $churchId > 0
-            ? Ministry::query()->where('church_id', $churchId)->orderBy('name')->get(['id', 'name'])->values()->all()
+        $user->loadMissing('volunteerProfile');
+        $volunteerMinistries = $churchId > 0 && $user->volunteerProfile
+            ? $user->volunteerProfile->ministries()
+                ->where('church_id', $churchId)
+                ->orderBy('name')
+                ->get(['ministries.id', 'ministries.name'])
+                ->map(fn (Ministry $m) => ['id' => (int) $m->id, 'name' => (string) $m->name])
+                ->values()
+                ->all()
             : [];
 
-        $user->loadMissing('volunteerProfile');
-        $volunteerMinistryIds = $user->volunteerProfile
-            ? $user->volunteerProfile->ministries()->pluck('ministries.id')->map(fn ($id) => (int) $id)->values()->all()
-            : [];
+        $volunteerSignupCompletion = ($user->is_volunteer && \Illuminate\Support\Facades\Route::has('volunteers.self-signup.edit'))
+            ? VolunteerSignupCompletion::incompleteForUser($user)
+            : null;
 
         return Inertia::render('Mobile/ProfileEdit', [
             'mustVerifyEmail' => $user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail,
             'status' => session('status'),
-            'ministryOptions' => $ministryOptions,
-            'volunteerMinistryIds' => $volunteerMinistryIds,
+            'volunteerMinistries' => $volunteerMinistries,
             'profileRedirectTo' => 'mobile.profile.edit',
+            'volunteerSignupCompletion' => $volunteerSignupCompletion,
         ]);
     }
 }

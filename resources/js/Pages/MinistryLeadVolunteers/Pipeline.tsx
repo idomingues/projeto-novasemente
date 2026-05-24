@@ -29,12 +29,14 @@ import PublicVolunteerSignupShareModal from '@/Components/Volunteers/PublicVolun
 import VolunteerInviteShareModal from '@/Components/Volunteers/VolunteerInviteShareModal';
 import VolunteerAppInviteButton, { volunteerEncaminharButtonClass } from '@/Components/Volunteers/VolunteerAppInviteButton';
 import VolunteerDeleteConfirmBlock from '@/Components/Volunteers/VolunteerDeleteConfirmBlock';
+import VolunteerPasswordChangeForm from '@/Components/Volunteers/VolunteerPasswordChangeForm';
 import { confirmAction } from '@/utils/confirmDialog';
 import MinistryLeaderStatusSection, {
     type MinistryLeaderStatusSectionData,
 } from '@/Components/Volunteers/MinistryLeaderStatusSection';
 import RecordDetailHeader from '@/Components/RecordDetail/RecordDetailHeader';
 import { formatListPreview } from '@/utils/formatListPreview';
+import { volunteerDepartmentsInList } from '@/utils/volunteerDepartmentsInList';
 import RecordDetailSections from '@/Components/RecordDetail/RecordDetailSections';
 import { volunteerDetailSections, type VolunteerDetailData } from '@/utils/volunteerDetailRows';
 
@@ -50,6 +52,8 @@ type VolunteerListRow = {
     createdAt: string | null;
     stageId: number | undefined;
     stageName: string;
+    adminWorkflowStageId?: number | null;
+    adminWorkflowStageName?: string | null;
     pendingInvite?: boolean;
     pendingInviteMinistryNames?: string[];
     forwardedMinistryIds?: number[];
@@ -157,6 +161,7 @@ type DetailJson = {
     destroyVolunteerUrl?: string | null;
     archiveVolunteerUrl?: string | null;
     unarchiveVolunteerUrl?: string | null;
+    updatePasswordUrl?: string | null;
 };
 
 type VolunteerRequestMinistryOption = {
@@ -397,14 +402,7 @@ export default function Pipeline({
             });
             const j = (await r.json()) as DetailJson;
             setDetail(j);
-            const workflowStages = j.stages ?? [];
-            const allowedIds = new Set(workflowStages.map((s) => s.id));
-            const sid =
-                j.pipeline?.adminWorkflowStageId ??
-                (j.pipeline?.stageId != null && allowedIds.has(j.pipeline.stageId)
-                    ? j.pipeline.stageId
-                    : workflowStages.find((s) => s.name.toLowerCase().trim() === 'interessado')?.id ??
-                      workflowStages[0]?.id);
+            const sid = j.pipeline?.adminWorkflowStageId;
             stageMoveForm.setData('stage_id', sid != null ? String(sid) : '');
             const attachedIds = (j.ministryOptions ?? []).filter((o) => o.attached).map((o) => o.id);
             ministriesForm.setData('ministry_ids', attachedIds);
@@ -1147,11 +1145,11 @@ export default function Pipeline({
                                 <thead>
                                     <tr className="border-b border-zinc-200 text-left dark:border-zinc-700">
                                         <th className="pb-2 pr-3 font-semibold">Nome</th>
-                                        <th className="pb-2 pr-3 font-semibold">Fase</th>
+                                        <th className="pb-2 pr-3 font-semibold">{canVolunteerManage ? 'Fase principal' : 'Fase'}</th>
+                                        <th className="pb-2 pr-3 font-semibold">Departamentos</th>
                                         <th className="pb-2 pr-3 font-semibold">Cadastro</th>
                                         <th className="pb-2 pr-3 font-semibold">Contato</th>
                                         <th className="pb-2 pr-3 font-semibold">Interesses</th>
-                                        <th className="pb-2 pr-3 font-semibold">Ministérios</th>
                                         <th className="pb-2 font-semibold text-right">Ações</th>
                                     </tr>
                                 </thead>
@@ -1175,7 +1173,14 @@ export default function Pipeline({
                                                     ) : null}
                                                 </div>
                                             </td>
-                                            <td className="cursor-pointer py-2 pr-3 text-zinc-700 dark:text-zinc-200">{v.stageName}</td>
+                                            <td className="cursor-pointer py-2 pr-3 text-zinc-700 dark:text-zinc-200">
+                                                {canVolunteerManage
+                                                    ? (v.adminWorkflowStageName ?? '—')
+                                                    : v.stageName}
+                                            </td>
+                                            <td className="cursor-pointer py-2 pr-3 max-w-[220px] text-xs text-zinc-600 dark:text-zinc-300">
+                                                {volunteerDepartmentsInList(v) || '—'}
+                                            </td>
                                             <td className="cursor-pointer py-2 pr-3 whitespace-nowrap text-zinc-600 dark:text-zinc-400">
                                                 {formatShortDate(v.createdAt)}
                                             </td>
@@ -1184,9 +1189,6 @@ export default function Pipeline({
                                                 {v.phone ? <div className="text-xs">{v.phone}</div> : null}
                                             </td>
                                             <td className="cursor-pointer py-2 pr-3 max-w-[200px] text-xs text-zinc-500">{v.interestPreview ?? '—'}</td>
-                                            <td className="cursor-pointer py-2 max-w-[220px] text-xs text-zinc-500">
-                                                {formatListPreview(v.ministryNames) || '—'}
-                                            </td>
                                             <td className="cursor-default py-2 text-right" onClick={(ev) => ev.stopPropagation()}>
                                                 <div className="flex flex-wrap items-center justify-end gap-2">
                                                     {canVolunteerManage && !v.email?.trim() ? (
@@ -1247,7 +1249,8 @@ export default function Pipeline({
                                                 ) : null}
                                             </div>
                                             <div className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                                                {v.stageName} · {formatShortDate(v.createdAt)}
+                                                {(canVolunteerManage ? (v.adminWorkflowStageName ?? '—') : v.stageName)} ·{' '}
+                                                {formatShortDate(v.createdAt)}
                                             </div>
                                         </button>
                                         {canPipelineMutate ? (
@@ -1277,15 +1280,9 @@ export default function Pipeline({
                                     <div className="mt-2 text-xs text-zinc-600 dark:text-zinc-300 space-y-1">
                                         {v.email ? <div className="truncate">{v.email}</div> : null}
                                         {v.phone ? <div className="truncate">{v.phone}</div> : null}
-                                        {v.pendingInvite && (v.pendingInviteMinistryNames?.length ?? 0) > 0 ? (
+                                        {volunteerDepartmentsInList(v) ? (
                                             <div className="truncate text-zinc-700 dark:text-zinc-200">
-                                                Encaminhado para:{' '}
-                                                {formatListPreview(v.pendingInviteMinistryNames ?? [])}
-                                            </div>
-                                        ) : null}
-                                        {!v.pendingInvite && v.ministryNames.length > 0 ? (
-                                            <div className="truncate text-zinc-700 dark:text-zinc-200">
-                                                Departamentos: {formatListPreview(v.ministryNames)}
+                                                Departamentos: {volunteerDepartmentsInList(v)}
                                             </div>
                                         ) : null}
                                         {v.interestPreview ? (
@@ -1377,22 +1374,26 @@ export default function Pipeline({
                                         } else if (v.active === true) {
                                             parts.push('Escalas: ativo');
                                         }
-                                        if (detail.pipeline?.stageName) {
-                                            parts.push(`Fase: ${detail.pipeline.stageName}`);
+                                        if (v.has_app_account) {
+                                            parts.push(
+                                                v.user?.status === 'inactive' ? 'Conta: inativa' : 'Conta: ativa',
+                                            );
                                         }
                                         return parts.length > 0 ? parts.join(' · ') : null;
                                     })()}
                                     onClose={() => setModalOpen(false)}
                                 />
+                                <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-700 dark:bg-zinc-900/40">
                                     {canPipelineMutate ? (
                                         <form onSubmit={submitStageMove} className="flex flex-wrap items-end gap-2">
                                             <div>
-                                                <InputLabel value={canVolunteerManage ? 'Status geral' : 'Fase / pasta'} />
+                                                <InputLabel value={canVolunteerManage ? 'Fase principal' : 'Fase / pasta'} />
                                                 <SelectInput
                                                     className="mt-1 min-w-[200px]"
                                                     value={stageMoveForm.data.stage_id}
                                                     onChange={(e) => stageMoveForm.setData('stage_id', e.target.value)}
                                                 >
+                                                    {canVolunteerManage ? <option value="">—</option> : null}
                                                     {detail.stages.map((s) => (
                                                         <option key={s.id} value={String(s.id)}>
                                                             {s.name}
@@ -1409,20 +1410,25 @@ export default function Pipeline({
                                                 ) : null}
                                             </div>
                                             <PrimaryButton type="submit" disabled={stageMoveForm.processing}>
-                                                {canVolunteerManage ? 'Salvar status' : 'Salvar fase'}
+                                                {canVolunteerManage ? 'Salvar fase principal' : 'Salvar fase'}
                                             </PrimaryButton>
                                             <InputError message={stageMoveForm.errors.stage_id} />
                                         </form>
                                     ) : (
                                         <div className="text-sm text-zinc-600 dark:text-zinc-300">
                                             <div className="text-xs font-medium text-zinc-500">
-                                                {canVolunteerManage ? 'Status geral' : 'Fase / pasta'}
+                                                {canVolunteerManage ? 'Fase principal' : 'Fase / pasta'}
                                             </div>
                                             <div className="mt-1 font-medium text-zinc-900 dark:text-white">
-                                                {detail.pipeline?.stageName ?? '—'}
+                                                {stageMoveForm.data.stage_id
+                                                    ? (detail.stages.find(
+                                                          (s) => String(s.id) === String(stageMoveForm.data.stage_id),
+                                                      )?.name ?? '—')
+                                                    : '—'}
                                             </div>
                                         </div>
                                     )}
+                                </div>
                                 <div className="flex gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800">
                                     <button
                                         type="button"
@@ -1477,6 +1483,22 @@ export default function Pipeline({
                                         <RecordDetailSections
                                             sections={volunteerDetailSections(detail.volunteer as VolunteerDetailData)}
                                         />
+
+                                        {detail.updatePasswordUrl ? (
+                                            <VolunteerPasswordChangeForm
+                                                key={(detail.volunteer as VolunteerDetailData).id}
+                                                submitUrl={detail.updatePasswordUrl}
+                                            />
+                                        ) : canVolunteerManage &&
+                                          !(detail.volunteer as VolunteerDetailData).has_app_account ? (
+                                            <div className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-300">
+                                                <p className="font-semibold text-zinc-900 dark:text-white">Senha de acesso</p>
+                                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                                    Este voluntário ainda não tem conta no app. Crie o acesso em Voluntários ou
+                                                    envie um convite por e-mail.
+                                                </p>
+                                            </div>
+                                        ) : null}
 
                                         {detail.archiveVolunteerUrl || detail.unarchiveVolunteerUrl ? (
                                             <div className="flex flex-wrap gap-2">
@@ -1544,7 +1566,7 @@ export default function Pipeline({
                                 ) : detailTab === 'historico' ? (
                                     <div className="space-y-4">
                                         <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                            Altere o status do líder em cada departamento e consulte o histórico. O status geral do
+                                            Altere o status do líder em cada departamento e consulte o histórico. A fase principal do
                                             voluntário (Interessado, Encaminhado, Finalizado) fica no topo desta ficha.
                                         </p>
                                         {(detail.statusHistoryByMinistry ?? []).length === 0 ? (

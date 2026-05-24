@@ -26,8 +26,16 @@ function hideSplashScreen() {
     }, 320);
 }
 
+function currentCsrfToken(props?: SharedPageProps): string {
+    return (
+        props?.csrf_token ??
+        document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ??
+        ''
+    );
+}
+
 function syncAxiosCsrfToken(props: SharedPageProps | undefined) {
-    const token = props?.csrf_token;
+    const token = currentCsrfToken(props);
     if (!token) {
         return;
     }
@@ -36,6 +44,16 @@ function syncAxiosCsrfToken(props: SharedPageProps | undefined) {
     if (meta) {
         meta.content = token;
     }
+}
+
+function attachCsrfHeaderToVisit(visit: { headers?: Record<string, string> }) {
+    const token = currentCsrfToken(
+        (window as unknown as { __inertia?: { page?: { props?: SharedPageProps } } }).__inertia?.page?.props,
+    );
+    if (!token) {
+        return;
+    }
+    visit.headers = { ...visit.headers, 'X-CSRF-TOKEN': token };
 }
 
 createInertiaApp({
@@ -70,8 +88,19 @@ createInertiaApp({
 
         syncAxiosCsrfToken(inertiaProps.initialPage.props);
 
+        router.on('before', (event) => {
+            attachCsrfHeaderToVisit(event.detail.visit);
+        });
+
         router.on('success', (event) => {
             syncAxiosCsrfToken(event.detail.page.props as SharedPageProps);
+        });
+
+        router.on('invalid', (event) => {
+            if (event.detail.response?.status === 419) {
+                event.preventDefault();
+                window.location.reload();
+            }
         });
 
         const root = createRoot(el);

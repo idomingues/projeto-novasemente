@@ -43,7 +43,7 @@ class MyMinistryVolunteersController extends Controller
         int $volunteerId,
         int $ministryId,
         ?int $invitedByUserId,
-        string $defaultLeaderStatus = 'active',
+        string $defaultLeaderStatus = '',
     ): VolunteerMinistryInvitation {
         $existing = $this->invitationForVolunteerMinistry($churchId, $volunteerId, $ministryId);
         if ($existing) {
@@ -58,7 +58,7 @@ class MyMinistryVolunteersController extends Controller
             'token' => VolunteerMinistryInvitation::createToken(),
             'status' => 'accepted',
             'accepted_at' => now(),
-            'leader_status' => $defaultLeaderStatus,
+            'leader_status' => $defaultLeaderStatus !== '' ? $defaultLeaderStatus : null,
             'leader_status_set_by_user_id' => $invitedByUserId,
             'leader_status_set_at' => now(),
         ]);

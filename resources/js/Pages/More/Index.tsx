@@ -13,6 +13,7 @@ import {
     UserPlusIcon,
     FilmIcon,
     HandRaisedIcon,
+    LifebuoyIcon,
 } from '@heroicons/react/24/outline';
 import { PHOTOS_DRIVE_FOLDER_URL } from '@/constants/externalLinks';
 import type { ComponentType, SVGProps } from 'react';
@@ -54,6 +55,12 @@ const items: MoreMenuItem[] = [
     },
     { name: 'Acervo', description: 'Playlists do YouTube da Nova Semente', route: 'mobile.acervo', icon: PlayCircleIcon },
     { name: 'Classe Começos', description: 'Estudo bíblico presencial ou on-line', route: 'varios.classe-comecos', icon: AcademicCapIcon },
+    {
+        name: 'Suporte APP',
+        description: 'Problema, sugestão ou elogio sobre o app',
+        route: 'mobile.support.index',
+        icon: LifebuoyIcon,
+    },
 ];
 
 export default function MoreIndex(_: Props) {

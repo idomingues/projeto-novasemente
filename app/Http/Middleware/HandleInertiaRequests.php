@@ -253,7 +253,17 @@ class HandleInertiaRequests extends Middleware
              */
             'oldInput' => fn () => Arr::except(
                 $request->session()->getOldInput() ?? [],
-                ['password', 'password_confirmation', 'photo', 'lgpd_accepted', '_token', '_method']
+                [
+                    'password',
+                    'password_confirmation',
+                    'current_password',
+                    'app_password',
+                    'app_password_confirmation',
+                    'photo',
+                    'lgpd_accepted',
+                    '_token',
+                    '_method',
+                ]
             ),
             /** Token atual para o axios do Inertia (evita 419 em DELETE/PUT após navegação SPA) */
             'csrf_token' => fn () => csrf_token(),

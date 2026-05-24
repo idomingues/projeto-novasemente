@@ -46,13 +46,13 @@ export default function MinistryLeaderStatusSection({
     onSaved: () => void;
 }) {
     const form = useForm({
-        leader_status: (section.currentLeaderStatus as '' | 'denied' | 'training' | 'active' | null) ?? '',
+        leader_status: (section.currentLeaderStatus as '' | 'denied' | 'reviewing' | 'training' | 'active' | null) ?? '',
         leader_note: section.currentLeaderNote ?? '',
     });
 
     useEffect(() => {
         form.setData({
-            leader_status: (section.currentLeaderStatus as '' | 'denied' | 'training' | 'active' | null) ?? '',
+            leader_status: (section.currentLeaderStatus as '' | 'denied' | 'reviewing' | 'training' | 'active' | null) ?? '',
             leader_note: section.currentLeaderNote ?? '',
         });
         form.clearErrors();
@@ -79,7 +79,9 @@ export default function MinistryLeaderStatusSection({
                             ? 'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-200'
                             : section.currentLeaderStatus === 'active'
                               ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200'
-                              : 'bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200'
+                              : section.currentLeaderStatus === 'reviewing'
+                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-200'
+                                : 'bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200'
                     }`}
                 >
                     {section.currentLeaderStatusLabel ?? volunteerLeaderStatusLabel(section.currentLeaderStatus)}
@@ -90,18 +92,22 @@ export default function MinistryLeaderStatusSection({
                 {section.canEdit && section.updateLeaderStatusUrl ? (
                     <div className="rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-950">
                         <p className="mb-3 text-xs text-zinc-500 dark:text-zinc-400">
-                            Status do líder neste departamento (treinamento, atuante ou recusa).
+                            Status do líder neste departamento (em análise, treinamento, atuante ou recusa).
                         </p>
                         <div>
                             <InputLabel value="Status (líder)" />
                             <select
                                 value={form.data.leader_status}
                                 onChange={(e) =>
-                                    form.setData('leader_status', e.target.value as '' | 'denied' | 'training' | 'active')
+                                    form.setData(
+                                        'leader_status',
+                                        e.target.value as '' | 'denied' | 'reviewing' | 'training' | 'active',
+                                    )
                                 }
                                 className="mt-1 block h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
                             >
                                 <option value="">—</option>
+                                <option value="reviewing">Em análise</option>
                                 <option value="denied">Recusado pelo líder</option>
                                 <option value="training">Treinamento</option>
                                 <option value="active">Atuante</option>

@@ -15,6 +15,7 @@ use App\Support\VolunteerPipelineBootstrap;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -23,6 +24,7 @@ use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Role;
+use Symfony\Component\HttpFoundation\Response as BaseResponse;
 
 class VolunteerPublicSignupController extends Controller
 {
@@ -177,17 +179,21 @@ class VolunteerPublicSignupController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse|BaseResponse
     {
         if (! Schema::hasTable('volunteer_self_signup_tokens')) {
             return redirect()->route('mobile.home')->with('error', 'Cadastro público indisponível.');
         }
 
+        $this->normalizeSignupBooleans($request);
+
+        $minBirthDate = now()->subYears(10)->toDateString();
+
         $validated = $request->validate(array_merge([
             'token' => ['required', 'string'],
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:155'],
-            'birth_date' => ['required', 'date'],
+            'birth_date' => ['required', 'date', 'before_or_equal:'.$minBirthDate],
             'has_whatsapp' => ['required', 'boolean'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:50'],
@@ -209,8 +215,10 @@ class VolunteerPublicSignupController extends Controller
             'professional_area' => ['nullable', 'string', 'max:5000'],
             'lgpd_data_consent' => ['required', 'boolean'],
             'password' => ['required', 'confirmed', Password::defaults()],
-        ], UserProfilePhotoResolver::validationRules()));
-        UserProfilePhotoResolver::assertExclusivePhotoOrAvatar($request);
+        ], UserProfilePhotoResolver::validationRules()), [
+            'birth_date.before_or_equal' => 'O voluntário deve ter pelo menos 10 anos de idade.',
+        ]);
+
 
         if (($validated['is_official_member'] ?? false) === true) {
             if (! array_key_exists('member_record_at_nova_semente', $validated) || $validated['member_record_at_nova_semente'] === null) {
@@ -413,26 +421,107 @@ class VolunteerPublicSignupController extends Controller
                 );
         }
 
-        $persisted->load('volunteerProfile');
-        $volunteerRecord = $persisted->volunteerProfile
-            ?? Volunteer::query()->where('user_id', $persisted->id)->first();
-
-        if ($volunteerRecord === null || ! VolunteerAppLogin::loginReady($volunteerRecord)) {
-            return redirect()
-                ->route('volunteers.public-signup.page')
-                ->with(
-                    'error',
-                    'Cadastro salvo, mas a conta de login ficou incompleta. Tente concluir o cadastro novamente com o mesmo e-mail.'
-                );
-        }
+        $this->ensureVolunteerLoginReady($persisted);
 
         $welcomeMessage =
             'Bem-vindo! Seu cadastro de voluntário foi concluído. Faça login com o e-mail e a senha que você definiu para acessar o aplicativo.';
 
-        return redirect()
-            ->route('login')
-            ->with('status', $welcomeMessage)
-            ->with('volunteer_signup_welcome', true);
+        $request->session()->flash('status', $welcomeMessage);
+        $request->session()->flash('volunteer_signup_welcome', true);
+
+        if ($request->user()) {
+            Auth::guard('web')->logout();
+        }
+
+        return $this->redirectToLoginAfterVolunteerSignup($request);
+    }
+
+    public function welcome(Request $request): RedirectResponse
+    {
+        if (! $request->session()->pull('volunteer_signup_completed', false)) {
+            return redirect()->route('volunteers.public-signup.page');
+        }
+
+        $status = $request->session()->get('status');
+        if (is_string($status) && $status !== '') {
+            $request->session()->flash('status', $status);
+        }
+        $request->session()->flash('volunteer_signup_welcome', true);
+
+        return redirect()->route('login');
+    }
+
+    private function redirectToLoginAfterVolunteerSignup(Request $request): RedirectResponse|BaseResponse
+    {
+        $loginUrl = route('login');
+
+        if ($request->header('X-Inertia')) {
+            return Inertia::location($loginUrl);
+        }
+
+        return redirect()->to($loginUrl);
+    }
+
+    /**
+     * FormData envia booleanos como "0"/"1"; normaliza antes da validação Laravel.
+     */
+    private function normalizeSignupBooleans(Request $request): void
+    {
+        $booleanFields = [
+            'has_whatsapp',
+            'has_social_networks',
+            'is_official_member',
+            'member_record_at_nova_semente',
+            'has_previous_ministry_volunteer_experience',
+            'is_active_in_ministry',
+            'wants_other_ministry',
+            'lgpd_data_consent',
+        ];
+
+        $merged = [];
+        foreach ($booleanFields as $field) {
+            if (! $request->has($field)) {
+                continue;
+            }
+            $raw = $request->input($field);
+            if ($raw === '' || $raw === null) {
+                $merged[$field] = null;
+
+                continue;
+            }
+            $merged[$field] = filter_var($raw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        }
+
+        if ($merged !== []) {
+            $request->merge($merged);
+        }
+    }
+
+    /**
+     * Garante vínculo voluntário ↔ usuário após o cadastro (evita reabrir o formulário público).
+     */
+    private function ensureVolunteerLoginReady(User $user): void
+    {
+        $user->forceFill(['is_volunteer' => true])->save();
+        $user->syncVolunteerRecord();
+        $user->unsetRelation('volunteerProfile');
+        $user->load('volunteerProfile');
+
+        $volunteer = $user->volunteerProfile
+            ?? Volunteer::query()->where('user_id', $user->id)->first();
+
+        if ($volunteer === null) {
+            return;
+        }
+
+        if ($volunteer->user_id === null) {
+            $volunteer->forceFill(['user_id' => $user->id])->save();
+            $volunteer = $volunteer->fresh();
+        }
+
+        if ($volunteer !== null) {
+            VolunteerAppLogin::syncLoginEmailFromVolunteer($user->fresh() ?? $user, $volunteer);
+        }
     }
 
     /**

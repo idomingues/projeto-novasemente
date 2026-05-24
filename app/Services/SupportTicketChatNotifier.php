@@ -9,6 +9,7 @@ use App\Models\UserInboxNotification;
 use App\Support\SafeSpatieUsersByPermission;
 use App\Support\SupportTicketAdminPresenter;
 use App\Support\UserMessagingPreferences;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Mail;
 
 class SupportTicketChatNotifier
@@ -53,6 +54,54 @@ class SupportTicketChatNotifier
                 $title,
                 $typeLabel,
                 $messageContent,
+                $conversationUrl,
+                $staff->name,
+                $owner->church?->name,
+            ));
+        }
+    }
+
+    /** Prazo/previsão definido pela equipe → notifica o usuário dono do ticket. */
+    public function notifyOwnerOfForecastSet(AppSupportTicket $ticket, User $staff, CarbonInterface $forecastAt): void
+    {
+        if (! $ticket->user_id) {
+            return;
+        }
+
+        $owner = User::query()->find($ticket->user_id);
+        if (! $owner) {
+            return;
+        }
+
+        $typeLabel = SupportTicketAdminPresenter::typeLabel((string) $ticket->type);
+        $dateLabel = $forecastAt->locale('pt_BR')->translatedFormat('j \d\e F \d\e Y');
+        $title = 'Prazo definido no seu chamado';
+        $body = 'Informamos que o prazo previsto para o seu chamado "'.$typeLabel.'" é '.$dateLabel.'.';
+
+        if (UserMessagingPreferences::acceptsInbox($owner)) {
+            $row = UserInboxNotification::create([
+                'user_id' => $owner->id,
+                'title' => $title,
+                'body' => $body,
+                'action_url' => null,
+            ]);
+
+            $row->update([
+                'action_url' => route('mobile.support.ticket', [
+                    'token' => $ticket->public_token,
+                    'inbox' => $row->id,
+                ], absolute: true),
+            ]);
+        }
+
+        $selfAction = (int) $ticket->user_id === (int) $staff->id;
+        if (! $selfAction && is_string($owner->email) && filter_var($owner->email, FILTER_VALIDATE_EMAIL)) {
+            $owner->loadMissing('church:id,name');
+            $conversationUrl = route('mobile.support.ticket', ['token' => $ticket->public_token], absolute: true);
+            Mail::to($owner->email)->send(new SupportTicketStaffMessageMail(
+                $title,
+                $typeLabel,
+                $body,
                 $conversationUrl,
                 $staff->name,
                 $owner->church?->name,

@@ -13,6 +13,7 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import PageHeader from '@/Components/PageHeader';
 import Card from '@/Components/Card';
 import TextInput from '@/Components/TextInput';
+import PasswordInput from '@/Components/PasswordInput';
 import SelectInput from '@/Components/SelectInput';
 import Checkbox from '@/Components/Checkbox';
 import InputError from '@/Components/InputError';
@@ -904,41 +905,64 @@ export default function Index({
                                 </div>
                             </section>
 
-                            <section className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/80 dark:bg-zinc-900/40 p-4">
-                                <p className="text-sm font-semibold text-zinc-900 dark:text-white">Senha (app)</p>
-                                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                                    {isEditing
-                                        ? 'Deixe em branco para manter a senha atual.'
-                                        : 'Obrigatória ao criar conta nova com e-mail.'}
-                                </p>
-                                <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                    <div>
-                                        <InputLabel htmlFor="app_password" value="Senha" />
-                                        <TextInput
-                                            id="app_password"
-                                            type="password"
-                                            value={data.app_password}
-                                            onChange={(e) => setData('app_password', e.target.value)}
-                                            className="mt-1 block w-full"
-                                            autoComplete="new-password"
-                                            placeholder={isEditing ? 'Não alterar' : ''}
-                                        />
-                                        <InputError message={errors.app_password} className="mt-1" />
+                            {!editingUserIsSuperAdmin && !editingUserIsPanelTeam ? (
+                                <section
+                                    className={
+                                        isEditing
+                                            ? 'rounded-2xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-900/60 dark:bg-amber-950/30'
+                                            : 'rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/80 dark:bg-zinc-900/40 p-4'
+                                    }
+                                >
+                                    <p
+                                        className={
+                                            isEditing
+                                                ? 'text-sm font-semibold text-amber-950 dark:text-amber-100'
+                                                : 'text-sm font-semibold text-zinc-900 dark:text-white'
+                                        }
+                                    >
+                                        {isEditing ? 'Nova senha de acesso' : 'Senha (app)'}
+                                    </p>
+                                    <p
+                                        className={
+                                            isEditing
+                                                ? 'mt-1 text-xs text-amber-900/80 dark:text-amber-200/90'
+                                                : 'mt-1 text-xs text-zinc-500 dark:text-zinc-400'
+                                        }
+                                    >
+                                        {isEditing
+                                            ? 'Deixe em branco para manter a senha atual. Clique no olho para ver o que está digitando.'
+                                            : 'Obrigatória ao criar conta nova com e-mail.'}
+                                    </p>
+                                    <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                        <div>
+                                            <InputLabel
+                                                htmlFor="app_password"
+                                                value={isEditing ? 'Nova senha (opcional)' : 'Senha'}
+                                            />
+                                            <PasswordInput
+                                                id="app_password"
+                                                value={data.app_password}
+                                                onChange={(e) => setData('app_password', e.target.value)}
+                                                className="mt-1 block w-full"
+                                                autoComplete="new-password"
+                                                placeholder={isEditing ? 'Não alterar' : ''}
+                                            />
+                                            <InputError message={errors.app_password} className="mt-1" />
+                                        </div>
+                                        <div>
+                                            <InputLabel htmlFor="app_password_confirmation" value="Confirmar senha" />
+                                            <PasswordInput
+                                                id="app_password_confirmation"
+                                                value={data.app_password_confirmation}
+                                                onChange={(e) => setData('app_password_confirmation', e.target.value)}
+                                                className="mt-1 block w-full"
+                                                autoComplete="new-password"
+                                            />
+                                            <InputError message={errors.app_password_confirmation} className="mt-1" />
+                                        </div>
                                     </div>
-                                    <div>
-                                        <InputLabel htmlFor="app_password_confirmation" value="Confirmar senha" />
-                                        <TextInput
-                                            id="app_password_confirmation"
-                                            type="password"
-                                            value={data.app_password_confirmation}
-                                            onChange={(e) => setData('app_password_confirmation', e.target.value)}
-                                            className="mt-1 block w-full"
-                                            autoComplete="new-password"
-                                        />
-                                        <InputError message={errors.app_password_confirmation} className="mt-1" />
-                                    </div>
-                                </div>
-                            </section>
+                                </section>
+                            ) : null}
 
                             <section className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900/40 p-4 space-y-3">
                                 <div>

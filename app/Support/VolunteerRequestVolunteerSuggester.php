@@ -201,10 +201,10 @@ final class VolunteerRequestVolunteerSuggester
             $reasons[] = 'Já vinculado ao departamento «'.$ministry->name.'».';
             if ($clearance === 'cleared') {
                 $score += 32;
-                $reasons[] = 'Clearance aprovado neste departamento.';
+                $reasons[] = 'Liberação concedida para servir neste departamento.';
             } elseif ($clearance === 'pending') {
                 $score += 10;
-                $reasons[] = 'No departamento; clearance ainda pendente.';
+                $reasons[] = 'No departamento; liberação ainda pendente.';
             }
         }
 

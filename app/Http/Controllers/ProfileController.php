@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Domain\Volunteers\Actions\SyncVolunteerMinistryAttachments;
 use App\Http\Requests\ProfileUpdateRequest;
 use App\Models\Church;
 use App\Models\Ministry;
+use App\Models\User;
 use App\Support\StorageUrl;
 use App\Support\UserProfilePhotoResolver;
+use App\Support\VolunteerSignupCompletion;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -46,21 +47,18 @@ class ProfileController extends Controller
             }
         }
 
-        $ministryOptions = $churchId > 0
-            ? Ministry::query()->where('church_id', $churchId)->orderBy('name')->get(['id', 'name'])->values()->all()
-            : [];
-
         $user->loadMissing('volunteerProfile');
-        $volunteerMinistryIds = $user->volunteerProfile
-            ? $user->volunteerProfile->ministries()->pluck('ministries.id')->map(fn ($id) => (int) $id)->values()->all()
-            : [];
+        $volunteerMinistries = $this->volunteerMinistriesForUser($user, $churchId);
+        $volunteerSignupCompletion = ($user->is_volunteer && Route::has('volunteers.self-signup.edit'))
+            ? VolunteerSignupCompletion::incompleteForUser($user)
+            : null;
 
         return Inertia::render('Profile/Edit', [
             'mustVerifyEmail' => $user instanceof MustVerifyEmail,
             'status' => session('status'),
-            'ministryOptions' => $ministryOptions,
-            'volunteerMinistryIds' => $volunteerMinistryIds,
+            'volunteerMinistries' => $volunteerMinistries,
             'profileRedirectTo' => 'profile.edit',
+            'volunteerSignupCompletion' => $volunteerSignupCompletion,
         ]);
     }
 
@@ -70,10 +68,9 @@ class ProfileController extends Controller
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
         $validated = $request->validated();
-        UserProfilePhotoResolver::assertExclusivePhotoOrAvatar($request);
         $redirectTo = $this->resolveRedirectRoute($request);
         $user = $request->user();
-        $user->fill(collect($validated)->except('photo_file', 'volunteer_ministry_ids', 'redirect_to')->all());
+        $user->fill(collect($validated)->except('photo_file', 'redirect_to')->all());
 
         if ($user->isDirty('email')) {
             $user->email_verified_at = null;
@@ -82,63 +79,34 @@ class ProfileController extends Controller
         if ($request->hasFile('photo_file')) {
             UserProfilePhotoResolver::deleteStoredUploadIfAny($user->photo_url);
             $user->photo_url = UserProfilePhotoResolver::storeUploadedPhoto($request->file('photo_file'));
-        } elseif ($request->filled('avatar_key')) {
-            $newUrl = UserProfilePhotoResolver::resolveFromRequest($request);
-            if ($newUrl !== null && $newUrl !== $user->photo_url) {
-                UserProfilePhotoResolver::deleteStoredUploadIfAny($user->photo_url);
-                $user->photo_url = $newUrl;
-            }
         }
 
         $user->save();
-
-        $churchIdForMinistries = (int) ($user->church_id ?? 0);
-        if ($churchIdForMinistries === 0) {
-            $resolved = Church::resolveWorkingId($request);
-            if ($resolved !== null) {
-                $churchIdForMinistries = (int) $resolved;
-            }
-        }
-
-        $churchHasMinistries = $churchIdForMinistries > 0
-            && Ministry::query()->where('church_id', $churchIdForMinistries)->exists();
-
-        if (
-            $churchHasMinistries
-            && $request->has('volunteer_ministry_ids')
-            && is_array($request->input('volunteer_ministry_ids'))
-        ) {
-            $user->ensureVolunteerProfile();
-            $user->load('volunteerProfile');
-            $volunteer = $user->volunteerProfile;
-            if ($volunteer !== null) {
-                $ids = collect($request->input('volunteer_ministry_ids', []))
-                    ->map(fn ($id) => (int) $id)
-                    ->filter(fn ($id) => $id > 0)
-                    ->unique()
-                    ->values()
-                    ->all();
-                $allowed = Ministry::query()
-                    ->where('church_id', $churchIdForMinistries)
-                    ->whereIn('id', $ids)
-                    ->pluck('id')
-                    ->map(fn ($id) => (int) $id)
-                    ->values()
-                    ->all();
-                if (count($allowed) !== count($ids)) {
-                    return Redirect::route($redirectTo)->withErrors([
-                        'volunteer_ministry_ids' => 'Um ou mais departamentos são inválidos para a sua igreja.',
-                    ]);
-                }
-                app(SyncVolunteerMinistryAttachments::class)($volunteer, $allowed);
-            }
-            $user->ensureVolunteerProfile();
-            $user->refresh();
-            $hasMinistries = (bool) $user->volunteerProfile?->ministries()->exists();
-            $user->forceFill(['is_volunteer' => $hasMinistries])->save();
-        }
+        $user->syncVolunteerRecord();
 
         return Redirect::route($redirectTo);
+    }
+
+    /**
+     * @return list<array{id: int, name: string}>
+     */
+    private function volunteerMinistriesForUser(User $user, int $churchId): array
+    {
+        if ($user->volunteerProfile === null) {
+            return [];
+        }
+
+        $query = $user->volunteerProfile->ministries();
+        if ($churchId > 0) {
+            $query->where('church_id', $churchId);
+        }
+
+        return $query
+            ->orderBy('name')
+            ->get(['ministries.id', 'ministries.name'])
+            ->map(fn (Ministry $m) => ['id' => (int) $m->id, 'name' => (string) $m->name])
+            ->values()
+            ->all();
     }
 
     private function storeUserPhoto(UploadedFile $file): string

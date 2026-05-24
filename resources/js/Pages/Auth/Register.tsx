@@ -3,6 +3,7 @@ import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import ProfilePhotoPicker from '@/Components/ProfilePhotoPicker';
+import PasswordInput from '@/Components/PasswordInput';
 import TextInput from '@/Components/TextInput';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { compressImageForUpload, ImageCompressError } from '@/utils/compressImageForUpload';
@@ -25,15 +26,9 @@ interface MinistryVolunteerInviteProps {
     ministryId: number;
 }
 
-interface MinistryOption {
-    id: number;
-    name: string;
-}
-
 interface Props {
     invitation: InvitationProps | null;
     ministryVolunteerInvite: MinistryVolunteerInviteProps | null;
-    ministryOptions: MinistryOption[];
 }
 
 type LooseErrors = Record<string, string | string[] | undefined> | undefined;
@@ -49,7 +44,7 @@ function firstError(errors: LooseErrors, field: string): string | undefined {
     return typeof v === 'string' ? v : String(v);
 }
 
-export default function Register({ invitation, ministryVolunteerInvite = null, ministryOptions = [] }: Props) {
+export default function Register({ invitation, ministryVolunteerInvite = null }: Props) {
     const page = usePage();
     const pageErrors = ((page.props as { errors?: Record<string, string | string[]> }).errors ?? {}) as Record<
         string,
@@ -60,13 +55,10 @@ export default function Register({ invitation, ministryVolunteerInvite = null, m
         name: invitation?.name ?? ministryVolunteerInvite?.name ?? '',
         email: invitation?.email ?? ministryVolunteerInvite?.email ?? '',
         photo_file: null as File | null,
-        avatar_key: '' as string,
         password: '',
         password_confirmation: '',
         invitation_token: invitation?.token ?? '',
         ministry_invite_token: ministryVolunteerInvite?.token ?? '',
-        already_volunteer: Boolean(ministryVolunteerInvite),
-        volunteer_ministry_ids: ministryVolunteerInvite ? [ministryVolunteerInvite.ministryId] : ([] as number[]),
         notify_via_app: true,
         notify_via_email: true,
         notify_via_whatsapp: false,
@@ -94,10 +86,6 @@ export default function Register({ invitation, ministryVolunteerInvite = null, m
 
     const errClass = (field: string) => (fieldError(field) ? 'border-red-500 focus:border-red-600 focus:ring-red-500/25' : '');
 
-    const showVolunteerDepartments =
-        !invitation && !ministryVolunteerInvite && data.already_volunteer && ministryOptions.length > 0;
-    const showVolunteerNoMinistriesHint =
-        !invitation && !ministryVolunteerInvite && data.already_volunteer && ministryOptions.length === 0;
     const [photoPreparing, setPhotoPreparing] = useState(false);
     const [photoClientError, setPhotoClientError] = useState<string | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -106,10 +94,9 @@ export default function Register({ invitation, ministryVolunteerInvite = null, m
         setPhotoClientError(null);
         if (!raw) {
             setData('photo_file', null);
-            if (!data.avatar_key) setPhotoPreview(null);
+            setPhotoPreview(null);
             return;
         }
-        setData('avatar_key', '');
         setPhotoPreparing(true);
         try {
             const prepared = await compressImageForUpload(raw);
@@ -128,16 +115,8 @@ export default function Register({ invitation, ministryVolunteerInvite = null, m
         }
     };
 
-    const handleAvatarSelect = (key: string | null, previewUrl: string | null) => {
-        setPhotoClientError(null);
-        setData('avatar_key', key ?? '');
-        setData('photo_file', null);
-        setPhotoPreview(previewUrl);
-    };
-
     const handlePhotoClear = () => {
         setData('photo_file', null);
-        setData('avatar_key', '');
         setPhotoPreview(null);
         setPhotoClientError(null);
     };
@@ -194,15 +173,12 @@ export default function Register({ invitation, ministryVolunteerInvite = null, m
                         <div className="mt-2">
                             <ProfilePhotoPicker
                                 previewUrl={photoPreview}
-                                selectedAvatarKey={data.avatar_key || null}
                                 photoPreparing={photoPreparing}
                                 clientError={photoClientError}
                                 serverPhotoError={fieldError('photo_file')}
-                                serverAvatarError={fieldError('avatar_key')}
                                 inputId="photo_file"
-                                description="Tire ou envie uma foto, ou escolha um avatar. A imagem é comprimida automaticamente quando você envia um arquivo."
+                                description="Tire ou envie uma foto. A imagem é comprimida automaticamente quando você envia um arquivo."
                                 onPhotoFile={handlePhotoFile}
-                                onAvatarSelect={handleAvatarSelect}
                                 onClear={handlePhotoClear}
                             />
                         </div>
@@ -247,9 +223,8 @@ export default function Register({ invitation, ministryVolunteerInvite = null, m
                     <div>
                         <InputLabel htmlFor="password" value="Senha" />
 
-                        <TextInput
+                        <PasswordInput
                             id="password"
-                            type="password"
                             name="password"
                             value={data.password}
                             className={`mt-1 block w-full ${errClass('password')}`}
@@ -264,9 +239,8 @@ export default function Register({ invitation, ministryVolunteerInvite = null, m
                     <div>
                         <InputLabel htmlFor="password_confirmation" value="Confirmar senha" />
 
-                        <TextInput
+                        <PasswordInput
                             id="password_confirmation"
-                            type="password"
                             name="password_confirmation"
                             value={data.password_confirmation}
                             className={`mt-1 block w-full ${errClass('password_confirmation')}`}
@@ -327,69 +301,6 @@ export default function Register({ invitation, ministryVolunteerInvite = null, m
                         </label>
                         <InputError message={fieldError('lgpd_accepted')} className="mt-2" />
                     </div>
-
-                    {!invitation && !ministryVolunteerInvite ? (
-                        <div className="rounded-xl border border-zinc-200 bg-zinc-50/90 p-4 dark:border-zinc-700 dark:bg-zinc-800/40 space-y-4">
-                            <p className="text-sm font-semibold text-zinc-900 dark:text-white">Voluntariado</p>
-                            <label className="flex cursor-pointer items-start gap-3">
-                                <Checkbox
-                                    name="already_volunteer"
-                                    checked={data.already_volunteer}
-                                    onChange={(e) => {
-                                        const checked = e.target.checked;
-                                        if (!checked) {
-                                            setData('volunteer_ministry_ids', []);
-                                            setData('already_volunteer', false);
-                                        } else {
-                                            setData('already_volunteer', true);
-                                        }
-                                    }}
-                                />
-                                <span className="text-sm leading-snug text-zinc-700 dark:text-zinc-200">
-                                    <span className="font-semibold text-zinc-900 dark:text-white">Já sou voluntário</span> no
-                                    cadastro da equipe (ligamos a conta ao registro existente pelo e-mail, se existir). Indique
-                                    abaixo em que departamentos participa para a escala.
-                                </span>
-                            </label>
-                            <InputError message={fieldError('already_volunteer')} className="mt-2" />
-                            {showVolunteerDepartments ? (
-                                <div className="border-t border-zinc-200 pt-4 dark:border-zinc-600 space-y-2">
-                                    <p className="text-sm font-semibold text-zinc-900 dark:text-white">Departamentos</p>
-                                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                        Marque todos em que participa — ajuda os líderes a incluí-lo nas escalas.
-                                    </p>
-                                    <div className="space-y-2 pr-1 sm:max-h-48 sm:overflow-y-auto">
-                                        {ministryOptions.map((m) => (
-                                            <label key={m.id} className="flex cursor-pointer items-start gap-3">
-                                                <Checkbox
-                                                    name={`volunteer_ministry_${m.id}`}
-                                                    checked={data.volunteer_ministry_ids.includes(m.id)}
-                                                    onChange={(e) => {
-                                                        const on = e.target.checked;
-                                                        const next = new Set(data.volunteer_ministry_ids);
-                                                        if (on) {
-                                                            next.add(m.id);
-                                                        } else {
-                                                            next.delete(m.id);
-                                                        }
-                                                        setData('volunteer_ministry_ids', [...next]);
-                                                    }}
-                                                />
-                                                <span className="text-sm text-zinc-700 dark:text-zinc-200">{m.name}</span>
-                                            </label>
-                                        ))}
-                                    </div>
-                                    <InputError message={fieldError('volunteer_ministry_ids')} className="mt-1" />
-                                </div>
-                            ) : null}
-                            {showVolunteerNoMinistriesHint ? (
-                                <p className="text-xs text-amber-700 dark:text-amber-300 border-t border-zinc-200 pt-3 dark:border-zinc-600">
-                                    Ainda não há departamentos configurados nesta igreja. A secretaria pode associá-lo aos
-                                    ministérios depois.
-                                </p>
-                            ) : null}
-                        </div>
-                    ) : null}
 
                     <input type="hidden" name="invitation_token" value={data.invitation_token} />
                     <input type="hidden" name="ministry_invite_token" value={data.ministry_invite_token} />

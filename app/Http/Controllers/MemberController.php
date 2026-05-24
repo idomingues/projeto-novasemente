@@ -280,7 +280,7 @@ class MemberController extends Controller
         unset($validated['role_name']);
 
         $newPasswordPlain = null;
-        if ($request->user()?->hasRole('super_admin')) {
+        if ($request->user()?->can('members.manage') || $request->user()?->can('users.manage')) {
             $pw = $validated['password'] ?? null;
             if (is_string($pw) && $pw !== '') {
                 $newPasswordPlain = $pw;

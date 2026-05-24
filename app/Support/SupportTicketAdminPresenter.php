@@ -90,6 +90,7 @@ class SupportTicketAdminPresenter
                 'screenshotUrl' => $ticket->screenshot_path ? StorageUrl::publicMediaUrl($ticket->screenshot_path) : null,
                 'screenshotExternalUrl' => $ticket->screenshot_url,
                 'solutionText' => $ticket->solution_text,
+                'forecastAt' => $ticket->forecast_at?->toDateString(),
                 'createdAt' => $ticket->created_at?->toIso8601String(),
                 'closedAt' => $ticket->closed_at?->toIso8601String(),
                 'ownerLabel' => $ticket->user_id ? ($ticket->user?->name ?? 'Usuário') : ($ticket->guest_name ?? 'Convidado'),

@@ -66,4 +66,34 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
         $response->assertRedirect(route('mobile.home', absolute: false));
     }
+
+    public function test_login_always_redirects_to_home_even_with_intended_url(): void
+    {
+        $user = User::factory()->create();
+
+        $this->get(route('mobile.shared-talents.index', absolute: false))
+            ->assertRedirect(route('login', absolute: false));
+
+        $response = $this->post('/login', [
+            'login' => $user->email,
+            'password' => 'password',
+        ]);
+
+        $this->assertAuthenticated();
+        $response->assertRedirect(route('mobile.home', absolute: false));
+    }
+
+    public function test_login_always_redirects_to_home_even_with_redirect_param(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->post('/login', [
+            'login' => $user->email,
+            'password' => 'password',
+            'redirect' => route('mobile.shared-talents.index', absolute: false),
+        ]);
+
+        $this->assertAuthenticated();
+        $response->assertRedirect(route('mobile.home', absolute: false));
+    }
 }

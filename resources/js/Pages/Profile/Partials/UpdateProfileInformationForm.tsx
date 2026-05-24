@@ -4,13 +4,12 @@ import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import ProfilePhotoPicker from '@/Components/ProfilePhotoPicker';
 import TextInput from '@/Components/TextInput';
-import { bibleAvatarKeyFromPhotoUrl } from '@/constants/bibleAvatars';
 import { compressImageForUpload, ImageCompressError } from '@/utils/compressImageForUpload';
 import { Transition } from '@headlessui/react';
 import { Link, useForm, usePage } from '@inertiajs/react';
-import { FormEventHandler, useEffect, useState } from 'react';
+import { FormEventHandler, useState } from 'react';
 
-interface MinistryOption {
+interface VolunteerMinistry {
     id: number;
     name: string;
 }
@@ -35,11 +34,12 @@ export default function UpdateProfileInformation({
         notify_via_whatsapp?: boolean;
     };
 
-    const { ministryOptions = [], volunteerMinistryIds = [] } = (page.props as {
-        ministryOptions?: MinistryOption[];
-        volunteerMinistryIds?: number[];
+    const { volunteerMinistries = [] } = (page.props as {
+        volunteerMinistries?: VolunteerMinistry[];
         profileRedirectTo?: string;
     }) || {};
+    const isVolunteer =
+        (page.props as { auth?: { user?: { is_volunteer?: boolean } } }).auth?.user?.is_volunteer === true;
     const profileRedirectTo =
         typeof (page.props as { profileRedirectTo?: string }).profileRedirectTo === 'string'
             ? (page.props as { profileRedirectTo?: string }).profileRedirectTo
@@ -50,18 +50,11 @@ export default function UpdateProfileInformation({
             name: user.name,
             email: user.email,
             photo_file: null as File | null,
-            avatar_key: '' as string,
             notify_via_app: user.notify_via_app !== false,
             notify_via_email: user.notify_via_email !== false,
             notify_via_whatsapp: user.notify_via_whatsapp === true,
-            volunteer_ministry_ids: [] as number[],
             redirect_to: profileRedirectTo,
         });
-
-    useEffect(() => {
-        setData('volunteer_ministry_ids', [...volunteerMinistryIds]);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
 
     const [photoPreparing, setPhotoPreparing] = useState(false);
     const [photoClientError, setPhotoClientError] = useState<string | null>(null);
@@ -71,10 +64,9 @@ export default function UpdateProfileInformation({
         setPhotoClientError(null);
         if (!raw) {
             setData('photo_file', null);
-            if (!data.avatar_key) setPhotoPreview(user.photo_url ?? null);
+            setPhotoPreview(user.photo_url ?? null);
             return;
         }
-        setData('avatar_key', '');
         setPhotoPreparing(true);
         try {
             const prepared = await compressImageForUpload(raw);
@@ -93,16 +85,8 @@ export default function UpdateProfileInformation({
         }
     };
 
-    const handleAvatarSelect = (key: string | null, previewUrl: string | null) => {
-        setPhotoClientError(null);
-        setData('avatar_key', key ?? '');
-        setData('photo_file', null);
-        setPhotoPreview(previewUrl);
-    };
-
     const handlePhotoClear = () => {
         setData('photo_file', null);
-        setData('avatar_key', '');
         setPhotoPreview(null);
         setPhotoClientError(null);
     };
@@ -131,18 +115,13 @@ export default function UpdateProfileInformation({
                     <div className="mt-2">
                         <ProfilePhotoPicker
                             previewUrl={photoPreview}
-                            selectedAvatarKey={
-                                data.avatar_key || bibleAvatarKeyFromPhotoUrl(user.photo_url) || null
-                            }
                             photoPreparing={photoPreparing}
                             clientError={photoClientError}
                             serverPhotoError={errors.photo_file}
-                            serverAvatarError={errors.avatar_key}
                             required={false}
                             inputId="photo_file"
-                            description="Tire ou envie uma nova foto, ou escolha um avatar. Fotos grandes são reduzidas automaticamente (cerca de 500 KB) para o envio no celular."
+                            description="Tire ou envie uma nova foto. Fotos grandes são reduzidas automaticamente (cerca de 500 KB) para o envio no celular."
                             onPhotoFile={handlePhotoFile}
-                            onAvatarSelect={handleAvatarSelect}
                             onClear={handlePhotoClear}
                         />
                     </div>
@@ -211,36 +190,6 @@ export default function UpdateProfileInformation({
                     <InputError className="mt-1" message={errors.notify_via_whatsapp} />
                 </div>
 
-                {ministryOptions.length > 0 && (
-                    <div className="rounded-xl border border-zinc-200 bg-zinc-50/90 p-4 dark:border-zinc-700 dark:bg-zinc-800/40 space-y-3">
-                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Departamentos em que serve</p>
-                        <p className="text-xs text-gray-600 dark:text-gray-400">
-                            Os líderes usam esta lista para o montar escalas. Pode alterar quando quiser.
-                        </p>
-                        <div className="space-y-2">
-                            {ministryOptions.map((m) => (
-                                <label key={m.id} className="flex cursor-pointer items-start gap-3">
-                                    <Checkbox
-                                        checked={data.volunteer_ministry_ids.includes(m.id)}
-                                        onChange={(e) => {
-                                            const on = e.target.checked;
-                                            const next = new Set(data.volunteer_ministry_ids);
-                                            if (on) {
-                                                next.add(m.id);
-                                            } else {
-                                                next.delete(m.id);
-                                            }
-                                            setData('volunteer_ministry_ids', [...next]);
-                                        }}
-                                    />
-                                    <span className="text-sm text-gray-700 dark:text-gray-200">{m.name}</span>
-                                </label>
-                            ))}
-                        </div>
-                        <InputError className="mt-1" message={errors.volunteer_ministry_ids} />
-                    </div>
-                )}
-
                 {mustVerifyEmail && user.email_verified_at === null && (
                     <div>
                         <p className="mt-2 text-sm text-gray-800 dark:text-gray-200">
@@ -279,6 +228,33 @@ export default function UpdateProfileInformation({
                     </Transition>
                 </div>
             </form>
+
+            {isVolunteer ? (
+                <div
+                    className="mt-8 rounded-xl border border-dashed border-zinc-300 bg-zinc-50/60 p-4 dark:border-zinc-600 dark:bg-zinc-800/30 space-y-3"
+                    aria-label="Departamentos em que serve — somente leitura"
+                >
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Departamentos em que serve</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                        Somente consulta. A lista é definida pela equipe de voluntariado. Para alterações, fale com um líder ou com a
+                        secretaria.
+                    </p>
+                    {volunteerMinistries.length > 0 ? (
+                        <ul className="space-y-1.5 text-sm text-gray-800 dark:text-gray-200">
+                            {volunteerMinistries.map((m) => (
+                                <li key={m.id} className="flex items-center gap-2">
+                                    <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-500 dark:bg-zinc-400" />
+                                    {m.name}
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Você ainda não está vinculado a nenhum departamento.
+                        </p>
+                    )}
+                </div>
+            ) : null}
         </section>
     );
 }

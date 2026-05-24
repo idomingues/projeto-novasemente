@@ -7,6 +7,7 @@ use App\Models\AppSupportTicket;
 use App\Models\User;
 use App\Services\SupportTicketChatNotifier;
 use App\Support\SupportTicketAdminPresenter;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -75,6 +76,7 @@ class SupportAdminController extends Controller
                 'statusLabel' => SupportTicketAdminPresenter::statusLabel((string) $t->status),
                 'message' => $t->message,
                 'solutionText' => $t->solution_text,
+                'forecastAt' => $t->forecast_at?->toDateString(),
                 'createdAt' => $t->created_at?->toIso8601String(),
                 'updatedAt' => $t->updated_at?->toIso8601String(),
                 'ownerLabel' => $t->user_id
@@ -127,10 +129,31 @@ class SupportAdminController extends Controller
             'message' => ['sometimes', 'required', 'string', 'max:5000'],
             'status' => ['sometimes', 'string', 'in:'.implode(',', AppSupportTicket::statuses())],
             'solution_text' => ['nullable', 'string', 'max:5000'],
+            'forecast_at' => ['nullable', 'date'],
         ]);
 
         if (array_key_exists('message', $valid)) {
             $ticket->message = $valid['message'];
+        }
+
+        $forecastChangedToDate = null;
+        if (array_key_exists('forecast_at', $valid)) {
+            $incoming = isset($valid['forecast_at']) && $valid['forecast_at'] !== null && $valid['forecast_at'] !== ''
+                ? Carbon::parse((string) $valid['forecast_at'])->startOfDay()
+                : null;
+            $previous = $ticket->forecast_at?->toDateString();
+            $next = $incoming?->toDateString();
+            if ($previous !== $next) {
+                $ticket->forecast_at = $incoming;
+                if ($incoming !== null) {
+                    $forecastChangedToDate = $incoming;
+                }
+            }
+        }
+
+        if (array_key_exists('solution_text', $valid) && ! array_key_exists('status', $valid)) {
+            $draftSolution = trim((string) ($valid['solution_text'] ?? ''));
+            $ticket->solution_text = $draftSolution !== '' ? $draftSolution : null;
         }
 
         $wasFinalStatus = AppSupportTicket::isFinalStatus((string) $ticket->status);
@@ -163,9 +186,15 @@ class SupportAdminController extends Controller
         }
 
         $ticket->save();
+
+        $notifier = app(SupportTicketChatNotifier::class);
+        if ($forecastChangedToDate !== null) {
+            $notifier->notifyOwnerOfForecastSet($ticket, $user, $forecastChangedToDate);
+        }
+
         $isFinalStatus = AppSupportTicket::isFinalStatus((string) $ticket->status);
         if ($statusChanged && ! $wasFinalStatus && $isFinalStatus) {
-            app(SupportTicketChatNotifier::class)->notifyOwnerOfFinalizedTicket(
+            $notifier->notifyOwnerOfFinalizedTicket(
                 $ticket,
                 $user,
                 (string) ($ticket->solution_text ?? '')

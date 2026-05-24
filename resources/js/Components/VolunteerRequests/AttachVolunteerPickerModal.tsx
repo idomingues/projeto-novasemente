@@ -13,6 +13,7 @@ import {
     MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 import { FormEventHandler, useCallback, useEffect, useMemo, useState } from 'react';
+import { volunteerDepartmentsInList } from '@/utils/volunteerDepartmentsInList';
 
 type StageRow = { id: number; name: string; sort_order: number; volunteer_count: number };
 
@@ -24,6 +25,7 @@ type VolunteerListRow = {
     createdAt: string | null;
     stageName: string;
     pendingInvite?: boolean;
+    pendingInviteMinistryNames?: string[];
     ministryNames: string[];
     interestPreview: string | null;
 };
@@ -625,10 +627,10 @@ export default function AttachVolunteerPickerModal({ open, onClose, pickerUrl, o
                                                     <tr className="border-b border-zinc-200 text-left dark:border-zinc-700">
                                                         <th className="pb-2 pr-3 font-semibold">Nome</th>
                                                         <th className="pb-2 pr-3 font-semibold">Fase</th>
+                                                        <th className="pb-2 pr-3 font-semibold">Departamentos</th>
                                                         <th className="pb-2 pr-3 font-semibold">Cadastro</th>
                                                         <th className="pb-2 pr-3 font-semibold">Contato</th>
                                                         <th className="pb-2 pr-3 font-semibold">Interesses</th>
-                                                        <th className="pb-2 font-semibold">Ministérios</th>
                                                         <th className="pb-2 w-28" />
                                                     </tr>
                                                 </thead>
@@ -642,6 +644,9 @@ export default function AttachVolunteerPickerModal({ open, onClose, pickerUrl, o
                                                         >
                                                             <td className="py-2 pr-3 font-medium text-zinc-900 dark:text-white">{v.name}</td>
                                                             <td className="py-2 pr-3 text-zinc-700 dark:text-zinc-200">{v.stageName}</td>
+                                                            <td className="max-w-[220px] py-2 pr-3 text-xs text-zinc-600 dark:text-zinc-300">
+                                                                {volunteerDepartmentsInList(v) || '—'}
+                                                            </td>
                                                             <td className="py-2 pr-3 whitespace-nowrap text-zinc-600 dark:text-zinc-400">
                                                                 {formatShortDate(v.createdAt)}
                                                             </td>
@@ -651,9 +656,6 @@ export default function AttachVolunteerPickerModal({ open, onClose, pickerUrl, o
                                                             </td>
                                                             <td className="max-w-[200px] py-2 pr-3 text-xs text-zinc-500">
                                                                 {v.interestPreview ?? '—'}
-                                                            </td>
-                                                            <td className="py-2 text-xs text-zinc-500">
-                                                                {v.ministryNames.length ? v.ministryNames.join(', ') : '—'}
                                                             </td>
                                                             <td className="py-2 text-right">
                                                                 <button
@@ -687,6 +689,11 @@ export default function AttachVolunteerPickerModal({ open, onClose, pickerUrl, o
                                                     <div className="mt-2 space-y-1 text-xs text-zinc-600 dark:text-zinc-300">
                                                         {v.email ? <div className="truncate">{v.email}</div> : null}
                                                         {v.phone ? <div className="truncate">{v.phone}</div> : null}
+                                                        {volunteerDepartmentsInList(v) ? (
+                                                            <div className="truncate text-zinc-700 dark:text-zinc-200">
+                                                                Departamentos: {volunteerDepartmentsInList(v)}
+                                                            </div>
+                                                        ) : null}
                                                     </div>
                                                     <PrimaryButton type="button" className="mt-3 w-full" onClick={() => choose(v)}>
                                                         Escolher este voluntário

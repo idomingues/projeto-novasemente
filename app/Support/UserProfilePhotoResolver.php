@@ -4,8 +4,6 @@ namespace App\Support;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 
 final class UserProfilePhotoResolver
 {
@@ -15,26 +13,14 @@ final class UserProfilePhotoResolver
     public static function validationRules(bool $required = true): array
     {
         $photoRules = ['nullable', 'image', 'max:4096'];
-        $avatarRules = ['nullable', 'string', Rule::in(BibleAvatarCatalog::keys())];
 
         if ($required) {
-            $photoRules[] = 'required_without:avatar_key';
-            $avatarRules[] = 'required_without:photo_file';
+            $photoRules[] = 'required';
         }
 
         return [
             'photo_file' => $photoRules,
-            'avatar_key' => $avatarRules,
         ];
-    }
-
-    public static function assertExclusivePhotoOrAvatar(Request $request): void
-    {
-        if ($request->hasFile('photo_file') && $request->filled('avatar_key')) {
-            throw ValidationException::withMessages([
-                'photo_file' => ['Envie uma foto ou escolha um avatar, não os dois ao mesmo tempo.'],
-            ]);
-        }
     }
 
     public static function storeUploadedPhoto(UploadedFile $file): string
@@ -48,10 +34,6 @@ final class UserProfilePhotoResolver
     {
         if ($request->hasFile('photo_file')) {
             return self::storeUploadedPhoto($request->file('photo_file'));
-        }
-
-        if ($request->filled('avatar_key')) {
-            return BibleAvatarCatalog::urlForKey($request->string('avatar_key')->toString());
         }
 
         return $currentUrl;

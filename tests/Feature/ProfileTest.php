@@ -47,17 +47,19 @@ class ProfileTest extends TestCase
         $this->assertNull($user->email_verified_at);
     }
 
-    public function test_profile_can_sync_volunteer_departments(): void
+    public function test_profile_update_does_not_change_volunteer_departments(): void
     {
         $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
 
         $churchId = (int) Church::query()->orderBy('id')->value('id');
         $ministry = Ministry::query()->create([
             'church_id' => $churchId,
-            'name' => 'Receção',
+            'name' => 'Recepção',
         ]);
 
         $user = User::factory()->create(['church_id' => $churchId]);
+        $user->ensureVolunteerProfile();
+        $user->volunteerProfile?->ministries()->sync([(int) $ministry->id]);
 
         $this->actingAs($user)
             ->patch('/profile', [
@@ -66,13 +68,12 @@ class ProfileTest extends TestCase
                 'notify_via_app' => true,
                 'notify_via_email' => true,
                 'notify_via_whatsapp' => false,
-                'volunteer_ministry_ids' => [(int) $ministry->id],
+                'volunteer_ministry_ids' => [],
             ])
             ->assertSessionHasNoErrors()
             ->assertRedirect('/profile');
 
         $user->refresh();
-        $this->assertTrue($user->is_volunteer);
         $this->assertTrue(
             $user->volunteerProfile?->ministries()->where('ministries.id', $ministry->id)->exists() ?? false
         );

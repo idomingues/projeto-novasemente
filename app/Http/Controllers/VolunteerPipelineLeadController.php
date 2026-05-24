@@ -26,6 +26,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -172,7 +173,7 @@ class VolunteerPipelineLeadController extends Controller
             'user:id,email,name,photo_url',
             'user.roles:id,name',
             'user.ministries:id,name',
-            'churchPipelines' => fn ($p) => $p->where('church_id', $churchId)->with('stage'),
+            'churchPipelines' => fn ($p) => $p->where('church_id', $churchId)->with(['stage', 'adminWorkflowStage']),
         ]);
 
         $pipe = $volunteer->churchPipelines->firstWhere('church_id', $churchId);
@@ -182,8 +183,8 @@ class VolunteerPipelineLeadController extends Controller
 
         $isAdminWorkflow = $request->user()?->can('volunteers.manage') === true;
         $adminWorkflowStageId = $isAdminWorkflow
-            ? VolunteerPipelineBootstrap::resolveAdminWorkflowStageId($churchId, $pipe?->stage_id)
-            : $pipe?->stage_id;
+            ? VolunteerPipelineBootstrap::resolveAdminWorkflowStageId($churchId, $pipe?->admin_workflow_stage_id)
+            : null;
         $stages = $isAdminWorkflow
             ? VolunteerPipelineBootstrap::adminWorkflowStagesForChurch($churchId)
             : VolunteerPipelineStage::query()
@@ -250,7 +251,7 @@ class VolunteerPipelineLeadController extends Controller
         return response()->json([
             'volunteer' => VolunteerSignupDetailPresenter::forVolunteer($volunteer),
             'pipeline' => [
-                'stageId' => $isAdminWorkflow ? $adminWorkflowStageId : $pipe?->stage_id,
+                'stageId' => $pipe?->stage_id,
                 'stageName' => $pipe?->stage?->name,
                 'adminWorkflowStageId' => $adminWorkflowStageId,
             ],
@@ -272,7 +273,58 @@ class VolunteerPipelineLeadController extends Controller
             'unarchiveVolunteerUrl' => $request->user()?->can('volunteers.manage') && $pipe?->staff_archived_at
                 ? route('ministry-lead.volunteers.pipeline.unarchive', $volunteer)
                 : null,
+            'updatePasswordUrl' => $this->pipelinePasswordUpdateUrl($request, $volunteer),
         ]);
+    }
+
+    public function updatePassword(Request $request, Volunteer $volunteer): RedirectResponse
+    {
+        abort_unless($request->user()?->can('volunteers.manage'), 403);
+
+        $churchId = $this->churchId($request);
+        abort_unless($churchId, 404);
+        abort_unless($this->volunteerVisibleInChurch($volunteer, $churchId), 404);
+
+        if (! $request->filled('app_password')) {
+            return back();
+        }
+
+        $validated = $request->validate([
+            'app_password' => ['required', 'string', 'confirmed', Password::defaults()],
+        ]);
+
+        $volunteer->loadMissing('user');
+        $user = $volunteer->user;
+        if ($user === null) {
+            return back()->withErrors([
+                'app_password' => 'Este voluntário ainda não tem conta no app. Crie o acesso em Voluntários ou envie um convite.',
+            ]);
+        }
+
+        if ($user->canAccessAdminMenu()) {
+            return back()->withErrors([
+                'app_password' => 'Conta da equipe do painel — altere a senha em Usuários.',
+            ]);
+        }
+
+        $user->forceFill(['password' => $validated['app_password']])->save();
+
+        return back()->with('success', 'Senha de acesso atualizada.');
+    }
+
+    private function pipelinePasswordUpdateUrl(Request $request, Volunteer $volunteer): ?string
+    {
+        if ($request->user()?->can('volunteers.manage') !== true) {
+            return null;
+        }
+
+        $volunteer->loadMissing('user');
+        $user = $volunteer->user;
+        if ($user === null || $user->canAccessAdminMenu()) {
+            return null;
+        }
+
+        return route('ministry-lead.volunteers.pipeline.password', $volunteer);
     }
 
     public function archiveVolunteer(Request $request, Volunteer $volunteer): RedirectResponse
@@ -494,16 +546,45 @@ class VolunteerPipelineLeadController extends Controller
         abort_unless($churchId, 404);
         abort_unless($this->volunteerVisibleInChurch($volunteer, $churchId), 404);
 
-        $valid = $request->validate([
-            'stage_id' => ['required', 'integer', Rule::exists('volunteer_pipeline_stages', 'id')->where('church_id', $churchId)],
+        $request->merge([
+            'stage_id' => $request->input('stage_id') === '' || $request->input('stage_id') === null
+                ? null
+                : $request->input('stage_id'),
         ]);
 
-        if ($request->user()?->can('volunteers.manage')) {
-            $allowedIds = collect(VolunteerPipelineBootstrap::adminWorkflowStagesForChurch($churchId))
-                ->pluck('id')
-                ->map(fn ($id) => (int) $id)
-                ->all();
-            abort_unless(in_array((int) $valid['stage_id'], $allowedIds, true), 422, 'Status geral inválido.');
+        $isAdminManage = $request->user()?->can('volunteers.manage') === true;
+
+        $valid = $request->validate([
+            'stage_id' => [
+                $isAdminManage ? 'nullable' : 'required',
+                'integer',
+                Rule::exists('volunteer_pipeline_stages', 'id')->where('church_id', $churchId),
+            ],
+        ]);
+
+        if ($isAdminManage) {
+            $stageId = isset($valid['stage_id']) ? (int) $valid['stage_id'] : null;
+            if ($stageId !== null) {
+                $allowedIds = collect(VolunteerPipelineBootstrap::adminWorkflowStagesForChurch($churchId))
+                    ->pluck('id')
+                    ->map(fn ($id) => (int) $id)
+                    ->all();
+                abort_unless(in_array($stageId, $allowedIds, true), 422, 'Fase principal inválida.');
+            }
+
+            VolunteerPipelineBootstrap::ensureRowForVolunteerInChurch($volunteer, $churchId);
+
+            $update = ['admin_workflow_stage_id' => $stageId];
+            if ($stageId !== null) {
+                $update['stage_id'] = $stageId;
+            }
+
+            VolunteerChurchPipeline::query()
+                ->where('volunteer_id', $volunteer->id)
+                ->where('church_id', $churchId)
+                ->update($update);
+
+            return back()->with('success', $stageId === null ? 'Fase principal removida.' : 'Fase principal atualizada.');
         }
 
         VolunteerPipelineBootstrap::ensureRowForVolunteerInChurch($volunteer, $churchId);
@@ -678,7 +759,7 @@ class VolunteerPipelineLeadController extends Controller
         int $volunteerId,
         int $ministryId,
         ?int $invitedByUserId,
-        string $defaultLeaderStatus = 'active',
+        string $defaultLeaderStatus = '',
     ): VolunteerMinistryInvitation {
         $existing = $this->invitationForVolunteerMinistry($churchId, $volunteerId, $ministryId);
         if ($existing) {
@@ -693,7 +774,7 @@ class VolunteerPipelineLeadController extends Controller
             'token' => VolunteerMinistryInvitation::createToken(),
             'status' => 'accepted',
             'accepted_at' => now(),
-            'leader_status' => $defaultLeaderStatus,
+            'leader_status' => $defaultLeaderStatus !== '' ? $defaultLeaderStatus : null,
             'leader_status_set_by_user_id' => $invitedByUserId,
             'leader_status_set_at' => now(),
         ]);

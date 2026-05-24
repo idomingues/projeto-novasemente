@@ -8,6 +8,7 @@ import {
     Squares2X2Icon,
     ListBulletIcon,
     MagnifyingGlassIcon,
+    EyeIcon,
 } from '@heroicons/react/24/outline';
 import AddButton from '@/Components/AddButton';
 import Modal from '@/Components/Modal';
@@ -18,7 +19,10 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import PageHeader from '@/Components/PageHeader';
 import InputError from '@/Components/InputError';
 import { DEPARTMENT_ICON_OPTIONS, getMinistryIconByKey } from '@/lib/ministryIcons';
-import { useState, useEffect, useMemo, FormEventHandler } from 'react';
+import { useState, useEffect, useMemo, useCallback, FormEventHandler } from 'react';
+import axios from 'axios';
+import VolunteerRecordDetailBody from '@/Components/Volunteers/VolunteerRecordDetailBody';
+import type { VolunteerDetailData } from '@/utils/volunteerDetailRows';
 import { confirmAction } from '@/utils/confirmDialog';
 
 interface PersonRef {
@@ -28,6 +32,7 @@ interface PersonRef {
 
 interface PersonOption extends PersonRef {
     email?: string | null;
+    volunteer_id?: number | null;
 }
 
 interface Department {
@@ -51,6 +56,11 @@ interface Props {
     canManageEscalasRoles: boolean;
     canManage: boolean;
     filters: { search?: string };
+    volunteerDetailUrlPattern: string | null;
+}
+
+function detailUrlFromPattern(pattern: string, id: number): string {
+    return pattern.replace(/\/0(\/|$)/, `/${id}$1`);
 }
 
 function PersonPicker({
@@ -61,6 +71,8 @@ function PersonPicker({
     onChange,
     filter,
     onFilterChange,
+    onViewDetail,
+    resolveDetailId,
     error,
 }: {
     label: string;
@@ -70,8 +82,15 @@ function PersonPicker({
     onChange: (ids: number[]) => void;
     filter: string;
     onFilterChange: (v: string) => void;
+    onViewDetail?: (id: number) => void;
+    resolveDetailId?: (option: PersonOption) => number | null;
     error?: string;
 }) {
+    const detailIdFor = (option: PersonOption): number | null =>
+        resolveDetailId ? resolveDetailId(option) : option.id;
+
+    const canOpenDetail = (option: PersonOption): boolean =>
+        onViewDetail != null && detailIdFor(option) != null;
     const { selectedOptions, otherOptions } = useMemo(() => {
         const q = filter.trim().toLowerCase();
         const list = q
@@ -120,22 +139,38 @@ function PersonPicker({
                                 </li>
                                 {selectedOptions.map((o) => (
                                     <li key={o.id}>
-                                        <label className="flex cursor-pointer items-start gap-2 rounded-lg bg-emerald-50/80 px-2 py-1.5 hover:bg-emerald-100/80 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/40">
-                                            <input
-                                                type="checkbox"
-                                                checked
-                                                onChange={() => toggle(o.id)}
-                                                className="mt-0.5 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600"
-                                            />
-                                            <span className="min-w-0 text-sm">
-                                                <span className="font-medium text-zinc-900 dark:text-white">{o.name}</span>
-                                                {o.email ? (
-                                                    <span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">
-                                                        {o.email}
-                                                    </span>
-                                                ) : null}
-                                            </span>
-                                        </label>
+                                        <div className="flex items-start gap-1 rounded-lg bg-emerald-50/80 px-2 py-1.5 hover:bg-emerald-100/80 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/40">
+                                            <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-2">
+                                                <input
+                                                    type="checkbox"
+                                                    checked
+                                                    onChange={() => toggle(o.id)}
+                                                    className="mt-0.5 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600"
+                                                />
+                                                <span className="min-w-0 text-sm">
+                                                    <span className="font-medium text-zinc-900 dark:text-white">{o.name}</span>
+                                                    {o.email ? (
+                                                        <span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">
+                                                            {o.email}
+                                                        </span>
+                                                    ) : null}
+                                                </span>
+                                            </label>
+                                            {canOpenDetail(o) ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const detailId = detailIdFor(o);
+                                                        if (detailId != null) onViewDetail?.(detailId);
+                                                    }}
+                                                    className="mt-0.5 shrink-0 rounded-lg p-1 text-zinc-500 hover:bg-white/80 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-white"
+                                                    title="Ver ficha do voluntário"
+                                                    aria-label={`Ver ficha de ${o.name}`}
+                                                >
+                                                    <EyeIcon className="h-4 w-4" aria-hidden />
+                                                </button>
+                                            ) : null}
+                                        </div>
                                     </li>
                                 ))}
                             </>
@@ -152,22 +187,38 @@ function PersonPicker({
                                 ) : null}
                                 {otherOptions.map((o) => (
                                     <li key={o.id}>
-                                        <label className="flex cursor-pointer items-start gap-2 rounded-lg px-2 py-1.5 hover:bg-white dark:hover:bg-zinc-800">
-                                            <input
-                                                type="checkbox"
-                                                checked={false}
-                                                onChange={() => toggle(o.id)}
-                                                className="mt-0.5 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600"
-                                            />
-                                            <span className="min-w-0 text-sm">
-                                                <span className="font-medium text-zinc-900 dark:text-white">{o.name}</span>
-                                                {o.email ? (
-                                                    <span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">
-                                                        {o.email}
-                                                    </span>
-                                                ) : null}
-                                            </span>
-                                        </label>
+                                        <div className="flex items-start gap-1 rounded-lg px-2 py-1.5 hover:bg-white dark:hover:bg-zinc-800">
+                                            <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-2">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={false}
+                                                    onChange={() => toggle(o.id)}
+                                                    className="mt-0.5 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600"
+                                                />
+                                                <span className="min-w-0 text-sm">
+                                                    <span className="font-medium text-zinc-900 dark:text-white">{o.name}</span>
+                                                    {o.email ? (
+                                                        <span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">
+                                                            {o.email}
+                                                        </span>
+                                                    ) : null}
+                                                </span>
+                                            </label>
+                                            {canOpenDetail(o) ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const detailId = detailIdFor(o);
+                                                        if (detailId != null) onViewDetail?.(detailId);
+                                                    }}
+                                                    className="mt-0.5 shrink-0 rounded-lg p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-700 dark:hover:text-white"
+                                                    title="Ver ficha do voluntário"
+                                                    aria-label={`Ver ficha de ${o.name}`}
+                                                >
+                                                    <EyeIcon className="h-4 w-4" aria-hidden />
+                                                </button>
+                                            ) : null}
+                                        </div>
                                     </li>
                                 ))}
                             </>
@@ -203,6 +254,7 @@ export default function Index({
     canManageEscalasRoles,
     canManage,
     filters,
+    volunteerDetailUrlPattern,
 }: Props) {
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [search, setSearch] = useState(filters.search ?? '');
@@ -212,6 +264,9 @@ export default function Index({
     const [leaderPickerFilter, setLeaderPickerFilter] = useState('');
     const [volunteerPickerFilter, setVolunteerPickerFilter] = useState('');
     const [rosterTab, setRosterTab] = useState<'leaders' | 'volunteers'>('leaders');
+    const [detailOpen, setDetailOpen] = useState(false);
+    const [detailLoading, setDetailLoading] = useState(false);
+    const [detailVolunteer, setDetailVolunteer] = useState<VolunteerDetailData | null>(null);
 
     const [rolesModalDepartmentId, setRolesModalDepartmentId] = useState<number | null>(null);
     const [rolesModalNewRoleName, setRolesModalNewRoleName] = useState('');
@@ -234,6 +289,42 @@ export default function Index({
         }, 350);
         return () => clearTimeout(timeout);
     }, [search, filters.search]);
+
+    const openVolunteerDetail = useCallback(
+        async (id: number) => {
+            if (!volunteerDetailUrlPattern) return;
+            setDetailOpen(true);
+            setDetailLoading(true);
+            setDetailVolunteer(null);
+            try {
+                const { data } = await axios.get<{ volunteer: VolunteerDetailData }>(
+                    detailUrlFromPattern(volunteerDetailUrlPattern, id),
+                );
+                setDetailVolunteer(data.volunteer);
+            } finally {
+                setDetailLoading(false);
+            }
+        },
+        [volunteerDetailUrlPattern],
+    );
+
+    const closeVolunteerDetail = useCallback(() => {
+        setDetailOpen(false);
+        setDetailVolunteer(null);
+    }, []);
+
+    const volunteerDetailBadge = (v: VolunteerDetailData): string | null => {
+        const parts: string[] = [];
+        if (v.active === false) {
+            parts.push('Escalas: inativo');
+        } else if (v.active === true) {
+            parts.push('Escalas: ativo');
+        }
+        if (v.has_app_account) {
+            parts.push(v.user?.status === 'inactive' ? 'Conta: inativa' : 'Conta: ativa');
+        }
+        return parts.length > 0 ? parts.join(' · ') : null;
+    };
 
     const rosterTabBtn = (active: boolean) =>
         `flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
@@ -604,6 +695,8 @@ export default function Index({
                                     onChange={(ids) => setData('leader_user_ids', ids)}
                                     filter={leaderPickerFilter}
                                     onFilterChange={setLeaderPickerFilter}
+                                    onViewDetail={volunteerDetailUrlPattern ? openVolunteerDetail : undefined}
+                                    resolveDetailId={(o) => o.volunteer_id ?? null}
                                     error={errors.leader_user_ids}
                                 />
                             ) : (
@@ -615,6 +708,7 @@ export default function Index({
                                     onChange={(ids) => setData('volunteer_ids', ids)}
                                     filter={volunteerPickerFilter}
                                     onFilterChange={setVolunteerPickerFilter}
+                                    onViewDetail={volunteerDetailUrlPattern ? openVolunteerDetail : undefined}
                                     error={errors.volunteer_ids}
                                 />
                             )}
@@ -727,6 +821,19 @@ export default function Index({
                         </div>
                     </div>
                 )}
+            </Modal>
+
+            <Modal show={detailOpen} onClose={closeVolunteerDetail} maxWidth="2xl">
+                <div className="max-h-[min(90vh,80vh)] overflow-y-auto p-6">
+                    {detailLoading && <p className="text-sm text-zinc-500">Carregando ficha…</p>}
+                    {!detailLoading && detailVolunteer && (
+                        <VolunteerRecordDetailBody
+                            volunteer={detailVolunteer}
+                            badge={volunteerDetailBadge(detailVolunteer)}
+                            onClose={closeVolunteerDetail}
+                        />
+                    )}
+                </div>
             </Modal>
         </AdminLayout>
     );

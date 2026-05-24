@@ -28,6 +28,7 @@ export type SupportTicketShape = {
     screenshotUrl?: string | null;
     screenshotExternalUrl?: string | null;
     solutionText: string | null;
+    forecastAt?: string | null;
     createdAt: string;
     closedAt: string | null;
     ownerLabel: string;
@@ -59,6 +60,12 @@ function formatTime(iso: string): string {
 function formatDate(iso: string): string {
     const d = new Date(iso);
     return d.toLocaleString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function formatForecastDate(isoDate: string): string {
+    const [y, m, d] = isoDate.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    return date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 function statusVisual(status: string): string {
@@ -105,6 +112,7 @@ export default function SupportTicketDetailPanel({
     const [editMessage, setEditMessage] = useState(ticket.message);
     const [statusValue, setStatusValue] = useState(ticket.status);
     const [statusSolution, setStatusSolution] = useState(ticket.solutionText ?? '');
+    const [forecastValue, setForecastValue] = useState(ticket.forecastAt ?? '');
 
     useEffect(() => {
         setEditMessage(ticket.message);
@@ -117,6 +125,10 @@ export default function SupportTicketDetailPanel({
     useEffect(() => {
         setStatusSolution(ticket.solutionText ?? '');
     }, [ticket.solutionText]);
+
+    useEffect(() => {
+        setForecastValue(ticket.forecastAt ?? '');
+    }, [ticket.forecastAt]);
 
     useEffect(() => {
         if (!showCloseModal) {
@@ -169,7 +181,26 @@ export default function SupportTicketDetailPanel({
         );
     };
 
+    const saveForecast = () => {
+        const normalized = forecastValue.trim();
+        const current = ticket.forecastAt ?? '';
+        if (normalized === current) return;
+        router.patch(
+            supportUpdateUrl,
+            { forecast_at: normalized !== '' ? normalized : null },
+            inertiaScrollOpts,
+        );
+    };
+
+    const saveSolutionDraft = () => {
+        const trimmed = statusSolution.trim();
+        const current = (ticket.solutionText ?? '').trim();
+        if (trimmed === current) return;
+        router.patch(supportUpdateUrl, { solution_text: trimmed }, inertiaScrollOpts);
+    };
+
     const statusWillFinalize = ['resolved', 'closed'].includes(statusValue);
+    const forecastDirty = forecastValue.trim() !== (ticket.forecastAt ?? '');
 
     const deleteTicket = async () => {
         const ok = await confirmAction({
@@ -271,7 +302,59 @@ export default function SupportTicketDetailPanel({
                         {ticket.statusLabel ?? (ticket.status === 'open' ? 'Em andamento' : 'Encerrado')}
                     </div>
                 </div>
+                {ticket.forecastAt ? (
+                    <div className="sm:col-span-2">
+                        <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Previsão</div>
+                        <div className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                            {formatForecastDate(ticket.forecastAt)}
+                        </div>
+                    </div>
+                ) : null}
             </div>
+            )}
+
+            {showDetails && canManageTickets && isOpen && (
+                <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                        <div className="min-w-0 flex-1">
+                            <InputLabel value="Previsão de atendimento (opcional)" />
+                            <input
+                                type="date"
+                                value={forecastValue}
+                                onChange={(e) => setForecastValue(e.target.value)}
+                                className="mt-1 block h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+                            />
+                            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                Ao salvar uma data, o usuário recebe aviso na caixa de entrada.
+                            </p>
+                        </div>
+                        <PrimaryButton type="button" onClick={saveForecast} disabled={!forecastDirty}>
+                            Salvar previsão
+                        </PrimaryButton>
+                    </div>
+                </div>
+            )}
+
+            {showDetails && canManageTickets && isOpen && (
+                <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+                    <InputLabel value="Solução" />
+                    <Textarea
+                        value={statusSolution}
+                        onChange={(e) => setStatusSolution(e.target.value)}
+                        rows={4}
+                        className="mt-1 w-full"
+                        placeholder="Descreva a solução (obrigatória ao finalizar o chamado)..."
+                    />
+                    <div className="mt-3 flex justify-end">
+                        <PrimaryButton
+                            type="button"
+                            onClick={saveSolutionDraft}
+                            disabled={statusSolution.trim() === (ticket.solutionText ?? '').trim()}
+                        >
+                            Salvar solução
+                        </PrimaryButton>
+                    </div>
+                </div>
             )}
 
             {showDetails && canManageTickets && statusOptions.length > 0 && (

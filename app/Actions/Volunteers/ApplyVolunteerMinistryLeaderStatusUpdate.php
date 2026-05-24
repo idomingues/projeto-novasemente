@@ -23,8 +23,12 @@ class ApplyVolunteerMinistryLeaderStatusUpdate
 
         $fromStatus = $invitation->leader_status;
 
+        $request->merge([
+            'leader_status' => $request->input('leader_status') === '' ? null : $request->input('leader_status'),
+        ]);
+
         $valid = $request->validate([
-            'leader_status' => ['nullable', 'string', Rule::in(['denied', 'training', 'active'])],
+            'leader_status' => ['nullable', 'string', Rule::in(['denied', 'reviewing', 'training', 'active'])],
             'leader_note' => ['nullable', 'string', 'max:5000'],
         ]);
 

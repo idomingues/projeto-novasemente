@@ -55,6 +55,7 @@ use App\Http\Controllers\VariosController;
 use App\Http\Controllers\VolunteerController;
 use App\Http\Controllers\VolunteerPipelineLeadController;
 use App\Http\Controllers\VolunteerPublicSignupController;
+use App\Http\Controllers\VolunteerSelfSignupEditController;
 use App\Http\Controllers\VolunteerRequestSolicitationController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -196,6 +197,12 @@ Route::get('/mobile/profile', [MobileController::class, 'profile'])
 Route::get('/mobile/perfil/editar', [MobileController::class, 'profileEdit'])
     ->middleware('auth')
     ->name('mobile.profile.edit');
+Route::get('/mobile/voluntario/cadastro', [VolunteerSelfSignupEditController::class, 'edit'])
+    ->middleware('auth')
+    ->name('volunteers.self-signup.edit');
+Route::match(['put', 'patch'], '/mobile/voluntario/cadastro', [VolunteerSelfSignupEditController::class, 'update'])
+    ->middleware(['auth', 'throttle:20,1'])
+    ->name('volunteers.self-signup.edit.update');
 Route::get('/mobile/escala/checkin', [MobileController::class, 'scheduleCheckin'])
     ->middleware('auth')
     ->name('mobile.schedule.checkin');
@@ -241,6 +248,8 @@ Route::post('/voluntario/cadastro', [VolunteerPublicSignupController::class, 'st
 Route::post('/voluntario/cadastro/check-duplicate', [VolunteerPublicSignupController::class, 'checkDuplicate'])
     ->middleware('throttle:30,1')
     ->name('volunteers.self-signup.check-duplicate');
+Route::get('/voluntario/cadastro/concluido', [VolunteerPublicSignupController::class, 'welcome'])
+    ->name('volunteers.self-signup.welcome');
 
 Route::get('/lider/cadastro', [\App\Http\Controllers\LeaderPublicSignupController::class, 'create'])->name('leaders.self-signup');
 Route::post('/lider/cadastro', [\App\Http\Controllers\LeaderPublicSignupController::class, 'store'])
@@ -440,6 +449,9 @@ Route::middleware('auth')->group(function () {
     Route::patch('/lideranca/voluntarios/{volunteer}/departamentos', [VolunteerPipelineLeadController::class, 'syncMinistries'])
         ->name('ministry-lead.volunteers.pipeline.ministries.sync')
         ->middleware('permission:volunteers.ministry_operate|volunteers.manage');
+    Route::patch('/lideranca/voluntarios/{volunteer}/senha', [VolunteerPipelineLeadController::class, 'updatePassword'])
+        ->name('ministry-lead.volunteers.pipeline.password')
+        ->middleware('permission:volunteers.manage');
     Route::patch('/lideranca/voluntarios/{volunteer}/ministerio/{ministry}/status-lider', [VolunteerPipelineLeadController::class, 'updateMinistryLeaderStatus'])
         ->name('ministry-lead.volunteers.pipeline.ministry-leader-status')
         ->middleware('permission:volunteers.ministry_operate|volunteers.manage');

@@ -2,6 +2,7 @@ import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
+import PasswordInput from '@/Components/PasswordInput';
 import TextInput from '@/Components/TextInput';
 import { Head, Link, useForm } from '@inertiajs/react';
 import axios from 'axios';
@@ -114,9 +115,8 @@ export default function PublicSignup({ token, churchName, ministries }: Props) {
                     </div>
                     <div>
                         <InputLabel htmlFor="leader_password" value="Senha" />
-                        <TextInput
+                        <PasswordInput
                             id="leader_password"
-                            type="password"
                             value={form.data.password}
                             onChange={(e) => form.setData('password', e.target.value)}
                             className="mt-1 w-full"
@@ -127,9 +127,8 @@ export default function PublicSignup({ token, churchName, ministries }: Props) {
                     </div>
                     <div>
                         <InputLabel htmlFor="leader_password_confirmation" value="Confirmar senha" />
-                        <TextInput
+                        <PasswordInput
                             id="leader_password_confirmation"
-                            type="password"
                             value={form.data.password_confirmation}
                             onChange={(e) => form.setData('password_confirmation', e.target.value)}
                             className="mt-1 w-full"

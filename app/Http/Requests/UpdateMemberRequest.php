@@ -92,7 +92,7 @@ class UpdateMemberRequest extends FormRequest
             ],
             'role_name' => $roleRules,
             'password' => [
-                Rule::excludeIf(fn () => ! $this->user()?->hasRole('super_admin')),
+                Rule::excludeIf(fn () => ! ($this->user()?->can('members.manage') || $this->user()?->can('users.manage'))),
                 'nullable',
                 'string',
                 'confirmed',

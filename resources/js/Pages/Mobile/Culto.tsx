@@ -131,7 +131,7 @@ export default function MobileCulto({ cultos, liveCulto = null, showPostRegistra
                     >
                         <p className="font-semibold">Conta criada com sucesso</p>
                         <p className="mt-1 text-emerald-900/90 dark:text-emerald-100/90">
-                            Já está com sessão iniciada. Pode explorar o culto e o resto da app.
+                            Você já está conectado(a). Pode explorar o culto e o restante do aplicativo.
                         </p>
                     </div>
                 ) : null}

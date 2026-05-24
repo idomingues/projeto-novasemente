@@ -27,11 +27,11 @@ type SuggestResponse = {
     message: string | null;
 };
 
-function clearanceLabel(status: string | null): string | null {
+function liberacaoNoDepartamentoLabel(status: string | null): string | null {
     if (!status) return null;
-    if (status === 'cleared') return 'Clearance aprovado';
-    if (status === 'pending') return 'Clearance pendente';
-    if (status === 'blocked') return 'Clearance bloqueado';
+    if (status === 'cleared') return 'Liberado no departamento';
+    if (status === 'pending') return 'Liberação pendente';
+    if (status === 'blocked') return 'Bloqueado no departamento';
     return status;
 }
 
@@ -147,7 +147,7 @@ export default function VolunteerRequestSuggestions({
                         <ul className="space-y-2">
                             {payload.suggestions.map((row, index) => {
                                 const isSelected = selectedVolunteerId === row.id;
-                                const clearance = clearanceLabel(row.clearanceStatus);
+                                const liberacaoLabel = liberacaoNoDepartamentoLabel(row.clearanceStatus);
                                 return (
                                     <li
                                         key={row.id}
@@ -170,7 +170,7 @@ export default function VolunteerRequestSuggestions({
                                                 </p>
                                                 <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
                                                     {row.stageName}
-                                                    {clearance ? ` · ${clearance}` : ''}
+                                                    {liberacaoLabel ? ` · ${liberacaoLabel}` : ''}
                                                     {row.email ? ` · ${row.email}` : ''}
                                                 </p>
                                                 {row.interestPreview ? (

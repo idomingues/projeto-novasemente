@@ -1,6 +1,7 @@
 import Checkbox from '@/Components/Checkbox';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
+import PasswordInput from '@/Components/PasswordInput';
 import TextInput from '@/Components/TextInput';
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import GuestLayout from '@/Layouts/GuestLayout';
@@ -103,15 +104,10 @@ export default function Login({
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        // Garante CSRF mesmo em ambientes onde o header/cookie não esteja chegando no POST.
-        if (csrfToken) {
-            setData('_token', csrfToken);
-        }
         clearErrors();
         post(route('login'), {
             preserveState: true,
             onError: (errs) => {
-                // Caminho correto Inertia: atualiza `errors` imediatamente.
                 setError(errs);
             },
             onFinish: () => {
@@ -231,9 +227,8 @@ export default function Login({
 
                             <div>
                                 <InputLabel htmlFor="password" value="Senha" />
-                                <TextInput
+                                <PasswordInput
                                     id="password"
-                                    type="password"
                                     name="password"
                                     value={data.password}
                                     className="mt-1.5 block w-full !bg-zinc-50 dark:!bg-zinc-100 !border-zinc-300 dark:!border-zinc-300 !text-zinc-900 placeholder:!text-zinc-500"

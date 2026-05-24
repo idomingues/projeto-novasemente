@@ -1,11 +1,12 @@
 import PrimaryButton from '@/Components/PrimaryButton';
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Head, router, usePage } from '@inertiajs/react';
+import { UserPlusIcon } from '@heroicons/react/24/outline';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
-const REDIRECT_MS = 5000;
+const REDIRECT_MS = 8000;
 
-function cultoAfterRegistrationUrl(): string {
+function homeAfterRegistrationUrl(): string {
     const base = route('mobile.home');
     const join = base.includes('?') ? '&' : '?';
 
@@ -24,7 +25,7 @@ export default function RegistrationWelcome() {
         }, 1000);
 
         const timeout = window.setTimeout(() => {
-            router.visit(cultoAfterRegistrationUrl());
+            router.visit(homeAfterRegistrationUrl());
         }, REDIRECT_MS);
 
         return () => {
@@ -56,20 +57,51 @@ export default function RegistrationWelcome() {
                         ) : (
                             <>Parabéns!</>
                         )}{' '}
-                        O seu cadastro foi concluído e já iniciámos sessão por si. Pode utilizar a app com a sua conta.
+                        Seu cadastro foi concluído e você já está conectado(a). Pode usar o aplicativo com sua conta.
                     </p>
                     <p className="mt-3 text-xs text-zinc-600 dark:text-zinc-400">
-                        A redirecionar para o culto em {secondsLeft}s…
+                        Redirecionando para o início em {secondsLeft}s…
                     </p>
+                </div>
+
+                <div
+                    className="mt-6 rounded-2xl border-2 border-teal-300 bg-teal-50 px-5 py-5 shadow-sm dark:border-teal-800 dark:bg-teal-950/50 sm:px-6"
+                    role="note"
+                >
+                    <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-600 text-white dark:bg-teal-500">
+                            <UserPlusIcon className="h-5 w-5" aria-hidden />
+                        </div>
+                        <div className="min-w-0 flex-1 space-y-3">
+                            <p className="text-sm font-semibold leading-snug text-teal-950 dark:text-teal-50 sm:text-base">
+                                Voluntário da Nova Semente?
+                            </p>
+                            <p className="text-sm leading-relaxed text-teal-900/90 dark:text-teal-100/90">
+                                Se você serve como voluntário, faça o{' '}
+                                <strong className="font-semibold text-teal-950 dark:text-white">cadastro de voluntário</strong>{' '}
+                                (se ainda não fez) com o{' '}
+                                <strong className="font-semibold text-teal-950 dark:text-white">mesmo e-mail</strong> que usou
+                                para criar sua conta no aplicativo.
+                            </p>
+                            <Link href={route('volunteers.public-signup.page')} className="inline-flex">
+                                <PrimaryButton
+                                    type="button"
+                                    className="w-full justify-center !bg-teal-700 !text-white hover:!bg-teal-800 sm:w-auto sm:min-w-[14rem]"
+                                >
+                                    Cadastro de voluntário
+                                </PrimaryButton>
+                            </Link>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="mt-8 flex flex-col gap-3 sm:items-center">
                     <PrimaryButton
                         type="button"
                         className="w-full justify-center !bg-zinc-900 !text-white hover:!bg-zinc-800 sm:w-auto sm:min-w-[14rem]"
-                        onClick={() => router.visit(cultoAfterRegistrationUrl())}
+                        onClick={() => router.visit(homeAfterRegistrationUrl())}
                     >
-                        Ir para o culto
+                        Ir para o início
                     </PrimaryButton>
                     <p className="text-center text-xs text-zinc-500 dark:text-zinc-400">
                         Se não for redirecionado, use o botão acima.

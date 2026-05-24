@@ -23,7 +23,7 @@ class VolunteerPipelineBootstrap
 
     public const STAGE_RECUSADO_LIDER = 'recusado pelo líder';
 
-    /** Status geral do adm (seletor na ficha) — apenas macro-fases; recusas são por departamento. */
+    /** Status geral do adm (seletor na ficha) — apenas macro-fases; recusas e «Em análise» são por departamento. */
     public const ADMIN_WORKFLOW_STAGE_NAMES = [
         'interessado',
         'encaminhado',
@@ -117,22 +117,25 @@ class VolunteerPipelineBootstrap
     }
 
     /**
-     * ID de fase para o seletor de status geral (adm): se a fase atual não for Interessado/Encaminhado/Finalizado,
-     * mostra Interessado (evita select HTML apontar para opção errada).
+     * ID da fase principal (adm): só retorna valor se estiver entre Interessado/Encaminhado/Finalizado.
      */
-    public static function resolveAdminWorkflowStageId(int $churchId, ?int $currentStageId): ?int
+    public static function resolveAdminWorkflowStageId(int $churchId, ?int $adminWorkflowStageId): ?int
     {
+        if ($adminWorkflowStageId === null) {
+            return null;
+        }
+
         $allowedIds = collect(self::adminWorkflowStagesForChurch($churchId))
             ->pluck('id')
             ->map(fn ($id) => (int) $id)
             ->values()
             ->all();
 
-        if ($currentStageId !== null && in_array((int) $currentStageId, $allowedIds, true)) {
-            return (int) $currentStageId;
+        if (in_array((int) $adminWorkflowStageId, $allowedIds, true)) {
+            return (int) $adminWorkflowStageId;
         }
 
-        return self::defaultStageIdForNewVolunteer($churchId);
+        return null;
     }
 
     /**

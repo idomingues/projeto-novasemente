@@ -14,6 +14,7 @@ import AddButton from '@/Components/AddButton';
 import PageHeader from '@/Components/PageHeader';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
+import PasswordInput from '@/Components/PasswordInput';
 import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
@@ -140,6 +141,7 @@ export default function Index({
 }: Props) {
     const page = usePage();
     const isSuperAdmin = (page.props as { auth?: { isSuperAdmin?: boolean } }).auth?.isSuperAdmin === true;
+    const canChangeUserPassword = canManageMembers || canManageUsers;
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
@@ -1114,14 +1116,13 @@ export default function Index({
                             <section className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-900/40">
                                 <p className="text-sm font-semibold text-zinc-900 dark:text-white">Senha (app)</p>
                                 <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                    Obrigatória ao criar a conta.
+                                    Obrigatória ao criar a conta. Clique no olho para ver o que está digitando.
                                 </p>
                                 <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     <div>
                                         <InputLabel htmlFor="password" value="Senha inicial" className="mb-1" />
-                                        <TextInput
+                                        <PasswordInput
                                             id="password"
-                                            type="password"
                                             className="block w-full"
                                             value={data.password}
                                             onChange={(e) => setData('password', e.target.value)}
@@ -1132,9 +1133,8 @@ export default function Index({
                                     </div>
                                     <div>
                                         <InputLabel htmlFor="password_confirmation" value="Confirmar senha" className="mb-1" />
-                                        <TextInput
+                                        <PasswordInput
                                             id="password_confirmation"
-                                            type="password"
                                             className="block w-full"
                                             value={data.password_confirmation}
                                             onChange={(e) => setData('password_confirmation', e.target.value)}
@@ -1146,18 +1146,17 @@ export default function Index({
                             </section>
                         ) : null}
 
-                        {isEditing && isSuperAdmin ? (
+                        {isEditing && canChangeUserPassword ? (
                             <section className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-900/60 dark:bg-amber-950/30">
                                 <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">Nova senha de acesso</p>
                                 <p className="mt-1 text-xs text-amber-900/80 dark:text-amber-200/90">
-                                    Deixe em branco para manter a senha atual.
+                                    Deixe em branco para manter a senha atual. Clique no olho para ver o que está digitando.
                                 </p>
                                 <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     <div>
                                         <InputLabel htmlFor="edit_password" value="Nova senha (opcional)" className="mb-1" />
-                                        <TextInput
+                                        <PasswordInput
                                             id="edit_password"
-                                            type="password"
                                             className="block w-full"
                                             value={data.password}
                                             onChange={(e) => setData('password', e.target.value)}
@@ -1167,9 +1166,8 @@ export default function Index({
                                     </div>
                                     <div>
                                         <InputLabel htmlFor="edit_password_confirmation" value="Confirmar nova senha" className="mb-1" />
-                                        <TextInput
+                                        <PasswordInput
                                             id="edit_password_confirmation"
-                                            type="password"
                                             className="block w-full"
                                             value={data.password_confirmation}
                                             onChange={(e) => setData('password_confirmation', e.target.value)}

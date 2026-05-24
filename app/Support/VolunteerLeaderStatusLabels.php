@@ -8,6 +8,7 @@ final class VolunteerLeaderStatusLabels
     {
         return match ($status) {
             'denied' => 'Recusado pelo líder',
+            'reviewing' => 'Em análise',
             'training' => 'Em treinamento',
             'ready' => 'Pronto para servir',
             'active' => 'Atuante',

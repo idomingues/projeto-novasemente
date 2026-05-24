@@ -24,6 +24,7 @@ type SupportTicketListItem = {
 interface Props {
     tickets: SupportTicketListItem[];
     isAuthenticated: boolean;
+    userName?: string | null;
 }
 
 function formatWhen(iso: string): string {
@@ -54,7 +55,7 @@ function statusTone(status: string): string {
     }
 }
 
-export default function MobileSupport({ tickets, isAuthenticated }: Props) {
+export default function MobileSupport({ tickets, isAuthenticated, userName }: Props) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
         type: 'problem' as 'problem' | 'suggestion' | 'praise',
@@ -118,14 +119,23 @@ export default function MobileSupport({ tickets, isAuthenticated }: Props) {
                     title="Suporte do app"
                     subtitle={
                         <>
-                            <span className="block text-zinc-600 dark:text-zinc-400">
+                            {isAuthenticated && userName ? (
+                                <span className="block text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                                    Olá, {userName}
+                                </span>
+                            ) : null}
+                            <span className="mt-1 block text-zinc-600 dark:text-zinc-400">
                                 Relate um problema, envie uma sugestão ou deixe seu elogio.
                             </span>
                             {!isAuthenticated ? (
                                 <span className="mt-2 block text-xs text-amber-800 dark:text-amber-200/90">
                                     Pode enviar sem login; o chat completo fica disponível após entrar na conta.
                                 </span>
-                            ) : null}
+                            ) : (
+                                <span className="mt-2 block text-xs text-zinc-500 dark:text-zinc-400">
+                                    Com login, você acompanha seus chamados e conversa com a equipe de suporte.
+                                </span>
+                            )}
                         </>
                     }
                     actions={<AddButton variant="icon" onClick={openModal} title="Novo chamado de suporte">Novo chamado</AddButton>}
@@ -283,6 +293,13 @@ export default function MobileSupport({ tickets, isAuthenticated }: Props) {
                                 ) : null}
                             </div>
                         </div>
+
+                        {isAuthenticated && userName ? (
+                            <div className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-800/40">
+                                <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Enviando como</div>
+                                <p className="mt-1 text-sm text-zinc-700 dark:text-zinc-300">{userName}</p>
+                            </div>
+                        ) : null}
 
                         {!isAuthenticated && (
                             <div className="space-y-3 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900">

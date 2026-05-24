@@ -104,7 +104,7 @@ class VolunteerChurchRosterBuilder
             ->with([
                 'user:id,email',
                 'ministries' => fn ($m) => $m->where('church_id', $churchId),
-                'churchPipelines' => fn ($p) => $p->where('church_id', $churchId)->with('stage'),
+                'churchPipelines' => fn ($p) => $p->where('church_id', $churchId)->with(['stage', 'adminWorkflowStage']),
                 'ministryInvitations' => fn ($i) => $i->where('church_id', $churchId)->where('status', 'pending')->with('ministry:id,name'),
             ]);
 
@@ -165,6 +165,11 @@ class VolunteerChurchRosterBuilder
                     ->values()
                     ->all();
 
+                $adminWorkflowStageId = VolunteerPipelineBootstrap::resolveAdminWorkflowStageId(
+                    $churchId,
+                    $pipe?->admin_workflow_stage_id,
+                );
+
                 return [
                     'id' => $v->id,
                     'name' => $v->name,
@@ -174,7 +179,11 @@ class VolunteerChurchRosterBuilder
                     'active' => (bool) $v->active,
                     'createdAt' => $v->created_at?->toIso8601String(),
                     'stageId' => $stage?->id,
-                    'stageName' => $hasPendingInvite ? 'Aguardando' : ($stage?->name ?? 'Não definido'),
+                    'stageName' => $stage?->name ?? 'Não definido',
+                    'adminWorkflowStageId' => $adminWorkflowStageId,
+                    'adminWorkflowStageName' => $adminWorkflowStageId !== null
+                        ? ($pipe?->adminWorkflowStage?->name ?? null)
+                        : null,
                     'pendingInvite' => $hasPendingInvite,
                     'pendingInviteMinistryNames' => array_values(array_unique($pendingInviteMinistryNames)),
                     'forwardedMinistryIds' => $forwardedMinistryIdsByVolunteer[(int) $v->id] ?? [],

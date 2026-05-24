@@ -142,7 +142,7 @@ export default function MyVolunteers() {
     const [inviteModalCopyFeedback, setInviteModalCopyFeedback] = useState<string | null>(null);
 
     const form = useForm({
-        leader_status: '' as '' | 'denied' | 'training' | 'active',
+        leader_status: '' as '' | 'denied' | 'reviewing' | 'training' | 'active',
         leader_note: '',
     });
     const requestForm = useForm({
@@ -304,7 +304,7 @@ export default function MyVolunteers() {
         setHistory(null);
         setHistoryLoading(false);
         form.setData({
-            leader_status: (r.leaderStatus as 'denied' | 'training' | 'active' | null) ?? '',
+            leader_status: (r.leaderStatus as 'denied' | 'reviewing' | 'training' | 'active' | null) ?? '',
             leader_note: r.leaderNote ?? '',
         });
         form.clearErrors();
@@ -368,7 +368,7 @@ export default function MyVolunteers() {
 
     const statusFormIsDirty = (sourceRow: VolunteerRow | null): boolean => {
         if (!sourceRow) return false;
-        const savedStatus = (sourceRow.leaderStatus as 'denied' | 'training' | 'active' | null) ?? '';
+        const savedStatus = (sourceRow.leaderStatus as 'denied' | 'reviewing' | 'training' | 'active' | null) ?? '';
         const savedNote = sourceRow.leaderNote ?? '';
         if (form.data.leader_status !== savedStatus) return true;
         if (form.data.leader_status === 'denied' && form.data.leader_note !== savedNote) return true;
@@ -411,7 +411,7 @@ export default function MyVolunteers() {
                 if (updated) {
                     setEditingRow(updated);
                     form.setData({
-                        leader_status: (updated.leaderStatus as 'denied' | 'training' | 'active' | null) ?? '',
+                        leader_status: (updated.leaderStatus as 'denied' | 'reviewing' | 'training' | 'active' | null) ?? '',
                         leader_note: updated.leaderNote ?? '',
                     });
                     form.clearErrors();
@@ -475,6 +475,7 @@ export default function MyVolunteers() {
 
     const statusLabel = (s: string | null) => {
         if (s === 'denied') return 'Recusado pelo líder';
+        if (s === 'reviewing') return 'Em análise';
         if (s === 'training') return 'Treinamento';
         if (s === 'active') return 'Atuante';
         return '—';
@@ -913,11 +914,15 @@ export default function MyVolunteers() {
                                     <select
                                         value={form.data.leader_status}
                                         onChange={(e) =>
-                                            form.setData('leader_status', e.target.value as '' | 'denied' | 'training' | 'active')
+                                            form.setData(
+                                                'leader_status',
+                                                e.target.value as '' | 'denied' | 'reviewing' | 'training' | 'active',
+                                            )
                                         }
                                         className="mt-1 block h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
                                     >
                                         <option value="">—</option>
+                                        <option value="reviewing">Em análise</option>
                                         <option value="denied">Recusado pelo líder</option>
                                         <option value="training">Treinamento</option>
                                         <option value="active">Atuante</option>

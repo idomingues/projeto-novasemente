@@ -105,6 +105,7 @@ class MobileSupportController extends Controller
         return Inertia::render('Mobile/Support', [
             'tickets' => $tickets,
             'isAuthenticated' => (bool) $user,
+            'userName' => $user?->name,
         ]);
     }
 
@@ -163,10 +164,11 @@ class MobileSupportController extends Controller
         if ($isOwner && $ticket->user_hidden_at) {
             abort(403);
         }
+        $isGuestTicket = empty($ticket->user_id);
         $hasOwner = ! empty($ticket->user_id);
         $isSupportStaff = $this->canReplyAsSupportStaff($user);
         $isPastoralStaff = $this->canReplyAsPastoralStaff($user, $ticket);
-        $canAccess = $isAdmin || $isOwner || $isSupportStaff || $isPastoralStaff;
+        $canAccess = $isAdmin || $isOwner || $isSupportStaff || $isPastoralStaff || $isGuestTicket;
         abort_unless($canAccess, 403);
 
         $canChat = (bool) $hasOwner
@@ -188,6 +190,7 @@ class MobileSupportController extends Controller
                 'screenshotUrl' => $ticket->screenshot_path ? StorageUrl::publicMediaUrl($ticket->screenshot_path) : null,
                 'screenshotExternalUrl' => $ticket->screenshot_url,
                 'solutionText' => $ticket->solution_text,
+                'forecastAt' => $ticket->forecast_at?->toDateString(),
                 'createdAt' => $ticket->created_at?->toIso8601String(),
                 'closedAt' => $ticket->closed_at?->toIso8601String(),
             ],
@@ -197,6 +200,8 @@ class MobileSupportController extends Controller
             'staffReplySendsOwnerEmail' => $staffReplySendsOwnerEmail,
             'isAuthenticated' => (bool) $user,
             'showMessages' => (bool) $hasOwner && (bool) ($isAdmin || $isOwner || $isSupportStaff || $isPastoralStaff),
+            'isGuestTicket' => $isGuestTicket,
+            'guestName' => $ticket->guest_name,
             'hideFromMyAppUrl' => ($isOwner && ! $isAdmin)
                 ? route('mobile.support.ticket.hide', ['token' => $ticket->public_token], false)
                 : null,

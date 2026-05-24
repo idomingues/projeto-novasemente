@@ -1,5 +1,5 @@
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useEffect, useState, FormEventHandler } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
 import { CheckCircleIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
@@ -28,6 +28,7 @@ interface Ticket {
     screenshotUrl?: string | null;
     screenshotExternalUrl?: string | null;
     solutionText: string | null;
+    forecastAt?: string | null;
     createdAt: string;
     closedAt: string | null;
 }
@@ -41,6 +42,8 @@ interface Props {
     isAdmin: boolean;
     staffReplySendsOwnerEmail?: boolean;
     hideFromMyAppUrl?: string | null;
+    isGuestTicket?: boolean;
+    guestName?: string | null;
 }
 
 function formatTime(iso: string): string {
@@ -48,14 +51,23 @@ function formatTime(iso: string): string {
     return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
+function formatForecastDate(isoDate: string): string {
+    const [y, m, d] = isoDate.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    return date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
 export default function MobileSupportTicket({
     ticket,
     messages,
     canChat,
     showMessages,
+    isAuthenticated,
     isAdmin,
     staffReplySendsOwnerEmail = false,
     hideFromMyAppUrl = null,
+    isGuestTicket = false,
+    guestName = null,
 }: Props) {
     const inertiaScrollOpts = { preserveScroll: true };
 
@@ -96,6 +108,10 @@ export default function MobileSupportTicket({
         <MobileLayout>
             <Head title={`Suporte do app — ${ticket.typeLabel}`} />
             <div className="space-y-4">
+                <Link href={route('mobile.support.index')} className="text-sm text-zinc-500 underline dark:text-zinc-400">
+                    ← Suporte do app
+                </Link>
+
                 <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4">
                     <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
@@ -110,6 +126,19 @@ export default function MobileSupportTicket({
                             {isClosed ? <span className="inline-flex items-center gap-1"><CheckCircleIcon className="w-4 h-4" /> Concluído</span> : 'Aberto'}
                         </div>
                     </div>
+
+                    {guestName ? (
+                        <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                            Enviado por <span className="font-medium text-zinc-700 dark:text-zinc-300">{guestName}</span>
+                        </p>
+                    ) : null}
+
+                    {ticket.forecastAt && !isClosed ? (
+                        <div className="mt-3 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-100">
+                            <span className="font-semibold">Previsão de atendimento:</span>{' '}
+                            {formatForecastDate(ticket.forecastAt)}
+                        </div>
+                    ) : null}
 
                     <div className="mt-3 text-sm text-zinc-700 dark:text-zinc-200 whitespace-pre-wrap">
                         {ticket.message}
@@ -202,7 +231,17 @@ export default function MobileSupportTicket({
 
                 {!isClosed && !canChat && (
                     <div className="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4 text-sm text-amber-900 dark:text-amber-200">
-                        Este chamado está em andamento. Para enviar respostas, faça login na conta do voluntário.
+                        {isGuestTicket && !isAuthenticated ? (
+                            <>
+                                Chamado registrado com sucesso. Para conversar com a equipe de suporte,{' '}
+                                <Link href={route('login')} className="font-semibold underline">
+                                    faça login
+                                </Link>{' '}
+                                e abra um novo chamado ou aguarde contato por e-mail, se informou seus dados.
+                            </>
+                        ) : (
+                            <>Este chamado está em andamento. Para enviar respostas, faça login na sua conta.</>
+                        )}
                     </div>
                 )}
 

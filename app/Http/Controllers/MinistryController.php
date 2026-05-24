@@ -92,12 +92,14 @@ class MinistryController extends Controller
         if ($churchId !== null) {
             $leaderOptions = User::query()
                 ->where('church_id', $churchId)
+                ->with('volunteerProfile:id,user_id')
                 ->orderBy('name')
                 ->get(['id', 'name', 'email'])
                 ->map(fn (User $u) => [
                     'id' => (int) $u->id,
                     'name' => (string) $u->name,
                     'email' => $u->email,
+                    'volunteer_id' => $u->volunteerProfile?->id ? (int) $u->volunteerProfile->id : null,
                 ])
                 ->values()
                 ->all();
@@ -116,6 +118,8 @@ class MinistryController extends Controller
 
         $canManageEscalasRoles = $request->user()?->can('escalas.manage') ?? false;
         $canManage = $request->user()?->can('departments.manage') ?? false;
+        $canViewVolunteerDetail = ($request->user()?->can('volunteers.view') ?? false)
+            || ($request->user()?->can('volunteers.manage') ?? false);
 
         return Inertia::render('Departments/Index', [
             'departments' => $departments->map(fn (Ministry $m) => [
@@ -136,6 +140,9 @@ class MinistryController extends Controller
             'volunteerOptions' => $volunteerOptions,
             'canManageEscalasRoles' => $canManageEscalasRoles,
             'canManage' => $canManage,
+            'volunteerDetailUrlPattern' => $canViewVolunteerDetail
+                ? route('volunteers.detail', ['volunteer' => 0])
+                : null,
             'filters' => ['search' => $search],
         ]);
     }

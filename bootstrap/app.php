@@ -55,7 +55,13 @@ return Application::configure(basePath: dirname(__DIR__))
 
             return redirect()->to($target)
                 ->withErrors($e->errors(), $e->errorBag)
-                ->withInput(Arr::except($request->input(), ['password', 'password_confirmation']))
+                ->withInput(Arr::except($request->input(), [
+                    'password',
+                    'password_confirmation',
+                    'current_password',
+                    'app_password',
+                    'app_password_confirmation',
+                ]))
                 ->setStatusCode(303);
         });
 
@@ -72,17 +78,19 @@ return Application::configure(basePath: dirname(__DIR__))
 
             $message = 'A sessão expirou. Atualize a página e tente novamente.';
 
+            $loginUrl = route('login');
+
             if ($request->header(Header::INERTIA)) {
-                return redirect()->to(url()->current())
+                return redirect()->to($request->isMethod('GET') ? url()->current() : $loginUrl)
                     ->with('error', $message)
                     ->setStatusCode(303);
             }
 
-            if ($request->routeIs('login')) {
-                return redirect()->route('login')->with('error', $message);
+            if ($request->routeIs('login') || $request->is('login')) {
+                return redirect()->to($loginUrl)->with('error', $message);
             }
 
-            return redirect()->guest(route('login'))->with('error', $message);
+            return redirect()->guest($loginUrl)->with('error', $message);
         });
 
         /*

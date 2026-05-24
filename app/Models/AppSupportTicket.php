@@ -33,11 +33,13 @@ class AppSupportTicket extends Model
         'screenshot_path',
         'screenshot_url',
         'solution_text',
+        'forecast_at',
         'closed_at',
         'user_hidden_at',
     ];
 
     protected $casts = [
+        'forecast_at' => 'date',
         'closed_at' => 'datetime',
         'user_hidden_at' => 'datetime',
     ];

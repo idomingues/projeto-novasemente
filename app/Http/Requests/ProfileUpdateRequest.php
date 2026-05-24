@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests;
 
-use App\Models\Church;
 use App\Models\User;
 use App\Support\UserProfilePhotoResolver;
 use Illuminate\Foundation\Http\FormRequest;
@@ -26,21 +25,6 @@ class ProfileUpdateRequest extends FormRequest
      */
     public function rules(): array
     {
-        $churchId = (int) ($this->user()->church_id ?? 0);
-        if ($churchId === 0) {
-            $resolved = Church::resolveWorkingId($this);
-            if ($resolved !== null) {
-                $churchId = (int) $resolved;
-            }
-        }
-
-        $ministryItemRules = ['integer'];
-        if ($churchId > 0) {
-            $ministryItemRules[] = Rule::exists('ministries', 'id')->where('church_id', $churchId);
-        } else {
-            $ministryItemRules[] = 'exists:ministries,id';
-        }
-
         return array_merge([
             'redirect_to' => ['nullable', 'string', 'max:120'],
             'name' => ['required', 'string', 'max:255'],
@@ -55,8 +39,6 @@ class ProfileUpdateRequest extends FormRequest
             'notify_via_app' => ['sometimes', 'boolean'],
             'notify_via_email' => ['sometimes', 'boolean'],
             'notify_via_whatsapp' => ['sometimes', 'boolean'],
-            'volunteer_ministry_ids' => ['nullable', 'array'],
-            'volunteer_ministry_ids.*' => $ministryItemRules,
         ], UserProfilePhotoResolver::validationRules(required: false));
     }
 }

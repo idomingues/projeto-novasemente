@@ -382,7 +382,7 @@ class MembersTest extends TestCase
         $this->assertTrue(Hash::check('Replaced-Password2!', $member->fresh()->password));
     }
 
-    public function test_non_super_admin_member_update_does_not_change_password_even_if_sent(): void
+    public function test_admin_can_set_new_password_when_updating_member(): void
     {
         $this->seed();
 
@@ -391,6 +391,47 @@ class MembersTest extends TestCase
         $adminRole = Role::firstOrCreate(['name' => 'admin', 'guard_name' => $guard]);
         $manager = User::factory()->create(['church_id' => $churchId]);
         $manager->assignRole($adminRole);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $member = User::factory()->create([
+            'church_id' => $churchId,
+            'email' => 'pwd-admin-update@example.com',
+            'password' => Hash::make('Stable-Password1!'),
+        ]);
+
+        $payload = [
+            'name' => $member->name,
+            'email' => $member->email,
+            'phone' => '',
+            'birth_date' => '',
+            'status' => 'active',
+            'is_volunteer' => false,
+            'volunteer_ministry_ids' => [],
+            'notify_via_app' => true,
+            'notify_via_email' => true,
+            'notify_via_whatsapp' => false,
+            'password' => 'Replaced-Password2!',
+            'password_confirmation' => 'Replaced-Password2!',
+        ];
+
+        $this->actingAs($manager)
+            ->withSession(['working_church_id' => $churchId])
+            ->put(route('members.update', $member), $payload)
+            ->assertSessionDoesntHaveErrors()
+            ->assertRedirect(route('users.index'));
+
+        $this->assertTrue(Hash::check('Replaced-Password2!', $member->fresh()->password));
+    }
+
+    public function test_member_update_without_manage_permission_does_not_change_password_even_if_sent(): void
+    {
+        $this->seed();
+
+        $churchId = (int) Church::query()->value('id');
+        $guard = (string) config('auth.defaults.guard');
+        $viewerRole = Role::firstOrCreate(['name' => 'membro', 'guard_name' => $guard]);
+        $viewer = User::factory()->create(['church_id' => $churchId]);
+        $viewer->assignRole($viewerRole);
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         $member = User::factory()->create([
@@ -415,11 +456,9 @@ class MembersTest extends TestCase
             'password_confirmation' => 'Hacker-Password2!',
         ];
 
-        $this->actingAs($manager)
+        $this->actingAs($viewer)
             ->withSession(['working_church_id' => $churchId])
-            ->put(route('members.update', $member), $payload)
-            ->assertSessionDoesntHaveErrors()
-            ->assertRedirect(route('users.index'));
+            ->put(route('members.update', $member), $payload);
 
         $this->assertSame($hashBefore, $member->fresh()->password);
         $this->assertFalse(Hash::check('Hacker-Password2!', $member->fresh()->password));
