@@ -33,7 +33,9 @@ class PasswordResetTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Auth/ForgotPassword')
-                ->where('showMailLogHint', false));
+                ->where('showMailLogHint', false)
+                ->where('mailRecoveryUnavailable', true)
+                ->where('mailUnavailableTitle', trans('passwords.mail_unavailable_title')));
     }
 
     public function test_forgot_password_shows_mail_log_hint_outside_production_with_log_mailer(): void
@@ -64,6 +66,10 @@ class PasswordResetTest extends TestCase
             $this->fail('Expected validation exception when mail is log in production.');
         } catch (ValidationException $exception) {
             $this->assertArrayHasKey('email', $exception->errors());
+            $this->assertSame(
+                trans('passwords.mail_unavailable_field'),
+                $exception->errors()['email'][0] ?? null
+            );
         }
 
         Notification::assertNothingSent();

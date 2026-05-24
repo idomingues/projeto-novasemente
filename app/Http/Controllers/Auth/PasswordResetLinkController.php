@@ -22,6 +22,9 @@ class PasswordResetLinkController extends Controller
         return Inertia::render('Auth/ForgotPassword', [
             'status' => session('status'),
             'showMailLogHint' => ! app()->isProduction() && config('mail.default') === 'log',
+            'mailRecoveryUnavailable' => $this->mailRecoveryUnavailable(),
+            'mailUnavailableTitle' => trans('passwords.mail_unavailable_title'),
+            'mailUnavailableBody' => trans('passwords.mail_unavailable_body'),
         ]);
     }
 
@@ -45,14 +48,14 @@ class PasswordResetLinkController extends Controller
             ]);
         }
 
-        if (app()->isProduction() && config('mail.default') === 'log') {
+        if ($this->mailRecoveryUnavailable()) {
             Log::critical('Recuperação de senha bloqueada: MAIL_MAILER=log em produção.', [
                 'login' => $validated['email'],
                 'user_email' => $user->email,
             ]);
 
             throw ValidationException::withMessages([
-                'email' => ['O envio de e-mail ainda não está configurado no servidor. Peça ajuda à equipe técnica.'],
+                'email' => [trans('passwords.mail_unavailable_field')],
             ]);
         }
 
@@ -68,5 +71,10 @@ class PasswordResetLinkController extends Controller
         throw ValidationException::withMessages([
             'email' => [trans($status)],
         ]);
+    }
+
+    private function mailRecoveryUnavailable(): bool
+    {
+        return app()->isProduction() && config('mail.default') === 'log';
     }
 }

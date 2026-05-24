@@ -9,9 +9,15 @@ import { FormEventHandler } from 'react';
 export default function ForgotPassword({
     status,
     showMailLogHint = false,
+    mailRecoveryUnavailable = false,
+    mailUnavailableTitle = '',
+    mailUnavailableBody = '',
 }: {
     status?: string;
     showMailLogHint?: boolean;
+    mailRecoveryUnavailable?: boolean;
+    mailUnavailableTitle?: string;
+    mailUnavailableBody?: string;
 }) {
     const { data, setData, post, processing, errors, transform } = useForm({
         email: '',
@@ -49,6 +55,16 @@ export default function ForgotPassword({
                     </div>
                 ) : null}
 
+                {mailRecoveryUnavailable ? (
+                    <div
+                        className="mb-6 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950 dark:border-sky-900/50 dark:bg-sky-950/30 dark:text-sky-100"
+                        role="status"
+                    >
+                        <p className="font-medium">{mailUnavailableTitle}</p>
+                        <p className="mt-1 leading-relaxed">{mailUnavailableBody}</p>
+                    </div>
+                ) : null}
+
                 {showMailLogHint ? (
                     <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
                         <p className="font-medium">Ambiente de desenvolvimento</p>
@@ -71,14 +87,18 @@ export default function ForgotPassword({
                             value={data.email}
                             className="mt-1 block w-full"
                             autoComplete="username"
-                            isFocused={true}
+                            isFocused={!mailRecoveryUnavailable}
+                            disabled={mailRecoveryUnavailable}
                             onChange={(e) => setData('email', e.target.value)}
                         />
 
                         <InputError message={errors.email} className="mt-2" />
                     </div>
 
-                    <PrimaryButton className="w-full justify-center !rounded-xl !bg-zinc-900 !py-3.5 !text-sm !font-semibold !text-white shadow-sm hover:!bg-zinc-800 disabled:!opacity-50" disabled={processing}>
+                    <PrimaryButton
+                        className="w-full justify-center !rounded-xl !bg-zinc-900 !py-3.5 !text-sm !font-semibold !text-white shadow-sm hover:!bg-zinc-800 disabled:!opacity-50"
+                        disabled={processing || mailRecoveryUnavailable}
+                    >
                         Enviar link de recuperação
                     </PrimaryButton>
 
