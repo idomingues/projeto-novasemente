@@ -26,6 +26,5 @@ Este aviso é automático para a equipe financeira. O comprovante completo está
 Abrir painel do tesoureiro
 </x-mail::button>
 
-Obrigado,<br>
-{{ config('app.name') }}
+@include('emails.partials.signoff')
 </x-mail::message>

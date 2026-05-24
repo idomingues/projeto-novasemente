@@ -22,6 +22,5 @@ A campanha **{{ $campaign->title }}** foi encerrada. A igreja preparou uma mensa
 Ver campanha no app
 </x-mail::button>
 
-Sua participação faz diferença. Obrigado!<br>
-{{ config('app.name') }}
+@include('emails.partials.signoff')
 </x-mail::message>

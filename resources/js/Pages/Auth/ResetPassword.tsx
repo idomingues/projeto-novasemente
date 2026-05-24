@@ -1,3 +1,4 @@
+import AuthBrandHeader from '@/Components/AuthBrandHeader';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -33,74 +34,87 @@ export default function ResetPassword({
         <GuestLayout>
             <Head title="Redefinir senha" />
 
-            <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 py-10 sm:max-w-lg sm:py-14">
-                <div className="mb-8 space-y-3">
-                    <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-white">
-                        Defina uma nova senha
-                    </h1>
-                    <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                        Escolha uma senha forte para proteger a sua conta.
+            <div className="flex flex-1 flex-col items-center justify-center px-4 py-10 sm:py-14">
+                <div className="w-full max-w-md sm:max-w-lg">
+                    <div className="rounded-2xl border border-zinc-200/80 bg-white px-6 py-8 shadow-sm dark:border-zinc-700/80 dark:bg-zinc-800/60 sm:px-8 sm:py-10">
+                        <AuthBrandHeader subtitle="Recuperação de senha" />
+
+                        <div className="mb-8 space-y-2 text-center">
+                            <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-white">
+                                Defina uma nova senha
+                            </h1>
+                            <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                                Escolha uma senha forte para proteger sua conta na Nova Semente.
+                            </p>
+                        </div>
+
+                        <form onSubmit={submit} className="space-y-5">
+                            <div>
+                                <InputLabel htmlFor="email" value="E-mail" />
+                                <TextInput
+                                    id="email"
+                                    type="email"
+                                    name="email"
+                                    value={data.email}
+                                    className="mt-1 block w-full bg-zinc-50 dark:bg-zinc-800/60"
+                                    autoComplete="username"
+                                    readOnly
+                                />
+                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                    Use o mesmo e-mail indicado no pedido de recuperação.
+                                </p>
+                                <InputError message={errors.email} className="mt-2" />
+                            </div>
+
+                            <div>
+                                <InputLabel htmlFor="password" value="Nova senha" />
+                                <PasswordInput
+                                    id="password"
+                                    name="password"
+                                    value={data.password}
+                                    className="mt-1 block w-full"
+                                    autoComplete="new-password"
+                                    isFocused={true}
+                                    onChange={(e) => setData('password', e.target.value)}
+                                />
+                                <InputError message={errors.password} className="mt-2" />
+                            </div>
+
+                            <div>
+                                <InputLabel htmlFor="password_confirmation" value="Confirmar nova senha" />
+                                <PasswordInput
+                                    id="password_confirmation"
+                                    name="password_confirmation"
+                                    value={data.password_confirmation}
+                                    className="mt-1 block w-full"
+                                    autoComplete="new-password"
+                                    onChange={(e) => setData('password_confirmation', e.target.value)}
+                                />
+                                <InputError message={errors.password_confirmation} className="mt-2" />
+                            </div>
+
+                            <PrimaryButton
+                                className="w-full justify-center !rounded-xl !bg-zinc-900 !py-3.5 !text-sm !font-semibold !text-white shadow-sm hover:!bg-zinc-800 disabled:!opacity-50"
+                                disabled={processing}
+                            >
+                                Redefinir senha
+                            </PrimaryButton>
+
+                            <div className="pt-1">
+                                <Link
+                                    href={route('login')}
+                                    className="block text-center text-sm font-medium text-zinc-600 underline decoration-zinc-400 underline-offset-4 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                                >
+                                    Voltar para entrar
+                                </Link>
+                            </div>
+                        </form>
+                    </div>
+
+                    <p className="mt-6 text-center text-xs text-zinc-500 dark:text-zinc-500">
+                        © {new Date().getFullYear()} Nova Semente
                     </p>
                 </div>
-
-                <form onSubmit={submit} className="space-y-5">
-                    <div>
-                        <InputLabel htmlFor="email" value="E-mail" />
-                        <TextInput
-                            id="email"
-                            type="email"
-                            name="email"
-                            value={data.email}
-                            className="mt-1 block w-full bg-zinc-50 dark:bg-zinc-800/60"
-                            autoComplete="username"
-                            readOnly
-                        />
-                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                            Use o mesmo e-mail indicado no pedido de recuperação.
-                        </p>
-                        <InputError message={errors.email} className="mt-2" />
-                    </div>
-
-                    <div>
-                        <InputLabel htmlFor="password" value="Nova senha" />
-                        <PasswordInput
-                            id="password"
-                            name="password"
-                            value={data.password}
-                            className="mt-1 block w-full"
-                            autoComplete="new-password"
-                            isFocused={true}
-                            onChange={(e) => setData('password', e.target.value)}
-                        />
-                        <InputError message={errors.password} className="mt-2" />
-                    </div>
-
-                    <div>
-                        <InputLabel htmlFor="password_confirmation" value="Confirmar nova senha" />
-                        <PasswordInput
-                            id="password_confirmation"
-                            name="password_confirmation"
-                            value={data.password_confirmation}
-                            className="mt-1 block w-full"
-                            autoComplete="new-password"
-                            onChange={(e) => setData('password_confirmation', e.target.value)}
-                        />
-                        <InputError message={errors.password_confirmation} className="mt-2" />
-                    </div>
-
-                    <PrimaryButton className="w-full justify-center !rounded-xl !bg-zinc-900 !py-3.5 !text-sm !font-semibold !text-white shadow-sm hover:!bg-zinc-800 disabled:!opacity-50" disabled={processing}>
-                        Redefinir senha
-                    </PrimaryButton>
-
-                    <div className="pt-1">
-                        <Link
-                            href={route('login')}
-                            className="block text-center text-sm font-medium text-zinc-600 underline decoration-zinc-400 underline-offset-4 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-                        >
-                            Voltar para entrar
-                        </Link>
-                    </div>
-                </form>
             </div>
         </GuestLayout>
     );

@@ -20,6 +20,5 @@ Abrir solicitação
 Se o botão não funcionar, copie este endereço no navegador:<br>
 <span style="word-break: break-all;">{{ $inboxUrl }}</span>
 
-Obrigado,<br>
-{{ config('app.name') }}
+@include('emails.partials.signoff')
 </x-mail::message>

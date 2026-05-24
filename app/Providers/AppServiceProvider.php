@@ -91,12 +91,13 @@ class AppServiceProvider extends ServiceProvider
             $expire = (int) config('auth.passwords.'.config('auth.defaults.passwords').'.expire', 60);
 
             return (new MailMessage)
-                ->subject('Redefinir senha — Nova Semente')
+                ->subject('Redefinir senha — '.config('brand.name', 'Nova Semente'))
                 ->greeting('Olá!')
-                ->line('Recebemos um pedido para redefinir a senha da sua conta.')
+                ->line('Recebemos um pedido para redefinir a senha da sua conta na plataforma Nova Semente.')
                 ->action('Redefinir senha', $url)
                 ->line("Este link expira em {$expire} minutos.")
-                ->line('Se você não solicitou a redefinição, ignore este e-mail.');
+                ->line('Se você não solicitou a redefinição, ignore este e-mail.')
+                ->salutation('Atenciosamente,');
         });
     }
 

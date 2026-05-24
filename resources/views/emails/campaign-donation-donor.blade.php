@@ -25,6 +25,5 @@ Você solicitou este e-mail de confirmação ao registrar a doação. Usamos seu
 Ver minhas doações
 </x-mail::button>
 
-Obrigado pela contribuição!<br>
-{{ config('app.name') }}
+@include('emails.partials.signoff')
 </x-mail::message>

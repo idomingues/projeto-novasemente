@@ -11,5 +11,6 @@ return [
     'mail_unavailable_title' => 'Recuperação de senha temporariamente indisponível',
     'mail_unavailable_body' => 'Estamos resolvendo um problema no envio de e-mails da plataforma. Se precisar de ajuda agora, fale com a equipe da igreja. Você também pode tentar novamente em algumas horas.',
     'mail_unavailable_field' => 'O envio de e-mail está temporariamente indisponível. Estamos resolvendo isso. Fale com a equipe da igreja ou tente novamente mais tarde.',
+    'mail_send_failed' => 'Não foi possível enviar o e-mail agora. Tente novamente em alguns minutos ou fale com a equipe da igreja.',
 
 ];

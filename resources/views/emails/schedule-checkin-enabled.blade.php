@@ -10,6 +10,5 @@ Fazer check-in
 Se o botão não funcionar, copie este endereço no navegador:<br>
 <span style="word-break: break-all;">{{ $actionUrl }}</span>
 
-Obrigado,<br>
-{{ config('app.name') }}
+@include('emails.partials.signoff')
 </x-mail::message>

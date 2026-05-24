@@ -6,9 +6,11 @@ O `.env` de produção **não vai para o Git**. Configure no servidor Digital Oc
 
 1. Acesse [https://www.brevo.com](https://www.brevo.com) e crie ou entre na conta.
 2. Menu **Configurações** → **SMTP e API** → aba **SMTP**.
-3. Anote o **e-mail de login SMTP** (vai em `MAIL_USERNAME`).
+3. Na aba **SMTP**, anote o **login SMTP** (e-mail com que você entrou no Brevo) → vai em `MAIL_USERNAME`.
+   - **Não** use o e-mail do usuário que pede recuperação de senha.
+   - **Não** use `MAIL_FROM_ADDRESS` como login.
 4. Clique em **Gerar uma nova chave SMTP** → copie a chave (vai em `MAIL_PASSWORD`).
-   - Use a **chave SMTP**, não a chave de API REST.
+   - Use a **chave SMTP** (`xsmtpsib-...`), não a chave de API REST (`xkeysib-...`).
 
 ## 2. Domínio remetente (importante)
 
@@ -56,7 +58,11 @@ php artisan mail:check --send=seu@email.com
 
 Se aparecer sucesso, teste em `https://app.novasemente.com.br/forgot-password`.
 
-## 5. Fila (e-mails em segundo plano)
+## 5. Marca nos e-mails
+
+No `.env` de produção, use `APP_NAME="Nova Semente"` (evita aparecer «Laravel» no rodapé). Opcional: `BRAND_TAGLINE`, `BRAND_LOGO_URL`, `BRAND_APP_URL`. O logo padrão é `/logo-ns.png` na URL do app.
+
+## 6. Fila (e-mails em segundo plano)
 
 Vários e-mails do sistema usam fila (`ShouldQueue`). Confirme que o worker roda no servidor, por exemplo:
 
