@@ -395,6 +395,11 @@ class VolunteerPipelineLeadTest extends TestCase
 
         \App\Support\VolunteerPipelineBootstrap::moveVolunteerToStageByNormalizedName($volunteer, (int) $church->id, 'em treinamento');
 
+        \App\Models\VolunteerChurchPipeline::query()
+            ->where('volunteer_id', $volunteer->id)
+            ->where('church_id', $church->id)
+            ->update(['admin_workflow_stage_id' => null]);
+
         $response = $this->actingAs($admin)
             ->withSession(['working_church_id' => $church->id])
             ->get(route('ministry-lead.volunteers.index', [
@@ -407,24 +412,39 @@ class VolunteerPipelineLeadTest extends TestCase
         $this->assertContains($volunteer->id, $ids);
     }
 
-    public function test_admin_workflow_stage_is_empty_by_default_even_when_pipeline_stage_is_encaminhado(): void
+    public function test_move_to_encaminhado_syncs_admin_workflow_stage(): void
     {
         $admin = $this->actingAsAdmin();
         $church = Church::query()->firstOrFail();
         $ministry = Ministry::query()->where('church_id', $church->id)->firstOrFail();
 
         $this->actingAs($admin)->post('/volunteers', [
-            'name' => 'Fase Principal Vazia',
-            'email' => 'fase.principal.vazia@example.com',
+            'name' => 'Fase Principal Encaminhado',
+            'email' => 'fase.principal.encaminhado@example.com',
             'ministry_ids' => [$ministry->id],
             'active' => '1',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ]);
 
-        $volunteer = Volunteer::query()->where('email', 'fase.principal.vazia@example.com')->firstOrFail();
+        $volunteer = Volunteer::query()->where('email', 'fase.principal.encaminhado@example.com')->firstOrFail();
+
+        $encaminhadoId = \App\Models\VolunteerPipelineStage::query()
+            ->where('church_id', $church->id)
+            ->whereRaw('LOWER(TRIM(name)) = ?', ['encaminhado'])
+            ->value('id');
+
+        $this->assertNotNull($encaminhadoId);
 
         \App\Support\VolunteerPipelineBootstrap::moveVolunteerToStageByNormalizedName($volunteer, (int) $church->id, 'encaminhado');
+
+        $pipe = \App\Models\VolunteerChurchPipeline::query()
+            ->where('volunteer_id', $volunteer->id)
+            ->where('church_id', $church->id)
+            ->firstOrFail();
+
+        $this->assertSame((int) $encaminhadoId, (int) $pipe->stage_id);
+        $this->assertSame((int) $encaminhadoId, (int) $pipe->admin_workflow_stage_id);
 
         $response = $this->actingAs($admin)->getJson(
             route('ministry-lead.volunteers.pipeline.detail', $volunteer),
@@ -432,7 +452,7 @@ class VolunteerPipelineLeadTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('pipeline.stageName', 'Encaminhado');
-        $response->assertJsonPath('pipeline.adminWorkflowStageId', null);
+        $response->assertJsonPath('pipeline.adminWorkflowStageId', (int) $encaminhadoId);
     }
 
     public function test_admin_can_set_and_clear_admin_workflow_stage(): void
@@ -543,9 +563,75 @@ class VolunteerPipelineLeadTest extends TestCase
         $this->assertSame([
             [
                 'ministryName' => $ministry->name,
-                'phaseLabel' => 'Em treinamento',
+                'inviteLabel' => 'Aceito',
+                'departmentStatusLabel' => 'Em treinamento',
             ],
         ], $row['ministryPhases']);
+    }
+
+    public function test_pipeline_list_distinguishes_forwarded_from_sent_pending_invite(): void
+    {
+        $admin = $this->actingAsAdmin();
+        $church = Church::query()->firstOrFail();
+        $ministry = Ministry::query()->where('church_id', $church->id)->firstOrFail();
+
+        $this->actingAs($admin)->post('/volunteers', [
+            'name' => 'Encaminhado Sem Envio',
+            'email' => 'encaminhado.sem.envio@example.com',
+            'ministry_ids' => [$ministry->id],
+            'active' => '1',
+            'app_password' => 'secret123',
+            'app_password_confirmation' => 'secret123',
+        ]);
+
+        $forwardedOnly = Volunteer::query()->where('email', 'encaminhado.sem.envio@example.com')->firstOrFail();
+
+        VolunteerMinistryInvitation::query()->create([
+            'church_id' => $church->id,
+            'volunteer_id' => $forwardedOnly->id,
+            'ministry_id' => $ministry->id,
+            'invited_by_user_id' => $admin->id,
+            'token' => VolunteerMinistryInvitation::createToken(),
+            'status' => 'pending',
+            'expires_at' => now()->addDays(14),
+        ]);
+
+        $this->actingAs($admin)->post('/volunteers', [
+            'name' => 'Convite Enviado',
+            'email' => 'convite.enviado@example.com',
+            'ministry_ids' => [$ministry->id],
+            'active' => '1',
+            'app_password' => 'secret123',
+            'app_password_confirmation' => 'secret123',
+        ]);
+
+        $sentInvite = Volunteer::query()->where('email', 'convite.enviado@example.com')->firstOrFail();
+
+        VolunteerMinistryInvitation::query()->create([
+            'church_id' => $church->id,
+            'volunteer_id' => $sentInvite->id,
+            'ministry_id' => $ministry->id,
+            'invited_by_user_id' => $admin->id,
+            'token' => VolunteerMinistryInvitation::createToken(),
+            'status' => 'pending',
+            'sent_at' => now(),
+            'expires_at' => now()->addDays(14),
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('ministry-lead.volunteers.index', ['secao' => 'quadro']))
+            ->assertOk();
+
+        $forwardedRow = collect($response->viewData('page')['props']['volunteers']['data'])
+            ->firstWhere('id', $forwardedOnly->id);
+        $sentRow = collect($response->viewData('page')['props']['volunteers']['data'])
+            ->firstWhere('id', $sentInvite->id);
+
+        $this->assertSame('Convite não enviado', $forwardedRow['ministryPhases'][0]['inviteLabel']);
+        $this->assertSame('—', $forwardedRow['ministryPhases'][0]['departmentStatusLabel']);
+        $this->assertSame('Aguardando resposta', $sentRow['ministryPhases'][0]['inviteLabel']);
+        $this->assertSame('—', $sentRow['ministryPhases'][0]['departmentStatusLabel']);
     }
 
     public function test_pipeline_can_sort_volunteers_by_created_at_desc(): void

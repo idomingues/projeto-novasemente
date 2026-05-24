@@ -256,7 +256,13 @@ function yn(v: unknown): string {
     return '—';
 }
 
-function VolunteerMinistryPhasesCell({ phases }: { phases: VolunteerMinistryPhaseRow[] }) {
+function VolunteerMinistryDepartmentColumn({
+    phases,
+    valueKey,
+}: {
+    phases: VolunteerMinistryPhaseRow[];
+    valueKey: 'inviteLabel' | 'departmentStatusLabel';
+}) {
     if (phases.length === 0) {
         return <span className="text-zinc-400">—</span>;
     }
@@ -267,7 +273,7 @@ function VolunteerMinistryPhasesCell({ phases }: { phases: VolunteerMinistryPhas
                 <div key={row.ministryName} className="leading-snug">
                     <span className="font-medium text-zinc-800 dark:text-zinc-100">{row.ministryName}</span>
                     <span className="text-zinc-400 dark:text-zinc-500"> → </span>
-                    <span className="text-zinc-600 dark:text-zinc-300">{row.phaseLabel}</span>
+                    <span className="text-zinc-600 dark:text-zinc-300">{row[valueKey]}</span>
                 </div>
             ))}
         </div>
@@ -1281,7 +1287,8 @@ export default function Pipeline({
                                     <tr className="border-b border-zinc-200 text-left dark:border-zinc-700">
                                         <th className="pb-2 pr-3 font-semibold">Nome</th>
                                         <th className="pb-2 pr-3 font-semibold">{canVolunteerManage ? 'Fase principal' : 'Fase'}</th>
-                                        <th className="pb-2 pr-3 font-semibold">Fases Depto</th>
+                                        <th className="pb-2 pr-3 font-semibold">Convite</th>
+                                        <th className="pb-2 pr-3 font-semibold">Fase depto</th>
                                         <th className="pb-2 pr-3 font-semibold">Cadastro</th>
                                         <th className="pb-2 pr-3 font-semibold">Contato</th>
                                         <th className="pb-2 pr-3 font-semibold">Interesses</th>
@@ -1313,8 +1320,17 @@ export default function Pipeline({
                                                     ? (v.adminWorkflowStageName ?? '—')
                                                     : v.stageName}
                                             </td>
-                                            <td className="cursor-pointer py-2 pr-3 max-w-[260px] text-xs">
-                                                <VolunteerMinistryPhasesCell phases={volunteerMinistryPhasesInList(v)} />
+                                            <td className="cursor-pointer py-2 pr-3 max-w-[220px] text-xs">
+                                                <VolunteerMinistryDepartmentColumn
+                                                    phases={volunteerMinistryPhasesInList(v)}
+                                                    valueKey="inviteLabel"
+                                                />
+                                            </td>
+                                            <td className="cursor-pointer py-2 pr-3 max-w-[220px] text-xs">
+                                                <VolunteerMinistryDepartmentColumn
+                                                    phases={volunteerMinistryPhasesInList(v)}
+                                                    valueKey="departmentStatusLabel"
+                                                />
                                             </td>
                                             <td className="cursor-pointer py-2 pr-3 whitespace-nowrap text-zinc-600 dark:text-zinc-400">
                                                 {formatShortDate(v.createdAt)}
@@ -1416,11 +1432,25 @@ export default function Pipeline({
                                         {v.email ? <div className="truncate">{v.email}</div> : null}
                                         {v.phone ? <div className="truncate">{v.phone}</div> : null}
                                         {volunteerMinistryPhasesInList(v).length > 0 ? (
-                                            <div className="text-zinc-700 dark:text-zinc-200">
-                                                <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                                                    Fases Depto
+                                            <div className="text-zinc-700 dark:text-zinc-200 space-y-2">
+                                                <div>
+                                                    <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                                        Convite
+                                                    </div>
+                                                    <VolunteerMinistryDepartmentColumn
+                                                        phases={volunteerMinistryPhasesInList(v)}
+                                                        valueKey="inviteLabel"
+                                                    />
                                                 </div>
-                                                <VolunteerMinistryPhasesCell phases={volunteerMinistryPhasesInList(v)} />
+                                                <div>
+                                                    <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                                        Fase depto
+                                                    </div>
+                                                    <VolunteerMinistryDepartmentColumn
+                                                        phases={volunteerMinistryPhasesInList(v)}
+                                                        valueKey="departmentStatusLabel"
+                                                    />
+                                                </div>
                                             </div>
                                         ) : null}
                                         {v.interestPreview ? (

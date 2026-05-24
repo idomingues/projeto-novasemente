@@ -247,7 +247,7 @@ class VolunteerChurchRosterBuilder
     }
 
     /**
-     * @return list<array{ministryName: string, phaseLabel: string}>
+     * @return list<array{ministryName: string, inviteLabel: string, departmentStatusLabel: string}>
      */
     public static function ministryPhasesForVolunteer(Volunteer $v, int $churchId): array
     {
@@ -279,17 +279,17 @@ class VolunteerChurchRosterBuilder
             }
 
             $inv = $invitations->get($ministryId);
-            if ($inv?->isPending()) {
-                $phaseLabel = 'Convite pendente';
-            } elseif ($inv?->leader_status !== null && $inv->leader_status !== '') {
-                $phaseLabel = VolunteerLeaderStatusLabels::label($inv->leader_status);
-            } else {
-                $phaseLabel = '—';
-            }
+            $inviteLabel = $inv !== null
+                ? VolunteerInvitationStatusLabels::forInvitation($inv)
+                : '—';
+            $departmentStatusLabel = ($inv?->leader_status !== null && $inv->leader_status !== '')
+                ? VolunteerLeaderStatusLabels::label($inv->leader_status)
+                : '—';
 
             $rows[] = [
                 'ministryName' => $name,
-                'phaseLabel' => $phaseLabel,
+                'inviteLabel' => $inviteLabel,
+                'departmentStatusLabel' => $departmentStatusLabel,
             ];
         }
 

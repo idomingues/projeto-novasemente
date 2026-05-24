@@ -1,13 +1,14 @@
 export type VolunteerMinistryPhaseRow = {
     ministryName: string;
-    phaseLabel: string;
+    inviteLabel: string;
+    departmentStatusLabel: string;
 };
 
 type VolunteerMinistryPhasesListRow = {
     ministryPhases?: VolunteerMinistryPhaseRow[];
 };
 
-/** Linhas «Departamento → fase» para a coluna Fases Depto no quadro. */
+/** Linhas por departamento (convite e fase do líder) no quadro de voluntários. */
 export function volunteerMinistryPhasesInList(row: VolunteerMinistryPhasesListRow): VolunteerMinistryPhaseRow[] {
     return row.ministryPhases ?? [];
 }

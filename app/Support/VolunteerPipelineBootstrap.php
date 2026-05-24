@@ -109,14 +109,17 @@ class VolunteerPipelineBootstrap
             return;
         }
 
+        $create = ['stage_id' => (int) $stageId];
+        if (Schema::hasColumn('volunteer_church_pipelines', 'admin_workflow_stage_id')) {
+            $create['admin_workflow_stage_id'] = (int) $stageId;
+        }
+
         VolunteerChurchPipeline::query()->firstOrCreate(
             [
                 'volunteer_id' => $volunteer->id,
                 'church_id' => $churchId,
             ],
-            [
-                'stage_id' => (int) $stageId,
-            ],
+            $create,
         );
     }
 
@@ -201,10 +204,18 @@ class VolunteerPipelineBootstrap
 
         self::ensureRowForVolunteerInChurch($volunteer, $churchId);
 
+        $update = ['stage_id' => (int) $stageId];
+        if (
+            Schema::hasColumn('volunteer_church_pipelines', 'admin_workflow_stage_id')
+            && in_array($needle, self::ADMIN_WORKFLOW_STAGE_NAMES, true)
+        ) {
+            $update['admin_workflow_stage_id'] = (int) $stageId;
+        }
+
         VolunteerChurchPipeline::query()
             ->where('volunteer_id', $volunteer->id)
             ->where('church_id', $churchId)
-            ->update(['stage_id' => (int) $stageId]);
+            ->update($update);
     }
 
     /**
