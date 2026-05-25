@@ -720,10 +720,14 @@ export default function Pipeline({
         [encaminharMinistries, inviteBlockedMinistryIds],
     );
 
+    const modalOverlayOpen =
+        modalOpen || inviteOpen || inviteShareOpen || publicInviteOpen || stageManageOpen;
+
     return (
-        <AdminLayout>
+        <AdminLayout modalOverlayOpen={modalOverlayOpen}>
             <Head title="Voluntários" />
             <FlashMessages />
+            <div className={modalOverlayOpen ? 'hidden' : undefined} aria-hidden={modalOverlayOpen}>
             <PageHeader
                 title="Voluntários"
                 subtitle={
@@ -1543,9 +1547,15 @@ export default function Pipeline({
             </div>
             </>
             ) : null}
+            </div>
 
-            <Modal show={modalOpen} onClose={() => setModalOpen(false)} maxWidth="2xl">
-                <div className="flex max-h-[85vh] flex-col">
+            <Modal
+                show={modalOpen}
+                onClose={() => setModalOpen(false)}
+                maxWidth="2xl"
+                disableBodyScroll
+            >
+                <div className="flex max-h-[min(100dvh-1rem,880px)] min-h-0 w-full flex-col overflow-hidden sm:max-h-[min(90dvh,860px)]">
                     {detailLoading ? (
                         <div className="p-6">
                             <p className="text-sm text-zinc-500">Carregando…</p>
@@ -1584,11 +1594,14 @@ export default function Pipeline({
                                 />
                                 <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-700 dark:bg-zinc-900/40">
                                     {canPipelineMutate ? (
-                                        <form onSubmit={submitStageMove} className="flex flex-wrap items-end gap-2">
-                                            <div>
+                                        <form
+                                            onSubmit={submitStageMove}
+                                            className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end"
+                                        >
+                                            <div className="min-w-0 flex-1 sm:max-w-xs">
                                                 <InputLabel value={canVolunteerManage ? 'Fase principal' : 'Fase / pasta'} />
                                                 <SelectInput
-                                                    className="mt-1 min-w-[200px]"
+                                                    className="mt-1 w-full min-w-0"
                                                     value={stageMoveForm.data.stage_id}
                                                     onChange={(e) => stageMoveForm.setData('stage_id', e.target.value)}
                                                 >
@@ -1628,11 +1641,11 @@ export default function Pipeline({
                                         </div>
                                     )}
                                 </div>
-                                <div className="flex gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800">
+                                <div className="flex gap-1 overflow-x-auto overscroll-x-contain rounded-xl bg-zinc-100 p-1 [-webkit-overflow-scrolling:touch] dark:bg-zinc-800">
                                     <button
                                         type="button"
                                         onClick={() => setDetailTab('ficha')}
-                                        className={`flex-1 rounded-lg px-2 py-2 text-xs font-medium transition sm:px-3 sm:text-sm ${
+                                        className={`shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
                                             detailTab === 'ficha'
                                                 ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
                                                 : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
@@ -1643,7 +1656,7 @@ export default function Pipeline({
                                     <button
                                         type="button"
                                         onClick={() => setDetailTab('departamentos')}
-                                        className={`flex-1 rounded-lg px-2 py-2 text-xs font-medium transition sm:px-3 sm:text-sm ${
+                                        className={`shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
                                             detailTab === 'departamentos'
                                                 ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
                                                 : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
@@ -1654,7 +1667,7 @@ export default function Pipeline({
                                     <button
                                         type="button"
                                         onClick={() => setDetailTab('historico')}
-                                        className={`flex-1 rounded-lg px-2 py-2 text-xs font-medium transition sm:px-3 sm:text-sm ${
+                                        className={`shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
                                             detailTab === 'historico'
                                                 ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
                                                 : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
@@ -1665,7 +1678,7 @@ export default function Pipeline({
                                     <button
                                         type="button"
                                         onClick={() => setDetailTab('notas')}
-                                        className={`flex-1 rounded-lg px-2 py-2 text-xs font-medium transition sm:px-3 sm:text-sm ${
+                                        className={`shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
                                             detailTab === 'notas'
                                                 ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
                                                 : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
@@ -1676,7 +1689,7 @@ export default function Pipeline({
                                 </div>
                             </div>
 
-                            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+                            <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4">
                                 {detailTab === 'ficha' ? (
                                     <div className="space-y-4">
                                         <RecordDetailSections
@@ -1889,8 +1902,10 @@ export default function Pipeline({
                     setInviteMinistryIds([]);
                 }}
                 maxWidth="lg"
+                disableBodyScroll
             >
-                <div className="p-6 space-y-4">
+                <div className="flex max-h-[min(100dvh-1rem,720px)] min-h-0 w-full flex-col overflow-hidden sm:max-h-[min(90dvh,680px)]">
+                <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-y-contain p-6">
                     <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Encaminhar voluntário</h2>
                     <p className="text-sm text-zinc-600 dark:text-zinc-300">
                         {inviteVolunteer?.name ?? 'Voluntário'} — escolha um ou mais departamentos. O voluntário{' '}
@@ -1940,6 +1955,7 @@ export default function Pipeline({
                             </PrimaryButton>
                         </div>
                     </form>
+                </div>
                 </div>
             </Modal>
 
