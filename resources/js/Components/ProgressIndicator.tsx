@@ -13,11 +13,30 @@ function visitFromFinishEvent(event: Event): VisitLike | null {
     return e.detail?.visit ?? null;
 }
 
+const LOADING_SAFETY_MS = 45_000;
+
 /** Indicador de carregamento (spinner) visível durante navegação Inertia. */
 export default function ProgressIndicator() {
     const [loading, setLoading] = useState(false);
     /** Visitas com `showProgress: false` (ex.: reload parcial async) não incrementam — evita overlay a cada poll. */
     const blockingDepth = useRef(0);
+
+    const resetOverlay = () => {
+        blockingDepth.current = 0;
+        setLoading(false);
+    };
+
+    useEffect(() => {
+        resetOverlay();
+    }, []);
+
+    useEffect(() => {
+        if (!loading) {
+            return;
+        }
+        const safety = window.setTimeout(resetOverlay, LOADING_SAFETY_MS);
+        return () => window.clearTimeout(safety);
+    }, [loading]);
 
     useEffect(() => {
         const handleStart = (event: Event) => {
@@ -35,18 +54,19 @@ export default function ProgressIndicator() {
             }
             setLoading(blockingDepth.current > 0);
         };
-        const handleResetOverlay = () => {
-            blockingDepth.current = 0;
-            setLoading(false);
-        };
-
         const unstart = router.on('start', handleStart);
         const unfinish = router.on('finish', handleFinish);
-        const uncancel = router.on('cancel', handleResetOverlay);
+        const uncancel = router.on('cancel', resetOverlay);
         // Respostas não-Inertia (403 HTML, erro de servidor) ou exceções podem não disparar `finish`;
         // sem isto o overlay «Carregando…» fica preso em cima de tudo (parece que não muda de tela).
-        const uninvalid = router.on('invalid', handleResetOverlay);
-        const unexception = router.on('exception', handleResetOverlay);
+        const uninvalid = router.on('invalid', resetOverlay);
+        const unexception = router.on('exception', resetOverlay);
+        const unerror = router.on('error', resetOverlay);
+        const unsuccess = router.on('success', () => {
+            if (blockingDepth.current === 0) {
+                setLoading(false);
+            }
+        });
 
         return () => {
             unstart();
@@ -54,6 +74,8 @@ export default function ProgressIndicator() {
             uncancel();
             uninvalid();
             unexception();
+            unerror();
+            unsuccess();
         };
     }, []);
 
