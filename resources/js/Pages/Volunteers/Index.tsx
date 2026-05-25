@@ -25,6 +25,7 @@ import VolunteerDeleteConfirmBlock from '@/Components/Volunteers/VolunteerDelete
 import { activeInactivePillClass } from '@/lib/statusBadges';
 import { appRoleLabel } from '@/lib/appRoleLabels';
 import SortedMultiCheckboxList from '@/Components/SortedMultiCheckboxList';
+import UserListAvatar from '@/Components/UserListAvatar';
 
 interface Ministry { id: number; name: string; }
 interface AppRole { id: number; name: string; }
@@ -474,7 +475,6 @@ export default function Index({
                         <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                             {volunteers.data.map((v) => {
                                 const displayName = v.name ?? '—';
-                                const initial = displayName !== '—' ? displayName.charAt(0).toUpperCase() : '?';
                                 return (
                                 <tr
                                     key={v.id}
@@ -483,9 +483,10 @@ export default function Index({
                                 >
                                     <td className="cursor-pointer px-4 md:px-8 py-3 md:py-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-sm font-semibold text-zinc-700 dark:text-zinc-300 flex-shrink-0 overflow-hidden">
-                                                {initial}
-                                            </div>
+                                            <UserListAvatar
+                                                name={displayName}
+                                                photoUrl={v.user?.photo_url}
+                                            />
                                             <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                                                 <span className="font-medium text-zinc-900 dark:text-white">{displayName}</span>
                                                 {v.app_access_only ? (

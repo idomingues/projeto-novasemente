@@ -34,6 +34,7 @@ import MinistryLeaderStatusSection, {
     type MinistryLeaderStatusSectionData,
 } from '@/Components/Volunteers/MinistryLeaderStatusSection';
 import RecordDetailHeader from '@/Components/RecordDetail/RecordDetailHeader';
+import UserListAvatar from '@/Components/UserListAvatar';
 import { formatListPreview } from '@/utils/formatListPreview';
 import {
     volunteerMinistryPhasesInList,
@@ -48,6 +49,7 @@ type StageRow = { id: number; name: string; sort_order: number; volunteer_count:
 type VolunteerListRow = {
     id: number;
     name: string | null;
+    photoUrl?: string | null;
     hasUserAccount?: boolean;
     email: string | null;
     phone: string | null;
@@ -1295,6 +1297,9 @@ export default function Pipeline({
                             <table className="min-w-full text-sm hidden md:table">
                                 <thead>
                                     <tr className="border-b border-zinc-200 text-left dark:border-zinc-700">
+                                        <th className="w-10 pb-2 pr-2 font-semibold">
+                                            <span className="sr-only">Foto</span>
+                                        </th>
                                         <th className="pb-2 pr-3 font-semibold">Nome</th>
                                         <th className="pb-2 pr-3 font-semibold">{canVolunteerManage ? 'Fase principal' : 'Fase'}</th>
                                         <th className="pb-2 pr-3 font-semibold">Convite</th>
@@ -1312,6 +1317,9 @@ export default function Pipeline({
                                             className={`cursor-pointer border-b border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900/50 ${v.pendingInvite ? 'bg-amber-50/40 dark:bg-amber-950/10' : ''}`}
                                             onClick={() => void openVolunteer(v.id)}
                                         >
+                                            <td className="cursor-pointer py-2 pr-2">
+                                                <UserListAvatar name={v.name} photoUrl={v.photoUrl} size="sm" />
+                                            </td>
                                             <td className="cursor-pointer py-2 pr-3 font-medium text-zinc-900 dark:text-white">
                                                 <div className="flex flex-wrap items-center gap-1.5">
                                                     <span>{v.name}</span>
@@ -1400,7 +1408,13 @@ export default function Pipeline({
                                     }`}
                                 >
                                     <div className="flex items-start justify-between gap-3">
-                                        <button type="button" onClick={() => void openVolunteer(v.id)} className="min-w-0 text-left">
+                                        <button
+                                            type="button"
+                                            onClick={() => void openVolunteer(v.id)}
+                                            className="flex min-w-0 items-start gap-3 text-left"
+                                        >
+                                            <UserListAvatar name={v.name} photoUrl={v.photoUrl} size="sm" />
+                                            <span className="min-w-0">
                                             <div className="flex flex-wrap items-center gap-1.5">
                                                 <span className="truncate font-semibold text-zinc-900 dark:text-white">{v.name ?? '—'}</span>
                                                 {v.hasUserAccount ? (
@@ -1413,6 +1427,7 @@ export default function Pipeline({
                                                 {(canVolunteerManage ? listEmpty(v.adminWorkflowStageName) : v.stageName)} ·{' '}
                                                 {formatShortDate(v.createdAt)}
                                             </div>
+                                            </span>
                                         </button>
                                         {canPipelineMutate ? (
                                             <button

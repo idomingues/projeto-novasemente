@@ -102,7 +102,7 @@ class VolunteerChurchRosterBuilder
     ): array {
         $q = self::volunteersVisibleInChurchQuery($churchId)
             ->with([
-                'user:id,email',
+                'user:id,email,photo_url',
                 'ministries' => fn ($m) => $m->where('church_id', $churchId),
                 'churchPipelines' => fn ($p) => $p->where('church_id', $churchId)->with(['stage', 'adminWorkflowStage']),
                 'ministryInvitations' => fn ($i) => $i->where('church_id', $churchId)->with('ministry:id,name,church_id'),
@@ -202,6 +202,7 @@ class VolunteerChurchRosterBuilder
                 return [
                     'id' => $v->id,
                     'name' => $v->name,
+                    'photoUrl' => $v->user?->photo_url,
                     'hasUserAccount' => VolunteerAppLogin::loginReady($v),
                     'email' => $mask['email'],
                     'phone' => $mask['phone'],
