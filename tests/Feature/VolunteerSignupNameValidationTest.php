@@ -22,6 +22,14 @@ class VolunteerSignupNameValidationTest extends TestCase
             ['first_name' => 'João', 'last_name' => 'Silva'],
             VolunteerSignupName::split('João Silva')
         );
+        $this->assertSame(
+            ['first_name' => 'Ivanildo', 'last_name' => 'Domingues'],
+            VolunteerSignupName::split("Ivanildo\u{00a0}Domingues")
+        );
+        $this->assertSame(
+            ['first_name' => 'Ivanildo', 'last_name' => 'Domingues Santos'],
+            VolunteerSignupName::split('Ivanildo Domingues Santos')
+        );
     }
 
     public function test_self_signup_update_rejects_single_word_name_with_friendly_message(): void
@@ -74,5 +82,34 @@ class VolunteerSignupNameValidationTest extends TestCase
             ->assertSessionHasErrors([
                 'full_name' => VolunteerSignupName::FULL_NAME_REQUIRED_MESSAGE,
             ]);
+    }
+
+    public function test_autosave_accepts_name_from_form_when_only_photo_field_requested(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+
+        $user = User::factory()->create([
+            'church_id' => $churchId,
+            'is_volunteer' => true,
+            'name' => 'Ivanildo',
+            'email' => 'ivanildo.autosave@example.com',
+            'photo_url' => 'https://example.com/photos/ivanildo.jpg',
+        ]);
+
+        $volunteer = $user->fresh()->volunteerProfile;
+        $this->assertNotNull($volunteer);
+
+        $this->actingAs($user)
+            ->postJson(route('volunteers.self-signup.autosave'), [
+                'autosave_fields' => ['photo_file'],
+                'first_name' => 'Ivanildo',
+                'last_name' => 'Domingues',
+            ])
+            ->assertOk();
+
+        $user->refresh();
+        $this->assertSame('Ivanildo Domingues', $user->name);
     }
 }

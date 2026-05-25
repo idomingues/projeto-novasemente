@@ -613,8 +613,22 @@ export default function PublicSignup({
     }, [lastVisiblePageIndex, pageSlot]);
 
     useEffect(() => {
-        if (!isEdit || !initial?.full_name) return;
-        if (splitVolunteerFullName(initial.full_name)) return;
+        if (!isEdit) return;
+
+        if (splitVolunteerFullName(data.full_name)) {
+            setClientErrors((cur) => {
+                if (!cur.full_name && !cur.first_name && !cur.last_name) return cur;
+                const next = { ...cur };
+                delete next.full_name;
+                delete next.first_name;
+                delete next.last_name;
+                return next;
+            });
+            return;
+        }
+
+        if (!initial?.full_name || splitVolunteerFullName(initial.full_name)) return;
+
         setClientErrors((cur) =>
             cur.full_name
                 ? cur
@@ -625,7 +639,7 @@ export default function PublicSignup({
                   },
         );
         setStepBlocked(true);
-    }, [isEdit, initial?.full_name]);
+    }, [isEdit, initial?.full_name, data.full_name]);
     const [photoPreview, setPhotoPreview] = useState<string | null>(initial?.photo_url ?? null);
     const [photoPreparing, setPhotoPreparing] = useState(false);
     const [photoClientError, setPhotoClientError] = useState<string | null>(null);
@@ -839,9 +853,19 @@ export default function PublicSignup({
         dismissSubmitErrors();
         setStepBlocked(false);
         setClientErrors((cur) => {
-            if (!cur[key]) return cur;
+            const hasKey =
+                key === 'full_name'
+                    ? cur.full_name || cur.first_name || cur.last_name
+                    : cur[key];
+            if (!hasKey) return cur;
             const next = { ...cur };
-            delete next[key];
+            if (key === 'full_name') {
+                delete next.full_name;
+                delete next.first_name;
+                delete next.last_name;
+            } else {
+                delete next[key];
+            }
             return next;
         });
     };
@@ -860,6 +884,7 @@ export default function PublicSignup({
             setData('photo_file', compressed);
             setPhotoPreview(URL.createObjectURL(compressed));
             if (isEdit) {
+                syncNameParts(data.full_name);
                 void performAutosave(['photo_file']);
             }
         } catch (e) {
@@ -981,7 +1006,13 @@ export default function PublicSignup({
                 if (!saved) return;
             }
 
-            setClientErrors({});
+            setClientErrors((cur) => {
+                const next = { ...cur };
+                delete next.full_name;
+                delete next.first_name;
+                delete next.last_name;
+                return next;
+            });
             setStepBlocked(false);
             dismissSubmitErrors();
             setPageSlot((current) => Math.min(lastVisiblePageIndex, current + 1));
@@ -1106,6 +1137,14 @@ export default function PublicSignup({
     };
 
     const err = (key: string) => {
+        if (
+            key === 'full_name' &&
+            splitVolunteerFullName(data.full_name) &&
+            !showSubmitErrors &&
+            (clientErrors.full_name || clientErrors.first_name || clientErrors.last_name)
+        ) {
+            return undefined;
+        }
         if (clientErrors[key]) return clientErrors[key];
         if (!showSubmitErrors || processing) return undefined;
         const formMessage = (errors as Record<string, string | undefined>)[key];

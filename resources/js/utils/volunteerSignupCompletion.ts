@@ -1,4 +1,5 @@
 import type { VolunteerSignupInitial } from '@/Pages/Volunteers/PublicSignup';
+import { normalizeVolunteerFullName } from '@/utils/volunteerSignupPageValidation';
 
 export type VolunteerSignupCompletion = {
     is_complete: boolean;
@@ -194,13 +195,13 @@ function isValidEmail(value: string): boolean {
 }
 
 function splitFullName(fullName: string): { first_name: string; last_name: string } | null {
-    const parts = fullName
-        .trim()
-        .split(/\s+/)
-        .map((p) => p.trim())
-        .filter(Boolean);
+    const normalized = normalizeVolunteerFullName(fullName);
+    if (!normalized) return null;
+    const parts = normalized.split(' ').filter(Boolean);
     if (parts.length < 2) return null;
-    return { first_name: parts[0], last_name: parts.slice(1).join(' ') };
+    const last_name = parts.slice(1).join(' ');
+    if (!parts[0] || !last_name) return null;
+    return { first_name: parts[0], last_name };
 }
 
 /** Espelha `App\Support\VolunteerSignupCompletion` para uso no frontend. */
@@ -442,23 +443,18 @@ function reconcileVolunteerSignupMergedName(
         return;
     }
 
+    if (preparedParts) {
+        out.first_name = preparedParts.first_name;
+        out.last_name = preparedParts.last_name;
+        return;
+    }
+
     if (!nameTouched) {
         const initialParts = splitFullName(initial.full_name);
         if (initialParts) {
             out.first_name = initialParts.first_name;
             out.last_name = initialParts.last_name;
-            return;
         }
-        if (preparedParts) {
-            out.first_name = preparedParts.first_name;
-            out.last_name = preparedParts.last_name;
-        }
-        return;
-    }
-
-    if (preparedParts) {
-        out.first_name = preparedParts.first_name;
-        out.last_name = preparedParts.last_name;
     }
 }
 

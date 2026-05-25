@@ -40,14 +40,27 @@ export function isValidSignupEmail(value: string): boolean {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
+/** Normaliza espaços invisíveis (iOS/autocomplete) para validação do nome completo. */
+export function normalizeVolunteerFullName(fullName: string): string {
+    return fullName
+        .normalize('NFKC')
+        .replace(/[\u00a0\u1680\u2000-\u200b\u2028\u2029\u202f\u205f\u3000\ufeff]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
 export function splitVolunteerFullName(fullName: string): { first_name: string; last_name: string } | null {
-    const parts = fullName
-        .trim()
-        .split(/\s+/)
-        .map((p) => p.trim())
-        .filter(Boolean);
+    const normalized = normalizeVolunteerFullName(fullName);
+    if (!normalized) return null;
+
+    const parts = normalized.split(' ').filter(Boolean);
     if (parts.length < 2) return null;
-    return { first_name: parts[0], last_name: parts.slice(1).join(' ') };
+
+    const first_name = parts[0];
+    const last_name = parts.slice(1).join(' ');
+    if (!first_name || !last_name) return null;
+
+    return { first_name, last_name };
 }
 
 export function shouldAskVolunteerWhatsapp(phone: string): boolean {

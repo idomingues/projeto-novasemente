@@ -1,7 +1,7 @@
 import type { VolunteerSignupInitial } from '@/Pages/Volunteers/PublicSignup';
 import type { VolunteerSignupCompletion } from '@/utils/volunteerSignupCompletion';
 import type { VolunteerSignupFormSlice } from '@/utils/volunteerSignupPageValidation';
-import { normalizeSignupBool } from '@/utils/volunteerSignupPageValidation';
+import { normalizeSignupBool, splitVolunteerFullName } from '@/utils/volunteerSignupPageValidation';
 import axios from 'axios';
 
 export type VolunteerSignupAutosaveResponse = {
@@ -73,9 +73,19 @@ export async function postVolunteerSignupAutosave(
     autosaveFields: string[],
 ): Promise<VolunteerSignupAutosaveResponse> {
     const formData = new FormData();
-    formData.append('autosave_fields', JSON.stringify(autosaveFields));
+    const fieldsToSend = new Set(autosaveFields);
 
-    for (const field of autosaveFields) {
+    // Sempre enviar nome e sobrenome do formulário quando existirem (evita gravar cadastro antigo sem sobrenome).
+    const first = String(payload.first_name ?? '').trim();
+    const last = String(payload.last_name ?? '').trim();
+    if (first !== '' && last !== '') {
+        fieldsToSend.add('first_name');
+        fieldsToSend.add('last_name');
+    }
+
+    formData.append('autosave_fields', JSON.stringify([...fieldsToSend]));
+
+    for (const field of fieldsToSend) {
         if (field === 'photo_file' && payload.photo_file instanceof File) {
             formData.append('photo_file', payload.photo_file);
             continue;
@@ -138,7 +148,7 @@ export function fieldTriggersImmediateAutosave(fieldKey: string): boolean {
 export function isVolunteerSignupFieldAnswered(fieldKey: string, data: VolunteerSignupFormSlice): boolean {
     switch (fieldKey) {
         case 'full_name':
-            return data.full_name.trim().split(/\s+/).filter(Boolean).length >= 2;
+            return splitVolunteerFullName(data.full_name) !== null;
         case 'birth_date':
             return data.birth_date.trim() !== '';
         case 'email':

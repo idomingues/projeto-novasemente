@@ -351,7 +351,11 @@ class VolunteerSelfSignupEditController extends Controller
         $result = $autosave->mergeAndValidate($user, $request, $churchId);
         $validated = $result['validated'];
 
-        VolunteerSignupName::assertValidInPayload($validated);
+        $autosaveFields = $result['autosave_fields'];
+        $nameInAutosave = count(array_intersect(['first_name', 'last_name'], $autosaveFields)) > 0;
+        if ($nameInAutosave || $request->has('first_name') || $request->has('last_name')) {
+            VolunteerSignupName::assertValidInPayload($validated);
+        }
 
         $validated['previous_ministry_ids'] = $this->validateMinistryIdsForChurch(
             $validated['previous_ministry_ids'] ?? [],
