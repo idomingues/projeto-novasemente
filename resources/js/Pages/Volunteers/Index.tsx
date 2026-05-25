@@ -18,6 +18,8 @@ import SelectInput from '@/Components/SelectInput';
 import Checkbox from '@/Components/Checkbox';
 import InputError from '@/Components/InputError';
 import { useState, useEffect, useCallback, useRef, FormEventHandler, useMemo } from 'react';
+import ListSearchHint from '@/Components/ListSearchHint';
+import { useDebouncedServerSearch } from '@/hooks/useDebouncedServerSearch';
 import axios from 'axios';
 import VolunteerRecordDetailBody from '@/Components/Volunteers/VolunteerRecordDetailBody';
 import type { VolunteerDetailData } from '@/utils/volunteerDetailRows';
@@ -112,7 +114,19 @@ export default function Index({
     const [publicInviteModalOpen, setPublicInviteModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
-    const [search, setSearch] = useState(filters?.search ?? '');
+    const {
+        value: search,
+        setValue: setSearch,
+        isBelowMinimum: searchBelowMinimum,
+    } = useDebouncedServerSearch({
+        serverValue: filters?.search ?? '',
+        onApply: useCallback(
+            (term) => {
+                router.get(route('volunteers.index'), { search: term }, { preserveState: true, replace: true });
+            },
+            [],
+        ),
+    });
     const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
     const [submitToast, setSubmitToast] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
     const [detailOpen, setDetailOpen] = useState(false);
@@ -362,23 +376,6 @@ export default function Index({
     }, [flash?.public_volunteer_signup_url]);
 
     useEffect(() => {
-        if (search === (filters?.search ?? '')) {
-            return;
-        }
-        const timeout = setTimeout(() => {
-            router.get(
-                route('volunteers.index'),
-                { search },
-                {
-                    preserveState: true,
-                    replace: true,
-                },
-            );
-        }, 200);
-        return () => clearTimeout(timeout);
-    }, [search, filters?.search]);
-
-    useEffect(() => {
         setPhotoPreviewUrl(null);
     }, []);
 
@@ -423,6 +420,7 @@ export default function Index({
                             className="w-full"
                             onChange={(e) => setSearch(e.target.value)}
                         />
+                        <ListSearchHint show={searchBelowMinimum} className="mt-1" />
                     </div>
                     {publicVolunteerSignupUrl ? (
                         <div className="flex justify-end sm:justify-start">

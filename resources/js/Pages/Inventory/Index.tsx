@@ -19,7 +19,9 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import PageHeader from '@/Components/PageHeader';
 import InputError from '@/Components/InputError';
-import { useState, useEffect, useRef, FormEventHandler } from 'react';
+import { useState, useEffect, useRef, useCallback, FormEventHandler } from 'react';
+import ListSearchHint from '@/Components/ListSearchHint';
+import { useDebouncedServerSearch } from '@/hooks/useDebouncedServerSearch';
 import axios from 'axios';
 import { confirmAction } from '@/utils/confirmDialog';
 import ImageDownloadButton from '@/Components/ImageDownloadButton';
@@ -77,7 +79,21 @@ export default function Index({ items, filters }: Props) {
     const [historyModalOpen, setHistoryModalOpen] = useState(false);
     const [historyItem, setHistoryItem] = useState<InventoryItem | null>(null);
     const [history, setHistory] = useState<Movement[]>([]);
-    const [search, setSearch] = useState(filters.search ?? '');
+    const skipSearchApplyRef = useRef(false);
+    const {
+        value: search,
+        setValue: setSearch,
+        isBelowMinimum: searchBelowMinimum,
+    } = useDebouncedServerSearch({
+        serverValue: filters.search ?? '',
+        onApply: useCallback((term) => {
+            if (skipSearchApplyRef.current) {
+                skipSearchApplyRef.current = false;
+                return;
+            }
+            router.get(route('inventory.index'), { search: term }, { preserveState: true, replace: true });
+        }, []),
+    });
     const [existingPhotoUrl, setExistingPhotoUrl] = useState<string | null>(null);
     const [newPhotoPreview, setNewPhotoPreview] = useState<string | null>(null);
     const [barcodeScannerOpen, setBarcodeScannerOpen] = useState(false);
@@ -87,7 +103,6 @@ export default function Index({ items, filters }: Props) {
     const barcodeScannerRef = useRef<Html5Qrcode | null>(null);
     const barcodeScanHandledRef = useRef(false);
     const barcodeScanPurposeRef = useRef<'form' | 'search'>('form');
-    const skipSearchDebounceRef = useRef(false);
     const setBarcodeFromScanRef = useRef((_: string) => {});
     /** Em celular fica fechado por defeito; em md+ abre ao criar (ver openCreateModal) */
     const [inventoryOptionalOpen, setInventoryOptionalOpen] = useState(false);
@@ -112,7 +127,7 @@ export default function Index({ items, filters }: Props) {
     setBarcodeFromScanRef.current = (code: string) => {
         const trimmed = code.trim();
         if (barcodeScanPurposeRef.current === 'search') {
-            skipSearchDebounceRef.current = true;
+            skipSearchApplyRef.current = true;
             setSearch(trimmed);
             router.get(route('inventory.index'), { search: trimmed }, { preserveState: true, replace: true });
         } else {
@@ -278,27 +293,6 @@ export default function Index({ items, filters }: Props) {
         });
     };
 
-    useEffect(() => {
-        if (search === (filters.search ?? '')) {
-            return;
-        }
-        if (skipSearchDebounceRef.current) {
-            skipSearchDebounceRef.current = false;
-            return;
-        }
-        const timeout = setTimeout(() => {
-            router.get(
-                route('inventory.index'),
-                { search },
-                {
-                    preserveState: true,
-                    replace: true,
-                },
-            );
-        }, 200);
-        return () => clearTimeout(timeout);
-    }, [search, filters.search]);
-
     return (
         <AdminLayout>
             <Head title="Inventário" />
@@ -320,6 +314,7 @@ export default function Index({ items, filters }: Props) {
                             placeholder="Buscar por código de barras ou nome..."
                             className="w-full pl-10 pr-12 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white placeholder-zinc-400 focus:ring-2 focus:ring-zinc-500 focus:border-transparent"
                         />
+                        <ListSearchHint show={searchBelowMinimum} className="mt-1 pl-10" />
                         <button
                             type="button"
                             onClick={() => {

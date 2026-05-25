@@ -22,7 +22,9 @@ import Card from '@/Components/Card';
 import SelectInput from '@/Components/SelectInput';
 import Checkbox from '@/Components/Checkbox';
 import InputError from '@/Components/InputError';
-import { useState, useEffect, useRef, FormEventHandler } from 'react';
+import { useState, useEffect, useRef, useCallback, FormEventHandler } from 'react';
+import ListSearchHint from '@/Components/ListSearchHint';
+import { useDebouncedServerSearch } from '@/hooks/useDebouncedServerSearch';
 import { PhotoPreviewButton } from '@/Components/PhotoPreview';
 import RecordDetailHeader from '@/Components/RecordDetail/RecordDetailHeader';
 import UserListAvatar from '@/Components/UserListAvatar';
@@ -149,7 +151,6 @@ export default function Index({
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
-    const [search, setSearch] = useState(filters?.search ?? '');
     const [leaderFilter, setLeaderFilter] = useState(filters?.leaders_only ?? '');
     const [appMembersFilter, setAppMembersFilter] = useState(filters?.app_members_only ?? '');
     const [ministryFilter, setMinistryFilter] = useState(filters?.ministry_id ?? '');
@@ -161,11 +162,11 @@ export default function Index({
         ministry_id?: string;
     }) => {
         const params: Record<string, string> = {};
-        const s = overrides?.search ?? search;
+        const s = overrides?.search;
         const l = overrides?.leaders_only ?? leaderFilter;
         const a = overrides?.app_members_only ?? appMembersFilter;
         const m = overrides?.ministry_id ?? ministryFilter;
-        if (s.trim() !== '') {
+        if (s !== undefined && s.trim() !== '') {
             params.search = s.trim();
         }
         if (l === '1') {
@@ -191,6 +192,17 @@ export default function Index({
             replace: true,
         });
     };
+
+    const {
+        value: search,
+        setValue: setSearch,
+        isBelowMinimum: searchBelowMinimum,
+    } = useDebouncedServerSearch({
+        serverValue: filters?.search ?? '',
+        onApply: useCallback((term) => {
+            applyListFilters({ search: term ?? '' });
+        }, [leaderFilter, appMembersFilter, ministryFilter]),
+    });
     const hydratedErrorKey = useRef<string | null>(null);
     const memberFormModeRef = useRef<{ isEditing: boolean; editingId: number | null }>({
         isEditing: false,
@@ -506,17 +518,6 @@ export default function Index({
         }
     };
 
-    useEffect(() => {
-        if (search === (filters?.search ?? '')) {
-            return;
-        }
-        const timeout = setTimeout(() => {
-            applyListFilters({ search });
-        }, 200);
-        return () => clearTimeout(timeout);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [search, filters?.search]);
-
     const flash = (page.props as {
         flash?: {
             success?: string | null;
@@ -585,6 +586,7 @@ export default function Index({
                                 className="w-full min-w-0"
                                 onChange={(e) => setSearch(e.target.value)}
                             />
+                            <ListSearchHint show={searchBelowMinimum} className="mt-1" />
                         </div>
                         {canManageLeaderSignupLink && leaderLinkForModal ? (
                             <SecondaryButton
@@ -981,7 +983,6 @@ export default function Index({
                             <RecordDetailHeader
                                 title={(data.name ?? '').trim() || memberForLgpd?.name || 'Usuário'}
                                 subtitle={memberForLgpd?.role_label ?? 'Conta no app'}
-                                photoUrl={avatarPreviewSrc}
                                 badge={data.status === 'active' ? 'Ativo' : 'Inativo'}
                                 onClose={closeModal}
                             />

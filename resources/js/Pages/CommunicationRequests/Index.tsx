@@ -21,7 +21,9 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import { confirmAction } from '@/utils/confirmDialog';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { ArchiveBoxIcon, ChatBubbleLeftRightIcon, ChevronRightIcon, FunnelIcon, InboxIcon } from '@heroicons/react/24/outline';
-import { FormEventHandler, useMemo, useState } from 'react';
+import { FormEventHandler, useCallback, useMemo, useRef, useState } from 'react';
+import ListSearchHint from '@/Components/ListSearchHint';
+import { useDebouncedServerSearch } from '@/hooks/useDebouncedServerSearch';
 
 type CommunicationRow = {
     id: number;
@@ -143,8 +145,11 @@ export default function CommunicationRequestsIndex({
         [],
     );
 
-    const applyFilters = (next: Partial<Props['filters']>) => {
-        const merged = { ...filters, ...next };
+    const filtersRef = useRef(filters);
+    filtersRef.current = filters;
+
+    const applyFilters = useCallback((next: Partial<Props['filters']>) => {
+        const merged = { ...filtersRef.current, ...next };
         router.get(
             indexUrl,
             {
@@ -156,7 +161,21 @@ export default function CommunicationRequestsIndex({
             },
             { preserveScroll: true, replace: true },
         );
-    };
+    }, [indexUrl]);
+
+    const {
+        value: qDraft,
+        setValue: setQDraft,
+        isBelowMinimum: qBelowMinimum,
+    } = useDebouncedServerSearch({
+        serverValue: filters.q,
+        onApply: useCallback(
+            (term) => {
+                applyFilters({ q: term ?? '' });
+            },
+            [applyFilters],
+        ),
+    });
 
     const goToListTab = (arquivados: boolean) => {
         applyFilters({ arquivados });
@@ -349,14 +368,15 @@ export default function CommunicationRequestsIndex({
                         <div className="mt-1 flex gap-2">
                             <TextInput
                                 className="w-full"
-                                value={filters.q}
-                                onChange={(e) => applyFilters({ q: e.target.value })}
+                                value={qDraft}
+                                onChange={(e) => setQDraft(e.target.value)}
                                 placeholder="Assunto ou mensagem"
                             />
                             <span className="inline-flex items-center justify-center rounded-xl border border-zinc-200 px-3 text-zinc-500 dark:border-zinc-700 dark:text-zinc-300">
                                 <FunnelIcon className="h-4 w-4" />
                             </span>
                         </div>
+                        <ListSearchHint show={qBelowMinimum} className="mt-1" />
                     </div>
                 </div>
             </Card>

@@ -12,7 +12,10 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import SelectInput from '@/Components/SelectInput';
 import InputError from '@/Components/InputError';
 import { Head, Link, router, useForm, usePage, useRemember } from '@inertiajs/react';
-import { FormEventHandler, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEventHandler, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import ListSearchHint from '@/Components/ListSearchHint';
+import { useDebouncedServerSearch } from '@/hooks/useDebouncedServerSearch';
+import { serverSearchTerm } from '@/utils/listSearch';
 import {
     AdjustmentsHorizontalIcon,
     ChevronDownIcon,
@@ -365,11 +368,26 @@ export default function Pipeline({
     const churchName = currentChurch?.name ?? 'Igreja';
 
     const filterForm = useForm<BoardFilters>({ ...filters });
-    const [searchQuery, setSearchQuery] = useState(filters.search ?? '');
     const filtersRef = useRef(filters);
     filtersRef.current = filters;
     const lastAppliedSearchRef = useRef(filters.search ?? '');
-    const SEARCH_DEBOUNCE_MS = 200;
+
+    const {
+        value: searchQuery,
+        setValue: setSearchQuery,
+        isBelowMinimum: searchBelowMinimum,
+    } = useDebouncedServerSearch({
+        serverValue: filters.search ?? '',
+        onApply: useCallback((term) => {
+            const applied = term ?? '';
+            lastAppliedSearchRef.current = applied;
+            router.get(
+                route('ministry-lead.volunteers.index'),
+                pipelineVolunteersQuery(filtersRef.current, applied),
+                { preserveState: true, replace: true },
+            );
+        }, []),
+    });
 
     const filtersKey = useMemo(() => JSON.stringify(filters), [filters]);
     useEffect(() => {
@@ -380,22 +398,6 @@ export default function Pipeline({
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filtersKey]);
-
-    useEffect(() => {
-        const serverSearch = filtersRef.current.search ?? '';
-        if (searchQuery === serverSearch) {
-            return;
-        }
-        const timeout = window.setTimeout(() => {
-            lastAppliedSearchRef.current = searchQuery;
-            router.get(
-                route('ministry-lead.volunteers.index'),
-                pipelineVolunteersQuery(filtersRef.current, searchQuery),
-                { preserveState: true, replace: true },
-            );
-        }, SEARCH_DEBOUNCE_MS);
-        return () => window.clearTimeout(timeout);
-    }, [searchQuery]);
 
     useEffect(() => {
         const link = flash?.invitation_link;
@@ -489,10 +491,11 @@ export default function Pipeline({
 
     const applyFilters: FormEventHandler = (e) => {
         e.preventDefault();
-        lastAppliedSearchRef.current = searchQuery;
+        const resolvedSearch = serverSearchTerm(searchQuery) ?? '';
+        lastAppliedSearchRef.current = resolvedSearch;
         router.get(
             route('ministry-lead.volunteers.index'),
-            pipelineVolunteersQuery(filterForm.data, searchQuery),
+            pipelineVolunteersQuery(filterForm.data, resolvedSearch),
             { preserveState: true, replace: true },
         );
     };
@@ -508,7 +511,8 @@ export default function Pipeline({
     };
 
     const pickStage = (stageId: number | '' | typeof PIPELINE_STAGE_ARCHIVED | typeof PIPELINE_STAGE_ADMIN_WORKFLOW_BLANK) => {
-        lastAppliedSearchRef.current = searchQuery;
+        const resolvedSearch = serverSearchTerm(searchQuery) ?? '';
+        lastAppliedSearchRef.current = resolvedSearch;
         router.get(
             route('ministry-lead.volunteers.index'),
             pipelineVolunteersQuery(
@@ -516,7 +520,7 @@ export default function Pipeline({
                     ...filterForm.data,
                     pipeline_stage_id: stageId === '' ? '' : String(stageId),
                 },
-                searchQuery,
+                resolvedSearch,
             ),
             { preserveState: true, replace: true },
         );
@@ -659,7 +663,8 @@ export default function Pipeline({
 
     const applySortSelection = (combined: string) => {
         const option = sortOptions.find((o) => o.value === combined) ?? sortOptions[0];
-        lastAppliedSearchRef.current = searchQuery;
+        const resolvedSearch = serverSearchTerm(searchQuery) ?? '';
+        lastAppliedSearchRef.current = resolvedSearch;
         router.get(
             route('ministry-lead.volunteers.index'),
             pipelineVolunteersQuery(
@@ -668,7 +673,7 @@ export default function Pipeline({
                     sort: option.sort,
                     sort_dir: option.sort_dir,
                 },
-                searchQuery,
+                resolvedSearch,
             ),
             { preserveState: true, replace: true },
         );
@@ -959,6 +964,7 @@ export default function Pipeline({
                             placeholder="Nome, e-mail ou telefone"
                             aria-label="Nome, e-mail ou telefone"
                         />
+                        <ListSearchHint show={searchBelowMinimum} className="mt-1 pl-10" />
                     </div>
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                         <button

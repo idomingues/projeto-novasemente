@@ -1,0 +1,24 @@
+# Busca em listas (padrão)
+
+## Busca no servidor (Inertia / `router.get`)
+
+Use sempre:
+
+- `useDebouncedServerSearch` em `resources/js/hooks/useDebouncedServerSearch.ts`
+- Constantes em `resources/js/utils/listSearch.ts` (`LIST_SEARCH_MIN_LENGTH = 2`, `LIST_SEARCH_DEBOUNCE_MS = 450`)
+- `ListSearchHint` quando `isBelowMinimum` for true
+
+Regras:
+
+1. **Não** disparar `router.get` na primeira letra — esperar pelo menos 2 caracteres (ou limpar o campo).
+2. **Debounce** ~450 ms após o usuário parar de digitar.
+3. Selects e botões «Buscar» podem aplicar na hora; **campo de texto** da lista segue o hook.
+4. Leitura de código de barras / ação explícita pode ignorar o debounce com `skip` (ver Inventário).
+
+## Filtro local (modal, combobox, lista já carregada)
+
+Use `textIncludesSearch` / `textMatchesSearchFields` de `resources/js/utils/searchText.ts` (acentos ignorados). Filtro local pode ser imediato; não use o hook de servidor.
+
+## Backend
+
+Consultas por nome/texto: `SearchTerm::whereAnyColumnLike()` em `app/Support/SearchTerm.php`.

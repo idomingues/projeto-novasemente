@@ -3,6 +3,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { MagnifyingGlassIcon, XMarkIcon, BookOpenIcon } from '@heroicons/react/24/outline';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { normalizeForSearch } from '@/utils/searchText';
+import { LIST_SEARCH_DEBOUNCE_MS, LIST_SEARCH_MIN_LENGTH } from '@/utils/listSearch';
 
 type Testament = 'old' | 'new';
 
@@ -201,6 +202,11 @@ export default function MobileBible({ books, initial }: Props) {
 
         if (searchDebounce.current) window.clearTimeout(searchDebounce.current);
         const q = search.trim();
+        if (q.length > 0 && q.length < LIST_SEARCH_MIN_LENGTH) {
+            setSearchStatus('idle');
+            setSearchResults([]);
+            return;
+        }
         searchDebounce.current = window.setTimeout(async () => {
             const seq = ++searchSeq.current;
             setSearchStatus('loading');
@@ -219,7 +225,7 @@ export default function MobileBible({ books, initial }: Props) {
                 if (seq !== searchSeq.current) return;
                 setSearchStatus('error');
             }
-        }, 250);
+        }, LIST_SEARCH_DEBOUNCE_MS);
 
         return () => {
             if (searchDebounce.current) window.clearTimeout(searchDebounce.current);

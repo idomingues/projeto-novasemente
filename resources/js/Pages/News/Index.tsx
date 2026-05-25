@@ -19,7 +19,9 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
 import SelectInput from '@/Components/SelectInput';
-import { useState, useEffect, FormEventHandler, useMemo } from 'react';
+import { useState, useEffect, FormEventHandler, useMemo, useCallback } from 'react';
+import ListSearchHint from '@/Components/ListSearchHint';
+import { useDebouncedServerSearch } from '@/hooks/useDebouncedServerSearch';
 import { confirmAction } from '@/utils/confirmDialog';
 import ImageDownloadButton from '@/Components/ImageDownloadButton';
 import { youtubeThumbUrlFromVideoUrl } from '@/utils/youtube';
@@ -148,7 +150,19 @@ export default function Index({ posts, filters, canManage, config }: Props) {
     const [editingId, setEditingId] = useState<number | null>(null);
     const [existingPdfUrl, setExistingPdfUrl] = useState<string | null>(null);
     const [existingVideoUrl, setExistingVideoUrl] = useState<string | null>(null);
-    const [search, setSearch] = useState(filters.search ?? '');
+    const {
+        value: search,
+        setValue: setSearch,
+        isBelowMinimum: searchBelowMinimum,
+    } = useDebouncedServerSearch({
+        serverValue: filters.search ?? '',
+        onApply: useCallback(
+            (term) => {
+                router.get(route(routeIndex), { search: term }, { preserveState: true, replace: true });
+            },
+            [routeIndex],
+        ),
+    });
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
         content_type: 'article' as ContentType,
         title: '',
@@ -199,23 +213,6 @@ export default function Index({ posts, filters, canManage, config }: Props) {
         (data.content_type === 'youtube' && data.youtube_url?.trim()
             ? youtubeThumbUrlFromVideoUrl(data.youtube_url.trim()) ?? ''
             : '');
-
-    useEffect(() => {
-        if (search === (filters.search ?? '')) {
-            return;
-        }
-        const timeout = setTimeout(() => {
-            router.get(
-                route(routeIndex),
-                { search },
-                {
-                    preserveState: true,
-                    replace: true,
-                },
-            );
-        }, 200);
-        return () => clearTimeout(timeout);
-    }, [search, filters.search, routeIndex]);
 
     const openCreateModal = () => {
         setIsEditing(false);
@@ -362,6 +359,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                         className="w-full"
                         onChange={(e) => setSearch(e.target.value)}
                     />
+                    <ListSearchHint show={searchBelowMinimum} className="mt-1" />
                 </div>
             </PageHeader>
 

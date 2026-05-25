@@ -20,6 +20,8 @@ import PageHeader from '@/Components/PageHeader';
 import InputError from '@/Components/InputError';
 import { DEPARTMENT_ICON_OPTIONS, getMinistryIconByKey } from '@/lib/ministryIcons';
 import { useState, useEffect, useMemo, useCallback, FormEventHandler } from 'react';
+import ListSearchHint from '@/Components/ListSearchHint';
+import { useDebouncedServerSearch } from '@/hooks/useDebouncedServerSearch';
 import axios from 'axios';
 import VolunteerRecordDetailBody from '@/Components/Volunteers/VolunteerRecordDetailBody';
 import type { VolunteerDetailData } from '@/utils/volunteerDetailRows';
@@ -172,7 +174,19 @@ export default function Index({
     volunteerDetailUrlPattern,
 }: Props) {
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-    const [search, setSearch] = useState(filters.search ?? '');
+    const {
+        value: search,
+        setValue: setSearch,
+        isBelowMinimum: searchBelowMinimum,
+    } = useDebouncedServerSearch({
+        serverValue: filters.search ?? '',
+        onApply: useCallback(
+            (term) => {
+                router.get(route('departments.index'), { search: term }, { preserveState: true, replace: true });
+            },
+            [],
+        ),
+    });
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
@@ -192,18 +206,6 @@ export default function Index({
         leader_user_ids: [] as number[],
         volunteer_ids: [] as number[],
     });
-
-    useEffect(() => {
-        if (search === (filters.search ?? '')) return;
-        const timeout = setTimeout(() => {
-            router.get(
-                route('departments.index'),
-                { search: search || undefined },
-                { preserveState: true, replace: true },
-            );
-        }, 200);
-        return () => clearTimeout(timeout);
-    }, [search, filters.search]);
 
     const openVolunteerDetail = useCallback(
         async (id: number) => {
@@ -499,6 +501,7 @@ export default function Index({
                         className="w-full pl-10"
                         placeholder="Buscar departamento…"
                     />
+                    <ListSearchHint show={searchBelowMinimum} className="mt-1 pl-10" />
                 </div>
             </PageHeader>
 
