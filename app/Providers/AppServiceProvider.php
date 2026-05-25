@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\User;
 use App\Models\UserInboxNotification;
 use App\Observers\UserInboxNotificationObserver;
+use App\Support\BrandMail;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -14,6 +15,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
@@ -47,6 +49,8 @@ class AppServiceProvider extends ServiceProvider
 
         Password::defaults(fn () => Password::min(6));
 
+        $this->registerBrandMailViewComposer();
+
         $this->configurePasswordResetNotifications();
 
         // Spatie PermissionMiddleware uses $user->canAny() (Gate). This avoids 403 in production
@@ -70,6 +74,19 @@ class AppServiceProvider extends ServiceProvider
             }
 
             return route('mobile.home');
+        });
+    }
+
+    private function registerBrandMailViewComposer(): void
+    {
+        View::composer([
+            'mail::*',
+            'vendor.mail.html.*',
+            'vendor.mail.text.*',
+            'emails.*',
+            'notifications::*',
+        ], function ($view): void {
+            $view->with(BrandMail::viewData());
         });
     }
 
