@@ -112,4 +112,110 @@ class VolunteerSignupNameValidationTest extends TestCase
         $user->refresh();
         $this->assertSame('Ivanildo Domingues', $user->name);
     }
+
+    public function test_autosave_photo_only_does_not_fail_when_name_still_incomplete_in_database(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+
+        $user = User::factory()->create([
+            'church_id' => $churchId,
+            'is_volunteer' => true,
+            'name' => 'Ivanildo',
+            'email' => 'ivanildo.foto@example.com',
+            'photo_url' => 'https://example.com/photos/ivanildo.jpg',
+        ]);
+
+        $this->actingAs($user)
+            ->postJson(route('volunteers.self-signup.autosave'), [
+                'autosave_fields' => ['has_whatsapp'],
+                'has_whatsapp' => true,
+            ])
+            ->assertOk();
+
+        $user->refresh();
+        $this->assertSame('Ivanildo', $user->name);
+    }
+
+    public function test_autosave_stage_one_fields_persists_full_name(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+
+        $user = User::factory()->create([
+            'church_id' => $churchId,
+            'is_volunteer' => true,
+            'name' => 'Ivanildo',
+            'email' => 'ivanildo.etapa1@example.com',
+            'photo_url' => 'https://example.com/photos/ivanildo.jpg',
+        ]);
+
+        $this->actingAs($user)
+            ->postJson(route('volunteers.self-signup.autosave'), [
+                'autosave_fields' => ['first_name', 'last_name', 'birth_date'],
+                'first_name' => 'Ivanildo',
+                'last_name' => 'Domingues',
+                'birth_date' => '1977-09-10',
+            ])
+            ->assertOk()
+            ->assertJsonPath('initial.full_name', 'Ivanildo Domingues');
+
+        $user->refresh();
+        $this->assertSame('Ivanildo Domingues', $user->name);
+        $this->assertSame('1977-09-10', $user->fresh()->volunteerProfile?->birth_date?->format('Y-m-d'));
+    }
+
+    public function test_self_signup_update_accepts_compound_surname(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+
+        $user = User::factory()->create([
+            'church_id' => $churchId,
+            'is_volunteer' => true,
+            'name' => 'Maria',
+            'email' => 'maria.santos@example.com',
+            'photo_url' => 'https://example.com/photos/maria.jpg',
+        ]);
+
+        $volunteer = $user->fresh()->volunteerProfile;
+        $this->assertNotNull($volunteer);
+
+        $volunteer->forceFill([
+            'birth_date' => '1990-03-15',
+            'has_whatsapp' => true,
+            'has_social_networks' => true,
+            'attendance_duration' => 'years_1_3',
+            'is_official_member' => false,
+            'has_previous_ministry_volunteer_experience' => false,
+            'ministry_involvement' => 'Não',
+            'other_ministry_interest' => 'Não',
+            'lgpd_data_consent' => true,
+        ])->save();
+
+        $this->actingAs($user)
+            ->put(route('volunteers.self-signup.edit.update'), [
+                'first_name' => 'Maria',
+                'last_name' => 'Oliveira Santos',
+                'birth_date' => '1990-03-15',
+                'has_whatsapp' => true,
+                'email' => 'maria.santos@example.com',
+                'phone' => '',
+                'has_social_networks' => true,
+                'attendance_duration' => 'years_1_3',
+                'is_official_member' => false,
+                'has_previous_ministry_volunteer_experience' => false,
+                'is_active_in_ministry' => false,
+                'wants_other_ministry' => false,
+                'lgpd_data_consent' => true,
+                'redirect_after_save' => 'mobile.profile.edit',
+            ])
+            ->assertRedirect(route('mobile.profile.edit', absolute: false));
+
+        $user->refresh();
+        $this->assertSame('Maria Oliveira Santos', $user->name);
+    }
 }

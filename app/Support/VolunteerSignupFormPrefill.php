@@ -45,8 +45,13 @@ final class VolunteerSignupFormPrefill
     {
         $fullName = trim((string) ($user->name ?: $volunteer->name));
         $nameParts = VolunteerSignupName::split($fullName);
-        $firstName = $nameParts['first_name'] ?? '';
-        $lastName = $nameParts['last_name'] ?? '';
+        if ($nameParts !== null) {
+            $firstName = $nameParts['first_name'];
+            $lastName = $nameParts['last_name'];
+        } else {
+            $firstName = $fullName;
+            $lastName = '';
+        }
 
         $previousIds = VolunteerSignupMinistryMapper::idsFromStoredNames(
             $volunteer->previous_ministry_details,

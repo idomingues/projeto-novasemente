@@ -8,6 +8,7 @@ use App\Services\VolunteerMinistryRosterNotifier;
 use App\Support\UserProfilePhotoResolver;
 use App\Support\VolunteerAppLogin;
 use App\Support\VolunteerContactDuplicateChecker;
+use App\Support\VolunteerSignupName;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -46,6 +47,12 @@ final class PersistVolunteerSignupQuestionnaire
         $addedMinistryIds = array_values(array_diff($newMinistryIds, $existingMinistryIds));
 
         $name = trim(((string) $validated['first_name']).' '.((string) $validated['last_name']));
+        if ($name === '' || VolunteerSignupName::split($name) === null) {
+            $existingName = trim((string) ($user->name ?: $volunteer->name));
+            if ($existingName !== '') {
+                $name = $existingName;
+            }
+        }
         $emailNorm = VolunteerContactDuplicateChecker::normalizeEmail((string) $validated['email']);
         $photoUrl = UserProfilePhotoResolver::resolveFromRequest($request);
 
