@@ -26,15 +26,6 @@ function hideSplashScreen() {
     }, 320);
 }
 
-function scheduleSplashFallbackRemoval() {
-    window.setTimeout(() => {
-        const el = document.getElementById('ns-splash') ?? document.getElementById('ns-splash-fadeout');
-        el?.remove();
-    }, 8000);
-}
-
-scheduleSplashFallbackRemoval();
-
 function currentCsrfToken(props?: SharedPageProps): string {
     return (
         props?.csrf_token ??

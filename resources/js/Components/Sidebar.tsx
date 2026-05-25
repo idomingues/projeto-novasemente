@@ -440,17 +440,7 @@ export default function Sidebar({
     return (
         <>
             {mobileOpen ? (
-                <div
-                    className="fixed inset-0 z-40 bg-black/50"
-                    onClick={onMobileClose}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Escape') {
-                            onMobileClose?.();
-                        }
-                    }}
-                    role="presentation"
-                    aria-hidden
-                />
+                <div className="fixed inset-0 z-40 bg-black/50" onClick={onMobileClose} aria-hidden />
             ) : null}
             <aside
                 className={`fixed left-0 top-0 z-50 flex h-screen w-72 flex-col border-r border-zinc-200 bg-white transition-transform duration-300 ease-out dark:border-zinc-800 dark:bg-zinc-950 ${

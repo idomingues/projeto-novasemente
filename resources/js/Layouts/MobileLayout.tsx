@@ -22,19 +22,6 @@ export default function MobileLayout({
         setMenuOpen(false);
     }, [url]);
 
-    useEffect(() => {
-        if (!menuOpen) {
-            return;
-        }
-        const onKey = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
-                setMenuOpen(false);
-            }
-        };
-        document.addEventListener('keydown', onKey);
-        return () => document.removeEventListener('keydown', onKey);
-    }, [menuOpen]);
-
     if (isAuthenticated) {
         return (
             <div className="h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-black">
