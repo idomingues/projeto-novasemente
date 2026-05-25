@@ -2,6 +2,7 @@ import { router, useForm } from '@inertiajs/react';
 import { useEffect, useState, FormEventHandler } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
 import { CheckCircleIcon, ChatBubbleLeftRightIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import PersonListIdentity from '@/Components/PersonListIdentity';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import InputLabel from '@/Components/InputLabel';
@@ -32,6 +33,7 @@ export type SupportTicketShape = {
     createdAt: string;
     closedAt: string | null;
     ownerLabel: string;
+    ownerPhotoUrl?: string | null;
     isGuest: boolean;
     /** Agendamento pastoral sem conta na app: equipe pode usar o chat no backoffice. */
     allowStaffInternalChat?: boolean;
@@ -220,67 +222,54 @@ export default function SupportTicketDetailPanel({
 
     return (
         <div className={`space-y-6 ${isModal ? 'pb-1' : ''}`}>
-            {showDetails && (
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0">
-                    <div className="flex items-center gap-2 min-w-0">
-                        <ChatBubbleLeftRightIcon
-                            className={`shrink-0 text-zinc-400 dark:text-zinc-500 ${isModal ? 'w-6 h-6' : 'w-7 h-7'}`}
-                            aria-hidden
+            {showDetails && !isModal ? (
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 flex-1 space-y-3">
+                        <PersonListIdentity
+                            name={ticket.ownerLabel}
+                            photoUrl={ticket.ownerPhotoUrl}
+                            nameClassName="text-lg font-semibold text-zinc-900 dark:text-white"
                         />
-                        <h1
-                            className={`font-bold text-zinc-900 dark:text-white truncate ${isModal ? 'text-lg sm:text-xl' : 'text-2xl'}`}
-                        >
-                            {isModal ? ticket.typeLabel : 'Suporte do app'}
-                        </h1>
+                        <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+                            <span
+                                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusVisual(ticket.status)}`}
+                            >
+                                {ticket.statusLabel ?? (ticket.status === 'open' ? 'Em andamento' : 'Encerrado')}
+                            </span>
+                            <span className="text-zinc-300 dark:text-zinc-600">·</span>
+                            <span>{ticket.typeLabel}</span>
+                        </div>
                     </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusVisual(ticket.status)}`}>
-                            {ticket.statusLabel ?? (ticket.status === 'open' ? 'Em andamento' : 'Encerrado')}
-                        </span>
-                        <span className="text-zinc-500 dark:text-zinc-400">{ticket.ownerLabel}</span>
-                        {isModal ? null : (
-                            <>
-                                <span className="text-zinc-300 dark:text-zinc-600">·</span>
-                                <span>{ticket.typeLabel}</span>
-                            </>
-                        )}
-                    </div>
-                </div>
-                {canManageTickets && (
-                    <div className="flex flex-wrap items-center gap-2 shrink-0">
-                        <SecondaryButton
-                            type="button"
-                            className={`inline-flex items-center gap-1.5 ${isModal ? 'h-10 px-4 text-xs uppercase tracking-wide' : ''}`}
-                            onClick={() => {
-                                setEditMessage(ticket.message);
-                                setShowEditModal(true);
-                            }}
-                        >
-                            <PencilIcon className="w-4 h-4" />
-                            Editar
-                        </SecondaryButton>
-                        {!isOpen && (
+                    {canManageTickets ? (
+                        <div className="flex shrink-0 flex-wrap items-center gap-2">
                             <SecondaryButton
                                 type="button"
-                                className={isModal ? 'h-10 px-4 text-xs uppercase tracking-wide' : ''}
-                                onClick={() => void reopenTicket()}
+                                className="inline-flex items-center gap-1.5"
+                                onClick={() => {
+                                    setEditMessage(ticket.message);
+                                    setShowEditModal(true);
+                                }}
                             >
-                                Reabrir
+                                <PencilIcon className="w-4 h-4" />
+                                Editar
                             </SecondaryButton>
-                        )}
-                        <SecondaryButton
-                            type="button"
-                            className={`inline-flex items-center gap-1.5 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-950/40 ${isModal ? 'h-10 px-4 text-xs uppercase tracking-wide' : ''}`}
-                            onClick={() => void deleteTicket()}
-                        >
-                            <TrashIcon className="w-4 h-4" />
-                            Excluir
-                        </SecondaryButton>
-                    </div>
-                )}
-            </div>
-            )}
+                            {!isOpen ? (
+                                <SecondaryButton type="button" onClick={() => void reopenTicket()}>
+                                    Reabrir
+                                </SecondaryButton>
+                            ) : null}
+                            <SecondaryButton
+                                type="button"
+                                className="inline-flex items-center gap-1.5 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-950/40"
+                                onClick={() => void deleteTicket()}
+                            >
+                                <TrashIcon className="w-4 h-4" />
+                                Excluir
+                            </SecondaryButton>
+                        </div>
+                    ) : null}
+                </div>
+            ) : null}
 
             {showDetails && (
             <div className="grid gap-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 sm:grid-cols-2">

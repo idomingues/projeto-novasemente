@@ -2,6 +2,7 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { MagnifyingGlassIcon, XMarkIcon, BookOpenIcon } from '@heroicons/react/24/outline';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { normalizeForSearch } from '@/utils/searchText';
 
 type Testament = 'old' | 'new';
 
@@ -43,10 +44,6 @@ type LastReading = {
 };
 
 const LAST_READING_STORAGE_KEY = 'ns:bible:lastReading:v1';
-
-function normalizeForSearch(s: string): string {
-    return s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
-}
 
 function readLastReading(): LastReading | null {
     if (typeof window === 'undefined') return null;

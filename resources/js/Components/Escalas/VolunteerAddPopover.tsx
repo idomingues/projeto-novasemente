@@ -1,6 +1,7 @@
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 import { MagnifyingGlassIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { useMemo, useState } from 'react';
+import { textIncludesSearch } from '@/utils/searchText';
 
 export interface VolunteerAddOptions {
     recurring?: boolean;
@@ -70,8 +71,8 @@ export default function VolunteerAddPopover({
 
     const filteredVolunteers = useMemo(() => {
         if (!nameFilter.trim()) return availableVolunteers;
-        const q = nameFilter.trim().toLowerCase();
-        return availableVolunteers.filter((v) => v.name.toLowerCase().includes(q));
+        const q = nameFilter.trim();
+        return availableVolunteers.filter((v) => textIncludesSearch(v.name, q));
     }, [availableVolunteers, nameFilter]);
 
     const pickVolunteer = (volunteerId: number, close: () => void) => {

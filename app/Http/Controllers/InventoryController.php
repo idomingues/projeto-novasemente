@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateInventoryItemRequest;
 use App\Models\Church;
 use App\Models\InventoryItem;
 use App\Models\InventoryMovement;
+use App\Support\SearchTerm;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -31,10 +32,11 @@ class InventoryController extends Controller
         $search = $request->input('search');
         if ($search && is_string($search)) {
             $term = trim($search);
-            $query->where(function ($q) use ($term) {
-                $q->where('barcode', 'like', '%'.$term.'%')
-                    ->orWhere('name', 'like', '%'.$term.'%')
-                    ->orWhere('serial_number', 'like', '%'.$term.'%');
+            $like = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $term).'%';
+            $query->where(function ($q) use ($term, $like) {
+                $q->where('barcode', 'like', $like)
+                    ->orWhere('serial_number', 'like', $like);
+                SearchTerm::orWhereAnyColumnLike($q, ['name'], $term);
             });
         }
 
@@ -156,10 +158,11 @@ class InventoryController extends Controller
         $search = $request->input('search');
         if ($search && is_string($search)) {
             $term = trim($search);
-            $query->where(function ($q) use ($term) {
-                $q->where('barcode', 'like', '%'.$term.'%')
-                    ->orWhere('name', 'like', '%'.$term.'%')
-                    ->orWhere('serial_number', 'like', '%'.$term.'%');
+            $like = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $term).'%';
+            $query->where(function ($q) use ($term, $like) {
+                $q->where('barcode', 'like', $like)
+                    ->orWhere('serial_number', 'like', $like);
+                SearchTerm::orWhereAnyColumnLike($q, ['name'], $term);
             });
         }
 

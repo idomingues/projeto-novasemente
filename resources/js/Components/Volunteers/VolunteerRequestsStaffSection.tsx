@@ -653,12 +653,14 @@ export default function VolunteerRequestsStaffSection({
 
     return (
         <div className="space-y-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-                <p className="max-w-3xl text-sm text-zinc-600 dark:text-zinc-400">
-                    {filters.arquivados
-                        ? 'Pedidos arquivados pela equipe — não aparecem na lista ativa nem no contador do menu.'
-                        : 'Pedidos ordenados por data (mais antigos primeiro). Toque num pedido para abrir o painel. Use o ícone de sugestão ou o + na lista para vincular voluntário em modal dedicado. Arquive quando o acompanhamento estiver encerrado.'}
-                </p>
+            <div
+                className={`flex flex-wrap items-start gap-3 ${filters.arquivados ? 'justify-between' : 'justify-end'}`}
+            >
+                {filters.arquivados ? (
+                    <p className="max-w-3xl text-sm text-zinc-600 dark:text-zinc-400">
+                        Pedidos arquivados pela equipe — não aparecem na lista ativa nem no contador do menu.
+                    </p>
+                ) : null}
                 <AddButton
                     variant="icon"
                     onClick={openModal}

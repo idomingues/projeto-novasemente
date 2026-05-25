@@ -193,5 +193,33 @@ class VolunteersTest extends TestCase
         $this->assertDatabaseHas('users', ['id' => $userId, 'is_volunteer' => false]);
         $this->assertDatabaseMissing('volunteers', ['user_id' => $userId]);
     }
+
+    public function test_can_delete_volunteer_and_linked_user_with_admin_panel_access(): void
+    {
+        $admin = $this->actingAsAdmin();
+
+        $panelUser = User::factory()->create(['email' => 'secretaria.excluir@example.com']);
+        $panelUser->assignRole(Role::firstOrCreate(['name' => 'secretaria']));
+        $this->assertTrue($panelUser->canAccessAdminMenu());
+
+        $volunteer = Volunteer::query()->create([
+            'user_id' => $panelUser->id,
+            'email' => $panelUser->email,
+            'name' => 'Secretaria Voluntária',
+            'active' => true,
+        ]);
+
+        $response = $this->actingAs($admin)->post("/volunteers/{$volunteer->id}", [
+            '_method' => 'delete',
+            'delete_linked_user' => true,
+        ]);
+
+        $response->assertRedirect('/volunteers');
+        $response->assertSessionHas('success');
+        $response->assertSessionDoesntHaveErrors();
+
+        $this->assertDatabaseMissing('volunteers', ['id' => $volunteer->id]);
+        $this->assertDatabaseMissing('users', ['id' => $panelUser->id]);
+    }
 }
 

@@ -13,6 +13,8 @@ import PageHeader from '@/Components/PageHeader';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import SelectInput from '@/Components/SelectInput';
+import PersonListIdentity from '@/Components/PersonListIdentity';
+import PersonModalHeader from '@/Components/PersonModalHeader';
 import SolicitationDetailPanel, { type SolicitationDetailPanelProps } from '@/Components/Solicitations/SolicitationDetailPanel';
 import TextInput from '@/Components/TextInput';
 import AdminLayout from '@/Layouts/AdminLayout';
@@ -36,6 +38,7 @@ type CommunicationRow = {
     priority: string;
     priority_label: string;
     requester_name: string | null;
+    requester_photo_url?: string | null;
     can_edit: boolean;
     panel_json_url: string;
 };
@@ -54,6 +57,7 @@ interface Props {
     artChannelOptions: Array<{ value: string; label: string }>;
     coverageSupportOptions: Array<{ value: string; label: string }>;
     maxAttachments: number;
+    ministryOptions: Array<{ value: number; label: string }>;
     filters: {
         status: string;
         demand_type: string;
@@ -91,6 +95,7 @@ export default function CommunicationRequestsIndex({
     artChannelOptions,
     coverageSupportOptions,
     maxAttachments,
+    ministryOptions,
     filters,
 }: Props) {
     const page = usePage();
@@ -107,7 +112,7 @@ export default function CommunicationRequestsIndex({
         demand_type: '',
         priority: '',
         event_date: '',
-        ministry_name: '',
+        ministry_id: '',
         preferred_date: '',
         message: '',
         art_channels: [],
@@ -372,6 +377,15 @@ export default function CommunicationRequestsIndex({
                         >
                             <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0 flex-1">
+                                    {row.requester_name ? (
+                                        <div className="mb-3">
+                                            <PersonListIdentity
+                                                name={row.requester_name}
+                                                photoUrl={row.requester_photo_url}
+                                                nameClassName="font-semibold text-zinc-900 dark:text-white"
+                                            />
+                                        </div>
+                                    ) : null}
                                     <div className="flex flex-wrap items-center gap-2">
                                         <ChatBubbleLeftRightIcon className="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-400" aria-hidden />
                                         <span className="text-base font-semibold text-zinc-900 dark:text-white">{row.subject}</span>
@@ -380,7 +394,6 @@ export default function CommunicationRequestsIndex({
                                         </span>
                                     </div>
                                     <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
-                                        {mode === 'staff' && row.requester_name ? <span>Por {row.requester_name}</span> : null}
                                         <span>{row.demand_type_label}</span>
                                         <span>Prioridade: {row.priority_label}</span>
                                         {row.event_date ? <span>Evento: {row.event_date}</span> : null}
@@ -434,6 +447,10 @@ export default function CommunicationRequestsIndex({
                         artChannelOptions={artChannelOptions}
                         coverageSupportOptions={coverageSupportOptions}
                         maxAttachments={maxAttachments}
+                        ministryOptions={ministryOptions.map((o) => ({
+                            value: String(o.value),
+                            label: o.label,
+                        }))}
                     />
                     
                 </form>
@@ -441,23 +458,20 @@ export default function CommunicationRequestsIndex({
 
             <Modal show={panelOpen} onClose={closePanel} disableBodyScroll maxWidth="2xl">
                 <div className="flex max-h-[min(100dvh-1rem,880px)] min-h-0 w-full flex-col overflow-hidden sm:max-h-[min(90dvh,860px)]">
-                    <div className="flex shrink-0 items-start gap-3 border-b border-zinc-200 px-5 pb-3 pt-4 dark:border-zinc-800 sm:px-6 sm:pb-4 sm:pt-5">
-                        <InboxIcon className="mt-0.5 h-6 w-6 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
-                        <div className="min-w-0 flex-1 pr-10">
-                            <h2 className="truncate text-lg font-semibold leading-tight text-zinc-900 dark:text-white">
-                                {panelPayload?.solicitation?.typeLabel ?? 'Solicitação de comunicação'}
-                            </h2>
-                            {panelPayload?.solicitation?.memberLabel ? (
-                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                    Solicitante:{' '}
-                                    <span className="font-medium text-zinc-700 dark:text-zinc-300">
-                                        {panelPayload.solicitation.memberLabel}
-                                    </span>
-                                    <span className="mx-1.5 text-zinc-300 dark:text-zinc-600">·</span>
-                                    <span className="font-mono text-zinc-400 dark:text-zinc-500">#{panelPayload.solicitation.id}</span>
-                                </p>
-                            ) : null}
-                        </div>
+                    <div className="shrink-0 border-b border-zinc-200 px-5 pb-3 pt-4 dark:border-zinc-800 sm:px-6 sm:pb-4 sm:pt-5">
+                        {panelPayload?.solicitation ? (
+                            <PersonModalHeader
+                                person={{
+                                    name: panelPayload.solicitation.memberLabel ?? null,
+                                    photoUrl: panelPayload.solicitation.memberPhotoUrl,
+                                }}
+                                subtitle={panelPayload.solicitation.typeLabel ?? 'Solicitação de comunicação'}
+                                badge={`#${panelPayload.solicitation.id}`}
+                                onClose={closePanel}
+                            />
+                        ) : (
+                            <h2 className="pr-10 text-lg font-semibold text-zinc-900 dark:text-white">Solicitação de comunicação</h2>
+                        )}
                     </div>
 
                     {panelOpen && (

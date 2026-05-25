@@ -6,6 +6,7 @@ use App\Models\CampaignDonation;
 use App\Models\Church;
 use App\Models\DonationCampaign;
 use App\Models\User;
+use App\Support\SearchTerm;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -78,10 +79,11 @@ class TreasurerDashboardController extends Controller
         $filteredQuery = clone $baseQuery;
 
         if ($search !== '') {
-            $filteredQuery->where(function ($q) use ($search) {
-                $q->whereHas('user', fn ($uq) => $uq->where('name', 'like', '%'.$search.'%'))
-                    ->orWhereHas('campaign', fn ($cq) => $cq->where('title', 'like', '%'.$search.'%'))
-                    ->orWhere('amount', 'like', '%'.$search.'%');
+            $amountLike = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $search).'%';
+            $filteredQuery->where(function ($q) use ($search, $amountLike) {
+                $q->where('amount', 'like', $amountLike);
+                $q->orWhereHas('user', fn ($uq) => SearchTerm::whereAnyColumnLike($uq, ['name'], $search));
+                $q->orWhereHas('campaign', fn ($cq) => SearchTerm::whereAnyColumnLike($cq, ['title'], $search));
             });
         }
 

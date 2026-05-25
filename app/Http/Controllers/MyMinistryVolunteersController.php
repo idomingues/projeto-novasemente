@@ -5,24 +5,21 @@ namespace App\Http\Controllers;
 use App\Actions\Volunteers\ApplyVolunteerMinistryLeaderStatusUpdate;
 use App\Actions\Volunteers\BuildVolunteerMinistryInvitePlainCopy;
 use App\Actions\Volunteers\NotifyVolunteerMinistryInvitation;
-use App\Support\VolunteerInvitationStatusLabels;
-use App\Support\VolunteerPipelineBootstrap;
 use App\Models\Church;
 use App\Models\ChurchSolicitation;
 use App\Models\Ministry;
 use App\Models\ScheduleRole;
 use App\Models\Volunteer;
 use App\Models\VolunteerClearanceCheck;
-use App\Models\VolunteerLeaderNote;
 use App\Models\VolunteerMinistryInvitation;
 use App\Models\VolunteerMinistryInvitationStatusHistory;
-use Illuminate\Support\Facades\Schema;
+use App\Support\VolunteerInvitationStatusLabels;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -101,7 +98,7 @@ class MyMinistryVolunteersController extends Controller
             ->whereHas('ministries', fn ($q) => $q->where('ministries.church_id', $churchId)->whereIn('ministries.id', $leaderMinistryIds))
             ->with([
                 'ministries' => fn ($q) => $q->where('ministries.church_id', $churchId)->whereIn('ministries.id', $leaderMinistryIds)->select('ministries.id', 'ministries.name'),
-                'user:id,email',
+                'user:id,email,photo_url',
             ])
             ->orderBy('name')
             ->get([
@@ -133,54 +130,55 @@ class MyMinistryVolunteersController extends Controller
                     $invitation = $this->invitationForVolunteerMinistry($churchId, (int) $v->id, (int) $m->id);
 
                     return [
-                    'id' => $invitation ? (string) $invitation->id : 'active-'.$v->id.'-'.$m->id,
-                    'ministryId' => (int) $m->id,
-                    'createdAt' => $invitation?->created_at?->toIso8601String(),
-                    'ministryName' => (string) $m->name,
-                    'volunteer' => [
-                        'id' => (int) $v->id,
-                        'name' => $v->name,
-                        'email' => $v->email,
-                        'phone' => $v->phone,
-                        'birthDate' => $v->birth_date?->toDateString(),
-                        'hasWhatsapp' => $v->has_whatsapp,
-                        'hasSocialNetworks' => $v->has_social_networks,
-                        'attendanceDuration' => $v->attendance_duration,
-                        'isOfficialMember' => $v->is_official_member,
-                        'memberRecordAtNovaSemente' => $v->member_record_at_nova_semente,
-                        'memberRecordChurch' => $v->member_record_church,
-                        'hasPreviousMinistryVolunteerExperience' => $v->has_previous_ministry_volunteer_experience,
-                        'previousMinistryDetails' => $v->previous_ministry_details,
-                        'professionalArea' => $v->professional_area,
-                        'ministryInvolvement' => $v->ministry_involvement,
-                        'otherMinistryInterest' => $v->other_ministry_interest,
-                        'giftsToDevelop' => $v->gifts_to_develop,
-                        'needsPastoralGuidance' => $v->needs_pastoral_guidance,
-                        'lgpdDataConsent' => $v->lgpd_data_consent,
-                        'role' => $v->role,
-                        'appAccessOnly' => (bool) ($v->app_access_only ?? false),
-                        'linkedUser' => $v->user ? ['id' => (int) $v->user->id, 'email' => $v->user->email] : null,
-                    ],
-                    'inviteStatus' => $invitation?->status ?? 'active_roster',
-                    'inviteStatusLabel' => VolunteerInvitationStatusLabels::forInvitation($invitation),
-                    'invitePlainMessage' => $invitation
-                        ? BuildVolunteerMinistryInvitePlainCopy::for($invitation)
-                        : null,
-                    'inviteSentAt' => $invitation?->sent_at?->toIso8601String(),
-                    'volunteerHasLinkedUser' => $v->user_id !== null,
-                    'canSendInvite' => $invitation
-                        ? ($invitation->status === 'pending' && ! $invitation->isExpired())
-                        : false,
-                    'leaderStatus' => $invitation?->leader_status ?? 'active',
-                    'leaderNote' => $invitation?->leader_note,
-                    'updateUrl' => $invitation
-                        ? route('ministry-lead.my-volunteers.update', $invitation)
-                        : route('ministry-lead.my-volunteers.volunteer.leader-status', [$v, $m]),
-                    'historyUrl' => $invitation
-                        ? route('ministry-lead.my-volunteers.history', $invitation)
-                        : route('ministry-lead.my-volunteers.volunteer.history', [$v, $m]),
-                    'removeFromMinistryUrl' => route('ministry-lead.my-volunteers.volunteer.remove-from-ministry', [$v, $m]),
-                ];
+                        'id' => $invitation ? (string) $invitation->id : 'active-'.$v->id.'-'.$m->id,
+                        'ministryId' => (int) $m->id,
+                        'createdAt' => $invitation?->created_at?->toIso8601String(),
+                        'ministryName' => (string) $m->name,
+                        'volunteer' => [
+                            'id' => (int) $v->id,
+                            'name' => $v->name,
+                            'email' => $v->email,
+                            'phone' => $v->phone,
+                            'birthDate' => $v->birth_date?->toDateString(),
+                            'hasWhatsapp' => $v->has_whatsapp,
+                            'hasSocialNetworks' => $v->has_social_networks,
+                            'attendanceDuration' => $v->attendance_duration,
+                            'isOfficialMember' => $v->is_official_member,
+                            'memberRecordAtNovaSemente' => $v->member_record_at_nova_semente,
+                            'memberRecordChurch' => $v->member_record_church,
+                            'hasPreviousMinistryVolunteerExperience' => $v->has_previous_ministry_volunteer_experience,
+                            'previousMinistryDetails' => $v->previous_ministry_details,
+                            'professionalArea' => $v->professional_area,
+                            'ministryInvolvement' => $v->ministry_involvement,
+                            'otherMinistryInterest' => $v->other_ministry_interest,
+                            'giftsToDevelop' => $v->gifts_to_develop,
+                            'needsPastoralGuidance' => $v->needs_pastoral_guidance,
+                            'lgpdDataConsent' => $v->lgpd_data_consent,
+                            'role' => $v->role,
+                            'appAccessOnly' => (bool) ($v->app_access_only ?? false),
+                            'linkedUser' => $v->user ? ['id' => (int) $v->user->id, 'email' => $v->user->email] : null,
+                            'photoUrl' => $v->user?->photo_url,
+                        ],
+                        'inviteStatus' => $invitation?->status ?? 'active_roster',
+                        'inviteStatusLabel' => VolunteerInvitationStatusLabels::forInvitation($invitation),
+                        'invitePlainMessage' => $invitation
+                            ? BuildVolunteerMinistryInvitePlainCopy::for($invitation)
+                            : null,
+                        'inviteSentAt' => $invitation?->sent_at?->toIso8601String(),
+                        'volunteerHasLinkedUser' => $v->user_id !== null,
+                        'canSendInvite' => $invitation
+                            ? ($invitation->status === 'pending' && ! $invitation->isExpired())
+                            : false,
+                        'leaderStatus' => $invitation?->leader_status ?? 'active',
+                        'leaderNote' => $invitation?->leader_note,
+                        'updateUrl' => $invitation
+                            ? route('ministry-lead.my-volunteers.update', $invitation)
+                            : route('ministry-lead.my-volunteers.volunteer.leader-status', [$v, $m]),
+                        'historyUrl' => $invitation
+                            ? route('ministry-lead.my-volunteers.history', $invitation)
+                            : route('ministry-lead.my-volunteers.volunteer.history', [$v, $m]),
+                        'removeFromMinistryUrl' => route('ministry-lead.my-volunteers.volunteer.remove-from-ministry', [$v, $m]),
+                    ];
                 });
             })
             ->sortBy([
@@ -239,7 +237,7 @@ class MyMinistryVolunteersController extends Controller
             ->where('church_id', $churchId)
             ->where('type', MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST)
             ->where('user_id', $leaderUserId)
-            ->with(['assignedVolunteer:id,name,email,phone,birth_date,has_whatsapp,has_social_networks,attendance_duration,is_official_member,member_record_at_nova_semente,member_record_church,has_previous_ministry_volunteer_experience,previous_ministry_details,professional_area,ministry_involvement,other_ministry_interest,gifts_to_develop,needs_pastoral_guidance,lgpd_data_consent,role,app_access_only'])
+            ->with(['assignedVolunteer:id,name,email,phone,birth_date,has_whatsapp,has_social_networks,attendance_duration,is_official_member,member_record_at_nova_semente,member_record_church,has_previous_ministry_volunteer_experience,previous_ministry_details,professional_area,ministry_involvement,other_ministry_interest,gifts_to_develop,needs_pastoral_guidance,lgpd_data_consent,role,app_access_only,user_id', 'assignedVolunteer.user:id,photo_url'])
             ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->limit(100)
@@ -278,6 +276,7 @@ class MyMinistryVolunteersController extends Controller
                         'lgpdDataConsent' => $s->assignedVolunteer->lgpd_data_consent,
                         'role' => $s->assignedVolunteer->role,
                         'appAccessOnly' => (bool) ($s->assignedVolunteer->app_access_only ?? false),
+                        'photoUrl' => $s->assignedVolunteer->user?->photo_url,
                     ];
                 }
 
@@ -402,7 +401,7 @@ class MyMinistryVolunteersController extends Controller
                         'lgpd_data_consent',
                         'role',
                         'app_access_only'
-                    )->with(['user:id,email']);
+                    )->with(['user:id,email,photo_url']);
                 },
                 'ministry:id,name',
                 'church:id,ministry_invitation_intro',
@@ -450,6 +449,7 @@ class MyMinistryVolunteersController extends Controller
                 'role' => $i->volunteer?->role,
                 'appAccessOnly' => (bool) ($i->volunteer?->app_access_only ?? false),
                 'linkedUser' => $i->volunteer?->user ? ['id' => (int) $i->volunteer->user->id, 'email' => $i->volunteer->user->email] : null,
+                'photoUrl' => $i->volunteer?->user?->photo_url,
             ],
             // status do convite (cadastro do voluntário)
             'inviteStatus' => $i->status,

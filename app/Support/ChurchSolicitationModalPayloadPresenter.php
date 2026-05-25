@@ -148,6 +148,7 @@ class ChurchSolicitationModalPayloadPresenter
     private static function base(ChurchSolicitation $s): array
     {
         $s->loadMissing([
+            'user:id,name,photo_url',
             'assignedPastor:id,name',
             'assignedVolunteer.user:id,name',
         ]);
@@ -197,6 +198,7 @@ class ChurchSolicitationModalPayloadPresenter
                 'createdAt' => $s->created_at?->toIso8601String(),
                 'completedAt' => $s->completed_at?->toIso8601String(),
                 'memberLabel' => $s->memberDisplayName(),
+                'memberPhotoUrl' => $s->memberPhotoUrl(),
                 'isInformalPastoral' => $s->type === MobileChurchSolicitationController::TYPE_PASTORAL_INFORMAL,
             ],
             'messages' => $messages,

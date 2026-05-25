@@ -1,4 +1,5 @@
 import SecondaryButton from '@/Components/SecondaryButton';
+import UserListAvatar from '@/Components/UserListAvatar';
 
 export default function RecordDetailHeader({
     title,
@@ -13,22 +14,10 @@ export default function RecordDetailHeader({
     badge?: string | null;
     onClose: () => void;
 }) {
-    const initial = title.trim().charAt(0).toUpperCase() || '?';
-
     return (
         <div className="flex items-start justify-between gap-4 rounded-2xl border border-teal-200/70 bg-gradient-to-br from-teal-50/90 via-white to-white p-4 dark:border-teal-900/50 dark:from-teal-950/35 dark:via-zinc-900/80 dark:to-zinc-900/80">
             <div className="flex min-w-0 items-center gap-4">
-                {photoUrl ? (
-                    <img
-                        src={photoUrl}
-                        alt=""
-                        className="h-20 w-20 shrink-0 rounded-full object-cover ring-2 ring-white shadow-sm dark:ring-zinc-800"
-                    />
-                ) : (
-                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-lg font-semibold text-zinc-500 ring-2 ring-white dark:bg-zinc-700 dark:text-zinc-400 dark:ring-zinc-800">
-                        {initial}
-                    </div>
-                )}
+                <UserListAvatar name={title} photoUrl={photoUrl} size="lg" previewOnClick />
                 <div className="min-w-0">
                     <h2 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-white">{title}</h2>
                     {subtitle ? <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">{subtitle}</p> : null}

@@ -7,6 +7,7 @@ use App\Models\Invitation;
 use App\Models\LeaderSelfSignupToken;
 use App\Models\Ministry;
 use App\Models\User;
+use App\Support\SearchTerm;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -29,13 +30,7 @@ class UserController extends Controller
             $users = User::query()
                 ->where('church_id', $churchId)
                 ->with(['roles', 'ministries'])
-                ->when($search !== '', function ($q) use ($search) {
-                    $like = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $search).'%';
-                    $q->where(function ($q2) use ($like) {
-                        $q2->where('name', 'like', $like)
-                            ->orWhere('email', 'like', $like);
-                    });
-                })
+                ->when($search !== '', fn ($q) => SearchTerm::whereAnyColumnLike($q, ['name', 'email'], $search))
                 ->orderBy('name')
                 ->get();
         }

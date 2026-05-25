@@ -12,6 +12,7 @@ use App\Models\SharedTalentReview;
 use App\Models\User;
 use App\Services\SharedTalentNotifier;
 use App\Services\SharedTalentService;
+use App\Support\SearchTerm;
 use App\Support\SharedTalentEnrollmentStatus;
 use App\Support\SharedTalentListingStatus;
 use Illuminate\Http\RedirectResponse;
@@ -136,10 +137,7 @@ class SharedTalentController extends Controller
             ->whereIn('status', SharedTalentListingStatus::catalogStatuses());
 
         if ($search = trim((string) $request->input('q', ''))) {
-            $query->where(function ($q) use ($search) {
-                $q->where('title', 'like', '%'.$search.'%')
-                    ->orWhere('description', 'like', '%'.$search.'%');
-            });
+            SearchTerm::whereAnyColumnLike($query, ['title', 'description'], $search);
         }
 
         if ($categoryId = $request->integer('category_id')) {

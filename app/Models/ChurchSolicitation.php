@@ -103,6 +103,20 @@ class ChurchSolicitation extends Model
         return $this->user?->name ?? 'Usuário #'.$this->user_id;
     }
 
+    public function memberPhotoUrl(): ?string
+    {
+        if ($this->type === \App\Http\Controllers\MobileChurchSolicitationController::TYPE_PASTORAL_INFORMAL) {
+            $uid = $this->informalPastoralLinkedMemberUserId();
+            if ($uid === null) {
+                return null;
+            }
+
+            return User::query()->whereKey($uid)->value('photo_url');
+        }
+
+        return $this->user?->photo_url;
+    }
+
     public function informalPastoralLinkedMemberUserId(): ?int
     {
         if ($this->type !== \App\Http\Controllers\MobileChurchSolicitationController::TYPE_PASTORAL_INFORMAL) {

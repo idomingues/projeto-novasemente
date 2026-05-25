@@ -5,7 +5,6 @@ namespace App\Support;
 use App\Models\AppSupportMessage;
 use App\Models\AppSupportTicket;
 use App\Models\User;
-use App\Support\StorageUrl;
 
 class SupportTicketAdminPresenter
 {
@@ -52,7 +51,7 @@ class SupportTicketAdminPresenter
      */
     public static function adminPayload(AppSupportTicket $ticket, User $viewer): array
     {
-        $ticket->loadMissing('user:id,name');
+        $ticket->loadMissing('user:id,name,photo_url');
 
         $messages = AppSupportMessage::query()
             ->where('ticket_id', $ticket->id)
@@ -94,6 +93,7 @@ class SupportTicketAdminPresenter
                 'createdAt' => $ticket->created_at?->toIso8601String(),
                 'closedAt' => $ticket->closed_at?->toIso8601String(),
                 'ownerLabel' => $ticket->user_id ? ($ticket->user?->name ?? 'Usuário') : ($ticket->guest_name ?? 'Convidado'),
+                'ownerPhotoUrl' => $ticket->user?->photo_url,
             ],
             'messages' => $messages,
             'supportUpdateUrl' => route('support.update', ['token' => $publicToken]),

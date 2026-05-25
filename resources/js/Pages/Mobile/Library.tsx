@@ -50,13 +50,7 @@ interface ReaderSegment {
     html: string;
 }
 
-function normalizeSearch(s: string): string {
-    return s
-        .trim()
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '');
-}
+import { normalizeForSearch } from '@/utils/searchText';
 
 function GratisBadge({ className = '' }: { className?: string }) {
     return (
@@ -93,11 +87,11 @@ export default function MobileLibrary({
     const isConfiguredExternalTab = tab === 'meditation' || tab === 'lesson';
 
     const filtered = useMemo(() => {
-        const q = normalizeSearch(search);
+        const q = normalizeForSearch(search);
         return books.filter((b) => {
             if (b.category !== tab) return false;
             if (!q) return true;
-            const t = normalizeSearch(b.title + (b.subtitle ? ` ${b.subtitle}` : ''));
+            const t = normalizeForSearch(b.title + (b.subtitle ? ` ${b.subtitle}` : ''));
             return t.includes(q);
         });
     }, [books, tab, search]);

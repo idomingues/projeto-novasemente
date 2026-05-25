@@ -8,6 +8,7 @@ use App\Models\Volunteer;
 use App\Models\VolunteerClearanceCheck;
 use App\Models\VolunteerClearanceCriterion;
 use App\Services\VolunteerMinistryRosterNotifier;
+use App\Support\SearchTerm;
 use App\Support\VolunteerRosterAssistantHeuristics;
 use App\Support\VolunteerRosterSignals;
 use Illuminate\Database\Eloquent\Builder;
@@ -84,11 +85,7 @@ class MinistryLeadVolunteerController extends Controller
     {
         $search = trim((string) $request->input('search', ''));
         if ($search !== '') {
-            $q->where(function ($sub) use ($search) {
-                $sub->where('name', 'like', '%'.$search.'%')
-                    ->orWhere('email', 'like', '%'.$search.'%')
-                    ->orWhere('phone', 'like', '%'.$search.'%');
-            });
+            SearchTerm::whereAnyColumnLike($q, ['name', 'email', 'phone'], $search);
         }
 
         foreach ([
@@ -321,10 +318,7 @@ class MinistryLeadVolunteerController extends Controller
                     ->orWhereHas('ministries', fn ($mq) => $mq->where('church_id', $churchId));
             })
             ->whereDoesntHave('ministries', fn ($mq) => $mq->where('ministries.id', $ministry->id))
-            ->where(function ($sub) use ($q) {
-                $sub->where('name', 'like', '%'.$q.'%')
-                    ->orWhere('email', 'like', '%'.$q.'%');
-            })
+            ->tap(fn ($sub) => SearchTerm::whereAnyColumnLike($sub, ['name', 'email'], $q))
             ->orderBy('name')
             ->limit(20)
             ->get(['id', 'name', 'email']);

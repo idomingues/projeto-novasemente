@@ -11,6 +11,7 @@ use App\Services\SolicitationChatNotifier;
 use App\Support\BaptismSolicitationStatus;
 use App\Support\ChurchSolicitationModalPayloadPresenter;
 use App\Support\PastoralSolicitationStatus;
+use App\Support\SearchTerm;
 use App\Support\SolicitationAssignees;
 use App\Support\SupportTicketAdminPresenter;
 use App\Support\VolunteerRequestStaffRoutes;
@@ -133,7 +134,7 @@ class SolicitationAdminController extends Controller
         $solRows = [];
         if ($kindStr !== 'pastoral') {
             $query = ChurchSolicitation::query()->with([
-                'user:id,name',
+                'user:id,name,photo_url',
                 'assignedPastor:id,name',
                 'assignedVolunteer.user:id,name',
             ]);
@@ -150,33 +151,54 @@ class SolicitationAdminController extends Controller
             }
 
             if (trim($qStr) !== '') {
-                $needle = '%'.str_replace(['%', '_'], ['\\%', '\\_'], trim($qStr)).'%';
-                $query->where(function ($sub) use ($needle) {
-                    $sub->where('message', 'like', $needle)
-                        ->orWhere('subject', 'like', $needle)
-                        ->orWhereHas('user', fn ($uq) => $uq->where('name', 'like', $needle));
+                $term = trim($qStr);
+                $query->where(function ($sub) use ($term) {
+                    SearchTerm::whereAnyColumnLike($sub, ['message', 'subject'], $term);
+                    $sub->orWhereHas('user', fn ($uq) => SearchTerm::whereAnyColumnLike($uq, ['name'], $term));
                 });
             }
 
-            $solRows = $query
+            $solicitations = $query
                 ->orderByDesc('updated_at')
                 ->limit(100)
-                ->get()
-                ->map(fn (ChurchSolicitation $s) => [
-                    'kind' => 'solicitation',
-                    'id' => $s->id,
-                    'tagLabel' => 'Solicitação',
-                    'type' => $s->type,
-                    'typeLabel' => MobileChurchSolicitationController::typeLabel($s->type),
-                    'status' => $s->status,
-                    'statusLabel' => $s->type === 'leader_chat'
-                        ? PastoralSolicitationStatus::label((string) $s->status, 'leader_chat')
-                        : PastoralSolicitationStatus::label((string) $s->status),
-                    'messageExcerpt' => mb_strimwidth(strip_tags($s->message), 0, 100, '…'),
-                    'preferredDate' => $s->preferred_date?->format('Y-m-d'),
-                    'updatedAt' => $s->updated_at?->toIso8601String(),
-                    'memberLabel' => $s->memberDisplayName(),
-                ])
+                ->get();
+
+            $informalMemberIds = $solicitations
+                ->filter(fn (ChurchSolicitation $s) => $s->type === MobileChurchSolicitationController::TYPE_PASTORAL_INFORMAL)
+                ->map(fn (ChurchSolicitation $s) => $s->informalPastoralLinkedMemberUserId())
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            $informalPhotoByUserId = $informalMemberIds === []
+                ? []
+                : User::query()->whereIn('id', $informalMemberIds)->pluck('photo_url', 'id')->all();
+
+            $solRows = $solicitations
+                ->map(function (ChurchSolicitation $s) use ($informalPhotoByUserId) {
+                    $linkedMemberId = $s->informalPastoralLinkedMemberUserId();
+                    $memberPhotoUrl = $s->type === MobileChurchSolicitationController::TYPE_PASTORAL_INFORMAL
+                        ? ($linkedMemberId !== null ? ($informalPhotoByUserId[$linkedMemberId] ?? null) : null)
+                        : $s->user?->photo_url;
+
+                    return [
+                        'kind' => 'solicitation',
+                        'id' => $s->id,
+                        'tagLabel' => 'Solicitação',
+                        'type' => $s->type,
+                        'typeLabel' => MobileChurchSolicitationController::typeLabel($s->type),
+                        'status' => $s->status,
+                        'statusLabel' => $s->type === 'leader_chat'
+                            ? PastoralSolicitationStatus::label((string) $s->status, 'leader_chat')
+                            : PastoralSolicitationStatus::label((string) $s->status),
+                        'messageExcerpt' => mb_strimwidth(strip_tags($s->message), 0, 100, '…'),
+                        'preferredDate' => $s->preferred_date?->format('Y-m-d'),
+                        'updatedAt' => $s->updated_at?->toIso8601String(),
+                        'memberLabel' => $s->memberDisplayName(),
+                        'memberPhotoUrl' => $memberPhotoUrl,
+                    ];
+                })
                 ->values()
                 ->all();
         }
@@ -186,7 +208,7 @@ class SolicitationAdminController extends Controller
             || ($kindStr === '' && is_string($type) && $type !== '');
         if (! $omitPastoralMerge && $this->canViewPastoral($user)) {
             $pQuery = PastoralAppointment::query()
-                ->with(['requesterUser:id,name', 'preferredPastor:id,name', 'supportTicket:id,public_token'])
+                ->with(['requesterUser:id,name,photo_url', 'preferredPastor:id,name', 'supportTicket:id,public_token'])
                 ->orderByDesc('updated_at')
                 ->limit(100);
 
@@ -198,11 +220,10 @@ class SolicitationAdminController extends Controller
             }
 
             if (trim($qStr) !== '') {
-                $needle = '%'.str_replace(['%', '_'], ['\\%', '\\_'], trim($qStr)).'%';
-                $pQuery->where(function ($sub) use ($needle) {
-                    $sub->where('subject', 'like', $needle)
-                        ->orWhere('notes', 'like', $needle)
-                        ->orWhereHas('requesterUser', fn ($uq) => $uq->where('name', 'like', $needle));
+                $term = trim($qStr);
+                $pQuery->where(function ($sub) use ($term) {
+                    SearchTerm::whereAnyColumnLike($sub, ['subject', 'notes'], $term);
+                    $sub->orWhereHas('requesterUser', fn ($uq) => SearchTerm::whereAnyColumnLike($uq, ['name'], $term));
                 });
             }
 
@@ -224,6 +245,7 @@ class SolicitationAdminController extends Controller
                     'preferredDate' => $a->preferred_start?->format('Y-m-d'),
                     'updatedAt' => ($a->updated_at ?? $a->created_at)?->toIso8601String(),
                     'memberLabel' => $a->requester_name ?: ($a->requesterUser?->name ?? 'Membro'),
+                    'memberPhotoUrl' => $a->requesterUser?->photo_url,
                 ])
                 ->values()
                 ->all();
@@ -462,11 +484,10 @@ class SolicitationAdminController extends Controller
 
         $q = $request->query('q');
         if (is_string($q) && trim($q) !== '') {
-            $needle = '%'.str_replace(['%', '_'], ['\\%', '\\_'], trim($q)).'%';
-            $query->where(function ($sub) use ($needle) {
-                $sub->where('message', 'like', $needle)
-                    ->orWhere('subject', 'like', $needle)
-                    ->orWhereHas('user', fn ($uq) => $uq->where('name', 'like', $needle));
+            $term = trim($q);
+            $query->where(function ($sub) use ($term) {
+                SearchTerm::whereAnyColumnLike($sub, ['message', 'subject'], $term);
+                $sub->orWhereHas('user', fn ($uq) => SearchTerm::whereAnyColumnLike($uq, ['name'], $term));
             });
         }
 

@@ -7,21 +7,46 @@ import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PageHeader from '@/Components/PageHeader';
 import PrimaryButton from '@/Components/PrimaryButton';
+import RecordDetailHeader from '@/Components/RecordDetail/RecordDetailHeader';
 import SecondaryButton from '@/Components/SecondaryButton';
 import SelectInput from '@/Components/SelectInput';
 import Textarea from '@/Components/Textarea';
 import TextInput from '@/Components/TextInput';
+import UserListAvatar from '@/Components/UserListAvatar';
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 import {
     ChatBubbleLeftEllipsisIcon,
+    ChevronDownIcon,
     ClipboardDocumentIcon,
     EllipsisVerticalIcon,
     LinkIcon,
+    MagnifyingGlassIcon,
     TrashIcon,
 } from '@heroicons/react/24/outline';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { useEffect, useMemo, useState, type FormEventHandler } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEventHandler } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
+import { textMatchesSearchFields } from '@/utils/searchText';
+
+type VolunteerSortKey = 'name' | 'ministry' | 'invite' | 'leader';
+
+type VolunteerSortOption = {
+    value: string;
+    label: string;
+    sort: VolunteerSortKey;
+    sort_dir: 'asc' | 'desc';
+};
+
+const VOLUNTEER_SORT_OPTIONS: VolunteerSortOption[] = [
+    { value: 'name:asc', label: 'Nome (A–Z)', sort: 'name', sort_dir: 'asc' },
+    { value: 'name:desc', label: 'Nome (Z–A)', sort: 'name', sort_dir: 'desc' },
+    { value: 'ministry:asc', label: 'Departamento (A–Z)', sort: 'ministry', sort_dir: 'asc' },
+    { value: 'ministry:desc', label: 'Departamento (Z–A)', sort: 'ministry', sort_dir: 'desc' },
+    { value: 'invite:asc', label: 'Status do convite (A–Z)', sort: 'invite', sort_dir: 'asc' },
+    { value: 'invite:desc', label: 'Status do convite (Z–A)', sort: 'invite', sort_dir: 'desc' },
+    { value: 'leader:asc', label: 'Status (líder) (A–Z)', sort: 'leader', sort_dir: 'asc' },
+    { value: 'leader:desc', label: 'Status (líder) (Z–A)', sort: 'leader', sort_dir: 'desc' },
+];
 
 function compareVolunteerRows(a: VolunteerRow, b: VolunteerRow): number {
     const nameCmp = (a.volunteer.name ?? '').localeCompare(b.volunteer.name ?? '', 'pt-BR', {
@@ -35,6 +60,104 @@ function compareVolunteerRows(a: VolunteerRow, b: VolunteerRow): number {
 
 function sortVolunteerRows(rows: VolunteerRow[]): VolunteerRow[] {
     return [...rows].sort(compareVolunteerRows);
+}
+
+function rowMatchesSearch(row: VolunteerRow, query: string): boolean {
+    return textMatchesSearchFields(
+        query,
+        row.volunteer.name,
+        row.volunteer.email,
+        row.volunteer.phone,
+        row.ministryName,
+    );
+}
+
+function compareVolunteerRowsBySort(
+    a: VolunteerRow,
+    b: VolunteerRow,
+    sortKey: VolunteerSortKey,
+    sortDir: 'asc' | 'desc',
+    inviteLabelForRow: (row: VolunteerRow) => string,
+    leaderStatusLabel: (status: string | null) => string,
+): number {
+    let cmp = 0;
+    if (sortKey === 'name') {
+        cmp = (a.volunteer.name ?? '').localeCompare(b.volunteer.name ?? '', 'pt-BR', { sensitivity: 'base' });
+    } else if (sortKey === 'ministry') {
+        cmp = (a.ministryName ?? '').localeCompare(b.ministryName ?? '', 'pt-BR', { sensitivity: 'base' });
+    } else if (sortKey === 'invite') {
+        cmp = inviteLabelForRow(a).localeCompare(inviteLabelForRow(b), 'pt-BR', { sensitivity: 'base' });
+    } else {
+        cmp = leaderStatusLabel(a.leaderStatus).localeCompare(leaderStatusLabel(b.leaderStatus), 'pt-BR', {
+            sensitivity: 'base',
+        });
+    }
+    if (cmp === 0) {
+        cmp = compareVolunteerRows(a, b);
+    }
+    return sortDir === 'desc' ? -cmp : cmp;
+}
+
+function filterAndSortVolunteerRows(
+    rows: VolunteerRow[],
+    searchQuery: string,
+    sortValue: string,
+    inviteLabelForRow: (row: VolunteerRow) => string,
+    leaderStatusLabel: (status: string | null) => string,
+): VolunteerRow[] {
+    const option = VOLUNTEER_SORT_OPTIONS.find((o) => o.value === sortValue) ?? VOLUNTEER_SORT_OPTIONS[0];
+    return [...rows]
+        .filter((row) => rowMatchesSearch(row, searchQuery))
+        .sort((a, b) => compareVolunteerRowsBySort(a, b, option.sort, option.sort_dir, inviteLabelForRow, leaderStatusLabel));
+}
+
+type VolunteerIdentity = {
+    name: string | null;
+    email?: string | null;
+    photoUrl?: string | null;
+};
+
+function VolunteerListIdentity({
+    name,
+    email,
+    photoUrl,
+    nameClassName = 'font-medium text-zinc-900 dark:text-white',
+}: VolunteerIdentity & { nameClassName?: string }) {
+    const displayName = (name ?? '').trim() || '—';
+
+    return (
+        <div className="flex min-w-0 items-center gap-3">
+            <UserListAvatar name={displayName} photoUrl={photoUrl} size="md" />
+            <div className="min-w-0">
+                <div className={`truncate ${nameClassName}`}>{displayName}</div>
+                {email?.trim() ? (
+                    <div className="truncate text-xs text-zinc-500 dark:text-zinc-400">{email.trim()}</div>
+                ) : null}
+            </div>
+        </div>
+    );
+}
+
+function VolunteerModalHeader({
+    volunteer,
+    ministryName,
+    badge,
+    onClose,
+}: {
+    volunteer: VolunteerIdentity;
+    ministryName?: string | null;
+    badge: string;
+    onClose: () => void;
+}) {
+    return (
+        <RecordDetailHeader
+            title={(volunteer.name ?? '').trim() || 'Voluntário'}
+            subtitle={ministryName ?? 'Departamento'}
+            photoUrl={volunteer.photoUrl}
+            badge={badge}
+            onClose={onClose}
+        />
+    );
 }
 
 type VolunteerRow = {
@@ -78,6 +201,7 @@ type VolunteerRow = {
         role: string | null;
         appAccessOnly: boolean | null;
         linkedUser?: { id: number; email: string | null } | null;
+        photoUrl?: string | null;
     };
     inviteStatus: string;
     leaderStatus: string | null;
@@ -119,6 +243,8 @@ type HistoryRow = {
     changedBy: string | null;
 };
 
+type ScreenTabId = 'active' | 'training' | 'reviewing' | 'new' | 'requests';
+
 export default function MyVolunteers() {
     const { invitations, activeVolunteers, requestRows, requestMinistries, requestStoreUrl, churchMinistryInvitationIntro } = usePage()
         .props as unknown as {
@@ -134,12 +260,14 @@ export default function MyVolunteers() {
     const row = editingRow;
     const [profileRow, setProfileRow] = useState<VolunteerRow | null>(null);
     const [tab, setTab] = useState<'status' | 'history'>('status');
-    const [screenTab, setScreenTab] = useState<'active' | 'training' | 'new' | 'requests'>('new');
+    const [screenTab, setScreenTab] = useState<ScreenTabId>('new');
     const [history, setHistory] = useState<HistoryRow[] | null>(null);
     const [historyLoading, setHistoryLoading] = useState(false);
     const [requestModalOpen, setRequestModalOpen] = useState(false);
     const [inviteHelpRow, setInviteHelpRow] = useState<VolunteerRow | null>(null);
     const [inviteModalCopyFeedback, setInviteModalCopyFeedback] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [sortValue, setSortValue] = useState('name:asc');
 
     const form = useForm({
         leader_status: '' as '' | 'denied' | 'reviewing' | 'training' | 'active',
@@ -162,6 +290,10 @@ export default function MyVolunteers() {
     );
     const trainingRows = useMemo(
         () => sortVolunteerRows(invitations.data.filter((item) => item.leaderStatus === 'training')),
+        [invitations.data],
+    );
+    const reviewingRows = useMemo(
+        () => sortVolunteerRows(invitations.data.filter((item) => item.leaderStatus === 'reviewing')),
         [invitations.data],
     );
     const activeRows = useMemo(() => {
@@ -204,6 +336,9 @@ export default function MyVolunteers() {
             if (!current.volunteer.linkedUser && item.volunteer.linkedUser) {
                 current.volunteer.linkedUser = item.volunteer.linkedUser;
             }
+            if (!current.volunteer.photoUrl && item.volunteer.photoUrl) {
+                current.volunteer.photoUrl = item.volunteer.photoUrl;
+            }
             if (current.leaderStatus !== 'active' && item.leaderStatus === 'active') {
                 current.leaderStatus = 'active';
             }
@@ -217,6 +352,10 @@ export default function MyVolunteers() {
             setScreenTab('new');
             return;
         }
+        if (reviewingRows.length > 0) {
+            setScreenTab('reviewing');
+            return;
+        }
         if (trainingRows.length > 0) {
             setScreenTab('training');
             return;
@@ -226,7 +365,19 @@ export default function MyVolunteers() {
             return;
         }
         setScreenTab('requests');
-    }, [newRows.length, trainingRows.length, activeRows.length]);
+    }, [newRows.length, reviewingRows.length, trainingRows.length, activeRows.length]);
+
+    const volunteerScreenTabs = useMemo(
+        () =>
+            [
+                { id: 'new' as const, label: 'Novos', count: newRows.length },
+                { id: 'reviewing' as const, label: 'Em análise', count: reviewingRows.length },
+                { id: 'training' as const, label: 'Em treinamento', count: trainingRows.length },
+                { id: 'active' as const, label: 'Em atividade', count: activeRows.length },
+                { id: 'requests' as const, label: 'Solicitações', count: requestRows.length },
+            ] satisfies Array<{ id: ScreenTabId; label: string; count: number }>,
+        [newRows.length, reviewingRows.length, trainingRows.length, activeRows.length, requestRows.length],
+    );
 
     /** Texto plano do servidor (e-mail / WhatsApp) — BuildVolunteerMinistryInvitePlainCopy. */
     const invitePlainFullMessage = useMemo(() => {
@@ -481,19 +632,32 @@ export default function MyVolunteers() {
         return '—';
     };
 
-    const inviteLabel = (item: VolunteerRow) =>
-        item.inviteStatusLabel ??
-        (item.inviteStatus === 'accepted'
-            ? 'Aceito'
-            : item.inviteStatus === 'declined'
-              ? 'Recusado pelo voluntário'
-              : item.inviteStatus === 'pending'
-                ? item.inviteSentAt
-                    ? item.volunteerHasLinkedUser
-                        ? 'Aguardando resposta'
-                        : 'Aguardando cadastro'
-                    : 'Convite não enviado'
-                : item.inviteStatus || '—');
+    const inviteLabel = useCallback(
+        (item: VolunteerRow) =>
+            item.inviteStatusLabel ??
+            (item.inviteStatus === 'accepted'
+                ? 'Aceito'
+                : item.inviteStatus === 'declined'
+                  ? 'Recusado pelo voluntário'
+                  : item.inviteStatus === 'pending'
+                    ? item.inviteSentAt
+                        ? item.volunteerHasLinkedUser
+                            ? 'Aguardando resposta'
+                            : 'Aguardando cadastro'
+                        : 'Convite não enviado'
+                    : item.inviteStatus || '—'),
+        [],
+    );
+
+    const filterVolunteerRows = useCallback(
+        (rows: VolunteerRow[]) => filterAndSortVolunteerRows(rows, searchQuery, sortValue, inviteLabel, statusLabel),
+        [searchQuery, sortValue, inviteLabel],
+    );
+
+    const filteredNewRows = useMemo(() => filterVolunteerRows(newRows), [filterVolunteerRows, newRows]);
+    const filteredReviewingRows = useMemo(() => filterVolunteerRows(reviewingRows), [filterVolunteerRows, reviewingRows]);
+    const filteredTrainingRows = useMemo(() => filterVolunteerRows(trainingRows), [filterVolunteerRows, trainingRows]);
+    const filteredActiveRows = useMemo(() => filterVolunteerRows(activeRows), [filterVolunteerRows, activeRows]);
 
     const requestDateLabel = (iso: string | null) => {
         if (!iso) return '—';
@@ -566,8 +730,11 @@ export default function MyVolunteers() {
                         {rows.map((item) => (
                             <tr key={item.id} className="border-b border-zinc-100 dark:border-zinc-800">
                                 <td className="py-2 pr-3">
-                                    <div className="font-medium text-zinc-900 dark:text-white">{item.volunteer.name ?? '—'}</div>
-                                    <div className="text-xs text-zinc-500">{item.volunteer.email ?? ''}</div>
+                                    <VolunteerListIdentity
+                                        name={item.volunteer.name}
+                                        email={item.volunteer.email}
+                                        photoUrl={item.volunteer.photoUrl}
+                                    />
                                 </td>
                                 <td className="py-2 pr-3 text-zinc-700 dark:text-zinc-200">{item.ministryName ?? '—'}</td>
                                 <td className="py-2 pr-3 text-zinc-600 dark:text-zinc-300">{inviteLabel(item)}</td>
@@ -625,16 +792,12 @@ export default function MyVolunteers() {
                             >
                                 <div className="flex items-start gap-3">
                                     <div className="min-w-0 flex-1 space-y-2">
-                                        <div>
-                                            <div className="truncate font-semibold text-zinc-900 dark:text-white">
-                                                {item.volunteer.name ?? '—'}
-                                            </div>
-                                            {item.volunteer.email ? (
-                                                <div className="truncate text-xs text-zinc-500 dark:text-zinc-400">
-                                                    {item.volunteer.email}
-                                                </div>
-                                            ) : null}
-                                        </div>
+                                        <VolunteerListIdentity
+                                            name={item.volunteer.name}
+                                            email={item.volunteer.email}
+                                            photoUrl={item.volunteer.photoUrl}
+                                            nameClassName="font-semibold text-zinc-900 dark:text-white"
+                                        />
                                         <dl className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
                                             <div>
                                                 <dt className="font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
@@ -746,61 +909,116 @@ export default function MyVolunteers() {
             />
 
             <Card className="p-4">
-                <div className="mb-4 flex gap-2 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800">
-                    <button
-                        type="button"
-                        onClick={() => setScreenTab('active')}
-                        className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${
-                            screenTab === 'active'
-                                ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
-                                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
-                        }`}
-                    >
-                        Em atividade ({activeRows.length})
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setScreenTab('training')}
-                        className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${
-                            screenTab === 'training'
-                                ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
-                                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
-                        }`}
-                    >
-                        Em treinamento ({trainingRows.length})
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setScreenTab('requests')}
-                        className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${
-                            screenTab === 'requests'
-                                ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
-                                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
-                        }`}
-                    >
-                        Solicitações ({requestRows.length})
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setScreenTab('new')}
-                        className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${
-                            screenTab === 'new'
-                                ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
-                                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
-                        }`}
-                    >
-                        Novos ({newRows.length})
-                    </button>
+                <div className="mb-4 md:hidden">
+                    <label htmlFor="my-volunteers-tab" className="mb-1.5 block text-xs font-semibold text-zinc-600 dark:text-zinc-300">
+                        Visualizar
+                    </label>
+                    <div className="relative">
+                        <select
+                            id="my-volunteers-tab"
+                            value={screenTab}
+                            onChange={(e) => setScreenTab(e.target.value as ScreenTabId)}
+                            className="h-11 w-full appearance-none rounded-xl border border-zinc-200 bg-white py-0 pl-4 pr-10 text-sm font-medium text-zinc-900 shadow-sm focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400/30 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:focus:border-zinc-500 dark:focus:ring-zinc-500/30"
+                        >
+                            {volunteerScreenTabs.map((tab) => (
+                                <option key={tab.id} value={tab.id}>
+                                    {tab.label} ({tab.count})
+                                </option>
+                            ))}
+                        </select>
+                        <ChevronDownIcon
+                            className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500 dark:text-zinc-400"
+                            aria-hidden
+                        />
+                    </div>
                 </div>
 
+                <div className="mb-4 hidden gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800 md:grid md:grid-cols-3 lg:grid-cols-5">
+                    {volunteerScreenTabs.map((tab) => (
+                        <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => setScreenTab(tab.id)}
+                            className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+                                screenTab === tab.id
+                                    ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
+                                    : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+                            }`}
+                        >
+                            {tab.label} ({tab.count})
+                        </button>
+                    ))}
+                </div>
+
+                {screenTab !== 'requests' ? (
+                    <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <div className="relative min-w-0 flex-1">
+                            <MagnifyingGlassIcon
+                                className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400"
+                                aria-hidden
+                            />
+                            <TextInput
+                                type="search"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-10"
+                                placeholder="Nome, e-mail, telefone ou departamento"
+                                aria-label="Buscar voluntários"
+                            />
+                        </div>
+                        <div className="relative flex h-11 w-full shrink-0 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900 sm:w-56">
+                            <span
+                                id="my-volunteers-sort-label"
+                                className="flex shrink-0 items-center border-r border-zinc-200 px-3 text-xs font-semibold text-zinc-600 dark:border-zinc-700 dark:text-zinc-300"
+                            >
+                                Ordenação
+                            </span>
+                            <select
+                                id="my-volunteers-sort"
+                                value={sortValue}
+                                onChange={(e) => setSortValue(e.target.value)}
+                                aria-labelledby="my-volunteers-sort-label"
+                                className="h-full min-w-0 flex-1 appearance-none border-0 bg-transparent py-0 pl-2 pr-8 text-sm font-medium text-zinc-900 focus:border-transparent focus:outline-none focus:ring-0 dark:text-zinc-100"
+                            >
+                                {VOLUNTEER_SORT_OPTIONS.map((o) => (
+                                    <option key={o.value} value={o.value}>
+                                        {o.label}
+                                    </option>
+                                ))}
+                            </select>
+                            <ChevronDownIcon
+                                className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500 dark:text-zinc-400"
+                                aria-hidden
+                            />
+                        </div>
+                    </div>
+                ) : null}
+
                 {screenTab === 'new'
-                    ? renderVolunteerTable(newRows, 'Sem novos voluntários pendentes de análise.')
+                    ? renderVolunteerTable(
+                          filteredNewRows,
+                          searchQuery.trim()
+                              ? 'Nenhum voluntário encontrado com essa busca.'
+                              : 'Sem novos voluntários pendentes.',
+                      )
                     : null}
                 {screenTab === 'active'
-                    ? renderVolunteerTable(activeRows, 'Sem voluntários em atividade.')
+                    ? renderVolunteerTable(
+                          filteredActiveRows,
+                          searchQuery.trim() ? 'Nenhum voluntário encontrado com essa busca.' : 'Sem voluntários em atividade.',
+                      )
                     : null}
                 {screenTab === 'training'
-                    ? renderVolunteerTable(trainingRows, 'Sem voluntários em treinamento.')
+                    ? renderVolunteerTable(
+                          filteredTrainingRows,
+                          searchQuery.trim() ? 'Nenhum voluntário encontrado com essa busca.' : 'Sem voluntários em treinamento.',
+                      )
+                    : null}
+                {screenTab === 'reviewing'
+                    ? renderVolunteerTable(
+                          filteredReviewingRows,
+                          searchQuery.trim() ? 'Nenhum voluntário encontrado com essa busca.' : 'Sem voluntários em análise.',
+                      )
                     : null}
                 {screenTab === 'requests' ? (
                     <div className="space-y-3">
@@ -829,22 +1047,37 @@ export default function MyVolunteers() {
                                     ) : null}
                                     {req.attached_volunteer_name ? (
                                         <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm dark:border-emerald-900/60 dark:bg-emerald-950/20">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <span className="font-semibold text-emerald-800 dark:text-emerald-200">Voluntário anexado:</span>
-                                                <span className="text-emerald-900 dark:text-emerald-100">{req.attached_volunteer_name}</span>
-                                                {req.attached_volunteer_email ? (
-                                                    <span className="text-emerald-700 dark:text-emerald-300">{` — ${req.attached_volunteer_email}`}</span>
-                                                ) : null}
-                                                {req.attached_volunteer_profile ? (
+                                            {req.attached_volunteer_profile ? (
+                                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                                    <VolunteerListIdentity
+                                                        name={req.attached_volunteer_profile.name ?? req.attached_volunteer_name}
+                                                        email={req.attached_volunteer_email ?? req.attached_volunteer_profile.email}
+                                                        photoUrl={req.attached_volunteer_profile.photoUrl}
+                                                        nameClassName="font-semibold text-emerald-900 dark:text-emerald-100"
+                                                    />
                                                     <button
                                                         type="button"
                                                         onClick={() => openAttachedVolunteerProfile(req)}
-                                                        className="ml-1 inline-flex items-center rounded-md border border-emerald-300 bg-white/80 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-emerald-800 transition hover:bg-white dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200 dark:hover:bg-emerald-950/50"
+                                                        className="inline-flex shrink-0 items-center rounded-md border border-emerald-300 bg-white/80 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-emerald-800 transition hover:bg-white dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200 dark:hover:bg-emerald-950/50"
                                                     >
                                                         Ver dados
                                                     </button>
-                                                ) : null}
-                                            </div>
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <span className="font-semibold text-emerald-800 dark:text-emerald-200">
+                                                        Voluntário anexado:
+                                                    </span>
+                                                    <span className="text-emerald-900 dark:text-emerald-100">
+                                                        {req.attached_volunteer_name}
+                                                    </span>
+                                                    {req.attached_volunteer_email ? (
+                                                        <span className="text-emerald-700 dark:text-emerald-300">
+                                                            {` — ${req.attached_volunteer_email}`}
+                                                        </span>
+                                                    ) : null}
+                                                </div>
+                                            )}
                                             {req.completed_at ? (
                                                 <div className="mt-1 text-xs text-emerald-700 dark:text-emerald-300">
                                                     Concluído em: {requestDateLabel(req.completed_at)}
@@ -862,21 +1095,12 @@ export default function MyVolunteers() {
             <Modal show={!!row} onClose={closeEdit} maxWidth="lg">
                 {row ? (
                     <div className="p-6 space-y-4">
-                        <div className="flex items-start justify-between gap-3">
-                            <div>
-                                <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Alterar status</h2>
-                                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
-                                    {row.volunteer.name ?? 'Voluntário'} — {row.ministryName ?? 'Departamento'}
-                                </p>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={closeEdit}
-                                className="rounded-lg px-2 py-1 text-sm text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                            >
-                                Fechar
-                            </button>
-                        </div>
+                        <VolunteerModalHeader
+                            volunteer={row.volunteer}
+                            ministryName={row.ministryName}
+                            badge="Alterar status"
+                            onClose={closeEdit}
+                        />
 
                         <div className="flex gap-2 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800">
                             <button
@@ -1071,19 +1295,12 @@ export default function MyVolunteers() {
             >
                 {inviteHelpRow ? (
                     <div className="space-y-4 px-4 pb-2 pt-2 sm:px-6 sm:pb-4 sm:pt-4">
-                        <div className="pr-8">
-                            <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                                Convite ao voluntário
-                            </p>
-                            <h2 className="mt-1 text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
-                                {inviteHelpRow.volunteer.name?.trim() || 'Voluntário'}
-                            </h2>
-                            {inviteHelpRow.ministryName ? (
-                                <p className="mt-1.5 inline-flex max-w-full rounded-full bg-zinc-100 px-3 py-1 text-sm font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
-                                    {inviteHelpRow.ministryName}
-                                </p>
-                            ) : null}
-                        </div>
+                        <VolunteerModalHeader
+                            volunteer={inviteHelpRow.volunteer}
+                            ministryName={inviteHelpRow.ministryName}
+                            badge="Convite ao voluntário"
+                            onClose={closeInviteHelp}
+                        />
                         {inviteHelpRow.volunteerHasLinkedUser ? (
                             <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
                                 Esta pessoa já tem conta no app. O convite pede aceitar ou recusar no aplicativo; após aceitar, você entra em contato pelo app.
@@ -1108,17 +1325,12 @@ export default function MyVolunteers() {
             <Modal show={!!profileRow} onClose={closeProfile} maxWidth="lg">
                 {profileRow ? (
                     <div className="space-y-4 p-6">
-                        <div className="flex items-start justify-between gap-3">
-                            <div>
-                                <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Dados do voluntário</h2>
-                                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
-                                    {profileRow.volunteer.name ?? 'Voluntário'} — {profileRow.ministryName ?? 'Departamento'}
-                                </p>
-                            </div>
-                            <SecondaryButton type="button" onClick={closeProfile}>
-                                Fechar
-                            </SecondaryButton>
-                        </div>
+                        <VolunteerModalHeader
+                            volunteer={profileRow.volunteer}
+                            ministryName={profileRow.ministryName}
+                            badge="Dados do voluntário"
+                            onClose={closeProfile}
+                        />
 
                         <div className="grid gap-3 sm:grid-cols-2">
                             <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">

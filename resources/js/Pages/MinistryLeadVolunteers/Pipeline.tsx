@@ -369,7 +369,7 @@ export default function Pipeline({
     const filtersRef = useRef(filters);
     filtersRef.current = filters;
     const lastAppliedSearchRef = useRef(filters.search ?? '');
-    const SEARCH_DEBOUNCE_MS = 750;
+    const SEARCH_DEBOUNCE_MS = 200;
 
     const filtersKey = useMemo(() => JSON.stringify(filters), [filters]);
     useEffect(() => {

@@ -11,6 +11,7 @@ import Modal from '@/Components/Modal';
 import InputError from '@/Components/InputError';
 import { FormEventHandler, useMemo, useState } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
+import { textIncludesSearch } from '@/utils/searchText';
 import { appRoleLabel } from '@/lib/appRoleLabels';
 import { TrashIcon } from '@heroicons/react/24/outline';
 
@@ -150,7 +151,7 @@ export default function RolesIndex({ roles, permissions }: Props) {
         return rows;
     }, [groupedPermissions]);
 
-    const q = permSearch.trim().toLowerCase();
+    const q = permSearch.trim();
 
     const filteredPermissionGroups = useMemo(() => {
         if (!q) {
@@ -161,11 +162,11 @@ export default function RolesIndex({ roles, permissions }: Props) {
                 key,
                 title,
                 perms: perms.filter((perm) => {
-                    const label = permissionLineLabel(perm).toLowerCase();
+                    const label = permissionLineLabel(perm);
                     return (
-                        perm.toLowerCase().includes(q) ||
-                        label.includes(q) ||
-                        title.toLowerCase().includes(q)
+                        textIncludesSearch(perm, q) ||
+                        textIncludesSearch(label, q) ||
+                        textIncludesSearch(title, q)
                     );
                 }),
             }))

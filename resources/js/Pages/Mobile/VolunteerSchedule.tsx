@@ -1,5 +1,6 @@
 import AdminLayout from '@/Layouts/MobileLayout';
 import ScheduleLoginGate from '@/Components/ScheduleLoginGate';
+import UserListAvatar from '@/Components/UserListAvatar';
 import { Head, router } from '@inertiajs/react';
 import { CalendarDaysIcon, CheckCircleIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { getMinistryIcon } from '@/lib/ministryIcons';
@@ -115,17 +116,7 @@ export default function VolunteerSchedule({
 
                         {canViewSchedule && memberName ? (
                             <div className="flex items-center gap-3 self-start">
-                                {memberPhotoUrl ? (
-                                    <img
-                                        src={memberPhotoUrl}
-                                        alt=""
-                                        className="h-12 w-12 rounded-full object-cover ring-2 ring-zinc-200 dark:ring-zinc-600"
-                                    />
-                                ) : (
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-200 text-lg font-semibold text-zinc-700 ring-2 ring-zinc-200 dark:bg-zinc-600 dark:text-zinc-200 dark:ring-zinc-600">
-                                        {memberName.charAt(0).toUpperCase()}
-                                    </div>
-                                )}
+                                <UserListAvatar name={memberName} photoUrl={memberPhotoUrl} size="md" />
                                 <span className="font-medium text-zinc-900 dark:text-white">{memberName}</span>
                             </div>
                         ) : null}
@@ -264,17 +255,7 @@ export default function VolunteerSchedule({
                                                 className="px-4 py-3 flex gap-3 items-center justify-between flex-wrap"
                                             >
                                                 <div className="flex gap-3 min-w-0">
-                                                    {t.memberPhotoUrl ? (
-                                                        <img
-                                                            src={t.memberPhotoUrl}
-                                                            alt=""
-                                                            className="h-12 w-12 shrink-0 rounded-full object-cover ring-2 ring-zinc-100 dark:ring-zinc-800"
-                                                        />
-                                                    ) : (
-                                                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-sm font-semibold text-zinc-700 ring-2 ring-zinc-100 dark:bg-zinc-700 dark:text-zinc-200 dark:ring-zinc-800">
-                                                            {t.memberName.charAt(0).toUpperCase()}
-                                                        </div>
-                                                    )}
+                                                    <UserListAvatar name={t.memberName} photoUrl={t.memberPhotoUrl} size="md" />
                                                     <div className="min-w-0">
                                                         <p className="font-medium text-zinc-900 dark:text-white">
                                                             {t.memberName}

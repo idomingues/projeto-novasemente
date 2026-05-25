@@ -1,3 +1,5 @@
+import { PhotoPreviewButton } from '@/Components/PhotoPreview';
+
 export interface FeedPostAuthor {
     name: string;
     photo_url?: string | null;
@@ -55,20 +57,29 @@ export default function FeedPostHeader({
     compact = false,
 }: Props) {
     const headline = normalizedHeadline(title) || churchName;
-    const avatarUrl = author?.photo_url?.trim() || churchLogoUrl;
+    const authorPhotoUrl = author?.photo_url?.trim() || null;
+    const avatarUrl = authorPhotoUrl || churchLogoUrl;
     const dateLabel = formatFeedDate(publishedAt);
     const subtitle = buildSubtitle(author, churchName, dateLabel);
     const avatarClass = compact ? 'h-8 w-8' : 'h-9 w-9';
 
     return (
         <div className={`flex items-center gap-3 ${compact ? 'px-4 pb-3 pt-4' : 'px-4 py-3'}`}>
-            <img
-                src={avatarUrl}
-                alt=""
-                className={`${avatarClass} shrink-0 rounded-full object-cover object-center ring-1 ring-zinc-200 dark:ring-zinc-700 ${
-                    !author?.photo_url ? 'dark:invert' : ''
-                }`}
-            />
+            {authorPhotoUrl ? (
+                <PhotoPreviewButton
+                    photoUrl={authorPhotoUrl}
+                    name={author?.name}
+                    className={`${avatarClass} shrink-0 rounded-full ring-1 ring-zinc-200 dark:ring-zinc-700`}
+                    imageClassName="h-full w-full rounded-full object-cover object-center"
+                    stopPropagation={false}
+                />
+            ) : (
+                <img
+                    src={avatarUrl}
+                    alt=""
+                    className={`${avatarClass} shrink-0 rounded-full object-cover object-center ring-1 ring-zinc-200 dark:ring-zinc-700 dark:invert`}
+                />
+            )}
             <div className="min-w-0 flex-1">
                 <p className="line-clamp-2 text-sm font-semibold leading-snug text-zinc-900 dark:text-white">{headline}</p>
                 {subtitle ? (

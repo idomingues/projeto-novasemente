@@ -178,7 +178,6 @@ class CommunicationRequestOptions
             'priority' => ['required', 'in:'.$priorityKeys],
             'preferred_date' => ['nullable', 'date'],
             'event_date' => ['nullable', 'date'],
-            'ministry_name' => ['nullable', 'string', 'max:120'],
             'message' => ['required', 'string', 'max:5000'],
             'art_channels' => ['nullable', 'array'],
             'art_channels.*' => ['string', 'in:'.$artKeys],

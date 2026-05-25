@@ -1,6 +1,7 @@
 import { Combobox } from '@headlessui/react';
 import { ChevronUpDownIcon } from '@heroicons/react/24/outline';
 import { useState, useMemo } from 'react';
+import { textIncludesSearch } from '@/utils/searchText';
 
 export interface SearchableOption {
     id: number | string;
@@ -56,9 +57,9 @@ export default function SearchableSelect({
         if (!query.trim()) {
             return optionsWithEmpty;
         }
-        const q = query.toLowerCase().trim();
+        const q = query.trim();
 
-        return optionsWithEmpty.filter((o) => o.name.toLowerCase().includes(q));
+        return optionsWithEmpty.filter((o) => textIncludesSearch(o.name, q));
     }, [optionsWithEmpty, query]);
 
     const hasValue = value !== '' && value !== null && value !== undefined;

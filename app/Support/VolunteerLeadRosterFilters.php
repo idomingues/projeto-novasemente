@@ -57,11 +57,7 @@ class VolunteerLeadRosterFilters
     {
         $search = trim((string) $request->input('search', ''));
         if ($search !== '') {
-            $q->where(function ($sub) use ($search) {
-                $sub->where('name', 'like', '%'.$search.'%')
-                    ->orWhere('email', 'like', '%'.$search.'%')
-                    ->orWhere('phone', 'like', '%'.$search.'%');
-            });
+            SearchTerm::whereAnyColumnLike($q, ['name', 'email', 'phone'], $search);
         }
 
         $hasUserAccount = $request->input('has_user_account');

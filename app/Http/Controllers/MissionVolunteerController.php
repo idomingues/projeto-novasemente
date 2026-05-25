@@ -8,6 +8,7 @@ use App\Models\MissionPhase;
 use App\Models\MissionVolunteer;
 use App\Support\MissionPhaseBootstrap;
 use App\Support\MissionVolunteerPayload;
+use App\Support\SearchTerm;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -51,11 +52,7 @@ class MissionVolunteerController extends Controller
             ->where('church_id', $churchId);
 
         if ($search !== '') {
-            $query->where(function ($q) use ($search) {
-                $q->where('full_name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%")
-                    ->orWhere('phone', 'like', "%{$search}%");
-            });
+            SearchTerm::whereAnyColumnLike($query, ['full_name', 'email', 'phone'], $search);
         }
 
         if ($phaseFilter !== null && $phaseFilter !== '') {

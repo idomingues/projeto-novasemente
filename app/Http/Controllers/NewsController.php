@@ -6,6 +6,7 @@ use App\Models\Church;
 use App\Models\Musica;
 use App\Models\News;
 use App\Support\InstagramUrl;
+use App\Support\SearchTerm;
 use App\Support\StorageUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -210,11 +211,7 @@ class NewsController extends Controller
         }
 
         if ($search !== '') {
-            $query->where(function ($q) use ($search) {
-                $q->where('title', 'like', "%{$search}%")
-                    ->orWhere('excerpt', 'like', "%{$search}%")
-                    ->orWhere('body', 'like', "%{$search}%");
-            });
+            SearchTerm::whereAnyColumnLike($query, ['title', 'excerpt', 'body'], $search);
         }
 
         $posts = $query

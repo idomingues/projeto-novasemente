@@ -23,6 +23,9 @@ import SelectInput from '@/Components/SelectInput';
 import Checkbox from '@/Components/Checkbox';
 import InputError from '@/Components/InputError';
 import { useState, useEffect, useRef, FormEventHandler } from 'react';
+import { PhotoPreviewButton } from '@/Components/PhotoPreview';
+import RecordDetailHeader from '@/Components/RecordDetail/RecordDetailHeader';
+import UserListAvatar from '@/Components/UserListAvatar';
 import { activeInactivePillClass } from '@/lib/statusBadges';
 import { confirmAction } from '@/utils/confirmDialog';
 import SortedMultiCheckboxList from '@/Components/SortedMultiCheckboxList';
@@ -509,7 +512,7 @@ export default function Index({
         }
         const timeout = setTimeout(() => {
             applyListFilters({ search });
-        }, 400);
+        }, 200);
         return () => clearTimeout(timeout);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [search, filters?.search]);
@@ -740,8 +743,15 @@ export default function Index({
                                     }}
                                 >
                                     <td className="cursor-pointer px-4 py-4 sm:px-6 sm:py-6 align-top">
-                                        <div className="text-base font-medium text-zinc-900 dark:text-white">{member.name}</div>
-                                        <div className="text-xs text-zinc-500 mt-1">Cadastrado em {new Date(member.created_at).toLocaleDateString()}</div>
+                                        <div className="flex items-center gap-3">
+                                            <UserListAvatar name={member.name} photoUrl={member.photo_url} size="md" />
+                                            <div className="min-w-0">
+                                                <div className="text-base font-medium text-zinc-900 dark:text-white">{member.name}</div>
+                                                <div className="mt-1 text-xs text-zinc-500">
+                                                    Cadastrado em {new Date(member.created_at).toLocaleDateString('pt-BR')}
+                                                </div>
+                                            </div>
+                                        </div>
                                     </td>
                                     <td className="cursor-pointer px-4 py-4 sm:px-6 sm:py-6 align-top max-w-[14rem] sm:max-w-xs">
                                         <div className="text-sm text-zinc-800 dark:text-zinc-100 break-all font-mono leading-snug">
@@ -966,14 +976,27 @@ export default function Index({
             <Modal show={isModalOpen} onClose={closeModal} maxWidth="lg" disableBodyScroll>
                 <div className="flex max-h-[min(92dvh,calc(100dvh-1rem))] min-h-0 flex-col bg-white dark:bg-zinc-900">
                     <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-4 pt-10 sm:px-6 sm:pb-6 sm:pt-11">
-                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white sm:text-xl pr-8">
-                        {isEditing ? 'Editar usuário' : 'Novo usuário'}
-                    </h2>
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1 mb-5">
-                        {isEditing
-                            ? 'Ficha da pessoa e conta no app na mesma tela.'
-                            : 'Cria a conta de login na igreja. Senha inicial com mínimo de 6 caracteres.'}
-                    </p>
+                    {isEditing ? (
+                        <div className="mb-5 pr-8">
+                            <RecordDetailHeader
+                                title={(data.name ?? '').trim() || memberForLgpd?.name || 'Usuário'}
+                                subtitle={memberForLgpd?.role_label ?? 'Conta no app'}
+                                photoUrl={avatarPreviewSrc}
+                                badge={data.status === 'active' ? 'Ativo' : 'Inativo'}
+                                onClose={closeModal}
+                            />
+                            <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
+                                Ficha da pessoa e conta no app na mesma tela.
+                            </p>
+                        </div>
+                    ) : (
+                        <>
+                            <h2 className="pr-8 text-lg font-semibold text-zinc-900 dark:text-white sm:text-xl">Novo usuário</h2>
+                            <p className="mb-5 mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                                Cria a conta de login na igreja. Senha inicial com mínimo de 6 caracteres.
+                            </p>
+                        </>
+                    )}
 
                     {submitMessage ? (
                         <div
@@ -1011,10 +1034,12 @@ export default function Index({
                             </p>
                             <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start">
                                 {avatarPreviewSrc ? (
-                                    <img
-                                        src={avatarPreviewSrc}
-                                        alt=""
-                                        className="h-20 w-20 shrink-0 rounded-2xl object-cover border border-zinc-200 dark:border-zinc-600"
+                                    <PhotoPreviewButton
+                                        photoUrl={avatarPreviewSrc}
+                                        name={data.name?.trim() || memberForLgpd?.name}
+                                        className="h-20 w-20 shrink-0 rounded-2xl border border-zinc-200 dark:border-zinc-600"
+                                        imageClassName="h-full w-full rounded-2xl object-cover"
+                                        stopPropagation={false}
                                     />
                                 ) : (
                                     <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800">

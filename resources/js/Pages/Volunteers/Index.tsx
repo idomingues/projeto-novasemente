@@ -25,6 +25,7 @@ import VolunteerDeleteConfirmBlock from '@/Components/Volunteers/VolunteerDelete
 import { activeInactivePillClass } from '@/lib/statusBadges';
 import { appRoleLabel } from '@/lib/appRoleLabels';
 import SortedMultiCheckboxList from '@/Components/SortedMultiCheckboxList';
+import { PhotoPreviewButton } from '@/Components/PhotoPreview';
 import UserListAvatar from '@/Components/UserListAvatar';
 
 interface Ministry { id: number; name: string; }
@@ -373,7 +374,7 @@ export default function Index({
                     replace: true,
                 },
             );
-        }, 400);
+        }, 200);
         return () => clearTimeout(timeout);
     }, [search, filters?.search]);
 
@@ -654,10 +655,12 @@ export default function Index({
                                 </p>
                                 <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start">
                                     {avatarPreviewSrc ? (
-                                        <img
-                                            src={avatarPreviewSrc}
-                                            alt=""
-                                            className="h-20 w-20 shrink-0 rounded-2xl object-cover border border-zinc-200 dark:border-zinc-600"
+                                        <PhotoPreviewButton
+                                            photoUrl={avatarPreviewSrc}
+                                            name={data.name?.trim() || detailVolunteer?.name}
+                                            className="h-20 w-20 shrink-0 rounded-2xl border border-zinc-200 dark:border-zinc-600"
+                                            imageClassName="h-full w-full rounded-2xl object-cover"
+                                            stopPropagation={false}
                                         />
                                     ) : (
                                         <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800">

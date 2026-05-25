@@ -8,6 +8,7 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
 import { useState, FormEventHandler } from 'react';
+import { textIncludesSearch } from '@/utils/searchText';
 
 interface AcervoItem {
     id: number;
@@ -23,8 +24,6 @@ interface Props {
     canManage: boolean;
 }
 
-const normalizeForSearch = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
-
 export default function MobileAcervoIndex({ items, playlistsUrl, canManage }: Props) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
@@ -34,7 +33,7 @@ export default function MobileAcervoIndex({ items, playlistsUrl, canManage }: Pr
     const [search, setSearch] = useState('');
 
     const filteredItems = search.trim()
-        ? items.filter((item) => normalizeForSearch(item.title).includes(normalizeForSearch(search.trim())))
+        ? items.filter((item) => textIncludesSearch(item.title, search))
         : items;
 
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({

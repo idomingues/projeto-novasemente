@@ -5,16 +5,19 @@ namespace App\Http\Controllers;
 use App\Models\Church;
 use App\Models\ChurchSolicitation;
 use App\Models\ChurchSolicitationMessage;
+use App\Models\Ministry;
 use App\Models\User;
 use App\Services\CommunicationRequestAttachmentService;
 use App\Services\SolicitationChatNotifier;
 use App\Support\ChurchSolicitationModalPayloadPresenter;
 use App\Support\CommunicationRequestOptions;
+use App\Support\SearchTerm;
 use App\Support\SolicitationAssignees;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -64,11 +67,58 @@ class CommunicationRequestController extends Controller
     }
 
     /**
+     * @return list<int>
+     */
+    private function linkedMinistryIdsForUser(User $user, int $churchId): array
+    {
+        return $user->ministries()
+            ->where('ministries.church_id', $churchId)
+            ->pluck('ministries.id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<array{value: int, label: string}>
+     */
+    private function linkedMinistryOptionsForUser(User $user, int $churchId): array
+    {
+        return $user->ministries()
+            ->where('ministries.church_id', $churchId)
+            ->orderBy('ministries.name')
+            ->get(['ministries.id', 'ministries.name'])
+            ->map(fn (Ministry $m) => [
+                'value' => (int) $m->id,
+                'label' => (string) $m->name,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
      * @return array<string, mixed>
      */
-    private function validatedPayload(Request $request): array
+    private function validatedPayload(Request $request, User $user, int $churchId): array
     {
-        $valid = $request->validate(CommunicationRequestOptions::validationRules());
+        $linkedMinistryIds = $this->linkedMinistryIdsForUser($user, $churchId);
+        $rules = CommunicationRequestOptions::validationRules();
+        $rules['ministry_id'] = ['nullable', 'integer', Rule::in($linkedMinistryIds)];
+
+        $valid = $request->validate($rules);
+
+        $ministryName = null;
+        if (! empty($valid['ministry_id'])) {
+            $ministryName = Ministry::query()
+                ->where('church_id', $churchId)
+                ->whereKey((int) $valid['ministry_id'])
+                ->value('name');
+            $ministryName = is_string($ministryName) ? trim($ministryName) : null;
+            if ($ministryName === '') {
+                $ministryName = null;
+            }
+        }
+        $valid['ministry_name'] = $ministryName;
 
         return CommunicationRequestOptions::validatedPayload($valid);
     }
@@ -84,7 +134,7 @@ class CommunicationRequestController extends Controller
         $query = ChurchSolicitation::query()
             ->where('church_id', (int) $churchId)
             ->where('type', MobileChurchSolicitationController::TYPE_COMMUNICATION_REQUEST)
-            ->with(['user:id,name']);
+            ->with(['user:id,name,photo_url']);
 
         if ($mode === 'leader') {
             $query->where('user_id', $user->id);
@@ -114,11 +164,10 @@ class CommunicationRequestController extends Controller
 
         $q = $request->query('q');
         if (is_string($q) && trim($q) !== '') {
-            $needle = '%'.str_replace(['%', '_'], ['\\%', '\\_'], trim($q)).'%';
-            $query->where(function ($sub) use ($needle) {
-                $sub->where('subject', 'like', $needle)
-                    ->orWhere('message', 'like', $needle)
-                    ->orWhereHas('user', fn ($uq) => $uq->where('name', 'like', $needle));
+            $term = trim($q);
+            $query->where(function ($sub) use ($term) {
+                SearchTerm::whereAnyColumnLike($sub, ['subject', 'message'], $term);
+                $sub->orWhereHas('user', fn ($uq) => SearchTerm::whereAnyColumnLike($uq, ['name'], $term));
             });
         }
 
@@ -149,6 +198,7 @@ class CommunicationRequestController extends Controller
                     'priority' => $priority,
                     'priority_label' => CommunicationRequestOptions::priorityLabel($priority),
                     'requester_name' => $s->user?->name,
+                    'requester_photo_url' => $s->user?->photo_url,
                     'can_edit' => $canEdit,
                     'panel_json_url' => route('communication-requests.panel', $s),
                 ];
@@ -159,6 +209,7 @@ class CommunicationRequestController extends Controller
         return Inertia::render('CommunicationRequests/Index', [
             'mode' => $mode,
             'rows' => $rows,
+            'ministryOptions' => $this->linkedMinistryOptionsForUser($user, (int) $churchId),
             'storeUrl' => route('communication-requests.store'),
             'demandTypeOptions' => CommunicationRequestOptions::toSelectOptions(CommunicationRequestOptions::DEMAND_TYPES),
             'priorityOptions' => CommunicationRequestOptions::toSelectOptions(CommunicationRequestOptions::PRIORITIES),
@@ -184,7 +235,7 @@ class CommunicationRequestController extends Controller
         abort_unless($churchId, 404, 'Nenhuma igreja ativa.');
         $this->accessMode($user);
 
-        $payload = $this->validatedPayload($request);
+        $payload = $this->validatedPayload($request, $user, (int) $churchId);
 
         $solicitation = ChurchSolicitation::query()->create([
             'church_id' => (int) $churchId,
@@ -320,7 +371,7 @@ class CommunicationRequestController extends Controller
             ]);
         }
 
-        $payload = $this->validatedPayload($request);
+        $payload = $this->validatedPayload($request, $user, (int) $churchId);
         $meta = $payload['meta'];
         $existingAttachments = ($solicitation->meta ?? [])['communication_attachments'] ?? [];
         if (is_array($existingAttachments) && $existingAttachments !== []) {

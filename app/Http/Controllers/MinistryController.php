@@ -9,6 +9,7 @@ use App\Models\Ministry;
 use App\Models\ScheduleRole;
 use App\Models\User;
 use App\Models\Volunteer;
+use App\Support\SearchTerm;
 use App\Support\VolunteerChurchRosterBuilder;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -72,7 +73,7 @@ class MinistryController extends Controller
             ->orderBy('name');
 
         if ($search !== '') {
-            $departmentsQuery->where('name', 'like', '%'.$search.'%');
+            SearchTerm::whereAnyColumnLike($departmentsQuery, ['name'], $search);
         }
 
         $departments = $departmentsQuery->get();

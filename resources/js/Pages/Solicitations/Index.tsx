@@ -8,6 +8,8 @@ import { Head, router, useForm } from '@inertiajs/react';
 import { FormEventHandler, useEffect, useMemo, useState } from 'react';
 import { ChevronRightIcon, FunnelIcon, InboxIcon } from '@heroicons/react/24/outline';
 import Modal from '@/Components/Modal';
+import PersonListIdentity from '@/Components/PersonListIdentity';
+import PersonModalHeader from '@/Components/PersonModalHeader';
 import SolicitationDetailPanel, { type SolicitationDetailPanelProps } from '@/Components/Solicitations/SolicitationDetailPanel';
 import SupportTicketDetailPanel, { type SupportTicketDetailPanelProps } from '@/Components/Support/SupportTicketDetailPanel';
 import TextInput from '@/Components/TextInput';
@@ -28,6 +30,7 @@ type DemandRow = {
     preferredDate: string | null;
     updatedAt: string;
     memberLabel: string;
+    memberPhotoUrl?: string | null;
 };
 
 type TabKey = 'pendente' | 'concluidos' | 'cancelados' | 'arquivados';
@@ -435,6 +438,15 @@ export default function SolicitationsIndex({
                             >
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0 flex-1">
+                                        {s.memberLabel ? (
+                                            <div className="mb-3">
+                                                <PersonListIdentity
+                                                    name={s.memberLabel}
+                                                    photoUrl={s.memberPhotoUrl}
+                                                    nameClassName="font-semibold text-zinc-900 dark:text-white"
+                                                />
+                                            </div>
+                                        ) : null}
                                         <div className="flex flex-wrap items-center gap-2 text-sm">
                                             <InboxIcon className="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-400" aria-hidden />
                                             <span className="font-semibold text-zinc-900 dark:text-white">{s.typeLabel}</span>
@@ -443,15 +455,11 @@ export default function SolicitationsIndex({
                                             </span>
                                             <span className={statusBadgeClass(s.status)}>{s.statusLabel}</span>
                                         </div>
-                                        <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                            {s.memberLabel}
-                                            {s.preferredDate ? (
-                                                <>
-                                                    {' '}
-                                                    · Data: {s.preferredDate}
-                                                </>
-                                            ) : null}
-                                        </div>
+                                        {s.preferredDate ? (
+                                            <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                                Data: {s.preferredDate}
+                                            </div>
+                                        ) : null}
                                         <div className="mt-2 line-clamp-3 whitespace-pre-wrap text-sm text-zinc-700 dark:text-zinc-200">
                                             {s.messageExcerpt}
                                         </div>
@@ -646,28 +654,30 @@ export default function SolicitationsIndex({
 
             <Modal show={modalDetail !== null} onClose={closeModal} disableBodyScroll maxWidth="2xl">
                 <div className="flex max-h-[min(100dvh-1rem,880px)] min-h-0 w-full flex-col overflow-hidden sm:max-h-[min(90dvh,860px)]">
-                    <div className="flex shrink-0 items-start gap-3 border-b border-zinc-200 px-5 pb-3 pt-4 dark:border-zinc-800 sm:px-6 sm:pb-4 sm:pt-5">
-                        <InboxIcon className="mt-0.5 h-6 w-6 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
-                        <div className="min-w-0 flex-1 pr-10">
-                            <h2 className="truncate text-lg font-semibold leading-tight text-zinc-900 dark:text-white">
-                                {modalDetail?.kind === 'solicitation'
-                                    ? (modalDetail.payload.solicitation.typeLabel ?? 'Pedido')
-                                    : modalDetail?.kind === 'pastoral'
-                                      ? modalDetail.payload.ticket.typeLabel
-                                      : 'Pedido'}
-                            </h2>
-                            {modalDetail?.kind === 'solicitation' ? (
-                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                    {modalDetail.payload.solicitation.memberLabel}
-                                    <span className="mx-1.5 text-zinc-300 dark:text-zinc-600">·</span>
-                                    <span className={statusBadgeClass(modalDetail.payload.solicitation.status)}>
-                                        {modalDetail.payload.solicitation.statusLabel}
-                                    </span>
-                                    <span className="mx-1.5 text-zinc-300 dark:text-zinc-600">·</span>
-                                    <span className="font-mono text-zinc-400">#{modalDetail.payload.solicitation.id}</span>
-                                </p>
-                            ) : null}
-                        </div>
+                    <div className="shrink-0 border-b border-zinc-200 px-5 pb-3 pt-4 dark:border-zinc-800 sm:px-6 sm:pb-4 sm:pt-5">
+                        {modalDetail?.kind === 'solicitation' ? (
+                            <PersonModalHeader
+                                person={{
+                                    name: modalDetail.payload.solicitation.memberLabel ?? null,
+                                    photoUrl: modalDetail.payload.solicitation.memberPhotoUrl,
+                                }}
+                                subtitle={modalDetail.payload.solicitation.typeLabel ?? 'Pedido'}
+                                badge={modalDetail.payload.solicitation.statusLabel}
+                                onClose={closeModal}
+                            />
+                        ) : modalDetail?.kind === 'pastoral' ? (
+                            <PersonModalHeader
+                                person={{
+                                    name: modalDetail.payload.ticket.ownerLabel,
+                                    photoUrl: modalDetail.payload.ticket.ownerPhotoUrl,
+                                }}
+                                subtitle={modalDetail.payload.ticket.typeLabel}
+                                badge={modalDetail.payload.ticket.statusLabel ?? modalDetail.payload.ticket.status}
+                                onClose={closeModal}
+                            />
+                        ) : (
+                            <h2 className="pr-10 text-lg font-semibold text-zinc-900 dark:text-white">Pedido</h2>
+                        )}
                     </div>
 
                     {modalDetail && (

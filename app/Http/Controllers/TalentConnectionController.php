@@ -12,6 +12,7 @@ use App\Models\TalentReview;
 use App\Models\User;
 use App\Services\TalentConnectionNotifier;
 use App\Services\TalentConnectionService;
+use App\Support\SearchTerm;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -131,10 +132,7 @@ class TalentConnectionController extends Controller
             ->where('status', TalentListing::STATUS_APPROVED);
 
         if ($search = trim((string) $request->input('q', ''))) {
-            $query->where(function ($q) use ($search) {
-                $q->where('title', 'like', '%'.$search.'%')
-                    ->orWhere('description', 'like', '%'.$search.'%');
-            });
+            SearchTerm::whereAnyColumnLike($query, ['title', 'description'], $search);
         }
 
         if ($categoryId = $request->integer('category_id')) {

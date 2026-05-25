@@ -5,8 +5,10 @@ namespace Tests\Feature;
 use App\Mail\SolicitationNewRequestMail;
 use App\Models\Church;
 use App\Models\ChurchSolicitation;
+use App\Models\Ministry;
 use App\Models\User;
 use Database\Seeders\ChurchSeeder;
+use Database\Seeders\MinistrySeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
@@ -35,9 +37,11 @@ class CommunicationRequestTest extends TestCase
         Storage::fake('public');
         Mail::fake();
 
-        $this->seed(ChurchSeeder::class);
+        $this->seed([ChurchSeeder::class, MinistrySeeder::class]);
         $church = Church::query()->firstOrFail();
         $user = $this->leaderUser($church);
+        $ministry = Ministry::query()->where('church_id', $church->id)->where('name', 'Louvor')->firstOrFail();
+        $user->ministries()->sync([$ministry->id]);
 
         $response = $this->actingAs($user)
             ->withSession(['working_church_id' => $church->id])
@@ -45,7 +49,7 @@ class CommunicationRequestTest extends TestCase
                 'demand_type' => 'art_creation',
                 'priority' => 'high',
                 'event_date' => '2026-06-15',
-                'ministry_name' => 'Jovens',
+                'ministry_id' => $ministry->id,
                 'preferred_date' => '2026-06-01',
                 'message' => 'Arte para o retiro de jovens.',
                 'art_channels' => ['instagram_story', 'whatsapp'],
@@ -63,7 +67,7 @@ class CommunicationRequestTest extends TestCase
         $meta = $solicitation->meta ?? [];
         $this->assertSame('art_creation', $meta['communication_demand_type']);
         $this->assertSame('2026-06-15', $meta['communication_event_date']);
-        $this->assertSame('Jovens', $meta['communication_ministry_name']);
+        $this->assertSame('Louvor', $meta['communication_ministry_name']);
         $this->assertEquals(['instagram_story', 'whatsapp'], $meta['communication_art_channels']);
         $this->assertCount(1, $meta['communication_attachments'] ?? []);
 
@@ -75,7 +79,7 @@ class CommunicationRequestTest extends TestCase
     public function test_programming_coverage_stores_event_and_support(): void
     {
         Mail::fake();
-        $this->seed(ChurchSeeder::class);
+        $this->seed([ChurchSeeder::class, MinistrySeeder::class]);
         $church = Church::query()->firstOrFail();
         $user = $this->leaderUser($church);
 
@@ -93,5 +97,25 @@ class CommunicationRequestTest extends TestCase
         $meta = ChurchSolicitation::query()->latest('id')->first()?->meta ?? [];
         $this->assertSame('Culto dominical', $meta['communication_coverage_event']);
         $this->assertEquals(['stories', 'photo'], $meta['communication_coverage_support']);
+    }
+
+    public function test_store_rejects_ministry_not_linked_to_user(): void
+    {
+        Mail::fake();
+        $this->seed([ChurchSeeder::class, MinistrySeeder::class]);
+        $church = Church::query()->firstOrFail();
+        $user = $this->leaderUser($church);
+        $otherMinistry = Ministry::query()->where('church_id', $church->id)->where('name', 'Recepção')->firstOrFail();
+        $user->ministries()->sync([]);
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->post(route('communication-requests.store'), [
+                'demand_type' => 'art_creation',
+                'priority' => 'medium',
+                'message' => 'Teste de validação.',
+                'ministry_id' => $otherMinistry->id,
+            ])
+            ->assertSessionHasErrors('ministry_id');
     }
 }

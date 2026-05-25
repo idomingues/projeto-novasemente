@@ -643,13 +643,8 @@ class VolunteerPipelineLeadController extends Controller
         $deleteLinkedUser = $request->boolean('delete_linked_user');
         $linkedUser = $deleteLinkedUser ? User::query()->find($volunteer->user_id) : null;
 
-        if ($linkedUser) {
-            if ((int) $linkedUser->id === (int) $request->user()?->id) {
-                return redirect()->route('ministry-lead.volunteers.index')->with('error', 'Não pode apagar a sua própria conta desta forma.');
-            }
-            if ($linkedUser->canAccessAdminMenu()) {
-                return redirect()->route('ministry-lead.volunteers.index')->with('error', 'Não é possível apagar este usuário: tem acesso ao painel de equipe.');
-            }
+        if ($linkedUser && (int) $linkedUser->id === (int) $request->user()?->id) {
+            return redirect()->route('ministry-lead.volunteers.index')->with('error', 'Não pode apagar a sua própria conta desta forma.');
         }
 
         try {

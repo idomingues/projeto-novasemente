@@ -14,7 +14,7 @@ import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { FormEventHandler, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
 import RecordDetailHeader from '@/Components/RecordDetail/RecordDetailHeader';
-import RecordDetailSections from '@/Components/RecordDetail/RecordDetailSections';
+import UserListAvatar from '@/Components/UserListAvatar';
 import {
     missionVolunteerDetailSections,
     type MissionVolunteerDetail,
@@ -297,14 +297,10 @@ export default function MissionIndex({
                                             </td>
                                         )}
                                         <td className="p-3">
-                                            <div className="flex items-center gap-2">
-                                                {v.photoUrl ? (
-                                                    <img src={v.photoUrl} alt="" className="h-8 w-8 rounded-full object-cover" />
-                                                ) : (
-                                                    <div className="h-8 w-8 rounded-full bg-zinc-200 dark:bg-zinc-700" />
-                                                )}
-                                                <div>
-                                                    <span className="font-medium">{v.fullName}</span>
+                                            <div className="flex items-center gap-3">
+                                                <UserListAvatar name={v.fullName} photoUrl={v.photoUrl} size="md" />
+                                                <div className="min-w-0">
+                                                    <div className="font-medium text-zinc-900 dark:text-white">{v.fullName}</div>
                                                     {!v.hasEmail && <NoEmailHint />}
                                                 </div>
                                             </div>
@@ -479,34 +475,17 @@ function DetailPanel({
         });
     };
 
+    const contactSubtitle = [v.phone, v.email].filter((x) => x && String(x).trim() !== '').join(' · ') || null;
+
     return (
         <div className="space-y-4">
-            <div className="flex items-start justify-between gap-4 rounded-2xl border border-teal-200/70 bg-gradient-to-br from-teal-50/90 via-white to-white p-4 dark:border-teal-900/50 dark:from-teal-950/35 dark:via-zinc-900/80 dark:to-zinc-900/80">
-                <div className="flex min-w-0 items-center gap-4">
-                    {v.photoUrl ? (
-                        <img
-                            src={v.photoUrl}
-                            alt=""
-                            className="h-20 w-20 shrink-0 rounded-full object-cover ring-2 ring-white shadow-sm dark:ring-zinc-800"
-                        />
-                    ) : (
-                        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-lg font-semibold text-zinc-500 ring-2 ring-white dark:bg-zinc-700 dark:text-zinc-400 dark:ring-zinc-800">
-                            {v.fullName.charAt(0).toUpperCase()}
-                        </div>
-                    )}
-                    <div className="min-w-0">
-                        <h2 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-white">{v.fullName}</h2>
-                        {v.phaseName ? (
-                            <span className="mt-1.5 inline-flex rounded-full bg-teal-100 px-2.5 py-0.5 text-xs font-semibold text-teal-800 dark:bg-teal-900/50 dark:text-teal-200">
-                                {v.phaseName}
-                            </span>
-                        ) : null}
-                    </div>
-                </div>
-                <SecondaryButton type="button" onClick={onClose}>
-                    Fechar
-                </SecondaryButton>
-            </div>
+            <RecordDetailHeader
+                title={v.fullName}
+                subtitle={contactSubtitle}
+                photoUrl={v.photoUrl}
+                badge={v.phaseName?.trim() ? v.phaseName : null}
+                onClose={onClose}
+            />
 
             <div className="space-y-3">
                 {sections.map((section) => (

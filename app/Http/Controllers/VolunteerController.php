@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerSelfSignupToken;
 use App\Support\MemberRoleAssignment;
+use App\Support\SearchTerm;
 use App\Support\StorageUrl;
 use App\Support\VolunteerChurchRosterBuilder;
 use App\Support\VolunteerContactDuplicateChecker;
@@ -305,11 +306,7 @@ class VolunteerController extends Controller
         ]);
 
         if ($search !== '') {
-            $volunteersQuery->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%")
-                    ->orWhere('phone', 'like', "%{$search}%");
-            });
+            SearchTerm::whereAnyColumnLike($volunteersQuery, ['name', 'email', 'phone'], $search);
         }
 
         $volunteers = $volunteersQuery
@@ -471,13 +468,8 @@ class VolunteerController extends Controller
         $deleteLinkedUser = $request->boolean('delete_linked_user');
         $linkedUser = $deleteLinkedUser ? User::query()->find($volunteer->user_id) : null;
 
-        if ($linkedUser) {
-            if ((int) $linkedUser->id === (int) $request->user()?->id) {
-                return redirect()->route('volunteers.index')->with('error', 'Não pode apagar a sua própria conta desta forma.');
-            }
-            if ($linkedUser->canAccessAdminMenu()) {
-                return redirect()->route('volunteers.index')->with('error', 'Não é possível apagar este usuário: tem acesso ao painel de equipe.');
-            }
+        if ($linkedUser && (int) $linkedUser->id === (int) $request->user()?->id) {
+            return redirect()->route('volunteers.index')->with('error', 'Não pode apagar a sua própria conta desta forma.');
         }
 
         try {

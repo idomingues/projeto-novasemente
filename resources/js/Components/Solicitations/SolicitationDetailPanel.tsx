@@ -38,6 +38,7 @@ export type SolicitationDetailShape = {
     meta: Record<string, unknown> | null;
     internalNotes?: string | null;
     memberLabel?: string;
+    memberPhotoUrl?: string | null;
     preferredDate?: string | null;
     /** ISO8601 — horário escolhido em «Visita aos pastores». */
     preferredPastoralStart?: string | null;

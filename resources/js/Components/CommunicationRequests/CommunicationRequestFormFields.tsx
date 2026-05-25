@@ -12,7 +12,7 @@ export type CommunicationRequestFormData = {
     demand_type: string;
     priority: string;
     event_date: string;
-    ministry_name: string;
+    ministry_id: '' | number;
     preferred_date: string;
     message: string;
     art_channels: string[];
@@ -32,6 +32,7 @@ type Props = {
     artChannelOptions: SelectOption[];
     coverageSupportOptions: SelectOption[];
     maxAttachments: number;
+    ministryOptions: SelectOption[];
     idPrefix?: string;
 };
 
@@ -78,6 +79,7 @@ export default function CommunicationRequestFormFields({
     artChannelOptions,
     coverageSupportOptions,
     maxAttachments,
+    ministryOptions,
     idPrefix = 'comm',
 }: Props) {
     const demandType = form.data.demand_type;
@@ -134,15 +136,35 @@ export default function CommunicationRequestFormFields({
                     <InputError className="mt-2" message={form.errors.event_date} />
                 </div>
                 <div>
-                    <InputLabel htmlFor={`${idPrefix}_ministry_name`} value="Ministério/responsável (opcional)" />
-                    <TextInput
-                        id={`${idPrefix}_ministry_name`}
-                        value={form.data.ministry_name}
+                    <InputLabel htmlFor={`${idPrefix}_ministry_id`} value="Departamento (opcional)" />
+                    <SelectInput
+                        id={`${idPrefix}_ministry_id`}
+                        value={form.data.ministry_id === '' ? '' : String(form.data.ministry_id)}
                         className="mt-1 block w-full"
-                        placeholder="Ex.: Jovens, Louvor, Recepção"
-                        onChange={(e) => form.setData('ministry_name', e.target.value)}
-                    />
-                    <InputError className="mt-2" message={form.errors.ministry_name} />
+                        disabled={ministryOptions.length === 0}
+                        onChange={(e) => {
+                            const v = e.target.value;
+                            const id = v === '' ? '' : Number(v);
+                            form.setData('ministry_id', id === '' || Number.isNaN(id) ? '' : id);
+                        }}
+                    >
+                        <option value="">
+                            {ministryOptions.length === 0
+                                ? 'Nenhum departamento vinculado à sua conta'
+                                : 'Selecione…'}
+                        </option>
+                        {ministryOptions.map((o) => (
+                            <option key={o.value} value={o.value}>
+                                {o.label}
+                            </option>
+                        ))}
+                    </SelectInput>
+                    {ministryOptions.length === 0 ? (
+                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                            Peça à secretaria para vincular você a um departamento no cadastro de usuário.
+                        </p>
+                    ) : null}
+                    <InputError className="mt-2" message={form.errors.ministry_id} />
                 </div>
             </div>
 

@@ -213,7 +213,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                     replace: true,
                 },
             );
-        }, 400);
+        }, 200);
         return () => clearTimeout(timeout);
     }, [search, filters.search, routeIndex]);
 

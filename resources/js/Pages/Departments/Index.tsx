@@ -25,6 +25,7 @@ import VolunteerRecordDetailBody from '@/Components/Volunteers/VolunteerRecordDe
 import type { VolunteerDetailData } from '@/utils/volunteerDetailRows';
 import { confirmAction } from '@/utils/confirmDialog';
 import SortedMultiCheckboxList from '@/Components/SortedMultiCheckboxList';
+import { textMatchesSearchFields } from '@/utils/searchText';
 
 interface PersonRef {
     id: number;
@@ -94,13 +95,9 @@ function PersonPicker({
         onViewDetail != null && detailIdFor(option) != null;
 
     const filteredListOptions = useMemo(() => {
-        const q = filter.trim().toLowerCase();
+        const q = filter.trim();
         const list = q
-            ? options.filter(
-                  (o) =>
-                      o.name.toLowerCase().includes(q) ||
-                      (o.email?.toLowerCase().includes(q) ?? false),
-              )
+            ? options.filter((o) => textMatchesSearchFields(q, o.name, o.email))
             : options;
         return list.map((o) => ({
             id: o.id,
@@ -204,7 +201,7 @@ export default function Index({
                 { search: search || undefined },
                 { preserveState: true, replace: true },
             );
-        }, 350);
+        }, 200);
         return () => clearTimeout(timeout);
     }, [search, filters.search]);
 

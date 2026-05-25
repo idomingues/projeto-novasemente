@@ -75,13 +75,18 @@ function cardSnippet(n: NewsCard): string {
     if (n.content_type === 'youtube') return 'Vídeo no YouTube';
     if (n.content_type === 'pdf') return 'Documento PDF';
     if (n.content_type === 'image') return 'Imagem';
-    if (n.content_type === 'instagram_link') return 'Publicação no Instagram';
+    if (n.content_type === 'instagram_feed' || n.content_type === 'instagram_link') return '';
     return '';
 }
 
 function cardTypeLabel(n: NewsCard): string {
     const normalized = (n.type_label ?? '').trim().toLowerCase();
-    if (n.content_type === 'instagram_feed' || normalized === 'feed') {
+    if (
+        n.content_type === 'instagram_feed' ||
+        n.content_type === 'instagram_link' ||
+        normalized === 'feed' ||
+        normalized === 'instagram'
+    ) {
         return '';
     }
 
