@@ -59,6 +59,53 @@ final class VolunteerSignupCompletion
     }
 
     /**
+     * @param  list<string>  $missingFields
+     */
+    public static function describeMissingFields(array $missingFields): string
+    {
+        if ($missingFields === []) {
+            return '';
+        }
+
+        $labels = [
+            'photo_file' => 'Foto',
+            'full_name' => 'Nome completo',
+            'birth_date' => 'Data de nascimento válida (mínimo 10 anos)',
+            'has_whatsapp' => 'WhatsApp no telefone',
+            'email' => 'E-mail',
+            'has_social_networks' => 'Uso de redes sociais',
+            'attendance_duration' => 'Tempo de frequência na igreja',
+            'is_official_member' => 'Membro oficial da igreja',
+            'member_record_at_nova_semente' => 'Registro de membro na Nova Semente',
+            'member_record_church' => 'Igreja do registro de membro',
+            'has_previous_ministry_volunteer_experience' => 'Experiência anterior como voluntário',
+            'previous_ministry_ids' => 'Ministérios em que já serviu',
+            'is_active_in_ministry' => 'Atuação em ministério',
+            'active_ministry_ids' => 'Ministérios em que é atuante',
+            'wants_other_ministry' => 'Interesse em outro ministério',
+            'other_ministry_ids' => 'Ministérios de interesse',
+            'lgpd_data_consent' => 'Consentimento LGPD',
+        ];
+
+        $readable = array_map(
+            fn (string $field) => $labels[$field] ?? $field,
+            $missingFields
+        );
+
+        if (count($readable) === 1) {
+            return $readable[0];
+        }
+
+        if (count($readable) === 2) {
+            return $readable[0].' e '.$readable[1];
+        }
+
+        $last = array_pop($readable);
+
+        return implode(', ', $readable).' e '.$last;
+    }
+
+    /**
      * @param  array<string, mixed>  $initial
      * @return array{
      *     is_complete: bool,

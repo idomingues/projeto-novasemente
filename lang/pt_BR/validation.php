@@ -165,6 +165,10 @@ return [
     'attributes' => [
         'pdf_file' => 'PDF',
         'cover_image_file' => 'imagem da capa',
+        'photo_file' => 'foto',
+        'full_name' => 'nome completo',
+        'first_name' => 'nome',
+        'last_name' => 'sobrenome',
         'name' => 'nome',
         'email' => 'e-mail',
         'password' => 'senha',

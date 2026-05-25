@@ -203,6 +203,9 @@ Route::get('/mobile/voluntario/cadastro', [VolunteerSelfSignupEditController::cl
 Route::match(['put', 'patch'], '/mobile/voluntario/cadastro', [VolunteerSelfSignupEditController::class, 'update'])
     ->middleware(['auth', 'throttle:20,1'])
     ->name('volunteers.self-signup.edit.update');
+Route::post('/mobile/voluntario/cadastro/autosave', [VolunteerSelfSignupEditController::class, 'autosave'])
+    ->middleware(['auth', 'throttle:40,1'])
+    ->name('volunteers.self-signup.autosave');
 Route::get('/mobile/escala/checkin', [MobileController::class, 'scheduleCheckin'])
     ->middleware('auth')
     ->name('mobile.schedule.checkin');

@@ -9,10 +9,15 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import { compressImageForUpload, ImageCompressError } from '@/utils/compressImageForUpload';
 import type { VolunteerSignupCompletion } from '@/utils/volunteerSignupCompletion';
 import {
+    buildVolunteerSignupCompletionInput,
+    computeVolunteerSignupCompletion,
     describeMissingVolunteerSignupFields,
+    firstVolunteerSignupErrorKey,
     isVolunteerSignupFieldVisible,
     mergeVolunteerSignupWithInitial,
+    resolveVolunteerSignupFieldPage,
     visiblePagesForMissingFields,
+    volunteerSignupErrorsForMissingFields,
 } from '@/utils/volunteerSignupCompletion';
 import {
     clearVolunteerSignupDraft,
@@ -26,7 +31,18 @@ import {
     MIN_VOLUNTEER_SIGNUP_AGE,
     maxBirthDateForMinVolunteerAge,
 } from '@/utils/volunteerSignupPageValidation';
-import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import {
+    collectVolunteerSignupAutosaveFields,
+    fieldTriggersImmediateAutosave,
+    isVolunteerSignupFieldAnswered,
+    postVolunteerSignupAutosave,
+    type VolunteerSignupAutosaveResponse,
+} from '@/utils/volunteerSignupAutosave';
+import {
+    buildVolunteerSignupQuestionNumbers,
+    questionRangeForPage,
+} from '@/utils/volunteerSignupQuestionNumbers';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { UserPlusIcon } from '@heroicons/react/24/outline';
 import axios from 'axios';
 import { FormEventHandler, MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -60,6 +76,9 @@ export interface VolunteerSignupInitial {
     gifts_to_develop: string;
     professional_area: string;
     lgpd_data_consent: boolean | null;
+    ministry_involvement?: string;
+    previous_ministry_details?: string;
+    other_ministry_interest?: string;
 }
 
 interface Props {
@@ -165,10 +184,25 @@ const FIELD_SCROLL_TARGETS: Record<string, string> = {
 };
 
 function scrollToFirstError(errors: Record<string, string>) {
-    const firstKey = Object.keys(errors)[0];
+    const firstKey = firstVolunteerSignupErrorKey(errors);
     if (!firstKey) return;
     const targetId = FIELD_SCROLL_TARGETS[firstKey] ?? `field-${firstKey}`;
     window.requestAnimationFrame(() => {
+        document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+}
+
+function navigateToVolunteerSignupField(
+    fieldKey: string,
+    visiblePages: number[],
+    setPageSlot: (value: number | ((current: number) => number)) => void,
+) {
+    const pageNum = resolveVolunteerSignupFieldPage(fieldKey);
+    const slot = visiblePages.indexOf(pageNum);
+    setPageSlot(slot >= 0 ? slot : 0);
+    window.requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        const targetId = FIELD_SCROLL_TARGETS[fieldKey] ?? `field-${fieldKey}`;
         document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
 }
@@ -493,7 +527,24 @@ export default function PublicSignup({
     const isEdit = mode === 'edit';
     const hasExistingPhoto = initial?.has_existing_photo === true;
     const backHref = cancelHref ?? (isEdit ? route('mobile.profile.edit') : route('more.index'));
-    const missingFields = useMemo(() => missingFieldsProp ?? [], [missingFieldsProp]);
+    const savedInitialRef = useRef(initial);
+    const [liveMissingFields, setLiveMissingFields] = useState<string[]>(missingFieldsProp ?? []);
+    const [liveSignupCompletion, setLiveSignupCompletion] = useState(signupCompletion);
+    const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+    const [autosaveMessage, setAutosaveMessage] = useState<string | null>(null);
+    const autosaveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const autosaveInFlightRef = useRef(false);
+
+    useEffect(() => {
+        savedInitialRef.current = initial;
+    }, [initial]);
+
+    useEffect(() => {
+        setLiveMissingFields(missingFieldsProp ?? []);
+        setLiveSignupCompletion(signupCompletion);
+    }, [missingFieldsProp, signupCompletion]);
+
+    const missingFields = liveMissingFields;
     const visiblePages = useMemo(
         () => (focusMissingOnly ? visiblePagesForMissingFields(missingFields) : [0, 1, 2, 3]),
         [focusMissingOnly, missingFields],
@@ -517,8 +568,64 @@ export default function PublicSignup({
         [data, focusMissingOnly, missingFields],
     );
 
+    const questionNumberContext = useMemo(
+        () => ({
+            visiblePages,
+            isFieldVisible: showField,
+            data,
+            focusMissingOnly,
+            isEdit,
+        }),
+        [visiblePages, showField, data, focusMissingOnly, isEdit],
+    );
+
+    const questionNumbers = useMemo(
+        () => buildVolunteerSignupQuestionNumbers(questionNumberContext),
+        [questionNumberContext],
+    );
+
+    const qn = (fieldKey: string) => questionNumbers[fieldKey] ?? 0;
+
+    const legacyMinistryTexts = useMemo(
+        () =>
+            initial
+                ? {
+                      ministry_involvement: initial.ministry_involvement,
+                      previous_ministry_details: initial.previous_ministry_details,
+                      other_ministry_interest: initial.other_ministry_interest,
+                  }
+                : undefined,
+        [initial],
+    );
+
     const [pageSlot, setPageSlot] = useState(0);
     const page = visiblePages[pageSlot] ?? 0;
+
+    const questionRange = useMemo(
+        () => questionRangeForPage(questionNumberContext, page),
+        [questionNumberContext, page],
+    );
+
+    useEffect(() => {
+        if (pageSlot > lastVisiblePageIndex) {
+            setPageSlot(lastVisiblePageIndex);
+        }
+    }, [lastVisiblePageIndex, pageSlot]);
+
+    useEffect(() => {
+        if (!isEdit || !initial?.full_name) return;
+        if (splitVolunteerFullName(initial.full_name)) return;
+        setClientErrors((cur) =>
+            cur.full_name
+                ? cur
+                : {
+                      ...cur,
+                      full_name:
+                          'Seu cadastro precisa de nome e sobrenome (ex.: João Silva). Atualize o campo abaixo.',
+                  },
+        );
+        setStepBlocked(true);
+    }, [isEdit, initial?.full_name]);
     const [photoPreview, setPhotoPreview] = useState<string | null>(initial?.photo_url ?? null);
     const [photoPreparing, setPhotoPreparing] = useState(false);
     const [photoClientError, setPhotoClientError] = useState<string | null>(null);
@@ -572,6 +679,98 @@ export default function PublicSignup({
         writeVolunteerSignupDraft(data.token || token, data);
     }, [data, isEdit, processing, token]);
 
+    const buildPreparedPayload = useCallback(
+        (formData: typeof data) => {
+            const parts = splitVolunteerFullName(formData.full_name);
+            if (!parts) return null;
+
+            let prepared = prepareSignupPayload(
+                { ...formData, photo_file: formData.photo_file } as Record<string, unknown>,
+                parts.first_name,
+                parts.last_name,
+            );
+
+            if (isEdit) {
+                delete prepared.token;
+                if (!String(prepared.password ?? '').trim()) {
+                    delete prepared.current_password;
+                    delete prepared.password;
+                    delete prepared.password_confirmation;
+                }
+            }
+
+            const baseline = savedInitialRef.current ?? initial;
+            if (focusMissingOnly && baseline) {
+                prepared = mergeVolunteerSignupWithInitial(prepared, baseline, missingFields);
+            }
+
+            return prepared;
+        },
+        [focusMissingOnly, initial, isEdit, missingFields],
+    );
+
+    const applyAutosaveResponse = useCallback((response: VolunteerSignupAutosaveResponse) => {
+        savedInitialRef.current = response.initial;
+        setLiveMissingFields(response.completion.missing_fields);
+        setLiveSignupCompletion(response.completion);
+        setAutosaveMessage(response.message);
+        setAutosaveStatus('saved');
+
+        if (response.completion.is_complete) {
+            router.visit(route('mobile.profile.edit'));
+        }
+    }, []);
+
+    const performAutosave = useCallback(
+        async (fields: string[]): Promise<boolean> => {
+            if (!isEdit || fields.length === 0) return true;
+            if (autosaveInFlightRef.current) return true;
+
+            const prepared = buildPreparedPayload(data);
+            if (!prepared) {
+                if (!splitVolunteerFullName(data.full_name)) {
+                    setClientErrors({ full_name: 'Informe o nome completo (nome e sobrenome).' });
+                    setStepBlocked(true);
+                    setShowSubmitErrors(true);
+                    navigateToVolunteerSignupField('full_name', visiblePages, setPageSlot);
+                    setAutosaveMessage('Complete o nome (nome e sobrenome) antes de salvar as outras respostas.');
+                    setAutosaveStatus('error');
+                }
+                return false;
+            }
+
+            autosaveInFlightRef.current = true;
+            setAutosaveStatus('saving');
+            setAutosaveMessage(null);
+
+            try {
+                const response = await postVolunteerSignupAutosave(prepared, fields);
+                applyAutosaveResponse(response);
+                return true;
+            } catch (e) {
+                setAutosaveStatus('error');
+                if (axios.isAxiosError(e) && e.response?.status === 422) {
+                    const bag = (e.response.data as { errors?: Record<string, string | string[]> })?.errors ?? {};
+                    const mapped = mapVolunteerSignupServerErrors(bag);
+                    if (Object.keys(mapped).length > 0) {
+                        setClientErrors(mapped);
+                        setStepBlocked(true);
+                        setShowSubmitErrors(true);
+                        const firstKey = firstVolunteerSignupErrorKey(mapped);
+                        if (firstKey) navigateToVolunteerSignupField(firstKey, visiblePages, setPageSlot);
+                    }
+                    setAutosaveMessage('Não foi possível salvar agora. Verifique o campo destacado.');
+                } else {
+                    setAutosaveMessage('Não foi possível salvar agora. Tente novamente em instantes.');
+                }
+                return false;
+            } finally {
+                autosaveInFlightRef.current = false;
+            }
+        },
+        [applyAutosaveResponse, buildPreparedPayload, data, isEdit, visiblePages],
+    );
+
     const applyServerValidationErrors = useCallback(
         (propsErrors: Record<string, string | string[] | undefined> | Record<string, string>) => {
             const mapped = mapVolunteerSignupServerErrors(propsErrors);
@@ -581,11 +780,12 @@ export default function PublicSignup({
             setShowSubmitErrors(true);
             setClientErrors(mapped);
             setStepBlocked(true);
-            const errorPages = keys.map(resolveErrorPage);
-            const firstErrorPage = Math.min(...errorPages);
-            const slotForPage = visiblePages.indexOf(firstErrorPage);
-            setPageSlot(slotForPage >= 0 ? slotForPage : 0);
-            scrollToFirstError(mapped);
+            const firstKey = firstVolunteerSignupErrorKey(mapped);
+            if (firstKey) {
+                navigateToVolunteerSignupField(firstKey, visiblePages, setPageSlot);
+            } else {
+                scrollToFirstError(mapped);
+            }
         },
         [visiblePages],
     );
@@ -635,11 +835,6 @@ export default function PublicSignup({
         setData('last_name', parts?.last_name ?? '');
     };
 
-    const onNameBlur = () => {
-        syncNameParts(data.full_name);
-        scheduleDuplicateCheck();
-    };
-
     const clearClientError = (key: string) => {
         dismissSubmitErrors();
         setStepBlocked(false);
@@ -664,6 +859,9 @@ export default function PublicSignup({
             const compressed = await compressImageForUpload(raw);
             setData('photo_file', compressed);
             setPhotoPreview(URL.createObjectURL(compressed));
+            if (isEdit) {
+                void performAutosave(['photo_file']);
+            }
         } catch (e) {
             const msg = e instanceof ImageCompressError ? e.message : 'Não foi possível preparar a foto.';
             setPhotoClientError(msg);
@@ -697,10 +895,59 @@ export default function PublicSignup({
                 hasExistingPhoto,
                 focusMissingOnly,
                 missingFields,
+                legacyMinistryTexts,
                 duplicateHints,
             }),
-        [data, hasExistingPhoto, isEdit, nameDuplicateHint, emailDuplicateHint, phoneDuplicateHint, focusMissingOnly, missingFields],
+        [
+            data,
+            hasExistingPhoto,
+            isEdit,
+            nameDuplicateHint,
+            emailDuplicateHint,
+            phoneDuplicateHint,
+            focusMissingOnly,
+            missingFields,
+            legacyMinistryTexts,
+        ],
     );
+
+    const scheduleFieldAutosave = useCallback(
+        (fieldKey: string) => {
+            if (!isEdit) return;
+            if (autosaveDebounceRef.current) clearTimeout(autosaveDebounceRef.current);
+            autosaveDebounceRef.current = setTimeout(() => {
+                if (!isVolunteerSignupFieldAnswered(fieldKey, data)) return;
+                const pageErrors = computePageErrors(page);
+                const errorKey = fieldKey === 'full_name' ? 'full_name' : fieldKey;
+                if (pageErrors[errorKey]) return;
+
+                const fields =
+                    fieldKey === 'full_name'
+                        ? ['first_name', 'last_name']
+                        : fieldKey === 'photo_file'
+                          ? ['photo_file']
+                          : [fieldKey];
+
+                void performAutosave(fields);
+            }, 700);
+        },
+        [computePageErrors, data, isEdit, page, performAutosave],
+    );
+
+    const persistFieldAnswer = useCallback(
+        (fieldKey: string) => {
+            if (isEdit && fieldTriggersImmediateAutosave(fieldKey)) {
+                scheduleFieldAutosave(fieldKey);
+            }
+        },
+        [isEdit, scheduleFieldAutosave],
+    );
+
+    const onNameBlur = () => {
+        syncNameParts(data.full_name);
+        scheduleDuplicateCheck();
+        if (isEdit) scheduleFieldAutosave('full_name');
+    };
 
     const applyPageValidation = useCallback(
         (p: number, duplicateHints?: { nameHint: string | null; emailHint: string | null; phoneHint: string | null }) => {
@@ -727,6 +974,12 @@ export default function PublicSignup({
 
             const duplicateHints = page === 0 && !isEdit ? await runDuplicateCheck() : undefined;
             if (!applyPageValidation(page, duplicateHints)) return;
+
+            if (isEdit) {
+                const fieldsToSave = collectVolunteerSignupAutosaveFields(page, showField, data);
+                const saved = await performAutosave(fieldsToSave);
+                if (!saved) return;
+            }
 
             setClientErrors({});
             setStepBlocked(false);
@@ -755,6 +1008,7 @@ export default function PublicSignup({
             if (Object.keys(pageErrors).length > 0) {
                 setClientErrors(pageErrors);
                 setStepBlocked(true);
+                setShowSubmitErrors(true);
                 setPageSlot(slot);
                 scrollToFirstError(pageErrors);
                 return;
@@ -763,9 +1017,59 @@ export default function PublicSignup({
 
         const parts = splitVolunteerFullName(data.full_name);
         if (!parts) {
-            setClientErrors({ full_name: 'Informe o nome completo.' });
+            const nameErrors = { full_name: 'Informe o nome completo.' };
+            setClientErrors(nameErrors);
             setPageSlot(0);
             setStepBlocked(true);
+            setShowSubmitErrors(true);
+            navigateToVolunteerSignupField('full_name', visiblePages, setPageSlot);
+            return;
+        }
+
+        let prepared = prepareSignupPayload(
+            { ...data, photo_file: data.photo_file } as Record<string, unknown>,
+            parts.first_name,
+            parts.last_name,
+        );
+        if (isEdit) {
+            delete prepared.token;
+            if (!String(prepared.password ?? '').trim()) {
+                delete prepared.current_password;
+                delete prepared.password;
+                delete prepared.password_confirmation;
+            }
+        }
+        if (focusMissingOnly && initial) {
+            prepared = mergeVolunteerSignupWithInitial(prepared, initial, missingFields);
+        }
+
+        const completionInput = buildVolunteerSignupCompletionInput(prepared, {
+            hasExistingPhoto: hasExistingPhoto || data.photo_file !== null,
+            legacy: {
+                ministry_involvement:
+                    normalizeSignupBool(prepared.is_active_in_ministry as BoolLike) === true
+                        ? legacyMinistryTexts?.ministry_involvement
+                        : undefined,
+                previous_ministry_details:
+                    normalizeSignupBool(prepared.has_previous_ministry_volunteer_experience as BoolLike) === true
+                        ? legacyMinistryTexts?.previous_ministry_details
+                        : undefined,
+                other_ministry_interest:
+                    normalizeSignupBool(prepared.wants_other_ministry as BoolLike) === true
+                        ? legacyMinistryTexts?.other_ministry_interest
+                        : undefined,
+            },
+        });
+        const pendingAfterSubmit = computeVolunteerSignupCompletion(completionInput);
+        if (!pendingAfterSubmit.is_complete) {
+            const pendingErrors = volunteerSignupErrorsForMissingFields(pendingAfterSubmit.missing_fields);
+            setClientErrors(pendingErrors);
+            setStepBlocked(true);
+            setShowSubmitErrors(true);
+            const firstPending = firstVolunteerSignupErrorKey(pendingErrors);
+            if (firstPending) {
+                navigateToVolunteerSignupField(firstPending, visiblePages, setPageSlot);
+            }
             return;
         }
 
@@ -773,21 +1077,7 @@ export default function PublicSignup({
         setShowSubmitErrors(false);
         clearErrors();
 
-        transform((form) => {
-            let prepared = prepareSignupPayload(form as Record<string, unknown>, parts.first_name, parts.last_name);
-            if (isEdit) {
-                delete prepared.token;
-                if (!String(prepared.password ?? '').trim()) {
-                    delete prepared.current_password;
-                    delete prepared.password;
-                    delete prepared.password_confirmation;
-                }
-            }
-            if (focusMissingOnly && initial) {
-                prepared = mergeVolunteerSignupWithInitial(prepared, initial, missingFields);
-            }
-            return prepared;
-        });
+        transform(() => prepared);
 
         const submitOptions = {
             forceFormData: true,
@@ -826,8 +1116,6 @@ export default function PublicSignup({
     const hasVisibleServerErrors = serverErrorKeys.length > 0;
     const hasStepErrors = stepBlocked && Object.keys(clientErrors).length > 0;
 
-    let questionNumber = 0;
-
     return (
         <MobileLayout>
             <Head title={isEdit ? `Cadastro de voluntário — ${churchName}` : `Cadastro Voluntário — ${churchName}`} />
@@ -853,12 +1141,35 @@ export default function PublicSignup({
                                       : 'Cadastro voluntário'}
                             </h1>
                             <p className="mt-1 text-sm font-semibold text-zinc-700 dark:text-zinc-300">{churchName}</p>
+                            {isEdit ? (
+                                <p
+                                    className={[
+                                        'mt-2 text-xs font-medium',
+                                        autosaveStatus === 'error'
+                                            ? 'text-red-700 dark:text-red-300'
+                                            : autosaveStatus === 'saved'
+                                              ? 'text-teal-800 dark:text-teal-300'
+                                              : 'text-zinc-500 dark:text-zinc-400',
+                                    ].join(' ')}
+                                    aria-live="polite"
+                                >
+                                    {autosaveStatus === 'saving'
+                                        ? 'Salvando resposta…'
+                                        : autosaveStatus === 'saved'
+                                          ? autosaveMessage ?? 'Resposta salva no seu cadastro.'
+                                          : autosaveStatus === 'error'
+                                            ? autosaveMessage ?? 'Não foi possível salvar agora.'
+                                            : focusMissingOnly
+                                              ? 'Suas respostas são salvas automaticamente ao avançar ou ao responder.'
+                                              : 'Ao avançar cada etapa, suas respostas são salvas no cadastro.'}
+                                </p>
+                            ) : null}
                             <p className="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
                                 {focusMissingOnly ? (
                                     <>
                                         {missingFields.length === 1
                                             ? 'Falta responder 1 item para concluir seu cadastro.'
-                                            : `Faltam ${signupCompletion?.missing_count ?? missingFields.length} perguntas para concluir seu cadastro.`}{' '}
+                                            : `Faltam ${liveSignupCompletion?.missing_count ?? missingFields.length} perguntas para concluir seu cadastro.`}{' '}
                                         <span className="font-medium text-zinc-800 dark:text-zinc-200">
                                             Pendente: {describeMissingVolunteerSignupFields(missingFields)}.
                                         </span>{' '}
@@ -891,7 +1202,14 @@ export default function PublicSignup({
                         className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-100"
                         role="alert"
                     >
-                        Preencha todos os campos obrigatórios desta etapa antes de continuar.
+                        {Object.keys(clientErrors).length === 1
+                            ? 'Falta responder 1 item. Role até o campo destacado em vermelho.'
+                            : `Faltam ${Object.keys(clientErrors).length} respostas. Role até o primeiro campo destacado em vermelho.`}
+                        {Object.keys(clientErrors).length > 0 ? (
+                            <span className="mt-1 block font-medium">
+                                Pendente: {describeMissingVolunteerSignupFields(Object.keys(clientErrors))}.
+                            </span>
+                        ) : null}
                     </div>
                 ) : null}
 
@@ -921,6 +1239,11 @@ export default function PublicSignup({
                             <div>
                                 <p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-500 dark:text-zinc-400">
                                     Etapa {pageSlot + 1} de {visiblePages.length}
+                                    {questionRange
+                                        ? questionRange.start === questionRange.end
+                                            ? ` · pergunta ${questionRange.start} de ${questionRange.total}`
+                                            : ` · perguntas ${questionRange.start}–${questionRange.end} de ${questionRange.total}`
+                                        : null}
                                 </p>
                                 <p className="mt-0.5 text-sm font-medium text-zinc-800 dark:text-zinc-200">{PAGE_TITLES[page]}</p>
                             </div>
@@ -963,6 +1286,7 @@ export default function PublicSignup({
                                     ].join(' ')}
                                 >
                                     <h3 className="mb-3 text-base font-semibold leading-snug text-zinc-900 dark:text-white">
+                                        <span className="mr-1.5 tabular-nums text-zinc-500 dark:text-zinc-400">{qn('photo_file')}.</span>
                                         Foto
                                         {!(isEdit && hasExistingPhoto) ? (
                                             <span className="ml-0.5 text-red-600 dark:text-red-400">*</span>
@@ -983,7 +1307,7 @@ export default function PublicSignup({
                                 {showField('full_name') ? (
                                 <Question
                                     fieldKey="full_name"
-                                    number={++questionNumber}
+                                    number={qn('full_name')}
                                     label="Nome completo"
                                     error={err('full_name') || err('first_name') || err('last_name')}
                                 >
@@ -1003,7 +1327,7 @@ export default function PublicSignup({
                                 </Question>
                                 ) : null}
                                 {showField('birth_date') ? (
-                                <Question fieldKey="birth_date" number={++questionNumber} label="Data de nascimento" error={err('birth_date')}>
+                                <Question fieldKey="birth_date" number={qn('birth_date')} label="Data de nascimento" error={err('birth_date')}>
                                     <TextInput
                                         type="date"
                                         className="w-full max-w-xs"
@@ -1013,11 +1337,25 @@ export default function PublicSignup({
                                             setData('birth_date', e.target.value);
                                             clearClientError('birth_date');
                                         }}
+                                        onBlur={() => {
+                                            if (isEdit) scheduleFieldAutosave('birth_date');
+                                        }}
                                     />
                                 </Question>
                                 ) : null}
-                                {!focusMissingOnly ? (
-                                <Question fieldKey="phone" number={++questionNumber} label="Telefone (WhatsApp)" required={false} error={err('phone')}>
+                                {showField('phone') ? (
+                                <Question
+                                    fieldKey="phone"
+                                    number={qn('phone')}
+                                    label={focusMissingOnly ? 'Telefone cadastrado' : 'Telefone (WhatsApp)'}
+                                    required={false}
+                                    error={err('phone')}
+                                >
+                                    {focusMissingOnly ? (
+                                        <p className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-800 dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-100">
+                                            {data.phone.trim() || '—'}
+                                        </p>
+                                    ) : (
                                     <TextInput
                                         type="tel"
                                         className="w-full"
@@ -1040,22 +1378,24 @@ export default function PublicSignup({
                                         }}
                                         onBlur={scheduleDuplicateCheck}
                                     />
+                                    )}
                                 </Question>
                                 ) : null}
                                 {(focusMissingOnly ? showField('has_whatsapp') : shouldAskVolunteerWhatsapp(data.phone)) ? (
-                                <Question fieldKey="has_whatsapp" number={++questionNumber} label="Este número tem WhatsApp?" error={err('has_whatsapp')}>
+                                <Question fieldKey="has_whatsapp" number={qn('has_whatsapp')} label="Este número tem WhatsApp?" error={err('has_whatsapp')}>
                                     <YesNoRadio
                                         name="has_whatsapp"
                                         value={data.has_whatsapp}
                                         onChange={(v) => {
                                             setData('has_whatsapp', v);
                                             clearClientError('has_whatsapp');
+                                            persistFieldAnswer('has_whatsapp');
                                         }}
                                     />
                                 </Question>
                                 ) : null}
                                 {showField('email') ? (
-                                <Question fieldKey="email" number={++questionNumber} label="E-mail" error={err('email')}>
+                                <Question fieldKey="email" number={qn('email')} label="E-mail" error={err('email')}>
                                     <TextInput
                                         type="email"
                                         className="w-full"
@@ -1080,7 +1420,7 @@ export default function PublicSignup({
                                         {isEdit ? (
                                             <Question
                                                 fieldKey="current_password"
-                                                number={++questionNumber}
+                                                number={qn('current_password')}
                                                 label="Senha atual"
                                                 required={false}
                                                 error={err('current_password')}
@@ -1101,7 +1441,7 @@ export default function PublicSignup({
                                         ) : null}
                                         <Question
                                             fieldKey="password"
-                                            number={++questionNumber}
+                                            number={qn('password')}
                                             label={isEdit ? 'Nova senha' : 'Senha'}
                                             required={!isEdit}
                                             error={err('password')}
@@ -1118,7 +1458,7 @@ export default function PublicSignup({
                                         </Question>
                                         <Question
                                             fieldKey="password_confirmation"
-                                            number={++questionNumber}
+                                            number={qn('password_confirmation')}
                                             label={isEdit ? 'Confirmar nova senha' : 'Confirmar senha'}
                                             required={!isEdit}
                                             error={err('password_confirmation')}
@@ -1138,7 +1478,7 @@ export default function PublicSignup({
                                 {showField('has_social_networks') ? (
                                 <Question
                                     fieldKey="has_social_networks"
-                                    number={++questionNumber}
+                                    number={qn('has_social_networks')}
                                     label="Redes sociais (Instagram, Facebook ou TikTok)"
                                     error={err('has_social_networks')}
                                 >
@@ -1148,6 +1488,7 @@ export default function PublicSignup({
                                         onChange={(v) => {
                                             setData('has_social_networks', v);
                                             clearClientError('has_social_networks');
+                                            persistFieldAnswer('has_social_networks');
                                         }}
                                     />
                                 </Question>
@@ -1158,7 +1499,7 @@ export default function PublicSignup({
                         {page === 1 ? (
                             <>
                                 {showField('attendance_duration') ? (
-                                <Question fieldKey="attendance_duration" number={++questionNumber} label="Há quanto tempo você frequenta a Nova Semente?" error={err('attendance_duration')}>
+                                <Question fieldKey="attendance_duration" number={qn('attendance_duration')} label="Há quanto tempo você frequenta a Nova Semente?" error={err('attendance_duration')}>
                                     <div className="space-y-1.5" role="radiogroup">
                                         {ATTENDANCE_OPTIONS.map((opt) => {
                                             const selected = data.attendance_duration === opt.value;
@@ -1171,6 +1512,7 @@ export default function PublicSignup({
                                                     onClick={() => {
                                                         setData('attendance_duration', opt.value);
                                                         clearClientError('attendance_duration');
+                                                        persistFieldAnswer('attendance_duration');
                                                     }}
                                                     className={[
                                                         'flex w-full cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition-colors sm:px-4 sm:py-3',
@@ -1198,7 +1540,7 @@ export default function PublicSignup({
                                 </Question>
                                 ) : null}
                                 {showField('is_official_member') ? (
-                                <Question fieldKey="is_official_member" number={++questionNumber} label="Você é membro oficial da igreja adventista?" error={err('is_official_member')}>
+                                <Question fieldKey="is_official_member" number={qn('is_official_member')} label="Você é membro oficial da igreja adventista?" error={err('is_official_member')}>
                                     <YesNoRadio
                                         name="is_official_member"
                                         value={data.is_official_member}
@@ -1210,6 +1552,7 @@ export default function PublicSignup({
                                                 member_record_church: '',
                                             }));
                                             clearClientError('is_official_member');
+                                            persistFieldAnswer('is_official_member');
                                         }}
                                     />
                                 </Question>
@@ -1221,7 +1564,7 @@ export default function PublicSignup({
                                         {showField('member_record_at_nova_semente') ? (
                                         <Question
                                             fieldKey="member_record_at_nova_semente"
-                                            number={++questionNumber}
+                                            number={qn('member_record_at_nova_semente')}
                                             label="Seu registro de membro está na Nova Semente?"
                                             error={err('member_record_at_nova_semente')}
                                         >
@@ -1235,6 +1578,7 @@ export default function PublicSignup({
                                                         member_record_church: v ? '' : d.member_record_church,
                                                     }));
                                                     clearClientError('member_record_at_nova_semente');
+                                                    persistFieldAnswer('member_record_at_nova_semente');
                                                 }}
                                             />
                                         </Question>
@@ -1244,7 +1588,7 @@ export default function PublicSignup({
                                             : normalizeSignupBool(data.member_record_at_nova_semente) === false) ? (
                                             <Question
                                                 fieldKey="member_record_church"
-                                                number={++questionNumber}
+                                                number={qn('member_record_church')}
                                                 label="Se não estiver, em qual igreja está?"
                                                 error={err('member_record_church')}
                                             >
@@ -1268,7 +1612,7 @@ export default function PublicSignup({
                                 {showField('has_previous_ministry_volunteer_experience') ? (
                                 <Question
                                     fieldKey="has_previous_ministry_volunteer_experience"
-                                    number={++questionNumber}
+                                    number={qn('has_previous_ministry_volunteer_experience')}
                                     label="Você já foi voluntário em algum ministério da igreja?"
                                     error={err('has_previous_ministry_volunteer_experience')}
                                 >
@@ -1282,6 +1626,7 @@ export default function PublicSignup({
                                                 previous_ministry_ids: v ? d.previous_ministry_ids : [],
                                             }));
                                             clearClientError('has_previous_ministry_volunteer_experience');
+                                            persistFieldAnswer('has_previous_ministry_volunteer_experience');
                                         }}
                                     />
                                 </Question>
@@ -1291,14 +1636,22 @@ export default function PublicSignup({
                                     : normalizeSignupBool(data.has_previous_ministry_volunteer_experience) === true) ? (
                                     <Question
                                         fieldKey="previous_ministry_ids"
-                                        number={++questionNumber}
+                                        number={qn('previous_ministry_ids')}
                                         label="Se sim, quais? Em quais ministérios já serviu?"
                                         error={err('previous_ministry_ids')}
                                     >
                                         <MinistryCheckboxList
                                             ministries={ministries}
                                             selectedIds={data.previous_ministry_ids}
-                                            onToggle={(id) => toggleIds('previous_ministry_ids', id)}
+                                            onToggle={(id) => {
+                                                const current = data.previous_ministry_ids;
+                                                const next = current.includes(id)
+                                                    ? current.filter((x) => x !== id)
+                                                    : [...current, id];
+                                                setData('previous_ministry_ids', next);
+                                                clearClientError('previous_ministry_ids');
+                                                if (isEdit && next.length > 0) scheduleFieldAutosave('previous_ministry_ids');
+                                            }}
                                         />
                                     </Question>
                                 ) : null}
@@ -1310,7 +1663,7 @@ export default function PublicSignup({
                                 {showField('is_active_in_ministry') ? (
                                 <Question
                                     fieldKey="is_active_in_ministry"
-                                    number={++questionNumber}
+                                    number={qn('is_active_in_ministry')}
                                     label="Você é atuante de algum ministério da Nova Semente?"
                                     error={err('is_active_in_ministry')}
                                 >
@@ -1324,6 +1677,7 @@ export default function PublicSignup({
                                                 active_ministry_ids: v ? d.active_ministry_ids : [],
                                             }));
                                             clearClientError('is_active_in_ministry');
+                                            persistFieldAnswer('is_active_in_ministry');
                                         }}
                                     />
                                 </Question>
@@ -1331,18 +1685,26 @@ export default function PublicSignup({
                                 {(focusMissingOnly
                                     ? showField('active_ministry_ids')
                                     : normalizeSignupBool(data.is_active_in_ministry) === true) ? (
-                                    <Question fieldKey="active_ministry_ids" number={++questionNumber} label="Selecione os ministérios" error={err('active_ministry_ids')}>
+                                    <Question fieldKey="active_ministry_ids" number={qn('active_ministry_ids')} label="Selecione os ministérios" error={err('active_ministry_ids')}>
                                         <MinistryCheckboxList
                                             ministries={ministries}
                                             selectedIds={data.active_ministry_ids}
-                                            onToggle={(id) => toggleIds('active_ministry_ids', id)}
+                                            onToggle={(id) => {
+                                                const current = data.active_ministry_ids;
+                                                const next = current.includes(id)
+                                                    ? current.filter((x) => x !== id)
+                                                    : [...current, id];
+                                                setData('active_ministry_ids', next);
+                                                clearClientError('active_ministry_ids');
+                                                if (isEdit && next.length > 0) scheduleFieldAutosave('active_ministry_ids');
+                                            }}
                                         />
                                     </Question>
                                 ) : null}
                                 {showField('wants_other_ministry') ? (
                                 <Question
                                     fieldKey="wants_other_ministry"
-                                    number={++questionNumber}
+                                    number={qn('wants_other_ministry')}
                                     label="Gostaria de servir em outro ministério?"
                                     error={err('wants_other_ministry')}
                                 >
@@ -1356,6 +1718,7 @@ export default function PublicSignup({
                                                 other_ministry_ids: v ? d.other_ministry_ids : [],
                                             }));
                                             clearClientError('wants_other_ministry');
+                                            persistFieldAnswer('wants_other_ministry');
                                         }}
                                     />
                                 </Question>
@@ -1363,17 +1726,25 @@ export default function PublicSignup({
                                 {(focusMissingOnly
                                     ? showField('other_ministry_ids')
                                     : normalizeSignupBool(data.wants_other_ministry) === true) ? (
-                                    <Question fieldKey="other_ministry_ids" number={++questionNumber} label="Se sim, qual?" error={err('other_ministry_ids')}>
+                                    <Question fieldKey="other_ministry_ids" number={qn('other_ministry_ids')} label="Se sim, qual?" error={err('other_ministry_ids')}>
                                         <MinistryCheckboxList
                                             ministries={ministries}
                                             selectedIds={data.other_ministry_ids}
-                                            onToggle={(id) => toggleIds('other_ministry_ids', id)}
+                                            onToggle={(id) => {
+                                                const current = data.other_ministry_ids;
+                                                const next = current.includes(id)
+                                                    ? current.filter((x) => x !== id)
+                                                    : [...current, id];
+                                                setData('other_ministry_ids', next);
+                                                clearClientError('other_ministry_ids');
+                                                if (isEdit && next.length > 0) scheduleFieldAutosave('other_ministry_ids');
+                                            }}
                                         />
                                     </Question>
                                 ) : null}
                                 {!focusMissingOnly ? (
                                 <Question
-                                    number={++questionNumber}
+                                    number={qn('gifts_to_develop')}
                                     label="Quais dons ou habilidades você gostaria de desenvolver no servir?"
                                     required={false}
                                     error={err('gifts_to_develop')}
@@ -1387,7 +1758,7 @@ export default function PublicSignup({
                                 ) : null}
                                 {!focusMissingOnly ? (
                                 <Question
-                                    number={++questionNumber}
+                                    number={qn('professional_area')}
                                     label="Qual sua área de atuação profissional?"
                                     required={false}
                                     error={err('professional_area')}
@@ -1400,7 +1771,7 @@ export default function PublicSignup({
                                 </Question>
                                 ) : null}
                                 {showField('lgpd_data_consent') ? (
-                                <Question fieldKey="lgpd_data_consent" number={++questionNumber} label="Consentimento para uso de dados" error={err('lgpd_data_consent')}>
+                                <Question fieldKey="lgpd_data_consent" number={qn('lgpd_data_consent')} label="Consentimento para uso de dados" error={err('lgpd_data_consent')}>
                                     <p className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">
                                         Declaro que as informações fornecidas são verdadeiras e autorizo o uso dos meus dados pela Igreja
                                         Adventista Nova Semente exclusivamente para fins de organização do voluntariado e cuidado pastoral,
@@ -1412,6 +1783,7 @@ export default function PublicSignup({
                                         onChange={(v) => {
                                             setData('lgpd_data_consent', v);
                                             clearClientError('lgpd_data_consent');
+                                            persistFieldAnswer('lgpd_data_consent');
                                         }}
                                     />
                                 </Question>

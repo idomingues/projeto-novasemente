@@ -1,5 +1,9 @@
 import type { VolunteerSignupInitial } from '@/Pages/Volunteers/PublicSignup';
-import { isVolunteerSignupFieldVisible } from '@/utils/volunteerSignupCompletion';
+import {
+    hasMinistrySelection,
+    isVolunteerSignupFieldVisible,
+    type VolunteerSignupLegacyMinistryTexts,
+} from '@/utils/volunteerSignupCompletion';
 
 export const MIN_VOLUNTEER_SIGNUP_AGE = 10;
 
@@ -57,6 +61,7 @@ type PageValidationOptions = {
     hasExistingPhoto: boolean;
     focusMissingOnly: boolean;
     missingFields: string[];
+    legacyMinistryTexts?: VolunteerSignupLegacyMinistryTexts;
     duplicateHints?: {
         nameHint: string | null;
         emailHint: string | null;
@@ -72,6 +77,7 @@ export function computeVolunteerSignupPageErrors({
     hasExistingPhoto,
     focusMissingOnly,
     missingFields,
+    legacyMinistryTexts,
     duplicateHints = { nameHint: null, emailHint: null, phoneHint: null },
 }: PageValidationOptions): Record<string, string> {
     const next: Record<string, string> = {};
@@ -161,7 +167,7 @@ export function computeVolunteerSignupPageErrors({
         if (
             visible('previous_ministry_ids') &&
             normalizeSignupBool(data.has_previous_ministry_volunteer_experience) === true &&
-            data.previous_ministry_ids.length === 0
+            !hasMinistrySelection(data.previous_ministry_ids, legacyMinistryTexts?.previous_ministry_details)
         ) {
             next.previous_ministry_ids = 'Selecione em quais ministérios você já serviu.';
         }
@@ -174,7 +180,7 @@ export function computeVolunteerSignupPageErrors({
         if (
             visible('active_ministry_ids') &&
             normalizeSignupBool(data.is_active_in_ministry) === true &&
-            data.active_ministry_ids.length === 0
+            !hasMinistrySelection(data.active_ministry_ids, legacyMinistryTexts?.ministry_involvement)
         ) {
             next.active_ministry_ids = 'Selecione pelo menos um ministério.';
         }
@@ -184,7 +190,7 @@ export function computeVolunteerSignupPageErrors({
         if (
             visible('other_ministry_ids') &&
             normalizeSignupBool(data.wants_other_ministry) === true &&
-            data.other_ministry_ids.length === 0
+            !hasMinistrySelection(data.other_ministry_ids, legacyMinistryTexts?.other_ministry_interest)
         ) {
             next.other_ministry_ids = 'Selecione pelo menos um ministério.';
         }
@@ -237,6 +243,8 @@ export function clearVolunteerSignupDraft(token: string): void {
     sessionStorage.removeItem(volunteerSignupDraftKey(token));
 }
 
+const FULL_NAME_SERVER_MESSAGE = 'Informe o nome completo (nome e sobrenome).';
+
 export function mapVolunteerSignupServerErrors(
     propsErrors: Record<string, string | string[] | undefined>,
 ): Record<string, string> {
@@ -245,5 +253,13 @@ export function mapVolunteerSignupServerErrors(
         const message = typeof value === 'string' ? value : Array.isArray(value) ? value[0] : undefined;
         if (message && message.trim() !== '') mapped[key] = message;
     }
+
+    if (mapped.first_name || mapped.last_name || mapped.full_name) {
+        mapped.full_name =
+            mapped.full_name ?? mapped.first_name ?? mapped.last_name ?? FULL_NAME_SERVER_MESSAGE;
+        delete mapped.first_name;
+        delete mapped.last_name;
+    }
+
     return mapped;
 }

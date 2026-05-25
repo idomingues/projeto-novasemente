@@ -242,6 +242,14 @@ class VolunteerSignupCompletionTest extends TestCase
                 ->where('volunteerSignupCompletion', null));
     }
 
+    public function test_describe_missing_fields_returns_readable_labels(): void
+    {
+        $text = VolunteerSignupCompletion::describeMissingFields(['full_name', 'lgpd_data_consent']);
+
+        $this->assertStringContainsString('Nome completo', $text);
+        $this->assertStringContainsString('LGPD', $text);
+    }
+
     public function test_mobile_home_hides_alert_when_volunteer_signup_is_complete(): void
     {
         $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);

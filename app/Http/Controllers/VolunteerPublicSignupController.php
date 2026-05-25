@@ -12,6 +12,7 @@ use App\Support\UserProfilePhotoResolver;
 use App\Support\VolunteerAppLogin;
 use App\Support\VolunteerContactDuplicateChecker;
 use App\Support\VolunteerPipelineBootstrap;
+use App\Support\VolunteerSignupName;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -193,7 +194,7 @@ class VolunteerPublicSignupController extends Controller
         $validated = $request->validate(array_merge([
             'token' => ['required', 'string'],
             'first_name' => ['required', 'string', 'max:100'],
-            'last_name' => ['required', 'string', 'max:155'],
+            'last_name' => ['nullable', 'string', 'max:155'],
             'birth_date' => ['required', 'date', 'before_or_equal:'.$minBirthDate],
             'has_whatsapp' => [
                 Rule::requiredIf(fn () => trim((string) $request->input('phone', '')) !== ''),
@@ -223,6 +224,8 @@ class VolunteerPublicSignupController extends Controller
         ], UserProfilePhotoResolver::validationRules()), [
             'birth_date.before_or_equal' => 'O voluntário deve ter pelo menos 10 anos de idade.',
         ]);
+
+        VolunteerSignupName::assertValidInPayload($validated);
 
         if (($validated['is_official_member'] ?? false) === true) {
             if (! array_key_exists('member_record_at_nova_semente', $validated) || $validated['member_record_at_nova_semente'] === null) {

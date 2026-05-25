@@ -2,18 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Volunteers\PersistVolunteerSignupQuestionnaire;
 use App\Models\Church;
 use App\Models\Ministry;
 use App\Models\User;
-use App\Services\VolunteerMinistryRosterNotifier;
 use App\Support\UserProfilePhotoResolver;
-use App\Support\VolunteerAppLogin;
 use App\Support\VolunteerContactDuplicateChecker;
+use App\Support\VolunteerSignupAutosave;
 use App\Support\VolunteerSignupCompletion;
 use App\Support\VolunteerSignupFormPrefill;
+use App\Support\VolunteerSignupName;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
@@ -146,7 +147,7 @@ class VolunteerSelfSignupEditController extends Controller
 
         $validated = $request->validate(array_merge([
             'first_name' => ['required', 'string', 'max:100'],
-            'last_name' => ['required', 'string', 'max:155'],
+            'last_name' => ['nullable', 'string', 'max:155'],
             'birth_date' => ['required', 'date', 'before_or_equal:'.$minBirthDate],
             'has_whatsapp' => [
                 Rule::requiredIf(fn () => trim((string) $request->input('phone', '')) !== ''),
@@ -185,6 +186,8 @@ class VolunteerSelfSignupEditController extends Controller
         ], UserProfilePhotoResolver::validationRules(required: ! $hasExistingPhoto)), [
             'birth_date.before_or_equal' => 'O voluntário deve ter pelo menos 10 anos de idade.',
         ]);
+
+        VolunteerSignupName::assertValidInPayload($validated);
 
         if (! $hasExistingPhoto && ! $request->hasFile('photo_file')) {
             throw ValidationException::withMessages([
@@ -273,96 +276,117 @@ class VolunteerSelfSignupEditController extends Controller
             ]);
         }
 
-        $previousMinistryDetails = ($validated['has_previous_ministry_volunteer_experience'] ?? false)
-            ? $this->ministryNamesForChurch($previousIds, $churchId)
-            : null;
-        $ministryInvolvement = ($validated['is_active_in_ministry'] ?? false)
-            ? $this->ministryNamesForChurch($activeIds, $churchId)
-            : 'Não';
-        $otherMinistryInterest = ($validated['wants_other_ministry'] ?? false)
-            ? $this->ministryNamesForChurch($otherIds, $churchId)
-            : 'Não';
+        $validated['previous_ministry_ids'] = $previousIds;
+        $validated['active_ministry_ids'] = $activeIds;
+        $validated['other_ministry_ids'] = $otherIds;
 
-        $newMinistryIds = array_values(array_unique(array_merge($activeIds, $otherIds)));
-        $existingMinistryIds = $volunteer->ministries()->pluck('ministries.id')->map(fn ($id) => (int) $id)->all();
-        $addedMinistryIds = array_values(array_diff($newMinistryIds, $existingMinistryIds));
-
-        $name = trim($validated['first_name'].' '.$validated['last_name']);
-        $photoUrl = UserProfilePhotoResolver::resolveFromRequest($request);
-
-        DB::transaction(function () use (
+        app(PersistVolunteerSignupQuestionnaire::class)(
             $user,
             $volunteer,
             $validated,
-            $name,
-            $emailNorm,
-            $photoUrl,
-            $previousMinistryDetails,
-            $ministryInvolvement,
-            $otherMinistryInterest,
-            $newMinistryIds,
-            $addedMinistryIds,
-        ) {
-            $user->forceFill([
-                'name' => $name,
-                'email' => $emailNorm ?? VolunteerContactDuplicateChecker::normalizeEmail($validated['email']),
-            ]);
-            if (! empty($validated['password'])) {
-                $user->password = $validated['password'];
-            }
-            if ($photoUrl !== null) {
-                UserProfilePhotoResolver::deleteStoredUploadIfAny($user->photo_url);
-                $user->photo_url = $photoUrl;
-            }
-            $user->forceFill(['is_volunteer' => true])->save();
+            $request,
+            $churchId,
+        );
 
-            $volunteer->forceFill([
-                'name' => $name,
-                'email' => $user->email,
-                'phone' => $validated['phone'] ?? null,
-                'birth_date' => $validated['birth_date'],
-                'has_whatsapp' => (bool) $validated['has_whatsapp'],
-                'has_social_networks' => (bool) $validated['has_social_networks'],
-                'attendance_duration' => (string) $validated['attendance_duration'],
-                'is_official_member' => (bool) $validated['is_official_member'],
-                'member_record_at_nova_semente' => array_key_exists('member_record_at_nova_semente', $validated)
-                    ? (is_null($validated['member_record_at_nova_semente']) ? null : (bool) $validated['member_record_at_nova_semente'])
-                    : null,
-                'member_record_church' => $validated['member_record_church'] ?? null,
-                'has_previous_ministry_volunteer_experience' => (bool) $validated['has_previous_ministry_volunteer_experience'],
-                'previous_ministry_details' => $previousMinistryDetails,
-                'ministry_involvement' => $ministryInvolvement,
-                'other_ministry_interest' => $otherMinistryInterest,
-                'gifts_to_develop' => $validated['gifts_to_develop'] ?? null,
-                'professional_area' => $validated['professional_area'] ?? null,
-                'lgpd_data_consent' => (bool) $validated['lgpd_data_consent'],
-            ])->save();
+        $completion = VolunteerSignupCompletion::forUser($user->fresh() ?? $user);
 
-            if ($newMinistryIds !== []) {
-                $volunteer->ministries()->sync($newMinistryIds);
-                if ($addedMinistryIds !== []) {
-                    app(VolunteerMinistryRosterNotifier::class)->notifyLeadersOfNewAttachments(
-                        $volunteer->fresh(),
-                        $addedMinistryIds
-                    );
-                }
-            } else {
-                $volunteer->ministries()->detach();
-            }
+        if ($completion['is_complete']) {
+            $redirectRoute = $this->resolveRedirectRoute($validated['redirect_after_save'] ?? null);
 
-            $user->syncVolunteerRecord();
-            VolunteerAppLogin::syncLoginEmailFromVolunteer($user->fresh() ?? $user, $volunteer->fresh());
-        });
+            return redirect()
+                ->route($redirectRoute)
+                ->with('status', 'Cadastro de voluntário concluído com sucesso.');
+        }
 
-        $redirectRoute = $this->resolveRedirectRoute($validated['redirect_after_save'] ?? null);
-
-        $statusMessage = VolunteerSignupCompletion::forUser($user->fresh() ?? $user)['is_complete']
-            ? 'Cadastro de voluntário concluído com sucesso.'
-            : 'Respostas salvas. Continue quando quiser em Editar perfil.';
+        $pendingLabels = VolunteerSignupCompletion::describeMissingFields($completion['missing_fields']);
 
         return redirect()
-            ->route($redirectRoute)
-            ->with('status', $statusMessage);
+            ->route('volunteers.self-signup.edit', ['missing' => 1])
+            ->with(
+                'status',
+                $pendingLabels !== ''
+                    ? "Respostas salvas. Ainda falta: {$pendingLabels}."
+                    : 'Respostas salvas. Continue respondendo as perguntas pendentes.'
+            );
+    }
+
+    public function autosave(Request $request, VolunteerSignupAutosave $autosave): JsonResponse
+    {
+        $user = $request->user();
+        if ($user === null) {
+            return response()->json(['message' => 'Não autenticado.'], 401);
+        }
+
+        $churchId = $this->resolveChurchId($user, $request);
+        if ($churchId === null) {
+            return response()->json([
+                'message' => 'Não foi possível identificar a igreja do seu cadastro.',
+            ], 422);
+        }
+
+        $this->normalizeSignupBooleans($request);
+
+        $user->ensureVolunteerProfile();
+        $user->load('volunteerProfile');
+        $volunteer = $user->volunteerProfile;
+
+        if ($volunteer === null) {
+            return response()->json(['message' => 'Cadastro de voluntário não encontrado.'], 422);
+        }
+
+        $hasExistingPhoto = is_string($user->photo_url) && trim($user->photo_url) !== '';
+        if (! $hasExistingPhoto && ! $request->hasFile('photo_file')) {
+            $autosaveFields = $request->input('autosave_fields', []);
+            if (is_array($autosaveFields) && in_array('photo_file', $autosaveFields, true)) {
+                throw ValidationException::withMessages([
+                    'photo_file' => ['Tire ou envie uma foto antes de salvar.'],
+                ]);
+            }
+        }
+
+        if ($request->hasFile('photo_file')) {
+            $request->validate(UserProfilePhotoResolver::validationRules(required: ! $hasExistingPhoto));
+        }
+
+        $result = $autosave->mergeAndValidate($user, $request, $churchId);
+        $validated = $result['validated'];
+
+        VolunteerSignupName::assertValidInPayload($validated);
+
+        $validated['previous_ministry_ids'] = $this->validateMinistryIdsForChurch(
+            $validated['previous_ministry_ids'] ?? [],
+            $churchId,
+            'previous_ministry_ids'
+        );
+        $validated['active_ministry_ids'] = $this->validateMinistryIdsForChurch(
+            $validated['active_ministry_ids'] ?? [],
+            $churchId,
+            'active_ministry_ids'
+        );
+        $validated['other_ministry_ids'] = $this->validateMinistryIdsForChurch(
+            $validated['other_ministry_ids'] ?? [],
+            $churchId,
+            'other_ministry_ids'
+        );
+
+        app(PersistVolunteerSignupQuestionnaire::class)(
+            $user,
+            $volunteer,
+            $validated,
+            $request,
+            $churchId,
+        );
+
+        $freshUser = $user->fresh() ?? $user;
+        $completion = VolunteerSignupCompletion::forUser($freshUser);
+
+        return response()->json([
+            'message' => $completion['is_complete']
+                ? 'Cadastro de voluntário concluído.'
+                : 'Resposta salva.',
+            'completion' => $completion,
+            'initial' => VolunteerSignupFormPrefill::forUser($freshUser),
+        ]);
     }
 
     private function resolveChurchId(User $user, Request $request): ?int

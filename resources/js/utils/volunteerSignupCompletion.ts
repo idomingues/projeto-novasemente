@@ -20,10 +20,142 @@ export const VOLUNTEER_SIGNUP_OPTIONAL_FIELD_KEYS = [
     'current_password',
 ] as const;
 
-function hasMinistrySelection(ids: unknown, storedText?: string | null): boolean {
+export function hasMinistrySelection(ids: unknown, storedText?: string | null): boolean {
     if (hasPositiveIds(ids)) return true;
     const text = (storedText ?? '').trim();
     return text !== '' && text.toLowerCase() !== 'não';
+}
+
+export type VolunteerSignupLegacyMinistryTexts = {
+    ministry_involvement?: string;
+    previous_ministry_details?: string;
+    other_ministry_interest?: string;
+};
+
+/** Ordem estável para rolar/destacar o primeiro erro (todas as etapas). */
+export const VOLUNTEER_SIGNUP_FIELD_ORDER = [
+    'photo_file',
+    'full_name',
+    'birth_date',
+    'phone',
+    'has_whatsapp',
+    'email',
+    'current_password',
+    'password',
+    'password_confirmation',
+    'has_social_networks',
+    'attendance_duration',
+    'is_official_member',
+    'member_record_at_nova_semente',
+    'member_record_church',
+    'has_previous_ministry_volunteer_experience',
+    'previous_ministry_ids',
+    'is_active_in_ministry',
+    'active_ministry_ids',
+    'wants_other_ministry',
+    'other_ministry_ids',
+    'lgpd_data_consent',
+] as const;
+
+const MISSING_FIELD_MESSAGES: Record<string, string> = {
+    photo_file: 'Tire ou envie uma foto antes de concluir.',
+    full_name: 'Informe o nome completo (nome e sobrenome).',
+    birth_date: 'Informe uma data de nascimento válida (mínimo 10 anos).',
+    has_whatsapp: 'Informe se este número tem WhatsApp.',
+    email: 'Informe um e-mail válido.',
+    has_social_networks: 'Informe se você usa redes sociais.',
+    attendance_duration: 'Selecione há quanto tempo frequenta a igreja.',
+    is_official_member: 'Informe se você é membro oficial da igreja.',
+    member_record_at_nova_semente: 'Informe se seu registro de membro está na Nova Semente.',
+    member_record_church: 'Informe em qual igreja está o seu registro de membro.',
+    has_previous_ministry_volunteer_experience: 'Informe se você já foi voluntário em algum ministério.',
+    previous_ministry_ids: 'Selecione em quais ministérios você já serviu.',
+    is_active_in_ministry: 'Informe se você é atuante em algum ministério.',
+    active_ministry_ids: 'Selecione pelo menos um ministério em que é atuante.',
+    wants_other_ministry: 'Informe se gostaria de servir em outro ministério.',
+    other_ministry_ids: 'Selecione pelo menos um ministério de interesse.',
+    lgpd_data_consent: 'Para continuar, autorize o uso dos dados (LGPD).',
+};
+
+export function firstVolunteerSignupErrorKey(errors: Record<string, string>): string | undefined {
+    for (const key of VOLUNTEER_SIGNUP_FIELD_ORDER) {
+        if (errors[key]) return key;
+    }
+    return Object.keys(errors)[0];
+}
+
+export function volunteerSignupErrorsForMissingFields(missingFields: string[]): Record<string, string> {
+    const errors: Record<string, string> = {};
+    for (const field of missingFields) {
+        errors[field] = MISSING_FIELD_MESSAGES[field] ?? 'Responda esta pergunta para continuar.';
+    }
+    return errors;
+}
+
+/** Remove campos de ramificações inativas (mesma regra do envio). */
+export function applyVolunteerSignupBranchingCleanup(payload: Record<string, unknown>): Record<string, unknown> {
+    const out = { ...payload };
+
+    if (normalizeBool(out.is_official_member as BoolLike) !== true) {
+        delete out.member_record_at_nova_semente;
+        delete out.member_record_church;
+    } else if (normalizeBool(out.member_record_at_nova_semente as BoolLike) !== false) {
+        delete out.member_record_church;
+    }
+
+    if (normalizeBool(out.has_previous_ministry_volunteer_experience as BoolLike) !== true) {
+        out.previous_ministry_ids = [];
+    }
+
+    if (normalizeBool(out.is_active_in_ministry as BoolLike) !== true) {
+        out.active_ministry_ids = [];
+    }
+
+    if (normalizeBool(out.wants_other_ministry as BoolLike) !== true) {
+        out.other_ministry_ids = [];
+    }
+
+    return out;
+}
+
+/** Monta o snapshot usado pelo cálculo de pendências a partir do payload enviado. */
+export function buildVolunteerSignupCompletionInput(
+    payload: Record<string, unknown>,
+    options: { hasExistingPhoto: boolean; legacy?: VolunteerSignupLegacyMinistryTexts },
+): VolunteerSignupInitial & VolunteerSignupLegacyMinistryTexts {
+    const legacy = options.legacy ?? {};
+
+    return {
+        has_existing_photo: options.hasExistingPhoto,
+        full_name: `${String(payload.first_name ?? '').trim()} ${String(payload.last_name ?? '').trim()}`.trim(),
+        first_name: String(payload.first_name ?? ''),
+        last_name: String(payload.last_name ?? ''),
+        birth_date: String(payload.birth_date ?? ''),
+        has_whatsapp: (payload.has_whatsapp as boolean | null | undefined) ?? null,
+        email: String(payload.email ?? ''),
+        phone: String(payload.phone ?? ''),
+        has_social_networks: (payload.has_social_networks as boolean | null | undefined) ?? null,
+        attendance_duration: (payload.attendance_duration as VolunteerSignupInitial['attendance_duration']) ?? '',
+        is_official_member: normalizeBool(payload.is_official_member as BoolLike),
+        member_record_at_nova_semente: normalizeBool(payload.member_record_at_nova_semente as BoolLike),
+        member_record_church: String(payload.member_record_church ?? ''),
+        has_previous_ministry_volunteer_experience: normalizeBool(
+            payload.has_previous_ministry_volunteer_experience as BoolLike,
+        ),
+        previous_ministry_ids: Array.isArray(payload.previous_ministry_ids)
+            ? (payload.previous_ministry_ids as number[])
+            : [],
+        is_active_in_ministry: normalizeBool(payload.is_active_in_ministry as BoolLike),
+        active_ministry_ids: Array.isArray(payload.active_ministry_ids) ? (payload.active_ministry_ids as number[]) : [],
+        wants_other_ministry: normalizeBool(payload.wants_other_ministry as BoolLike),
+        other_ministry_ids: Array.isArray(payload.other_ministry_ids) ? (payload.other_ministry_ids as number[]) : [],
+        gifts_to_develop: String(payload.gifts_to_develop ?? ''),
+        professional_area: String(payload.professional_area ?? ''),
+        lgpd_data_consent: normalizeBool(payload.lgpd_data_consent as BoolLike),
+        ministry_involvement: legacy.ministry_involvement,
+        previous_ministry_details: legacy.previous_ministry_details,
+        other_ministry_interest: legacy.other_ministry_interest,
+    };
 }
 
 type BoolLike = boolean | null | string | number | undefined;
@@ -193,6 +325,7 @@ export function shouldShowVolunteerSignupField(fieldKey: string, missingFields: 
 
 type SignupFormSlice = Pick<
     VolunteerSignupInitial,
+    | 'phone'
     | 'is_official_member'
     | 'member_record_at_nova_semente'
     | 'has_previous_ministry_volunteer_experience'
@@ -210,7 +343,30 @@ export function isVolunteerSignupFieldVisible(
     if (!focusMissingOnly) {
         return true;
     }
+
+    if (fieldKey === 'phone') {
+        return missingFields.includes('has_whatsapp') && data.phone.trim() !== '';
+    }
+
     if (missingFields.includes(fieldKey)) {
+        if (fieldKey === 'member_record_at_nova_semente') {
+            return normalizeBool(data.is_official_member) === true;
+        }
+        if (fieldKey === 'member_record_church') {
+            return (
+                normalizeBool(data.is_official_member) === true &&
+                normalizeBool(data.member_record_at_nova_semente) === false
+            );
+        }
+        if (fieldKey === 'previous_ministry_ids') {
+            return normalizeBool(data.has_previous_ministry_volunteer_experience) === true;
+        }
+        if (fieldKey === 'active_ministry_ids') {
+            return normalizeBool(data.is_active_in_ministry) === true;
+        }
+        if (fieldKey === 'other_ministry_ids') {
+            return normalizeBool(data.wants_other_ministry) === true;
+        }
         return true;
     }
 
@@ -231,9 +387,6 @@ export function isVolunteerSignupFieldVisible(
     }
 
     if (fieldKey === 'member_record_church') {
-        if (missingFields.includes('member_record_church')) {
-            return true;
-        }
         if (
             missingFields.includes('member_record_at_nova_semente') &&
             normalizeBool(data.member_record_at_nova_semente) === false
@@ -268,6 +421,47 @@ export function isVolunteerSignupFieldVisible(
     return false;
 }
 
+/** Evita reenviar sobrenome vazio do cadastro antigo quando o nome completo não está na tela. */
+function reconcileVolunteerSignupMergedName(
+    out: Record<string, unknown>,
+    prepared: Record<string, unknown>,
+    initial: VolunteerSignupInitial,
+    missingFields: string[],
+): void {
+    const nameTouched = ['full_name', 'first_name', 'last_name'].some((field) => missingFields.includes(field));
+
+    const preparedFirst = String(prepared.first_name ?? '').trim();
+    const preparedLast = String(prepared.last_name ?? '').trim();
+    const preparedParts =
+        splitFullName(`${preparedFirst} ${preparedLast}`.trim()) ??
+        (preparedFirst && preparedLast ? { first_name: preparedFirst, last_name: preparedLast } : null);
+
+    if (nameTouched && preparedParts) {
+        out.first_name = preparedParts.first_name;
+        out.last_name = preparedParts.last_name;
+        return;
+    }
+
+    if (!nameTouched) {
+        const initialParts = splitFullName(initial.full_name);
+        if (initialParts) {
+            out.first_name = initialParts.first_name;
+            out.last_name = initialParts.last_name;
+            return;
+        }
+        if (preparedParts) {
+            out.first_name = preparedParts.first_name;
+            out.last_name = preparedParts.last_name;
+        }
+        return;
+    }
+
+    if (preparedParts) {
+        out.first_name = preparedParts.first_name;
+        out.last_name = preparedParts.last_name;
+    }
+}
+
 /** Mescla respostas já salvas para envio quando o usuário vê só campos faltantes. */
 export function mergeVolunteerSignupWithInitial(
     prepared: Record<string, unknown>,
@@ -285,9 +479,7 @@ export function mergeVolunteerSignupWithInitial(
         }
     };
 
-    const parts = splitFullName(initial.full_name);
-    keep('first_name', parts?.first_name ?? initial.first_name);
-    keep('last_name', parts?.last_name ?? initial.last_name);
+    reconcileVolunteerSignupMergedName(out, prepared, initial, missingFields);
     keep('birth_date', initial.birth_date);
     keep('has_whatsapp', initial.has_whatsapp);
     keep('email', initial.email);
@@ -307,7 +499,7 @@ export function mergeVolunteerSignupWithInitial(
     keep('professional_area', initial.professional_area);
     keep('lgpd_data_consent', initial.lgpd_data_consent);
 
-    return out;
+    return applyVolunteerSignupBranchingCleanup(out);
 }
 
 export function volunteerSignupMissingOnlyHref(): string {
