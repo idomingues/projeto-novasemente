@@ -12,6 +12,10 @@ import OfflineBanner from './Components/OfflineBanner';
 import PushNotificationsSync from './Components/PushNotificationsSync';
 import ProgressIndicator from './Components/ProgressIndicator';
 import { ThemeProvider } from './Contexts/ThemeContext';
+import { bootstrapAppUiVersion } from './utils/appUiVersion';
+import { clearStuckUiOverlays } from './utils/clearStuckUiOverlays';
+
+bootstrapAppUiVersion();
 
 const defaultAppName = import.meta.env.VITE_APP_NAME || '';
 
@@ -94,6 +98,7 @@ createInertiaApp({
 
         router.on('success', (event) => {
             syncAxiosCsrfToken(event.detail.page.props as SharedPageProps);
+            clearStuckUiOverlays();
         });
 
         router.on('invalid', (event) => {

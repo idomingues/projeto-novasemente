@@ -5,11 +5,26 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=overlays-content">
         <script>
             (function() {
+                var UI_VERSION = '376';
                 var theme = localStorage.getItem('theme');
                 if (theme === 'dark') {
                     document.documentElement.classList.add('dark');
                 } else {
                     document.documentElement.classList.remove('dark');
+                }
+                document.body.style.overflow = '';
+                var splash = document.getElementById('ns-splash');
+                if (splash && splash.parentNode) {
+                    splash.parentNode.removeChild(splash);
+                }
+                var prevUi = localStorage.getItem('ns-app-ui-version');
+                if (prevUi !== null && prevUi !== UI_VERSION) {
+                    localStorage.setItem('ns-app-ui-version', UI_VERSION);
+                    location.reload();
+                    return;
+                }
+                if (prevUi === null) {
+                    localStorage.setItem('ns-app-ui-version', UI_VERSION);
                 }
             })();
         </script>

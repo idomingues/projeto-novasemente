@@ -60,11 +60,15 @@ export default function Modal({
         '7xl': 'sm:max-w-7xl',
     }[maxWidth];
 
+    if (!show) {
+        return null;
+    }
+
     const dialog = (
         <Dialog open={show} onClose={close} className="relative z-[250]">
             <DialogBackdrop
                 transition
-                className="fixed inset-0 z-[250] bg-black/60 backdrop-blur-sm transition-opacity duration-300 ease-out data-closed:opacity-0 dark:bg-black/85"
+                className="fixed inset-0 z-[250] bg-black/60 backdrop-blur-sm transition-opacity duration-300 ease-out data-closed:pointer-events-none data-closed:opacity-0 dark:bg-black/85"
             />
             {/*
               Portal em document.body: cobre sidebar (z-50) e barra inferior.
