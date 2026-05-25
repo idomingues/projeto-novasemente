@@ -10,8 +10,9 @@ export function clearStuckUiOverlays(): void {
     document.body.style.overflow = '';
     document.body.style.pointerEvents = '';
 
-    document.getElementById('ns-splash')?.remove();
-    document.getElementById('ns-splash-fadeout')?.remove();
+    for (const id of ['ns-splash', 'ns-splash-fadeout']) {
+        document.getElementById(id)?.remove();
+    }
 
     const root = document.getElementById('app');
     const children = Array.from(document.body.children);

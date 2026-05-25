@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=overlays-content">
         <script>
             (function() {
-                var UI_VERSION = '376';
+                var UI_VERSION = '378';
                 var theme = localStorage.getItem('theme');
                 if (theme === 'dark') {
                     document.documentElement.classList.add('dark');
@@ -59,6 +59,15 @@
                 justify-content: center;
                 background: #f4f4f5; /* zinc-100 */
                 transition: opacity 260ms ease;
+                /* Se o JS não carregar, some sozinho após 3s (evita tela cinza presa). */
+                animation: ns-splash-auto-hide 0.35s ease 3s forwards;
+            }
+            @keyframes ns-splash-auto-hide {
+                to {
+                    opacity: 0;
+                    pointer-events: none;
+                    visibility: hidden;
+                }
             }
             html.dark #ns-splash {
                 background: #09090b; /* zinc-950 */
@@ -105,5 +114,69 @@
         </div>
 
         @inertia
+        <script>
+            (function () {
+                function removeSplash() {
+                    var splash = document.getElementById('ns-splash') || document.getElementById('ns-splash-fadeout');
+                    if (splash && splash.parentNode) {
+                        splash.parentNode.removeChild(splash);
+                    }
+                }
+
+                function clearStuckOverlays() {
+                    document.body.style.overflow = '';
+                    document.body.style.pointerEvents = '';
+                    removeSplash();
+                    var app = document.getElementById('app');
+                    var nodes = document.body.children;
+                    for (var i = 0; i < nodes.length; i++) {
+                        var el = nodes[i];
+                        if (!el || el === app) {
+                            continue;
+                        }
+                        if (el.nodeType !== 1) {
+                            continue;
+                        }
+                        var s = window.getComputedStyle(el);
+                        if (s.position !== 'fixed') {
+                            continue;
+                        }
+                        var z = parseInt(s.zIndex, 10);
+                        if (!isFinite(z) || z < 40) {
+                            continue;
+                        }
+                        var cn = el.className || '';
+                        if (
+                            el.getAttribute('role') === 'dialog' ||
+                            (el.id && el.id.indexOf('headlessui') === 0) ||
+                            cn.indexOf('bg-black') !== -1 ||
+                            cn.indexOf('bg-zinc-950') !== -1 ||
+                            cn.indexOf('backdrop-blur') !== -1
+                        ) {
+                            el.parentNode && el.parentNode.removeChild(el);
+                        }
+                    }
+                }
+
+                function boot() {
+                    clearStuckOverlays();
+                    removeSplash();
+                }
+
+                boot();
+                document.addEventListener('DOMContentLoaded', boot);
+                window.setTimeout(removeSplash, 1200);
+                window.setTimeout(removeSplash, 3500);
+
+                var ticks = 0;
+                var guard = window.setInterval(function () {
+                    clearStuckOverlays();
+                    ticks += 1;
+                    if (ticks >= 30) {
+                        window.clearInterval(guard);
+                    }
+                }, 500);
+            })();
+        </script>
     </body>
 </html>

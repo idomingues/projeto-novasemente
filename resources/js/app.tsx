@@ -122,10 +122,11 @@ createInertiaApp({
         // Remove initial HTML splash after React mounts.
         // requestAnimationFrame ensures first paint happens before fadeout.
         requestAnimationFrame(() => hideSplashScreen());
+        window.setTimeout(hideSplashScreen, 1500);
     },
     progress: {
         color: '#4B5563',
-        showSpinner: true,
-        delay: 0,
+        showSpinner: false,
+        delay: 250,
     },
 });
