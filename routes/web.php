@@ -116,10 +116,29 @@ Route::get('/mobile/events', [MobileController::class, 'events'])->name('mobile.
 Route::get('/mobile/schedule', [MobileController::class, 'schedule'])->name('mobile.schedule');
 Route::get('/mobile/schedule/full', [MobileController::class, 'scheduleFull'])->name('mobile.schedule.full');
 Route::get('/mobile/more', [MobileController::class, 'more'])->name('mobile.more');
-Route::get('/mobile/missao', [MissionFormController::class, 'create'])->name('mobile.mission');
-Route::post('/mobile/missao', [MissionFormController::class, 'store'])->name('mobile.mission.store');
+Route::get('/mobile/missao', [\App\Http\Controllers\MissionHubController::class, 'index'])->name('mobile.mission');
+Route::get('/mobile/missao/eventos', [\App\Http\Controllers\MissionHubController::class, 'events'])->name('mobile.mission.events');
+Route::get('/mobile/missao/recados', [\App\Http\Controllers\MissionHubController::class, 'messages'])->name('mobile.mission.messages');
+Route::post('/mobile/missao/recados', [\App\Http\Controllers\MissionHubController::class, 'storeMessage'])
+    ->middleware(['auth', 'throttle:30,1'])
+    ->name('mobile.mission.messages.store');
+Route::get('/mobile/missao/quem-somos', [\App\Http\Controllers\MissionHubController::class, 'about'])->name('mobile.mission.about');
+Route::get('/mobile/missao/mural', [\App\Http\Controllers\MissionHubController::class, 'wall'])->name('mobile.mission.wall');
+Route::get('/mobile/missao/mural/{missionWallItem}', [\App\Http\Controllers\MissionHubController::class, 'wallShow'])->name('mobile.mission.wall.show');
+Route::get('/mobile/missao/cadastro', [MissionFormController::class, 'create'])->name('mobile.mission.form');
+Route::post('/mobile/missao/cadastro', [MissionFormController::class, 'store'])
+    ->middleware('throttle:20,1')
+    ->name('mobile.mission.store');
+Route::post('/mobile/missao/cadastro/conta-app', [\App\Http\Controllers\MissionAppAccountController::class, 'store'])
+    ->middleware('throttle:10,1')
+    ->name('mobile.mission.app-account.store');
 Route::get('/missao', [MissionFormController::class, 'create'])->name('mission.form');
-Route::post('/missao', [MissionFormController::class, 'store'])->name('mission.store');
+Route::post('/missao', [MissionFormController::class, 'store'])
+    ->middleware('throttle:20,1')
+    ->name('mission.store');
+Route::post('/missao/conta-app', [\App\Http\Controllers\MissionAppAccountController::class, 'store'])
+    ->middleware('throttle:10,1')
+    ->name('mission.app-account.store');
 Route::get('/mobile/biblia', [MobileBibleController::class, 'index'])->name('mobile.bible');
 Route::get('/mobile/biblia/chapter', [MobileBibleController::class, 'chapter'])
     ->middleware('throttle:80,1')
@@ -514,14 +533,33 @@ Route::middleware('auth')->group(function () {
     Route::put('/saude/{health}', [HealthController::class, 'update'])->name('health.update')->middleware('permission:news.manage');
     Route::delete('/saude/{health}', [HealthController::class, 'destroy'])->name('health.destroy')->middleware('permission:news.manage');
 
-    // Missão
+    // Missão — rotas literais de conteúdo antes do wildcard {missionVolunteer}
     Route::get('/missao/gestao', [MissionVolunteerController::class, 'index'])->name('mission.index')->middleware('permission:mission.view|mission.manage');
+    Route::post('/missao/gestao/comunicacao', [MissionVolunteerController::class, 'sendBroadcast'])->name('mission.broadcast.store')->middleware('permission:mission.manage');
+
+    Route::get('/missao/gestao/eventos', [\App\Http\Controllers\MissionContentController::class, 'eventsIndex'])->name('mission.content.events')->middleware('permission:mission.view|mission.manage');
+    Route::post('/missao/gestao/eventos', [\App\Http\Controllers\MissionContentController::class, 'storeEvent'])->name('mission.content.events.store')->middleware('permission:mission.manage');
+    Route::put('/missao/gestao/eventos/{missionEvent}', [\App\Http\Controllers\MissionContentController::class, 'updateEvent'])->name('mission.content.events.update')->middleware('permission:mission.manage');
+    Route::delete('/missao/gestao/eventos/{missionEvent}', [\App\Http\Controllers\MissionContentController::class, 'destroyEvent'])->name('mission.content.events.destroy')->middleware('permission:mission.manage');
+
+    Route::get('/missao/gestao/recados', [\App\Http\Controllers\MissionContentController::class, 'messagesIndex'])->name('mission.content.messages')->middleware('permission:mission.view|mission.manage');
+    Route::patch('/missao/gestao/recados/{missionMessage}/visibilidade', [\App\Http\Controllers\MissionContentController::class, 'toggleMessageVisibility'])->name('mission.content.messages.visibility')->middleware('permission:mission.manage');
+    Route::delete('/missao/gestao/recados/{missionMessage}', [\App\Http\Controllers\MissionContentController::class, 'destroyMessage'])->name('mission.content.messages.destroy')->middleware('permission:mission.manage');
+
+    Route::get('/missao/gestao/quem-somos', [\App\Http\Controllers\MissionContentController::class, 'aboutIndex'])->name('mission.content.about')->middleware('permission:mission.view|mission.manage');
+    Route::put('/missao/gestao/quem-somos', [\App\Http\Controllers\MissionContentController::class, 'updateAbout'])->name('mission.content.about.update')->middleware('permission:mission.manage');
+
+    Route::get('/missao/gestao/mural', [\App\Http\Controllers\MissionContentController::class, 'wallIndex'])->name('mission.content.wall')->middleware('permission:mission.view|mission.manage');
+    Route::post('/missao/gestao/mural', [\App\Http\Controllers\MissionContentController::class, 'storeWallItem'])->name('mission.content.wall.store')->middleware('permission:mission.manage');
+    Route::put('/missao/gestao/mural/{missionWallItem}', [\App\Http\Controllers\MissionContentController::class, 'updateWallItem'])->name('mission.content.wall.update')->middleware('permission:mission.manage');
+    Route::delete('/missao/gestao/mural/{missionWallItem}', [\App\Http\Controllers\MissionContentController::class, 'destroyWallItem'])->name('mission.content.wall.destroy')->middleware('permission:mission.manage');
+
     Route::get('/missao/gestao/{missionVolunteer}', [MissionVolunteerController::class, 'show'])->name('mission.show')->middleware('permission:mission.view|mission.manage');
     Route::get('/missao/gestao/{missionVolunteer}/detalhe', [MissionVolunteerController::class, 'detail'])->name('mission.volunteers.detail')->middleware('permission:mission.view|mission.manage');
-    Route::patch('/missao/gestao/{missionVolunteer}/fase', [MissionVolunteerController::class, 'updatePhase'])->name('mission.volunteers.phase')->middleware('permission:mission.manage');
+    Route::patch('/missao/gestao/{missionVolunteer}/fase', [MissionVolunteerController::class, 'updatePhase'])->name('mission.volunteers.phase')->middleware('permission:mission.view|mission.manage');
+    Route::post('/missao/gestao/{missionVolunteer}/notas', [MissionVolunteerController::class, 'storeNote'])->name('mission.volunteers.notes.store')->middleware('permission:mission.view|mission.manage');
     Route::delete('/missao/gestao/{missionVolunteer}', [MissionVolunteerController::class, 'destroy'])->name('mission.volunteers.destroy')->middleware('permission:mission.manage');
-    Route::post('/missao/gestao/convite', [MissionVolunteerController::class, 'invite'])->name('mission.volunteers.invite')->middleware('permission:mission.manage');
-    Route::post('/missao/gestao/convites', [MissionVolunteerController::class, 'inviteBulk'])->name('mission.volunteers.invite-bulk')->middleware('permission:mission.manage');
+    Route::patch('/missao/equipe/{user}', [MissionVolunteerController::class, 'updateTeamMember'])->name('mission.team.update')->middleware('permission:mission.manage');
     Route::post('/missao/fases', [MissionVolunteerController::class, 'storeStage'])->name('mission.phases.store')->middleware('permission:mission.manage');
     Route::put('/missao/fases/{phase}', [MissionVolunteerController::class, 'updateStageMeta'])->name('mission.phases.update')->middleware('permission:mission.manage');
     Route::delete('/missao/fases/{phase}', [MissionVolunteerController::class, 'destroyStage'])->name('mission.phases.destroy')->middleware('permission:mission.manage');

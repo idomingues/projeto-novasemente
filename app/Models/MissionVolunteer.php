@@ -12,6 +12,7 @@ class MissionVolunteer extends Model
     protected $fillable = [
         'church_id',
         'mission_phase_id',
+        'phase_entered_at',
         'submitted_by_user_id',
         'photo_path',
         'full_name',
@@ -74,6 +75,7 @@ class MissionVolunteer extends Model
         'lgpd_consent' => 'boolean',
         'nps_score' => 'integer',
         'last_invite_sent_at' => 'datetime',
+        'phase_entered_at' => 'datetime',
     ];
 
     public function church(): BelongsTo
@@ -94,6 +96,16 @@ class MissionVolunteer extends Model
     public function invitations(): HasMany
     {
         return $this->hasMany(MissionInvitation::class);
+    }
+
+    public function notes(): HasMany
+    {
+        return $this->hasMany(MissionVolunteerNote::class);
+    }
+
+    public function phaseHistories(): HasMany
+    {
+        return $this->hasMany(MissionVolunteerPhaseHistory::class)->orderByDesc('created_at');
     }
 
     public function getPhotoUrlAttribute(): ?string

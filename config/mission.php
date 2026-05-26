@@ -56,7 +56,7 @@ return [
     ],
 
     'studied_bible' => [
-        'Sim, complemente',
+        'Sim, completamente',
         'Sim, parcialmente',
         'Não',
     ],
@@ -73,6 +73,12 @@ return [
         'Sim',
         'Talvez, gostaria de mais informações',
         'Não',
+    ],
+
+    'post_registration_instructions' => [
+        'Nossa equipe missionária analisará seu cadastro e entrará em contato pelo telefone informado.',
+        'Se criou conta no aplicativo, use seu e-mail e senha para acompanhar cultos, avisos e recursos da igreja.',
+        'Dúvidas podem ser respondidas pelo e-mail cadastrado ou aguardando nosso retorno.',
     ],
 
 ];

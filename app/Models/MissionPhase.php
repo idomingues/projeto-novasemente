@@ -12,10 +12,12 @@ class MissionPhase extends Model
         'church_id',
         'name',
         'sort_order',
+        'sla_days',
     ];
 
     protected $casts = [
         'sort_order' => 'integer',
+        'sla_days' => 'integer',
     ];
 
     public function church(): BelongsTo

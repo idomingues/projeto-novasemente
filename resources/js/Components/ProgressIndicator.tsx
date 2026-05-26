@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { router } from '@inertiajs/react';
+import { NS_RESET_PROGRESS_OVERLAY } from '@/utils/clearStuckUiOverlays';
 
 type VisitLike = { showProgress?: boolean };
 
@@ -13,7 +14,7 @@ function visitFromFinishEvent(event: Event): VisitLike | null {
     return e.detail?.visit ?? null;
 }
 
-const LOADING_SAFETY_MS = 30_000;
+const LOADING_SAFETY_MS = 12_000;
 
 /** Indicador de carregamento (spinner) visível durante navegação Inertia. */
 export default function ProgressIndicator() {
@@ -61,6 +62,18 @@ export default function ProgressIndicator() {
         // sem isto o overlay «Carregando…» fica preso em cima de tudo (parece que não muda de tela).
         const uninvalid = router.on('invalid', resetOverlay);
         const unexception = router.on('exception', resetOverlay);
+        // Após redirect de login (e em dev com HMR), `finish` às vezes não chega — `navigate`/`success` garantem limpar.
+        const unnavi = router.on('navigate', resetOverlay);
+        const unsucc = router.on('success', resetOverlay);
+        const onExternalReset = () => resetOverlay();
+        window.addEventListener(NS_RESET_PROGRESS_OVERLAY, onExternalReset);
+
+        let removeViteHot: (() => void) | undefined;
+        if (import.meta.hot) {
+            const onBeforeUpdate = () => resetOverlay();
+            import.meta.hot.on('vite:beforeUpdate', onBeforeUpdate);
+            removeViteHot = () => import.meta.hot?.off('vite:beforeUpdate', onBeforeUpdate);
+        }
 
         return () => {
             unstart();
@@ -68,6 +81,10 @@ export default function ProgressIndicator() {
             uncancel();
             uninvalid();
             unexception();
+            unnavi();
+            unsucc();
+            window.removeEventListener(NS_RESET_PROGRESS_OVERLAY, onExternalReset);
+            removeViteHot?.();
         };
     }, []);
 
@@ -101,7 +118,7 @@ export default function ProgressIndicator() {
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     />
                 </svg>
-                <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400">A carregar…</span>
+                <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Carregando…</span>
             </div>
         </div>
     );

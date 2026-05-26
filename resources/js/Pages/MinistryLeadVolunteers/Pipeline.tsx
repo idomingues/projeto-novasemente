@@ -46,6 +46,10 @@ import {
 import RecordDetailSections from '@/Components/RecordDetail/RecordDetailSections';
 import { volunteerDetailSections, type VolunteerDetailData } from '@/utils/volunteerDetailRows';
 import SortedMultiCheckboxList from '@/Components/SortedMultiCheckboxList';
+import ListViewModeToggle from '@/Components/ListViewModeToggle';
+import VolunteerPipelineKanban from '@/Components/Volunteers/VolunteerPipelineKanban';
+import { usePersistedViewMode } from '@/hooks/usePersistedViewMode';
+import type { ListKanbanViewMode } from '@/utils/persistedViewMode';
 
 type StageRow = { id: number; name: string; sort_order: number; volunteer_count: number };
 
@@ -106,6 +110,9 @@ type BoardFilters = {
 const PIPELINE_STAGE_ARCHIVED = 'arquivados';
 const PIPELINE_STAGE_ADMIN_WORKFLOW_BLANK = 'sem-fase-principal';
 
+const PIPELINE_VIEW_STORAGE_KEY = 'ns-volunteers-pipeline-view';
+const PIPELINE_KANBAN_PER_PAGE = '200';
+
 const PIPELINE_SORT_DEFAULT = 'name';
 const PIPELINE_SORT_DIR_DEFAULT = 'asc';
 
@@ -135,6 +142,7 @@ function pipelineVolunteersQuery(
     filters: BoardFilters,
     search: string,
     extra: Record<string, string> = {},
+    options?: { kanban?: boolean },
 ): Record<string, string> {
     const out: Record<string, string> = { secao: 'quadro', ...extra };
     const merged = { ...filters, search };
@@ -145,6 +153,10 @@ function pipelineVolunteersQuery(
         if (value !== '' && value !== null && value !== undefined) {
             out[key] = String(value);
         }
+    }
+    if (options?.kanban) {
+        out.per_page = PIPELINE_KANBAN_PER_PAGE;
+        out.pipeline_stage_id = '';
     }
 
     return out;
@@ -336,6 +348,7 @@ export default function Pipeline({
     publicVolunteerSignupUrl,
 }: Props) {
     const secao = initialSecao === 'pedidos' ? 'pedidos' : 'quadro';
+    const [viewMode, setViewMode] = usePersistedViewMode(PIPELINE_VIEW_STORAGE_KEY);
 
     const page = usePage();
     const authProps = page.props as { auth?: { openVolunteerRequestsCount?: number } };
@@ -351,10 +364,16 @@ export default function Pipeline({
             );
             return;
         }
-        router.get(route('ministry-lead.volunteers.index'), pipelineVolunteersQuery(filters, filters.search ?? ''), {
-            preserveState: true,
-            replace: true,
-        });
+        router.get(
+            route('ministry-lead.volunteers.index'),
+            pipelineVolunteersQuery(
+                filters,
+                filters.search ?? '',
+                {},
+                viewMode === 'kanban' ? { kanban: true } : undefined,
+            ),
+            { preserveState: true, replace: true },
+        );
     };
 
     const flash = (page.props as {
@@ -371,23 +390,6 @@ export default function Pipeline({
     const filtersRef = useRef(filters);
     filtersRef.current = filters;
     const lastAppliedSearchRef = useRef(filters.search ?? '');
-
-    const {
-        value: searchQuery,
-        setValue: setSearchQuery,
-        isBelowMinimum: searchBelowMinimum,
-    } = useDebouncedServerSearch({
-        serverValue: filters.search ?? '',
-        onApply: useCallback((term) => {
-            const applied = term ?? '';
-            lastAppliedSearchRef.current = applied;
-            router.get(
-                route('ministry-lead.volunteers.index'),
-                pipelineVolunteersQuery(filtersRef.current, applied),
-                { preserveState: true, replace: true },
-            );
-        }, []),
-    });
 
     const filtersKey = useMemo(() => JSON.stringify(filters), [filters]);
     useEffect(() => {
@@ -495,7 +497,7 @@ export default function Pipeline({
         lastAppliedSearchRef.current = resolvedSearch;
         router.get(
             route('ministry-lead.volunteers.index'),
-            pipelineVolunteersQuery(filterForm.data, resolvedSearch),
+            buildVolunteersQuery(filterForm.data, resolvedSearch),
             { preserveState: true, replace: true },
         );
     };
@@ -505,7 +507,7 @@ export default function Pipeline({
         setSearchQuery('');
         router.get(
             route('ministry-lead.volunteers.index'),
-            pipelineVolunteersQuery({ ...filterForm.data, search: '', pipeline_stage_id: '' }, ''),
+            buildVolunteersQuery({ ...filterForm.data, search: '', pipeline_stage_id: '' }, ''),
             { preserveState: true, replace: true },
         );
     };
@@ -515,7 +517,7 @@ export default function Pipeline({
         lastAppliedSearchRef.current = resolvedSearch;
         router.get(
             route('ministry-lead.volunteers.index'),
-            pipelineVolunteersQuery(
+            buildVolunteersQuery(
                 {
                     ...filterForm.data,
                     pipeline_stage_id: stageId === '' ? '' : String(stageId),
@@ -658,6 +660,112 @@ export default function Pipeline({
     };
 
     const currentStageFilter = filters.pipeline_stage_id ?? '';
+    const kanbanEligible =
+        secao === 'quadro' &&
+        currentStageFilter !== PIPELINE_STAGE_ARCHIVED &&
+        currentStageFilter !== PIPELINE_STAGE_ADMIN_WORKFLOW_BLANK &&
+        !filters.arquivados;
+    const isKanbanView = kanbanEligible && viewMode === 'kanban';
+    const kanbanPerPage = Number(PIPELINE_KANBAN_PER_PAGE);
+
+    const reloadVolunteers = useCallback(
+        (nextFilters: BoardFilters, search: string, kanban: boolean) => {
+            router.get(
+                route('ministry-lead.volunteers.index'),
+                pipelineVolunteersQuery(nextFilters, search, {}, { kanban }),
+                { preserveState: true, replace: true },
+            );
+        },
+        [],
+    );
+
+    const kanbanHydratedRef = useRef(false);
+    useEffect(() => {
+        if (!kanbanEligible || viewMode !== 'kanban') {
+            kanbanHydratedRef.current = false;
+            return;
+        }
+        if (kanbanHydratedRef.current) {
+            return;
+        }
+        const needsReload =
+            (filters.pipeline_stage_id ?? '') !== '' ||
+            (typeof volunteers.per_page === 'number' && volunteers.per_page < kanbanPerPage);
+        if (!needsReload) {
+            kanbanHydratedRef.current = true;
+            return;
+        }
+        kanbanHydratedRef.current = true;
+        reloadVolunteers({ ...filters, pipeline_stage_id: '' }, filters.search ?? '', true);
+    }, [
+        kanbanEligible,
+        viewMode,
+        filters,
+        volunteers.per_page,
+        kanbanPerPage,
+        reloadVolunteers,
+    ]);
+
+    const volunteersQueryOpts = isKanbanView ? ({ kanban: true } as const) : undefined;
+    const buildVolunteersQuery = useCallback(
+        (nextFilters: BoardFilters, search: string, extra: Record<string, string> = {}) =>
+            pipelineVolunteersQuery(nextFilters, search, extra, volunteersQueryOpts),
+        [volunteersQueryOpts],
+    );
+
+    const {
+        value: searchQuery,
+        setValue: setSearchQuery,
+        isBelowMinimum: searchBelowMinimum,
+    } = useDebouncedServerSearch({
+        serverValue: filters.search ?? '',
+        onApply: useCallback(
+            (term) => {
+                const applied = term ?? '';
+                lastAppliedSearchRef.current = applied;
+                router.get(
+                    route('ministry-lead.volunteers.index'),
+                    buildVolunteersQuery(filtersRef.current, applied),
+                    { preserveState: true, replace: true },
+                );
+            },
+            [buildVolunteersQuery],
+        ),
+    });
+
+    const changeViewMode = useCallback(
+        (mode: ListKanbanViewMode) => {
+            setViewMode(mode);
+            if (!kanbanEligible) {
+                return;
+            }
+            const resolvedSearch = serverSearchTerm(searchQuery) ?? '';
+            lastAppliedSearchRef.current = resolvedSearch;
+            if (mode === 'kanban') {
+                reloadVolunteers(
+                    { ...filterForm.data, pipeline_stage_id: '' },
+                    resolvedSearch,
+                    true,
+                );
+                return;
+            }
+            const loadedAsKanban =
+                typeof volunteers.per_page === 'number' && volunteers.per_page >= kanbanPerPage;
+            if (loadedAsKanban) {
+                reloadVolunteers(filterForm.data, resolvedSearch, false);
+            }
+        },
+        [
+            setViewMode,
+            kanbanEligible,
+            searchQuery,
+            filterForm.data,
+            reloadVolunteers,
+            volunteers.per_page,
+            kanbanPerPage,
+        ],
+    );
+
     const sortOptions = useMemo(() => pipelineSortOptions(canVolunteerManage), [canVolunteerManage]);
     const currentSortValue = pipelineSortSelectValue(filters.sort, filters.sort_dir);
 
@@ -667,7 +775,7 @@ export default function Pipeline({
         lastAppliedSearchRef.current = resolvedSearch;
         router.get(
             route('ministry-lead.volunteers.index'),
-            pipelineVolunteersQuery(
+            buildVolunteersQuery(
                 {
                     ...filterForm.data,
                     sort: option.sort,
@@ -750,6 +858,9 @@ export default function Pipeline({
             >
                 {secao === 'quadro' ? (
                     <div className="flex flex-wrap items-center gap-2">
+                        {kanbanEligible ? (
+                            <ListViewModeToggle value={isKanbanView ? 'kanban' : 'list'} onChange={changeViewMode} />
+                        ) : null}
                         {canVolunteerManage ? (
                             <Link
                                 href={volunteersAdminUrl}
@@ -818,7 +929,8 @@ export default function Pipeline({
 
             {secao === 'quadro' ? (
             <>
-            <div className="flex flex-col gap-6 lg:flex-row">
+            <div className={`flex flex-col gap-6 ${isKanbanView ? '' : 'lg:flex-row'}`}>
+                {!isKanbanView ? (
                 <aside className="lg:w-64 shrink-0 space-y-4">
                     <Card className="p-4">
                         <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-2">Fases</div>
@@ -953,6 +1065,7 @@ export default function Pipeline({
                         </p>
                     ) : null}
                 </aside>
+                ) : null}
 
                 <div className="min-w-0 flex-1 space-y-4">
                     <div className="relative">
@@ -1302,6 +1415,18 @@ export default function Pipeline({
                         {resultsSummary}
                     </p>
 
+                    {isKanbanView ? (
+                        <Card className="p-4">
+                            <VolunteerPipelineKanban
+                                stages={stages}
+                                volunteers={volunteers.data}
+                                canVolunteerManage={!!canVolunteerManage}
+                                canMoveCards={!!canPipelineMutate}
+                                onOpenVolunteer={(id) => void openVolunteer(id)}
+                                totalCount={volunteers.total}
+                            />
+                        </Card>
+                    ) : (
                     <Card>
                         <div className="overflow-x-auto">
                             <table className="min-w-full text-sm hidden md:table">
@@ -1543,6 +1668,7 @@ export default function Pipeline({
                             </nav>
                         ) : null}
                     </Card>
+                    )}
                 </div>
             </div>
             </>

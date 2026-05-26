@@ -110,7 +110,12 @@ class VolunteerPipelineLeadController extends Controller
         if ($secao === 'pedidos' && ! $canManageVolunteerRequests) {
             return redirect()->route('ministry-lead.volunteers.index', ['secao' => 'quadro']);
         }
-        $roster = VolunteerChurchRosterBuilder::paginated($request, (int) $churchId, $user, 25, false);
+        $perPage = 25;
+        if ($request->filled('per_page')) {
+            $perPage = min(250, max(1, (int) $request->query('per_page')));
+        }
+
+        $roster = VolunteerChurchRosterBuilder::paginated($request, (int) $churchId, $user, $perPage, false);
         $stages = $roster['stages'];
         $adminWorkflowBlankVolunteerCount = $roster['adminWorkflowBlankVolunteerCount'] ?? 0;
         $archivedVolunteerCount = $roster['archivedVolunteerCount'];

@@ -8,10 +8,10 @@ use Illuminate\Support\Facades\DB;
 final class MissionPhaseBootstrap
 {
     private const DEFAULT_STAGES = [
-        ['name' => 'Interessado', 'sort_order' => 10],
-        ['name' => 'Em contato', 'sort_order' => 20],
-        ['name' => 'Em formação', 'sort_order' => 30],
-        ['name' => 'Ativo no Insight', 'sort_order' => 40],
+        ['name' => 'Interessado', 'sort_order' => 10, 'sla_days' => 7],
+        ['name' => 'Em contato', 'sort_order' => 20, 'sla_days' => 14],
+        ['name' => 'Em formação', 'sort_order' => 30, 'sla_days' => 30],
+        ['name' => 'Ativo no Insight', 'sort_order' => 40, 'sla_days' => 60],
     ];
 
     public static function ensurePhasesForChurch(int $churchId): void
@@ -25,6 +25,7 @@ final class MissionPhaseBootstrap
                 'church_id' => $churchId,
                 'name' => $row['name'],
                 'sort_order' => $row['sort_order'],
+                'sla_days' => $row['sla_days'],
             ]);
         }
     }
@@ -67,6 +68,10 @@ final class MissionPhaseBootstrap
         DB::table('mission_volunteers')
             ->where('church_id', $churchId)
             ->where('mission_phase_id', $fromPhaseId)
-            ->update(['mission_phase_id' => $toPhaseId, 'updated_at' => now()]);
+            ->update([
+                'mission_phase_id' => $toPhaseId,
+                'phase_entered_at' => now(),
+                'updated_at' => now(),
+            ]);
     }
 }

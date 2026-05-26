@@ -36,6 +36,7 @@ class User extends Authenticatable
         'status',
         'is_volunteer',
         'is_ministry_leader',
+        'is_mission_team',
         'notify_via_app',
         'notify_via_email',
         'notify_via_whatsapp',
@@ -299,6 +300,13 @@ class User extends Authenticatable
     /**
      * Departamentos (ministérios) que o usuário lidera. Usado para o papel lider_ministerio na área de escalas.
      */
+    public function missionPhases(): BelongsToMany
+    {
+        return $this->belongsToMany(MissionPhase::class, 'mission_user_phases')
+            ->withTimestamps()
+            ->select('mission_phases.*');
+    }
+
     public function ministries(): BelongsToMany
     {
         return $this->belongsToMany(\App\Models\Ministry::class, 'ministry_user')
@@ -340,6 +348,7 @@ class User extends Authenticatable
             'birth_date' => 'date',
             'is_volunteer' => 'boolean',
             'is_ministry_leader' => 'boolean',
+            'is_mission_team' => 'boolean',
             'notify_via_app' => 'boolean',
             'notify_via_email' => 'boolean',
             'notify_via_whatsapp' => 'boolean',

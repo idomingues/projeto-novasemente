@@ -1,3 +1,4 @@
+import MissionHubBackLink from '@/Components/Mission/MissionHubBackLink';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head } from '@inertiajs/react';
 import { ArrowDownTrayIcon, ChevronLeftIcon, ChevronRightIcon, XMarkIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
@@ -18,6 +19,8 @@ interface Props {
         download_url: string;
         view_url: string;
     }[];
+    /** Quando definido, exibe link de voltar ao hub da Missão em vez do layout padrão de fotos. */
+    backLink?: 'mission';
 }
 
 function formatAlbumDate(iso: string | null | undefined): string | null {
@@ -34,6 +37,7 @@ export default function MobilePhotos({
     embedUrl,
     folderUrl,
     images: imagesProp = [],
+    backLink,
 }: Props) {
     const images = useMemo(() => (Array.isArray(imagesProp) ? imagesProp : []), [imagesProp]);
     const [open, setOpen] = useState(false);
@@ -75,6 +79,11 @@ export default function MobilePhotos({
             <Head title={title} />
 
             <div className="space-y-3">
+                {backLink === 'mission' ? (
+                    <div className="mb-1">
+                        <MissionHubBackLink />
+                    </div>
+                ) : null}
                 <div className="flex items-end justify-between gap-3">
                     <div className="min-w-0">
                         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">

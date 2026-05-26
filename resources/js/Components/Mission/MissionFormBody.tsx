@@ -6,6 +6,7 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import TextInput from '@/Components/TextInput';
 import Textarea from '@/Components/Textarea';
 import { compressImageForUpload, ImageCompressError } from '@/utils/compressImageForUpload';
+import { findMissionFormIssue, missionErrorPage } from '@/utils/missionFormValidation';
 import { useForm } from '@inertiajs/react';
 import { FormEventHandler, MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -50,26 +51,6 @@ export type MissionFormData = {
 const PAGE_TITLES = ['Dados pessoais', 'Profissão', 'Fé e crença', 'Religião', 'Comunidade e Bíblia', 'Nova Semente'];
 const COMMUNITY_PAGE_INDEX = PAGE_TITLES.length - 2;
 const LAST_PAGE_INDEX = PAGE_TITLES.length - 1;
-
-function hasPersonalDataErrors(errors: Partial<Record<keyof MissionFormData, string>>): boolean {
-    return Boolean(
-        errors.photo ||
-            errors.full_name ||
-            errors.birth_date ||
-            errors.phone ||
-            errors.full_address,
-    );
-}
-
-function hasNovaSementeErrors(errors: Partial<Record<keyof MissionFormData, string>>): boolean {
-    return Boolean(
-        errors.first_time_nova_semente ||
-            errors.first_contact_via ||
-            errors.first_contact_via_other ||
-            errors.wants_bible_study_partner ||
-            errors.lgpd_consent,
-    );
-}
 
 interface Props {
     form: MissionFormReturn;
@@ -376,15 +357,8 @@ function NovaSementeQuestions({
 
 export default function MissionFormBody({ form, options, onSubmit, processing, formRevision }: Props) {
     const { data, setData, errors } = form;
-    const [page, setPage] = useState(() => {
-        if (hasNovaSementeErrors(errors)) {
-            return LAST_PAGE_INDEX;
-        }
-        if (hasPersonalDataErrors(errors)) {
-            return 0;
-        }
-        return 0;
-    });
+    const [page, setPage] = useState(() => missionErrorPage(errors) ?? 0);
+    const [clientError, setClientError] = useState<string | null>(null);
     const pageTopRef = useRef<HTMLDivElement>(null);
     const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
     const [photoPreparing, setPhotoPreparing] = useState(false);
@@ -503,12 +477,10 @@ export default function MissionFormBody({ form, options, onSubmit, processing, f
     }, [page]);
 
     useEffect(() => {
-        if (hasNovaSementeErrors(errors)) {
-            setPage(LAST_PAGE_INDEX);
-            return;
-        }
-        if (hasPersonalDataErrors(errors)) {
-            setPage(0);
+        const errorPage = missionErrorPage(errors);
+        if (errorPage !== null) {
+            setPage(errorPage);
+            setClientError(null);
         }
     }, [errors]);
 
@@ -520,6 +492,14 @@ export default function MissionFormBody({ form, options, onSubmit, processing, f
             event.preventDefault();
             return;
         }
+        const issue = findMissionFormIssue(data);
+        if (issue) {
+            event.preventDefault();
+            setClientError(issue.message);
+            setPage(issue.page);
+            return;
+        }
+        setClientError(null);
         onSubmit(event);
     };
 
@@ -537,6 +517,15 @@ export default function MissionFormBody({ form, options, onSubmit, processing, f
                     <p className="text-[10px] text-zinc-400 dark:text-zinc-500">Formulário v{formRevision}</p>
                 ) : null}
             </div>
+
+            {clientError ? (
+                <div
+                    className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100"
+                    role="alert"
+                >
+                    {clientError}
+                </div>
+            ) : null}
 
             <div className="space-y-4 sm:space-y-5">
                 {page === 0 && (

@@ -23,7 +23,7 @@ final class CreateMissionVolunteerInvite
             'sent_at' => now(),
         ]);
 
-        $link = route('mobile.mission', [], true);
+        $link = route('mobile.mission.form', [], true);
 
         return [
             'invitation' => $invitation,

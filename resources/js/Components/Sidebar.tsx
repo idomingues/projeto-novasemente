@@ -225,7 +225,15 @@ export default function Sidebar({
             );
         }
         if (itemRoute === 'mission.index') {
-            return route().current('mission.index') || route().current('mission.show') || route().current('mission.volunteers.detail');
+            return (
+                route().current('mission.index') ||
+                route().current('mission.show') ||
+                route().current('mission.volunteers.detail') ||
+                route().current('mission.content.events') ||
+                route().current('mission.content.messages') ||
+                route().current('mission.content.about') ||
+                route().current('mission.content.wall')
+            );
         }
         if (itemRoute === 'churches.index') {
             const c = route().current();

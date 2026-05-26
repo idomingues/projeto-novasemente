@@ -1,3 +1,6 @@
+/** Evento para o ProgressIndicator (dentro do React) limpar overlay de carregamento preso. */
+export const NS_RESET_PROGRESS_OVERLAY = 'ns:reset-progress-overlay';
+
 /**
  * Remove overlays órfãos (modal/lightbox/carregamento) que ficaram no <body>
  * após deploys antigos ou navegação Inertia com JS em cache.
@@ -51,5 +54,9 @@ export function clearStuckUiOverlays(): void {
         if (isDialog || isHeadless || looksLikeBackdrop) {
             el.remove();
         }
+    }
+
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent(NS_RESET_PROGRESS_OVERLAY));
     }
 }

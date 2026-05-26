@@ -11,6 +11,10 @@ final class MissionVolunteerPayload
     public static function validationRules(?MissionVolunteer $existing = null): array
     {
         $cfg = config('mission');
+        $studiedBibleOptions = array_values(array_unique(array_merge(
+            $cfg['studied_bible'] ?? [],
+            ['Sim, complemente'],
+        )));
 
         return [
             'photo' => ['required', 'image', 'max:4096'],
@@ -54,7 +58,7 @@ final class MissionVolunteerPayload
                 'string',
                 'max:120',
             ],
-            'studied_bible' => ['required', 'string', Rule::in($cfg['studied_bible'] ?? [])],
+            'studied_bible' => ['required', 'string', Rule::in($studiedBibleOptions)],
             'studied_bible_structured' => ['required', 'boolean'],
             'first_time_nova_semente' => ['required', 'boolean'],
             'first_contact_via' => ['required', 'string', Rule::in($cfg['first_contact_via'] ?? [])],
