@@ -57,6 +57,8 @@ class MissionHubTest extends TestCase
         $church = Church::query()->firstOrFail();
         $user = User::factory()->create(['church_id' => $church->id]);
 
+        config(['mission.message_moderation.enabled' => false]);
+
         $this->actingAs($user)
             ->withSession(['working_church_id' => $church->id])
             ->post(route('mobile.mission.messages.store'), ['body' => 'Olá, equipe missionária!'])
@@ -66,6 +68,7 @@ class MissionHubTest extends TestCase
             'church_id' => $church->id,
             'user_id' => $user->id,
             'body' => 'Olá, equipe missionária!',
+            'moderation_status' => 'published',
         ]);
     }
 
@@ -116,7 +119,7 @@ class MissionHubTest extends TestCase
     {
         return [
             'eventos' => ['/missao/gestao/eventos', 'mission.content.events', 'Mission/Events'],
-            'recados' => ['/missao/gestao/recados', 'mission.content.messages', 'Mission/Messages'],
+            'depoimentos' => ['/missao/gestao/recados', 'mission.content.messages', 'Mission/Messages'],
             'quem-somos' => ['/missao/gestao/quem-somos', 'mission.content.about', 'Mission/About'],
             'mural' => ['/missao/gestao/mural', 'mission.content.wall', 'Mission/Wall'],
         ];

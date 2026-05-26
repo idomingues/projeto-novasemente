@@ -313,6 +313,7 @@ class HandleInertiaRequests extends Middleware
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
+                'info' => fn () => $request->session()->get('info'),
                 'ministry_invite_link' => fn () => $request->session()->get('ministry_invite_link'),
                 'invitation_link' => fn () => $request->session()->get('invitation_link'),
                 'invitation_for_name' => fn () => $request->session()->get('invitation_for_name'),

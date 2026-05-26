@@ -43,7 +43,7 @@ export default function MissionHub({ cards }: Props) {
                     </Link>
                     <h1 className="mt-3 text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">Missão</h1>
                     <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                        Eventos, recados, quem somos e mural da comunidade missionária Nova Semente.
+                        Eventos, depoimentos, quem somos e mural da comunidade missionária Nova Semente.
                     </p>
                 </div>
 

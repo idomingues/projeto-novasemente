@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Mission\SubmitMissionMessage;
 use App\Models\Church;
 use App\Models\MissionAboutSection;
 use App\Models\MissionEvent;
@@ -9,6 +10,7 @@ use App\Models\MissionMessage;
 use App\Models\MissionWallItem;
 use App\Models\PhotoAlbum;
 use App\Services\DriveFolderCoverService;
+use App\Services\MissionMessageNotifier;
 use App\Support\EventFormSupport;
 use App\Support\MissionAboutBootstrap;
 use App\Support\StorageUrl;
@@ -135,25 +137,112 @@ class MissionContentController extends Controller
         $churchId = $this->churchId($request);
         abort_unless($churchId, 404);
 
-        $messages = MissionMessage::query()
+        $base = MissionMessage::query()
             ->with('user:id,name,email')
-            ->where('church_id', $churchId)
+            ->where('church_id', $churchId);
+
+        $pending = (clone $base)
+            ->pendingReview()
+            ->orderBy('created_at')
+            ->limit(100)
+            ->get()
+            ->map(fn (MissionMessage $m) => $this->serializeAdminMessage($m));
+
+        $messages = (clone $base)
+            ->whereIn('moderation_status', [
+                MissionMessage::STATUS_PUBLISHED,
+                MissionMessage::STATUS_REJECTED,
+            ])
+            ->orderByDesc('is_team_highlight')
             ->orderByDesc('created_at')
             ->limit(200)
             ->get()
-            ->map(fn (MissionMessage $m) => [
-                'id' => $m->id,
-                'body' => $m->body,
-                'authorName' => $m->user?->name ?? '—',
-                'authorEmail' => $m->user?->email,
-                'is_hidden' => $m->is_hidden,
-                'createdAt' => $m->created_at?->toIso8601String(),
-            ]);
+            ->map(fn (MissionMessage $m) => $this->serializeAdminMessage($m));
 
         return Inertia::render('Mission/Messages', [
+            'pendingMessages' => $pending,
             'messages' => $messages,
             'canManage' => $request->user()?->can('mission.manage') ?? false,
+            'teamStoreUrl' => route('mission.content.messages.store'),
         ]);
+    }
+
+    public function storeMessage(Request $request, SubmitMissionMessage $submit): RedirectResponse
+    {
+        $this->canManage($request);
+        $churchId = $this->churchId($request);
+        abort_unless($churchId, 404);
+
+        $user = $request->user();
+        abort_unless($user, 401);
+
+        $valid = $request->validate([
+            'body' => ['required', 'string', 'min:2', 'max:2000'],
+        ]);
+
+        $result = $submit((int) $churchId, $user, $valid['body'], asTeamHighlight: true);
+
+        return redirect()
+            ->route('mission.content.messages')
+            ->with('success', $result['flash']);
+    }
+
+    /** @return array<string, mixed> */
+    private function serializeAdminMessage(MissionMessage $m): array
+    {
+        return [
+            'id' => $m->id,
+            'body' => $m->body,
+            'authorName' => $m->user?->name ?? '—',
+            'authorEmail' => $m->user?->email,
+            'is_hidden' => $m->is_hidden,
+            'moderationStatus' => $m->moderation_status,
+            'moderationStatusLabel' => MissionMessage::statusLabel($m->moderation_status),
+            'moderationNote' => $m->moderation_note,
+            'isTeamHighlight' => $m->is_team_highlight,
+            'createdAt' => $m->created_at?->toIso8601String(),
+        ];
+    }
+
+    public function approveMessage(Request $request, MissionMessage $missionMessage, MissionMessageNotifier $notifier): RedirectResponse
+    {
+        $this->canManage($request);
+        $churchId = $this->churchId($request);
+        abort_unless($churchId && (int) $missionMessage->church_id === (int) $churchId, 404);
+        abort_unless($missionMessage->moderation_status === MissionMessage::STATUS_PENDING_REVIEW, 422);
+
+        $missionMessage->update([
+            'moderation_status' => MissionMessage::STATUS_PUBLISHED,
+            'is_hidden' => false,
+            'reviewed_by' => $request->user()?->id,
+            'reviewed_at' => now(),
+        ]);
+
+        $missionMessage->refresh();
+        $missionMessage->load('user');
+        $notifier->notifyAuthorOfDecision($missionMessage, 'approved');
+
+        return back()->with('success', 'Depoimento aprovado e publicado no app.');
+    }
+
+    public function rejectMessage(Request $request, MissionMessage $missionMessage, MissionMessageNotifier $notifier): RedirectResponse
+    {
+        $this->canManage($request);
+        $churchId = $this->churchId($request);
+        abort_unless($churchId && (int) $missionMessage->church_id === (int) $churchId, 404);
+        abort_unless($missionMessage->moderation_status === MissionMessage::STATUS_PENDING_REVIEW, 422);
+
+        $missionMessage->update([
+            'moderation_status' => MissionMessage::STATUS_REJECTED,
+            'reviewed_by' => $request->user()?->id,
+            'reviewed_at' => now(),
+        ]);
+
+        $missionMessage->refresh();
+        $missionMessage->load('user');
+        $notifier->notifyAuthorOfDecision($missionMessage, 'rejected');
+
+        return back()->with('success', 'Depoimento não foi publicado. O autor foi avisado no aplicativo.');
     }
 
     public function toggleMessageVisibility(Request $request, MissionMessage $missionMessage): RedirectResponse
@@ -162,9 +251,11 @@ class MissionContentController extends Controller
         $churchId = $this->churchId($request);
         abort_unless($churchId && (int) $missionMessage->church_id === (int) $churchId, 404);
 
+        abort_unless($missionMessage->moderation_status === MissionMessage::STATUS_PUBLISHED, 422);
+
         $missionMessage->update(['is_hidden' => ! $missionMessage->is_hidden]);
 
-        return back()->with('success', $missionMessage->is_hidden ? 'Recado ocultado.' : 'Recado visível novamente.');
+        return back()->with('success', $missionMessage->is_hidden ? 'Depoimento ocultado.' : 'Depoimento visível novamente.');
     }
 
     public function destroyMessage(Request $request, MissionMessage $missionMessage): RedirectResponse
@@ -175,7 +266,7 @@ class MissionContentController extends Controller
 
         $missionMessage->delete();
 
-        return back()->with('success', 'Recado excluído.');
+        return back()->with('success', 'Depoimento excluído.');
     }
 
     public function aboutIndex(Request $request): Response

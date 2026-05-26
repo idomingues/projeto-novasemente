@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Church;
 use App\Models\MissionAboutSection;
 use App\Models\MissionEvent;
+use App\Actions\Mission\SubmitMissionMessage;
 use App\Models\MissionMessage;
 use App\Models\MissionWallItem;
 use App\Services\DriveFolderCoverService;
@@ -33,8 +34,8 @@ class MissionHubController extends Controller
                     'route' => 'mobile.mission.events',
                 ],
                 [
-                    'label' => 'Recados',
-                    'subtitle' => 'Mensagens da comunidade missionária',
+                    'label' => 'Depoimentos',
+                    'subtitle' => 'Histórias e mensagens da comunidade missionária',
                     'route' => 'mobile.mission.messages',
                 ],
                 [
@@ -93,10 +94,13 @@ class MissionHubController extends Controller
         $churchId = $this->churchId($request);
         abort_unless($churchId, 404);
 
+        $user = $request->user();
+
         $messages = MissionMessage::query()
             ->with('user:id,name,photo_url')
             ->where('church_id', $churchId)
             ->visible()
+            ->orderByDesc('is_team_highlight')
             ->orderByDesc('created_at')
             ->limit(100)
             ->get()
@@ -105,20 +109,37 @@ class MissionHubController extends Controller
                 'body' => $m->body,
                 'authorName' => $m->user?->name ?? 'Membro',
                 'authorPhotoUrl' => $m->user?->photo_url,
+                'isTeamHighlight' => $m->is_team_highlight,
                 'createdAt' => $m->created_at?->toIso8601String(),
             ]);
 
+        $myPending = $user
+            ? MissionMessage::query()
+                ->where('church_id', $churchId)
+                ->where('user_id', $user->id)
+                ->where('moderation_status', MissionMessage::STATUS_PENDING_REVIEW)
+                ->orderByDesc('created_at')
+                ->limit(20)
+                ->get()
+                ->map(fn (MissionMessage $m) => [
+                    'id' => $m->id,
+                    'body' => $m->body,
+                    'createdAt' => $m->created_at?->toIso8601String(),
+                ])
+            : [];
+
         return Inertia::render('Mobile/MissionMessages', [
             'messages' => $messages,
-            'canPost' => (bool) $request->user(),
+            'myPendingMessages' => $myPending,
+            'canPost' => (bool) $user,
             'storeUrl' => route('mobile.mission.messages.store'),
         ]);
     }
 
-    public function storeMessage(Request $request): RedirectResponse
+    public function storeMessage(Request $request, SubmitMissionMessage $submit): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user, 401, 'Faça login para enviar um recado.');
+        abort_unless($user, 401, 'Faça login para enviar um depoimento.');
 
         $churchId = $this->churchId($request);
         abort_unless($churchId, 404);
@@ -127,15 +148,13 @@ class MissionHubController extends Controller
             'body' => ['required', 'string', 'min:2', 'max:2000'],
         ]);
 
-        MissionMessage::create([
-            'church_id' => $churchId,
-            'user_id' => $user->id,
-            'body' => trim($valid['body']),
-        ]);
+        $result = $submit((int) $churchId, $user, $valid['body']);
 
-        return redirect()
-            ->route('mobile.mission.messages')
-            ->with('success', 'Recado publicado com sucesso.');
+        $redirect = redirect()->route('mobile.mission.messages');
+
+        return $result['level'] === 'info'
+            ? $redirect->with('info', $result['flash'])
+            : $redirect->with('success', $result['flash']);
     }
 
     public function about(Request $request): Response

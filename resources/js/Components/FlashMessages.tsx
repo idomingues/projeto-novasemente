@@ -5,6 +5,7 @@ import type { PageProps } from '@/types';
 type FlashProps = {
     success?: string | null;
     error?: string | null;
+    info?: string | null;
 };
 
 export default function FlashMessages() {
@@ -13,22 +14,25 @@ export default function FlashMessages() {
 
     const success = typeof flash?.success === 'string' && flash.success.length > 0 ? flash.success : null;
     const error = typeof flash?.error === 'string' && flash.error.length > 0 ? flash.error : null;
+    const info = typeof flash?.info === 'string' && flash.info.length > 0 ? flash.info : null;
 
     useEffect(() => {
-        if (success || error) {
+        if (success || error || info) {
             setVisible(true);
-            const ms = error && error.length > 80 ? 12000 : 4000;
+            const active = error ?? info ?? success ?? '';
+            const ms = active.length > 80 ? 12000 : 5000;
             const timeout = setTimeout(() => setVisible(false), ms);
             return () => clearTimeout(timeout);
         }
-    }, [success, error]);
+    }, [success, error, info]);
 
-    if (!visible || (!success && !error)) {
+    if (!visible || (!success && !error && !info)) {
         return null;
     }
 
-    const message = success ?? error ?? '';
+    const message = success ?? info ?? error ?? '';
     const isSuccess = Boolean(success);
+    const isInfo = Boolean(info) && !isSuccess;
  
     
     return (
@@ -37,18 +41,30 @@ export default function FlashMessages() {
                 className={`rounded-2xl px-4 py-3 shadow-lg border text-sm flex items-center gap-3 max-w-md ${
                     isSuccess
                         ? 'bg-emerald-950/80 border-emerald-800 text-emerald-100'
-                        : 'bg-red-950/80 border-red-800 text-red-100'
+                        : isInfo
+                          ? 'bg-amber-950/80 border-amber-800 text-amber-100'
+                          : 'bg-red-950/80 border-red-800 text-red-100'
                 }`}
             >
                 <span className="font-medium">
-                    {isSuccess ? 'Sucesso' : 'Erro'}
+                    {isSuccess ? 'Sucesso' : isInfo ? 'Aviso' : 'Erro'}
                 </span>
-                <span className={isSuccess ? 'text-emerald-50/90' : 'text-red-50/90'}>{message}</span>
+                <span
+                    className={
+                        isSuccess ? 'text-emerald-50/90' : isInfo ? 'text-amber-50/90' : 'text-red-50/90'
+                    }
+                >
+                    {message}
+                </span>
                 <button
                     type="button"
                     onClick={() => setVisible(false)}
                     className={`ml-auto text-xs pointer-events-auto ${
-                        isSuccess ? 'text-emerald-200/80 hover:text-emerald-50' : 'text-red-200/80 hover:text-red-50'
+                        isSuccess
+                            ? 'text-emerald-200/80 hover:text-emerald-50'
+                            : isInfo
+                              ? 'text-amber-200/80 hover:text-amber-50'
+                              : 'text-red-200/80 hover:text-red-50'
                     }`}
                 >
                     Fechar

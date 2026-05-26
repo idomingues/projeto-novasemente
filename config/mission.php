@@ -75,6 +75,15 @@ return [
         'Não',
     ],
 
+    'message_moderation' => [
+        'enabled' => env('MISSION_MESSAGE_MODERATION_ENABLED', true),
+        'openai_api_key' => env('OPENAI_API_KEY'),
+        'model' => env('OPENAI_MODERATION_MODEL', 'omni-moderation-latest'),
+        'timeout_seconds' => (int) env('OPENAI_MODERATION_TIMEOUT', 12),
+        /** Termos usados só se a API da OpenAI não estiver configurada ou falhar. */
+        'heuristic_terms' => [],
+    ],
+
     'post_registration_instructions' => [
         'Nossa equipe missionária analisará seu cadastro e entrará em contato pelo telefone informado.',
         'Se criou conta no aplicativo, use seu e-mail e senha para acompanhar cultos, avisos e recursos da igreja.',

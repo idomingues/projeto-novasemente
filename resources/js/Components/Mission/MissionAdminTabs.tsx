@@ -1,11 +1,11 @@
 import { Link } from '@inertiajs/react';
 
-export type MissionAdminTab = 'cadastros' | 'eventos' | 'recados' | 'quem-somos' | 'mural';
+export type MissionAdminTab = 'cadastros' | 'eventos' | 'depoimentos' | 'quem-somos' | 'mural';
 
 const tabs: { key: MissionAdminTab; label: string; route: string }[] = [
     { key: 'cadastros', label: 'Cadastros', route: 'mission.index' },
     { key: 'eventos', label: 'Eventos', route: 'mission.content.events' },
-    { key: 'recados', label: 'Recados', route: 'mission.content.messages' },
+    { key: 'depoimentos', label: 'Depoimentos', route: 'mission.content.messages' },
     { key: 'quem-somos', label: 'Quem somos', route: 'mission.content.about' },
     { key: 'mural', label: 'Mural', route: 'mission.content.wall' },
 ];

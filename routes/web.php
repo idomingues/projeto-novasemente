@@ -543,7 +543,10 @@ Route::middleware('auth')->group(function () {
     Route::delete('/missao/gestao/eventos/{missionEvent}', [\App\Http\Controllers\MissionContentController::class, 'destroyEvent'])->name('mission.content.events.destroy')->middleware('permission:mission.manage');
 
     Route::get('/missao/gestao/recados', [\App\Http\Controllers\MissionContentController::class, 'messagesIndex'])->name('mission.content.messages')->middleware('permission:mission.view|mission.manage');
+    Route::post('/missao/gestao/recados', [\App\Http\Controllers\MissionContentController::class, 'storeMessage'])->name('mission.content.messages.store')->middleware('permission:mission.manage');
     Route::patch('/missao/gestao/recados/{missionMessage}/visibilidade', [\App\Http\Controllers\MissionContentController::class, 'toggleMessageVisibility'])->name('mission.content.messages.visibility')->middleware('permission:mission.manage');
+    Route::patch('/missao/gestao/recados/{missionMessage}/aprovar', [\App\Http\Controllers\MissionContentController::class, 'approveMessage'])->name('mission.content.messages.approve')->middleware('permission:mission.manage');
+    Route::patch('/missao/gestao/recados/{missionMessage}/rejeitar', [\App\Http\Controllers\MissionContentController::class, 'rejectMessage'])->name('mission.content.messages.reject')->middleware('permission:mission.manage');
     Route::delete('/missao/gestao/recados/{missionMessage}', [\App\Http\Controllers\MissionContentController::class, 'destroyMessage'])->name('mission.content.messages.destroy')->middleware('permission:mission.manage');
 
     Route::get('/missao/gestao/quem-somos', [\App\Http\Controllers\MissionContentController::class, 'aboutIndex'])->name('mission.content.about')->middleware('permission:mission.view|mission.manage');
