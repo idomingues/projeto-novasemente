@@ -91,12 +91,16 @@ class MissionFormController extends Controller
 
         $redirectRoute = $request->routeIs('mobile.mission.store') ? 'mobile.mission.form' : 'mission.form';
 
+        $firstName = trim(explode(' ', (string) $volunteer->full_name)[0] ?? '');
+        $nameFragment = $firstName !== '' ? ", {$firstName}," : '';
+
         $submission = array_merge(
             MissionAppAccount::submissionPayload($volunteer, $appStatus['already_in_app'], $appStatus['reason']),
             [
-                'message' => $appStatus['already_in_app']
-                    ? 'Cadastro missionário enviado com sucesso! Você já possui conta no aplicativo.'
-                    : 'Cadastro missionário enviado com sucesso! Confira abaixo os próximos passos.',
+                'message' => sprintf(
+                    'Parabéns%s seu cadastro foi realizado e estamos muito felizes por ter você aqui. Você está na fase de Acolhimento. Isso significa que, em breve, alguém do nosso time entrará em contato para apresentar o próximo passo e te ajudar a encontrar a melhor forma de atuar.',
+                    $nameFragment
+                ),
                 'instructions' => MissionVolunteerInstructions::lines(),
                 'instructionsEmailSent' => $instructionsEmailSent,
                 'instructionsEmail' => $volunteer->fresh()?->display_email,

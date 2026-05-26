@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\InertiaAccessDeniedResponse;
 use App\Support\ReportsDatabaseConnectionFailure;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -91,6 +92,14 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             return redirect()->guest($loginUrl)->with('error', $message);
+        });
+
+        /*
+         * Sem permissão (403): pedidos Inertia não devem mostrar a página crua «403 | USER DOES NOT HAVE…».
+         * Volta à página anterior (ex.: lista de notificações) com aviso em português.
+         */
+        $exceptions->render(function (\Throwable $e, Request $request) {
+            return InertiaAccessDeniedResponse::render($e, $request);
         });
 
         /*

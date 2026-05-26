@@ -102,9 +102,20 @@ createInertiaApp({
         });
 
         router.on('invalid', (event) => {
-            if (event.detail.response?.status === 419) {
+            const status = event.detail.response?.status;
+            if (status === 419) {
                 event.preventDefault();
                 window.location.reload();
+                return;
+            }
+            // Resposta HTML de 403 (ex.: link antigo de notificação sem permissão) — evita modal «403 | USER DOES NOT…».
+            if (status === 403) {
+                event.preventDefault();
+                const fallback =
+                    typeof route === 'function'
+                        ? route('mobile.notifications')
+                        : '/mobile/notifications';
+                router.visit(fallback, { preserveScroll: true });
             }
         });
 

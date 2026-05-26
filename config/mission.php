@@ -85,9 +85,11 @@ return [
     ],
 
     'post_registration_instructions' => [
-        'Nossa equipe missionária analisará seu cadastro e entrará em contato pelo telefone informado.',
-        'Se criou conta no aplicativo, use seu e-mail e senha para acompanhar cultos, avisos e recursos da igreja.',
-        'Dúvidas podem ser respondidas pelo e-mail cadastrado ou aguardando nosso retorno.',
+        'Enquanto isso, entre na nossa comunidade no WhatsApp. É lá que você receberá comunicados, datas e tudo que acontece no Departamento de Missão.',
+        'E não se preocupe, o grupo é fechado, exclusivo para comunicação.',
+        'linktr.ee/sent.ns',
+        'Até breve.',
+        'Equipe SENT',
     ],
 
 ];
