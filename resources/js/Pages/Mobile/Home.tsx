@@ -183,12 +183,6 @@ const quickActionsGuest: QuickAction[] = [
         icon: PhotoIcon,
     },
     {
-        label: 'Doação',
-        subtitle: 'Seu gesto de amor pode transformar vidas e renovar esperanças',
-        route: 'mobile.campaigns.index',
-        icon: BanknotesIcon,
-    },
-    {
         label: 'Oferta',
         subtitle: 'Faça sua oferta de forma simples',
         route: 'mobile.offerings',
