@@ -20,11 +20,21 @@ class AppSupportTicket extends Model
 
     protected $table = 'app_support_tickets';
 
+    public const PRIORITY_LOW = 'low';
+
+    public const PRIORITY_MEDIUM = 'medium';
+
+    public const PRIORITY_HIGH = 'high';
+
+    public const PRIORITY_URGENT = 'urgent';
+
     protected $fillable = [
         'public_token',
         'user_id',
         'pastoral_appointment_id',
         'type',
+        'demand_category',
+        'priority',
         'message',
         'guest_name',
         'guest_email',

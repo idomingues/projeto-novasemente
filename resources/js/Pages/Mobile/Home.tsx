@@ -7,6 +7,7 @@ import { formatWhenLine, getDayMonth, type MobileEventListItem } from '@/utils/m
 import {
     ArchiveBoxIcon,
     BanknotesIcon,
+    BookOpenIcon,
     MusicalNoteIcon,
     PhotoIcon,
     SparklesIcon,
@@ -145,13 +146,19 @@ const quickActionsGuest: QuickAction[] = [
         icon: SparklesIcon,
     },
     {
+        label: 'Devocional',
+        subtitle: 'Meditação diária de hoje',
+        route: 'mobile.meditacao-diaria',
+        icon: BookOpenIcon,
+    },
+    {
         label: 'Seja um voluntário',
         subtitle: 'Venha servir na Nova Semente',
         route: 'volunteers.public-signup.page',
         icon: UserPlusIcon,
     },
     {
-        label: 'Acervo',
+        label: 'Séries',
         subtitle: 'Conheça todas as nossas séries',
         route: 'mobile.acervo',
         icon: ArchiveBoxIcon,
@@ -182,11 +189,11 @@ const quickActionsGuest: QuickAction[] = [
     },
 ];
 
-const quickActionSolicitations: QuickAction = {
-    label: 'Solicitações',
-    subtitle: 'Batismo, visita pastoral, apresentação e outros',
-    route: 'mobile.solicitations.hub',
-    icon: SparklesIcon,
+const quickActionDevocional: QuickAction = {
+    label: 'Devocional',
+    subtitle: 'Meditação diária de hoje',
+    route: 'mobile.meditacao-diaria',
+    icon: BookOpenIcon,
 };
 
 export default function MobileHome({
@@ -200,9 +207,7 @@ export default function MobileHome({
     const user = auth?.user ?? null;
     const displayName = user?.name ? firstName(user.name) : '';
     const quickActions =
-        user && route().has('mobile.solicitations.hub')
-            ? [quickActionSolicitations, ...quickActionsGuest]
-            : quickActionsGuest;
+        user ? [quickActionDevocional, ...quickActionsGuest.filter((a) => a.route !== 'mobile.meditacao-diaria')] : quickActionsGuest;
 
     useEffect(() => {
         if (!showPostRegistrationBanner || typeof window === 'undefined') {

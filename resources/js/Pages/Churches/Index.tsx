@@ -409,9 +409,9 @@ export default function Index({ churches }: Props) {
                             <TextInput id="donation_url" value={data.donation_url} onChange={(e) => setData('donation_url', e.target.value)} className="mt-1 block w-full" placeholder="https://..." />
                         </div>
                         <hr className="border-zinc-200 dark:border-zinc-700" />
-                        <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Acervo (mobile)</h3>
+                        <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Séries (mobile)</h3>
                         <div>
-                            <InputLabel htmlFor="youtube_playlist_url" value="URL da playlist do YouTube (Acervo)" />
+                            <InputLabel htmlFor="youtube_playlist_url" value="URL da playlist do YouTube (Séries)" />
                             <TextInput
                                 id="youtube_playlist_url"
                                 value={data.youtube_playlist_url}
@@ -420,7 +420,7 @@ export default function Index({ churches }: Props) {
                                 placeholder="https://www.youtube.com/playlist?list=..."
                             />
                             <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                Cole aqui a URL da playlist ou canal do YouTube para exibir no Acervo do app.
+                                Cole aqui a URL da playlist ou canal do YouTube para exibir em Séries no app.
                             </p>
                         </div>
                         <div>

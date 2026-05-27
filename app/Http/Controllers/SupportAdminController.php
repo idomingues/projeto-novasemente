@@ -6,6 +6,7 @@ use App\Models\AppSupportMessage;
 use App\Models\AppSupportTicket;
 use App\Models\User;
 use App\Services\SupportTicketChatNotifier;
+use App\Support\AppSupportTicketOptions;
 use App\Support\SupportTicketAdminPresenter;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -38,17 +39,27 @@ class SupportAdminController extends Controller
 
         $valid = $request->validate([
             'message' => ['required', 'string', 'max:5000'],
+            'demand_category' => ['required', 'string', 'in:'.implode(',', array_keys(AppSupportTicketOptions::DEMAND_CATEGORIES))],
+            'priority' => ['required', 'string', 'in:'.implode(',', array_keys(AppSupportTicketOptions::PRIORITIES))],
+            'forecast_at' => ['nullable', 'date'],
         ]);
+
+        $forecastAt = isset($valid['forecast_at']) && $valid['forecast_at'] !== null && $valid['forecast_at'] !== ''
+            ? Carbon::parse((string) $valid['forecast_at'])->startOfDay()
+            : null;
 
         $ticket = AppSupportTicket::create([
             'public_token' => Str::uuid()->toString(),
             'user_id' => $user->id,
             'type' => 'development',
+            'demand_category' => $valid['demand_category'],
+            'priority' => $valid['priority'],
             'message' => $valid['message'],
             'guest_name' => null,
             'guest_email' => null,
             'guest_phone' => null,
             'status' => AppSupportTicket::STATUS_OPEN,
+            'forecast_at' => $forecastAt,
         ]);
 
         return redirect()->route('support.index', ['status' => AppSupportTicket::STATUS_OPEN, 'modal' => $ticket->public_token]);
@@ -68,21 +79,16 @@ class SupportAdminController extends Controller
             ->orderByDesc('updated_at')
             ->limit(50)
             ->get()
-            ->map(fn (AppSupportTicket $t) => [
-                'publicToken' => $t->public_token,
-                'type' => $t->type,
-                'typeLabel' => SupportTicketAdminPresenter::typeLabel($t->type),
-                'status' => $t->status,
-                'statusLabel' => SupportTicketAdminPresenter::statusLabel((string) $t->status),
-                'message' => $t->message,
-                'solutionText' => $t->solution_text,
-                'forecastAt' => $t->forecast_at?->toDateString(),
-                'createdAt' => $t->created_at?->toIso8601String(),
-                'updatedAt' => $t->updated_at?->toIso8601String(),
-                'ownerLabel' => $t->user_id
-                    ? ($t->user?->name ?? 'Usuário')
-                    : ($t->guest_name ?? 'Convidado'),
-            ])
+            ->map(fn (AppSupportTicket $t) => SupportTicketAdminPresenter::ticketRow($t))
+            ->values()
+            ->all();
+
+        $kanbanTickets = AppSupportTicket::query()
+            ->with('user:id,name')
+            ->orderByDesc('updated_at')
+            ->limit(150)
+            ->get()
+            ->map(fn (AppSupportTicket $t) => SupportTicketAdminPresenter::ticketRow($t))
             ->values()
             ->all();
 
@@ -105,11 +111,16 @@ class SupportAdminController extends Controller
 
         return Inertia::render('Support/Index', [
             'tickets' => $tickets,
+            'kanbanTickets' => $kanbanTickets,
             'devItemStoreUrl' => route('support.store'),
             'supportIndexUrl' => route('support.index'),
             'modalDetail' => $modalDetail,
             'canCreateDevItem' => $this->isSuperAdmin($user),
+            'canManageTickets' => $this->canManageSupport($user),
             'statusFilter' => $statusFilter,
+            'demandCategoryOptions' => SupportTicketAdminPresenter::demandCategoryOptions(),
+            'priorityOptions' => SupportTicketAdminPresenter::priorityOptions(),
+            'kanbanStatusColumns' => SupportTicketAdminPresenter::statusOptions(),
             'statusOptions' => array_merge(
                 [['value' => 'all', 'label' => 'Todos', 'count' => $totalCount]],
                 array_map(
@@ -144,12 +155,22 @@ class SupportAdminController extends Controller
         $valid = $request->validate([
             'message' => ['sometimes', 'required', 'string', 'max:5000'],
             'status' => ['sometimes', 'string', 'in:'.implode(',', AppSupportTicket::statuses())],
+            'demand_category' => ['sometimes', 'nullable', 'string', 'in:'.implode(',', array_keys(AppSupportTicketOptions::DEMAND_CATEGORIES))],
+            'priority' => ['sometimes', 'string', 'in:'.implode(',', array_keys(AppSupportTicketOptions::PRIORITIES))],
             'solution_text' => ['nullable', 'string', 'max:5000'],
             'forecast_at' => ['nullable', 'date'],
         ]);
 
         if (array_key_exists('message', $valid)) {
             $ticket->message = $valid['message'];
+        }
+
+        if (array_key_exists('demand_category', $valid)) {
+            $ticket->demand_category = $valid['demand_category'];
+        }
+
+        if (array_key_exists('priority', $valid)) {
+            $ticket->priority = $valid['priority'];
         }
 
         $forecastChangedToDate = null;

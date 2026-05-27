@@ -10,11 +10,19 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
 import Modal from '@/Components/Modal';
+import ListViewModeToggle from '@/Components/ListViewModeToggle';
+import SelectInput from '@/Components/SelectInput';
+import SupportKanban from '@/Components/Support/SupportKanban';
 import SupportTicketDetailPanel, { type SupportTicketDetailPanelProps } from '@/Components/Support/SupportTicketDetailPanel';
+import { usePersistedViewMode } from '@/hooks/usePersistedViewMode';
 
 type TicketRow = {
     publicToken: string;
     typeLabel: string;
+    demandCategory: string | null;
+    demandCategoryLabel: string;
+    priority: string;
+    priorityLabel: string;
     status: string;
     statusLabel: string;
     message: string;
@@ -24,6 +32,8 @@ type TicketRow = {
     updatedAt: string;
     ownerLabel: string;
 };
+
+type SelectOption = { value: string; label: string };
 
 type StatusOption = {
     value: string;
@@ -35,29 +45,43 @@ type ModalPayload = Omit<SupportTicketDetailPanelProps, 'variant' | 'section'>;
 
 interface Props {
     tickets: TicketRow[];
+    kanbanTickets: TicketRow[];
     devItemStoreUrl: string;
     supportIndexUrl: string;
     modalDetail: ModalPayload | null;
     canCreateDevItem?: boolean;
+    canManageTickets?: boolean;
     statusFilter: string;
     statusOptions: StatusOption[];
+    demandCategoryOptions: SelectOption[];
+    priorityOptions: SelectOption[];
+    kanbanStatusColumns: SelectOption[];
 }
 
 export default function SupportIndex({
     tickets,
+    kanbanTickets,
     devItemStoreUrl,
     supportIndexUrl,
     modalDetail,
     canCreateDevItem = false,
+    canManageTickets = false,
     statusFilter,
     statusOptions,
+    demandCategoryOptions,
+    priorityOptions,
+    kanbanStatusColumns,
 }: Props) {
     const inertiaScrollOpts = { preserveScroll: true };
+    const [viewMode, setViewMode] = usePersistedViewMode('support-admin-view-mode', 'list');
     const [modalTab, setModalTab] = useState<'detalhes' | 'chat'>('detalhes');
     const [createOpen, setCreateOpen] = useState(false);
 
     const { data, setData, post, processing, errors, reset } = useForm({
         message: '',
+        demand_category: 'internal',
+        priority: 'medium',
+        forecast_at: '',
     });
 
     const showModal = createOpen || modalDetail !== null;
@@ -130,6 +154,19 @@ export default function SupportIndex({
         return date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
     };
 
+    const priorityTone = (priority: string) => {
+        switch (priority) {
+            case 'urgent':
+                return 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200';
+            case 'high':
+                return 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200';
+            case 'low':
+                return 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300';
+            default:
+                return 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200';
+        }
+    };
+
     const statusTone = (status: string) => {
         switch (status) {
             case 'waiting_user':
@@ -176,9 +213,19 @@ export default function SupportIndex({
         e.preventDefault();
         post(devItemStoreUrl, {
             ...inertiaScrollOpts,
-            onSuccess: () => reset('message'),
+            onSuccess: () => {
+                reset();
+                setData({
+                    message: '',
+                    demand_category: 'internal',
+                    priority: 'medium',
+                    forecast_at: '',
+                });
+            },
         });
     };
+
+    const supportUpdateUrl = (token: string) => route('support.update', { token });
 
     return (
         <AdminLayout>
@@ -186,16 +233,20 @@ export default function SupportIndex({
             <div className="space-y-6">
                 <PageHeader
                     title="Suporte do app"
-                    subtitle="Chamados da app e itens internos que a equipe vai desenvolver."
+                    subtitle="Demandas do app e backlog interno — triagem por tipo, prioridade e status."
                     actions={
-                        canCreateDevItem ? (
-                            <AddButton variant="icon" onClick={openCreateModal} title="Novo item a desenvolver">
-                                Novo item a desenvolver
-                            </AddButton>
-                        ) : undefined
+                        <div className="flex flex-wrap items-center gap-2">
+                            <ListViewModeToggle value={viewMode} onChange={setViewMode} />
+                            {canCreateDevItem ? (
+                                <AddButton variant="icon" onClick={openCreateModal} title="Nova demanda">
+                                    Nova demanda
+                                </AddButton>
+                            ) : null}
+                        </div>
                     }
                 />
 
+                {viewMode === 'list' ? (
                 <div className="flex flex-wrap gap-2">
                     {statusOptions.map((opt) => {
                         const active = statusFilter === opt.value;
@@ -224,12 +275,21 @@ export default function SupportIndex({
                         );
                     })}
                 </div>
+                ) : null}
 
-                {tickets.length === 0 ? (
+                {viewMode === 'kanban' ? (
+                    <SupportKanban
+                        columns={kanbanStatusColumns}
+                        tickets={kanbanTickets}
+                        canManageTickets={canManageTickets}
+                        supportUpdateUrlPattern={supportUpdateUrl}
+                        onOpenTicket={openTicketModal}
+                    />
+                ) : tickets.length === 0 ? (
                     <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-8 text-center text-zinc-600 dark:text-zinc-400">
                         Nenhum chamado encontrado.
                     </div>
-                ) : (
+                ) : viewMode === 'list' ? (
                     <div className="space-y-3">
                         {tickets.map((t) => {
                             const tone = statusTone(t.status);
@@ -254,6 +314,16 @@ export default function SupportIndex({
                                             >
                                                 {t.statusLabel}
                                             </span>
+                                            <span
+                                                className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${priorityTone(t.priority)}`}
+                                            >
+                                                {t.priorityLabel}
+                                            </span>
+                                            {t.demandCategoryLabel !== '—' ? (
+                                                <span className="inline-flex rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-800 dark:bg-violet-900/40 dark:text-violet-200">
+                                                    {t.demandCategoryLabel}
+                                                </span>
+                                            ) : null}
                                         </div>
                                         <div className="text-sm text-zinc-700 dark:text-zinc-200 mt-2 whitespace-pre-wrap line-clamp-3">
                                             {t.message}
@@ -296,7 +366,7 @@ export default function SupportIndex({
                             );
                         })}
                     </div>
-                )}
+                ) : null}
             </div>
 
             <Modal show={showModal} onClose={closeSupportModal} maxWidth="2xl">
@@ -305,7 +375,7 @@ export default function SupportIndex({
                         <div className="flex items-center gap-2">
                             <WrenchScrewdriverIcon className="h-6 w-6 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
                             <h2 className="min-w-0 truncate text-lg font-semibold text-zinc-900 dark:text-white">
-                                {modalDetail ? modalDetail.ticket.typeLabel : 'Novo item a desenvolver'}
+                                {modalDetail ? modalDetail.ticket.typeLabel : 'Nova demanda'}
                             </h2>
                         </div>
                         {modalDetail ? (
@@ -352,9 +422,54 @@ export default function SupportIndex({
                         {modalTab === 'detalhes' && createOpen && !modalDetail && (
                             <form onSubmit={submitDevItem} className="space-y-4">
                                 <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                                    Descreva a funcionalidade ou correção a planear. Depois de criar, pode conversar com a equipe na
-                                    aba Chat (quando aplicável).
+                                    Toda demanda nasce como <strong>Pendente</strong>. Descreva o contexto e, se quiser, informe uma
+                                    previsão — o criador também verá essa data no app.
                                 </p>
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <InputLabel htmlFor="support_dev_demand_category" value="Tipo" />
+                                        <SelectInput
+                                            id="support_dev_demand_category"
+                                            value={data.demand_category}
+                                            className="mt-1 block w-full"
+                                            onChange={(e) => setData('demand_category', e.target.value)}
+                                        >
+                                            {demandCategoryOptions.map((opt) => (
+                                                <option key={opt.value} value={opt.value}>
+                                                    {opt.label}
+                                                </option>
+                                            ))}
+                                        </SelectInput>
+                                        <InputError message={errors.demand_category} className="mt-1" />
+                                    </div>
+                                    <div>
+                                        <InputLabel htmlFor="support_dev_priority" value="Prioridade" />
+                                        <SelectInput
+                                            id="support_dev_priority"
+                                            value={data.priority}
+                                            className="mt-1 block w-full"
+                                            onChange={(e) => setData('priority', e.target.value)}
+                                        >
+                                            {priorityOptions.map((opt) => (
+                                                <option key={opt.value} value={opt.value}>
+                                                    {opt.label}
+                                                </option>
+                                            ))}
+                                        </SelectInput>
+                                        <InputError message={errors.priority} className="mt-1" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <InputLabel htmlFor="support_dev_forecast" value="Previsão (opcional)" />
+                                    <input
+                                        id="support_dev_forecast"
+                                        type="date"
+                                        value={data.forecast_at}
+                                        onChange={(e) => setData('forecast_at', e.target.value)}
+                                        className="mt-1 block h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+                                    />
+                                    <InputError message={errors.forecast_at} className="mt-1" />
+                                </div>
                                 <div>
                                     <InputLabel htmlFor="support_dev_message" value="Descrição" />
                                     <Textarea
@@ -372,7 +487,7 @@ export default function SupportIndex({
                                         Cancelar
                                     </SecondaryButton>
                                     <PrimaryButton type="submit" disabled={processing}>
-                                        Criar item
+                                        Criar demanda
                                     </PrimaryButton>
                                 </div>
                             </form>

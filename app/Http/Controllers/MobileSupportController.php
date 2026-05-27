@@ -6,6 +6,7 @@ use App\Models\AppSupportMessage;
 use App\Models\AppSupportTicket;
 use App\Models\User;
 use App\Services\SupportTicketChatNotifier;
+use App\Support\AppSupportTicketOptions;
 use App\Support\StorageUrl;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -32,12 +33,12 @@ class MobileSupportController extends Controller
     private function statusLabel(string $status): string
     {
         return match ($status) {
-            AppSupportTicket::STATUS_OPEN => 'Aberto',
+            AppSupportTicket::STATUS_OPEN => 'Pendente',
             AppSupportTicket::STATUS_IN_PROGRESS => 'Em andamento',
             AppSupportTicket::STATUS_WAITING_USER => 'Aguardando usuário',
             AppSupportTicket::STATUS_RESOLVED => 'Resolvido',
             AppSupportTicket::STATUS_CLOSED => 'Fechado',
-            default => 'Aberto',
+            default => 'Pendente',
         };
     }
 
@@ -95,6 +96,7 @@ class MobileSupportController extends Controller
                     'status' => $t->status,
                     'statusLabel' => $this->statusLabel((string) $t->status),
                     'message' => $t->message,
+                    'forecastAt' => $t->forecast_at?->toDateString(),
                     'createdAt' => $t->created_at?->toIso8601String(),
                     'solutionText' => $t->solution_text,
                 ])
@@ -141,6 +143,8 @@ class MobileSupportController extends Controller
             'public_token' => Str::uuid()->toString(),
             'user_id' => $user?->id,
             'type' => $valid['type'],
+            'demand_category' => AppSupportTicketOptions::DEMAND_CATEGORY_CLIENT,
+            'priority' => AppSupportTicket::PRIORITY_MEDIUM,
             'message' => $valid['message'],
             'screenshot_path' => $screenshotPath,
             'screenshot_url' => isset($valid['screenshot_url']) && trim((string) $valid['screenshot_url']) !== ''

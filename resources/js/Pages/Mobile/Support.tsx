@@ -21,6 +21,7 @@ type SupportTicketListItem = {
     status: string;
     statusLabel?: string;
     message: string;
+    forecastAt?: string | null;
     createdAt: string;
 };
 
@@ -199,11 +200,21 @@ export default function MobileSupport({
                                                 <p className="mt-2 line-clamp-2 text-sm text-zinc-700 dark:text-zinc-300">
                                                     {t.message}
                                                 </p>
+                                                {t.forecastAt ? (
+                                                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                                        Previsão:{' '}
+                                                        {new Date(t.forecastAt + 'T12:00:00').toLocaleDateString('pt-BR', {
+                                                            day: 'numeric',
+                                                            month: 'short',
+                                                            year: 'numeric',
+                                                        })}
+                                                    </p>
+                                                ) : null}
                                             </div>
                                             <span
                                                 className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${statusTone(t.status)}`}
                                             >
-                                                {t.statusLabel ?? 'Aberto'}
+                                                {t.statusLabel ?? 'Pendente'}
                                             </span>
                                         </div>
                                     </button>

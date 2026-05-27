@@ -92,14 +92,14 @@ export default function MobileAcervoIndex({ items, playlistsUrl, canManage }: Pr
 
     return (
         <MobileLayout>
-            <Head title="Acervo" />
+            <Head title="Séries" />
             <div className="space-y-6 -mt-8">
                 <Link href={route('mobile.more')} className="text-sm text-zinc-500 underline dark:text-zinc-400">
                     ← Mais
                 </Link>
                 {/* Título e botão Adicionar na mesma linha */}
                 <div className="flex items-center justify-between gap-3 flex-nowrap">
-                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white truncate min-w-0">Acervo</h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white truncate min-w-0">Séries</h1>
                     {canManage && (
                         <PrimaryButton
                             type="button"
@@ -119,9 +119,9 @@ export default function MobileAcervoIndex({ items, playlistsUrl, canManage }: Pr
                             type="search"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Buscar no acervo..."
+                            placeholder="Buscar em séries..."
                             className="w-full rounded-2xl border border-zinc-300 dark:border-zinc-600 bg-zinc-50 dark:bg-zinc-800/50 py-3 pl-10 pr-10 text-zinc-900 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:focus:border-primary-400 dark:focus:ring-primary-400/20 transition-all text-base"
-                            aria-label="Buscar no acervo"
+                            aria-label="Buscar em séries"
                         />
                         {search && (
                             <button

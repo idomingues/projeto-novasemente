@@ -44,7 +44,7 @@ const GROUP_LABELS: Record<string, string> = {
     events: 'Eventos',
     escalas: 'Escalas',
     roles: 'Perfis',
-    music: 'Acervo e músicas',
+    music: 'Séries e músicas',
     photos: 'Fotos',
     library: 'Biblioteca',
     culto: 'Culto',

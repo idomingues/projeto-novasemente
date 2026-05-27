@@ -32,7 +32,7 @@ export default function MobileAcervoShow({ item }: Props) {
                     className="inline-flex items-center gap-2 text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline"
                 >
                     <ArrowLeftIcon className="h-4 w-4" aria-hidden />
-                    Voltar ao acervo
+                    Voltar às séries
                 </Link>
 
                 <article className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">

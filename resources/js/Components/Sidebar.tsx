@@ -111,7 +111,7 @@ const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'News', route: 'news.index', icon: NewspaperIcon },
     { name: 'Saúde', route: 'health.index', icon: HeartIcon },
     { name: 'Eventos', route: 'events.index', icon: CalendarDaysIcon },
-    { name: 'Acervo', route: 'acervo.index', icon: PlayCircleIcon },
+    { name: 'Séries', route: 'acervo.index', icon: PlayCircleIcon },
     { name: 'Música', route: 'musica.index', icon: MusicalNoteIcon },
     { name: 'Fotos', route: 'photo-albums.index', icon: CameraIcon },
     { name: 'Biblioteca', route: 'library-books.index', icon: BookOpenIcon },

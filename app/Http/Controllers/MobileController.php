@@ -23,6 +23,7 @@ use App\Models\UserInboxNotification;
 use App\Models\Volunteer;
 use App\Services\DriveFolderCoverService;
 use App\Services\DriveFolderImagesService;
+use App\Services\LibraryExternalPageExtractService;
 use App\Services\ScheduleAssignmentPresenter;
 use App\Services\SolicitationChatNotifier;
 use App\Services\VolunteerScheduleOverview;
@@ -236,6 +237,23 @@ class MobileController extends Controller
             'upcomingEvents' => $upcomingEvents,
             'showPostRegistrationBanner' => $request->boolean('reg_ok') && $request->user() !== null,
             'volunteerSignupCompletion' => $volunteerSignupCompletion,
+        ]);
+    }
+
+    public function meditacaoDiaria(Request $request): Response
+    {
+        $church = $this->currentChurch();
+        $url = $church !== null ? $church->resolvedLibraryMeditationUrl() : Church::DEFAULT_LIBRARY_MEDITATION_URL;
+
+        /** @var LibraryExternalPageExtractService $svc */
+        $svc = app(LibraryExternalPageExtractService::class);
+        $result = $svc->fetchAndExtract($url, 'meditation');
+
+        return Inertia::render('Mobile/MeditationDaily', [
+            'ok' => ! empty($result['ok']),
+            'html' => (string) ($result['html'] ?? ''),
+            'error' => (string) ($result['error'] ?? ''),
+            'sourceUrl' => $url,
         ]);
     }
 

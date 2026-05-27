@@ -108,6 +108,9 @@ Route::get('/mobile/oracao', [PrayerRequestController::class, 'mobile'])->name('
 
 Route::get('/mobile', [MobileController::class, 'home'])->name('mobile.index');
 Route::get('/mobile/inicio', [MobileController::class, 'home'])->name('mobile.home');
+Route::get('/mobile/meditacao-diaria', [MobileController::class, 'meditacaoDiaria'])
+    ->middleware('throttle:40,1')
+    ->name('mobile.meditacao-diaria');
 Route::get('/mobile/culto', [MobileController::class, 'culto'])->name('mobile.culto');
 Route::get('/mobile/culto/{culto}', [MobileController::class, 'cultoShow'])->name('mobile.culto.show');
 Route::get('/mobile/news', [MobileController::class, 'news'])->name('mobile.news');

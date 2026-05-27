@@ -70,7 +70,12 @@ export default function MobileLibrary({
     librarySetupMessage = null,
 }: Props) {
     const appUrl = (usePage().props as PageProps).appUrl ?? '';
-    const [tab, setTab] = useState<string>(categories[0]?.value ?? 'books');
+    const initialTab = useMemo(() => {
+        if (typeof window === 'undefined') return '';
+        const t = new URL(window.location.href).searchParams.get('tab')?.trim().toLowerCase() ?? '';
+        return categories.some((c) => c.value === t) ? t : '';
+    }, [categories]);
+    const [tab, setTab] = useState<string>(initialTab || categories[0]?.value || 'books');
     const [search, setSearch] = useState('');
     const [selectedDetails, setSelectedDetails] = useState<BookItem | null>(null);
     const [readerStatus, setReaderStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');

@@ -5,7 +5,6 @@ namespace App\Support;
 use App\Models\AppSupportMessage;
 use App\Models\AppSupportTicket;
 use App\Models\User;
-
 class SupportTicketAdminPresenter
 {
     public static function typeLabel(string $type): string
@@ -23,12 +22,12 @@ class SupportTicketAdminPresenter
     public static function statusLabel(string $status): string
     {
         return match ($status) {
-            AppSupportTicket::STATUS_OPEN => 'Aberto',
+            AppSupportTicket::STATUS_OPEN => 'Pendente',
             AppSupportTicket::STATUS_IN_PROGRESS => 'Em andamento',
             AppSupportTicket::STATUS_WAITING_USER => 'Aguardando usuário',
             AppSupportTicket::STATUS_RESOLVED => 'Resolvido',
             AppSupportTicket::STATUS_CLOSED => 'Fechado',
-            default => 'Aberto',
+            default => 'Pendente',
         };
     }
 
@@ -44,6 +43,49 @@ class SupportTicketAdminPresenter
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * @return list<array{value: string, label: string}>
+     */
+    public static function demandCategoryOptions(): array
+    {
+        return AppSupportTicketOptions::demandCategoryOptions();
+    }
+
+    /**
+     * @return list<array{value: string, label: string}>
+     */
+    public static function priorityOptions(): array
+    {
+        return AppSupportTicketOptions::priorityOptions();
+    }
+
+    /**
+     * @param  array<string, mixed>  $extra
+     * @return array<string, mixed>
+     */
+    public static function ticketRow(AppSupportTicket $t, array $extra = []): array
+    {
+        return array_merge([
+            'publicToken' => $t->public_token,
+            'type' => $t->type,
+            'typeLabel' => self::typeLabel($t->type),
+            'demandCategory' => $t->demand_category,
+            'demandCategoryLabel' => AppSupportTicketOptions::demandCategoryLabel($t->demand_category),
+            'priority' => $t->priority ?? AppSupportTicket::PRIORITY_MEDIUM,
+            'priorityLabel' => AppSupportTicketOptions::priorityLabel($t->priority),
+            'status' => $t->status,
+            'statusLabel' => self::statusLabel((string) $t->status),
+            'message' => $t->message,
+            'solutionText' => $t->solution_text,
+            'forecastAt' => $t->forecast_at?->toDateString(),
+            'createdAt' => $t->created_at?->toIso8601String(),
+            'updatedAt' => $t->updated_at?->toIso8601String(),
+            'ownerLabel' => $t->user_id
+                ? ($t->user?->name ?? 'Usuário')
+                : ($t->guest_name ?? 'Convidado'),
+        ], $extra);
     }
 
     /**
@@ -78,6 +120,10 @@ class SupportTicketAdminPresenter
                 'publicToken' => $publicToken,
                 'type' => $ticket->type,
                 'typeLabel' => self::typeLabel($ticket->type),
+                'demandCategory' => $ticket->demand_category,
+                'demandCategoryLabel' => AppSupportTicketOptions::demandCategoryLabel($ticket->demand_category),
+                'priority' => $ticket->priority ?? AppSupportTicket::PRIORITY_MEDIUM,
+                'priorityLabel' => AppSupportTicketOptions::priorityLabel($ticket->priority),
                 'isGuest' => ! (bool) $ticket->user_id,
                 'allowStaffInternalChat' => $ticket->type === 'pastoral'
                     && ! $ticket->user_id
@@ -102,6 +148,8 @@ class SupportTicketAdminPresenter
             'supportMessageStoreUrl' => route('support.messages.store', ['token' => $publicToken]),
             'canManageTickets' => $canManage,
             'statusOptions' => self::statusOptions(),
+            'demandCategoryOptions' => self::demandCategoryOptions(),
+            'priorityOptions' => self::priorityOptions(),
         ];
     }
 }

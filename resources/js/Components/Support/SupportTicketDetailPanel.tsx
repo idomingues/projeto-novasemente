@@ -8,6 +8,7 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import InputLabel from '@/Components/InputLabel';
 import Textarea from '@/Components/Textarea';
 import InputError from '@/Components/InputError';
+import SelectInput from '@/Components/SelectInput';
 import { CHAT_MESSAGE_SENDS_EMAIL_SUBTITLE } from '@/constants/chatEmailNotice';
 
 export type SupportMessageRow = {
@@ -23,6 +24,10 @@ export type SupportTicketShape = {
     publicToken: string;
     type?: string;
     typeLabel: string;
+    demandCategory?: string | null;
+    demandCategoryLabel?: string;
+    priority?: string;
+    priorityLabel?: string;
     status: string;
     statusLabel?: string;
     message: string;
@@ -47,6 +52,8 @@ export type SupportTicketDetailPanelProps = {
     supportCloseUrl: string;
     supportMessageStoreUrl: string;
     statusOptions?: Array<{ value: string; label: string }>;
+    demandCategoryOptions?: Array<{ value: string; label: string }>;
+    priorityOptions?: Array<{ value: string; label: string }>;
     /** Responder, editar, excluir e encerrar (painel admin). Por omissão: true. */
     canManageTickets?: boolean;
     variant?: 'page' | 'modal';
@@ -92,6 +99,8 @@ export default function SupportTicketDetailPanel({
     supportCloseUrl,
     supportMessageStoreUrl,
     statusOptions = [],
+    demandCategoryOptions = [],
+    priorityOptions = [],
     canManageTickets = true,
     variant = 'page',
     section: sectionProp = 'full',
@@ -115,6 +124,8 @@ export default function SupportTicketDetailPanel({
     const [statusValue, setStatusValue] = useState(ticket.status);
     const [statusSolution, setStatusSolution] = useState(ticket.solutionText ?? '');
     const [forecastValue, setForecastValue] = useState(ticket.forecastAt ?? '');
+    const [demandCategoryValue, setDemandCategoryValue] = useState(ticket.demandCategory ?? '');
+    const [priorityValue, setPriorityValue] = useState(ticket.priority ?? 'medium');
 
     useEffect(() => {
         setEditMessage(ticket.message);
@@ -131,6 +142,14 @@ export default function SupportTicketDetailPanel({
     useEffect(() => {
         setForecastValue(ticket.forecastAt ?? '');
     }, [ticket.forecastAt]);
+
+    useEffect(() => {
+        setDemandCategoryValue(ticket.demandCategory ?? '');
+    }, [ticket.demandCategory]);
+
+    useEffect(() => {
+        setPriorityValue(ticket.priority ?? 'medium');
+    }, [ticket.priority]);
 
     useEffect(() => {
         if (!showCloseModal) {
@@ -192,6 +211,16 @@ export default function SupportTicketDetailPanel({
             { forecast_at: normalized !== '' ? normalized : null },
             inertiaScrollOpts,
         );
+    };
+
+    const saveDemandCategory = () => {
+        if (!demandCategoryValue || demandCategoryValue === (ticket.demandCategory ?? '')) return;
+        router.patch(supportUpdateUrl, { demand_category: demandCategoryValue }, inertiaScrollOpts);
+    };
+
+    const savePriority = () => {
+        if (!priorityValue || priorityValue === (ticket.priority ?? 'medium')) return;
+        router.patch(supportUpdateUrl, { priority: priorityValue }, inertiaScrollOpts);
     };
 
     const saveSolutionDraft = () => {
@@ -278,6 +307,20 @@ export default function SupportTicketDetailPanel({
                     <div className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">{ticket.typeLabel}</div>
                 </div>
                 <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Demanda</div>
+                    <div className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                        {ticket.demandCategoryLabel && ticket.demandCategoryLabel !== '—'
+                            ? ticket.demandCategoryLabel
+                            : '—'}
+                    </div>
+                </div>
+                <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Prioridade</div>
+                    <div className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                        {ticket.priorityLabel ?? '—'}
+                    </div>
+                </div>
+                <div>
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Usuário</div>
                     <div className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">{ticket.ownerLabel}</div>
                 </div>
@@ -335,6 +378,63 @@ export default function SupportTicketDetailPanel({
                             Abrir link do print
                         </a>
                     ) : null}
+                </div>
+            )}
+
+            {showDetails && canManageTickets && isOpen && isDevItem && demandCategoryOptions.length > 0 && (
+                <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                        <div className="min-w-0 flex-1">
+                            <InputLabel value="Categoria da demanda" />
+                            <SelectInput
+                                value={demandCategoryValue}
+                                className="mt-1 block w-full"
+                                onChange={(e) => setDemandCategoryValue(e.target.value)}
+                            >
+                                <option value="">Selecione…</option>
+                                {demandCategoryOptions.map((opt) => (
+                                    <option key={opt.value} value={opt.value}>
+                                        {opt.label}
+                                    </option>
+                                ))}
+                            </SelectInput>
+                        </div>
+                        <PrimaryButton
+                            type="button"
+                            onClick={saveDemandCategory}
+                            disabled={!demandCategoryValue || demandCategoryValue === (ticket.demandCategory ?? '')}
+                        >
+                            Salvar categoria
+                        </PrimaryButton>
+                    </div>
+                </div>
+            )}
+
+            {showDetails && canManageTickets && isOpen && priorityOptions.length > 0 && (
+                <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                        <div className="min-w-0 flex-1">
+                            <InputLabel value="Prioridade" />
+                            <SelectInput
+                                value={priorityValue}
+                                className="mt-1 block w-full"
+                                onChange={(e) => setPriorityValue(e.target.value)}
+                            >
+                                {priorityOptions.map((opt) => (
+                                    <option key={opt.value} value={opt.value}>
+                                        {opt.label}
+                                    </option>
+                                ))}
+                            </SelectInput>
+                        </div>
+                        <PrimaryButton
+                            type="button"
+                            onClick={savePriority}
+                            disabled={!priorityValue || priorityValue === (ticket.priority ?? 'medium')}
+                        >
+                            Salvar prioridade
+                        </PrimaryButton>
+                    </div>
                 </div>
             )}
 

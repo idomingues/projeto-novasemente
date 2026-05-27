@@ -92,10 +92,10 @@ export default function AcervoIndex({ items, canManage }: Props) {
 
     return (
         <AdminLayout>
-            <Head title="Acervo" />
+            <Head title="Séries" />
             <div className="space-y-6">
                 <PageHeader
-                    title="Acervo"
+                    title="Séries"
                     subtitle="Playlists do YouTube da Nova Semente."
                     actions={
                         canManage ? (

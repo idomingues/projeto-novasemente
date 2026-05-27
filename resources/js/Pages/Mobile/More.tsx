@@ -81,7 +81,7 @@ const items: MoreMenuItem[] = [
         route: 'volunteers.public-signup.page',
         icon: UserPlusIcon,
     },
-    { name: 'Acervo', description: 'Playlists do YouTube da Nova Semente', route: 'mobile.acervo', icon: PlayCircleIcon },
+    { name: 'Séries', description: 'Playlists do YouTube da Nova Semente', route: 'mobile.acervo', icon: PlayCircleIcon },
     { name: 'Classe Começos', description: 'Estudo bíblico presencial ou on-line', route: 'varios.classe-comecos', icon: AcademicCapIcon },
     {
         name: 'Suporte APP',
