@@ -622,7 +622,7 @@ export default function VersiculosCaixinhaIndex({
                             </div>
                         </div>
                         <div className="mt-4 flex justify-end">
-                            <SecondaryButton type="button" onClick={applyFilters}>
+                            <SecondaryButton type="button" onClick={() => applyFilters()}>
                                 Filtrar
                             </SecondaryButton>
                         </div>
