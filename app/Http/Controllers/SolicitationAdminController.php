@@ -491,6 +491,11 @@ class SolicitationAdminController extends Controller
             });
         }
 
+        $date = $request->query('date');
+        if (is_string($date) && trim($date) !== '') {
+            $query->whereDate('preferred_date', trim($date));
+        }
+
         $rows = $query
             ->orderByDesc('updated_at')
             ->limit(100)
@@ -533,6 +538,7 @@ class SolicitationAdminController extends Controller
             'filters' => [
                 'aba' => $aba,
                 'q' => is_string($q) ? (string) $q : '',
+                'date' => is_string($date) ? trim($date) : '',
             ],
             'tabCounts' => $tabCounts,
             'tabs' => collect(BaptismSolicitationStatus::tabLabels())
@@ -599,7 +605,7 @@ class SolicitationAdminController extends Controller
     private function baptismIndexQueryFromRequest(Request $request, array $overrides = []): array
     {
         $params = [];
-        foreach (['aba', 'q', 'modal_kind', 'modal_id'] as $key) {
+        foreach (['aba', 'q', 'date', 'modal_kind', 'modal_id'] as $key) {
             if (array_key_exists($key, $overrides)) {
                 $val = $overrides[$key];
                 if (is_string($val) && $val !== '') {

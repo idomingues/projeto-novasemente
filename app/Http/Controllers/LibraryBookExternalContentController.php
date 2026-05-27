@@ -32,7 +32,7 @@ class LibraryBookExternalContentController extends Controller
 
         /** @var LibraryExternalPageExtractService $svc */
         $svc = app(LibraryExternalPageExtractService::class);
-        $result = $svc->fetchAndExtract($url);
+        $result = $svc->fetchAndExtract($url, $libraryBook->category);
 
         if (empty($result['ok'])) {
             return response()->json([

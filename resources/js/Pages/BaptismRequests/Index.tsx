@@ -46,7 +46,7 @@ interface Props {
     baptismStoreUrl: string;
     modalDetail: ModalDetail;
     canManage: boolean;
-    filters: { aba: TabKey; q: string };
+    filters: { aba: TabKey; q: string; date: string };
     tabCounts: Record<TabKey, number>;
     tabs: { key: TabKey; label: string }[];
 }
@@ -65,9 +65,13 @@ const EMPTY_MESSAGES: Record<TabKey, string> = {
     arquivados: 'Nenhum registro arquivado.',
 };
 
-function filterQueryParams(filters: { aba: TabKey; q: string }, extra: Record<string, string> = {}): Record<string, string> {
+function filterQueryParams(
+    filters: { aba: TabKey; q: string; date: string },
+    extra: Record<string, string> = {},
+): Record<string, string> {
     const p: Record<string, string> = { aba: filters.aba, ...extra };
     if (filters.q.trim()) p.q = filters.q.trim();
+    if (filters.date.trim()) p.date = filters.date.trim();
     return p;
 }
 
@@ -275,6 +279,21 @@ export default function BaptismRequestsIndex({
                             placeholder="Nome do membro ou texto do pedido"
                             className="w-full"
                         />
+                    </div>
+                    <div className="w-full sm:w-auto sm:min-w-[12rem]">
+                        <label htmlFor="bap_f_date" className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                            Data
+                        </label>
+                        <TextInput
+                            id="bap_f_date"
+                            type="date"
+                            value={localFilters.date}
+                            onChange={(e) => setLocalFilters((f) => ({ ...f, date: e.target.value }))}
+                            className="w-full"
+                        />
+                        <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
+                            Filtra pela data pretendida do batismo.
+                        </p>
                     </div>
                     <button
                         type="submit"

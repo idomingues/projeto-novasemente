@@ -18,6 +18,7 @@ class EventFormSupport
             'description' => ['nullable', 'string'],
             'starts_at' => ['required', 'date'],
             'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
+            'published_at' => ['nullable', 'date'],
             'all_day' => ['boolean'],
             'location' => ['nullable', 'string', 'max:255'],
             'price' => ['nullable', 'string', 'max:2000'],
@@ -35,6 +36,9 @@ class EventFormSupport
         if ($request->input('ends_at') === '' || $request->input('ends_at') === null) {
             $request->merge(['ends_at' => null]);
         }
+        if ($request->input('published_at') === '' || $request->input('published_at') === null) {
+            $request->merge(['published_at' => null]);
+        }
         $rawPurchaseIn = $request->input('purchase_url');
         if (! is_string($rawPurchaseIn) || trim($rawPurchaseIn) === '') {
             $request->merge(['purchase_url' => null]);
@@ -49,6 +53,7 @@ class EventFormSupport
     public static function normalizeValidatedPayload(array &$data): void
     {
         $data['ends_at'] = $data['ends_at'] ?? null;
+        $data['published_at'] = $data['published_at'] ?? null;
         $rawPrice = $data['price'] ?? null;
         $data['price'] = is_string($rawPrice) && trim($rawPrice) !== '' ? trim($rawPrice) : null;
 

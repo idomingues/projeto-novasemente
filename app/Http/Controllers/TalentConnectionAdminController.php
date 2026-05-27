@@ -127,6 +127,7 @@ class TalentConnectionAdminController extends Controller
                 'notes' => $l->notes,
                 'allows_exchange' => $l->allows_exchange,
                 'allows_negotiation' => $l->allows_negotiation,
+                'photo_url' => $l->photo_url,
                 'author_name' => $l->author?->name,
                 'status' => $l->status,
                 'status_label' => TalentListing::statusLabel($l->status),

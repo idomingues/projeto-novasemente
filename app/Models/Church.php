@@ -12,7 +12,7 @@ use Illuminate\Http\Request;
 class Church extends Model
 {
     /** URLs de referência CPB quando a igreja ainda não gravou links próprios em Configurações. */
-    public const DEFAULT_LIBRARY_MEDITATION_URL = 'https://mais.cpb.com.br/?post_type=meditacao&p=66895';
+    public const DEFAULT_LIBRARY_MEDITATION_URL = 'https://mais.cpb.com.br/meditacoes-diarias/';
 
     public const DEFAULT_LIBRARY_LESSON_URL = 'https://mais.cpb.com.br/licao/vida-de-oracao-2o-trimestre-2026/';
 

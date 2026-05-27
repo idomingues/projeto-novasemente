@@ -159,6 +159,33 @@ class MobileSupportController extends Controller
 
     public function ticket(Request $request, string $token): RedirectResponse
     {
+        $ticket = AppSupportTicket::query()->where('public_token', $token)->first();
+
+        if (! $ticket) {
+            return redirect()->route('mobile.support.index');
+        }
+
+        $user = $request->user();
+        $isAdmin = $this->isAdmin($user);
+
+        if ($ticket->type === 'development' && ! $isAdmin) {
+            abort(403);
+        }
+
+        $isOwner = $user && $ticket->user_id && (int) $ticket->user_id === (int) $user->id;
+        if ($isOwner && $ticket->user_hidden_at) {
+            abort(403);
+        }
+
+        $isGuestTicket = empty($ticket->user_id);
+        if (! $isGuestTicket) {
+            abort_unless($user, 403);
+
+            $isSupportStaff = $this->canReplyAsSupportStaff($user);
+            $isPastoralStaff = $this->canReplyAsPastoralStaff($user, $ticket);
+            abort_unless($isAdmin || $isOwner || $isSupportStaff || $isPastoralStaff, 403);
+        }
+
         return redirect()->route('mobile.support.index', ['modal' => $token]);
     }
 

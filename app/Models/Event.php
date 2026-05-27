@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Publishable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Event extends Model
 {
+    use Publishable;
+
     public const VIDEO_YOUTUBE = 'youtube';
 
     public const VIDEO_INSTAGRAM = 'instagram';
@@ -17,6 +20,7 @@ class Event extends Model
         'description',
         'starts_at',
         'ends_at',
+        'published_at',
         'all_day',
         'location',
         'price',
@@ -24,6 +28,7 @@ class Event extends Model
         'video_type',
         'video_url',
         'image_url',
+        'is_active',
         'color',
         'created_by',
     ];
@@ -35,7 +40,9 @@ class Event extends Model
     protected $casts = [
         'starts_at' => 'datetime',
         'ends_at' => 'datetime',
+        'published_at' => 'datetime',
         'all_day' => 'boolean',
+        'is_active' => 'boolean',
     ];
 
     public function church(): BelongsTo

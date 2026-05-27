@@ -23,6 +23,8 @@ interface PrayerItem {
     month_year: string;
     prayer_amen_count: number;
     active: boolean;
+    needs_review?: boolean;
+    moderation_note?: string | null;
 }
 
 interface Props {
@@ -120,13 +122,24 @@ export default function PrayerIndex({ requests, canManage }: Props) {
                                                                 {r.name_or_nickname}
                                                             </p>
                                                             {!r.active ? (
-                                                                <p className="mt-1 inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-                                                                    Desativado
-                                                                </p>
+                                                                r.needs_review ? (
+                                                                    <p className="mt-1 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:bg-amber-950/30 dark:text-amber-200">
+                                                                        Em análise
+                                                                    </p>
+                                                                ) : (
+                                                                    <p className="mt-1 inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                                                                        Desativado
+                                                                    </p>
+                                                                )
                                                             ) : null}
                                                             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap">
                                                                 {r.request}
                                                             </p>
+                                                            {canManage && r.needs_review && r.moderation_note ? (
+                                                                <p className="mt-2 text-xs text-amber-700/90 dark:text-amber-200/90">
+                                                                    {r.moderation_note}
+                                                                </p>
+                                                            ) : null}
                                                             <div className="mt-3">
                                                                 {r.active ? (
                                                                     <PrayerAmenButton

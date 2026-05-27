@@ -7,6 +7,7 @@ use App\Models\PrayerRequest;
 use App\Models\User;
 use App\Models\UserInboxNotification;
 use App\Support\UserMessagingPreferences;
+use App\Support\PrayerRequestContentModerator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -15,6 +16,10 @@ use Inertia\Response;
 
 class PrayerRequestController extends Controller
 {
+    public function __construct(
+        private readonly PrayerRequestContentModerator $moderator,
+    ) {}
+
     private function currentChurchId(): ?int
     {
         return Church::resolveWorkingId(request());
@@ -42,6 +47,8 @@ class PrayerRequestController extends Controller
                 'month_year' => $p->created_at->format('Y-m'),
                 'prayer_amen_count' => (int) $p->prayer_amen_count,
                 'active' => (bool) $p->active,
+                'needs_review' => (bool) $p->needs_review,
+                'moderation_note' => $p->moderation_note,
             ]);
     }
 
@@ -72,15 +79,26 @@ class PrayerRequestController extends Controller
 
         $churchId = $this->currentChurchId();
 
+        $analysis = $this->moderator->analyze($data['request']);
+        $needsReview = $analysis->requiresReview;
+
         PrayerRequest::create([
             'church_id' => $churchId,
             'user_id' => $request->user()?->id,
             'name_or_nickname' => $data['name_or_nickname'],
             'request' => $data['request'],
-            'active' => true,
+            'active' => ! $needsReview,
+            'needs_review' => $needsReview,
+            'moderation_note' => $analysis->reason,
         ]);
 
         $isMobile = $request->header('Referer') && str_contains($request->header('Referer'), '/mobile/');
+
+        if ($needsReview) {
+            return redirect()
+                ->to($isMobile ? route('mobile.prayer') : route('prayer.index'))
+                ->with('info', 'Pedido recebido! Nosso time vai analisar o conteúdo antes de publicar.');
+        }
 
         return redirect()
             ->to($isMobile ? route('mobile.prayer') : route('prayer.index'))
@@ -121,7 +139,13 @@ class PrayerRequestController extends Controller
             'active' => ['required', 'boolean'],
         ]);
 
-        $prayer->update(['active' => (bool) $data['active']]);
+        $active = (bool) $data['active'];
+
+        $prayer->update([
+            'active' => $active,
+            'needs_review' => $active ? false : $prayer->needs_review,
+            'moderation_note' => $active ? null : $prayer->moderation_note,
+        ]);
 
         return back()->with('success', $data['active'] ? 'Pedido reativado.' : 'Pedido desativado.');
     }

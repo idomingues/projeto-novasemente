@@ -120,6 +120,7 @@ export const adminSidebarRoutePermissions: Record<string, string[]> = {
     /** Mesma permissão de gestão de músicas / inserir itens no acervo */
     'acervo.index': ['music.manage'],
     'donation-campaigns.index': ['campaigns.view', 'campaigns.manage', 'finance.view'],
+    'donation-item-campaigns.index': ['campaigns.view', 'campaigns.manage'],
     'talents.admin.dashboard': ['talents.treasurer', 'talents.moderate', 'finance.view'],
     'talents.admin.listings': ['talents.moderate'],
     'talents.admin.listings.store': ['talents.moderate'],

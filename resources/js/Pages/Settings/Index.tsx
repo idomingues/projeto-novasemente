@@ -64,7 +64,7 @@ export default function SettingsIndex({
     });
 
     const meditationForm = useForm({
-        library_meditation_url: libraryMeditationUrl ?? 'https://mais.cpb.com.br/?post_type=meditacao&p=66895',
+        library_meditation_url: libraryMeditationUrl ?? 'https://mais.cpb.com.br/meditacoes-diarias/',
     });
     const lessonForm = useForm({
         library_lesson_url: libraryLessonUrl ?? 'https://mais.cpb.com.br/licao/vida-de-oracao-2o-trimestre-2026/',

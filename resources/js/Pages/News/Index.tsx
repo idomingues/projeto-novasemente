@@ -7,6 +7,7 @@ import {
     PhotoIcon,
     DocumentTextIcon,
     PlayCircleIcon,
+    PowerIcon,
 } from '@heroicons/react/24/outline';
 import AddButton from '@/Components/AddButton';
 import PageHeader from '@/Components/PageHeader';
@@ -58,6 +59,7 @@ interface NewsPost {
     pdf_url: string | null;
     video_url: string | null;
     published_at: string | null;
+    is_active?: boolean;
     created_at: string;
     author?: FeedPostAuthor | null;
 }
@@ -134,6 +136,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
     const routeIndex = `${routeBaseName}.index`;
     const routeStore = `${routeBaseName}.store`;
     const routeUpdate = `${routeBaseName}.update`;
+    const routeSetActive = `${routeBaseName}.active`;
     const routeDestroy = `${routeBaseName}.destroy`;
 
     const pageProps = usePage().props as {
@@ -282,6 +285,21 @@ export default function Index({ posts, filters, canManage, config }: Props) {
         }
     };
 
+    const handleSetActive = async (p: NewsPost, isActive: boolean) => {
+        const label = resolvedConfig.entityLabel ?? 'publicação';
+        const ok = await confirmAction({
+            title: `${isActive ? 'Ativar' : 'Desativar'} ${label}?`,
+            text: isActive
+                ? 'Ela voltará a aparecer na app (quando estiver publicada).'
+                : 'Ela vai sumir da app, mas continua visível no painel.',
+            confirmButtonText: isActive ? 'Ativar' : 'Desativar',
+            danger: !isActive,
+            icon: 'warning',
+        });
+        if (!ok) return;
+        router.patch(route(routeSetActive, p.id), { is_active: isActive }, { preserveScroll: true });
+    };
+
     const isInstagramFeed = data.content_type === 'instagram_feed';
     const isInstagramLink = data.content_type === 'instagram_link';
 
@@ -368,6 +386,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                     const hero = p.cover_url || p.image_url;
                     const feedVideo = p.content_type === 'instagram_feed' && p.video_url;
                     const feedAspect = feedVideo ? 'aspect-[9/16]' : 'aspect-[4/5]';
+                    const isActive = p.is_active ?? true;
                     return (
                         <Card key={p.id} className="flex touch-manipulation flex-col gap-4 p-4 sm:p-6 md:p-8">
                             {feedVideo ? (
@@ -457,11 +476,24 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                                     ? new Date(p.published_at).toLocaleDateString('pt-BR')
                                                     : 'Rascunho'}
                                             </span>
+                                            {!isActive && (
+                                                <span className="inline-flex items-center rounded-full bg-zinc-200 px-2 py-0.5 text-[11px] font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                                                    Inativo
+                                                </span>
+                                            )}
                                             {p.author?.name && <span>• {p.author.name}</span>}
                                         </div>
                                     </div>
                                     {canManage && (
                                         <div className="flex shrink-0 items-center gap-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleSetActive(p, !isActive)}
+                                                className="min-h-[44px] min-w-[44px] touch-manipulation rounded-xl p-3 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+                                                title={isActive ? 'Desativar' : 'Ativar'}
+                                            >
+                                                <PowerIcon className="h-5 w-5" />
+                                            </button>
                                             <button
                                                 type="button"
                                                 onClick={() => openEditModal(p)}
@@ -807,6 +839,10 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                     htmlFor="published_at"
                                     value="Data de publicação (vazio = publicar agora)"
                                 />
+                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                    Se escolher uma data no futuro, a publicação só vai aparecer no app a partir dessa data.
+                                    Para remover do app sem apagar, use o botão <strong>Ativar/Desativar</strong> na lista.
+                                </p>
                                 <TextInput
                                     id="published_at"
                                     type="datetime-local"

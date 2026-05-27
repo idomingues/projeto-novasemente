@@ -201,7 +201,7 @@ class HealthController extends Controller
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'));
 
         if (! $canManage) {
-            $query->whereNotNull('published_at')->where('published_at', '<=', now());
+            $query->visibleToPublic();
         }
 
         if ($search !== '') {
@@ -209,8 +209,7 @@ class HealthController extends Controller
         }
 
         $posts = $query
-            ->orderByDesc('published_at')
-            ->orderByDesc('created_at')
+            ->orderByRaw('COALESCE(published_at, created_at) DESC')
             ->paginate(50)
             ->withQueryString();
 
@@ -363,6 +362,23 @@ class HealthController extends Controller
         ])->save();
 
         return redirect()->route('health.index')->with('success', 'Publicação de saúde atualizada com sucesso.');
+    }
+
+    public function setActive(Request $request, News $health)
+    {
+        $this->authorize('news.manage');
+        abort_unless($health->section === News::SECTION_HEALTH, 404);
+
+        $data = $request->validate([
+            'is_active' => ['required', 'boolean'],
+        ]);
+
+        $health->update(['is_active' => (bool) $data['is_active']]);
+
+        return redirect()->route('health.index')->with(
+            'success',
+            $health->is_active ? 'Publicação ativada com sucesso.' : 'Publicação desativada com sucesso.'
+        );
     }
 
     public function destroy(News $health)

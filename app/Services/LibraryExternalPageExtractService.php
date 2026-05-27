@@ -21,23 +21,23 @@ class LibraryExternalPageExtractService
             return ['ok' => false, 'error' => 'URL inválida.'];
         }
 
-        try {
-            $response = Http::timeout(18)
-                ->withHeaders([
-                    'User-Agent' => 'Mozilla/5.0 (compatible; NovaSementeLibraryBot/1.0; +'.config('app.url').')',
-                    'Accept' => 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8',
-                    'Accept-Language' => 'pt-BR,pt;q=0.9,en;q=0.5',
-                ])
-                ->get($url);
-        } catch (\Throwable) {
-            return ['ok' => false, 'error' => 'Não foi possível contactar o site. Abra o link no browser.'];
+        $fetched = $this->fetchPublicHtml($url);
+        if (! $fetched['ok']) {
+            return $fetched;
+        }
+        $body = (string) ($fetched['body'] ?? '');
+
+        if ($libraryKind === 'meditation') {
+            $resolvedUrl = $this->resolveCpbMeditationDailyUrlFromIndexIfApplicable($url, $body);
+            if ($resolvedUrl !== null && $resolvedUrl !== $url) {
+                $fetchedDaily = $this->fetchPublicHtml($resolvedUrl);
+                if ($fetchedDaily['ok']) {
+                    $url = $resolvedUrl;
+                    $body = (string) ($fetchedDaily['body'] ?? '');
+                }
+            }
         }
 
-        if (! $response->successful()) {
-            return ['ok' => false, 'error' => 'O site não disponibilizou a página para leitura aqui.'];
-        }
-
-        $body = $response->body();
         if (strlen($body) > self::MAX_BODY_BYTES) {
             return ['ok' => false, 'error' => 'Página demasiado grande para pré-visualizar.'];
         }
@@ -97,6 +97,123 @@ class LibraryExternalPageExtractService
             'ok' => true,
             'html' => $this->polishLibraryReaderHtml($sanitized, ! $meditationStructured),
         ];
+    }
+
+    /**
+     * @return array{ok: bool, body?: string, error?: string}
+     */
+    private function fetchPublicHtml(string $url): array
+    {
+        try {
+            $response = Http::timeout(18)
+                ->withHeaders([
+                    'User-Agent' => 'Mozilla/5.0 (compatible; NovaSementeLibraryBot/1.0; +'.config('app.url').')',
+                    'Accept' => 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language' => 'pt-BR,pt;q=0.9,en;q=0.5',
+                ])
+                ->get($url);
+        } catch (\Throwable) {
+            return ['ok' => false, 'error' => 'Não foi possível contactar o site. Abra o link no browser.'];
+        }
+
+        if (! $response->successful()) {
+            return ['ok' => false, 'error' => 'O site não disponibilizou a página para leitura aqui.'];
+        }
+
+        return ['ok' => true, 'body' => $response->body()];
+    }
+
+    /**
+     * CPB: quando a URL é a listagem de meditações diárias, o conteúdo real está no botão "LER DEVOCIONAL".
+     *
+     * @return string|null URL absoluta da meditação do dia
+     */
+    private function resolveCpbMeditationDailyUrlFromIndexIfApplicable(string $url, string $indexHtml): ?string
+    {
+        $lowerUrl = strtolower($url);
+        $looksLikeIndex = str_contains($lowerUrl, 'mais.cpb.com.br/meditacoes-diarias');
+        if (! $looksLikeIndex) {
+            return null;
+        }
+
+        $dom = new \DOMDocument();
+        libxml_use_internal_errors(true);
+        $wrapped = '<?xml encoding="utf-8" ?>'.$indexHtml;
+        if (! @$dom->loadHTML($wrapped, LIBXML_NOWARNING | LIBXML_NOERROR)) {
+            libxml_clear_errors();
+
+            return null;
+        }
+        libxml_clear_errors();
+
+        $xp = new \DOMXPath($dom);
+
+        // 1) Caso comum: <a href="..."><button>LER DEVOCIONAL</button></a>
+        $nodes = $xp->query(
+            '//a[@href][.//button[contains(translate(normalize-space(string(.)), "abcdefghijklmnopqrstuvwxyzáàâãäçéèêëíìîïñóòôõöúùûü", "abcdefghijklmnopqrstuvwxyzáàâãäçéèêëíìîïñóòôõöúùûü"), "ler devocional")]]'
+        );
+        if ($nodes !== false && $nodes->length > 0) {
+            $href = (string) (($nodes->item(0) instanceof \DOMElement) ? $nodes->item(0)->getAttribute('href') : '');
+            $href = trim($href);
+            if ($href !== '') {
+                return $this->absolutizeUrl($url, $href);
+            }
+        }
+
+        // 2) Fallback: âncora cujo texto contém "Ler Devocional"
+        $nodes = $xp->query(
+            '//a[@href][contains(translate(normalize-space(string(.)), "abcdefghijklmnopqrstuvwxyzáàâãäçéèêëíìîïñóòôõöúùûü", "abcdefghijklmnopqrstuvwxyzáàâãäçéèêëíìîïñóòôõöúùûü"), "ler devocional")]'
+        );
+        if ($nodes !== false && $nodes->length > 0) {
+            $href = (string) (($nodes->item(0) instanceof \DOMElement) ? $nodes->item(0)->getAttribute('href') : '');
+            $href = trim($href);
+            if ($href !== '') {
+                return $this->absolutizeUrl($url, $href);
+            }
+        }
+
+        // 3) Último fallback: primeiro link que parece a meditação do dia (?post_type=meditacao&p=...)
+        $nodes = $xp->query('//a[@href[contains(., "post_type=meditacao")]]');
+        if ($nodes !== false && $nodes->length > 0) {
+            $href = (string) (($nodes->item(0) instanceof \DOMElement) ? $nodes->item(0)->getAttribute('href') : '');
+            $href = trim($href);
+            if ($href !== '') {
+                return $this->absolutizeUrl($url, $href);
+            }
+        }
+
+        return null;
+    }
+
+    private function absolutizeUrl(string $baseUrl, string $href): string
+    {
+        $href = trim($href);
+        if ($href === '') {
+            return $baseUrl;
+        }
+        if (str_starts_with($href, 'http://') || str_starts_with($href, 'https://')) {
+            return $href;
+        }
+        if (str_starts_with($href, '//')) {
+            return 'https:'.$href;
+        }
+
+        $parts = parse_url($baseUrl);
+        $scheme = $parts['scheme'] ?? 'https';
+        $host = $parts['host'] ?? '';
+        if ($host === '') {
+            return $href;
+        }
+        $origin = $scheme.'://'.$host;
+
+        if (str_starts_with($href, '/')) {
+            return $origin.$href;
+        }
+
+        $basePath = $parts['path'] ?? '/';
+        $dir = rtrim(str_replace('\\', '/', dirname($basePath)), '/');
+
+        return $origin.($dir !== '' ? '/'.$dir : '').'/'.$href;
     }
 
     /**

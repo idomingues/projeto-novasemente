@@ -25,6 +25,7 @@ class EventController extends Controller
             'description' => $e->description,
             'starts_at' => $e->starts_at->toIso8601String(),
             'ends_at' => $e->ends_at?->toIso8601String(),
+            'published_at' => $e->published_at?->toIso8601String(),
             'all_day' => $e->all_day,
             'location' => $e->location,
             'price' => $e->price,
@@ -33,6 +34,7 @@ class EventController extends Controller
             'video_url' => $e->video_url,
             'youtube_embed_url' => $e->youtube_embed_url,
             'image_url' => $e->image_url,
+            'is_active' => (bool) $e->is_active,
             'color' => $e->color,
         ];
     }
@@ -83,6 +85,9 @@ class EventController extends Controller
 
         $data['image_url'] = EventFormSupport::resolveImageUrl($request, $data, null, 'events');
         unset($data['image_file']);
+        if (empty($data['published_at'])) {
+            $data['published_at'] = now();
+        }
 
         $churchId = $this->currentChurchId();
         if ($churchId === null) {
@@ -105,6 +110,9 @@ class EventController extends Controller
 
         $data['image_url'] = EventFormSupport::resolveImageUrl($request, $data, $event->image_url, 'events');
         unset($data['image_file']);
+        if (empty($data['published_at'])) {
+            $data['published_at'] = $event->published_at ?? now();
+        }
 
         $event->update($data);
 
@@ -116,5 +124,19 @@ class EventController extends Controller
         $event->delete();
 
         return redirect()->route('events.index')->with('success', 'Evento removido com sucesso.');
+    }
+
+    public function setActive(Request $request, Event $event)
+    {
+        $data = $request->validate([
+            'is_active' => ['required', 'boolean'],
+        ]);
+
+        $event->update(['is_active' => (bool) $data['is_active']]);
+
+        return redirect()->route('events.index')->with(
+            'success',
+            $event->is_active ? 'Evento ativado com sucesso.' : 'Evento desativado com sucesso.'
+        );
     }
 }

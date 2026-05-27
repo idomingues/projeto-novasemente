@@ -207,7 +207,7 @@ class NewsController extends Controller
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'));
 
         if (! $canManage) {
-            $query->whereNotNull('published_at')->where('published_at', '<=', now());
+            $query->visibleToPublic();
         }
 
         if ($search !== '') {
@@ -215,8 +215,7 @@ class NewsController extends Controller
         }
 
         $posts = $query
-            ->orderByDesc('published_at')
-            ->orderByDesc('created_at')
+            ->orderByRaw('COALESCE(published_at, created_at) DESC')
             ->paginate(50)
             ->withQueryString();
 
@@ -369,6 +368,23 @@ class NewsController extends Controller
         ])->save();
 
         return redirect()->route('news.index')->with('success', 'Notícia atualizada com sucesso.');
+    }
+
+    public function setActive(Request $request, News $news)
+    {
+        $this->authorize('news.manage');
+        abort_unless($news->section === News::SECTION_NEWS, 404);
+
+        $data = $request->validate([
+            'is_active' => ['required', 'boolean'],
+        ]);
+
+        $news->update(['is_active' => (bool) $data['is_active']]);
+
+        return redirect()->route('news.index')->with(
+            'success',
+            $news->is_active ? 'Notícia ativada com sucesso.' : 'Notícia desativada com sucesso.'
+        );
     }
 
     public function destroy(News $news)

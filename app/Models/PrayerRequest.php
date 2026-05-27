@@ -17,10 +17,13 @@ class PrayerRequest extends Model
         'request',
         'prayer_amen_count',
         'active',
+        'needs_review',
+        'moderation_note',
     ];
 
     protected $casts = [
         'active' => 'boolean',
+        'needs_review' => 'boolean',
     ];
 
     public function church(): BelongsTo

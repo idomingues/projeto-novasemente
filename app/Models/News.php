@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Publishable;
 use App\Support\StorageUrl;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
@@ -9,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class News extends Model
 {
+    use Publishable;
+
     public const SECTION_NEWS = 'news';
 
     public const SECTION_HEALTH = 'health';
@@ -41,11 +44,13 @@ class News extends Model
         'video_path',
         'image_url',
         'published_at',
+        'is_active',
         'created_by',
     ];
 
     protected $casts = [
         'published_at' => 'datetime',
+        'is_active' => 'boolean',
     ];
 
     protected $appends = [

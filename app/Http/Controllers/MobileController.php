@@ -89,9 +89,10 @@ class MobileController extends Controller
             ->where('section', News::SECTION_NEWS)
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
+            ->where('is_active', true)
             ->whereNotNull('published_at')
             ->where('published_at', '<=', now())
-            ->orderByDesc('published_at')
+            ->orderByRaw('COALESCE(published_at, created_at) DESC')
             ->limit(3)
             ->get()
             ->map(function (News $n) use ($baseUrl) {
@@ -116,6 +117,7 @@ class MobileController extends Controller
             Event::query()
                 ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
                 ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
+                ->visibleToPublic()
         )
             ->orderBy('starts_at')
             ->limit(5)
@@ -156,9 +158,10 @@ class MobileController extends Controller
             ->where('section', News::SECTION_NEWS)
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
+            ->where('is_active', true)
             ->whereNotNull('published_at')
             ->where('published_at', '<=', now())
-            ->orderByDesc('published_at')
+            ->orderByRaw('COALESCE(published_at, created_at) DESC')
             ->limit(5)
             ->get()
             ->map(function (News $n) use ($baseUrl) {
@@ -194,6 +197,7 @@ class MobileController extends Controller
             Event::query()
                 ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
                 ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
+                ->visibleToPublic()
         )
             ->orderBy('starts_at')
             ->limit(5)
@@ -390,10 +394,10 @@ class MobileController extends Controller
             ->where('section', News::SECTION_NEWS)
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
+            ->where('is_active', true)
             ->whereNotNull('published_at')
             ->where('published_at', '<=', now())
-            ->orderByDesc('published_at')
-            ->orderByDesc('created_at')
+            ->orderByRaw('COALESCE(published_at, created_at) DESC')
             ->paginate(15)
             ->withQueryString();
 
@@ -411,6 +415,9 @@ class MobileController extends Controller
             abort(404);
         }
         if ($news->section !== News::SECTION_NEWS) {
+            abort(404);
+        }
+        if (! $news->is_active) {
             abort(404);
         }
         if ($news->published_at === null || $news->published_at->isFuture()) {
@@ -505,10 +512,10 @@ class MobileController extends Controller
             ->where('section', News::SECTION_HEALTH)
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
+            ->where('is_active', true)
             ->whereNotNull('published_at')
             ->where('published_at', '<=', now())
-            ->orderByDesc('published_at')
-            ->orderByDesc('created_at')
+            ->orderByRaw('COALESCE(published_at, created_at) DESC')
             ->paginate(15)
             ->withQueryString();
 
@@ -526,6 +533,9 @@ class MobileController extends Controller
             abort(404);
         }
         if ($health->section !== News::SECTION_HEALTH) {
+            abort(404);
+        }
+        if (! $health->is_active) {
             abort(404);
         }
         if ($health->published_at === null || $health->published_at->isFuture()) {
@@ -580,6 +590,7 @@ class MobileController extends Controller
             Event::query()
                 ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
                 ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
+                ->visibleToPublic()
         )
             ->orderBy('starts_at')
             ->get()

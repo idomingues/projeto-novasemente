@@ -12,6 +12,7 @@ import {
     BanknotesIcon,
     PhotoIcon,
     TicketIcon,
+    PowerIcon,
 } from '@heroicons/react/24/outline';
 import AddButton from '@/Components/AddButton';
 import PageHeader from '@/Components/PageHeader';
@@ -63,6 +64,7 @@ interface EventItem {
     description: string | null;
     starts_at: string;
     ends_at: string | null;
+    published_at?: string | null;
     all_day: boolean;
     location: string | null;
     price: string | null;
@@ -71,6 +73,7 @@ interface EventItem {
     video_url: string | null;
     youtube_embed_url?: string | null;
     image_url: string | null;
+    is_active: boolean;
     color: string | null;
 }
 
@@ -146,12 +149,14 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
+    const [activatingId, setActivatingId] = useState<number | null>(null);
 
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
         title: '',
         description: '',
         starts_at: '',
         ends_at: '',
+        published_at: '',
         all_day: false,
         location: '',
         price: '',
@@ -174,6 +179,7 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
             description: '',
             starts_at: toDatetimeLocalString(start),
             ends_at: '',
+            published_at: '',
             all_day: false,
             location: '',
             price: '',
@@ -202,6 +208,7 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
                     ? toDateInputValue(end)
                     : toDatetimeLocalString(end)
                 : '',
+            published_at: ev.published_at ? ev.published_at.substring(0, 16) : '',
             all_day: ev.all_day,
             location: ev.location ?? '',
             price: ev.price ?? '',
@@ -242,6 +249,29 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
         if (ok) {
             router.delete(route('events.destroy', id));
         }
+    };
+
+    const setActive = async (ev: EventItem, isActive: boolean) => {
+        const action = isActive ? 'ativar' : 'desativar';
+        const ok = await confirmAction({
+            title: `${isActive ? 'Ativar' : 'Desativar'} evento?`,
+            text: isActive
+                ? 'O evento voltará a aparecer na lista pública do app.'
+                : 'O evento vai sumir do app (lista pública) e do início, mas continua visível no painel.',
+            confirmButtonText: isActive ? 'Ativar' : 'Desativar',
+            danger: !isActive,
+            icon: 'warning',
+        });
+        if (!ok) return;
+        setActivatingId(ev.id);
+        router.patch(
+            route('events.active', ev.id),
+            { is_active: isActive },
+            {
+                preserveScroll: true,
+                onFinish: () => setActivatingId(null),
+            },
+        );
     };
 
     const goPrevMonth = () => {
@@ -410,7 +440,7 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
                                                                         key={ev.id}
                                                                         type="button"
                                                                         onClick={() => canManage && openEditModal(ev)}
-                                                                        className={`block w-full text-left text-xs truncate rounded px-1 py-0.5 ${
+                                                className={`block w-full text-left text-xs truncate rounded px-1 py-0.5 ${
                                                                             ev.color
                                                                                 ? ''
                                                                                 : 'bg-primary-100 dark:bg-primary-900/50 text-primary-800 dark:text-primary-200'
@@ -425,7 +455,8 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
                                                                         }
                                                                         title={ev.title}
                                                                     >
-                                                                        {ev.all_day ? ev.title : `${formatTime(ev.starts_at)} ${ev.title}`}
+                                                {ev.all_day ? ev.title : `${formatTime(ev.starts_at)} ${ev.title}`}
+                                                {!ev.is_active ? ' (inativo)' : ''}
                                                                     </button>
                                                                 ))}
                                                                 {dayEvents.length > 2 && (
@@ -467,6 +498,11 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
                                 <div className="flex-1 min-w-0">
                                     <h3 className="font-semibold text-gray-900 dark:text-white truncate">
                                         {ev.title}
+                                        {!ev.is_active && (
+                                            <span className="ml-2 inline-flex items-center rounded-full bg-zinc-200 px-2 py-0.5 text-[11px] font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                                                Inativo
+                                            </span>
+                                        )}
                                     </h3>
                                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-sm text-gray-600 dark:text-gray-400">
                                         <span className="flex items-center gap-1">
@@ -501,6 +537,15 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
                                 </div>
                                 {canManage && (
                                     <div className="flex gap-2 flex-shrink-0">
+                                        <SecondaryButton
+                                            type="button"
+                                            onClick={() => setActive(ev, !ev.is_active)}
+                                            disabled={activatingId === ev.id}
+                                            className="gap-1"
+                                        >
+                                            <PowerIcon className="w-4 h-4" />
+                                            {ev.is_active ? 'Desativar' : 'Ativar'}
+                                        </SecondaryButton>
                                         <SecondaryButton
                                             type="button"
                                             onClick={() => openEditModal(ev)}
@@ -541,6 +586,21 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
                                 required
                             />
                             <InputError message={errors.title} />
+                        </div>
+                        <div>
+                            <InputLabel htmlFor="published_at" value="Data de publicação (vazio = publicar agora)" />
+                            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                Se escolher uma data no futuro, o evento só vai aparecer no app a partir dessa data.
+                                Para esconder sem apagar, use <strong>Ativar/Desativar</strong> na lista.
+                            </p>
+                            <TextInput
+                                id="published_at"
+                                type="datetime-local"
+                                value={data.published_at}
+                                onChange={(e) => setData('published_at', e.target.value)}
+                                className="mt-1 block w-full"
+                            />
+                            <InputError message={errors.published_at} />
                         </div>
                         <div>
                             <InputLabel htmlFor="description">Descrição</InputLabel>

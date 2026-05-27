@@ -11,6 +11,8 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DonationCampaignController;
 use App\Http\Controllers\DonationCampaignMediaController;
 use App\Http\Controllers\DonationCampaignMobileController;
+use App\Http\Controllers\DonationItemCampaignController;
+use App\Http\Controllers\DonationItemCampaignMobileController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\FaviconController;
 use App\Http\Controllers\HealthController;
@@ -209,6 +211,8 @@ Route::get('/mobile/pastores', [MobileController::class, 'pastors'])->name('mobi
 Route::get('/mobile/offerings', [MobileController::class, 'offerings'])->name('mobile.offerings');
 Route::get('/mobile/campanhas', [DonationCampaignMobileController::class, 'index'])->name('mobile.campaigns.index');
 Route::get('/mobile/campanhas/{donationCampaign}', [DonationCampaignMobileController::class, 'show'])->name('mobile.campaigns.show');
+Route::get('/mobile/doacoes-itens', [DonationItemCampaignMobileController::class, 'index'])->name('mobile.item-campaigns.index');
+Route::get('/mobile/doacoes-itens/{donationItemCampaign}', [DonationItemCampaignMobileController::class, 'show'])->name('mobile.item-campaigns.show');
 Route::get('/mobile/notifications', [MobileController::class, 'notifications'])->name('mobile.notifications');
 Route::get('/mobile/profile', [MobileController::class, 'profile'])
     ->middleware('auth')
@@ -527,10 +531,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/news', [NewsController::class, 'index'])->name('news.index');
     Route::post('/news', [NewsController::class, 'store'])->name('news.store')->middleware('permission:news.manage');
     Route::put('/news/{news}', [NewsController::class, 'update'])->name('news.update')->middleware('permission:news.manage');
+    Route::patch('/news/{news}/active', [NewsController::class, 'setActive'])->name('news.active')->middleware('permission:news.manage');
     Route::delete('/news/{news}', [NewsController::class, 'destroy'])->name('news.destroy')->middleware('permission:news.manage');
     Route::get('/saude', [HealthController::class, 'index'])->name('health.index');
     Route::post('/saude', [HealthController::class, 'store'])->name('health.store')->middleware('permission:news.manage');
     Route::put('/saude/{health}', [HealthController::class, 'update'])->name('health.update')->middleware('permission:news.manage');
+    Route::patch('/saude/{health}/active', [HealthController::class, 'setActive'])->name('health.active')->middleware('permission:news.manage');
     Route::delete('/saude/{health}', [HealthController::class, 'destroy'])->name('health.destroy')->middleware('permission:news.manage');
 
     // Missão — rotas literais de conteúdo antes do wildcard {missionVolunteer}
@@ -571,6 +577,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/events', [EventController::class, 'index'])->name('events.index')->middleware('permission:events.view|events.manage');
     Route::post('/events', [EventController::class, 'store'])->name('events.store')->middleware('permission:events.manage');
     Route::put('/events/{event}', [EventController::class, 'update'])->name('events.update')->middleware('permission:events.manage');
+    Route::patch('/events/{event}/active', [EventController::class, 'setActive'])->name('events.active')->middleware('permission:events.manage');
     Route::delete('/events/{event}', [EventController::class, 'destroy'])->name('events.destroy')->middleware('permission:events.manage');
     /** admin|super_admin: hasAnyRole; resto: permissão culto.manage (evita 403 quando Gate/BD ficam desalinhados). */
     Route::post('/mobile/campanhas/{donationCampaign}/receipt', [DonationCampaignMobileController::class, 'uploadReceipt'])
@@ -616,6 +623,19 @@ Route::middleware('auth')->group(function () {
     Route::post('/campanhas/{donationCampaign}/agradecimento/ocultar', [DonationCampaignMediaController::class, 'unpublishThanks'])
         ->name('donation-campaigns.thanks.unpublish')
         ->middleware('permission:campaigns.manage|finance.view');
+
+    Route::get('/campanhas-itens', [DonationItemCampaignController::class, 'index'])
+        ->name('donation-item-campaigns.index')
+        ->middleware('permission:campaigns.view|campaigns.manage');
+    Route::post('/campanhas-itens', [DonationItemCampaignController::class, 'store'])
+        ->name('donation-item-campaigns.store')
+        ->middleware('permission:campaigns.manage');
+    Route::put('/campanhas-itens/{donationItemCampaign}', [DonationItemCampaignController::class, 'update'])
+        ->name('donation-item-campaigns.update')
+        ->middleware('permission:campaigns.manage');
+    Route::delete('/campanhas-itens/{donationItemCampaign}', [DonationItemCampaignController::class, 'destroy'])
+        ->name('donation-item-campaigns.destroy')
+        ->middleware('permission:campaigns.manage');
 
     Route::get('/financeiro', [TreasurerDashboardController::class, 'index'])
         ->name('finance.treasurer')

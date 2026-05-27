@@ -116,6 +116,7 @@ const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'Fotos', route: 'photo-albums.index', icon: CameraIcon },
     { name: 'Biblioteca', route: 'library-books.index', icon: BookOpenIcon },
     { name: 'Culto', route: 'culto.index', icon: FilmIcon },
+    { name: 'Doação', route: 'donation-campaigns.index', icon: BanknotesIcon },
     { name: 'Notificações', route: 'notifications.manage', icon: BellAlertIcon },
     { name: 'Salas', route: 'rooms.index', icon: BuildingOfficeIcon },
     { name: 'Departamentos', route: 'departments.index', icon: BuildingOffice2Icon },
@@ -200,7 +201,8 @@ export default function Sidebar({
         'musica.index',
         'photo-albums.index',
         'library-books.index',
-        'settings.index',
+        'donation-campaigns.index',
+        'donation-item-campaigns.index',
         'notifications.manage',
     ]);
     const cadastroRoutes = new Set(['rooms.index', 'departments.index', 'pastors.index']);
@@ -306,13 +308,14 @@ export default function Sidebar({
     ] as const;
     const pastorRoutes = new Set<string>(pastorRouteOrder);
 
-    /** Ordem fixa do bloco ADM — só visível para `super_admin` (sem acordeão). */
+    /** Ordem fixa do bloco ADM — inclui Configurações. */
     const admRouteOrder = [
         'churches.index',
         'operations.index',
         'roles.index',
         'support.index',
         'app-versions.index',
+        'settings.index',
     ] as const;
     /** Inclui `mobile.support.index` quando o item Suporte é remapeado (evita duplicar na lista principal). */
     const admRoutes = new Set<string>([...admRouteOrder, 'mobile.support.index']);
@@ -329,7 +332,7 @@ export default function Sidebar({
     const cadastroMenuItems =
         canAccessAdminMenu ? menuItems.filter((i) => cadastroRoutes.has(i.route)) : [];
     const admMenuItems =
-        canAccessAdminMenu && isSuperAdminUser
+        canAccessAdminMenu && (isSuperAdminUser || canManageSettings)
             ? admRouteOrder
                   .map((r) => {
                       if (r === 'support.index') {

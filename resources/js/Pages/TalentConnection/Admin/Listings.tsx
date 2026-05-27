@@ -12,7 +12,7 @@ import SelectInput from '@/Components/SelectInput';
 import InputError from '@/Components/InputError';
 import Checkbox from '@/Components/Checkbox';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { FormEventHandler, useState } from 'react';
+import { FormEventHandler, useEffect, useMemo, useState } from 'react';
 
 interface Listing {
     id: number;
@@ -28,6 +28,7 @@ interface Listing {
     notes: string | null;
     allows_exchange: boolean;
     allows_negotiation: boolean;
+    photo_url?: string | null;
     author_name: string | null;
     status: string;
     status_label: string;
@@ -78,6 +79,24 @@ export default function TalentConnectionAdminListings({
         auto_approve: true,
         status: 'approved',
     });
+
+    const newPhotoObjectUrl = useMemo(() => {
+        if (!data.photo) {
+            return null;
+        }
+        return URL.createObjectURL(data.photo);
+    }, [data.photo]);
+
+    useEffect(() => {
+        return () => {
+            if (newPhotoObjectUrl) {
+                URL.revokeObjectURL(newPhotoObjectUrl);
+            }
+        };
+    }, [newPhotoObjectUrl]);
+
+    const photoPreviewSrc = newPhotoObjectUrl || editing?.photo_url || null;
+    const ART_SPECS = 'Recomendado: 1080×1080 px (quadrada), até 4 MB. A imagem pode ser recortada no app.';
 
     const moderate = (id: number, action: string, rejection_reason?: string) => {
         router.post(route('talents.admin.listings.moderate', id), { action, rejection_reason });
@@ -366,13 +385,39 @@ export default function TalentConnectionAdminListings({
                     </div>
 
                     <div>
-                        <InputLabel value="Foto (opcional)" />
-                        <input
-                            type="file"
-                            accept="image/*"
-                            className="mt-1 block w-full text-sm"
-                            onChange={(e) => setData('photo', e.target.files?.[0] ?? null)}
-                        />
+                        <InputLabel value="Arte da publicação (opcional)" />
+                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{ART_SPECS}</p>
+                        <div className="mt-2 flex items-center gap-3">
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-zinc-100 ring-1 ring-zinc-200 dark:bg-zinc-800 dark:ring-zinc-700">
+                                {photoPreviewSrc ? (
+                                    <img src={photoPreviewSrc} alt="" className="h-full w-full object-cover" />
+                                ) : (
+                                    <span className="text-xs font-semibold text-zinc-400">Arte</span>
+                                )}
+                            </div>
+                            <div className="min-w-0 flex-1 space-y-2">
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="block w-full text-sm text-zinc-900 file:mr-4 file:rounded-full file:border-0 file:bg-zinc-900 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-white hover:file:bg-zinc-800 dark:text-zinc-100 dark:file:bg-zinc-100 dark:file:text-zinc-900"
+                                    onChange={(e) => {
+                                        const file = e.currentTarget.files?.[0] ?? null;
+                                        setData('photo', file);
+                                        e.currentTarget.value = '';
+                                    }}
+                                />
+                                {data.photo ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => setData('photo', null)}
+                                        className="text-xs font-semibold text-brand-700 underline dark:text-brand-400"
+                                    >
+                                        Remover arte nova
+                                    </button>
+                                ) : null}
+                            </div>
+                        </div>
+                        <InputError message={errors.photo} className="mt-1" />
                     </div>
 
                     {editing ? (
