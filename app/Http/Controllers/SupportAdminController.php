@@ -237,7 +237,12 @@ class SupportAdminController extends Controller
             $notifier->notifyOwnerOfTicketUpdate($ticket, $user, $statusChanged, $solutionChanged);
         }
 
-        return redirect()->route('support.index', ['status' => $ticket->status, 'modal' => $token]);
+        $redirectModal = $request->boolean('redirect_modal', true);
+
+        return redirect()->route('support.index', array_filter([
+            'status' => $ticket->status,
+            'modal' => $redirectModal ? $token : null,
+        ]));
     }
 
     public function destroy(Request $request, string $token): RedirectResponse

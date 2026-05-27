@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 export type SupportKanbanTicket = {
     publicToken: string;
@@ -56,25 +56,41 @@ export default function SupportKanban({
 }: Props) {
     const [draggingToken, setDraggingToken] = useState<string | null>(null);
     const [dropTarget, setDropTarget] = useState<string | null>(null);
+    const [suppressClickUntil, setSuppressClickUntil] = useState(0);
+    const [localTickets, setLocalTickets] = useState<SupportKanbanTicket[]>(tickets);
+
+    useEffect(() => {
+        setLocalTickets(tickets);
+    }, [tickets]);
 
     const cardsByColumn = useMemo(() => {
         const map = new Map<string, SupportKanbanTicket[]>();
         for (const col of columns) {
             map.set(col.value, []);
         }
-        for (const ticket of tickets) {
+        for (const ticket of localTickets) {
             const bucket = map.get(ticket.status) ?? [];
             bucket.push(ticket);
             map.set(ticket.status, bucket);
         }
         return map;
-    }, [tickets, columns]);
+    }, [localTickets, columns]);
 
     const moveToStatus = (token: string, status: string) => {
+        setLocalTickets((prev) =>
+            prev.map((t) => (t.publicToken === token ? { ...t, status, statusLabel: columns.find((c) => c.value === status)?.label ?? t.statusLabel } : t)),
+        );
         router.patch(
             supportUpdateUrlPattern(token),
-            { status },
-            { preserveScroll: true },
+            { status, redirect_modal: false },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                onError: () => {
+                    // Em caso de falha, volta ao estado do servidor.
+                    setLocalTickets(tickets);
+                },
+            },
         );
     };
 
@@ -83,7 +99,7 @@ export default function SupportKanban({
         if (!draggingToken || !canManageTickets) {
             return;
         }
-        const ticket = tickets.find((t) => t.publicToken === draggingToken);
+        const ticket = localTickets.find((t) => t.publicToken === draggingToken);
         if (!ticket || ticket.status === status) {
             setDraggingToken(null);
             return;
@@ -135,10 +151,14 @@ export default function SupportKanban({
                                     <div
                                         key={ticket.publicToken}
                                         draggable={canManageTickets}
-                                        onDragStart={() => setDraggingToken(ticket.publicToken)}
+                                        onDragStart={() => {
+                                            setDraggingToken(ticket.publicToken);
+                                            setSuppressClickUntil(Date.now() + 600);
+                                        }}
                                         onDragEnd={() => {
                                             setDraggingToken(null);
                                             setDropTarget(null);
+                                            setSuppressClickUntil(Date.now() + 350);
                                         }}
                                         className={`rounded-lg border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 ${
                                             draggingToken === ticket.publicToken ? 'opacity-50' : ''
@@ -147,7 +167,11 @@ export default function SupportKanban({
                                         <button
                                             type="button"
                                             className="w-full text-left"
-                                            onClick={() => onOpenTicket(ticket.publicToken)}
+                                            onClick={() => {
+                                                if (Date.now() < suppressClickUntil) return;
+                                                if (draggingToken !== null) return;
+                                                onOpenTicket(ticket.publicToken);
+                                            }}
                                         >
                                             <div className="flex flex-wrap items-center gap-1.5">
                                                 <span
