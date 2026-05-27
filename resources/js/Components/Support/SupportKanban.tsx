@@ -82,7 +82,7 @@ export default function SupportKanban({
         );
         router.patch(
             supportUpdateUrlPattern(token),
-            { status, redirect_modal: false },
+            { status, redirect_modal: false, skip_solution_required: true },
             {
                 preserveScroll: true,
                 preserveState: true,

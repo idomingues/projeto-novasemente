@@ -1,0 +1,28 @@
+---
+description: Cursor pointer (mão) em todos os controles clicáveis do app
+alwaysApply: true
+---
+
+# Cursor pointer em botões e ações clicáveis
+
+Todo elemento interativo clicável deve exibir **cursor de mão** (`cursor: pointer` / `cursor-pointer` no Tailwind).
+
+## Obrigatório
+
+- `<button>` e variantes (`type="button"`, `submit`, etc.)
+- Cards ou áreas clicáveis que usam `onClick` (não só `Link`)
+- Botões de ícone (fechar modal, editar, excluir, compartilhar, favoritar)
+- `PrimaryButton`, `SecondaryButton`, `AddButton` e ações em modais
+- Links (`<Link>`, `<a href>`) em cards de atalho quando fizer sentido visual
+
+## Desabilitado
+
+- Usar `cursor-not-allowed` (ou `disabled:cursor-not-allowed`) quando `disabled` ou `aria-disabled`
+
+## Base global
+
+O projeto define regra em `resources/css/app.css` (`@layer base`) para `button`, `[role="button"]`, `label[for]` e `summary`. Ao criar novos componentes, prefira ainda `cursor-pointer` nas classes do Tailwind para reforçar o padrão.
+
+## Ao revisar UI
+
+Antes de concluir telas novas ou alteradas, confira no desktop: **todo botão e card clicável mostra a mão ao passar o mouse**.

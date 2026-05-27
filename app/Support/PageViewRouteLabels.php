@@ -160,6 +160,7 @@ final class PageViewRouteLabels
         'news.index' => 'Notícias (painel)',
         'photo-albums.index' => 'Fotos (painel)',
         'library-books.index' => 'Biblioteca (painel)',
+        'promise-box-verses.index' => 'Caixa de Promessas (painel)',
         'culto.index' => 'Culto (painel)',
         'acervo.index' => 'Acervo (painel)',
         'settings.index' => 'Configurações',

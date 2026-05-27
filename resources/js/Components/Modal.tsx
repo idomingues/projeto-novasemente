@@ -84,7 +84,7 @@ export default function Modal({
                             <button
                                 type="button"
                                 onClick={close}
-                                className="absolute right-2 top-2 z-20 rounded-full p-2 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white dark:focus-visible:ring-zinc-500 sm:right-3 sm:top-3"
+                                className="absolute right-2 top-2 z-20 cursor-pointer rounded-full p-2 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white dark:focus-visible:ring-zinc-500 sm:right-3 sm:top-3"
                                 aria-label="Fechar"
                             >
                                 <XMarkIcon className="h-6 w-6" aria-hidden />

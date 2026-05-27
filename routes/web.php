@@ -31,6 +31,7 @@ use App\Http\Controllers\MobileChurchSolicitationController;
 use App\Http\Controllers\MobileController;
 use App\Http\Controllers\MobileLeaderSolicitationController;
 use App\Http\Controllers\MobilePastoralAppointmentController;
+use App\Http\Controllers\MobilePromiseBoxController;
 use App\Http\Controllers\MobileSupportController;
 use App\Http\Controllers\MusicaController;
 use App\Http\Controllers\MyMinistryVolunteersController;
@@ -59,6 +60,7 @@ use App\Http\Controllers\VolunteerPipelineLeadController;
 use App\Http\Controllers\VolunteerPublicSignupController;
 use App\Http\Controllers\VolunteerSelfSignupEditController;
 use App\Http\Controllers\VolunteerRequestSolicitationController;
+use App\Http\Controllers\VersiculoCaixinhaController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -212,6 +214,12 @@ Route::get('/mobile/biblioteca/{libraryBook}', [MobileController::class, 'biblio
 Route::get('/mobile/localizacao', [MobileController::class, 'location'])->name('mobile.location');
 Route::get('/mobile/pastores', [MobileController::class, 'pastors'])->name('mobile.pastors');
 Route::get('/mobile/offerings', [MobileController::class, 'offerings'])->name('mobile.offerings');
+Route::get('/mobile/caixa-promessa/random', [MobilePromiseBoxController::class, 'random'])
+    ->middleware('throttle:80,1')
+    ->name('mobile.promise-box.random');
+Route::get('/mobile/caixa-promessa/daily', [MobilePromiseBoxController::class, 'daily'])
+    ->middleware('throttle:80,1')
+    ->name('mobile.promise-box.daily');
 Route::get('/mobile/campanhas', [DonationCampaignMobileController::class, 'index'])->name('mobile.campaigns.index');
 Route::get('/mobile/campanhas/{donationCampaign}', [DonationCampaignMobileController::class, 'show'])->name('mobile.campaigns.show');
 Route::get('/mobile/doacoes-itens', [DonationItemCampaignMobileController::class, 'index'])->name('mobile.item-campaigns.index');
@@ -744,6 +752,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/biblioteca', [LibraryBookController::class, 'store'])->name('library-books.store')->middleware('permission:library.manage');
     Route::put('/biblioteca/{libraryBook}', [LibraryBookController::class, 'update'])->name('library-books.update')->middleware('permission:library.manage');
     Route::delete('/biblioteca/{libraryBook}', [LibraryBookController::class, 'destroy'])->name('library-books.destroy')->middleware('permission:library.manage');
+    Route::get('/caixa-promessa/versiculos', [VersiculoCaixinhaController::class, 'index'])->name('promise-box-verses.index')->middleware('permission:library.manage');
+    Route::post('/caixa-promessa/versiculos', [VersiculoCaixinhaController::class, 'store'])->name('promise-box-verses.store')->middleware('permission:library.manage');
+    Route::put('/caixa-promessa/versiculos/{versiculoCaixinha}', [VersiculoCaixinhaController::class, 'update'])->name('promise-box-verses.update')->middleware('permission:library.manage');
+    Route::delete('/caixa-promessa/versiculos/{versiculoCaixinha}', [VersiculoCaixinhaController::class, 'destroy'])->name('promise-box-verses.destroy')->middleware('permission:library.manage');
+    Route::post('/caixa-promessa/versiculos/importar-populares', [VersiculoCaixinhaController::class, 'importPopular'])->name('promise-box-verses.preview-popular')->middleware('permission:library.manage');
+    Route::post('/caixa-promessa/versiculos/varrer-biblia', [VersiculoCaixinhaController::class, 'scanBible'])->name('promise-box-verses.preview-scan')->middleware('permission:library.manage');
+    Route::post('/caixa-promessa/versiculos/ia/preview', [VersiculoCaixinhaController::class, 'aiPreview'])->name('promise-box-verses.ai-preview')->middleware('permission:library.manage');
+    Route::post('/caixa-promessa/versiculos/importar-selecionados', [VersiculoCaixinhaController::class, 'importSelected'])->name('promise-box-verses.import-selected')->middleware('permission:library.manage');
     Route::get('/services', function () {
         return Inertia::render('Dashboard');
     })->name('services.index');

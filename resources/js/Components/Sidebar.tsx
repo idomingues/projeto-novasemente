@@ -201,6 +201,7 @@ export default function Sidebar({
         'musica.index',
         'photo-albums.index',
         'library-books.index',
+        'promise-box-verses.index',
         'donation-campaigns.index',
         'donation-item-campaigns.index',
         'notifications.manage',

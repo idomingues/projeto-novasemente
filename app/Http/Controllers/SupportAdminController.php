@@ -152,6 +152,8 @@ class SupportAdminController extends Controller
         $previousStatus = (string) $ticket->status;
         $previousSolution = trim((string) ($ticket->solution_text ?? ''));
 
+        $skipSolutionRequired = $request->boolean('skip_solution_required', false);
+
         $valid = $request->validate([
             'message' => ['sometimes', 'required', 'string', 'max:5000'],
             'status' => ['sometimes', 'string', 'in:'.implode(',', AppSupportTicket::statuses())],
@@ -202,7 +204,7 @@ class SupportAdminController extends Controller
             $solution = isset($valid['solution_text']) ? trim((string) $valid['solution_text']) : '';
 
             if (AppSupportTicket::isFinalStatus($nextStatus)) {
-                if ($solution === '' && trim((string) ($ticket->solution_text ?? '')) === '') {
+                if (! $skipSolutionRequired && $solution === '' && trim((string) ($ticket->solution_text ?? '')) === '') {
                     return redirect()->back()->withErrors([
                         'solution_text' => 'Informe a solução para finalizar a demanda.',
                     ]);

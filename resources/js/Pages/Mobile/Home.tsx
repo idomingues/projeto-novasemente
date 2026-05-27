@@ -2,7 +2,7 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import VolunteerSignupIncompleteBanner from '@/Components/Volunteers/VolunteerSignupIncompleteBanner';
 import type { VolunteerSignupCompletion } from '@/utils/volunteerSignupCompletion';
 import { Head, Link, usePage } from '@inertiajs/react';
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { formatWhenLine, getDayMonth, type MobileEventListItem } from '@/utils/mobileEventDisplay';
 import {
     ArchiveBoxIcon,
@@ -15,6 +15,7 @@ import {
 } from '@heroicons/react/24/outline';
 import type { ComponentType, SVGProps } from 'react';
 import CoverWithVideoLink from '@/Components/News/CoverWithVideoLink';
+import PromiseBoxModal from '@/Components/Mobile/PromiseBoxModal';
 
 type MenuIcon = ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
 
@@ -130,7 +131,8 @@ function eventCardSnippet(ev: MobileEventListItem): string | null {
 type QuickAction = {
     label: string;
     subtitle: string;
-    route: string;
+    route?: string;
+    onClick?: () => void;
     icon: MenuIcon;
 };
 
@@ -139,6 +141,11 @@ function QuickActionGlyph({ icon: Icon }: { icon: MenuIcon }) {
 }
 
 const quickActionsGuest: QuickAction[] = [
+    {
+        label: 'Caixa de Promessas',
+        subtitle: 'Uma mensagem especial para você',
+        icon: SparklesIcon,
+    },
     {
         label: 'Batismo',
         subtitle: 'Ainda não é batizado? Faça parte da família NS',
@@ -206,8 +213,27 @@ export default function MobileHome({
     const { appUrl = '', auth } = page.props as unknown as PageProps;
     const user = auth?.user ?? null;
     const displayName = user?.name ? firstName(user.name) : '';
-    const quickActions =
-        user ? [quickActionDevocional, ...quickActionsGuest.filter((a) => a.route !== 'mobile.meditacao-diaria')] : quickActionsGuest;
+    const [promiseOpen, setPromiseOpen] = useState(false);
+
+    const openPromise = () => {
+        setPromiseOpen(true);
+    };
+
+    const caixaDePromessaAction: QuickAction = useMemo(
+        () => ({
+            label: 'Caixa de Promessas',
+            subtitle: 'Uma mensagem especial para você',
+            icon: SparklesIcon,
+            onClick: openPromise,
+        }),
+        []
+    );
+
+    const quickActionsExcludingDevocionalAndCaixa = quickActionsGuest.filter(
+        (a) => a.route !== 'mobile.meditacao-diaria' && a.label !== 'Caixa de Promessas',
+    );
+
+    const quickActions = [quickActionDevocional, caixaDePromessaAction, ...quickActionsExcludingDevocionalAndCaixa];
 
     useEffect(() => {
         if (!showPostRegistrationBanner || typeof window === 'undefined') {
@@ -253,25 +279,50 @@ export default function MobileHome({
 
                 <section aria-label="Atalhos">
                     <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-3">
-                        {quickActions.map(({ label, subtitle, route: routeName, icon }) => (
-                            <Link
-                                key={routeName}
-                                href={route(routeName)}
-                                className="group flex flex-col rounded-2xl bg-white p-3.5 text-left shadow-sm ring-1 ring-zinc-200 transition duration-200 hover:-translate-y-0.5 hover:bg-zinc-50 hover:shadow-md dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60"
-                            >
-                                <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200/70 dark:bg-emerald-950/45 dark:text-emerald-200 dark:ring-emerald-800/60">
-                                    <QuickActionGlyph icon={icon} />
-                                </div>
-                                <div className="mt-3 min-w-0">
-                                    <p className="text-[15px] font-semibold leading-tight text-zinc-900 dark:text-white">{label}</p>
-                                    <p className="mt-1 text-[11px] font-medium leading-snug text-zinc-600 dark:text-zinc-300">
-                                        {subtitle}
-                                    </p>
-                                </div>
-                            </Link>
-                        ))}
+                        {quickActions.map(({ label, subtitle, route: routeName, onClick, icon }) => {
+                            const content = (
+                                <>
+                                    <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200/70 dark:bg-emerald-950/45 dark:text-emerald-200 dark:ring-emerald-800/60">
+                                        <QuickActionGlyph icon={icon} />
+                                    </div>
+                                    <div className="mt-3 min-w-0">
+                                        <p className="text-[15px] font-semibold leading-tight text-zinc-900 dark:text-white">{label}</p>
+                                        <p className="mt-1 text-[11px] font-medium leading-snug text-zinc-600 dark:text-zinc-300">
+                                            {subtitle}
+                                        </p>
+                                    </div>
+                                </>
+                            );
+
+                            if (onClick) {
+                                return (
+                                    <button
+                                        key={label}
+                                        type="button"
+                                        onClick={onClick}
+                                        className="group flex cursor-pointer flex-col rounded-2xl bg-white p-3.5 text-left shadow-sm ring-1 ring-zinc-200 transition duration-200 hover:-translate-y-0.5 hover:bg-zinc-50 hover:shadow-md dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60"
+                                    >
+                                        {content}
+                                    </button>
+                                );
+                            }
+
+                            if (!routeName) return null;
+
+                            return (
+                                <Link
+                                    key={routeName}
+                                    href={route(routeName)}
+                                    className="group flex cursor-pointer flex-col rounded-2xl bg-white p-3.5 text-left shadow-sm ring-1 ring-zinc-200 transition duration-200 hover:-translate-y-0.5 hover:bg-zinc-50 hover:shadow-md dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60"
+                                >
+                                    {content}
+                                </Link>
+                            );
+                        })}
                     </div>
                 </section>
+
+                <PromiseBoxModal show={promiseOpen} onClose={() => setPromiseOpen(false)} canFavorite={!!user} />
 
                 <div className="space-y-8 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-10 lg:gap-y-0 lg:space-y-0 xl:gap-x-12">
                     <section className="space-y-3">
@@ -339,7 +390,7 @@ export default function MobileHome({
                                             ) : (
                                                 <Link
                                                     href={route('mobile.news.show', n.slug)}
-                                                    className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-zinc-200 transition hover:bg-zinc-50 dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60"
+                                                    className="flex cursor-pointer items-center gap-3 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-zinc-200 transition hover:bg-zinc-50 dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60"
                                                 >
                                                     <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
                                                         {src ? (
@@ -387,7 +438,7 @@ export default function MobileHome({
                                         <li key={ev.id}>
                                             <Link
                                                 href={route('mobile.events')}
-                                                className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-zinc-200 transition hover:bg-zinc-50 dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60"
+                                                className="flex cursor-pointer items-center gap-3 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-zinc-200 transition hover:bg-zinc-50 dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60"
                                             >
                                                 <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
                                                     {src ? (
