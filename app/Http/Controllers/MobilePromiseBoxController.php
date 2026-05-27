@@ -28,7 +28,7 @@ class MobilePromiseBoxController extends Controller
         if (! Schema::hasTable('versiculos_caixinha')) {
             return response()->json([
                 'ok' => false,
-                'message' => 'A Caixa de Promessa ainda não está disponível. Peça ao responsável técnico para concluir a atualização da base de dados.',
+                'message' => 'A Caixa de Promessas ainda não está disponível neste ambiente. Peça ao responsável técnico para concluir a atualização da base de dados.',
             ], 503);
         }
 
@@ -54,7 +54,7 @@ class MobilePromiseBoxController extends Controller
         if ($candidates->isEmpty()) {
             return response()->json([
                 'ok' => false,
-                'message' => 'Ainda não há versículos cadastrados na Caixa de Promessa.',
+                'message' => 'Ainda não há promessas cadastradas na Caixa de Promessas.',
             ], 404);
         }
 
