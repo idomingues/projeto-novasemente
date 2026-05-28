@@ -290,10 +290,6 @@ export default function VolunteerCenterRosterPanel({
                 />
             </form>
 
-            <p className="mt-1.5 text-[10px] font-medium text-zinc-600 dark:text-zinc-300" aria-live="polite">
-                {resultsSummary}
-            </p>
-
             <div className="mt-1 min-h-0 flex-1 overflow-auto">
                 <VolunteerRosterTable
                     volunteers={volunteers.data}

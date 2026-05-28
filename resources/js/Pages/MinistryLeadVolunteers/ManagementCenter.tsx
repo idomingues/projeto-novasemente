@@ -174,20 +174,26 @@ export default function ManagementCenter({
     const navigate = useCallback(
         (options: {
             group: CenterGroupBy;
-            ministerio?: number | 'none';
-            fase?: string;
+            ministerio?: number | 'none' | 'all';
+            fase?: string | 'all';
             search?: string;
         }) => {
             const mid: number | null =
                 options.group === 'departamento'
-                    ? options.ministerio === 'none'
-                        ? 0
-                        : (options.ministerio ?? selectedMinistryId ?? null)
+                    ? options.ministerio === 'all'
+                        ? null
+                        : options.ministerio === 'none'
+                          ? 0
+                          : (options.ministerio ?? selectedMinistryId ?? null)
                     : null;
             const params = centerVolunteersQuery(
                 options.group,
                 mid,
-                options.group === 'fase' ? (options.fase ?? selectedPhaseKey) : null,
+                options.group === 'fase'
+                    ? options.fase === 'all'
+                        ? null
+                        : (options.fase ?? selectedPhaseKey)
+                    : null,
                 boardFiltersRef.current,
                 options.search ?? boardFiltersRef.current.search ?? '',
             );
@@ -385,6 +391,33 @@ export default function ManagementCenter({
           : UserGroupIconFallback;
 
     const volunteersTotal = typeof volunteers.total === 'number' ? volunteers.total : volunteers.data.length;
+    const allDepartmentsTotal = useMemo(
+        () => (departments ?? []).reduce((sum, d) => sum + (d.volunteerCount ?? 0), 0) + (withoutDepartmentCount ?? 0),
+        [departments, withoutDepartmentCount],
+    );
+    const allPhasesTotal = useMemo(
+        () => (phases ?? []).reduce((sum, p) => sum + (p.volunteerCount ?? 0), 0),
+        [phases],
+    );
+    const selectedGroupTotal = useMemo(() => {
+        if (isPhaseGroup) {
+            if (selectedPhaseKey == null) return allPhasesTotal;
+            return phases.find((p) => p.key === selectedPhaseKey)?.volunteerCount ?? volunteersTotal;
+        }
+        if (selectedMinistryId == null) return allDepartmentsTotal;
+        if (selectedMinistryId === 0) return withoutDepartmentCount ?? 0;
+        return departments.find((d) => d.id === selectedMinistryId)?.volunteerCount ?? volunteersTotal;
+    }, [
+        allDepartmentsTotal,
+        allPhasesTotal,
+        departments,
+        isPhaseGroup,
+        phases,
+        selectedMinistryId,
+        selectedPhaseKey,
+        volunteersTotal,
+        withoutDepartmentCount,
+    ]);
 
     return (
         <AdminLayout wideLayout compactChrome modalOverlayOpen={modalOpen}>
@@ -392,24 +425,33 @@ export default function ManagementCenter({
             <FlashMessages />
 
             <div className="flex h-full min-h-0 flex-col md:h-[calc(100dvh-7.5rem)] md:min-h-[28rem]">
-                <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 pb-2">
-                    {canManageVolunteerRequests ? (
-                        <Link href={pedidosUrl} className="cursor-pointer">
-                            <SecondaryButton type="button" className="!h-8 !px-2.5 !py-1 !text-xs">
-                                Pedidos
-                            </SecondaryButton>
-                        </Link>
-                    ) : null}
-                    {canVolunteerManage ? (
-                        <Link
-                            href={`${volunteersAdminUrl}?modal=create`}
-                            className={titleBarAddIconClass}
-                            title="Novo voluntário"
-                            aria-label="Novo voluntário"
-                        >
-                            <PlusIcon className="h-6 w-6" strokeWidth={2.25} />
-                        </Link>
-                    ) : null}
+                <div className="flex shrink-0 items-center justify-between gap-2 pb-2">
+                    <div className="min-w-0">
+                        <h1 className="truncate text-lg font-semibold text-zinc-900 dark:text-white">
+                            Gestão de voluntários
+                        </h1>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">{selectedGroupTotal} voluntários</p>
+                    </div>
+
+                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                        {canManageVolunteerRequests ? (
+                            <Link href={pedidosUrl} className="cursor-pointer">
+                                <SecondaryButton type="button" className="!h-8 !px-2.5 !py-1 !text-xs">
+                                    Pedidos
+                                </SecondaryButton>
+                            </Link>
+                        ) : null}
+                        {canVolunteerManage ? (
+                            <Link
+                                href={`${volunteersAdminUrl}?modal=create`}
+                                className={titleBarAddIconClass}
+                                title="Novo voluntário"
+                                aria-label="Novo voluntário"
+                            >
+                                <PlusIcon className="h-6 w-6" strokeWidth={2.25} />
+                            </Link>
+                        ) : null}
+                    </div>
                 </div>
 
                 <div className="flex min-h-0 flex-1 flex-col gap-2 lg:flex-row lg:items-stretch">
@@ -427,10 +469,10 @@ export default function ManagementCenter({
                                 role="tab"
                                 aria-selected={!isPhaseGroup}
                                 onClick={() => switchGroupBy('departamento')}
-                                className={`flex-1 cursor-pointer rounded-md px-2 py-1 text-[10px] font-semibold transition ${
+                                className={`flex-1 cursor-pointer rounded-md px-2 py-1 text-[10px] font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60 ${
                                     !isPhaseGroup
-                                        ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-900 dark:text-white'
-                                        : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
+                                        ? 'bg-emerald-600 text-white shadow-sm ring-1 ring-inset ring-emerald-700/30 dark:bg-emerald-600 dark:text-white'
+                                        : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-white/70 dark:hover:bg-zinc-900/40'
                                 }`}
                             >
                                 Departamento
@@ -440,10 +482,10 @@ export default function ManagementCenter({
                                 role="tab"
                                 aria-selected={isPhaseGroup}
                                 onClick={() => switchGroupBy('fase')}
-                                className={`flex-1 cursor-pointer rounded-md px-2 py-1 text-[10px] font-semibold transition ${
+                                className={`flex-1 cursor-pointer rounded-md px-2 py-1 text-[10px] font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60 ${
                                     isPhaseGroup
-                                        ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-900 dark:text-white'
-                                        : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
+                                        ? 'bg-emerald-600 text-white shadow-sm ring-1 ring-inset ring-emerald-700/30 dark:bg-emerald-600 dark:text-white'
+                                        : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-white/70 dark:hover:bg-zinc-900/40'
                                 }`}
                             >
                                 Fase
@@ -466,7 +508,7 @@ export default function ManagementCenter({
                                     <>
                                         <button
                                             type="button"
-                                            onClick={() => navigate({ group: 'fase' })}
+                                            onClick={() => navigate({ group: 'fase', fase: 'all' })}
                                             className={`flex w-full cursor-pointer items-center justify-between gap-1.5 rounded-lg border px-2 py-1 text-left transition ${
                                                 selectedPhaseKey === null
                                                     ? 'border-emerald-500 bg-emerald-50/90 dark:border-emerald-600 dark:bg-emerald-950/40'
@@ -477,7 +519,7 @@ export default function ManagementCenter({
                                                 Todos
                                             </span>
                                             <span className="shrink-0 rounded-full bg-zinc-200 px-1.5 py-px text-[10px] font-semibold tabular-nums text-zinc-700 dark:bg-zinc-700 dark:text-zinc-100">
-                                                {volunteersTotal}
+                                                {allPhasesTotal}
                                             </span>
                                         </button>
                                         {filteredPhases.map((p) => {
@@ -511,7 +553,7 @@ export default function ManagementCenter({
                                     <>
                                         <button
                                             type="button"
-                                            onClick={() => navigate({ group: 'departamento' })}
+                                            onClick={() => navigate({ group: 'departamento', ministerio: 'all' })}
                                             className={`flex w-full cursor-pointer items-center justify-between gap-1.5 rounded-lg border px-2 py-1 text-left transition ${
                                                 selectedMinistryId === null
                                                     ? 'border-emerald-500 bg-emerald-50/90 dark:border-emerald-600 dark:bg-emerald-950/40'
@@ -522,7 +564,7 @@ export default function ManagementCenter({
                                                 Todos
                                             </span>
                                             <span className="shrink-0 rounded-full bg-zinc-200 px-1.5 py-px text-[10px] font-semibold tabular-nums text-zinc-700 dark:bg-zinc-700 dark:text-zinc-100">
-                                                {volunteersTotal}
+                                                {allDepartmentsTotal}
                                             </span>
                                         </button>
                                         {filteredDepartments.map((d) => {
@@ -611,21 +653,8 @@ export default function ManagementCenter({
                                 onOpenVolunteer={(id) => void openVolunteer(id)}
                                 listHeader={{
                                     title: selectedTitle,
-                                    subtitle: `${volunteersTotal} voluntário${volunteersTotal === 1 ? '' : 's'}`,
+                                    subtitle: `${selectedGroupTotal} voluntário${selectedGroupTotal === 1 ? '' : 's'}`,
                                     icon: <HeaderIcon className="h-4 w-4" />,
-                                    actions:
-                                        groupBy === 'departamento' && selectedMinistryId && selectedMinistryId > 0 ? (
-                                            <Link
-                                                href={`${route('departments.index')}?modal=edit&id=${selectedMinistryId}`}
-                                                className="cursor-pointer"
-                                                title="Editar equipe do departamento"
-                                                aria-label="Editar equipe do departamento"
-                                            >
-                                                <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-600 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800">
-                                                    <PencilSquareIcon className="h-4 w-4" aria-hidden />
-                                                </span>
-                                            </Link>
-                                        ) : null,
                                 }}
                             />
                         </div>
