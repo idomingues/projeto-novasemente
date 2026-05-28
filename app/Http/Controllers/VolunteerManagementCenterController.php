@@ -104,12 +104,14 @@ class VolunteerManagementCenterController extends Controller
             abort_unless($ministry, 404);
         }
 
-        $perPage = 25;
-        if ($request->filled('per_page')) {
-            $perPage = min(250, max(1, (int) $request->query('per_page')));
-        }
+        // Central: evitar paginação para que os números da lateral batam com a lista.
+        // Mantemos um limite alto por segurança/performance.
+        $perPage = 500;
 
         $this->applyCenterScopeToRequest($request, $groupBy, $selectedMinistryId, $selectedPhaseKey);
+        // Central: quando o usuário filtra por departamento nos filtros do quadro (ministry_ids),
+        // normalmente espera incluir também encaminhados (convites pendentes) daquele departamento.
+        $request->merge(['center_mode' => '1']);
         $roster = VolunteerChurchRosterBuilder::paginated($request, (int) $churchId, $user, $perPage, false);
 
         $selectedMinistry = null;

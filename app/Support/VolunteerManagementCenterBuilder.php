@@ -11,6 +11,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use App\Support\VolunteerLeadRosterFilters;
+use App\Support\VolunteerChurchRosterBuilder;
 
 /**
  * Dados da Central de Gestão de Voluntários (departamentos + lista sem paginação).
@@ -41,38 +43,28 @@ class VolunteerManagementCenterBuilder
      */
     public static function phasesWithCounts(Request $request, int $churchId): array
     {
-        $counts = [];
-        foreach (self::phaseSidebarDefinitions() as $def) {
-            $counts[$def['key']] = 0;
-        }
-
-        $q = VolunteerChurchRosterBuilder::volunteersVisibleInChurchQuery($churchId)
-            ->with([
-                'ministries' => fn ($m) => $m->where('church_id', $churchId),
-                'ministryInvitations' => fn ($i) => $i->where('church_id', $churchId),
-            ]);
-
-        $search = trim((string) $request->input('search', ''));
-        if ($search !== '') {
-            SearchTerm::whereAnyColumnLike($q, ['name', 'email', 'phone'], $search);
-        }
-
-        $q->select(['volunteers.id'])->chunkById(200, function ($chunk) use (&$counts, $churchId) {
-            foreach ($chunk as $volunteer) {
-                foreach (self::phaseKeysForVolunteer($volunteer, $churchId) as $key) {
-                    if (isset($counts[$key])) {
-                        $counts[$key]++;
-                    }
-                }
-            }
-        });
+        // Contagens exatas: cada fase deve bater com a lista quando clicada.
+        // Isso exige contar "pessoas únicas" (DISTINCT volunteers.id) com a mesma lógica do filtro + fase.
+        $filtersRequest = clone $request;
+        $filtersRequest->merge(['center_mode' => '1']);
 
         $rows = [];
         foreach (self::phaseSidebarDefinitions() as $def) {
+            $rq = clone $filtersRequest;
+            $rq->merge(['center_phase_key' => (string) $def['key']]);
+
+            $q = VolunteerChurchRosterBuilder::volunteersVisibleInChurchQuery($churchId);
+            VolunteerLeadRosterFilters::apply($rq, $q, $churchId);
+            VolunteerChurchRosterBuilder::applyStaffArchivedFilter(
+                $q,
+                $churchId,
+                VolunteerLeadRosterFilters::showsArchivedRoster($rq),
+            );
+
             $rows[] = [
                 'key' => $def['key'],
                 'label' => $def['label'],
-                'volunteerCount' => (int) ($counts[$def['key']] ?? 0),
+                'volunteerCount' => (int) $q->distinct('volunteers.id')->count('volunteers.id'),
             ];
         }
 
@@ -239,16 +231,15 @@ class VolunteerManagementCenterBuilder
             return [];
         }
 
-        $ministryIds = $ministries->pluck('id')->map(fn ($id) => (int) $id)->all();
-
-        $attachedCounts = DB::table('ministry_volunteer')
-            ->join('volunteers', 'volunteers.id', '=', 'ministry_volunteer.volunteer_id')
-            ->whereIn('ministry_volunteer.ministry_id', $ministryIds)
-            ->where('volunteers.app_access_only', false)
-            ->groupBy('ministry_volunteer.ministry_id')
-            ->pluck(DB::raw('COUNT(*)'), 'ministry_volunteer.ministry_id')
-            ->map(fn ($c) => (int) $c)
-            ->all();
+        // Contagens exatas por departamento (pessoas únicas), usando o mesmo filtro do roster.
+        // Importante: no modo central, "departamento" inclui vinculados e encaminhados.
+        $baseRq = clone $request;
+        $baseRq->merge([
+            'center_mode' => '1',
+            'center_phase_key' => '',
+            'center_sem_departamento' => '',
+            'pipeline_stage_id' => '',
+        ]);
 
         $rows = [];
         foreach ($ministries as $m) {
@@ -258,12 +249,22 @@ class VolunteerManagementCenterBuilder
                 ->values()
                 ->all();
 
+            $rq = clone $baseRq;
+            $rq->merge(['ministry_ids' => (string) $m->id]);
+            $q = VolunteerChurchRosterBuilder::volunteersVisibleInChurchQuery($churchId);
+            VolunteerLeadRosterFilters::apply($rq, $q, $churchId);
+            VolunteerChurchRosterBuilder::applyStaffArchivedFilter(
+                $q,
+                $churchId,
+                VolunteerLeadRosterFilters::showsArchivedRoster($rq),
+            );
+
             $rows[] = [
                 'id' => (int) $m->id,
                 'name' => $m->name,
                 'icon' => $m->icon,
                 'leaders' => $leaders,
-                'volunteerCount' => (int) ($attachedCounts[(int) $m->id] ?? 0),
+                'volunteerCount' => (int) $q->distinct('volunteers.id')->count('volunteers.id'),
             ];
         }
 
@@ -272,19 +273,24 @@ class VolunteerManagementCenterBuilder
 
     public static function volunteersWithoutDepartmentCount(Request $request, int $churchId): int
     {
-        $q = VolunteerChurchRosterBuilder::volunteersVisibleInChurchQuery($churchId)
-            ->whereDoesntHave('ministries', fn ($mq) => $mq->where('church_id', $churchId));
+        // Contagem exata com os mesmos filtros do roster.
+        $rq = clone $request;
+        $rq->merge([
+            'center_mode' => '1',
+            'ministry_ids' => '',
+            'center_phase_key' => '',
+            'pipeline_stage_id' => '',
+            'center_sem_departamento' => '1',
+        ]);
+        $q = VolunteerChurchRosterBuilder::volunteersVisibleInChurchQuery($churchId);
+        VolunteerLeadRosterFilters::apply($rq, $q, $churchId);
+        VolunteerChurchRosterBuilder::applyStaffArchivedFilter(
+            $q,
+            $churchId,
+            VolunteerLeadRosterFilters::showsArchivedRoster($rq),
+        );
 
-        if (Schema::hasTable('volunteer_ministry_invitations')) {
-            $q->whereDoesntHave('ministryInvitations', fn ($iq) => $iq->where('church_id', $churchId));
-        }
-
-        $search = trim((string) $request->input('search', ''));
-        if ($search !== '') {
-            SearchTerm::whereAnyColumnLike($q, ['name', 'email', 'phone'], $search);
-        }
-
-        return (int) $q->count();
+        return (int) $q->distinct('volunteers.id')->count('volunteers.id');
     }
 
     /**

@@ -178,7 +178,19 @@ class VolunteerLeadRosterFilters
         }
         $ministryIds = array_values(array_unique(array_filter($ministryIds, fn ($x) => $x > 0)));
         if ($ministryIds !== []) {
-            $q->whereHas('ministries', fn ($mq) => $mq->whereIn('ministries.id', $ministryIds)->where('church_id', $churchId));
+            $centerMode = $request->query('center_mode') === '1' || $request->input('center_mode') === '1';
+            if ($centerMode && Schema::hasTable('volunteer_ministry_invitations')) {
+                $q->where(function ($outer) use ($ministryIds, $churchId) {
+                    $outer->whereHas('ministries', fn ($mq) => $mq
+                        ->whereIn('ministries.id', $ministryIds)
+                        ->where('church_id', $churchId))
+                        ->orWhereHas('ministryInvitations', fn ($iq) => $iq
+                            ->where('church_id', $churchId)
+                            ->whereIn('ministry_id', $ministryIds));
+                });
+            } else {
+                $q->whereHas('ministries', fn ($mq) => $mq->whereIn('ministries.id', $ministryIds)->where('church_id', $churchId));
+            }
         }
 
         $ti = trim((string) $request->input('text_interest', ''));

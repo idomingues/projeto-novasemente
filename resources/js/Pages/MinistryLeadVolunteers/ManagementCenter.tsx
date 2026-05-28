@@ -158,6 +158,9 @@ export default function ManagementCenter({
     boardFiltersRef.current = boardFilters;
     const page = usePage();
     const csrf = (page.props as { csrf_token?: string }).csrf_token ?? '';
+    const authProps = page.props as { auth?: { openVolunteerRequestsCount?: number } };
+    const openVolunteerRequestsCount =
+        typeof authProps.auth?.openVolunteerRequestsCount === 'number' ? authProps.auth.openVolunteerRequestsCount : 0;
 
     const noteForm = useForm({ body: '' });
     const stageMoveForm = useForm({ stage_id: '' as string | number });
@@ -178,6 +181,13 @@ export default function ManagementCenter({
             fase?: string | 'all';
             search?: string;
         }) => {
+            // Ao trocar para "Fase", o padrão esperado é ver todas as pessoas da igreja.
+            // Se deixarmos `ministry_ids` preso no querystring, o usuário fica vendo um recorte pequeno (ex.: só um depto)
+            // e os totais parecem “errados”.
+            const effectiveBoardFilters =
+                options.group === 'fase'
+                    ? { ...boardFiltersRef.current, ministry_ids: '' }
+                    : boardFiltersRef.current;
             const mid: number | null =
                 options.group === 'departamento'
                     ? options.ministerio === 'all'
@@ -194,7 +204,7 @@ export default function ManagementCenter({
                         ? null
                         : (options.fase ?? selectedPhaseKey)
                     : null,
-                boardFiltersRef.current,
+                effectiveBoardFilters,
                 options.search ?? boardFiltersRef.current.search ?? '',
             );
             router.get(route('ministry-lead.volunteers.central'), params, {
@@ -216,6 +226,7 @@ export default function ManagementCenter({
 
     const switchGroupBy = (next: CenterGroupBy) => {
         if (next === groupBy) return;
+        setSidebarSearch('');
         if (next === 'fase') {
             navigate({ group: 'fase' });
             return;
@@ -391,10 +402,11 @@ export default function ManagementCenter({
           : UserGroupIconFallback;
 
     const volunteersTotal = typeof volunteers.total === 'number' ? volunteers.total : volunteers.data.length;
-    const allDepartmentsTotal = useMemo(
-        () => (departments ?? []).reduce((sum, d) => sum + (d.volunteerCount ?? 0), 0) + (withoutDepartmentCount ?? 0),
-        [departments, withoutDepartmentCount],
-    );
+    const allDepartmentsTotal = useMemo(() => {
+        // Importante: somar `department.volunteerCount` duplica quem está em mais de um departamento.
+        // Em "Todos", o usuário espera o total de pessoas únicas, que é o `volunteers.total`.
+        return volunteersTotal;
+    }, [volunteersTotal]);
     const allPhasesTotal = useMemo(
         () => (phases ?? []).reduce((sum, p) => sum + (p.volunteerCount ?? 0), 0),
         [phases],
@@ -404,11 +416,10 @@ export default function ManagementCenter({
             if (selectedPhaseKey == null) return allPhasesTotal;
             return phases.find((p) => p.key === selectedPhaseKey)?.volunteerCount ?? volunteersTotal;
         }
-        if (selectedMinistryId == null) return allDepartmentsTotal;
+        if (selectedMinistryId == null) return volunteersTotal;
         if (selectedMinistryId === 0) return withoutDepartmentCount ?? 0;
         return departments.find((d) => d.id === selectedMinistryId)?.volunteerCount ?? volunteersTotal;
     }, [
-        allDepartmentsTotal,
         allPhasesTotal,
         departments,
         isPhaseGroup,
@@ -430,15 +441,21 @@ export default function ManagementCenter({
                         <h1 className="truncate text-lg font-semibold text-zinc-900 dark:text-white">
                             Gestão de voluntários
                         </h1>
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400">{selectedGroupTotal} voluntários</p>
                     </div>
 
                     <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
                         {canManageVolunteerRequests ? (
                             <Link href={pedidosUrl} className="cursor-pointer">
-                                <SecondaryButton type="button" className="!h-8 !px-2.5 !py-1 !text-xs">
-                                    Pedidos
-                                </SecondaryButton>
+                                <span className="relative inline-flex">
+                                    <SecondaryButton type="button" className="!h-8 !px-2.5 !py-1 !text-xs">
+                                        Pedidos
+                                    </SecondaryButton>
+                                    {openVolunteerRequestsCount > 0 ? (
+                                        <span className="absolute -right-1.5 -top-1.5 inline-flex min-h-[1.25rem] min-w-[1.25rem] items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white">
+                                            {openVolunteerRequestsCount > 99 ? '99+' : openVolunteerRequestsCount}
+                                        </span>
+                                    ) : null}
+                                </span>
                             </Link>
                         ) : null}
                         {canVolunteerManage ? (
@@ -491,17 +508,19 @@ export default function ManagementCenter({
                                 Fase
                             </button>
                         </div>
-                        <div className="relative mb-1.5 shrink-0">
-                            <MagnifyingGlassIcon className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
-                            <TextInput
-                                type="search"
-                                value={sidebarSearch}
-                                onChange={(e) => setSidebarSearch(e.target.value)}
-                                placeholder={isPhaseGroup ? 'Buscar fase…' : 'Buscar departamento…'}
-                                className={`${compactInputClass} !pl-7`}
-                                autoComplete="off"
-                            />
-                        </div>
+                        {!isPhaseGroup ? (
+                            <div className="relative mb-1.5 shrink-0">
+                                <MagnifyingGlassIcon className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
+                                <TextInput
+                                    type="search"
+                                    value={sidebarSearch}
+                                    onChange={(e) => setSidebarSearch(e.target.value)}
+                                    placeholder="Buscar departamento…"
+                                    className={`${compactInputClass} !pl-7`}
+                                    autoComplete="off"
+                                />
+                            </div>
+                        ) : null}
                         <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto rounded-xl border border-zinc-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-900">
                             {isPhaseGroup
                                 ? (

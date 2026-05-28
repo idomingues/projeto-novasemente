@@ -47,6 +47,11 @@ class VolunteerManagementCenterTest extends TestCase
         $response->assertInertia(fn ($page) => $page
             ->component('MinistryLeadVolunteers/ManagementCenter')
             ->has('departments')
+            ->where('departments', fn ($rows) => collect($rows)->contains(
+                fn ($row) => (int) ($row['id'] ?? 0) === (int) $ministry->id
+                    && is_int($row['volunteerCount'] ?? null)
+                    && (int) $row['volunteerCount'] >= 1,
+            ))
             ->has('volunteers.data')
             ->has('boardFilters')
             ->where('selectedMinistryId', $ministry->id));
