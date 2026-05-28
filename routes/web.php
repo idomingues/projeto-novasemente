@@ -369,6 +369,12 @@ Route::middleware('auth')->group(function () {
     Route::delete('/volunteers/{volunteer}', [VolunteerController::class, 'destroy'])->name('volunteers.destroy')->middleware('permission:volunteers.manage');
 
     // Voluntários — quadro do líder de voluntariado (fases, ficha, notas)
+    Route::get('/lideranca/voluntarios/central', [\App\Http\Controllers\VolunteerManagementCenterController::class, 'index'])
+        ->name('ministry-lead.volunteers.central')
+        ->middleware('permission:volunteers.view|volunteers.manage|volunteers.ministry_operate');
+    Route::get('/lideranca/voluntarios/pedidos', [\App\Http\Controllers\VolunteerManagementCenterController::class, 'pedidos'])
+        ->name('ministry-lead.volunteers.pedidos')
+        ->middleware('permission:volunteers.view|volunteers.manage|volunteers.ministry_operate');
     Route::get('/lideranca/voluntarios', [VolunteerPipelineLeadController::class, 'index'])
         ->name('ministry-lead.volunteers.index')
         ->middleware('permission:volunteers.view|volunteers.manage|volunteers.ministry_operate');

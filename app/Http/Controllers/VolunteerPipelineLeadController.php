@@ -94,76 +94,18 @@ class VolunteerPipelineLeadController extends Controller
         return $user->can('solicitations.manage');
     }
 
-    public function index(Request $request, VolunteerRequestSolicitationController $volunteerRequests): Response|RedirectResponse
+    public function index(Request $request, VolunteerRequestSolicitationController $volunteerRequests): RedirectResponse
     {
         $this->canUseRead($request);
-        $churchId = $this->churchId($request);
-        abort_unless($churchId, 404, 'Nenhuma igreja ativa.');
 
-        $user = $request->user();
-        $canManageVolunteerRequests = $this->userCanManageVolunteerRequests($user);
+        if ($request->query('secao') === 'pedidos') {
+            $query = $request->query();
+            unset($query['secao']);
 
-        $secao = (string) $request->query('secao', 'quadro');
-        if (! in_array($secao, ['quadro', 'pedidos'], true)) {
-            $secao = 'quadro';
-        }
-        if ($secao === 'pedidos' && ! $canManageVolunteerRequests) {
-            return redirect()->route('ministry-lead.volunteers.index', ['secao' => 'quadro']);
-        }
-        $perPage = 25;
-        if ($request->filled('per_page')) {
-            $perPage = min(250, max(1, (int) $request->query('per_page')));
+            return redirect()->route('ministry-lead.volunteers.pedidos', $query);
         }
 
-        $roster = VolunteerChurchRosterBuilder::paginated($request, (int) $churchId, $user, $perPage, false);
-        $stages = $roster['stages'];
-        $adminWorkflowBlankVolunteerCount = $roster['adminWorkflowBlankVolunteerCount'] ?? 0;
-        $archivedVolunteerCount = $roster['archivedVolunteerCount'];
-        $volunteers = $roster['volunteers'];
-        $ministries = $roster['ministries'];
-        $filters = $roster['filters'];
-
-        $publicVolunteerSignupUrl = null;
-        if ($churchId !== null && Schema::hasTable('volunteer_self_signup_tokens')) {
-            try {
-                $publicVolunteerSignupUrl = VolunteerSelfSignupToken::ensurePublicSignupUrl($churchId);
-            } catch (\Throwable) {
-                $publicVolunteerSignupUrl = null;
-            }
-        }
-
-        $encaminharMinistryIds = null;
-        if ($user && ! $user->can('volunteers.manage')) {
-            $encaminharMinistryIds = $user->ministries()
-                ->where('church_id', $churchId)
-                ->pluck('ministries.id')
-                ->map(fn ($id) => (int) $id)
-                ->values()
-                ->all();
-        }
-
-        $payload = [
-            'secao' => $secao,
-            'canManageVolunteerRequests' => $canManageVolunteerRequests,
-            'stages' => $stages,
-            'adminWorkflowBlankVolunteerCount' => $adminWorkflowBlankVolunteerCount,
-            'archivedVolunteerCount' => $archivedVolunteerCount,
-            'volunteers' => $volunteers,
-            'filters' => $filters,
-            'ministries' => $ministries,
-            'encaminharMinistryIds' => $encaminharMinistryIds,
-            'storeStageUrl' => route('ministry-lead.volunteers.pipeline.stages.store'),
-            'canVolunteerManage' => $user && $user->can('volunteers.manage'),
-            'canPipelineMutate' => $user && ($user->can('volunteers.manage') || $user->can('volunteers.ministry_operate')),
-            'volunteersAdminUrl' => route('volunteers.index'),
-            'publicVolunteerSignupUrl' => $publicVolunteerSignupUrl,
-        ];
-
-        if ($canManageVolunteerRequests) {
-            $payload = array_merge($payload, $volunteerRequests->staffIndexPayload($request, (int) $churchId));
-        }
-
-        return Inertia::render('MinistryLeadVolunteers/Pipeline', $payload);
+        return redirect()->route('ministry-lead.volunteers.central', $request->query());
     }
 
     public function detail(Request $request, Volunteer $volunteer): JsonResponse
@@ -351,8 +293,7 @@ class VolunteerPipelineLeadController extends Controller
             ->update(['staff_archived_at' => now()]);
 
         return redirect()
-            ->route('ministry-lead.volunteers.index', $this->volunteerIndexQueryFromRequest($request, [
-                'secao' => 'quadro',
+            ->route('ministry-lead.volunteers.central', $this->volunteerCentralQueryFromRequest($request, [
                 'pipeline_stage_id' => '',
             ]))
             ->with('success', 'Voluntário arquivado nesta igreja.');
@@ -374,8 +315,7 @@ class VolunteerPipelineLeadController extends Controller
             ->update(['staff_archived_at' => null]);
 
         return redirect()
-            ->route('ministry-lead.volunteers.index', $this->volunteerIndexQueryFromRequest($request, [
-                'secao' => 'quadro',
+            ->route('ministry-lead.volunteers.central', $this->volunteerCentralQueryFromRequest($request, [
                 'pipeline_stage_id' => VolunteerLeadRosterFilters::PIPELINE_STAGE_ARCHIVED,
             ]))
             ->with('success', 'Voluntário restaurado na lista ativa.');
@@ -385,9 +325,9 @@ class VolunteerPipelineLeadController extends Controller
      * @param  array<string, string|null>  $overrides
      * @return array<string, string>
      */
-    private function volunteerIndexQueryFromRequest(Request $request, array $overrides = []): array
+    private function volunteerCentralQueryFromRequest(Request $request, array $overrides = []): array
     {
-        $params = ['secao' => 'quadro'];
+        $params = [];
         foreach (VolunteerLeadRosterFilters::filterState($request) as $key => $value) {
             if ($key === 'arquivados') {
                 continue;
@@ -396,7 +336,7 @@ class VolunteerPipelineLeadController extends Controller
                 $params[$key] = $value;
             }
         }
-        foreach (['secao', 'pipeline_stage_id', 'modal_kind', 'modal_id'] as $key) {
+        foreach (['pipeline_stage_id', 'modal_kind', 'modal_id'] as $key) {
             if (! array_key_exists($key, $overrides)) {
                 continue;
             }
@@ -429,7 +369,7 @@ class VolunteerPipelineLeadController extends Controller
             'sort_order' => $max + 10,
         ]);
 
-        return redirect()->route('ministry-lead.volunteers.index')->with('success', 'Fase criada.');
+        return redirect()->route('ministry-lead.volunteers.central')->with('success', 'Fase criada.');
     }
 
     public function updateStageMeta(Request $request, VolunteerPipelineStage $stage): RedirectResponse
@@ -650,7 +590,7 @@ class VolunteerPipelineLeadController extends Controller
         $linkedUser = $deleteLinkedUser ? User::query()->find($volunteer->user_id) : null;
 
         if ($linkedUser && (int) $linkedUser->id === (int) $request->user()?->id) {
-            return redirect()->route('ministry-lead.volunteers.index')->with('error', 'Não pode apagar a sua própria conta desta forma.');
+            return redirect()->route('ministry-lead.volunteers.central')->with('error', 'Não pode apagar a sua própria conta desta forma.');
         }
 
         try {
@@ -658,7 +598,7 @@ class VolunteerPipelineLeadController extends Controller
         } catch (\Throwable $e) {
             report($e);
 
-            return redirect()->route('ministry-lead.volunteers.index')->with(
+            return redirect()->route('ministry-lead.volunteers.central')->with(
                 'error',
                 'Não foi possível excluir o voluntário. Tente novamente ou contate a equipe técnica.'
             );
@@ -668,7 +608,7 @@ class VolunteerPipelineLeadController extends Controller
             ? 'Voluntário e conta de usuário removidos com sucesso.'
             : 'Voluntário removido com sucesso.';
 
-        return redirect()->route('ministry-lead.volunteers.index')->with('success', $message);
+        return redirect()->route('ministry-lead.volunteers.central')->with('success', $message);
     }
 
     /**

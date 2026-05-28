@@ -1,5 +1,5 @@
 import AdminLayout from '@/Layouts/AdminLayout';
-import { Head, useForm, router } from '@inertiajs/react';
+import { Head, useForm, usePage, router } from '@inertiajs/react';
 import {
     PlusIcon,
     PencilIcon,
@@ -14,8 +14,10 @@ import AddButton from '@/Components/AddButton';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
+import Textarea from '@/Components/Textarea';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
+import SelectInput from '@/Components/SelectInput';
 import PageHeader from '@/Components/PageHeader';
 import InputError from '@/Components/InputError';
 import { DEPARTMENT_ICON_OPTIONS, getMinistryIconByKey } from '@/lib/ministryIcons';
@@ -23,11 +25,16 @@ import { useState, useEffect, useMemo, useCallback, FormEventHandler } from 'rea
 import ListSearchHint from '@/Components/ListSearchHint';
 import { useDebouncedServerSearch } from '@/hooks/useDebouncedServerSearch';
 import axios from 'axios';
-import VolunteerRecordDetailBody from '@/Components/Volunteers/VolunteerRecordDetailBody';
 import type { VolunteerDetailData } from '@/utils/volunteerDetailRows';
 import { confirmAction } from '@/utils/confirmDialog';
 import SortedMultiCheckboxList from '@/Components/SortedMultiCheckboxList';
 import { textMatchesSearchFields } from '@/utils/searchText';
+import RecordDetailHeader from '@/Components/RecordDetail/RecordDetailHeader';
+import RecordDetailSections from '@/Components/RecordDetail/RecordDetailSections';
+import VolunteerPasswordChangeForm from '@/Components/Volunteers/VolunteerPasswordChangeForm';
+import VolunteerDeleteConfirmBlock from '@/Components/Volunteers/VolunteerDeleteConfirmBlock';
+import MinistryLeaderStatusSection, { type MinistryLeaderStatusSectionData } from '@/Components/Volunteers/MinistryLeaderStatusSection';
+import { volunteerDetailSections } from '@/utils/volunteerDetailRows';
 
 interface PersonRef {
     id: number;
@@ -62,6 +69,22 @@ interface Props {
     filters: { search?: string };
     volunteerDetailUrlPattern: string | null;
 }
+
+type DetailJson = {
+    volunteer: VolunteerDetailData;
+    pipeline?: { stageId: number | null; stageName: string | null; adminWorkflowStageId: number | null };
+    stages: Array<{ id: number; name: string; sort_order: number }>;
+    statusHistoryByMinistry?: MinistryLeaderStatusSectionData[];
+    notes: Array<{ id: number; body: string; authorName: string; createdAt: string }>;
+    ministryOptions?: Array<{ id: number; name: string; attached: boolean; canEdit: boolean }>;
+    updateStageUrl: string;
+    storeNoteUrl: string;
+    syncMinistriesUrl: string | null;
+    destroyVolunteerUrl: string | null;
+    archiveVolunteerUrl: string | null;
+    unarchiveVolunteerUrl: string | null;
+    updatePasswordUrl: string | null;
+};
 
 function detailUrlFromPattern(pattern: string, id: number): string {
     return pattern.replace(/\/0(\/|$)/, `/${id}$1`);
@@ -195,7 +218,15 @@ export default function Index({
     const [rosterTab, setRosterTab] = useState<'leaders' | 'volunteers'>('leaders');
     const [detailOpen, setDetailOpen] = useState(false);
     const [detailLoading, setDetailLoading] = useState(false);
-    const [detailVolunteer, setDetailVolunteer] = useState<VolunteerDetailData | null>(null);
+    const [detailTab, setDetailTab] = useState<'ficha' | 'notas' | 'departamentos' | 'historico'>('ficha');
+    const [detailPayload, setDetailPayload] = useState<DetailJson | null>(null);
+    const [selectedVolunteerId, setSelectedVolunteerId] = useState<number | null>(null);
+    const page = usePage();
+    const csrf = (page.props as { csrf_token?: string }).csrf_token ?? '';
+
+    const noteForm = useForm({ body: '' });
+    const stageMoveForm = useForm({ stage_id: '' as string | number });
+    const ministriesForm = useForm<{ ministry_ids: number[] }>({ ministry_ids: [] });
 
     const [rolesModalDepartmentId, setRolesModalDepartmentId] = useState<number | null>(null);
     const [rolesModalNewRoleName, setRolesModalNewRoleName] = useState('');
@@ -209,26 +240,90 @@ export default function Index({
 
     const openVolunteerDetail = useCallback(
         async (id: number) => {
-            if (!volunteerDetailUrlPattern) return;
+            setSelectedVolunteerId(id);
             setDetailOpen(true);
             setDetailLoading(true);
-            setDetailVolunteer(null);
+            setDetailTab('ficha');
+            setDetailPayload(null);
+            noteForm.reset('body');
             try {
-                const { data } = await axios.get<{ volunteer: VolunteerDetailData }>(
-                    detailUrlFromPattern(volunteerDetailUrlPattern, id),
-                );
-                setDetailVolunteer(data.volunteer);
+                const url = route('ministry-lead.volunteers.pipeline.detail', id);
+                const r = await fetch(url, {
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrf },
+                    credentials: 'same-origin',
+                });
+                const j = (await r.json()) as DetailJson;
+                setDetailPayload(j);
+                const explicitSid = j.pipeline?.adminWorkflowStageId;
+                const pipelineSid =
+                    j.pipeline?.stageId != null && j.stages?.some((s) => s.id === j.pipeline?.stageId)
+                        ? j.pipeline.stageId
+                        : null;
+                const sid = explicitSid ?? pipelineSid;
+                stageMoveForm.setData('stage_id', sid != null ? String(sid) : '');
+                const attachedIds = (j.ministryOptions ?? []).filter((o) => o.attached).map((o) => o.id);
+                ministriesForm.setData('ministry_ids', attachedIds);
+            } catch {
+                setDetailPayload(null);
             } finally {
                 setDetailLoading(false);
             }
         },
-        [volunteerDetailUrlPattern],
+        [csrf],
     );
 
     const closeVolunteerDetail = useCallback(() => {
         setDetailOpen(false);
-        setDetailVolunteer(null);
+        setDetailPayload(null);
+        setSelectedVolunteerId(null);
     }, []);
+
+    const submitNote: FormEventHandler = (e) => {
+        e.preventDefault();
+        if (!detailPayload) return;
+        noteForm.post(detailPayload.storeNoteUrl, {
+            preserveScroll: true,
+            onSuccess: () => {
+                noteForm.reset('body');
+                if (selectedVolunteerId) void openVolunteerDetail(selectedVolunteerId);
+                setDetailTab('notas');
+            },
+        });
+    };
+
+    const submitStageMove: FormEventHandler = (e) => {
+        e.preventDefault();
+        if (!detailPayload) return;
+        stageMoveForm.patch(detailPayload.updateStageUrl, {
+            preserveScroll: true,
+            onSuccess: () => {
+                if (selectedVolunteerId) void openVolunteerDetail(selectedVolunteerId);
+            },
+        });
+    };
+
+    const submitMinistries: FormEventHandler = (e) => {
+        e.preventDefault();
+        if (!detailPayload?.syncMinistriesUrl) return;
+        ministriesForm.patch(detailPayload.syncMinistriesUrl, {
+            preserveScroll: true,
+            onSuccess: () => {
+                if (selectedVolunteerId) void openVolunteerDetail(selectedVolunteerId);
+                setDetailTab('departamentos');
+            },
+        });
+    };
+
+    const volunteerMinistryCheckboxOptions = useMemo(
+        () =>
+            (detailPayload?.ministryOptions ?? []).map((o) => ({
+                id: o.id,
+                name: o.name,
+                disabled: !o.canEdit,
+                trailing: !o.canEdit && ministriesForm.data.ministry_ids.includes(o.id) ? 'Só consulta' : null,
+            })),
+        [detailPayload?.ministryOptions, ministriesForm.data.ministry_ids],
+    );
 
     const volunteerDetailBadge = (v: VolunteerDetailData): string | null => {
         const parts: string[] = [];
@@ -241,6 +336,14 @@ export default function Index({
             parts.push(v.user?.status === 'inactive' ? 'Conta: inativa' : 'Conta: ativa');
         }
         return parts.length > 0 ? parts.join(' · ') : null;
+    };
+
+    const formatDateTime = (iso: string): string => {
+        try {
+            return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        } catch {
+            return iso;
+        }
     };
 
     const rosterTabBtn = (active: boolean) =>
@@ -276,6 +379,24 @@ export default function Index({
         clearErrors();
         setIsModalOpen(true);
     };
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const params = new URLSearchParams(window.location.search);
+        const modal = params.get('modal');
+        const idParam = params.get('id');
+        if (modal !== 'edit' || !idParam) return;
+        const id = Number(idParam);
+        if (Number.isNaN(id) || id <= 0) return;
+        const dept = departments.find((d) => d.id === id);
+        if (!dept) return;
+        openEditModal(dept);
+        params.delete('modal');
+        params.delete('id');
+        const q = params.toString();
+        window.history.replaceState({}, '', `${window.location.pathname}${q ? `?${q}` : ''}`);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const closeModal = () => {
         setIsModalOpen(false);
@@ -551,21 +672,21 @@ export default function Index({
                     </div>
                     <div className="mt-4">
                         <InputLabel value="Ícone" />
-                        <div className="mt-2 grid grid-cols-3 sm:grid-cols-5 gap-2">
+                        <div className="mt-2 grid grid-cols-4 gap-1.5 sm:grid-cols-6 sm:gap-2">
                             {DEPARTMENT_ICON_OPTIONS.map(({ key, label, Icon }) => (
                                 <button
                                     key={key}
                                     type="button"
                                     onClick={() => setData('icon', data.icon === key ? '' : key)}
-                                    className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-colors ${
+                                    className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border px-2 py-2 transition-colors ${
                                         data.icon === key
-                                            ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                                            : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600 text-zinc-600 dark:text-zinc-400'
+                                            ? 'border-indigo-500 bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
+                                            : 'border-zinc-200 text-zinc-600 hover:border-zinc-300 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600'
                                     }`}
                                     title={label}
                                 >
-                                    <Icon className="w-6 h-6" />
-                                    <span className="text-xs mt-1 truncate w-full text-center">{label}</span>
+                                    <Icon className="h-5 w-5" />
+                                    <span className="mt-0.5 w-full truncate text-center text-[10px] leading-tight">{label}</span>
                                 </button>
                             ))}
                         </div>
@@ -741,15 +862,221 @@ export default function Index({
                 )}
             </Modal>
 
-            <Modal show={detailOpen} onClose={closeVolunteerDetail} maxWidth="2xl">
-                <div className="max-h-[min(90vh,80vh)] overflow-y-auto p-6">
-                    {detailLoading && <p className="text-sm text-zinc-500">Carregando ficha…</p>}
-                    {!detailLoading && detailVolunteer && (
-                        <VolunteerRecordDetailBody
-                            volunteer={detailVolunteer}
-                            badge={volunteerDetailBadge(detailVolunteer)}
-                            onClose={closeVolunteerDetail}
-                        />
+            <Modal show={detailOpen} onClose={closeVolunteerDetail} maxWidth="2xl" disableBodyScroll>
+                <div className="flex max-h-[min(100dvh-1rem,880px)] min-h-0 w-full flex-col overflow-hidden sm:max-h-[min(90dvh,860px)]">
+                    {detailLoading ? (
+                        <div className="p-6">
+                            <p className="text-sm text-zinc-500">Carregando…</p>
+                        </div>
+                    ) : detailPayload?.volunteer ? (
+                        <>
+                            <div className="shrink-0 space-y-4 border-b border-zinc-200 p-4 dark:border-zinc-700">
+                                <RecordDetailHeader
+                                    title={
+                                        (detailPayload.volunteer.name as string | null)?.trim() ||
+                                        (detailPayload.volunteer as VolunteerDetailData).user?.name?.trim() ||
+                                        'Voluntário'
+                                    }
+                                    subtitle="Voluntário e conta no app (mesma pessoa)."
+                                    photoUrl={
+                                        (detailPayload.volunteer as VolunteerDetailData).photo_url ??
+                                        (detailPayload.volunteer.user as { photo_url?: string | null } | null)?.photo_url ??
+                                        null
+                                    }
+                                    badge={volunteerDetailBadge(detailPayload.volunteer)}
+                                    onClose={closeVolunteerDetail}
+                                />
+
+                                <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-700 dark:bg-zinc-900/40">
+                                    {canManage ? (
+                                        <form
+                                            onSubmit={submitStageMove}
+                                            className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end"
+                                        >
+                                            <div className="min-w-0 flex-1 sm:max-w-xs">
+                                                <InputLabel value="Fase principal" />
+                                                <SelectInput
+                                                    className="mt-1 w-full min-w-0"
+                                                    value={stageMoveForm.data.stage_id}
+                                                    onChange={(e) => stageMoveForm.setData('stage_id', e.target.value)}
+                                                >
+                                                    <option value="">—</option>
+                                                    {(detailPayload.stages ?? []).map((s) => (
+                                                        <option key={s.id} value={String(s.id)}>
+                                                            {s.name}
+                                                        </option>
+                                                    ))}
+                                                </SelectInput>
+                                            </div>
+                                            <PrimaryButton type="submit" disabled={stageMoveForm.processing}>
+                                                Salvar fase principal
+                                            </PrimaryButton>
+                                            <InputError message={stageMoveForm.errors.stage_id} />
+                                        </form>
+                                    ) : null}
+                                </div>
+
+                                <div className="flex gap-1 overflow-x-auto overscroll-x-contain rounded-xl bg-zinc-100 p-1 [-webkit-overflow-scrolling:touch] dark:bg-zinc-800">
+                                    <button
+                                        type="button"
+                                        onClick={() => setDetailTab('ficha')}
+                                        className={`shrink-0 cursor-pointer rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
+                                            detailTab === 'ficha'
+                                                ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
+                                                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+                                        }`}
+                                    >
+                                        Ficha
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setDetailTab('departamentos')}
+                                        className={`shrink-0 cursor-pointer rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
+                                            detailTab === 'departamentos'
+                                                ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
+                                                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+                                        }`}
+                                    >
+                                        Departamentos
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setDetailTab('historico')}
+                                        className={`shrink-0 cursor-pointer rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
+                                            detailTab === 'historico'
+                                                ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
+                                                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+                                        }`}
+                                    >
+                                        Histórico e status
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setDetailTab('notas')}
+                                        className={`shrink-0 cursor-pointer rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
+                                            detailTab === 'notas'
+                                                ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
+                                                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+                                        }`}
+                                    >
+                                        Anotações
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4">
+                                {detailTab === 'ficha' ? (
+                                    <div className="space-y-4">
+                                        <RecordDetailSections
+                                            sections={volunteerDetailSections(detailPayload.volunteer as VolunteerDetailData)}
+                                        />
+
+                                        {detailPayload.updatePasswordUrl ? (
+                                            <VolunteerPasswordChangeForm
+                                                key={(detailPayload.volunteer as VolunteerDetailData).id}
+                                                submitUrl={detailPayload.updatePasswordUrl}
+                                            />
+                                        ) : null}
+
+                                        {detailPayload.destroyVolunteerUrl ? (
+                                            <VolunteerDeleteConfirmBlock
+                                                className="mt-6"
+                                                destroyUrl={detailPayload.destroyVolunteerUrl}
+                                                volunteerName={detailPayload.volunteer.name ?? 'Voluntário'}
+                                                volunteerEmail={(detailPayload.volunteer as VolunteerDetailData).email}
+                                                linkedUser={detailPayload.volunteer.user as { id?: number; email?: string | null } | null}
+                                                onSuccess={() => closeVolunteerDetail()}
+                                            />
+                                        ) : null}
+                                    </div>
+                                ) : detailTab === 'historico' ? (
+                                    <div className="space-y-4">
+                                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                            Altere o status do líder em cada departamento e consulte o histórico.
+                                        </p>
+                                        {(detailPayload.statusHistoryByMinistry ?? []).length === 0 ? (
+                                            <p className="text-sm text-zinc-500">
+                                                Nenhum departamento vinculado ou encaminhamento registrado ainda.
+                                            </p>
+                                        ) : (
+                                            (detailPayload.statusHistoryByMinistry ?? []).map((section) => (
+                                                <MinistryLeaderStatusSection
+                                                    key={section.ministryId}
+                                                    section={section}
+                                                    onSaved={() => {
+                                                        if (selectedVolunteerId) void openVolunteerDetail(selectedVolunteerId);
+                                                        setDetailTab('historico');
+                                                    }}
+                                                />
+                                            ))
+                                        )}
+                                    </div>
+                                ) : detailTab === 'departamentos' ? (
+                                    <form onSubmit={submitMinistries} className="space-y-4">
+                                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                            Marque os departamentos em que o voluntário está.
+                                        </p>
+                                        {(detailPayload.ministryOptions ?? []).length === 0 ? (
+                                            <p className="text-sm text-zinc-500">Nenhum departamento cadastrado nesta igreja.</p>
+                                        ) : (
+                                            <SortedMultiCheckboxList
+                                                options={volunteerMinistryCheckboxOptions}
+                                                selectedIds={ministriesForm.data.ministry_ids}
+                                                onChange={(ids) => ministriesForm.setData('ministry_ids', ids)}
+                                                maxHeightClass="max-h-[min(50vh,360px)]"
+                                                emptyMessage="Nenhum departamento cadastrado nesta igreja."
+                                            />
+                                        )}
+                                        <InputError message={ministriesForm.errors.ministry_ids} />
+                                        {detailPayload.syncMinistriesUrl && canManage ? (
+                                            <PrimaryButton type="submit" disabled={ministriesForm.processing}>
+                                                Salvar departamentos
+                                            </PrimaryButton>
+                                        ) : null}
+                                    </form>
+                                ) : (
+                                    <div className="space-y-4">
+                                        <ul className="max-h-[min(45vh,320px)] space-y-2 overflow-y-auto text-sm">
+                                            {(detailPayload.notes ?? []).length === 0 ? (
+                                                <li className="text-zinc-500">Ainda sem notas.</li>
+                                            ) : (
+                                                detailPayload.notes.map((n) => (
+                                                    <li
+                                                        key={n.id}
+                                                        className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+                                                    >
+                                                        <div className="text-xs text-zinc-500">
+                                                            {n.authorName} · {formatDateTime(n.createdAt)}
+                                                        </div>
+                                                        <div className="whitespace-pre-wrap text-zinc-800 dark:text-zinc-200">{n.body}</div>
+                                                    </li>
+                                                ))
+                                            )}
+                                        </ul>
+                                        {canManage ? (
+                                            <form onSubmit={submitNote} className="space-y-2 border-t border-zinc-200 pt-4 dark:border-zinc-700">
+                                                <InputLabel value="Nova anotação" />
+                                                <Textarea
+                                                    value={noteForm.data.body}
+                                                    onChange={(e) => noteForm.setData('body', e.target.value)}
+                                                    rows={4}
+                                                    className="w-full"
+                                                    placeholder="Escreva uma nota visível à equipe…"
+                                                />
+                                                <InputError message={noteForm.errors.body} />
+                                                <PrimaryButton type="submit" disabled={noteForm.processing}>
+                                                    Adicionar nota
+                                                </PrimaryButton>
+                                            </form>
+                                        ) : null}
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    ) : (
+                        <div className="p-6">
+                            <p className="text-sm text-red-600">Não foi possível carregar a ficha.</p>
+                        </div>
                     )}
                 </div>
             </Modal>

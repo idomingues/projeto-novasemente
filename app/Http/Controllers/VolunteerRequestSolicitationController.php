@@ -407,7 +407,7 @@ class VolunteerRequestSolicitationController extends Controller
         $solicitation->update(['staff_archived_at' => null]);
 
         return redirect()
-            ->route('ministry-lead.volunteers.index', ['secao' => 'pedidos', 'arquivados' => '1'])
+            ->route('ministry-lead.volunteers.pedidos', ['arquivados' => '1'])
             ->with('success', 'Pedido de voluntário restaurado na lista ativa.');
     }
 

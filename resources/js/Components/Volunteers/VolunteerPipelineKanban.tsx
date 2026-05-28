@@ -154,7 +154,7 @@ export default function VolunteerPipelineKanban({
                             <div className="mb-2 flex items-center justify-between gap-2 px-1">
                                 <h3 className="truncate text-sm font-semibold text-zinc-900 dark:text-white">{col.label}</h3>
                                 <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-xs tabular-nums text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-                                    {cards.length}
+                                    {typeof totalCount === 'number' ? col.count : cards.length}
                                 </span>
                             </div>
                             <div

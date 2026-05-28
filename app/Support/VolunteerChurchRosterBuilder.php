@@ -12,6 +12,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Lista paginada de voluntários visíveis na igreja (pipeline / secretaria),
@@ -100,22 +101,7 @@ class VolunteerChurchRosterBuilder
         int $perPage = 25,
         bool $alwaysShowFullContact = false,
     ): array {
-        $q = self::volunteersVisibleInChurchQuery($churchId)
-            ->with([
-                'user:id,email,photo_url',
-                'ministries' => fn ($m) => $m->where('church_id', $churchId),
-                'churchPipelines' => fn ($p) => $p->where('church_id', $churchId)->with(['stage', 'adminWorkflowStage']),
-                'ministryInvitations' => fn ($i) => $i->where('church_id', $churchId)->with('ministry:id,name,church_id'),
-            ]);
-
-        VolunteerLeadRosterFilters::apply($request, $q, $churchId);
-        self::applyStaffArchivedFilter($q, $churchId, VolunteerLeadRosterFilters::showsArchivedRoster($request));
-        VolunteerLeadRosterFilters::applySort(
-            $request,
-            $q,
-            $churchId,
-            (bool) $user?->can('volunteers.manage'),
-        );
+        $q = self::filteredRosterQuery($request, $churchId, $user);
 
         $volunteers = $q->paginate($perPage)->withQueryString();
 
@@ -131,43 +117,38 @@ class VolunteerChurchRosterBuilder
             if ($allowed === []) {
                 $allowed = [-1];
             }
-            $adminWorkflowBlankVolunteerCount = VolunteerChurchPipeline::query()
-                ->where('church_id', $churchId)
-                ->whereNull('staff_archived_at')
-                ->whereNull('admin_workflow_stage_id')
-                ->where(function ($sub) use ($allowed) {
-                    $sub->whereNull('stage_id')->orWhereNotIn('stage_id', $allowed);
-                })
-                ->whereHas('volunteer', fn ($vq) => $vq->where('app_access_only', false))
+            $adminWorkflowBlankVolunteerCount = self::filteredRosterQuery($request, $churchId, $user)
+                ->whereHas('churchPipelines', fn ($p) => $p
+                    ->where('church_id', $churchId)
+                    ->whereNull('staff_archived_at')
+                    ->whereNull('admin_workflow_stage_id')
+                    ->where(function ($sub) use ($allowed) {
+                        $sub->whereNull('stage_id')->orWhereNotIn('stage_id', $allowed);
+                    }))
                 ->count();
         }
 
+        $stageCountsById = self::filteredStageCountsById($request, $churchId, $user);
         $stages = VolunteerPipelineStage::query()
             ->where('church_id', $churchId)
             ->orderBy('sort_order')
             ->orderBy('id')
-            ->withCount([
-                'churchPipelines as volunteer_count' => fn ($sq) => $sq
-                    ->where('church_id', $churchId)
-                    ->whereNull('staff_archived_at')
-                    ->whereHas('volunteer', fn ($vq) => $vq->where('app_access_only', false)),
-            ])
-            ->get()
+            ->get(['id', 'name', 'sort_order'])
             ->map(fn (VolunteerPipelineStage $s) => [
-                'id' => $s->id,
+                'id' => (int) $s->id,
                 'name' => $s->name,
-                'sort_order' => $s->sort_order,
-                'volunteer_count' => (int) $s->volunteer_count,
+                'sort_order' => (int) $s->sort_order,
+                'volunteer_count' => (int) ($stageCountsById[(int) $s->id] ?? 0),
             ])
             ->values()
             ->all();
 
         $archivedVolunteerCount = 0;
         if (Schema::hasColumn('volunteer_church_pipelines', 'staff_archived_at')) {
-            $archivedVolunteerCount = VolunteerChurchPipeline::query()
-                ->where('church_id', $churchId)
-                ->whereNotNull('staff_archived_at')
-                ->whereHas('volunteer', fn ($vq) => $vq->where('app_access_only', false))
+            $archivedVolunteerCount = self::filteredRosterQuery($request, $churchId, $user)
+                ->whereHas('churchPipelines', fn ($p) => $p
+                    ->where('church_id', $churchId)
+                    ->whereNotNull('staff_archived_at'))
                 ->count();
         }
 
@@ -245,6 +226,80 @@ class VolunteerChurchRosterBuilder
             'filters' => VolunteerLeadRosterFilters::filterState($request),
             'ministries' => $ministries,
         ];
+    }
+
+    /**
+     * Query base do roster com filtros/sort/arquivados aplicados (mesmo conjunto que o usuário vê na lista).
+     *
+     * @param  Request  $request
+     * @return Builder<Volunteer>
+     */
+    private static function filteredRosterQuery(Request $request, int $churchId, ?User $user): Builder
+    {
+        $q = self::volunteersVisibleInChurchQuery($churchId)
+            ->with([
+                'user:id,email,photo_url',
+                'ministries' => fn ($m) => $m->where('church_id', $churchId),
+                'churchPipelines' => fn ($p) => $p->where('church_id', $churchId)->with(['stage', 'adminWorkflowStage']),
+                'ministryInvitations' => fn ($i) => $i->where('church_id', $churchId)->with('ministry:id,name,church_id'),
+            ]);
+
+        VolunteerLeadRosterFilters::apply($request, $q, $churchId);
+        self::applyStaffArchivedFilter($q, $churchId, VolunteerLeadRosterFilters::showsArchivedRoster($request));
+        VolunteerLeadRosterFilters::applySort(
+            $request,
+            $q,
+            $churchId,
+            (bool) $user?->can('volunteers.manage'),
+        );
+
+        return $q;
+    }
+
+    /**
+     * Contagem por fase (stage_id) respeitando exatamente o mesmo conjunto filtrado que a lista.
+     *
+     * @return array<int,int> Map stage_id => count
+     */
+    private static function filteredStageCountsById(Request $request, int $churchId, ?User $user): array
+    {
+        // Se não há tabela de pipeline, não há contagens.
+        if (! Schema::hasTable('volunteer_church_pipelines')) {
+            return [];
+        }
+
+        // Clona o query “visível + filtros + arquivados” (mas sem paginação) e faz o join do pipeline da igreja.
+        $q = self::filteredRosterQuery($request, $churchId, $user)
+            ->getQuery()
+            ->clone();
+
+        // Remove colunas/orderings da query original; aqui só interessa groupBy.
+        $q->orders = null;
+        $q->columns = null;
+
+        // Atenção: a filteredRosterQuery já restringe app_access_only=false no Volunteer.
+        $rows = DB::query()
+            ->fromSub($q, 'v')
+            ->join('volunteer_church_pipelines as p', function ($join) use ($churchId) {
+                $join->on('p.volunteer_id', '=', 'v.id')
+                    ->where('p.church_id', '=', $churchId)
+                    ->whereNull('p.staff_archived_at');
+            })
+            ->selectRaw('p.stage_id as stage_id, COUNT(*) as c')
+            ->whereNotNull('p.stage_id')
+            ->groupBy('p.stage_id')
+            ->get();
+
+        $out = [];
+        foreach ($rows as $r) {
+            $sid = (int) ($r->stage_id ?? 0);
+            if ($sid <= 0) {
+                continue;
+            }
+            $out[$sid] = (int) ($r->c ?? 0);
+        }
+
+        return $out;
     }
 
     /**

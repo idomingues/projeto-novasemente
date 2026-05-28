@@ -1,0 +1,938 @@
+import AdminLayout from '@/Layouts/AdminLayout';
+import FlashMessages from '@/Components/FlashMessages';
+import Modal from '@/Components/Modal';
+import Textarea from '@/Components/Textarea';
+import InputLabel from '@/Components/InputLabel';
+import InputError from '@/Components/InputError';
+import PrimaryButton from '@/Components/PrimaryButton';
+import SecondaryButton from '@/Components/SecondaryButton';
+import SelectInput from '@/Components/SelectInput';
+import TextInput from '@/Components/TextInput';
+import VolunteerCenterRosterPanel from '@/Components/Volunteers/VolunteerCenterRosterPanel';
+import { titleBarAddIconClass } from '@/Components/AddButton';
+import { getMinistryIcon, getMinistryIconByKey } from '@/lib/ministryIcons';
+import RecordDetailHeader from '@/Components/RecordDetail/RecordDetailHeader';
+import RecordDetailSections from '@/Components/RecordDetail/RecordDetailSections';
+import VolunteerDeleteConfirmBlock from '@/Components/Volunteers/VolunteerDeleteConfirmBlock';
+import VolunteerPasswordChangeForm from '@/Components/Volunteers/VolunteerPasswordChangeForm';
+import MinistryLeaderStatusSection, {
+    type MinistryLeaderStatusSectionData,
+} from '@/Components/Volunteers/MinistryLeaderStatusSection';
+import SortedMultiCheckboxList from '@/Components/SortedMultiCheckboxList';
+import { confirmAction } from '@/utils/confirmDialog';
+import { volunteerDetailSections, type VolunteerDetailData } from '@/utils/volunteerDetailRows';
+import { centerVolunteersQuery, type CenterGroupBy } from '@/utils/centerVolunteersQuery';
+import type { VolunteerRosterBoardFilters, VolunteerRosterListRow } from '@/utils/volunteerRosterList';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import { MagnifyingGlassIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
+import { PlusIcon } from '@heroicons/react/24/outline';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useResizablePaneWidth } from '@/hooks/useResizablePaneWidth';
+
+const compactInputClass =
+    '!h-8 !min-h-8 !rounded-lg !px-2.5 !py-1 !text-sm shadow-none sm:!text-sm';
+
+const DEPT_PANE_STORAGE_KEY = 'ns-volunteer-mgmt-dept-pane-width';
+const DEPT_PANE_DEFAULT = 200;
+const DEPT_PANE_MIN = 140;
+const DEPT_PANE_MAX = 420;
+
+type DepartmentRow = {
+    id: number;
+    name: string;
+    icon: string | null;
+    leaders: string[];
+    volunteerCount: number;
+};
+
+type PhaseRow = {
+    key: string;
+    label: string;
+    volunteerCount: number;
+};
+
+type SelectedPhase = {
+    key: string;
+    label: string;
+};
+
+type SelectedMinistry = {
+    id: number;
+    name: string;
+    icon: string | null;
+    leaders: string[];
+};
+
+interface PaginatedVolunteers {
+    data: VolunteerRosterListRow[];
+    links: { url: string | null; label: string; active: boolean }[];
+    total?: number;
+    from?: number | null;
+    to?: number | null;
+}
+
+type Props = {
+    groupBy: CenterGroupBy;
+    departments: DepartmentRow[];
+    phases: PhaseRow[];
+    withoutDepartmentCount: number;
+    selectedMinistryId: number | null;
+    selectedPhaseKey: string | null;
+    selectedMinistry: SelectedMinistry | null;
+    selectedPhase: SelectedPhase | null;
+    volunteers: PaginatedVolunteers;
+    boardFilters: VolunteerRosterBoardFilters;
+    ministries: { id: number; name: string }[];
+    encaminharMinistryIds: number[] | null;
+    pedidosUrl: string;
+    canPipelineMutate: boolean;
+    canVolunteerManage: boolean;
+    canManageVolunteerRequests?: boolean;
+    volunteersAdminUrl: string;
+};
+
+type DetailJson = {
+    volunteer: VolunteerDetailData;
+    pipeline?: { stageId: number | null; stageName: string | null; adminWorkflowStageId: number | null };
+    stages: Array<{ id: number; name: string; sort_order: number }>;
+    statusHistoryByMinistry?: MinistryLeaderStatusSectionData[];
+    notes: Array<{ id: number; body: string; authorName: string; createdAt: string }>;
+    ministryOptions?: Array<{ id: number; name: string; attached: boolean; canEdit: boolean }>;
+    updateStageUrl: string;
+    storeNoteUrl: string;
+    syncMinistriesUrl: string | null;
+    destroyVolunteerUrl: string | null;
+    archiveVolunteerUrl: string | null;
+    unarchiveVolunteerUrl: string | null;
+    updatePasswordUrl: string | null;
+};
+
+function formatDateTime(iso: string): string {
+    try {
+        return new Date(iso).toLocaleString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    } catch {
+        return iso;
+    }
+}
+
+function normalizeSearch(s: string): string {
+    return s
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+}
+
+export default function ManagementCenter({
+    groupBy,
+    departments,
+    phases,
+    withoutDepartmentCount,
+    selectedMinistryId,
+    selectedPhaseKey,
+    selectedMinistry,
+    selectedPhase,
+    volunteers,
+    boardFilters,
+    ministries,
+    encaminharMinistryIds,
+    pedidosUrl,
+    canPipelineMutate,
+    canVolunteerManage,
+    canManageVolunteerRequests = false,
+    volunteersAdminUrl,
+}: Props) {
+    const [sidebarSearch, setSidebarSearch] = useState('');
+    const [modalOpen, setModalOpen] = useState(false);
+    const [detailLoading, setDetailLoading] = useState(false);
+    const [selectedId, setSelectedId] = useState<number | null>(null);
+    const [detailTab, setDetailTab] = useState<'ficha' | 'notas' | 'departamentos' | 'historico'>('ficha');
+    const [detail, setDetail] = useState<DetailJson | null>(null);
+    const isPhaseGroup = groupBy === 'fase';
+    const boardFiltersRef = useRef(boardFilters);
+    boardFiltersRef.current = boardFilters;
+    const page = usePage();
+    const csrf = (page.props as { csrf_token?: string }).csrf_token ?? '';
+
+    const noteForm = useForm({ body: '' });
+    const stageMoveForm = useForm({ stage_id: '' as string | number });
+    const ministriesForm = useForm<{ ministry_ids: number[] }>({ ministry_ids: [] });
+
+    const { width: departmentPaneWidth, resetWidth: resetDepartmentPaneWidth, onSeparatorMouseDown } =
+        useResizablePaneWidth({
+            storageKey: DEPT_PANE_STORAGE_KEY,
+            defaultWidth: DEPT_PANE_DEFAULT,
+            minWidth: DEPT_PANE_MIN,
+            maxWidth: DEPT_PANE_MAX,
+        });
+
+    const navigate = useCallback(
+        (options: {
+            group: CenterGroupBy;
+            ministerio?: number | 'none';
+            fase?: string;
+            search?: string;
+        }) => {
+            const mid: number | null =
+                options.group === 'departamento'
+                    ? options.ministerio === 'none'
+                        ? 0
+                        : (options.ministerio ?? selectedMinistryId ?? null)
+                    : null;
+            const params = centerVolunteersQuery(
+                options.group,
+                mid,
+                options.group === 'fase' ? (options.fase ?? selectedPhaseKey) : null,
+                boardFiltersRef.current,
+                options.search ?? boardFiltersRef.current.search ?? '',
+            );
+            router.get(route('ministry-lead.volunteers.central'), params, {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+            });
+        },
+        [selectedPhaseKey],
+    );
+
+    const selectDepartment = (id: number | 'none') => {
+        navigate({ group: 'departamento', ministerio: id });
+    };
+
+    const selectPhase = (key: string) => {
+        navigate({ group: 'fase', fase: key });
+    };
+
+    const switchGroupBy = (next: CenterGroupBy) => {
+        if (next === groupBy) return;
+        if (next === 'fase') {
+            navigate({ group: 'fase' });
+            return;
+        }
+        navigate({ group: 'departamento' });
+    };
+
+    const filteredDepartments = useMemo(() => {
+        const q = normalizeSearch(sidebarSearch);
+        if (!q) return departments;
+        return departments.filter((d) => {
+            if (normalizeSearch(d.name).includes(q)) return true;
+            return d.leaders.some((leader) => normalizeSearch(leader).includes(q));
+        });
+    }, [departments, sidebarSearch]);
+
+    const filteredPhases = useMemo(() => {
+        const q = normalizeSearch(sidebarSearch);
+        if (!q) return phases;
+        const phaseAliases = (key: string): string[] => {
+            // Ajuda na busca: o usuário pode pensar em “fase principal” ou “status do convite/depto”.
+            // Alguns textos podem coincidir (ex.: “Em treinamento”) e outros são sinônimos (ex.: “Aceito” ~ “Vinculado”).
+            if (key === 'attached') return ['vinculado', 'aceito'];
+            if (key === 'invite_pending') return ['convite pendente', 'pendente', 'aguardando resposta', 'convite não enviado'];
+            if (key === 'sem_departamento') return ['sem departamento', 'sem depto', 'sem departamento'];
+            if (key === 'training') return ['em treinamento', 'treinamento'];
+            if (key === 'ready') return ['pronto', 'disponível'];
+            if (key === 'active') return ['atuante', 'ativo'];
+            if (key === 'reviewing') return ['em análise', 'análise'];
+            if (key === 'denied') return ['recusado', 'negado'];
+            return [];
+        };
+
+        return phases.filter((p) => {
+            const hay = normalizeSearch([p.label, p.key, ...phaseAliases(p.key)].join(' '));
+            return hay.includes(q);
+        });
+    }, [phases, sidebarSearch]);
+
+    const showWithoutDepartment = useMemo(() => {
+        if (isPhaseGroup || withoutDepartmentCount <= 0) return false;
+        const q = normalizeSearch(sidebarSearch);
+        if (!q) return true;
+        return q.includes('sem') || q.includes('depto') || 'sem departamento'.includes(q);
+    }, [isPhaseGroup, withoutDepartmentCount, sidebarSearch]);
+
+    const openVolunteer = async (id: number, tab: 'ficha' | 'notas' | 'departamentos' | 'historico' = 'ficha') => {
+        setSelectedId(id);
+        setModalOpen(true);
+        setDetailTab(tab);
+        setDetail(null);
+        setDetailLoading(true);
+        noteForm.reset('body');
+        try {
+            const url = route('ministry-lead.volunteers.pipeline.detail', id);
+            const r = await fetch(url, {
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrf },
+                credentials: 'same-origin',
+            });
+            const j = (await r.json()) as DetailJson;
+            setDetail(j);
+            const explicitSid = j.pipeline?.adminWorkflowStageId;
+            const pipelineSid =
+                j.pipeline?.stageId != null && j.stages?.some((s) => s.id === j.pipeline?.stageId)
+                    ? j.pipeline.stageId
+                    : null;
+            const sid = explicitSid ?? pipelineSid;
+            stageMoveForm.setData('stage_id', sid != null ? String(sid) : '');
+            const attachedIds = (j.ministryOptions ?? []).filter((o) => o.attached).map((o) => o.id);
+            ministriesForm.setData('ministry_ids', attachedIds);
+        } catch {
+            setDetail(null);
+        } finally {
+            setDetailLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const params = new URLSearchParams(window.location.search);
+        const modal = params.get('modal');
+        const idParam = params.get('id');
+        if (modal !== 'volunteer' || !idParam) return;
+        const id = Number(idParam);
+        if (Number.isNaN(id) || id <= 0) return;
+        void openVolunteer(id, 'ficha');
+        params.delete('modal');
+        params.delete('id');
+        const q = params.toString();
+        window.history.replaceState({}, '', `${window.location.pathname}${q ? `?${q}` : ''}`);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const submitNote: React.FormEventHandler = (e) => {
+        e.preventDefault();
+        if (!detail) return;
+        noteForm.post(detail.storeNoteUrl, {
+            preserveScroll: true,
+            onSuccess: () => {
+                noteForm.reset('body');
+                if (selectedId) void openVolunteer(selectedId, 'notas');
+            },
+        });
+    };
+
+    const submitStageMove: React.FormEventHandler = (e) => {
+        e.preventDefault();
+        if (!detail) return;
+        stageMoveForm.patch(detail.updateStageUrl, {
+            preserveScroll: true,
+            onSuccess: () => {
+                if (selectedId) void openVolunteer(selectedId);
+                const url = `${window.location.pathname}${window.location.search}`;
+                router.get(
+                    url,
+                    {},
+                    {
+                        only: ['volunteers', 'phases', 'departments', 'withoutDepartmentCount'],
+                        preserveState: true,
+                        preserveScroll: true,
+                        replace: true,
+                    },
+                );
+            },
+        });
+    };
+
+    const submitMinistries: React.FormEventHandler = (e) => {
+        e.preventDefault();
+        if (!detail?.syncMinistriesUrl) return;
+        ministriesForm.patch(detail.syncMinistriesUrl, {
+            preserveScroll: true,
+            onSuccess: () => {
+                if (selectedId) void openVolunteer(selectedId, 'departamentos');
+                const url = `${window.location.pathname}${window.location.search}`;
+                router.get(
+                    url,
+                    {},
+                    {
+                        only: ['volunteers', 'phases', 'departments', 'withoutDepartmentCount'],
+                        preserveState: true,
+                        preserveScroll: true,
+                        replace: true,
+                    },
+                );
+            },
+        });
+    };
+
+    const volunteerMinistryCheckboxOptions = useMemo(
+        () =>
+            (detail?.ministryOptions ?? []).map((o) => ({
+                id: o.id,
+                name: o.name,
+                disabled: !o.canEdit,
+                trailing: !o.canEdit && ministriesForm.data.ministry_ids.includes(o.id) ? 'Só consulta' : null,
+            })),
+        [detail?.ministryOptions, ministriesForm.data.ministry_ids],
+    );
+
+    const selectedTitle = isPhaseGroup
+        ? (selectedPhase?.label ?? 'Fase')
+        : selectedMinistryId === 0
+          ? 'Sem departamento'
+          : (selectedMinistry?.name ?? 'Departamento');
+
+    const HeaderIcon = isPhaseGroup
+        ? UserGroupIconFallback
+        : selectedMinistryId && selectedMinistryId > 0 && selectedMinistry
+          ? selectedMinistry.icon
+              ? getMinistryIconByKey(selectedMinistry.icon)
+              : getMinistryIcon(selectedMinistry.name)
+          : UserGroupIconFallback;
+
+    const volunteersTotal = typeof volunteers.total === 'number' ? volunteers.total : volunteers.data.length;
+
+    return (
+        <AdminLayout wideLayout compactChrome modalOverlayOpen={modalOpen}>
+            <Head title="Gestão de voluntários" />
+            <FlashMessages />
+
+            <div className="flex h-full min-h-0 flex-col md:h-[calc(100dvh-7.5rem)] md:min-h-[28rem]">
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 pb-2">
+                    {canManageVolunteerRequests ? (
+                        <Link href={pedidosUrl} className="cursor-pointer">
+                            <SecondaryButton type="button" className="!h-8 !px-2.5 !py-1 !text-xs">
+                                Pedidos
+                            </SecondaryButton>
+                        </Link>
+                    ) : null}
+                    {canVolunteerManage ? (
+                        <Link
+                            href={`${volunteersAdminUrl}?modal=create`}
+                            className={titleBarAddIconClass}
+                            title="Novo voluntário"
+                            aria-label="Novo voluntário"
+                        >
+                            <PlusIcon className="h-6 w-6" strokeWidth={2.25} />
+                        </Link>
+                    ) : null}
+                </div>
+
+                <div className="flex min-h-0 flex-1 flex-col gap-2 lg:flex-row lg:items-stretch">
+                    <aside
+                        className="flex w-full min-h-0 max-h-40 shrink-0 flex-col lg:max-h-none lg:max-w-[min(100%,var(--dept-pane-w))] lg:w-[var(--dept-pane-w)]"
+                        style={{ ['--dept-pane-w' as string]: `${departmentPaneWidth}px` }}
+                    >
+                        <div
+                            className="mb-1.5 flex shrink-0 rounded-lg border border-zinc-200 bg-zinc-50 p-0.5 dark:border-zinc-700 dark:bg-zinc-800/80"
+                            role="tablist"
+                            aria-label="Agrupar por"
+                        >
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={!isPhaseGroup}
+                                onClick={() => switchGroupBy('departamento')}
+                                className={`flex-1 cursor-pointer rounded-md px-2 py-1 text-[10px] font-semibold transition ${
+                                    !isPhaseGroup
+                                        ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-900 dark:text-white'
+                                        : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
+                                }`}
+                            >
+                                Departamento
+                            </button>
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={isPhaseGroup}
+                                onClick={() => switchGroupBy('fase')}
+                                className={`flex-1 cursor-pointer rounded-md px-2 py-1 text-[10px] font-semibold transition ${
+                                    isPhaseGroup
+                                        ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-900 dark:text-white'
+                                        : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
+                                }`}
+                            >
+                                Fase
+                            </button>
+                        </div>
+                        <div className="relative mb-1.5 shrink-0">
+                            <MagnifyingGlassIcon className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
+                            <TextInput
+                                type="search"
+                                value={sidebarSearch}
+                                onChange={(e) => setSidebarSearch(e.target.value)}
+                                placeholder={isPhaseGroup ? 'Buscar fase…' : 'Buscar departamento…'}
+                                className={`${compactInputClass} !pl-7`}
+                                autoComplete="off"
+                            />
+                        </div>
+                        <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto rounded-xl border border-zinc-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-900">
+                            {isPhaseGroup
+                                ? (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={() => navigate({ group: 'fase' })}
+                                            className={`flex w-full cursor-pointer items-center justify-between gap-1.5 rounded-lg border px-2 py-1 text-left transition ${
+                                                selectedPhaseKey === null
+                                                    ? 'border-emerald-500 bg-emerald-50/90 dark:border-emerald-600 dark:bg-emerald-950/40'
+                                                    : 'border-transparent hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
+                                            }`}
+                                        >
+                                            <span className="min-w-0 flex-1 truncate text-[11px] font-medium leading-tight text-zinc-900 dark:text-white">
+                                                Todos
+                                            </span>
+                                            <span className="shrink-0 rounded-full bg-zinc-200 px-1.5 py-px text-[10px] font-semibold tabular-nums text-zinc-700 dark:bg-zinc-700 dark:text-zinc-100">
+                                                {volunteersTotal}
+                                            </span>
+                                        </button>
+                                        {filteredPhases.map((p) => {
+                                            const selected = selectedPhaseKey === p.key;
+                                            return (
+                                                <button
+                                                    key={p.key}
+                                                    type="button"
+                                                    onClick={() => selectPhase(p.key)}
+                                                    title={p.label}
+                                                    className={`flex w-full cursor-pointer items-center justify-between gap-1.5 rounded-lg border px-2 py-1 text-left transition ${
+                                                        selected
+                                                            ? 'border-emerald-500 bg-emerald-50/90 dark:border-emerald-600 dark:bg-emerald-950/40'
+                                                            : 'border-transparent hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
+                                                    }`}
+                                                >
+                                                    <span className="min-w-0 flex-1 truncate text-[11px] font-medium leading-tight text-zinc-900 dark:text-white">
+                                                        {p.label}
+                                                    </span>
+                                                    <span className="shrink-0 rounded-full bg-zinc-200 px-1.5 py-px text-[10px] font-semibold tabular-nums text-zinc-700 dark:bg-zinc-700 dark:text-zinc-100">
+                                                        {p.volunteerCount}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
+                                    </>
+                                )
+                                : null}
+                            {!isPhaseGroup
+                                ? (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={() => navigate({ group: 'departamento' })}
+                                            className={`flex w-full cursor-pointer items-center justify-between gap-1.5 rounded-lg border px-2 py-1 text-left transition ${
+                                                selectedMinistryId === null
+                                                    ? 'border-emerald-500 bg-emerald-50/90 dark:border-emerald-600 dark:bg-emerald-950/40'
+                                                    : 'border-transparent hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
+                                            }`}
+                                        >
+                                            <span className="min-w-0 flex-1 truncate text-[11px] font-medium leading-tight text-zinc-900 dark:text-white">
+                                                Todos
+                                            </span>
+                                            <span className="shrink-0 rounded-full bg-zinc-200 px-1.5 py-px text-[10px] font-semibold tabular-nums text-zinc-700 dark:bg-zinc-700 dark:text-zinc-100">
+                                                {volunteersTotal}
+                                            </span>
+                                        </button>
+                                        {filteredDepartments.map((d) => {
+                                            const Icon = d.icon ? getMinistryIconByKey(d.icon) : getMinistryIcon(d.name);
+                                            const selected = selectedMinistryId === d.id;
+                                            return (
+                                                <button
+                                                    key={d.id}
+                                                    type="button"
+                                                    onClick={() => selectDepartment(d.id)}
+                                                    title={d.name}
+                                                    className={`flex w-full cursor-pointer items-center gap-1.5 rounded-lg border px-1.5 py-1 text-left transition ${
+                                                        selected
+                                                            ? 'border-emerald-500 bg-emerald-50/90 dark:border-emerald-600 dark:bg-emerald-950/40'
+                                                            : 'border-transparent hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
+                                                    }`}
+                                                >
+                                                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                                                        <Icon className="h-3.5 w-3.5" />
+                                                    </span>
+                                                    <span className="min-w-0 flex-1 truncate text-[11px] font-medium leading-tight text-zinc-900 dark:text-white">
+                                                        {d.name}
+                                                    </span>
+                                                    <span className="shrink-0 rounded-full bg-zinc-200 px-1.5 py-px text-[10px] font-semibold tabular-nums text-zinc-700 dark:bg-zinc-700 dark:text-zinc-100">
+                                                        {d.volunteerCount}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
+                                    </>
+                                )
+                                : null}
+                            {showWithoutDepartment ? (
+                                <button
+                                    type="button"
+                                    onClick={() => selectDepartment('none')}
+                                    className={`flex w-full cursor-pointer items-center justify-between gap-1 rounded-lg border px-2 py-1 text-left transition ${
+                                        selectedMinistryId === 0
+                                            ? 'border-violet-500 bg-violet-50/90 dark:border-violet-600 dark:bg-violet-950/40'
+                                            : 'border-transparent hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
+                                    }`}
+                                >
+                                    <span className="truncate text-[11px] font-medium text-zinc-800 dark:text-zinc-100">
+                                        Sem departamento
+                                    </span>
+                                    <span className="shrink-0 rounded-full bg-violet-100 px-1.5 py-px text-[10px] font-semibold text-violet-800 dark:bg-violet-950/50 dark:text-violet-200">
+                                        {withoutDepartmentCount}
+                                    </span>
+                                </button>
+                            ) : null}
+                            {isPhaseGroup && filteredPhases.length === 0 ? (
+                                <p className="px-2 py-3 text-center text-[11px] text-zinc-500">Nenhuma fase.</p>
+                            ) : null}
+                            {!isPhaseGroup && filteredDepartments.length === 0 && !showWithoutDepartment ? (
+                                <p className="px-2 py-3 text-center text-[11px] text-zinc-500">Nenhum departamento.</p>
+                            ) : null}
+                        </div>
+                    </aside>
+
+                    <div
+                        role="separator"
+                        aria-orientation="vertical"
+                        aria-valuenow={departmentPaneWidth}
+                        aria-valuemin={DEPT_PANE_MIN}
+                        aria-valuemax={DEPT_PANE_MAX}
+                        title="Arraste para ajustar a largura. Duplo clique para restaurar."
+                        onMouseDown={onSeparatorMouseDown}
+                        onDoubleClick={resetDepartmentPaneWidth}
+                        className="group relative hidden w-2 shrink-0 cursor-col-resize lg:block"
+                    >
+                        <span className="absolute inset-y-2 left-1/2 w-px -translate-x-1/2 rounded-full bg-zinc-200 transition group-hover:w-0.5 group-hover:bg-emerald-500 group-active:bg-emerald-600 dark:bg-zinc-700 dark:group-hover:bg-emerald-400" />
+                    </div>
+
+                    <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+                        <div className="flex min-h-0 flex-1 flex-col px-2.5 pb-2">
+                            <VolunteerCenterRosterPanel
+                                groupBy={groupBy}
+                                selectedMinistryId={selectedMinistryId}
+                                selectedPhaseKey={selectedPhaseKey}
+                                volunteers={volunteers}
+                                boardFilters={boardFilters}
+                                ministries={ministries}
+                                encaminharMinistryIds={encaminharMinistryIds}
+                                canVolunteerManage={canVolunteerManage}
+                                canPipelineMutate={canPipelineMutate}
+                                onOpenVolunteer={(id) => void openVolunteer(id)}
+                                listHeader={{
+                                    title: selectedTitle,
+                                    subtitle: `${volunteersTotal} voluntário${volunteersTotal === 1 ? '' : 's'}`,
+                                    icon: <HeaderIcon className="h-4 w-4" />,
+                                    actions:
+                                        groupBy === 'departamento' && selectedMinistryId && selectedMinistryId > 0 ? (
+                                            <Link
+                                                href={`${route('departments.index')}?modal=edit&id=${selectedMinistryId}`}
+                                                className="cursor-pointer"
+                                                title="Editar equipe do departamento"
+                                                aria-label="Editar equipe do departamento"
+                                            >
+                                                <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-600 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800">
+                                                    <PencilSquareIcon className="h-4 w-4" aria-hidden />
+                                                </span>
+                                            </Link>
+                                        ) : null,
+                                }}
+                            />
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <Modal show={modalOpen} onClose={() => setModalOpen(false)} maxWidth="2xl" disableBodyScroll>
+                <div className="flex max-h-[min(100dvh-1rem,880px)] min-h-0 w-full flex-col overflow-hidden sm:max-h-[min(90dvh,860px)]">
+                    {detailLoading ? (
+                        <div className="p-6">
+                            <p className="text-sm text-zinc-500">Carregando…</p>
+                        </div>
+                    ) : detail?.volunteer ? (
+                        <>
+                            <div className="shrink-0 space-y-4 border-b border-zinc-200 p-4 dark:border-zinc-700">
+                                <RecordDetailHeader
+                                    title={
+                                        (detail.volunteer.name as string | null)?.trim() ||
+                                        (detail.volunteer as VolunteerDetailData).user?.name?.trim() ||
+                                        'Voluntário'
+                                    }
+                                    subtitle="Voluntário e conta no app (mesma pessoa)."
+                                    photoUrl={
+                                        (detail.volunteer as VolunteerDetailData).photo_url ??
+                                        (detail.volunteer.user as { photo_url?: string | null } | null)?.photo_url ??
+                                        null
+                                    }
+                                    onClose={() => setModalOpen(false)}
+                                />
+
+                                <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-700 dark:bg-zinc-900/40">
+                                    {canPipelineMutate ? (
+                                        <form
+                                            onSubmit={submitStageMove}
+                                            className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end"
+                                        >
+                                            <div className="min-w-0 flex-1 sm:max-w-xs">
+                                                <InputLabel value={canVolunteerManage ? 'Fase principal' : 'Fase / pasta'} />
+                                                <SelectInput
+                                                    className="mt-1 w-full min-w-0"
+                                                    value={stageMoveForm.data.stage_id}
+                                                    onChange={(e) => stageMoveForm.setData('stage_id', e.target.value)}
+                                                >
+                                                    {canVolunteerManage ? <option value="">—</option> : null}
+                                                    {(detail.stages ?? []).map((s) => (
+                                                        <option key={s.id} value={String(s.id)}>
+                                                            {s.name}
+                                                        </option>
+                                                    ))}
+                                                </SelectInput>
+                                            </div>
+                                            <PrimaryButton type="submit" disabled={stageMoveForm.processing}>
+                                                {canVolunteerManage ? 'Salvar fase principal' : 'Salvar fase'}
+                                            </PrimaryButton>
+                                            <InputError message={stageMoveForm.errors.stage_id} />
+                                        </form>
+                                    ) : (
+                                        <div className="text-sm text-zinc-600 dark:text-zinc-300">
+                                            <div className="text-xs font-medium text-zinc-500">
+                                                {canVolunteerManage ? 'Fase principal' : 'Fase / pasta'}
+                                            </div>
+                                            <div className="mt-1 font-medium text-zinc-900 dark:text-white">
+                                                {stageMoveForm.data.stage_id
+                                                    ? (detail.stages.find((s) => String(s.id) === String(stageMoveForm.data.stage_id))?.name ??
+                                                          '—')
+                                                    : '—'}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex gap-1 overflow-x-auto overscroll-x-contain rounded-xl bg-zinc-100 p-1 [-webkit-overflow-scrolling:touch] dark:bg-zinc-800">
+                                    <button
+                                        type="button"
+                                        onClick={() => setDetailTab('ficha')}
+                                        className={`shrink-0 cursor-pointer rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
+                                            detailTab === 'ficha'
+                                                ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
+                                                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+                                        }`}
+                                    >
+                                        Ficha
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setDetailTab('departamentos')}
+                                        className={`shrink-0 cursor-pointer rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
+                                            detailTab === 'departamentos'
+                                                ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
+                                                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+                                        }`}
+                                    >
+                                        Departamentos
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setDetailTab('historico')}
+                                        className={`shrink-0 cursor-pointer rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
+                                            detailTab === 'historico'
+                                                ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
+                                                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+                                        }`}
+                                    >
+                                        Histórico e status
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setDetailTab('notas')}
+                                        className={`shrink-0 cursor-pointer rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
+                                            detailTab === 'notas'
+                                                ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
+                                                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+                                        }`}
+                                    >
+                                        Anotações
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4">
+                                {detailTab === 'ficha' ? (
+                                    <div className="space-y-4">
+                                        <RecordDetailSections
+                                            sections={volunteerDetailSections(detail.volunteer as VolunteerDetailData)}
+                                        />
+
+                                        {detail.updatePasswordUrl ? (
+                                            <VolunteerPasswordChangeForm
+                                                key={(detail.volunteer as VolunteerDetailData).id}
+                                                submitUrl={detail.updatePasswordUrl}
+                                            />
+                                        ) : canVolunteerManage &&
+                                          !(detail.volunteer as VolunteerDetailData).has_app_account ? (
+                                            <div className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-300">
+                                                <p className="font-semibold text-zinc-900 dark:text-white">Senha de acesso</p>
+                                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                                    Este voluntário ainda não tem conta no app. Crie o acesso em Voluntários ou
+                                                    envie um convite por e-mail.
+                                                </p>
+                                            </div>
+                                        ) : null}
+
+                                        {detail.archiveVolunteerUrl || detail.unarchiveVolunteerUrl ? (
+                                            <div className="flex flex-wrap gap-2">
+                                                {detail.archiveVolunteerUrl ? (
+                                                    <SecondaryButton
+                                                        type="button"
+                                                        onClick={async () => {
+                                                            const ok = await confirmAction({
+                                                                title: 'Arquivar voluntário?',
+                                                                text: 'O cadastro deixa de aparecer na lista ativa desta igreja. Você pode restaurá-lo em «Arquivados».',
+                                                                confirmButtonText: 'Arquivar',
+                                                                icon: 'question',
+                                                            });
+                                                            if (ok) {
+                                                                router.post(detail.archiveVolunteerUrl!, {}, { preserveScroll: true });
+                                                            }
+                                                        }}
+                                                    >
+                                                        Arquivar voluntário
+                                                    </SecondaryButton>
+                                                ) : null}
+                                                {detail.unarchiveVolunteerUrl ? (
+                                                    <SecondaryButton
+                                                        type="button"
+                                                        onClick={async () => {
+                                                            const ok = await confirmAction({
+                                                                title: 'Restaurar voluntário?',
+                                                                text: 'O cadastro voltará à lista ativa de voluntários.',
+                                                                confirmButtonText: 'Restaurar',
+                                                                icon: 'question',
+                                                            });
+                                                            if (ok) {
+                                                                router.post(detail.unarchiveVolunteerUrl!, {}, { preserveScroll: true });
+                                                            }
+                                                        }}
+                                                    >
+                                                        Restaurar na lista ativa
+                                                    </SecondaryButton>
+                                                ) : null}
+                                            </div>
+                                        ) : null}
+
+                                        {detail.destroyVolunteerUrl ? (
+                                            <VolunteerDeleteConfirmBlock
+                                                className="mt-6"
+                                                destroyUrl={detail.destroyVolunteerUrl}
+                                                volunteerName={detail.volunteer.name ?? 'Voluntário'}
+                                                volunteerEmail={(detail.volunteer as VolunteerDetailData).email}
+                                                linkedUser={detail.volunteer.user as { id?: number; email?: string | null } | null}
+                                                onSuccess={() => {
+                                                    setModalOpen(false);
+                                                    setDetail(null);
+                                                    setSelectedId(null);
+                                                    router.visit(route('ministry-lead.volunteers.central'), { preserveScroll: true });
+                                                }}
+                                            />
+                                        ) : null}
+                                    </div>
+                                ) : detailTab === 'historico' ? (
+                                    <div className="space-y-4">
+                                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                            Altere o status do líder em cada departamento e consulte o histórico. A fase principal do
+                                            voluntário (Interessado, Encaminhado, Finalizado) fica no topo desta ficha.
+                                        </p>
+                                        {(detail.statusHistoryByMinistry ?? []).length === 0 ? (
+                                            <p className="text-sm text-zinc-500">
+                                                Nenhum departamento vinculado ou encaminhamento registrado ainda.
+                                            </p>
+                                        ) : (
+                                            (detail.statusHistoryByMinistry ?? []).map((section) => (
+                                                <MinistryLeaderStatusSection
+                                                    key={section.ministryId}
+                                                    section={section}
+                                                    onSaved={() => {
+                                                        if (selectedId) void openVolunteer(selectedId, 'historico');
+                                                    }}
+                                                />
+                                            ))
+                                        )}
+                                    </div>
+                                ) : detailTab === 'departamentos' ? (
+                                    <form onSubmit={submitMinistries} className="space-y-4">
+                                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                            Marque os departamentos em que o voluntário está. Desmarque para remover; marque outros para adicionar.
+                                        </p>
+                                        {(detail.ministryOptions ?? []).length === 0 ? (
+                                            <p className="text-sm text-zinc-500">Nenhum departamento cadastrado nesta igreja.</p>
+                                        ) : (
+                                            <SortedMultiCheckboxList
+                                                options={volunteerMinistryCheckboxOptions}
+                                                selectedIds={ministriesForm.data.ministry_ids}
+                                                onChange={(ids) => ministriesForm.setData('ministry_ids', ids)}
+                                                maxHeightClass="max-h-[min(50vh,360px)]"
+                                                emptyMessage="Nenhum departamento cadastrado nesta igreja."
+                                            />
+                                        )}
+                                        <InputError message={ministriesForm.errors.ministry_ids} />
+                                        {detail.syncMinistriesUrl && canPipelineMutate ? (
+                                            <PrimaryButton type="submit" disabled={ministriesForm.processing}>
+                                                Salvar departamentos
+                                            </PrimaryButton>
+                                        ) : (
+                                            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                                Apenas consulta: não tem permissão para alterar departamentos.
+                                            </p>
+                                        )}
+                                    </form>
+                                ) : (
+                                    <div className="space-y-4">
+                                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                            Notas internas da equipe de voluntariado (histórico abaixo).
+                                        </p>
+                                        <ul className="max-h-[min(45vh,320px)] space-y-2 overflow-y-auto text-sm">
+                                            {detail.notes.length === 0 ? (
+                                                <li className="text-zinc-500">Ainda sem notas.</li>
+                                            ) : (
+                                                detail.notes.map((n) => (
+                                                    <li
+                                                        key={n.id}
+                                                        className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+                                                    >
+                                                        <div className="text-xs text-zinc-500">
+                                                            {n.authorName} · {formatDateTime(n.createdAt)}
+                                                        </div>
+                                                        <div className="whitespace-pre-wrap text-zinc-800 dark:text-zinc-200">{n.body}</div>
+                                                    </li>
+                                                ))
+                                            )}
+                                        </ul>
+                                        {canPipelineMutate ? (
+                                            <form onSubmit={submitNote} className="space-y-2 border-t border-zinc-200 pt-4 dark:border-zinc-700">
+                                                <InputLabel value="Nova anotação" />
+                                                <Textarea
+                                                    value={noteForm.data.body}
+                                                    onChange={(e) => noteForm.setData('body', e.target.value)}
+                                                    rows={4}
+                                                    className="w-full"
+                                                    placeholder="Escreva uma nota visível à equipe de voluntariado…"
+                                                />
+                                                <InputError message={noteForm.errors.body} />
+                                                <PrimaryButton type="submit" disabled={noteForm.processing}>
+                                                    Adicionar nota
+                                                </PrimaryButton>
+                                            </form>
+                                        ) : (
+                                            <p className="border-t border-zinc-200 pt-4 text-xs text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+                                                Apenas consulta: não tem permissão para alterar fases nem adicionar anotações.
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    ) : (
+                        <div className="p-6">
+                            <p className="text-sm text-red-600">Não foi possível carregar a ficha.</p>
+                        </div>
+                    )}
+                </div>
+            </Modal>
+        </AdminLayout>
+    );
+}
+
+function UserGroupIconFallback({ className }: { className?: string }) {
+    const Icon = getMinistryIcon('Grupo');
+    return <Icon className={className} />;
+}

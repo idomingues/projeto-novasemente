@@ -95,12 +95,11 @@ export interface VolunteerRequestsStaffSectionProps {
 }
 
 function pedidosIndexParams(arquivados: boolean): Record<string, string> {
-    const params: Record<string, string> = { secao: 'pedidos' };
     if (arquivados) {
-        params.arquivados = '1';
+        return { arquivados: '1' };
     }
 
-    return params;
+    return {};
 }
 
 function formatCreatedAt(iso: string | null): string {
@@ -336,7 +335,7 @@ export default function VolunteerRequestsStaffSection({
         setViewTab(mode);
         if (mode === 'por-area') {
             setSelectedArea(null);
-            router.get(route('ministry-lead.volunteers.index'), pedidosIndexParams(false), {
+            router.get(route('ministry-lead.volunteers.pedidos'), pedidosIndexParams(false), {
                 preserveState: false,
                 preserveScroll: false,
                 replace: true,
@@ -345,7 +344,7 @@ export default function VolunteerRequestsStaffSection({
         }
         if (mode === 'arquivados') {
             setSelectedArea(null);
-            router.get(route('ministry-lead.volunteers.index'), pedidosIndexParams(true), {
+            router.get(route('ministry-lead.volunteers.pedidos'), pedidosIndexParams(true), {
                 preserveState: false,
                 preserveScroll: false,
                 replace: true,
@@ -353,7 +352,7 @@ export default function VolunteerRequestsStaffSection({
             return;
         }
         setSelectedArea(null);
-        router.get(route('ministry-lead.volunteers.index'), pedidosIndexParams(false), {
+        router.get(route('ministry-lead.volunteers.pedidos'), pedidosIndexParams(false), {
             preserveState: false,
             preserveScroll: false,
             replace: true,

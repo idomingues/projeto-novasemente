@@ -8,6 +8,7 @@ use App\Models\ChurchSolicitation;
 use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerChurchPipeline;
+use App\Support\VolunteerLeadRosterFilters;
 use App\Support\VolunteerPipelineBootstrap;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -27,7 +28,7 @@ class VolunteerArchiveTest extends TestCase
         return $user;
     }
 
-    public function test_pipeline_hides_archived_volunteers_by_default(): void
+    public function test_central_hides_archived_volunteers_by_default(): void
     {
         $admin = $this->actingAsAdmin();
         $church = Church::query()->firstOrFail();
@@ -59,11 +60,12 @@ class VolunteerArchiveTest extends TestCase
 
         $activeList = $this->actingAs($admin)
             ->withSession(['working_church_id' => $church->id])
-            ->get(route('ministry-lead.volunteers.index', ['secao' => 'quadro']))
+            ->get(route('ministry-lead.volunteers.central', ['ministerio' => 'none']))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->where('filters.arquivados', false)
-                ->where('filters.pipeline_stage_id', ''));
+                ->component('MinistryLeadVolunteers/ManagementCenter')
+                ->where('boardFilters.arquivados', false)
+                ->where('boardFilters.pipeline_stage_id', ''));
 
         $activeIds = collect($activeList->viewData('page')['props']['volunteers']['data'])->pluck('id');
         $this->assertTrue($activeIds->contains($active->id));
@@ -71,15 +73,14 @@ class VolunteerArchiveTest extends TestCase
 
         $archivedList = $this->actingAs($admin)
             ->withSession(['working_church_id' => $church->id])
-            ->get(route('ministry-lead.volunteers.index', [
-                'secao' => 'quadro',
-                'pipeline_stage_id' => 'arquivados',
+            ->get(route('ministry-lead.volunteers.central', [
+                'ministerio' => 'none',
+                'pipeline_stage_id' => VolunteerLeadRosterFilters::PIPELINE_STAGE_ARCHIVED,
             ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->where('filters.arquivados', true)
-                ->where('filters.pipeline_stage_id', 'arquivados')
-                ->where('archivedVolunteerCount', 1));
+                ->where('boardFilters.arquivados', true)
+                ->where('boardFilters.pipeline_stage_id', VolunteerLeadRosterFilters::PIPELINE_STAGE_ARCHIVED));
 
         $archivedIds = collect($archivedList->viewData('page')['props']['volunteers']['data'])->pluck('id');
         $this->assertTrue($archivedIds->contains($archived->id));
@@ -98,11 +99,15 @@ class VolunteerArchiveTest extends TestCase
         ]);
         VolunteerPipelineBootstrap::ensureRowForVolunteerInChurch($volunteer, (int) $church->id);
 
-        $this->actingAs($admin)
+        $archiveResponse = $this->actingAs($admin)
             ->withSession(['working_church_id' => $church->id])
-            ->post(route('ministry-lead.volunteers.pipeline.archive', $volunteer))
-            ->assertRedirect(route('ministry-lead.volunteers.index', ['secao' => 'quadro']))
-            ->assertSessionHas('success');
+            ->post(route('ministry-lead.volunteers.pipeline.archive', $volunteer));
+
+        $archiveResponse->assertRedirect()->assertSessionHas('success');
+        $this->assertStringStartsWith(
+            route('ministry-lead.volunteers.central'),
+            (string) $archiveResponse->headers->get('Location'),
+        );
 
         $pipe = VolunteerChurchPipeline::query()
             ->where('church_id', $church->id)
@@ -110,19 +115,20 @@ class VolunteerArchiveTest extends TestCase
             ->first();
         $this->assertNotNull($pipe?->staff_archived_at);
 
-        $this->actingAs($admin)
+        $unarchiveResponse = $this->actingAs($admin)
             ->withSession(['working_church_id' => $church->id])
-            ->post(route('ministry-lead.volunteers.pipeline.unarchive', $volunteer))
-            ->assertRedirect(route('ministry-lead.volunteers.index', [
-                'secao' => 'quadro',
-                'pipeline_stage_id' => 'arquivados',
-            ]))
-            ->assertSessionHas('success');
+            ->post(route('ministry-lead.volunteers.pipeline.unarchive', $volunteer));
+
+        $unarchiveResponse->assertRedirect()->assertSessionHas('success');
+        $this->assertStringContainsString(
+            'pipeline_stage_id='.VolunteerLeadRosterFilters::PIPELINE_STAGE_ARCHIVED,
+            (string) $unarchiveResponse->headers->get('Location'),
+        );
 
         $this->assertNull($pipe->fresh()->staff_archived_at);
     }
 
-    public function test_pipeline_pedidos_hides_archived_volunteer_requests(): void
+    public function test_pedidos_page_hides_archived_volunteer_requests(): void
     {
         $admin = $this->actingAsAdmin();
         $church = Church::query()->firstOrFail();
@@ -147,16 +153,17 @@ class VolunteerArchiveTest extends TestCase
 
         $this->actingAs($admin)
             ->withSession(['working_church_id' => $church->id])
-            ->get(route('ministry-lead.volunteers.index', ['secao' => 'pedidos']))
+            ->get(route('ministry-lead.volunteers.pedidos'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
+                ->component('MinistryLeadVolunteers/Pedidos')
                 ->where('volunteerRequestFilters.arquivados', false)
                 ->has('volunteerRequestRows', 1)
                 ->where('volunteerRequestRows.0.id', $active->id));
 
         $this->actingAs($admin)
             ->withSession(['working_church_id' => $church->id])
-            ->get(route('ministry-lead.volunteers.index', ['secao' => 'pedidos', 'arquivados' => '1']))
+            ->get(route('ministry-lead.volunteers.pedidos', ['arquivados' => '1']))
             ->assertOk()
             ->assertInertia(fn ($page) => $page->where('volunteerRequestFilters.arquivados', true)->has('volunteerRequestRows', 1));
     }
@@ -178,7 +185,7 @@ class VolunteerArchiveTest extends TestCase
         $this->actingAs($admin)
             ->withSession(['working_church_id' => $church->id])
             ->post(route('volunteer-requests.staff.archive', $solicitation))
-            ->assertRedirect(route('ministry-lead.volunteers.index', ['secao' => 'pedidos']))
+            ->assertRedirect(route('ministry-lead.volunteers.pedidos'))
             ->assertSessionHas('success');
 
         $this->assertNotNull($solicitation->fresh()->staff_archived_at);

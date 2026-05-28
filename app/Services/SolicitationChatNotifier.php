@@ -145,10 +145,10 @@ class SolicitationChatNotifier
         $isVolunteerRequest = $solicitation->type === MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST;
         $isCommunicationRequest = $solicitation->type === MobileChurchSolicitationController::TYPE_COMMUNICATION_REQUEST;
         $staffRoute = $isVolunteerRequest
-            ? 'ministry-lead.volunteers.index'
+            ? 'ministry-lead.volunteers.pedidos'
             : ($isCommunicationRequest ? 'communication-requests.index' : 'solicitations.index');
         $staffParams = $isVolunteerRequest
-            ? ['secao' => 'pedidos']
+            ? []
             : ($isCommunicationRequest ? [] : [
                 'modal_kind' => 'solicitation',
                 'modal_id' => $solicitation->id,
@@ -253,10 +253,10 @@ class SolicitationChatNotifier
         $isVolunteerRequest = $solicitation->type === MobileChurchSolicitationController::TYPE_VOLUNTEER_REQUEST;
         $isCommunicationRequest = $solicitation->type === MobileChurchSolicitationController::TYPE_COMMUNICATION_REQUEST;
         $staffInboxRoute = $isVolunteerRequest
-            ? 'ministry-lead.volunteers.index'
+            ? 'ministry-lead.volunteers.pedidos'
             : ($isCommunicationRequest ? 'communication-requests.index' : 'solicitations.index');
         $staffInboxParams = $isVolunteerRequest
-            ? ['secao' => 'pedidos']
+            ? []
             : ($isCommunicationRequest ? [] : [
                 'modal_kind' => 'solicitation',
                 'modal_id' => $solicitation->id,

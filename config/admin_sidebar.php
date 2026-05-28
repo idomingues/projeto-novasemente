@@ -22,7 +22,7 @@ return [
         ['name' => 'Salas', 'route' => 'room-bookings.index', 'icon' => 'rectangle-stack'],
         ['name' => 'Escalas', 'route' => 'escalas.index', 'icon' => 'calendar'],
         ['name' => 'Inventários', 'route' => 'inventory.index', 'icon' => 'archive-box'],
-        ['name' => 'Voluntários', 'route' => 'ministry-lead.volunteers.index', 'icon' => 'user-group'],
+        ['name' => 'Voluntários', 'route' => 'ministry-lead.volunteers.central', 'icon' => 'user-group'],
         ['name' => 'Usuários', 'route' => 'users.index', 'icon' => 'users'],
         ['name' => 'Missão', 'route' => 'mission.index', 'icon' => 'globe-alt'],
         ['name' => 'Oração', 'route' => 'prayer.index', 'icon' => 'praying-hands'],

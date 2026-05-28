@@ -50,6 +50,7 @@ const Trigger = ({ children }: PropsWithChildren) => {
                 <div
                     className="fixed inset-0 z-[55] bg-black/20 dark:bg-black/40"
                     onClick={() => setOpen(false)}
+                    data-dropdown-backdrop="true"
                     aria-hidden
                 />
             )}

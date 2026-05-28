@@ -499,7 +499,7 @@ export default function Pipeline({
         router.get(
             route('ministry-lead.volunteers.index'),
             buildVolunteersQuery(filterForm.data, resolvedSearch),
-            { preserveState: true, replace: true },
+            { preserveState: true, preserveScroll: true, replace: true },
         );
     };
 
@@ -509,7 +509,7 @@ export default function Pipeline({
         router.get(
             route('ministry-lead.volunteers.index'),
             buildVolunteersQuery({ ...filterForm.data, search: '', pipeline_stage_id: '' }, ''),
-            { preserveState: true, replace: true },
+            { preserveState: true, preserveScroll: true, replace: true },
         );
     };
 
@@ -525,7 +525,7 @@ export default function Pipeline({
                 },
                 resolvedSearch,
             ),
-            { preserveState: true, replace: true },
+            { preserveState: true, preserveScroll: true, replace: true },
         );
     };
 
@@ -674,7 +674,7 @@ export default function Pipeline({
             router.get(
                 route('ministry-lead.volunteers.index'),
                 pipelineVolunteersQuery(nextFilters, search, {}, { kanban }),
-                { preserveState: true, replace: true },
+                { preserveState: true, preserveScroll: true, replace: true },
             );
         },
         [],
@@ -727,7 +727,7 @@ export default function Pipeline({
                 router.get(
                     route('ministry-lead.volunteers.index'),
                     buildVolunteersQuery(filtersRef.current, applied),
-                    { preserveState: true, replace: true },
+                    { preserveState: true, preserveScroll: true, replace: true },
                 );
             },
             [buildVolunteersQuery],
@@ -845,22 +845,74 @@ export default function Pipeline({
                         : 'Voluntários por fases: inscrição, treino até servir. Toque numa linha para abrir a ficha ou as anotações.'
                 }
                 actions={
-                    secao === 'quadro' && canVolunteerManage ? (
-                        <Link
-                            href={`${volunteersAdminUrl}?modal=create`}
-                            className={titleBarAddIconClass}
-                            title="Novo voluntário"
-                            aria-label="Novo voluntário"
-                        >
-                            <PlusIcon className="h-6 w-6" strokeWidth={2.25} />
-                        </Link>
-                    ) : undefined
+                    <div className="flex flex-wrap items-center gap-2">
+                        {secao === 'quadro' ? (
+                            <Link href={route('ministry-lead.volunteers.central')} className="cursor-pointer">
+                                <SecondaryButton type="button" className="text-sm">
+                                    Central por departamento
+                                </SecondaryButton>
+                            </Link>
+                        ) : null}
+                        {secao === 'quadro' && canVolunteerManage ? (
+                            <Link
+                                href={`${volunteersAdminUrl}?modal=create`}
+                                className={titleBarAddIconClass}
+                                title="Novo voluntário"
+                                aria-label="Novo voluntário"
+                            >
+                                <PlusIcon className="h-6 w-6" strokeWidth={2.25} />
+                            </Link>
+                        ) : null}
+                    </div>
                 }
             >
                 {secao === 'quadro' ? (
                     <div className="flex flex-wrap items-center gap-2">
                         {kanbanEligible ? (
                             <ListViewModeToggle value={isKanbanView ? 'kanban' : 'list'} onChange={changeViewMode} />
+                        ) : null}
+                        {ministries.length > 0 ? (
+                            <div className="flex flex-wrap items-center gap-2">
+                                <div className="min-w-[15rem]">
+                                    <SelectInput
+                                        value={(() => {
+                                            const ids = (filterForm.data.ministry_ids || '')
+                                                .split(',')
+                                                .map((x) => x.trim())
+                                                .filter(Boolean);
+                                            return ids.length === 1 ? ids[0] : '';
+                                        })()}
+                                        onChange={(e) => {
+                                            const selectedId = (e.target.value || '').trim();
+                                            const next = {
+                                                ...filterForm.data,
+                                                ministry_ids: selectedId ? selectedId : '',
+                                            };
+                                            filterForm.setData(next);
+                                            const resolvedSearch = serverSearchTerm(searchQuery) ?? '';
+                                            lastAppliedSearchRef.current = resolvedSearch;
+                                            reloadVolunteers(next, resolvedSearch, isKanbanView);
+                                        }}
+                                        className="w-full"
+                                        aria-label="Departamento em foco"
+                                    >
+                                        <option value="">Todos os departamentos</option>
+                                        {ministries.map((m) => (
+                                            <option key={m.id} value={String(m.id)}>
+                                                {m.name}
+                                            </option>
+                                        ))}
+                                    </SelectInput>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setFiltersOpen(true)}
+                                    className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                                    title="Abrir filtros avançados"
+                                >
+                                    Filtros
+                                </button>
+                            </div>
                         ) : null}
                         {canVolunteerManage ? (
                             <Link

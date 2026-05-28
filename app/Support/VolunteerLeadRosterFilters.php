@@ -192,6 +192,18 @@ class VolunteerLeadRosterFilters
             });
         }
 
+        if ($request->query('center_sem_departamento') === '1') {
+            $q->whereDoesntHave('ministries', fn ($mq) => $mq->where('church_id', $churchId));
+            if (Schema::hasTable('volunteer_ministry_invitations')) {
+                $q->whereDoesntHave('ministryInvitations', fn ($iq) => $iq->where('church_id', $churchId));
+            }
+        }
+
+        $centerPhaseKey = trim((string) $request->input('center_phase_key', ''));
+        if ($centerPhaseKey !== '') {
+            VolunteerManagementCenterBuilder::applyCenterPhaseFilter($q, $churchId, $centerPhaseKey);
+        }
+
         $sid = $request->input('pipeline_stage_id');
         if ($sid === self::PIPELINE_STAGE_ADMIN_WORKFLOW_BLANK) {
             $allowed = VolunteerPipelineBootstrap::adminWorkflowStageIdsForChurch($churchId);

@@ -105,7 +105,7 @@ const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'Salas', route: 'room-bookings.index', icon: RectangleStackIcon },
     { name: 'Escalas', route: 'escalas.index', icon: CalendarIcon },
     { name: 'Inventários', route: 'inventory.index', icon: ArchiveBoxIcon },
-    { name: 'Voluntários', route: 'ministry-lead.volunteers.index', icon: UserGroupIcon },
+    { name: 'Voluntários', route: 'ministry-lead.volunteers.central', icon: UserGroupIcon },
     { name: 'Usuários', route: 'users.index', icon: UsersIcon },
     { name: 'Oração', route: 'prayer.index', icon: PrayingHandsIcon },
     { name: 'News', route: 'news.index', icon: NewspaperIcon },
@@ -187,7 +187,13 @@ export default function Sidebar({
 
     const sidebarBadgeCountForRoute = (routeName: string): number => {
         if (routeName === 'solicitations.index') return openSolicitationsCount;
-        if (routeName === 'ministry-lead.volunteers.index') return openVolunteerRequestsCount;
+        if (
+            routeName === 'ministry-lead.volunteers.index' ||
+            routeName === 'ministry-lead.volunteers.central' ||
+            routeName === 'ministry-lead.volunteers.pedidos'
+        ) {
+            return openVolunteerRequestsCount;
+        }
         if (routeName === 'support.index' || routeName === 'mobile.support.index') return openSupportTicketsCount;
         return 0;
     };
@@ -208,7 +214,8 @@ export default function Sidebar({
     ]);
     const cadastroRoutes = new Set(['rooms.index', 'departments.index', 'pastors.index']);
 
-    const [isMainOpen, setIsMainOpen] = useState(false);
+    /** OPERAÇÃO aberta por padrão no painel de gestão (comentário legado no código). */
+    const [isMainOpen, setIsMainOpen] = useState(true);
     const [isPastorOpen, setIsPastorOpen] = useState(false);
     const [isPublicationOpen, setIsPublicationOpen] = useState(false);
     const [isCadastroOpen, setIsCadastroOpen] = useState(false);
@@ -217,11 +224,17 @@ export default function Sidebar({
     const isRouteActive = (routeName: string) => route().current(routeName + '*');
 
     const isMenuItemActive = (itemRoute: string) => {
-        if (itemRoute === 'ministry-lead.volunteers.index') {
+        if (
+            itemRoute === 'ministry-lead.volunteers.central' ||
+            itemRoute === 'ministry-lead.volunteers.index'
+        ) {
             return (
+                route().current('ministry-lead.volunteers.central') ||
+                route().current('ministry-lead.volunteers.pedidos') ||
                 route().current('ministry-lead.volunteers.index') ||
                 route().current('ministry-lead.volunteers.board') ||
                 route().current('ministry-lead.volunteers.show') ||
+                route().current('ministry-lead.my-volunteers.index') ||
                 route().current('volunteer-requests.staff.index') ||
                 route().current('volunteers.index') ||
                 route().current('volunteers.show')

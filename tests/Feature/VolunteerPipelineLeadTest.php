@@ -297,30 +297,29 @@ class VolunteerPipelineLeadTest extends TestCase
         $this->actingAs($admin)
             ->withSession(['working_church_id' => $church->id])
             ->get(route('volunteer-requests.staff.index'))
-            ->assertRedirect(route('ministry-lead.volunteers.index', ['secao' => 'pedidos']));
+            ->assertRedirect(route('ministry-lead.volunteers.pedidos'));
     }
 
-    public function test_pipeline_index_includes_volunteer_request_props_for_admin(): void
+    public function test_pedidos_page_includes_volunteer_request_props_for_admin(): void
     {
         $admin = $this->actingAsAdmin();
         $church = Church::query()->firstOrFail();
 
         $this->actingAs($admin)
             ->withSession(['working_church_id' => $church->id])
-            ->get(route('ministry-lead.volunteers.index', ['secao' => 'pedidos']))
+            ->get(route('ministry-lead.volunteers.pedidos'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('MinistryLeadVolunteers/Pipeline')
-                ->where('secao', 'pedidos')
-                ->where('canManageVolunteerRequests', true)
+                ->component('MinistryLeadVolunteers/Pedidos')
                 ->has('volunteerRequestRows')
                 ->has('volunteerRequestMinistries')
                 ->has('volunteerRequestStoreUrl')
                 ->has('volunteersForAttach')
-                ->has('attachVolunteerPickerUrl'));
+                ->has('attachVolunteerPickerUrl')
+                ->has('centralUrl'));
     }
 
-    public function test_pipeline_pedidos_tab_redirects_without_solicitations_manage(): void
+    public function test_pedidos_page_redirects_without_solicitations_manage(): void
     {
         $this->seed();
 
@@ -331,8 +330,8 @@ class VolunteerPipelineLeadTest extends TestCase
 
         $this->actingAs($user)
             ->withSession(['working_church_id' => $church->id])
-            ->get(route('ministry-lead.volunteers.index', ['secao' => 'pedidos']))
-            ->assertRedirect(route('ministry-lead.volunteers.index', ['secao' => 'quadro']));
+            ->get(route('ministry-lead.volunteers.pedidos'))
+            ->assertForbidden();
     }
 
     public function test_roster_shows_encaminhado_as_admin_workflow_stage_when_pipeline_stage_is_encaminhado(): void
@@ -363,8 +362,8 @@ class VolunteerPipelineLeadTest extends TestCase
 
         $response = $this->actingAs($admin)
             ->withSession(['working_church_id' => $church->id])
-            ->get(route('ministry-lead.volunteers.index', [
-                'secao' => 'quadro',
+            ->get(route('ministry-lead.volunteers.central', [
+                'ministerio' => $ministry->id,
                 'pipeline_stage_id' => (string) $encaminhadoId,
             ]))
             ->assertOk();
@@ -402,8 +401,8 @@ class VolunteerPipelineLeadTest extends TestCase
 
         $response = $this->actingAs($admin)
             ->withSession(['working_church_id' => $church->id])
-            ->get(route('ministry-lead.volunteers.index', [
-                'secao' => 'quadro',
+            ->get(route('ministry-lead.volunteers.central', [
+                'ministerio' => $ministry->id,
                 'pipeline_stage_id' => \App\Support\VolunteerLeadRosterFilters::PIPELINE_STAGE_ADMIN_WORKFLOW_BLANK,
             ]))
             ->assertOk();
@@ -557,19 +556,20 @@ class VolunteerPipelineLeadTest extends TestCase
         $this->assertContains('atuante', $stageNames);
     }
 
-    public function test_pipeline_index_exposes_default_sort_in_filters(): void
+    public function test_central_index_exposes_default_sort_in_board_filters(): void
     {
         $admin = $this->actingAsAdmin();
         $church = Church::query()->firstOrFail();
 
         $response = $this->actingAs($admin)
             ->withSession(['working_church_id' => $church->id])
-            ->get(route('ministry-lead.volunteers.index', ['secao' => 'quadro']))
+            ->get(route('ministry-lead.volunteers.central'))
             ->assertOk();
 
         $response->assertInertia(fn ($page) => $page
-            ->where('filters.sort', 'name')
-            ->where('filters.sort_dir', 'asc'));
+            ->component('MinistryLeadVolunteers/ManagementCenter')
+            ->where('boardFilters.sort', 'name')
+            ->where('boardFilters.sort_dir', 'asc'));
     }
 
     public function test_pipeline_list_includes_ministry_phases_as_department_arrow_phase(): void
@@ -604,7 +604,7 @@ class VolunteerPipelineLeadTest extends TestCase
 
         $response = $this->actingAs($admin)
             ->withSession(['working_church_id' => $church->id])
-            ->get(route('ministry-lead.volunteers.index', ['secao' => 'quadro']))
+            ->get(route('ministry-lead.volunteers.central', ['ministerio' => $ministry->id]))
             ->assertOk();
 
         $row = collect($response->viewData('page')['props']['volunteers']['data'])
@@ -671,7 +671,7 @@ class VolunteerPipelineLeadTest extends TestCase
 
         $response = $this->actingAs($admin)
             ->withSession(['working_church_id' => $church->id])
-            ->get(route('ministry-lead.volunteers.index', ['secao' => 'quadro']))
+            ->get(route('ministry-lead.volunteers.central', ['ministerio' => $ministry->id]))
             ->assertOk();
 
         $forwardedRow = collect($response->viewData('page')['props']['volunteers']['data'])
@@ -717,8 +717,8 @@ class VolunteerPipelineLeadTest extends TestCase
 
         $response = $this->actingAs($admin)
             ->withSession(['working_church_id' => $church->id])
-            ->get(route('ministry-lead.volunteers.index', [
-                'secao' => 'quadro',
+            ->get(route('ministry-lead.volunteers.central', [
+                'ministerio' => $ministry->id,
                 'sort' => 'created_at',
                 'sort_dir' => 'desc',
             ]))

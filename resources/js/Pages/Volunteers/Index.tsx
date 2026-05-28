@@ -386,6 +386,7 @@ export default function Index({
         }
         const params = new URLSearchParams(window.location.search);
         const modal = params.get('modal');
+        const idParam = params.get('id');
         let changed = false;
         if (modal === 'create') {
             openCreateModal();
@@ -395,6 +396,59 @@ export default function Index({
             setPublicInviteModalOpen(true);
             params.delete('modal');
             changed = true;
+        } else if ((modal === 'edit' || modal === 'detail') && idParam) {
+            const id = Number(idParam);
+            if (!Number.isNaN(id) && id > 0) {
+                (async () => {
+                    try {
+                        const { data } = await axios.get<{ volunteer: VolunteerDetailData }>(
+                            detailUrlFromPattern(detailUrlPattern, id),
+                        );
+                        const snapshot = data.volunteer;
+                        if (modal === 'detail') {
+                            setDetailVolunteer(snapshot);
+                            setDetailOpen(true);
+                            return;
+                        }
+
+                        const row =
+                            volunteers.data.find((v) => v.id === id) ??
+                            ({
+                                id,
+                                name: snapshot.name,
+                                email: snapshot.email,
+                                phone: snapshot.phone,
+                                role: snapshot.role ?? null,
+                                active: snapshot.active ?? true,
+                                app_access_only: snapshot.app_access_only ?? false,
+                                ministries: snapshot.ministries ?? [],
+                                user: snapshot.user
+                                    ? {
+                                          id: snapshot.user.id,
+                                          email: snapshot.user.email,
+                                          is_ministry_leader: snapshot.user.is_ministry_leader,
+                                          status: snapshot.user.status ?? undefined,
+                                          birth_date: snapshot.user.birth_date ?? null,
+                                          photo_url: snapshot.user.photo_url ?? null,
+                                          phone: snapshot.user.phone ?? null,
+                                          notify_via_app: snapshot.user.notify_via_app ?? undefined,
+                                          notify_via_email: snapshot.user.notify_via_email ?? undefined,
+                                          notify_via_whatsapp: snapshot.user.notify_via_whatsapp ?? undefined,
+                                          roles: snapshot.user.roles ?? [],
+                                          ministry_ids: (snapshot.user.led_ministries ?? []).map((m) => m.id),
+                                      }
+                                    : null,
+                            } as Volunteer);
+                        openEditModal(row, snapshot);
+                    } catch {
+                        // Silencioso: deep-link é opcional; se falhar, fica na lista.
+                    }
+                })();
+
+                params.delete('modal');
+                params.delete('id');
+                changed = true;
+            }
         }
         if (changed) {
             const q = params.toString();
