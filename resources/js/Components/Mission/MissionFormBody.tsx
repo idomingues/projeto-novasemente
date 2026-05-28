@@ -3,9 +3,11 @@ import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
+import BrDateInput from '@/Components/BrDateInput';
 import TextInput from '@/Components/TextInput';
 import Textarea from '@/Components/Textarea';
 import { compressImageForUpload, ImageCompressError } from '@/utils/compressImageForUpload';
+import { todayIsoLocal } from '@/utils/brDate';
 import { findMissionFormIssue, missionErrorPage } from '@/utils/missionFormValidation';
 import { useForm } from '@inertiajs/react';
 import { FormEventHandler, MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -548,11 +550,11 @@ export default function MissionFormBody({ form, options, onSubmit, processing, f
                             />
                         </Question>
                         <Question number={2} label="Data do nascimento" error={errors.birth_date}>
-                            <TextInput
-                                type="date"
+                            <BrDateInput
                                 className="w-full max-w-xs"
                                 value={data.birth_date}
-                                onChange={(e) => setData('birth_date', e.target.value)}
+                                max={todayIsoLocal()}
+                                onChange={(iso) => setData('birth_date', iso)}
                             />
                         </Question>
                         <Question number={3} label="Número de telefone" error={errors.phone}>

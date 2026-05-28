@@ -4,6 +4,7 @@ import Modal from '@/Components/Modal';
 import PageHeader from '@/Components/PageHeader';
 import MissionAdminTabs from '@/Components/Mission/MissionAdminTabs';
 import Card from '@/Components/Card';
+import BrDateInput from '@/Components/BrDateInput';
 import TextInput from '@/Components/TextInput';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -954,20 +955,18 @@ export default function MissionIndex({
                                     </div>
                                     <div>
                                         <InputLabel value="Nascimento desde" />
-                                        <TextInput
-                                            type="date"
+                                        <BrDateInput
                                             className="mt-1"
                                             value={filterForm.data.birth_date_from}
-                                            onChange={(e) => filterForm.setData('birth_date_from', e.target.value)}
+                                            onChange={(iso) => filterForm.setData('birth_date_from', iso)}
                                         />
                                     </div>
                                     <div>
                                         <InputLabel value="Nascimento até" />
-                                        <TextInput
-                                            type="date"
+                                        <BrDateInput
                                             className="mt-1"
                                             value={filterForm.data.birth_date_to}
-                                            onChange={(e) => filterForm.setData('birth_date_to', e.target.value)}
+                                            onChange={(iso) => filterForm.setData('birth_date_to', iso)}
                                         />
                                     </div>
                                 </div>

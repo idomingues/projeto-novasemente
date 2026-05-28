@@ -498,6 +498,46 @@ export function mergeVolunteerSignupWithInitial(
     return applyVolunteerSignupBranchingCleanup(out);
 }
 
+export const VOLUNTEER_SIGNUP_PAGE_STORAGE_KEY = 'volunteer-signup-active-page';
+
+export function readVolunteerSignupStoredPage(): number | null {
+    if (typeof window === 'undefined') {
+        return null;
+    }
+    const raw = sessionStorage.getItem(VOLUNTEER_SIGNUP_PAGE_STORAGE_KEY);
+    if (raw === null) {
+        return null;
+    }
+    const page = parseInt(raw, 10);
+    return !Number.isNaN(page) && page >= 0 && page <= 3 ? page : null;
+}
+
+export function writeVolunteerSignupStoredPage(page: number): void {
+    if (typeof window === 'undefined' || page < 0 || page > 3) {
+        return;
+    }
+    sessionStorage.setItem(VOLUNTEER_SIGNUP_PAGE_STORAGE_KEY, String(page));
+}
+
+export function pageSlotForVolunteerSignupPage(visiblePages: number[], page: number): number {
+    const slot = visiblePages.indexOf(page);
+    return slot >= 0 ? slot : 0;
+}
+
+export function resolveVolunteerSignupInitialPageSlot(
+    visiblePages: number[],
+    resumePage?: number | null,
+): number {
+    if (resumePage !== null && resumePage !== undefined && visiblePages.includes(resumePage)) {
+        return pageSlotForVolunteerSignupPage(visiblePages, resumePage);
+    }
+    const stored = readVolunteerSignupStoredPage();
+    if (stored !== null && visiblePages.includes(stored)) {
+        return pageSlotForVolunteerSignupPage(visiblePages, stored);
+    }
+    return 0;
+}
+
 export function volunteerSignupMissingOnlyHref(): string {
     return `${route('volunteers.self-signup.edit')}?missing=1`;
 }

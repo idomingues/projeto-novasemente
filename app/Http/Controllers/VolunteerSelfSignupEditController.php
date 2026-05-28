@@ -111,6 +111,7 @@ class VolunteerSelfSignupEditController extends Controller
             'focusMissingOnly' => $focusMissingOnly,
             'missingFields' => $focusMissingOnly ? $completion['missing_fields'] : [],
             'signupCompletion' => $completion,
+            'resumePage' => $this->resolveResumePageFromQuery($request),
         ]);
     }
 
@@ -181,6 +182,8 @@ class VolunteerSelfSignupEditController extends Controller
             'professional_area' => ['nullable', 'string', 'max:5000'],
             'lgpd_data_consent' => ['required', 'boolean'],
             'redirect_after_save' => ['nullable', 'string', 'max:80'],
+            'focus_missing_only' => ['nullable', 'boolean'],
+            'resume_page' => ['nullable', 'integer', 'min:0', 'max:3'],
             'current_password' => ['required_with:password', 'current_password'],
             'password' => ['nullable', 'string', 'confirmed', Password::defaults()],
         ], UserProfilePhotoResolver::validationRules(required: ! $hasExistingPhoto)), [
@@ -300,8 +303,17 @@ class VolunteerSelfSignupEditController extends Controller
 
         $pendingLabels = VolunteerSignupCompletion::describeMissingFields($completion['missing_fields']);
 
+        $redirectParams = [];
+        if ($request->boolean('focus_missing_only')) {
+            $redirectParams['missing'] = 1;
+        }
+        $resumePage = (int) $request->input('resume_page', -1);
+        if ($resumePage >= 0 && $resumePage <= 3) {
+            $redirectParams['etapa'] = $resumePage + 1;
+        }
+
         return redirect()
-            ->route('volunteers.self-signup.edit', ['missing' => 1])
+            ->route('volunteers.self-signup.edit', $redirectParams)
             ->with(
                 'status',
                 $pendingLabels !== ''
@@ -414,6 +426,20 @@ class VolunteerSelfSignupEditController extends Controller
         }
 
         return 'mobile.profile.edit';
+    }
+
+    private function resolveResumePageFromQuery(Request $request): ?int
+    {
+        if (! $request->has('etapa')) {
+            return null;
+        }
+
+        $etapa = (int) $request->query('etapa');
+        if ($etapa >= 1 && $etapa <= 4) {
+            return $etapa - 1;
+        }
+
+        return null;
     }
 
     private function normalizeSignupBooleans(Request $request): void

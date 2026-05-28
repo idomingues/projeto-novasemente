@@ -4,6 +4,7 @@ import ProfilePhotoPicker from '@/Components/ProfilePhotoPicker';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import PasswordInput from '@/Components/PasswordInput';
+import BrDateInput from '@/Components/BrDateInput';
 import TextInput from '@/Components/TextInput';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { compressImageForUpload, ImageCompressError } from '@/utils/compressImageForUpload';
@@ -16,8 +17,10 @@ import {
     isVolunteerSignupFieldVisible,
     mergeVolunteerSignupWithInitial,
     resolveVolunteerSignupFieldPage,
+    resolveVolunteerSignupInitialPageSlot,
     visiblePagesForMissingFields,
     volunteerSignupErrorsForMissingFields,
+    writeVolunteerSignupStoredPage,
 } from '@/utils/volunteerSignupCompletion';
 import {
     clearVolunteerSignupDraft,
@@ -25,8 +28,10 @@ import {
     mapVolunteerSignupServerErrors,
     normalizeSignupBool,
     readVolunteerSignupDraft,
+    readVolunteerSignupDraftState,
     shouldAskVolunteerWhatsapp,
     splitVolunteerFullName,
+    volunteerSignupDraftHasAnswers,
     writeVolunteerSignupDraft,
     MIN_VOLUNTEER_SIGNUP_AGE,
     maxBirthDateForMinVolunteerAge,
@@ -92,6 +97,8 @@ interface Props {
     focusMissingOnly?: boolean;
     missingFields?: string[];
     signupCompletion?: VolunteerSignupCompletion;
+    /** Etapa lógica do questionário (0–3) vinda de `?etapa=` após salvar. */
+    resumePage?: number | null;
 }
 
 type AttendanceDuration =
@@ -195,11 +202,11 @@ function scrollToFirstError(errors: Record<string, string>) {
 function navigateToVolunteerSignupField(
     fieldKey: string,
     visiblePages: number[],
-    setPageSlot: (value: number | ((current: number) => number)) => void,
+    goToSlot: (slot: number) => void,
 ) {
     const pageNum = resolveVolunteerSignupFieldPage(fieldKey);
     const slot = visiblePages.indexOf(pageNum);
-    setPageSlot(slot >= 0 ? slot : 0);
+    goToSlot(slot >= 0 ? slot : 0);
     window.requestAnimationFrame(() => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
         const targetId = FIELD_SCROLL_TARGETS[fieldKey] ?? `field-${fieldKey}`;
@@ -453,8 +460,9 @@ function buildFormDefaults(
     token: string,
     initial: VolunteerSignupInitial | undefined,
     redirectAfterSave: string,
+    draftFields: ReturnType<typeof readVolunteerSignupDraft> | null,
 ) {
-    const draft = !isEdit ? readVolunteerSignupDraft(token) : null;
+    const draft = !isEdit ? draftFields : null;
     const base = initial ?? {
         full_name: '',
         first_name: '',
@@ -523,8 +531,14 @@ export default function PublicSignup({
     focusMissingOnly = false,
     missingFields: missingFieldsProp = [],
     signupCompletion,
+    resumePage = null,
 }: Props) {
     const isEdit = mode === 'edit';
+    const signupToken = token || '';
+    const guestDraftState = useMemo(
+        () => (isEdit ? null : readVolunteerSignupDraftState(signupToken)),
+        [isEdit, signupToken],
+    );
     const hasExistingPhoto = initial?.has_existing_photo === true;
     const backHref = cancelHref ?? (isEdit ? route('mobile.profile.edit') : route('more.index'));
     const savedInitialRef = useRef(initial);
@@ -556,7 +570,7 @@ export default function PublicSignup({
     const flashError = (inertiaPage.props as { flash?: { error?: string | null } }).flash?.error;
 
     const formDefaults = useMemo(
-        () => buildFormDefaults(isEdit, token, initial, redirectAfterSave),
+        () => buildFormDefaults(isEdit, signupToken, initial, redirectAfterSave, guestDraftState?.fields ?? null),
         // eslint-disable-next-line react-hooks/exhaustive-deps -- valores iniciais só na montagem
         [],
     );
@@ -598,19 +612,80 @@ export default function PublicSignup({
         [initial],
     );
 
-    const [pageSlot, setPageSlot] = useState(0);
+    const [photoPreview, setPhotoPreview] = useState<string | null>(() => {
+        if (isEdit) {
+            return initial?.photo_url ?? null;
+        }
+        return guestDraftState?.photoPreview ?? null;
+    });
+    const [showDraftRestoredBanner, setShowDraftRestoredBanner] = useState(
+        () => !isEdit && volunteerSignupDraftHasAnswers(guestDraftState?.fields),
+    );
+    const draftSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const [pageSlot, setPageSlot] = useState(() => {
+        const draftPage = guestDraftState?.page;
+        if (
+            !isEdit &&
+            (resumePage === null || resumePage === undefined) &&
+            draftPage !== null &&
+            draftPage !== undefined &&
+            visiblePages.includes(draftPage)
+        ) {
+            return visiblePages.indexOf(draftPage);
+        }
+        return resolveVolunteerSignupInitialPageSlot(visiblePages, resumePage);
+    });
     const page = visiblePages[pageSlot] ?? 0;
+    const activePageRef = useRef(page);
 
     const questionRange = useMemo(
         () => questionRangeForPage(questionNumberContext, page),
         [questionNumberContext, page],
     );
 
+    const goToPageSlot = useCallback(
+        (slot: number) => {
+            const clamped = Math.max(0, Math.min(lastVisiblePageIndex, slot));
+            const pageNum = visiblePages[clamped] ?? 0;
+            activePageRef.current = pageNum;
+            if (isEdit) {
+                writeVolunteerSignupStoredPage(pageNum);
+            } else {
+                writeVolunteerSignupDraft(signupToken, data, { page: pageNum, photoPreview });
+            }
+            setPageSlot(clamped);
+        },
+        [data, isEdit, lastVisiblePageIndex, photoPreview, signupToken, visiblePages],
+    );
+
     useEffect(() => {
-        if (pageSlot > lastVisiblePageIndex) {
-            setPageSlot(lastVisiblePageIndex);
+        activePageRef.current = page;
+    }, [page]);
+
+    useEffect(() => {
+        if (resumePage === null || resumePage === undefined) {
+            return;
         }
-    }, [lastVisiblePageIndex, pageSlot]);
+        const slot = visiblePages.indexOf(resumePage);
+        if (slot >= 0) {
+            goToPageSlot(slot);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- só ao carregar com ?etapa=
+    }, []);
+
+    useEffect(() => {
+        if (!isEdit) {
+            return;
+        }
+        const targetPage = activePageRef.current;
+        const slot = visiblePages.indexOf(targetPage);
+        if (slot >= 0) {
+            setPageSlot((current) => (current === slot ? current : slot));
+            return;
+        }
+        setPageSlot((current) => Math.min(current, lastVisiblePageIndex));
+    }, [isEdit, lastVisiblePageIndex, visiblePages]);
 
     useEffect(() => {
         if (!isEdit) return;
@@ -640,7 +715,6 @@ export default function PublicSignup({
         );
         setStepBlocked(true);
     }, [isEdit, initial?.full_name, data.full_name]);
-    const [photoPreview, setPhotoPreview] = useState<string | null>(initial?.photo_url ?? null);
     const [photoPreparing, setPhotoPreparing] = useState(false);
     const [photoClientError, setPhotoClientError] = useState<string | null>(null);
     const [nameDuplicateHint, setNameDuplicateHint] = useState<string | null>(null);
@@ -688,10 +762,33 @@ export default function PublicSignup({
         clearClientError(field);
     };
 
+    const flushGuestDraft = useCallback(() => {
+        if (isEdit || processing) return;
+        writeVolunteerSignupDraft(signupToken, data, {
+            page: visiblePages[pageSlot] ?? 0,
+            photoPreview,
+        });
+    }, [data, isEdit, pageSlot, photoPreview, processing, signupToken, visiblePages]);
+
     useEffect(() => {
         if (isEdit || processing) return;
-        writeVolunteerSignupDraft(data.token || token, data);
-    }, [data, isEdit, processing, token]);
+        if (draftSaveTimerRef.current) clearTimeout(draftSaveTimerRef.current);
+        draftSaveTimerRef.current = setTimeout(() => flushGuestDraft(), 400);
+        return () => {
+            if (draftSaveTimerRef.current) clearTimeout(draftSaveTimerRef.current);
+        };
+    }, [flushGuestDraft, isEdit, processing]);
+
+    useEffect(() => {
+        if (isEdit) return;
+        const onHide = () => flushGuestDraft();
+        window.addEventListener('pagehide', onHide);
+        window.addEventListener('beforeunload', onHide);
+        return () => {
+            window.removeEventListener('pagehide', onHide);
+            window.removeEventListener('beforeunload', onHide);
+        };
+    }, [flushGuestDraft, isEdit]);
 
     const buildPreparedPayload = useCallback(
         (formData: typeof data) => {
@@ -746,7 +843,7 @@ export default function PublicSignup({
                     setClientErrors({ full_name: 'Informe o nome completo (nome e sobrenome).' });
                     setStepBlocked(true);
                     setShowSubmitErrors(true);
-                    navigateToVolunteerSignupField('full_name', visiblePages, setPageSlot);
+                    navigateToVolunteerSignupField('full_name', visiblePages, goToPageSlot);
                     setAutosaveMessage('Complete o nome (nome e sobrenome) antes de salvar as outras respostas.');
                     setAutosaveStatus('error');
                 }
@@ -771,7 +868,7 @@ export default function PublicSignup({
                         setStepBlocked(true);
                         setShowSubmitErrors(true);
                         const firstKey = firstVolunteerSignupErrorKey(mapped);
-                        if (firstKey) navigateToVolunteerSignupField(firstKey, visiblePages, setPageSlot);
+                        if (firstKey) navigateToVolunteerSignupField(firstKey, visiblePages, goToPageSlot);
                     }
                     setAutosaveMessage('Não foi possível salvar agora. Verifique o campo destacado.');
                 } else {
@@ -782,7 +879,7 @@ export default function PublicSignup({
                 autosaveInFlightRef.current = false;
             }
         },
-        [applyAutosaveResponse, buildPreparedPayload, data, isEdit, visiblePages],
+        [applyAutosaveResponse, buildPreparedPayload, data, goToPageSlot, isEdit, visiblePages],
     );
 
     const applyServerValidationErrors = useCallback(
@@ -796,12 +893,12 @@ export default function PublicSignup({
             setStepBlocked(true);
             const firstKey = firstVolunteerSignupErrorKey(mapped);
             if (firstKey) {
-                navigateToVolunteerSignupField(firstKey, visiblePages, setPageSlot);
+                navigateToVolunteerSignupField(firstKey, visiblePages, goToPageSlot);
             } else {
                 scrollToFirstError(mapped);
             }
         },
-        [visiblePages],
+        [goToPageSlot, visiblePages],
     );
 
     const runDuplicateCheck = useCallback(async () => {
@@ -1015,7 +1112,7 @@ export default function PublicSignup({
             });
             setStepBlocked(false);
             dismissSubmitErrors();
-            setPageSlot((current) => Math.min(lastVisiblePageIndex, current + 1));
+            goToPageSlot(pageSlot + 1);
             window.scrollTo({ top: 0, behavior: 'smooth' });
         } finally {
             setAdvancing(false);
@@ -1025,7 +1122,7 @@ export default function PublicSignup({
     const goBack = () => {
         setStepBlocked(false);
         setClientErrors({});
-        setPageSlot((current) => Math.max(0, current - 1));
+        goToPageSlot(pageSlot - 1);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -1040,7 +1137,7 @@ export default function PublicSignup({
                 setClientErrors(pageErrors);
                 setStepBlocked(true);
                 setShowSubmitErrors(true);
-                setPageSlot(slot);
+                goToPageSlot(slot);
                 scrollToFirstError(pageErrors);
                 return;
             }
@@ -1050,10 +1147,10 @@ export default function PublicSignup({
         if (!parts) {
             const nameErrors = { full_name: 'Informe o nome completo.' };
             setClientErrors(nameErrors);
-            setPageSlot(0);
+            goToPageSlot(0);
             setStepBlocked(true);
             setShowSubmitErrors(true);
-            navigateToVolunteerSignupField('full_name', visiblePages, setPageSlot);
+            navigateToVolunteerSignupField('full_name', visiblePages, goToPageSlot);
             return;
         }
 
@@ -1069,6 +1166,8 @@ export default function PublicSignup({
                 delete prepared.password;
                 delete prepared.password_confirmation;
             }
+            prepared.focus_missing_only = focusMissingOnly;
+            prepared.resume_page = visiblePages[pageSlot] ?? 0;
         }
         if (focusMissingOnly && initial) {
             prepared = mergeVolunteerSignupWithInitial(prepared, initial, missingFields);
@@ -1099,7 +1198,7 @@ export default function PublicSignup({
             setShowSubmitErrors(true);
             const firstPending = firstVolunteerSignupErrorKey(pendingErrors);
             if (firstPending) {
-                navigateToVolunteerSignupField(firstPending, visiblePages, setPageSlot);
+                navigateToVolunteerSignupField(firstPending, visiblePages, goToPageSlot);
             }
             return;
         }
@@ -1119,7 +1218,7 @@ export default function PublicSignup({
             },
             onSuccess: () => {
                 if (!isEdit) {
-                    clearVolunteerSignupDraft(data.token || token);
+                    clearVolunteerSignupDraft(signupToken);
                 }
             },
         };
@@ -1217,7 +1316,13 @@ export default function PublicSignup({
                                 ) : isEdit ? (
                                     'Complete ou corrija suas informações de voluntário. Os dados ajudam a equipe a conhecê-lo melhor e encaminhar oportunidades de serviço.'
                                 ) : (
-                                    'Preencha seus dados para informar seu interesse em ser voluntário da Nova Semente.'
+                                    <>
+                                        Preencha seus dados para informar seu interesse em ser voluntário da Nova Semente.{' '}
+                                        <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                                            Suas respostas ficam salvas neste aparelho enquanto você preenche — pode fechar e
+                                            voltar depois.
+                                        </span>
+                                    </>
                                 )}
                             </p>
                         </div>
@@ -1226,6 +1331,25 @@ export default function PublicSignup({
                         <span className="font-semibold">*</span> Obrigatória
                     </p>
                 </header>
+
+                {showDraftRestoredBanner ? (
+                    <div
+                        className="mb-4 flex flex-wrap items-start justify-between gap-3 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-950 dark:border-teal-900/50 dark:bg-teal-950/35 dark:text-teal-100"
+                        role="status"
+                    >
+                        <p>
+                            <span className="font-semibold">Continuamos de onde você parou.</span> Suas respostas foram
+                            recuperadas deste aparelho.
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => setShowDraftRestoredBanner(false)}
+                            className="shrink-0 text-xs font-semibold text-teal-800 underline underline-offset-2 dark:text-teal-200"
+                        >
+                            Ok
+                        </button>
+                    </div>
+                ) : null}
 
                 {flashError ? (
                     <div
@@ -1296,10 +1420,11 @@ export default function PublicSignup({
                                     setNameDuplicateHint(null);
                                     setEmailDuplicateHint(null);
                                     setPhoneDuplicateHint(null);
-                                    setPageSlot(0);
+                                    goToPageSlot(0);
                                     setPhotoPreview(initial?.photo_url ?? null);
                                     if (!isEdit) {
-                                        clearVolunteerSignupDraft(data.token || token);
+                                        clearVolunteerSignupDraft(signupToken);
+                                        setShowDraftRestoredBanner(false);
                                     }
                                     reset();
                                 }}
@@ -1367,13 +1492,12 @@ export default function PublicSignup({
                                 ) : null}
                                 {showField('birth_date') ? (
                                 <Question fieldKey="birth_date" number={qn('birth_date')} label="Data de nascimento" error={err('birth_date')}>
-                                    <TextInput
-                                        type="date"
+                                    <BrDateInput
                                         className="w-full max-w-xs"
                                         value={data.birth_date}
                                         max={maxBirthDate}
-                                        onChange={(e) => {
-                                            setData('birth_date', e.target.value);
+                                        onChange={(iso) => {
+                                            setData('birth_date', iso);
                                             clearClientError('birth_date');
                                         }}
                                         onBlur={() => {

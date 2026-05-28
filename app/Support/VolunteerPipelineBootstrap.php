@@ -27,6 +27,7 @@ class VolunteerPipelineBootstrap
     public const ADMIN_WORKFLOW_STAGE_NAMES = [
         'interessado',
         'encaminhado',
+        'atuante',
         'finalizado',
     ];
 
@@ -132,7 +133,7 @@ class VolunteerPipelineBootstrap
     }
 
     /**
-     * ID da fase principal (adm): só retorna valor se estiver entre Interessado/Encaminhado/Finalizado.
+     * ID da fase principal (adm): só retorna valor se estiver entre as macro-fases permitidas.
      */
     public static function resolveAdminWorkflowStageId(int $churchId, ?int $adminWorkflowStageId): ?int
     {
@@ -155,7 +156,7 @@ class VolunteerPipelineBootstrap
 
     /**
      * Fase principal para exibição: valor explícito (admin_workflow_stage_id) ou stage_id
-     * quando corresponder a Interessado / Encaminhado / Finalizado.
+     * quando corresponder a uma macro-fase permitida.
      */
     public static function effectiveAdminWorkflowStageId(int $churchId, ?int $adminWorkflowStageId, ?int $pipelineStageId): ?int
     {
@@ -249,6 +250,60 @@ class VolunteerPipelineBootstrap
     }
 
     /**
+     * Garante a fase «Atuante» para o status geral do adm.
+     */
+    public static function ensureAtuanteStageForChurch(int $churchId): void
+    {
+        if (! Schema::hasTable('volunteer_pipeline_stages')) {
+            return;
+        }
+
+        $exists = VolunteerPipelineStage::query()
+            ->where('church_id', $churchId)
+            ->whereRaw('LOWER(TRIM(name)) = ?', ['atuante'])
+            ->exists();
+
+        if ($exists) {
+            return;
+        }
+
+        $encaminhadoSort = VolunteerPipelineStage::query()
+            ->where('church_id', $churchId)
+            ->whereRaw('LOWER(TRIM(name)) = ?', ['encaminhado'])
+            ->orderBy('sort_order')
+            ->value('sort_order');
+
+        $finalizadoSort = VolunteerPipelineStage::query()
+            ->where('church_id', $churchId)
+            ->whereRaw('LOWER(TRIM(name)) = ?', ['finalizado'])
+            ->orderBy('sort_order')
+            ->value('sort_order');
+
+        if ($encaminhadoSort !== null && $finalizadoSort !== null) {
+            $sortOrder = (int) floor(((int) $encaminhadoSort + (int) $finalizadoSort) / 2);
+            if ($sortOrder <= (int) $encaminhadoSort) {
+                $sortOrder = (int) $encaminhadoSort + 1;
+            }
+            if ($sortOrder >= (int) $finalizadoSort) {
+                $sortOrder = (int) $finalizadoSort - 1;
+            }
+        } elseif ($finalizadoSort !== null) {
+            $sortOrder = max(0, (int) $finalizadoSort - 1);
+        } elseif ($encaminhadoSort !== null) {
+            $sortOrder = (int) $encaminhadoSort + 2;
+        } else {
+            $maxSort = (int) VolunteerPipelineStage::query()->where('church_id', $churchId)->max('sort_order');
+            $sortOrder = $maxSort > 0 ? $maxSort + 10 : 45;
+        }
+
+        VolunteerPipelineStage::query()->create([
+            'church_id' => $churchId,
+            'name' => 'Atuante',
+            'sort_order' => $sortOrder,
+        ]);
+    }
+
+    /**
      * Garante a fase «Finalizado» para o status geral do adm.
      */
     public static function ensureFinalizadoStageForChurch(int $churchId): void
@@ -288,6 +343,7 @@ class VolunteerPipelineBootstrap
 
         self::seedDefaultStagesForChurch($churchId);
         self::ensureFinalizadoStageForChurch($churchId);
+        self::ensureAtuanteStageForChurch($churchId);
         self::ensureRecusaStagesForChurch($churchId);
 
         $allowed = self::ADMIN_WORKFLOW_STAGE_NAMES;

@@ -194,4 +194,29 @@ class VolunteerSelfSignupEditTest extends TestCase
 
         $this->assertTrue(Hash::check('senhaAtual123', $user->fresh()->password));
     }
+
+    public function test_edit_passes_resume_page_from_etapa_query(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class, MinistrySeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+
+        $user = User::factory()->create([
+            'church_id' => $churchId,
+            'is_volunteer' => true,
+            'name' => 'Ana Costa',
+            'email' => 'ana.resume@example.com',
+            'photo_url' => 'https://example.com/photos/ana.jpg',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('volunteers.self-signup.edit', ['etapa' => 2]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->where('resumePage', 1));
+
+        $this->actingAs($user)
+            ->get(route('volunteers.self-signup.edit', ['etapa' => 4]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->where('resumePage', 3));
+    }
 }

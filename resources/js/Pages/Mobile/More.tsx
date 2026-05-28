@@ -36,6 +36,13 @@ interface Props {
 }
 
 const items: MoreMenuItem[] = [
+    { name: 'Bíblia', description: 'Leitura e busca de versículos', route: 'mobile.bible', icon: BookOpenIcon },
+    {
+        name: 'Ano Bíblico',
+        description: 'Escolha um plano de leitura e acompanhe o seu progresso.',
+        route: 'mobile.ano-biblico',
+        icon: AcademicCapIcon,
+    },
     { name: 'Notícias', description: 'Notícias e comunicados da igreja', route: 'mobile.news', icon: NewspaperIcon },
     { name: 'Saúde', description: 'Conteúdos de saúde e bem-estar', route: 'mobile.health', icon: HeartIcon },
     { name: 'Missão', description: 'Eventos, depoimentos, mural e cadastro missionário', route: 'mobile.mission', icon: GlobeAltIcon },
@@ -62,13 +69,6 @@ const items: MoreMenuItem[] = [
         description: 'Álbum de fotos',
         route: 'mobile.fotos',
         icon: PhotoIcon,
-    },
-    { name: 'Bíblia', description: 'Leitura e busca de versículos', route: 'mobile.bible', icon: BookOpenIcon },
-    {
-        name: 'Ano Bíblico',
-        description: 'Escolha um plano de leitura e acompanhe o seu progresso.',
-        route: 'mobile.ano-biblico',
-        icon: AcademicCapIcon,
     },
     { name: 'Biblioteca', description: 'Livros e PDFs para leitura e download', route: 'mobile.biblioteca', icon: BookOpenIcon },
     { name: 'Localização', description: 'Endereço e mapa da igreja', route: 'mobile.location', icon: MapPinIcon },

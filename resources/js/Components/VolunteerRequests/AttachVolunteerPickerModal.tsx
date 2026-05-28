@@ -4,6 +4,7 @@ import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import SelectInput from '@/Components/SelectInput';
+import BrDateInput from '@/Components/BrDateInput';
 import TextInput from '@/Components/TextInput';
 import { useForm, usePage } from '@inertiajs/react';
 import {
@@ -520,20 +521,18 @@ export default function AttachVolunteerPickerModal({ open, onClose, pickerUrl, o
                                             </div>
                                             <div>
                                                 <InputLabel value="Nascimento desde" />
-                                                <TextInput
-                                                    type="date"
+                                                <BrDateInput
                                                     className="mt-1"
                                                     value={filterForm.data.birth_date_from}
-                                                    onChange={(e) => filterForm.setData('birth_date_from', e.target.value)}
+                                                    onChange={(iso) => filterForm.setData('birth_date_from', iso)}
                                                 />
                                             </div>
                                             <div>
                                                 <InputLabel value="Nascimento até" />
-                                                <TextInput
-                                                    type="date"
+                                                <BrDateInput
                                                     className="mt-1"
                                                     value={filterForm.data.birth_date_to}
-                                                    onChange={(e) => filterForm.setData('birth_date_to', e.target.value)}
+                                                    onChange={(iso) => filterForm.setData('birth_date_to', iso)}
                                                 />
                                             </div>
                                             <div>

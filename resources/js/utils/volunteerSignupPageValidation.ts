@@ -218,43 +218,16 @@ export function computeVolunteerSignupPageErrors({
     return next;
 }
 
-const DRAFT_PREFIX = 'volunteer-signup-draft:';
-
-export function volunteerSignupDraftKey(token: string): string {
-    return `${DRAFT_PREFIX}${token || 'public'}`;
-}
-
-type DraftPayload = Omit<
-    VolunteerSignupFormSlice,
-    'photo_file' | 'password' | 'password_confirmation' | 'current_password'
->;
-
-export function readVolunteerSignupDraft(token: string): Partial<DraftPayload> | null {
-    if (typeof window === 'undefined') return null;
-    try {
-        const raw = sessionStorage.getItem(volunteerSignupDraftKey(token));
-        if (!raw) return null;
-        const parsed = JSON.parse(raw) as Partial<DraftPayload>;
-        return parsed && typeof parsed === 'object' ? parsed : null;
-    } catch {
-        return null;
-    }
-}
-
-export function writeVolunteerSignupDraft(token: string, data: VolunteerSignupFormSlice): void {
-    if (typeof window === 'undefined') return;
-    const { photo_file: _photo, password: _p, password_confirmation: _pc, current_password: _cp, ...rest } = data;
-    try {
-        sessionStorage.setItem(volunteerSignupDraftKey(token), JSON.stringify(rest));
-    } catch {
-        // quota exceeded — ignorar
-    }
-}
-
-export function clearVolunteerSignupDraft(token: string): void {
-    if (typeof window === 'undefined') return;
-    sessionStorage.removeItem(volunteerSignupDraftKey(token));
-}
+export {
+    canStoreVolunteerSignupPhotoPreview,
+    clearVolunteerSignupDraft,
+    readVolunteerSignupDraft,
+    readVolunteerSignupDraftState,
+    volunteerSignupDraftHasAnswers,
+    volunteerSignupDraftKey,
+    writeVolunteerSignupDraft,
+} from '@/utils/volunteerSignupLocalDraft';
+export type { VolunteerSignupDraftEnvelope, VolunteerSignupDraftState } from '@/utils/volunteerSignupLocalDraft';
 
 const FULL_NAME_SERVER_MESSAGE = 'Informe o nome completo (nome e sobrenome).';
 

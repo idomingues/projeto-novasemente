@@ -28,7 +28,7 @@ type Props = {
     totalCount?: number;
 };
 
-const ADMIN_WORKFLOW_NAMES = new Set(['interessado', 'encaminhado', 'finalizado']);
+const ADMIN_WORKFLOW_NAMES = new Set(['interessado', 'encaminhado', 'atuante', 'finalizado']);
 
 function isAdminWorkflowStage(name: string): boolean {
     return ADMIN_WORKFLOW_NAMES.has(name.trim().toLowerCase());

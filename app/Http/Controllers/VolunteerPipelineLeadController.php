@@ -186,6 +186,7 @@ class VolunteerPipelineLeadController extends Controller
         $pipe = $volunteer->churchPipelines->firstWhere('church_id', $churchId);
 
         VolunteerPipelineBootstrap::ensureFinalizadoStageForChurch($churchId);
+        VolunteerPipelineBootstrap::ensureAtuanteStageForChurch($churchId);
         VolunteerPipelineBootstrap::ensureRecusaStagesForChurch($churchId);
 
         $isAdminWorkflow = $request->user()?->can('volunteers.manage') === true;

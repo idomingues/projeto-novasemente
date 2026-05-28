@@ -15,6 +15,7 @@ import PageHeader from '@/Components/PageHeader';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import PasswordInput from '@/Components/PasswordInput';
+import BrDateInput from '@/Components/BrDateInput';
 import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
@@ -1217,12 +1218,11 @@ export default function Index({
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div>
                                     <InputLabel htmlFor="birth_date" value="Data de nascimento (opcional)" className="mb-1" />
-                                    <TextInput
+                                    <BrDateInput
                                         id="birth_date"
-                                        type="date"
                                         className="block w-full"
                                         value={data.birth_date}
-                                        onChange={(e) => setData('birth_date', e.target.value)}
+                                        onChange={(iso) => setData('birth_date', iso)}
                                     />
                                     <InputError message={errors.birth_date} className="mt-2" />
                                 </div>

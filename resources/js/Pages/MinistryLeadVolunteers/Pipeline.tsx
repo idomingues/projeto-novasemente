@@ -4,6 +4,7 @@ import Modal from '@/Components/Modal';
 import Card from '@/Components/Card';
 import PageHeader from '@/Components/PageHeader';
 import { titleBarAddIconClass } from '@/Components/AddButton';
+import BrDateInput from '@/Components/BrDateInput';
 import TextInput from '@/Components/TextInput';
 import Textarea from '@/Components/Textarea';
 import InputLabel from '@/Components/InputLabel';
@@ -1317,20 +1318,18 @@ export default function Pipeline({
                                     </div>
                                     <div>
                                         <InputLabel value="Nascimento desde" />
-                                        <TextInput
-                                            type="date"
+                                        <BrDateInput
                                             className="mt-1"
                                             value={filterForm.data.birth_date_from}
-                                            onChange={(e) => filterForm.setData('birth_date_from', e.target.value)}
+                                            onChange={(iso) => filterForm.setData('birth_date_from', iso)}
                                         />
                                     </div>
                                     <div>
                                         <InputLabel value="Nascimento até" />
-                                        <TextInput
-                                            type="date"
+                                        <BrDateInput
                                             className="mt-1"
                                             value={filterForm.data.birth_date_to}
-                                            onChange={(e) => filterForm.setData('birth_date_to', e.target.value)}
+                                            onChange={(iso) => filterForm.setData('birth_date_to', iso)}
                                         />
                                     </div>
                                     <div>

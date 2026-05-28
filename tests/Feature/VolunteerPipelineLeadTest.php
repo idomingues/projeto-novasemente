@@ -506,6 +506,57 @@ class VolunteerPipelineLeadTest extends TestCase
         $this->assertSame((int) $finalizadoId, (int) $pipe->stage_id);
     }
 
+    public function test_admin_can_set_atuante_as_admin_workflow_stage(): void
+    {
+        $admin = $this->actingAsAdmin();
+        $church = Church::query()->firstOrFail();
+        $ministry = Ministry::query()->where('church_id', $church->id)->firstOrFail();
+
+        \App\Support\VolunteerPipelineBootstrap::ensureAtuanteStageForChurch((int) $church->id);
+
+        $atuanteId = \App\Models\VolunteerPipelineStage::query()
+            ->where('church_id', $church->id)
+            ->whereRaw('LOWER(TRIM(name)) = ?', ['atuante'])
+            ->value('id');
+
+        $this->assertNotNull($atuanteId);
+
+        $this->actingAs($admin)->post('/volunteers', [
+            'name' => 'Fase Principal Atuante',
+            'email' => 'fase.principal.atuante@example.com',
+            'ministry_ids' => [$ministry->id],
+            'active' => '1',
+            'app_password' => 'secret123',
+            'app_password_confirmation' => 'secret123',
+        ]);
+
+        $volunteer = Volunteer::query()->where('email', 'fase.principal.atuante@example.com')->firstOrFail();
+
+        $this->actingAs($admin)
+            ->patch(route('ministry-lead.volunteers.pipeline.stage', $volunteer), [
+                'stage_id' => (int) $atuanteId,
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $pipe = \App\Models\VolunteerChurchPipeline::query()
+            ->where('volunteer_id', $volunteer->id)
+            ->where('church_id', $church->id)
+            ->firstOrFail();
+
+        $this->assertSame((int) $atuanteId, (int) $pipe->admin_workflow_stage_id);
+        $this->assertSame((int) $atuanteId, (int) $pipe->stage_id);
+
+        $response = $this->actingAs($admin)->getJson(
+            route('ministry-lead.volunteers.pipeline.detail', $volunteer),
+        );
+
+        $response->assertOk();
+        $response->assertJsonPath('pipeline.adminWorkflowStageId', (int) $atuanteId);
+        $stageNames = collect($response->json('stages'))->pluck('name')->map(fn ($n) => mb_strtolower(trim((string) $n)))->all();
+        $this->assertContains('atuante', $stageNames);
+    }
+
     public function test_pipeline_index_exposes_default_sort_in_filters(): void
     {
         $admin = $this->actingAsAdmin();
