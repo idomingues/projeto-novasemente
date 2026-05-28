@@ -1,5 +1,8 @@
 import AddButton from '@/Components/AddButton';
 import Card from '@/Components/Card';
+import CommunicationRequestsKanban, {
+    type CommunicationKanbanRow,
+} from '@/Components/CommunicationRequests/CommunicationRequestsKanban';
 import CommunicationRequestDetailsBlock, {
     type CommunicationDetailsPayload,
 } from '@/Components/CommunicationRequests/CommunicationRequestDetailsBlock';
@@ -17,6 +20,7 @@ import PersonListIdentity from '@/Components/PersonListIdentity';
 import PersonModalHeader from '@/Components/PersonModalHeader';
 import SolicitationDetailPanel, { type SolicitationDetailPanelProps } from '@/Components/Solicitations/SolicitationDetailPanel';
 import TextInput from '@/Components/TextInput';
+import ListViewModeToggle from '@/Components/ListViewModeToggle';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { confirmAction } from '@/utils/confirmDialog';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
@@ -24,6 +28,8 @@ import { ArchiveBoxIcon, ChatBubbleLeftRightIcon, ChevronRightIcon, FunnelIcon, 
 import { FormEventHandler, useCallback, useMemo, useRef, useState } from 'react';
 import ListSearchHint from '@/Components/ListSearchHint';
 import { useDebouncedServerSearch } from '@/hooks/useDebouncedServerSearch';
+import { usePersistedViewMode } from '@/hooks/usePersistedViewMode';
+import type { ListKanbanViewMode } from '@/utils/persistedViewMode';
 
 type CommunicationRow = {
     id: number;
@@ -103,6 +109,7 @@ export default function CommunicationRequestsIndex({
     const page = usePage();
     const csrf = (page.props as { csrf_token?: string }).csrf_token ?? '';
 
+    const [viewMode, setViewMode] = usePersistedViewMode('ns-communication-requests-view', 'list');
     const [requestModalOpen, setRequestModalOpen] = useState(false);
     const [panelOpen, setPanelOpen] = useState(false);
     const [panelRow, setPanelRow] = useState<CommunicationRow | null>(null);
@@ -134,6 +141,8 @@ export default function CommunicationRequestsIndex({
             ? 'Fila central da Comunicação: organize demandas por tipo, prioridade e status.'
             : 'Abra e acompanhe seus pedidos para a equipe de Comunicação.';
 
+    const effectiveViewMode: ListKanbanViewMode = canManage && filters.arquivados ? 'list' : (viewMode as ListKanbanViewMode);
+
     const statusOptions = useMemo(
         () => [
             { value: '', label: 'Todos os status' },
@@ -143,6 +152,11 @@ export default function CommunicationRequestsIndex({
             { value: 'cancelled', label: 'Cancelado' },
         ],
         [],
+    );
+
+    const kanbanColumns = useMemo(
+        () => statusOptions.filter((o) => o.value !== '').map((o) => ({ value: o.value, label: o.label })),
+        [statusOptions],
     );
 
     const filtersRef = useRef(filters);
@@ -180,6 +194,30 @@ export default function CommunicationRequestsIndex({
     const goToListTab = (arquivados: boolean) => {
         applyFilters({ arquivados });
     };
+
+    const openPanelById = (id: number) => {
+        const row = rows.find((r) => r.id === id);
+        if (!row) return;
+        void openPanel(row);
+    };
+
+    const updateUrl = useCallback((id: number) => route('communication-requests.update', { solicitation: id }), []);
+
+    const kanbanRows: CommunicationKanbanRow[] = useMemo(
+        () =>
+            rows.map((r) => ({
+                id: r.id,
+                subject: r.subject,
+                message_preview: r.message_preview,
+                status: r.status,
+                status_label: r.status_label,
+                demand_type_label: r.demand_type_label,
+                priority_label: r.priority_label,
+                requester_name: r.requester_name,
+                can_edit: r.can_edit,
+            })),
+        [rows],
+    );
 
     const openRequestModal = () => {
         form.reset();
@@ -297,9 +335,14 @@ export default function CommunicationRequestsIndex({
                 title={pageTitle}
                 subtitle={subtitle}
                 actions={
-                    <AddButton variant="icon" onClick={openRequestModal}>
-                        Nova solicitação
-                    </AddButton>
+                    <div className="flex flex-wrap items-center gap-2">
+                        {canManage && !filters.arquivados ? (
+                            <ListViewModeToggle value={viewMode as ListKanbanViewMode} onChange={setViewMode} />
+                        ) : null}
+                        <AddButton variant="icon" onClick={openRequestModal}>
+                            Nova solicitação
+                        </AddButton>
+                    </div>
                 }
             />
 
@@ -381,61 +424,76 @@ export default function CommunicationRequestsIndex({
                 </div>
             </Card>
 
-            <div className="space-y-3">
-                {rows.length === 0 ? (
-                    <Card className="p-10 text-center text-sm text-zinc-600 dark:text-zinc-400">
-                        Ainda não há solicitações de comunicação.
-                    </Card>
-                ) : (
-                    rows.map((row) => (
-                        <button
-                            key={row.id}
-                            type="button"
-                            onClick={() => void openPanel(row)}
-                            aria-label={`Abrir solicitação: ${row.subject}`}
-                            className="group w-full cursor-pointer touch-manipulation rounded-2xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50 active:scale-[0.998] dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/40 sm:p-5"
-                        >
-                            <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0 flex-1">
-                                    {row.requester_name ? (
-                                        <div className="mb-3">
-                                            <PersonListIdentity
-                                                name={row.requester_name}
-                                                photoUrl={row.requester_photo_url}
-                                                nameClassName="font-semibold text-zinc-900 dark:text-white"
+            {effectiveViewMode === 'kanban' ? (
+                <CommunicationRequestsKanban
+                    columns={kanbanColumns}
+                    rows={kanbanRows}
+                    canManage={canManage}
+                    updateUrl={updateUrl}
+                    onOpenRow={openPanelById}
+                />
+            ) : (
+                <div className="space-y-3">
+                    {rows.length === 0 ? (
+                        <Card className="p-10 text-center text-sm text-zinc-600 dark:text-zinc-400">
+                            Ainda não há solicitações de comunicação.
+                        </Card>
+                    ) : (
+                        rows.map((row) => (
+                            <button
+                                key={row.id}
+                                type="button"
+                                onClick={() => void openPanel(row)}
+                                aria-label={`Abrir solicitação: ${row.subject}`}
+                                className="group w-full cursor-pointer touch-manipulation rounded-2xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50 active:scale-[0.998] dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/40 sm:p-5"
+                            >
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0 flex-1">
+                                        {row.requester_name ? (
+                                            <div className="mb-3">
+                                                <PersonListIdentity
+                                                    name={row.requester_name}
+                                                    photoUrl={row.requester_photo_url}
+                                                    nameClassName="font-semibold text-zinc-900 dark:text-white"
+                                                />
+                                            </div>
+                                        ) : null}
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <ChatBubbleLeftRightIcon
+                                                className="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-400"
+                                                aria-hidden
                                             />
+                                            <span className="text-base font-semibold text-zinc-900 dark:text-white">
+                                                {row.subject}
+                                            </span>
+                                            <span className="inline-flex rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800/70 dark:text-zinc-300">
+                                                {row.status_label}
+                                            </span>
                                         </div>
-                                    ) : null}
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <ChatBubbleLeftRightIcon className="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-400" aria-hidden />
-                                        <span className="text-base font-semibold text-zinc-900 dark:text-white">{row.subject}</span>
-                                        <span className="inline-flex rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800/70 dark:text-zinc-300">
-                                            {row.status_label}
-                                        </span>
+                                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+                                            <span>{row.demand_type_label}</span>
+                                            <span>Prioridade: {row.priority_label}</span>
+                                            {row.event_date ? <span>Evento: {row.event_date}</span> : null}
+                                            {row.ministry_name ? <span>{row.ministry_name}</span> : null}
+                                            {row.preferred_date ? <span>Prazo: {row.preferred_date}</span> : null}
+                                        </div>
+                                        <p className="mt-2 line-clamp-3 whitespace-pre-wrap text-sm text-zinc-700 dark:text-zinc-200">
+                                            {row.message_preview}
+                                        </p>
+                                        <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                                            Criado em: {dateLabel(row.created_at)}
+                                        </p>
                                     </div>
-                                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
-                                        <span>{row.demand_type_label}</span>
-                                        <span>Prioridade: {row.priority_label}</span>
-                                        {row.event_date ? <span>Evento: {row.event_date}</span> : null}
-                                        {row.ministry_name ? <span>{row.ministry_name}</span> : null}
-                                        {row.preferred_date ? <span>Prazo: {row.preferred_date}</span> : null}
-                                    </div>
-                                    <p className="mt-2 line-clamp-3 whitespace-pre-wrap text-sm text-zinc-700 dark:text-zinc-200">
-                                        {row.message_preview}
-                                    </p>
-                                    <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                                        Criado em: {dateLabel(row.created_at)}
-                                    </p>
+                                    <ChevronRightIcon
+                                        className="h-5 w-5 shrink-0 text-zinc-400 transition-transform group-hover:translate-x-0.5 group-hover:text-zinc-600 dark:text-zinc-500 dark:group-hover:text-zinc-300"
+                                        aria-hidden
+                                    />
                                 </div>
-                                <ChevronRightIcon
-                                    className="h-5 w-5 shrink-0 text-zinc-400 transition-transform group-hover:translate-x-0.5 group-hover:text-zinc-600 dark:text-zinc-500 dark:group-hover:text-zinc-300"
-                                    aria-hidden
-                                />
-                            </div>
-                        </button>
-                    ))
-                )}
-            </div>
+                            </button>
+                        ))
+                    )}
+                </div>
+            )}
 
             <Modal
                 show={requestModalOpen}

@@ -15,8 +15,8 @@ import {
     type VolunteerRosterBoardFilters,
     type VolunteerRosterListRow,
 } from '@/utils/volunteerRosterList';
-import { AdjustmentsHorizontalIcon, ArrowsUpDownIcon } from '@heroicons/react/24/outline';
-import { router, useForm } from '@inertiajs/react';
+import { AdjustmentsHorizontalIcon, ArrowsUpDownIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
+import { Link, router, useForm } from '@inertiajs/react';
 import { FormEventHandler, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useDebouncedServerSearch } from '@/hooks/useDebouncedServerSearch';
 
@@ -242,6 +242,16 @@ export default function VolunteerCenterRosterPanel({
                     </div>
                     {listHeader.actions ? <div className="flex shrink-0 items-center">{listHeader.actions}</div> : null}
                     <div className="flex shrink-0 items-center gap-1">
+                        {groupBy === 'fase' ? (
+                            <Link
+                                href={route('ministry-lead.volunteers.index')}
+                                className={headerIconBtnClass}
+                                title="Ver Kanban"
+                                aria-label="Ver Kanban"
+                            >
+                                <Squares2X2Icon className="h-4 w-4" aria-hidden />
+                            </Link>
+                        ) : null}
                         <button
                             type="button"
                             onClick={() => setFiltersModalOpen(true)}
