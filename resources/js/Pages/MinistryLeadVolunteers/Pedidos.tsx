@@ -49,7 +49,10 @@ export default function Pedidos({
                 title="Pedidos"
                 subtitle="Pedidos de líderes e da secretaria. Abra um pedido para detalhes, chat ou anexar voluntário."
                 lead={
-                    <Link href={centralUrl} className="cursor-pointer text-sm text-zinc-600 hover:underline dark:text-zinc-400">
+                    <Link
+                        href={route('ministry-lead.volunteers.central')}
+                        className="cursor-pointer text-sm text-zinc-600 hover:underline dark:text-zinc-400"
+                    >
                         ← Voluntários
                     </Link>
                 }

@@ -34,7 +34,7 @@ const PASTORAL_ROUTE = 'mobile.pastoral-appointments.request' as const;
 const items: MoreMenuItem[] = [
     { name: 'Dízimos e Ofertas', description: 'Contribuições e ofertas', route: 'mobile.offerings', icon: HandRaisedIcon },
     { name: 'Culto', description: 'Vídeos do culto online', route: 'mobile.culto', icon: FilmIcon },
-    { name: 'Música', description: 'Vídeos de música no YouTube', route: 'musica.index', icon: MusicalNoteIcon },
+    { name: 'Música', description: 'Cante conosco', route: 'musica.index', icon: MusicalNoteIcon },
     { name: 'Cultos e horários', description: 'Dias e horários dos cultos', route: 'mobile.services', icon: ClockIcon },
     {
         name: 'Fotos',
@@ -49,11 +49,11 @@ const items: MoreMenuItem[] = [
     { name: 'Em que acreditamos', description: '28 princípios de fé (IASD)', route: 'mobile.beliefs', icon: BookOpenIcon },
     {
         name: 'Voluntário',
-        description: 'Quero servir em ministérios (formulário completo)',
+        description: 'Seja um voluntário na Nova Semente',
         route: 'volunteers.public-signup.page',
         icon: UserPlusIcon,
     },
-    { name: 'Séries', description: 'Playlists do YouTube da Nova Semente', route: 'mobile.acervo', icon: PlayCircleIcon },
+    { name: 'Séries', description: 'Veja todas as séries já passadas na Nova Semente', route: 'mobile.acervo', icon: PlayCircleIcon },
     { name: 'Classe Começos', description: 'Estudo bíblico presencial ou on-line', route: 'varios.classe-comecos', icon: AcademicCapIcon },
     {
         name: 'Suporte APP',

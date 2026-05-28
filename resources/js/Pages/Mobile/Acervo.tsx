@@ -26,7 +26,7 @@ export default function MobileAcervo({ playlists, playlistsUrl }: Props) {
                     </Link>
                     <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Séries</h1>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
-                        Sermões da Nova Semente.
+                        Veja todas as séries já passadas na Nova Semente.
                     </p>
                 </div>
 

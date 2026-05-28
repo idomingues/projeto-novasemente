@@ -23,7 +23,7 @@ export default function VariosAcervo({ playlistsUrl, playlists }: Props) {
                 <div>
                     <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white">Séries</h1>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
-                        Playlists do YouTube da Nova Semente.
+                        Veja todas as séries já passadas na Nova Semente.
                     </p>
                 </div>
 

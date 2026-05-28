@@ -96,7 +96,7 @@ export default function AcervoIndex({ items, canManage }: Props) {
             <div className="space-y-6">
                 <PageHeader
                     title="Séries"
-                    subtitle="Playlists do YouTube da Nova Semente."
+                    subtitle="Veja todas as séries já passadas na Nova Semente."
                     actions={
                         canManage ? (
                             <AddButton variant="icon" onClick={openCreateModal} title="Adicionar link">
