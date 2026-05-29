@@ -11,6 +11,7 @@ import PageHeader from '@/Components/PageHeader';
 import InputError from '@/Components/InputError';
 import { useState, FormEventHandler } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
 interface Room {
     id: number;
@@ -78,9 +79,9 @@ export default function Index({ rooms, byFloor, floors, canManage = false }: Pro
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         if (isEditing && editingId) {
-            put(route('rooms.update', editingId), { onSuccess: () => closeModal() });
+            put(route('rooms.update', editingId), { ...inertiaListModalSave });
         } else {
-            post(route('rooms.store'), { onSuccess: () => closeModal() });
+            post(route('rooms.store'), { ...inertiaListModalSave });
         }
     };
 

@@ -29,6 +29,7 @@ import NewsPostCover from '@/Components/News/NewsPostCover';
 import { EVENT_COVER_SPECS } from '@/constants/mediaCoverSpecs';
 import { useState, FormEventHandler, useMemo } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
 /** Cores sugeridas (hex) — complementam o código livre e o seletor nativo. */
 const EVENT_COLOR_PRESETS = [
@@ -232,9 +233,9 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         if (isEditing && editingId) {
-            put(route('events.update', editingId), { onSuccess: () => closeModal(), forceFormData: true });
+            put(route('events.update', editingId), { ...inertiaListModalSave, forceFormData: true });
         } else {
-            post(route('events.store'), { onSuccess: () => closeModal(), forceFormData: true });
+            post(route('events.store'), { ...inertiaListModalSave, forceFormData: true });
         }
     };
 

@@ -56,6 +56,54 @@ class MyMinistryVolunteersTest extends TestCase
 
         $invitation->refresh();
         $this->assertSame('active', $invitation->leader_status);
+        $this->assertTrue($volunteer->ministries()->whereKey($ministry->id)->exists());
+    }
+
+    public function test_leader_denied_status_detaches_volunteer_from_ministry(): void
+    {
+        $this->seed();
+
+        $church = Church::query()->firstOrFail();
+        $ministry = Ministry::query()->where('church_id', $church->id)->firstOrFail();
+
+        $leader = User::factory()->create([
+            'church_id' => $church->id,
+            'is_ministry_leader' => false,
+        ]);
+        $leader->assignRole(Role::firstOrCreate(['name' => 'lider_ministerio']));
+        $leader->ministries()->sync([$ministry->id]);
+
+        $volunteer = Volunteer::query()->create([
+            'user_id' => null,
+            'name' => 'Voluntário Recusado',
+            'email' => 'voluntario.recusado@example.com',
+            'active' => true,
+        ]);
+        $volunteer->ministries()->attach($ministry->id);
+
+        $invitation = VolunteerMinistryInvitation::query()->create([
+            'church_id' => $church->id,
+            'volunteer_id' => $volunteer->id,
+            'ministry_id' => $ministry->id,
+            'invited_by_user_id' => $leader->id,
+            'token' => VolunteerMinistryInvitation::createToken(),
+            'status' => 'pending',
+        ]);
+
+        $response = $this->actingAs($leader)->patch(
+            route('ministry-lead.my-volunteers.update', $invitation),
+            [
+                'leader_status' => 'denied',
+                'leader_note' => 'Perfil não compatível com a equipe neste ciclo.',
+            ],
+        );
+
+        $response->assertRedirect();
+        $response->assertSessionHasNoErrors();
+
+        $invitation->refresh();
+        $this->assertSame('denied', $invitation->leader_status);
+        $this->assertFalse($volunteer->fresh()->ministries()->whereKey($ministry->id)->exists());
     }
 
     public function test_leader_can_open_my_volunteers_index_with_joined_volunteers(): void

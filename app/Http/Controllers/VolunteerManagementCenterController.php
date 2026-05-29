@@ -92,6 +92,7 @@ class VolunteerManagementCenterController extends Controller
 
         $user = $request->user();
         $departments = VolunteerManagementCenterBuilder::departments($request, (int) $churchId);
+        $allVolunteersCount = VolunteerManagementCenterBuilder::allVolunteersCount($request, (int) $churchId);
         $withoutDepartmentCount = VolunteerManagementCenterBuilder::volunteersWithoutDepartmentCount($request, (int) $churchId);
         $phases = VolunteerManagementCenterBuilder::phasesWithCounts($request, (int) $churchId);
 
@@ -160,6 +161,7 @@ class VolunteerManagementCenterController extends Controller
             'groupBy' => $groupBy,
             'departments' => $departments,
             'phases' => $phases,
+            'allVolunteersCount' => $allVolunteersCount,
             'withoutDepartmentCount' => $withoutDepartmentCount,
             'selectedMinistryId' => $selectedMinistryId,
             'selectedPhaseKey' => $selectedPhaseKey,

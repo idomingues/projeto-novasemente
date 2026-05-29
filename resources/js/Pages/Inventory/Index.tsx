@@ -24,6 +24,7 @@ import ListSearchHint from '@/Components/ListSearchHint';
 import { useDebouncedServerSearch } from '@/hooks/useDebouncedServerSearch';
 import axios from 'axios';
 import { confirmAction } from '@/utils/confirmDialog';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import ImageDownloadButton from '@/Components/ImageDownloadButton';
 import SelectInput from '@/Components/SelectInput';
 
@@ -254,12 +255,12 @@ export default function Index({ items, filters }: Props) {
         if (isEditing && editingId) {
             put(route('inventory.update', editingId), {
                 forceFormData: true,
-                onSuccess: () => closeModal(),
+                ...inertiaListModalSave,
             });
         } else {
             post(route('inventory.store'), {
                 forceFormData: true,
-                onSuccess: () => closeModal(),
+                ...inertiaListModalSave,
             });
         }
     };

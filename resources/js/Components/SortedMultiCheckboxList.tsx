@@ -8,18 +8,22 @@ export type SortedCheckboxOption = {
     trailing?: string | null;
     /** Segunda linha abaixo do nome (ex.: e-mail) */
     subline?: string | null;
+    /** Linha extra pequena (ex.: data de inclusão na equipe) */
+    metaSubline?: string | null;
 };
 
 type SortedMultiCheckboxListProps = {
     options: SortedCheckboxOption[];
     selectedIds: number[];
-    onChange: (ids: number[]) => void;
+    onChange: (ids: number[]) => void | Promise<void>;
     /** Conteúdo extra à direita da linha (ex.: botão ver ficha) */
     renderTrailingAction?: (option: SortedCheckboxOption, selected: boolean) => ReactNode;
     maxHeightClass?: string;
     emptyMessage?: string;
     className?: string;
     showSelectedCount?: boolean;
+    /** Oculta rótulos internos «Selecionados» / «Outros» (ex.: painéis lado a lado) */
+    hideSectionLabels?: boolean;
 };
 
 const DEFAULT_MAX_HEIGHT = 'max-h-40';
@@ -33,6 +37,7 @@ export default function SortedMultiCheckboxList({
     emptyMessage = 'Nenhum resultado.',
     className,
     showSelectedCount = true,
+    hideSectionLabels = false,
 }: SortedMultiCheckboxListProps) {
     const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
@@ -56,7 +61,7 @@ export default function SortedMultiCheckboxList({
         } else {
             set.add(id);
         }
-        onChange(Array.from(set));
+        void onChange(Array.from(set));
     };
 
     const renderRow = (o: SortedCheckboxOption, checked: boolean) => (
@@ -85,6 +90,11 @@ export default function SortedMultiCheckboxList({
                         {o.subline ? (
                             <span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">{o.subline}</span>
                         ) : null}
+                        {o.metaSubline ? (
+                            <span className="block text-[10px] tabular-nums text-zinc-400 dark:text-zinc-500">
+                                {o.metaSubline}
+                            </span>
+                        ) : null}
                     </span>
                 </label>
                 {o.trailing ? (
@@ -106,18 +116,20 @@ export default function SortedMultiCheckboxList({
                     <ul className="space-y-1">
                         {selectedOptions.length > 0 ? (
                             <>
-                                <li className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
-                                    Selecionados
-                                </li>
+                                {!hideSectionLabels ? (
+                                    <li className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+                                        Selecionados
+                                    </li>
+                                ) : null}
                                 {selectedOptions.map((o) => renderRow(o, true))}
                             </>
                         ) : null}
-                        {selectedOptions.length > 0 && otherOptions.length > 0 ? (
+                        {!hideSectionLabels && selectedOptions.length > 0 && otherOptions.length > 0 ? (
                             <li className="my-1 border-t border-zinc-200 dark:border-zinc-600" aria-hidden />
                         ) : null}
                         {otherOptions.length > 0 ? (
                             <>
-                                {selectedOptions.length > 0 ? (
+                                {!hideSectionLabels && selectedOptions.length > 0 ? (
                                     <li className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                                         Outros
                                     </li>

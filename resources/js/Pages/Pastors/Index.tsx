@@ -12,6 +12,7 @@ import Textarea from '@/Components/Textarea';
 import InputError from '@/Components/InputError';
 import { useState, useEffect, FormEventHandler, ChangeEventHandler } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import ImageDownloadButton from '@/Components/ImageDownloadButton';
 import SelectInput from '@/Components/SelectInput';
 
@@ -140,21 +141,18 @@ export default function PastorsIndex({ pastors, canManage, linkableUsers }: Prop
                     },
                     {
                         forceFormData: true,
-                        preserveScroll: true,
-                        onSuccess: () => closeModal(),
+                        ...inertiaListModalSave,
                     },
                 );
             } else {
                 put(route('pastors.update', editingId), {
-                    preserveScroll: true,
-                    onSuccess: () => closeModal(),
+                    ...inertiaListModalSave,
                 });
             }
         } else {
             post(route('pastors.store'), {
                 forceFormData: true,
-                preserveScroll: true,
-                onSuccess: () => closeModal(),
+                ...inertiaListModalSave,
             });
         }
     };

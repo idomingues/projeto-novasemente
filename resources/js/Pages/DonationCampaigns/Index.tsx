@@ -13,6 +13,7 @@ import { BanknotesIcon, EyeIcon, PencilIcon, PencilSquareIcon, PhotoIcon, PlusIc
 import { FormEventHandler, useEffect, useMemo, useState } from 'react';
 import { DONATION_CAMPAIGN_COVER_SPECS } from '@/constants/mediaCoverSpecs';
 import { confirmAction } from '@/utils/confirmDialog';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
 interface CampaignPhoto {
     id: number;
@@ -191,14 +192,10 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         if (isEditing && editingId) {
-            put(route('donation-campaigns.update', editingId), {
-                onSuccess: () => closeModal(),
-                forceFormData: true,
+            put(route('donation-campaigns.update', editingId), { ...inertiaListModalSave, forceFormData: true,
             });
         } else {
-            post(route('donation-campaigns.store'), {
-                onSuccess: () => closeModal(),
-                forceFormData: true,
+            post(route('donation-campaigns.store'), { ...inertiaListModalSave, forceFormData: true,
             });
         }
     };

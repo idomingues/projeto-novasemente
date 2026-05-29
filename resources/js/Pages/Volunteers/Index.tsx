@@ -24,6 +24,7 @@ import { useDebouncedServerSearch } from '@/hooks/useDebouncedServerSearch';
 import axios from 'axios';
 import VolunteerRecordDetailBody from '@/Components/Volunteers/VolunteerRecordDetailBody';
 import type { VolunteerDetailData } from '@/utils/volunteerDetailRows';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import VolunteerDeleteConfirmBlock from '@/Components/Volunteers/VolunteerDeleteConfirmBlock';
 import { activeInactivePillClass } from '@/lib/statusBadges';
 import { appRoleLabel } from '@/lib/appRoleLabels';
@@ -316,6 +317,7 @@ export default function Index({
         e.preventDefault();
         if (isEditing && editingId) {
             put(route('volunteers.update', editingId), {
+                ...inertiaListModalSave,
                 forceFormData: true,
                 onSuccess: (page) => {
                     const flash = (page?.props as { flash?: { error?: string | null; success?: string | null } } | undefined)?.flash;
@@ -324,9 +326,7 @@ export default function Index({
                         return;
                     }
                     setSubmitToast({ kind: 'success', message: flash?.success ?? 'Alterações salvas com sucesso.' });
-                    if (!flash?.error) {
-                        closeModal();
-                    }
+                    
                 },
                 onError: () => {
                     setSubmitToast({ kind: 'error', message: 'Não foi possível salvar. Verifique os campos em destaque.' });
@@ -338,6 +338,7 @@ export default function Index({
             });
         } else {
             post(route('volunteers.store'), {
+                ...inertiaListModalSave,
                 forceFormData: true,
                 onSuccess: (page) => {
                     const flash = (page?.props as { flash?: { error?: string | null; success?: string | null } } | undefined)?.flash;
@@ -346,9 +347,7 @@ export default function Index({
                         return;
                     }
                     setSubmitToast({ kind: 'success', message: flash?.success ?? 'Voluntário cadastrado com sucesso.' });
-                    if (!flash?.error) {
-                        closeModal();
-                    }
+                    
                 },
                 onError: () => {
                     setSubmitToast({ kind: 'error', message: 'Não foi possível salvar. Verifique os campos em destaque.' });

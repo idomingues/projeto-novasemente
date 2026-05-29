@@ -13,6 +13,7 @@ import { Head, router, useForm } from '@inertiajs/react';
 import { CalendarDaysIcon, CameraIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { FormEventHandler, useMemo, useState } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import { compressImageForUpload, ImageCompressError } from '@/utils/compressImageForUpload';
 
 type WallAlbumRow = {
@@ -109,9 +110,9 @@ export default function MissionWallAdmin({ items, canManage, hasDriveApiKey }: P
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         if (isEditing && editingId) {
-            put(route('mission.content.wall.update', editingId), { onSuccess: () => closeModal(), forceFormData: true });
+            put(route('mission.content.wall.update', editingId), { ...inertiaListModalSave, forceFormData: true });
         } else {
-            post(route('mission.content.wall.store'), { onSuccess: () => closeModal(), forceFormData: true });
+            post(route('mission.content.wall.store'), { ...inertiaListModalSave, forceFormData: true });
         }
     };
 

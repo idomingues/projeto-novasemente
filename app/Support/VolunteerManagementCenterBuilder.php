@@ -271,6 +271,28 @@ class VolunteerManagementCenterBuilder
         return $rows;
     }
 
+    public static function allVolunteersCount(Request $request, int $churchId): int
+    {
+        // Total de pessoas únicas na igreja (com filtros do quadro), sem recorte da lateral.
+        $rq = clone $request;
+        $rq->merge([
+            'center_mode' => '1',
+            'ministry_ids' => '',
+            'center_phase_key' => '',
+            'center_sem_departamento' => '',
+            'pipeline_stage_id' => '',
+        ]);
+        $q = VolunteerChurchRosterBuilder::volunteersVisibleInChurchQuery($churchId);
+        VolunteerLeadRosterFilters::apply($rq, $q, $churchId);
+        VolunteerChurchRosterBuilder::applyStaffArchivedFilter(
+            $q,
+            $churchId,
+            VolunteerLeadRosterFilters::showsArchivedRoster($rq),
+        );
+
+        return (int) $q->distinct('volunteers.id')->count('volunteers.id');
+    }
+
     public static function volunteersWithoutDepartmentCount(Request $request, int $churchId): int
     {
         // Contagem exata com os mesmos filtros do roster.

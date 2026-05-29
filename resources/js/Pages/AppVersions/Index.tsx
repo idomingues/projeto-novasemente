@@ -13,6 +13,7 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
 import { useState, FormEventHandler } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
 type VersionRow = {
     id: number;
@@ -71,9 +72,9 @@ export default function AppVersionsIndex({ versions, latestVersion, schemaReady 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         if (isEditing && editingId) {
-            put(route('app-versions.update', editingId), { onSuccess: () => closeModal() });
+            put(route('app-versions.update', editingId), { ...inertiaListModalSave });
         } else {
-            post(route('app-versions.store'), { onSuccess: () => closeModal() });
+            post(route('app-versions.store'), { ...inertiaListModalSave });
         }
     };
 

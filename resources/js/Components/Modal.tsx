@@ -14,7 +14,7 @@ export default function Modal({
     onClose = () => {},
 }: PropsWithChildren<{
     show: boolean;
-    maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '7xl';
+    maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '7xl';
     closeable?: boolean;
     /** Botão X no canto superior direito (só quando `closeable` é true) */
     showCloseButton?: boolean;
@@ -57,6 +57,8 @@ export default function Modal({
         lg: 'sm:max-w-lg',
         xl: 'sm:max-w-xl',
         '2xl': 'sm:max-w-2xl',
+        '3xl': 'sm:max-w-3xl',
+        '4xl': 'sm:max-w-4xl',
         '7xl': 'sm:max-w-7xl',
     }[maxWidth];
 

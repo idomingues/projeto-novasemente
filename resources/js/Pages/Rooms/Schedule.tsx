@@ -12,6 +12,7 @@ import { Head, Link, router, useForm } from '@inertiajs/react';
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { FormEventHandler, useMemo, useState } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
 interface RoomOpt {
     id: number;
@@ -176,13 +177,11 @@ export default function Schedule({
         }));
         if (editing) {
             put(`${route('room-bookings.update', editing.id)}${filterQuerySuffix()}`, {
-                preserveScroll: true,
-                onSuccess: () => closeModal(),
+                ...inertiaListModalSave,
             });
         } else {
             post(`${route('room-bookings.store')}${filterQuerySuffix()}`, {
-                preserveScroll: true,
-                onSuccess: () => closeModal(),
+                ...inertiaListModalSave,
             });
         }
     };

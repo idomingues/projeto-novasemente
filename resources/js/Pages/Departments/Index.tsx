@@ -9,6 +9,8 @@ import {
     ListBulletIcon,
     MagnifyingGlassIcon,
     EyeIcon,
+    ChevronDownIcon,
+    ChevronUpIcon,
 } from '@heroicons/react/24/outline';
 import AddButton from '@/Components/AddButton';
 import Modal from '@/Components/Modal';
@@ -22,11 +24,13 @@ import PageHeader from '@/Components/PageHeader';
 import InputError from '@/Components/InputError';
 import { DEPARTMENT_ICON_OPTIONS, getMinistryIconByKey } from '@/lib/ministryIcons';
 import { useState, useEffect, useMemo, useCallback, FormEventHandler } from 'react';
+import type { MouseEvent } from 'react';
 import ListSearchHint from '@/Components/ListSearchHint';
 import { useDebouncedServerSearch } from '@/hooks/useDebouncedServerSearch';
 import axios from 'axios';
 import type { VolunteerDetailData } from '@/utils/volunteerDetailRows';
 import { confirmAction } from '@/utils/confirmDialog';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import SortedMultiCheckboxList from '@/Components/SortedMultiCheckboxList';
 import { textMatchesSearchFields } from '@/utils/searchText';
 import RecordDetailHeader from '@/Components/RecordDetail/RecordDetailHeader';
@@ -39,6 +43,29 @@ import { volunteerDetailSections } from '@/utils/volunteerDetailRows';
 interface PersonRef {
     id: number;
     name: string;
+    /** ISO 8601 — quando foi vinculado ao departamento (pivot) */
+    addedAt?: string | null;
+}
+
+function formatMemberAddedAt(iso: string | null | undefined): string | null {
+    if (!iso) {
+        return null;
+    }
+    try {
+        const d = new Date(iso);
+        if (Number.isNaN(d.getTime())) {
+            return null;
+        }
+        return d.toLocaleString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    } catch {
+        return null;
+    }
 }
 
 interface PersonOption extends PersonRef {
@@ -90,85 +117,264 @@ function detailUrlFromPattern(pattern: string, id: number): string {
     return pattern.replace(/\/0(\/|$)/, `/${id}$1`);
 }
 
+function personAddedAtMap(people: PersonRef[]): Record<number, string> {
+    const map: Record<number, string> = {};
+    for (const p of people) {
+        if (p.addedAt) {
+            map[p.id] = p.addedAt;
+        }
+    }
+    return map;
+}
+
 function PersonPicker({
-    label,
-    hint,
     options,
     selectedIds,
     onChange,
-    filter,
-    onFilterChange,
+    memberRole,
     onViewDetail,
     resolveDetailId,
+    addedAtById = {},
     error,
 }: {
-    label: string;
-    hint: string;
     options: PersonOption[];
     selectedIds: number[];
     onChange: (ids: number[]) => void;
-    filter: string;
-    onFilterChange: (v: string) => void;
+    /** Rótulo para confirmação ao desmarcar (ex.: líder, voluntário) */
+    memberRole: 'líder' | 'voluntário';
     onViewDetail?: (id: number) => void;
     resolveDetailId?: (option: PersonOption) => number | null;
+    /** Data/hora de inclusão por id (pivot ou seleção nesta sessão) */
+    addedAtById?: Record<number, string>;
     error?: string;
 }) {
+    const [availableFilter, setAvailableFilter] = useState('');
+    const [selectedFilter, setSelectedFilter] = useState('');
+    const [sessionAddedAtById, setSessionAddedAtById] = useState<Record<number, string>>({});
     const detailIdFor = (option: PersonOption): number | null =>
         resolveDetailId ? resolveDetailId(option) : option.id;
 
     const canOpenDetail = (option: PersonOption): boolean =>
         onViewDetail != null && detailIdFor(option) != null;
 
-    const filteredListOptions = useMemo(() => {
-        const q = filter.trim();
-        const list = q
-            ? options.filter((o) => textMatchesSearchFields(q, o.name, o.email))
-            : options;
-        return list.map((o) => ({
+    const mergedAddedAtById = useMemo(
+        () => ({ ...addedAtById, ...sessionAddedAtById }),
+        [addedAtById, sessionAddedAtById],
+    );
+
+    const selectedListOptions = useMemo(() => {
+        const selectedSet = new Set(selectedIds);
+        const q = selectedFilter.trim();
+        return options
+            .filter((o) => selectedSet.has(o.id))
+            .filter((o) => !q || textMatchesSearchFields(q, o.name, o.email))
+            .map((o) => {
+                const addedLabel = formatMemberAddedAt(mergedAddedAtById[o.id]);
+                return {
+                    id: o.id,
+                    name: o.name,
+                    subline: o.email ?? null,
+                    metaSubline: addedLabel,
+                };
+            });
+    }, [options, selectedIds, selectedFilter, mergedAddedAtById]);
+
+    const filteredOtherListOptions = useMemo(() => {
+        const q = availableFilter.trim();
+        const selectedSet = new Set(selectedIds);
+        const base = options.filter((o) => !selectedSet.has(o.id));
+        const filtered = q ? base.filter((o) => textMatchesSearchFields(q, o.name, o.email)) : base;
+        return filtered.map((o) => ({
             id: o.id,
             name: o.name,
             subline: o.email ?? null,
         }));
-    }, [options, filter]);
+    }, [options, availableFilter, selectedIds]);
 
     const optionById = useMemo(() => new Map(options.map((o) => [o.id, o])), [options]);
 
-    return (
-        <div className="mt-4">
-            <InputLabel value={label} />
-            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{hint}</p>
-            <TextInput
-                value={filter}
-                onChange={(e) => onFilterChange(e.target.value)}
-                className="mt-2 block w-full"
-                placeholder="Filtrar por nome ou e-mail…"
-            />
-            <SortedMultiCheckboxList
-                className="mt-2"
-                options={filteredListOptions}
-                selectedIds={selectedIds}
-                onChange={onChange}
-                renderTrailingAction={(row) => {
-                    const o = optionById.get(row.id);
-                    if (o == null || !canOpenDetail(o)) {
-                        return null;
+    const confirmMemberChange = useCallback(
+        async (action: 'add' | 'remove', ids: number[]): Promise<boolean> => {
+            if (ids.length === 0) {
+                return true;
+            }
+
+            const plural = memberRole === 'líder' ? 'líderes' : 'voluntários';
+            const isAdd = action === 'add';
+
+            if (ids.length === 1) {
+                const person = optionById.get(ids[0]);
+                const name = person?.name?.trim() || 'esta pessoa';
+                return confirmAction({
+                    title: isAdd ? `Adicionar ${memberRole}?` : `Remover ${memberRole}?`,
+                    text: isAdd
+                        ? `Deseja adicionar ${name} como ${memberRole} deste departamento? A alteração só será aplicada ao salvar.`
+                        : `Deseja remover ${name} como ${memberRole} deste departamento? A alteração só será aplicada ao salvar.`,
+                    confirmButtonText: isAdd ? 'Adicionar' : 'Remover',
+                    cancelButtonText: 'Cancelar',
+                    danger: !isAdd,
+                    icon: isAdd ? 'question' : 'warning',
+                });
+            }
+
+            return confirmAction({
+                title: isAdd ? `Adicionar ${plural}?` : `Remover ${plural}?`,
+                text: `Deseja ${isAdd ? 'adicionar' : 'remover'} ${ids.length} pessoas como ${plural} deste departamento? A alteração só será aplicada ao salvar.`,
+                confirmButtonText: isAdd ? 'Adicionar' : 'Remover',
+                cancelButtonText: 'Cancelar',
+                danger: !isAdd,
+                icon: isAdd ? 'question' : 'warning',
+            });
+        },
+        [memberRole, optionById],
+    );
+
+    const handleSelectionChange = useCallback(
+        async (nextIds: number[]) => {
+            const nextSet = new Set(nextIds);
+            const removed = selectedIds.filter((id) => !nextSet.has(id));
+            const added = nextIds.filter((id) => !selectedIds.includes(id));
+
+            if (removed.length === 0 && added.length === 0) {
+                onChange(nextIds);
+                return;
+            }
+
+            if (removed.length > 0) {
+                const okRemove = await confirmMemberChange('remove', removed);
+                if (!okRemove) {
+                    return;
+                }
+            }
+
+            if (added.length > 0) {
+                const okAdd = await confirmMemberChange('add', added);
+                if (!okAdd) {
+                    return;
+                }
+                const now = new Date().toISOString();
+                setSessionAddedAtById((prev) => {
+                    const next = { ...prev };
+                    for (const id of added) {
+                        if (!mergedAddedAtById[id]) {
+                            next[id] = now;
+                        }
                     }
-                    return (
-                        <button
-                            type="button"
-                            onClick={() => {
-                                const detailId = detailIdFor(o);
-                                if (detailId != null) onViewDetail?.(detailId);
-                            }}
-                            className="mt-0.5 shrink-0 rounded-lg p-1 text-zinc-500 hover:bg-white/80 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-white"
-                            title="Ver ficha do voluntário"
-                            aria-label={`Ver ficha de ${o.name}`}
-                        >
-                            <EyeIcon className="h-4 w-4" aria-hidden />
-                        </button>
-                    );
-                }}
-            />
+                    return next;
+                });
+            }
+
+            if (removed.length > 0) {
+                setSessionAddedAtById((prev) => {
+                    const next = { ...prev };
+                    for (const id of removed) {
+                        delete next[id];
+                    }
+                    return next;
+                });
+            }
+
+            onChange(nextIds);
+        },
+        [confirmMemberChange, mergedAddedAtById, onChange, selectedIds],
+    );
+
+    const paneMaxHeight = 'max-h-[min(52vh,460px)]';
+
+    const renderTrailingAction = (row: { id: number; name: string }) => {
+        const o = optionById.get(row.id);
+        if (o == null || !canOpenDetail(o)) {
+            return null;
+        }
+        const openDetail = (e: MouseEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const detailId = detailIdFor(o);
+            if (detailId != null) onViewDetail?.(detailId);
+        };
+
+        return (
+            <button
+                type="button"
+                onClick={openDetail}
+                className="mt-0.5 shrink-0 cursor-pointer rounded-lg p-1 text-zinc-500 hover:bg-white/80 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-white"
+                title="Ver ficha do voluntário"
+                aria-label={`Ver ficha de ${o.name}`}
+            >
+                <EyeIcon className="h-4 w-4" aria-hidden />
+            </button>
+        );
+    };
+
+    return (
+        <div className="mt-3">
+            <div className="mx-auto grid min-h-0 w-full max-w-3xl grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="flex min-h-0 min-w-0 flex-col">
+                    <p className="shrink-0 px-1 text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                        Disponíveis
+                        <span className="ml-1.5 font-normal text-zinc-500 dark:text-zinc-400">
+                            ({filteredOtherListOptions.length})
+                        </span>
+                    </p>
+                    <TextInput
+                        value={availableFilter}
+                        onChange={(e) => setAvailableFilter(e.target.value)}
+                        className="mt-1.5 block w-full"
+                        placeholder="Buscar disponíveis…"
+                        aria-label="Buscar disponíveis por nome ou e-mail"
+                    />
+                    <SortedMultiCheckboxList
+                        className="mt-1.5 min-h-0 flex-1"
+                        options={filteredOtherListOptions}
+                        selectedIds={selectedIds}
+                        onChange={handleSelectionChange}
+                        maxHeightClass={paneMaxHeight}
+                        hideSectionLabels
+                        emptyMessage={
+                            availableFilter.trim()
+                                ? 'Nenhum resultado para esta busca.'
+                                : 'Todos já foram selecionados.'
+                        }
+                        showSelectedCount={false}
+                        renderTrailingAction={renderTrailingAction}
+                    />
+                </div>
+
+                <div className="flex min-h-0 min-w-0 flex-col sm:border-l sm:border-zinc-200 sm:pl-4 dark:sm:border-zinc-700">
+                    <p className="shrink-0 px-1 text-xs font-semibold text-emerald-800 dark:text-emerald-300">
+                        Selecionados
+                        <span className="ml-1.5 font-normal text-zinc-500 dark:text-zinc-400">
+                            ({selectedListOptions.length}
+                            {selectedFilter.trim() && selectedListOptions.length !== selectedIds.length
+                                ? ` de ${selectedIds.length}`
+                                : ''}
+                            )
+                        </span>
+                    </p>
+                    <TextInput
+                        value={selectedFilter}
+                        onChange={(e) => setSelectedFilter(e.target.value)}
+                        className="mt-1.5 block w-full"
+                        placeholder="Buscar selecionados…"
+                        aria-label="Buscar selecionados por nome ou e-mail"
+                    />
+                    <SortedMultiCheckboxList
+                        className="mt-1.5 min-h-0 flex-1"
+                        options={selectedListOptions}
+                        selectedIds={selectedIds}
+                        onChange={handleSelectionChange}
+                        maxHeightClass={paneMaxHeight}
+                        hideSectionLabels
+                        emptyMessage={
+                            selectedFilter.trim()
+                                ? 'Nenhum selecionado corresponde a esta busca.'
+                                : 'Nenhum selecionado.'
+                        }
+                        showSelectedCount={false}
+                        renderTrailingAction={renderTrailingAction}
+                    />
+                </div>
+            </div>
             {error ? <InputError message={error} className="mt-1" /> : null}
         </div>
     );
@@ -197,6 +403,8 @@ export default function Index({
     volunteerDetailUrlPattern,
 }: Props) {
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [leaderAddedAtById, setLeaderAddedAtById] = useState<Record<number, string>>({});
+    const [volunteerAddedAtById, setVolunteerAddedAtById] = useState<Record<number, string>>({});
     const {
         value: search,
         setValue: setSearch,
@@ -213,9 +421,8 @@ export default function Index({
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
-    const [leaderPickerFilter, setLeaderPickerFilter] = useState('');
-    const [volunteerPickerFilter, setVolunteerPickerFilter] = useState('');
     const [rosterTab, setRosterTab] = useState<'leaders' | 'volunteers'>('leaders');
+    const [iconPickerOpen, setIconPickerOpen] = useState(false);
     const [detailOpen, setDetailOpen] = useState(false);
     const [detailLoading, setDetailLoading] = useState(false);
     const [detailTab, setDetailTab] = useState<'ficha' | 'notas' | 'departamentos' | 'historico'>('ficha');
@@ -353,12 +560,19 @@ export default function Index({
                 : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
         }`;
 
+    const selectedIconOption = useMemo(
+        () => DEPARTMENT_ICON_OPTIONS.find((o) => o.key === data.icon),
+        [data.icon],
+    );
+    const SelectedIconPreview = selectedIconOption?.Icon;
+
     const openCreateModal = () => {
         setIsEditing(false);
         setEditingId(null);
         setRosterTab('leaders');
-        setLeaderPickerFilter('');
-        setVolunteerPickerFilter('');
+        setIconPickerOpen(false);
+        setLeaderAddedAtById({});
+        setVolunteerAddedAtById({});
         reset();
         clearErrors();
         setIsModalOpen(true);
@@ -368,8 +582,9 @@ export default function Index({
         setIsEditing(true);
         setEditingId(d.id);
         setRosterTab('leaders');
-        setLeaderPickerFilter('');
-        setVolunteerPickerFilter('');
+        setIconPickerOpen(false);
+        setLeaderAddedAtById(personAddedAtMap(d.leaders));
+        setVolunteerAddedAtById(personAddedAtMap(d.volunteers));
         setData({
             name: d.name,
             icon: d.icon ?? '',
@@ -390,18 +605,40 @@ export default function Index({
         if (Number.isNaN(id) || id <= 0) return;
         const dept = departments.find((d) => d.id === id);
         if (!dept) return;
-        openEditModal(dept);
+
+        setIsEditing(true);
+        setEditingId(dept.id);
+        setRosterTab('leaders');
+        setIconPickerOpen(false);
+        setLeaderAddedAtById(personAddedAtMap(dept.leaders));
+        setVolunteerAddedAtById(personAddedAtMap(dept.volunteers));
+        setData({
+            name: dept.name,
+            icon: dept.icon ?? '',
+            leader_user_ids: dept.leaders.map((l) => l.id),
+            volunteer_ids: dept.volunteers.map((v) => v.id),
+        });
+        clearErrors();
+        setIsModalOpen(true);
+
         params.delete('modal');
         params.delete('id');
         const q = params.toString();
         window.history.replaceState({}, '', `${window.location.pathname}${q ? `?${q}` : ''}`);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [departments]);
 
     const closeModal = () => {
         setIsModalOpen(false);
+        setIconPickerOpen(false);
         reset();
     };
+
+    useEffect(() => {
+        if (errors.icon) {
+            setIconPickerOpen(true);
+        }
+    }, [errors.icon]);
 
     const openRolesModal = (departmentId: number) => {
         setRolesModalDepartmentId(departmentId);
@@ -416,13 +653,12 @@ export default function Index({
     const submitDepartment = () => {
         if (isEditing && editingId) {
             put(route('departments.update', editingId), {
-                preserveScroll: true,
-                onSuccess: () => closeModal(),
+                ...inertiaListModalSave,
+                onSuccess: () => clearErrors(),
             });
         } else {
             post(route('departments.store'), {
-                preserveScroll: true,
-                onSuccess: () => closeModal(),
+                ...inertiaListModalSave,
             });
         }
     };
@@ -654,8 +890,8 @@ export default function Index({
                 </div>
             )}
 
-            <Modal show={isModalOpen} onClose={closeModal} maxWidth={isEditing ? '2xl' : undefined}>
-                <form onSubmit={submit} className="p-6 max-h-[85vh] overflow-y-auto">
+            <Modal show={isModalOpen} onClose={closeModal} maxWidth={isEditing ? '4xl' : undefined}>
+                <form onSubmit={submit} className="max-h-[min(92dvh,920px)] overflow-y-auto p-6">
                     <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-6">
                         {isEditing ? 'Editar departamento' : 'Novo departamento'}
                     </h2>
@@ -672,24 +908,75 @@ export default function Index({
                     </div>
                     <div className="mt-4">
                         <InputLabel value="Ícone" />
-                        <div className="mt-2 grid grid-cols-4 gap-1.5 sm:grid-cols-6 sm:gap-2">
-                            {DEPARTMENT_ICON_OPTIONS.map(({ key, label, Icon }) => (
-                                <button
-                                    key={key}
-                                    type="button"
-                                    onClick={() => setData('icon', data.icon === key ? '' : key)}
-                                    className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border px-2 py-2 transition-colors ${
-                                        data.icon === key
-                                            ? 'border-indigo-500 bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
-                                            : 'border-zinc-200 text-zinc-600 hover:border-zinc-300 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600'
-                                    }`}
-                                    title={label}
-                                >
-                                    <Icon className="h-5 w-5" />
-                                    <span className="mt-0.5 w-full truncate text-center text-[10px] leading-tight">{label}</span>
-                                </button>
-                            ))}
-                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setIconPickerOpen((open) => !open)}
+                            aria-expanded={iconPickerOpen}
+                            className="mt-2 flex w-full cursor-pointer items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50/80 px-3 py-2.5 text-left transition-colors hover:border-zinc-300 hover:bg-zinc-100/80 dark:border-zinc-700 dark:bg-zinc-800/40 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/70"
+                        >
+                            {selectedIconOption ? (
+                                <>
+                                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-white dark:border-zinc-600 dark:bg-zinc-900">
+                                        {SelectedIconPreview ? (
+                                            <SelectedIconPreview
+                                                className="h-6 w-6 text-indigo-600 dark:text-indigo-400"
+                                                aria-hidden
+                                            />
+                                        ) : null}
+                                    </span>
+                                    <span className="min-w-0 flex-1">
+                                        <span className="block text-sm font-semibold text-zinc-900 dark:text-white">
+                                            {selectedIconOption.label}
+                                        </span>
+                                        <span className="block text-xs text-zinc-500 dark:text-zinc-400">
+                                            {iconPickerOpen ? 'Toque para fechar' : 'Toque para alterar o ícone'}
+                                        </span>
+                                    </span>
+                                </>
+                            ) : (
+                                <span className="min-w-0 flex-1">
+                                    <span className="block text-sm font-semibold text-zinc-900 dark:text-white">
+                                        Escolher ícone
+                                    </span>
+                                    <span className="block text-xs text-zinc-500 dark:text-zinc-400">
+                                        {iconPickerOpen ? 'Toque para fechar' : 'Opcional — toque para ver as opções'}
+                                    </span>
+                                </span>
+                            )}
+                            {iconPickerOpen ? (
+                                <ChevronUpIcon className="h-5 w-5 shrink-0 text-zinc-500" aria-hidden />
+                            ) : (
+                                <ChevronDownIcon className="h-5 w-5 shrink-0 text-zinc-500" aria-hidden />
+                            )}
+                        </button>
+                        {iconPickerOpen ? (
+                            <div className="mt-2 grid grid-cols-4 gap-1.5 sm:grid-cols-6 sm:gap-2">
+                                {DEPARTMENT_ICON_OPTIONS.map(({ key, label, Icon }) => (
+                                    <button
+                                        key={key}
+                                        type="button"
+                                        onClick={() => {
+                                            const next = data.icon === key ? '' : key;
+                                            setData('icon', next);
+                                            if (next) {
+                                                setIconPickerOpen(false);
+                                            }
+                                        }}
+                                        className={`flex min-h-[4.75rem] cursor-pointer flex-col items-center justify-center rounded-lg border px-1.5 py-2 transition-colors sm:min-h-[5.25rem] ${
+                                            data.icon === key
+                                                ? 'border-indigo-500 bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
+                                                : 'border-zinc-200 text-zinc-600 hover:border-zinc-300 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600'
+                                        }`}
+                                        title={label}
+                                    >
+                                        <Icon className="h-6 w-6 shrink-0" aria-hidden />
+                                        <span className="mt-1 line-clamp-2 w-full break-words px-0.5 text-center text-xs font-bold leading-snug sm:text-sm">
+                                            {label}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                        ) : null}
                         <InputError message={errors.icon} className="mt-1" />
                     </div>
 
@@ -727,26 +1014,24 @@ export default function Index({
                             </div>
                             {rosterTab === 'leaders' ? (
                                 <PersonPicker
-                                    label="Líderes do departamento"
-                                    hint="Usuários que lideram este departamento."
+                                    key={`leaders-${editingId ?? 'new'}`}
+                                    memberRole="líder"
                                     options={leaderOptions}
                                     selectedIds={data.leader_user_ids}
                                     onChange={(ids) => setData('leader_user_ids', ids)}
-                                    filter={leaderPickerFilter}
-                                    onFilterChange={setLeaderPickerFilter}
+                                    addedAtById={leaderAddedAtById}
                                     onViewDetail={volunteerDetailUrlPattern ? openVolunteerDetail : undefined}
                                     resolveDetailId={(o) => o.volunteer_id ?? null}
                                     error={errors.leader_user_ids}
                                 />
                             ) : (
                                 <PersonPicker
-                                    label="Voluntários do departamento"
-                                    hint="Voluntários vinculados a este departamento."
+                                    key={`volunteers-${editingId ?? 'new'}`}
+                                    memberRole="voluntário"
                                     options={volunteerOptions}
                                     selectedIds={data.volunteer_ids}
                                     onChange={(ids) => setData('volunteer_ids', ids)}
-                                    filter={volunteerPickerFilter}
-                                    onFilterChange={setVolunteerPickerFilter}
+                                    addedAtById={volunteerAddedAtById}
                                     onViewDetail={volunteerDetailUrlPattern ? openVolunteerDetail : undefined}
                                     error={errors.volunteer_ids}
                                 />

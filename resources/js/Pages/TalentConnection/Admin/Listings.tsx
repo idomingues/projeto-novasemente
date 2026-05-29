@@ -1,4 +1,5 @@
 import AdminLayout from '@/Layouts/AdminLayout';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import PageHeader from '@/Components/PageHeader';
 import FlashMessages from '@/Components/FlashMessages';
 import AddButton from '@/Components/AddButton';
@@ -153,7 +154,7 @@ export default function TalentConnectionAdminListings({
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        const options = { forceFormData: true, onSuccess: () => closeModal() };
+        const options = { ...inertiaListModalSave, forceFormData: true };
         if (editing) {
             put(route('talents.admin.listings.update', editing.id), options);
         } else {

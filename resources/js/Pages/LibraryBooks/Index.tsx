@@ -12,6 +12,7 @@ import Textarea from '@/Components/Textarea';
 import InputError from '@/Components/InputError';
 import { FormEventHandler, useEffect, useMemo, useRef, useState } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import { compressImageForUpload, ImageCompressError } from '@/utils/compressImageForUpload';
 
 function libraryCategoryUsesExternalUrl(category: string): boolean {
@@ -223,7 +224,7 @@ export default function LibraryBooksIndex({
     };
 
     const finishSubmit = () => {
-        closeModal();
+        clearErrors();
     };
 
     const submit: FormEventHandler = (e) => {
@@ -231,18 +232,18 @@ export default function LibraryBooksIndex({
         if (isEditing && editingId) {
             sessionStorage.setItem(LIBRARY_EDITING_KEY, String(editingId));
             put(route('library-books.update', editingId), {
+                ...inertiaListModalSave,
                 onSuccess: finishSubmit,
                 onError: dismissModalOnFormError,
                 forceFormData: true,
-                preserveScroll: true,
             });
         } else {
             sessionStorage.removeItem(LIBRARY_EDITING_KEY);
             post(route('library-books.store'), {
+                ...inertiaListModalSave,
                 onSuccess: finishSubmit,
                 onError: dismissModalOnFormError,
                 forceFormData: true,
-                preserveScroll: true,
             });
         }
     };

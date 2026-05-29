@@ -26,6 +26,7 @@ import InputError from '@/Components/InputError';
 import Checkbox from '@/Components/Checkbox';
 import { FormEventHandler, useMemo, useState } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
 type Row = {
     id: number;
@@ -292,9 +293,9 @@ export default function VersiculosCaixinhaIndex({
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         if (isEditing && editingId) {
-            put(route('promise-box-verses.update', editingId), { onSuccess: () => closeModal() });
+            put(route('promise-box-verses.update', editingId), { ...inertiaListModalSave });
         } else {
-            post(route('promise-box-verses.store'), { onSuccess: () => closeModal() });
+            post(route('promise-box-verses.store'), { ...inertiaListModalSave });
         }
     };
 

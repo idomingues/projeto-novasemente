@@ -11,6 +11,7 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
 import { useState, FormEventHandler } from 'react';
 import { textIncludesSearch } from '@/utils/searchText';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
 interface AcervoItem {
     id: number;
@@ -65,9 +66,9 @@ export default function AcervoIndex({ items, canManage }: Props) {
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         if (isEditing && editingId) {
-            put(route('acervo.update', editingId), { onSuccess: () => closeModal() });
+            put(route('acervo.update', editingId), { ...inertiaListModalSave });
         } else {
-            post(route('acervo.store'), { onSuccess: () => closeModal() });
+            post(route('acervo.store'), { ...inertiaListModalSave });
         }
     };
 

@@ -27,6 +27,7 @@ import TextInput from '@/Components/TextInput';
 import VolunteerRequestAttachModal from '@/Components/VolunteerRequests/VolunteerRequestAttachModal';
 import SolicitationDetailPanel, { type SolicitationDetailPanelProps } from '@/Components/Solicitations/SolicitationDetailPanel';
 import { confirmAction } from '@/utils/confirmDialog';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
 type ScheduleRoleOption = { id: number; name: string };
 
@@ -344,9 +345,10 @@ export default function VolunteerRequestsIndex({
     const submitCreate: FormEventHandler = (e) => {
         e.preventDefault();
         createForm.post(storeUrl, {
-            preserveScroll: true,
+            ...inertiaListModalSave,
             onSuccess: () => {
-                closeModal();
+                createForm.reset();
+                clearErrors();
             },
         });
     };

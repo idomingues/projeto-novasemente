@@ -18,7 +18,6 @@ import {
 import { AdjustmentsHorizontalIcon, ArrowsUpDownIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
 import { Link, router, useForm } from '@inertiajs/react';
 import { FormEventHandler, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useDebouncedServerSearch } from '@/hooks/useDebouncedServerSearch';
 
 interface Paginated<T> {
     data: T[];
@@ -119,17 +118,7 @@ export default function VolunteerCenterRosterPanel({
         [buildQuery],
     );
 
-    const { value: searchQuery, setValue: setSearchQuery } = useDebouncedServerSearch({
-        serverValue: boardFilters.search ?? '',
-        onApply: useCallback(
-            (term) => {
-                const applied = term ?? '';
-                lastAppliedSearchRef.current = applied;
-                reload(filtersRef.current, applied);
-            },
-            [reload],
-        ),
-    });
+    const [searchQuery, setSearchQuery] = useState(boardFilters.search ?? '');
 
     const sortOptions = useMemo(() => rosterSortOptions(canVolunteerManage), [canVolunteerManage]);
     const resultsSummary = useMemo(() => formatVolunteerResultsSummary(volunteers), [volunteers]);
@@ -286,18 +275,38 @@ export default function VolunteerCenterRosterPanel({
             <form
                 onSubmit={(e) => {
                     e.preventDefault();
-                    reload(filtersRef.current, serverSearchTerm(searchQuery) ?? '');
+                    const resolved = serverSearchTerm(searchQuery) ?? '';
+                    lastAppliedSearchRef.current = resolved;
+                    reload(filtersRef.current, resolved);
                 }}
                 className="relative mt-2"
             >
-                <TextInput
-                    type="search"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Buscar voluntário por nome, e-mail ou telefone…"
-                    className="!h-8 !min-h-8 !rounded-lg !px-2.5 !py-1 !text-sm"
-                    autoComplete="off"
-                />
+                <div className="flex gap-2">
+                    <TextInput
+                        type="search"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Buscar voluntário por nome, e-mail ou telefone…"
+                        className="!h-8 !min-h-8 !rounded-lg !px-2.5 !py-1 !text-sm"
+                        autoComplete="off"
+                    />
+                    <SecondaryButton type="submit" className="!h-8 !px-3 !py-1 !text-xs">
+                        Buscar
+                    </SecondaryButton>
+                    {serverSearchTerm(searchQuery) ? (
+                        <SecondaryButton
+                            type="button"
+                            className="!h-8 !px-3 !py-1 !text-xs"
+                            onClick={() => {
+                                setSearchQuery('');
+                                lastAppliedSearchRef.current = '';
+                                reload(filtersRef.current, '');
+                            }}
+                        >
+                            Limpar
+                        </SecondaryButton>
+                    ) : null}
+                </div>
             </form>
 
             <div className="mt-1 min-h-0 flex-1 overflow-auto">

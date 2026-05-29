@@ -76,6 +76,7 @@ type Props = {
     departments: DepartmentRow[];
     phases: PhaseRow[];
     withoutDepartmentCount: number;
+    allVolunteersCount: number;
     selectedMinistryId: number | null;
     selectedPhaseKey: string | null;
     selectedMinistry: SelectedMinistry | null;
@@ -133,6 +134,7 @@ export default function ManagementCenter({
     departments,
     phases,
     withoutDepartmentCount,
+    allVolunteersCount,
     selectedMinistryId,
     selectedPhaseKey,
     selectedMinistry,
@@ -402,11 +404,7 @@ export default function ManagementCenter({
           : UserGroupIconFallback;
 
     const volunteersTotal = typeof volunteers.total === 'number' ? volunteers.total : volunteers.data.length;
-    const allDepartmentsTotal = useMemo(() => {
-        // Importante: somar `department.volunteerCount` duplica quem está em mais de um departamento.
-        // Em "Todos", o usuário espera o total de pessoas únicas, que é o `volunteers.total`.
-        return volunteersTotal;
-    }, [volunteersTotal]);
+    const allDepartmentsTotal = allVolunteersCount;
     const allPhasesTotal = useMemo(
         () => (phases ?? []).reduce((sum, p) => sum + (p.volunteerCount ?? 0), 0),
         [phases],

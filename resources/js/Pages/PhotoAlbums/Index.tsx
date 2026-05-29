@@ -11,6 +11,7 @@ import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
 import { FormEventHandler, useMemo, useState } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import { compressImageForUpload, ImageCompressError } from '@/utils/compressImageForUpload';
 
 interface PhotoAlbumRow {
@@ -98,9 +99,9 @@ export default function PhotoAlbumsIndex({ albums, canManage, hasDriveApiKey }: 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         if (isEditing && editingId) {
-            put(route('photo-albums.update', editingId), { onSuccess: () => closeModal(), forceFormData: true });
+            put(route('photo-albums.update', editingId), { ...inertiaListModalSave, forceFormData: true });
         } else {
-            post(route('photo-albums.store'), { onSuccess: () => closeModal(), forceFormData: true });
+            post(route('photo-albums.store'), { ...inertiaListModalSave, forceFormData: true });
         }
     };
 

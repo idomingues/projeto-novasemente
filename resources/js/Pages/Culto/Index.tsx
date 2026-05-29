@@ -11,6 +11,7 @@ import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
 import { useState, FormEventHandler } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
 interface CultoItem {
     id: number;
@@ -76,9 +77,9 @@ export default function CultoIndex({ cultos }: Props) {
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         if (isEditing && editingId) {
-            put(route('culto.update', editingId), { onSuccess: () => closeModal() });
+            put(route('culto.update', editingId), { ...inertiaListModalSave });
         } else {
-            post(route('culto.store'), { onSuccess: () => closeModal() });
+            post(route('culto.store'), { ...inertiaListModalSave });
         }
     };
 

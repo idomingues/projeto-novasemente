@@ -11,6 +11,7 @@ import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
 import { useState, FormEventHandler } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
 interface MusicaItem {
     id: number;
@@ -76,9 +77,9 @@ export default function MusicIndex({ musicas, canManage }: Props) {
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         if (isEditing && editingId) {
-            put(route('musica.update', editingId), { onSuccess: () => closeModal() });
+            put(route('musica.update', editingId), { ...inertiaListModalSave });
         } else {
-            post(route('musica.store'), { onSuccess: () => closeModal() });
+            post(route('musica.store'), { ...inertiaListModalSave });
         }
     };
 

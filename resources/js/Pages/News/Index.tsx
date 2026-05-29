@@ -24,6 +24,7 @@ import { useState, useEffect, FormEventHandler, useMemo, useCallback } from 'rea
 import ListSearchHint from '@/Components/ListSearchHint';
 import { useDebouncedServerSearch } from '@/hooks/useDebouncedServerSearch';
 import { confirmAction } from '@/utils/confirmDialog';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import ImageDownloadButton from '@/Components/ImageDownloadButton';
 import { youtubeThumbUrlFromVideoUrl } from '@/utils/youtube';
 import FeedCaptionBody from '@/Components/News/FeedCaptionBody';
@@ -266,9 +267,9 @@ export default function Index({ posts, filters, canManage, config }: Props) {
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         if (isEditing && editingId) {
-            put(route(routeUpdate, editingId), { onSuccess: () => closeModal(), forceFormData: true });
+            put(route(routeUpdate, editingId), { ...inertiaListModalSave, forceFormData: true });
         } else {
-            post(route(routeStore), { onSuccess: () => closeModal(), forceFormData: true });
+            post(route(routeStore), { ...inertiaListModalSave, forceFormData: true });
         }
     };
 

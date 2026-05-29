@@ -114,6 +114,29 @@ class VolunteerManagementCenterTest extends TestCase
             )));
     }
 
+    public function test_management_center_todos_count_stays_total_when_department_selected(): void
+    {
+        $admin = $this->actingAsAdmin();
+        $church = Church::query()->firstOrFail();
+        $ministryA = Ministry::query()->where('church_id', $church->id)->orderBy('id')->firstOrFail();
+
+        $allResponse = $this->actingAs($admin)->get(route('ministry-lead.volunteers.central'));
+        $allResponse->assertOk();
+        $allPage = json_decode(json_encode($allResponse->viewData('page')), true);
+        $allCount = (int) ($allPage['props']['allVolunteersCount'] ?? 0);
+        $this->assertGreaterThanOrEqual(1, $allCount);
+
+        $filteredResponse = $this->actingAs($admin)->get(route('ministry-lead.volunteers.central', [
+            'ministerio' => $ministryA->id,
+        ]));
+
+        $filteredResponse->assertOk();
+        $filteredResponse->assertInertia(fn ($page) => $page
+            ->component('MinistryLeadVolunteers/ManagementCenter')
+            ->where('allVolunteersCount', $allCount)
+            ->where('volunteers.total', fn ($deptTotal) => (int) $deptTotal <= $allCount));
+    }
+
     public function test_admin_can_open_pedidos_page(): void
     {
         $admin = $this->actingAsAdmin();

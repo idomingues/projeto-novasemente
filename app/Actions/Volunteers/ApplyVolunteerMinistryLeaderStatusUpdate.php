@@ -2,11 +2,13 @@
 
 namespace App\Actions\Volunteers;
 
+use App\Models\VolunteerClearanceCheck;
 use App\Models\VolunteerLeaderNote;
 use App\Models\VolunteerMinistryInvitation;
 use App\Models\VolunteerMinistryInvitationStatusHistory;
 use App\Support\VolunteerPipelineBootstrap;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -77,6 +79,8 @@ class ApplyVolunteerMinistryLeaderStatusUpdate
                     $churchId,
                     VolunteerPipelineBootstrap::STAGE_RECUSADO_LIDER
                 );
+
+                $this->detachVolunteerFromMinistry($invitation);
             }
         }
 
@@ -88,5 +92,23 @@ class ApplyVolunteerMinistryLeaderStatusUpdate
             'leader_status' => $invitation->leader_status,
             'leader_note' => $invitation->leader_note,
         ];
+    }
+
+    private function detachVolunteerFromMinistry(VolunteerMinistryInvitation $invitation): void
+    {
+        $volunteer = $invitation->volunteer;
+        $ministryId = (int) $invitation->ministry_id;
+        if ($volunteer === null || $ministryId <= 0 || ! Schema::hasTable('ministry_volunteer')) {
+            return;
+        }
+
+        $volunteer->ministries()->detach($ministryId);
+
+        if (Schema::hasTable('volunteer_clearance_checks')) {
+            VolunteerClearanceCheck::query()
+                ->where('volunteer_id', $invitation->volunteer_id)
+                ->where('ministry_id', $ministryId)
+                ->delete();
+        }
     }
 }

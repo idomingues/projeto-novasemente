@@ -130,10 +130,12 @@ class MinistryController extends Controller
                 'leaders' => $m->users->map(fn (User $u) => [
                     'id' => (int) $u->id,
                     'name' => (string) $u->name,
+                    'addedAt' => $u->pivot->created_at?->toIso8601String(),
                 ])->values()->all(),
                 'volunteers' => $m->volunteers->map(fn (Volunteer $v) => [
                     'id' => (int) $v->id,
                     'name' => (string) ($v->name ?: 'Sem nome'),
+                    'addedAt' => $v->pivot->created_at?->toIso8601String(),
                 ])->values()->all(),
             ])->values()->all(),
             'scheduleRolesByDepartmentId' => $scheduleRolesByDepartmentId,
@@ -154,11 +156,13 @@ class MinistryController extends Controller
         if ($churchId === null) {
             return redirect()->route('departments.index')->with('error', 'Nenhuma igreja ativa. Selecione uma igreja para trabalhar.');
         }
-        Ministry::create(array_merge($request->validated(), [
+        $ministry = Ministry::create(array_merge($request->validated(), [
             'church_id' => $churchId,
         ]));
 
-        return redirect()->route('departments.index')->with('success', 'Departamento criado com sucesso!');
+        return redirect()
+            ->route('departments.index', ['modal' => 'edit', 'id' => $ministry->id])
+            ->with('success', 'Departamento criado com sucesso!');
     }
 
     public function update(UpdateMinistryRequest $request, Ministry $ministry)

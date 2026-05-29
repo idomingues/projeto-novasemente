@@ -200,6 +200,47 @@ class VolunteerPipelineLeadTest extends TestCase
         );
     }
 
+    public function test_denied_leader_status_detaches_volunteer_from_ministry(): void
+    {
+        $admin = $this->actingAsAdmin();
+        $church = Church::query()->firstOrFail();
+        $ministry = Ministry::query()->where('church_id', $church->id)->firstOrFail();
+
+        $this->actingAs($admin)->post('/volunteers', [
+            'name' => 'Recusa Desvincula',
+            'email' => 'recusa.desvincula@example.com',
+            'ministry_ids' => [$ministry->id],
+            'active' => '1',
+            'app_password' => 'secret123',
+            'app_password_confirmation' => 'secret123',
+        ]);
+
+        $volunteer = Volunteer::query()->where('email', 'recusa.desvincula@example.com')->firstOrFail();
+        $this->assertTrue($volunteer->ministries()->whereKey($ministry->id)->exists());
+
+        $response = $this->actingAs($admin)->patch(
+            route('ministry-lead.volunteers.pipeline.ministry-leader-status', [$volunteer, $ministry]),
+            [
+                'leader_status' => 'denied',
+                'leader_note' => 'Não atende aos critérios do departamento neste momento.',
+            ],
+        );
+
+        $response->assertRedirect();
+        $response->assertSessionHasNoErrors();
+
+        $volunteer->refresh();
+        $this->assertFalse($volunteer->ministries()->whereKey($ministry->id)->exists());
+
+        $invitation = VolunteerMinistryInvitation::query()
+            ->where('volunteer_id', $volunteer->id)
+            ->where('ministry_id', $ministry->id)
+            ->first();
+
+        $this->assertNotNull($invitation);
+        $this->assertSame('denied', $invitation->leader_status);
+    }
+
     public function test_admin_can_set_reviewing_leader_status_from_pipeline(): void
     {
         $admin = $this->actingAsAdmin();

@@ -7,6 +7,7 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
 import Modal from '@/Components/Modal';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import Textarea from '@/Components/Textarea';
 import {
     ChevronLeftIcon,
@@ -456,7 +457,7 @@ const PastoralWeeklyScheduleEditor = forwardRef<PastoralWeeklyScheduleEditorHand
                 setSaving(true);
                 setErrors({});
                 router.put(url, payload, {
-                    preserveScroll: true,
+                    ...inertiaListModalSave,
                     onFinish: () => setSaving(false),
                     onError: (errs) => setErrors(errs as Record<string, string>),
                 });
@@ -476,7 +477,7 @@ const PastoralWeeklyScheduleEditor = forwardRef<PastoralWeeklyScheduleEditorHand
                 setSaving(true);
                 setErrors({});
                 router.post(availabilityStoreUrl, payload, {
-                    preserveScroll: true,
+                    ...inertiaListModalSave,
                     onFinish: () => setSaving(false),
                     onError: (errs) => setErrors(errs as Record<string, string>),
                 });
@@ -575,7 +576,6 @@ const PastoralWeeklyScheduleEditor = forwardRef<PastoralWeeklyScheduleEditorHand
             } else {
                 postAvailability(payload);
             }
-            closeModal();
         };
 
         const weeklyScheduleError =

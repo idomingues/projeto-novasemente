@@ -13,6 +13,7 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
 import { useState, FormEventHandler } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
 interface ServiceItem {
     id: number;
@@ -79,9 +80,9 @@ export default function ChurchServicesIndex({ church, services }: Props) {
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         if (editingId) {
-            put(route('churches.services.update', [church.id, editingId]), { onSuccess: () => closeModal() });
+            put(route('churches.services.update', [church.id, editingId]), { ...inertiaListModalSave });
         } else {
-            post(route('churches.services.store', church.id), { onSuccess: () => closeModal() });
+            post(route('churches.services.store', church.id), { ...inertiaListModalSave });
         }
     };
 

@@ -12,6 +12,7 @@ import InputError from '@/Components/InputError';
 import Card from '@/Components/Card';
 import { useState, FormEventHandler } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import ImageDownloadButton from '@/Components/ImageDownloadButton';
 
 interface Church {
@@ -130,9 +131,9 @@ export default function Index({ churches }: Props) {
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         if (isEditing && editingId) {
-            put(route('churches.update', editingId), { onSuccess: () => closeModal() });
+            put(route('churches.update', editingId), { ...inertiaListModalSave });
         } else {
-            post(route('churches.store'), { onSuccess: () => closeModal() });
+            post(route('churches.store'), { ...inertiaListModalSave });
         }
     };
 

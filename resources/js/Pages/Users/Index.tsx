@@ -31,6 +31,7 @@ import RecordDetailHeader from '@/Components/RecordDetail/RecordDetailHeader';
 import UserListAvatar from '@/Components/UserListAvatar';
 import { activeInactivePillClass } from '@/lib/statusBadges';
 import { confirmAction } from '@/utils/confirmDialog';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import SortedMultiCheckboxList from '@/Components/SortedMultiCheckboxList';
 
 interface MinistryOption {
@@ -356,7 +357,7 @@ export default function Index({
             post(route('members.update', editingId), {
                 preserveScroll: true,
                 forceFormData: true,
-                onSuccess: () => closeModal(),
+                ...inertiaListModalSave,
                 onError: (errs) => {
                     const msg = firstFlatError(errs) ?? 'Não foi possível salvar. Verifique os campos.';
                     setSubmitMessage({ kind: 'error', text: msg });
@@ -366,7 +367,7 @@ export default function Index({
             post(route('members.store'), {
                 preserveScroll: true,
                 forceFormData: true,
-                onSuccess: () => closeModal(),
+                ...inertiaListModalSave,
                 onError: (errs) => {
                     const msg = firstFlatError(errs) ?? 'Não foi possível salvar. Verifique os campos.';
                     setSubmitMessage({ kind: 'error', text: msg });
