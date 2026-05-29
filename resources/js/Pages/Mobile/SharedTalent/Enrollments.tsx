@@ -9,6 +9,7 @@ import TextInput from '@/Components/TextInput';
 import Textarea from '@/Components/Textarea';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { useState } from 'react';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import { CHAT_MESSAGE_SENDS_EMAIL_SUBTITLE } from '@/constants/chatEmailNotice';
 
 interface EnrollmentRow {
@@ -74,7 +75,7 @@ export default function SharedTalentEnrollments({ enrollments, myListings }: Pro
                         if (!announceForm.data.listing_id) return;
                         announceForm.post(
                             route('mobile.shared-talents.announcements', announceForm.data.listing_id),
-                            { onSuccess: () => setAnnounceOpen(false) },
+                            { ...inertiaListModalSave },
                         );
                     }}
                 >
@@ -158,7 +159,7 @@ function PublisherEnrollmentCard({ row }: { row: EnrollmentRow }) {
                     onSubmit={(e) => {
                         e.preventDefault();
                         statusForm.patch(route('mobile.shared-talents.enrollment.status', row.id), {
-                            onSuccess: () => setStatusOpen(false),
+                            ...inertiaListModalSave,
                         });
                     }}
                 >

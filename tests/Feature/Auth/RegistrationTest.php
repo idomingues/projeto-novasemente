@@ -21,6 +21,7 @@ class RegistrationTest extends TestCase
         $response = $this->post('/register', [
             'name' => 'Test User',
             'email' => 'test@example.com',
+            'phone' => '11999998888',
             'photo_file' => \Illuminate\Http\UploadedFile::fake()->image('avatar.jpg', 800, 800)->size(250),
             'password' => 'password',
             'password_confirmation' => 'password',
@@ -33,6 +34,11 @@ class RegistrationTest extends TestCase
         $this->assertAuthenticated();
         $response->assertRedirect(route('registration.welcome', absolute: false));
         $response->assertSessionHas('registration_success', true);
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'test@example.com',
+            'phone' => '11999998888',
+        ]);
 
         $this->get(route('registration.welcome', absolute: false))
             ->assertOk();

@@ -8,6 +8,7 @@ import SelectInput from '@/Components/SelectInput';
 import TextInput from '@/Components/TextInput';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { useState } from 'react';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import { CHAT_MESSAGE_SENDS_EMAIL_SUBTITLE } from '@/constants/chatEmailNotice';
 
 interface EnrollmentRow {
@@ -120,7 +121,7 @@ function EnrollmentCard({ row }: { row: EnrollmentRow }) {
                     onSubmit={(e) => {
                         e.preventDefault();
                         reviewForm.post(route('mobile.shared-talents.enrollment.review', row.id), {
-                            onSuccess: () => setReviewOpen(false),
+                            ...inertiaListModalSave,
                         });
                     }}
                 >

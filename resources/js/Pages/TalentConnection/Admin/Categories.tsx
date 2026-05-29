@@ -9,6 +9,7 @@ import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { FormEventHandler, useState } from 'react';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
 interface Category {
     id: number;
@@ -32,10 +33,8 @@ export default function TalentConnectionAdminCategories({ categories }: Props) {
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         post(route('talents.admin.categories.store'), {
-            onSuccess: () => {
-                setOpen(false);
-                reset();
-            },
+            ...inertiaListModalSave,
+            onSuccess: () => reset(),
         });
     };
 

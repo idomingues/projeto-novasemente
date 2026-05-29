@@ -471,7 +471,7 @@ class SolicitationAdminController extends Controller
 
         $query = ChurchSolicitation::query()
             ->with([
-                'user:id,name',
+                'user:id,name,email,phone',
                 'assignedPastor:id,name',
                 'assignedVolunteer.user:id,name',
             ])
@@ -512,6 +512,8 @@ class SolicitationAdminController extends Controller
                 'preferredDate' => $s->preferred_date?->format('Y-m-d'),
                 'updatedAt' => $s->updated_at?->toIso8601String(),
                 'memberLabel' => $s->user?->name ?? 'Usuário',
+                'memberEmail' => $s->user?->email,
+                'memberPhone' => $s->user?->phone,
             ])
             ->values()
             ->all();

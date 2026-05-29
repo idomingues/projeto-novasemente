@@ -9,6 +9,7 @@ import InputLabel from '@/Components/InputLabel';
 import InputError from '@/Components/InputError';
 import SelectInput from '@/Components/SelectInput';
 import { confirmAction } from '@/utils/confirmDialog';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import PastorVisitScheduleSection from '@/Components/Solicitations/PastorVisitScheduleSection';
 import type { PastoralPastorOpt } from '@/Components/PastoralAppointment/PastoralAppointmentForm';
 import { CHAT_MESSAGE_SENDS_EMAIL_SUBTITLE } from '@/constants/chatEmailNotice';
@@ -38,6 +39,8 @@ export type SolicitationDetailShape = {
     meta: Record<string, unknown> | null;
     internalNotes?: string | null;
     memberLabel?: string;
+    memberEmail?: string | null;
+    memberPhone?: string | null;
     memberPhotoUrl?: string | null;
     preferredDate?: string | null;
     /** ISO8601 — horário escolhido em «Visita aos pastores». */
@@ -211,6 +214,7 @@ export default function SolicitationDetailPanel({
     statusChangeOptions,
 }: SolicitationDetailPanelProps) {
     const inertiaScrollOpts = { preserveScroll: true };
+    const panelSaveOpts = preserveStateOnPanelActions ? inertiaListModalSave : inertiaScrollOpts;
     const isModal = variant === 'modal';
     const showDetails = sectionProp === 'full' || sectionProp === 'details';
     const showChat = sectionProp === 'full' || sectionProp === 'chat';
@@ -285,8 +289,7 @@ export default function SolicitationDetailPanel({
         e.preventDefault();
         if (!msgForm.data.content.trim()) return;
         msgForm.post(messageStoreUrl, {
-            preserveState: preserveStateOnPanelActions,
-            ...inertiaScrollOpts,
+            ...panelSaveOpts,
             onSuccess: () => {
                 msgForm.reset('content');
                 msgForm.setData(
@@ -305,7 +308,7 @@ export default function SolicitationDetailPanel({
     const saveMemberDetails: FormEventHandler = (e) => {
         e.preventDefault();
         if (!memberUpdateUrl || !memberCanEditDetails) return;
-        memberPatchForm.patch(memberUpdateUrl, inertiaScrollOpts);
+        memberPatchForm.patch(memberUpdateUrl, panelSaveOpts);
     };
 
     const isPastorVisitFlow =
@@ -342,8 +345,7 @@ export default function SolicitationDetailPanel({
         e.preventDefault();
         if (!updateUrl) return;
         adminForm.patch(updateUrl, {
-            preserveState: preserveStateOnPanelActions,
-            preserveScroll: true,
+            ...panelSaveOpts,
             onSuccess: () => {
                 onPanelActionSuccess?.();
             },
@@ -405,6 +407,26 @@ export default function SolicitationDetailPanel({
                             {solicitation.subject?.trim() ? solicitation.subject : '—'}
                         </div>
                     )}
+                    {composerRole === 'staff' && solicitation.type === 'baptism' ? (
+                        <dl className="grid gap-2 text-sm sm:grid-cols-2">
+                            <div>
+                                <dt className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                    E-mail
+                                </dt>
+                                <dd className="mt-0.5 break-all text-zinc-800 dark:text-zinc-100">
+                                    {solicitation.memberEmail?.trim() ? solicitation.memberEmail : '—'}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                    Telefone
+                                </dt>
+                                <dd className="mt-0.5 text-zinc-800 dark:text-zinc-100">
+                                    {solicitation.memberPhone?.trim() ? solicitation.memberPhone : '—'}
+                                </dd>
+                            </div>
+                        </dl>
+                    ) : null}
                     <div>
                         <p className="sr-only">Mensagem inicial do pedido</p>
                         <div className="rounded-xl border border-zinc-100 bg-zinc-50/90 px-3.5 py-3 text-sm leading-relaxed text-zinc-800 dark:border-zinc-700/80 dark:bg-zinc-950/50 dark:text-zinc-100 whitespace-pre-wrap">

@@ -9,9 +9,15 @@ import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
-import { useState, FormEventHandler } from 'react';
+import { useCallback, useState, FormEventHandler } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
-import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
+import { useListModalSubmit } from '@/hooks/useListModalSubmit';
+import {
+    useListModalEditUrl,
+    useListModalFromUrl,
+    useListModalSaveMessage,
+    useSyncFormAfterListReload,
+} from '@/hooks/useListModalEditUrl';
 
 interface MusicaItem {
     id: number;
@@ -42,45 +48,89 @@ export default function MusicIndex({ musicas, canManage }: Props) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
-    const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
+    const [saveMessage, setSaveMessage] = useState<string | null>(null);
+    const { data, setData, errors, reset, clearErrors, setError } = useForm({
         title: '',
         youtube_url: '',
         published_at: '',
     });
+    const { saving, save } = useListModalSubmit({ reloadOnly: ['musicas'], setError, clearErrors });
+    const { syncListModalEditUrl } = useListModalEditUrl();
+    const showSaveMessage = useListModalSaveMessage();
+
+    const applyMusicaToForm = useCallback(
+        (m: MusicaItem) => {
+            setData({
+                title: m.title,
+                youtube_url: m.youtube_url,
+                published_at: m.published_at ? m.published_at.substring(0, 16) : '',
+            });
+        },
+        [setData],
+    );
 
     const openCreateModal = () => {
         setIsEditing(false);
         setEditingId(null);
+        setSaveMessage(null);
+        syncListModalEditUrl(null);
         reset();
         clearErrors();
         setIsModalOpen(true);
     };
 
-    const openEditModal = (m: MusicaItem) => {
-        setIsEditing(true);
-        setEditingId(m.id);
-        setData({
-            title: m.title,
-            youtube_url: m.youtube_url,
-            published_at: m.published_at ? m.published_at.substring(0, 16) : '',
-        });
-        clearErrors();
-        setIsModalOpen(true);
-    };
+    const openEditModal = useCallback(
+        (m: MusicaItem) => {
+            setIsEditing(true);
+            setEditingId(m.id);
+            setSaveMessage(null);
+            syncListModalEditUrl(m.id);
+            applyMusicaToForm(m);
+            clearErrors();
+            setIsModalOpen(true);
+        },
+        [applyMusicaToForm, clearErrors, syncListModalEditUrl],
+    );
+
+    const { markSyncAfterReload } = useSyncFormAfterListReload(musicas, editingId, isModalOpen, applyMusicaToForm);
+    useListModalFromUrl(musicas, isModalOpen, editingId, openEditModal);
 
     const closeModal = () => {
         setIsModalOpen(false);
+        setSaveMessage(null);
+        syncListModalEditUrl(null);
         reset();
         setEditingId(null);
+        setIsEditing(false);
     };
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        if (isEditing && editingId) {
-            put(route('musica.update', editingId), { ...inertiaListModalSave });
-        } else {
-            post(route('musica.store'), { ...inertiaListModalSave });
-        }
+        void (async () => {
+            const outcome = await save(
+                isEditing,
+                editingId,
+                {
+                    title: data.title,
+                    youtube_url: data.youtube_url,
+                    published_at: data.published_at || null,
+                },
+                route('musica.store'),
+                (id) => route('musica.update', id),
+            );
+            if (!outcome.ok) return;
+            if (isEditing) {
+                showSaveMessage(setSaveMessage, 'Música atualizada.');
+                return;
+            }
+            showSaveMessage(setSaveMessage, 'Música adicionada.');
+            if (outcome.createdId) {
+                markSyncAfterReload();
+                setIsEditing(true);
+                setEditingId(outcome.createdId);
+                syncListModalEditUrl(outcome.createdId);
+            }
+        })();
     };
 
     const handleDelete = async (id: number) => {
@@ -189,9 +239,14 @@ export default function MusicIndex({ musicas, canManage }: Props) {
             {canManage && (
             <Modal show={isModalOpen} onClose={closeModal}>
                 <form onSubmit={submit} className="p-6">
-                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-6">
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-2">
                         {isEditing ? 'Editar música' : 'Nova música'}
                     </h2>
+                    {saveMessage ? (
+                        <p className="mb-4 text-sm font-medium text-emerald-700 dark:text-emerald-300" role="status">
+                            {saveMessage}
+                        </p>
+                    ) : null}
                     <div className="space-y-4">
                         <div>
                             <InputLabel htmlFor="musica_title" value="Título" />
@@ -231,8 +286,8 @@ export default function MusicIndex({ musicas, canManage }: Props) {
                         <SecondaryButton type="button" onClick={closeModal}>
                             Cancelar
                         </SecondaryButton>
-                        <PrimaryButton type="submit" disabled={processing}>
-                            {isEditing ? 'Salvar' : 'Publicar'}
+                        <PrimaryButton type="submit" disabled={saving}>
+                            {saving ? 'Salvando…' : isEditing ? 'Salvar' : 'Publicar'}
                         </PrimaryButton>
                     </div>
                 </form>

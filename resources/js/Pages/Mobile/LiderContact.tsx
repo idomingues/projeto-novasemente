@@ -20,6 +20,7 @@ import SolicitationDetailPanel, {
     type SolicitationMessageRow,
 } from '@/Components/Solicitations/SolicitationDetailPanel';
 import { FormEventHandler, useCallback, useEffect, useRef, useState } from 'react';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
 interface LeaderOpt {
     value: number;
@@ -108,7 +109,10 @@ export default function LiderContact({ leaderOptions, contactMinistry, storeUrl,
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        post(storeUrl);
+        post(storeUrl, {
+            ...inertiaListModalSave,
+            onSuccess: () => reset(),
+        });
     };
 
     const openDetail = useCallback((row: LeaderContactRow, tab: DetailTab = 'detalhes') => {

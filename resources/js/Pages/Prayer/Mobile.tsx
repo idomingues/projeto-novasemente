@@ -12,6 +12,7 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
 import Modal from '@/Components/Modal';
 import { FormEventHandler, useState } from 'react';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
 interface PrayerItem {
     id: number;
@@ -57,11 +58,8 @@ export default function PrayerMobile({ requests }: Props) {
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         post(route('prayer.store'), {
-            onSuccess: () => {
-                reset();
-                setCreateOpen(false);
-            },
-            preserveScroll: true,
+            ...inertiaListModalSave,
+            onSuccess: () => reset(),
         });
     };
 

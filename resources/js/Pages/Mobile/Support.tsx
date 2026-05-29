@@ -14,6 +14,7 @@ import Textarea from '@/Components/Textarea';
 import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import InputError from '@/Components/InputError';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
 type SupportTicketListItem = {
     publicToken: string;
@@ -122,9 +123,10 @@ export default function MobileSupport({
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         post(route('mobile.support.store'), {
+            ...inertiaListModalSave,
             forceFormData: true,
             onSuccess: () => {
-                closeCreateModal();
+                reset();
             },
         });
     };

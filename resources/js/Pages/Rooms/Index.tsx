@@ -9,9 +9,9 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import PageHeader from '@/Components/PageHeader';
 import InputError from '@/Components/InputError';
-import { useState, FormEventHandler } from 'react';
+import { useCallback, useEffect, useRef, useState, FormEventHandler } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
-import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
+import { useListModalSubmit } from '@/hooks/useListModalSubmit';
 
 interface Room {
     id: number;
@@ -41,19 +41,66 @@ export default function Index({ rooms, byFloor, floors, canManage = false }: Pro
         const keys = Object.keys(floors);
         return Object.fromEntries(keys.map((k) => [k, true]));
     });
+    const [saveMessage, setSaveMessage] = useState<string | null>(null);
+    const syncFormAfterReloadRef = useRef(false);
 
-    const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
+    const { data, setData, errors, reset, clearErrors, setError } = useForm({
         name: '',
         floor: 'terreo',
         location: '',
         capacity: '' as string | number,
     });
 
+    const { saving, save } = useListModalSubmit({
+        reloadOnly: ['rooms', 'byFloor'],
+        setError,
+        clearErrors,
+    });
+
+    const showSaveMessage = useCallback((message: string) => {
+        setSaveMessage(message);
+        window.setTimeout(() => setSaveMessage(null), 5000);
+    }, []);
+
+    const syncRoomEditModalUrl = useCallback((id: number | null) => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+        const params = new URLSearchParams(window.location.search);
+        if (id != null && id > 0) {
+            params.set('modal', 'edit');
+            params.set('id', String(id));
+        } else {
+            params.delete('modal');
+            params.delete('id');
+        }
+        const q = params.toString();
+        const next = `${window.location.pathname}${q ? `?${q}` : ''}`;
+        const current = `${window.location.pathname}${window.location.search}`;
+        if (next !== current) {
+            window.history.replaceState({}, '', next);
+        }
+    }, []);
+
+    const applyRoomToForm = useCallback(
+        (r: Room) => {
+            setData({
+                name: r.name,
+                floor: r.floor,
+                location: r.location ?? '',
+                capacity: r.capacity ?? '',
+            });
+        },
+        [setData],
+    );
+
     const openCreateModal = (floor?: string) => {
         setIsEditing(false);
         setEditingId(null);
+        setSaveMessage(null);
+        syncRoomEditModalUrl(null);
         reset();
-        setData({ ...data, name: '', floor: floor ?? 'terreo', location: '', capacity: '' });
+        setData({ name: '', floor: floor ?? 'terreo', location: '', capacity: '' });
         clearErrors();
         setIsModalOpen(true);
     };
@@ -61,28 +108,91 @@ export default function Index({ rooms, byFloor, floors, canManage = false }: Pro
     const openEditModal = (r: Room) => {
         setIsEditing(true);
         setEditingId(r.id);
-        setData({
-            name: r.name,
-            floor: r.floor,
-            location: r.location ?? '',
-            capacity: r.capacity ?? '',
-        });
+        setSaveMessage(null);
+        syncRoomEditModalUrl(r.id);
+        applyRoomToForm(r);
         clearErrors();
         setIsModalOpen(true);
     };
 
     const closeModal = () => {
         setIsModalOpen(false);
+        setSaveMessage(null);
+        syncRoomEditModalUrl(null);
         reset();
+        setEditingId(null);
+        setIsEditing(false);
     };
+
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('modal') !== 'edit') {
+            return;
+        }
+        const id = Number(params.get('id'));
+        if (Number.isNaN(id) || id <= 0) {
+            return;
+        }
+        const room = rooms.find((r) => r.id === id);
+        if (!room) {
+            return;
+        }
+        if (!isModalOpen || editingId !== id) {
+            openEditModal(room);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [rooms]);
+
+    useEffect(() => {
+        if (!syncFormAfterReloadRef.current || editingId == null || !isModalOpen) {
+            return;
+        }
+        const room = rooms.find((r) => r.id === editingId);
+        if (!room) {
+            return;
+        }
+        applyRoomToForm(room);
+        syncFormAfterReloadRef.current = false;
+    }, [rooms, editingId, isModalOpen, applyRoomToForm]);
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        if (isEditing && editingId) {
-            put(route('rooms.update', editingId), { ...inertiaListModalSave });
-        } else {
-            post(route('rooms.store'), { ...inertiaListModalSave });
-        }
+        void (async () => {
+            const payload = {
+                name: data.name,
+                floor: data.floor,
+                location: data.location || null,
+                capacity: data.capacity === '' ? null : Number(data.capacity),
+            };
+            const outcome = await save(
+                isEditing,
+                editingId,
+                payload,
+                route('rooms.store'),
+                (id) => route('rooms.update', id),
+            );
+            if (!outcome.ok) {
+                return;
+            }
+            if (isEditing) {
+                showSaveMessage('Sala atualizada.');
+                return;
+            }
+            showSaveMessage('Sala criada.');
+            const newId = outcome.createdId;
+            if (newId) {
+                syncFormAfterReloadRef.current = true;
+                setIsEditing(true);
+                setEditingId(newId);
+                syncRoomEditModalUrl(newId);
+            } else {
+                reset();
+                setData({ name: '', floor: data.floor, location: '', capacity: '' });
+            }
+        })();
     };
 
     const handleDelete = async (id: number) => {
@@ -236,9 +346,14 @@ export default function Index({ rooms, byFloor, floors, canManage = false }: Pro
 
             <Modal show={isModalOpen} onClose={closeModal}>
                 <form onSubmit={submit} className="p-6">
-                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-6">
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-2">
                         {isEditing ? 'Editar sala' : 'Nova sala'}
                     </h2>
+                    {saveMessage ? (
+                        <p className="mb-4 text-sm font-medium text-emerald-700 dark:text-emerald-300" role="status">
+                            {saveMessage}
+                        </p>
+                    ) : null}
                     <div>
                         <InputLabel htmlFor="name" value="Nome" />
                         <TextInput
@@ -290,8 +405,8 @@ export default function Index({ rooms, byFloor, floors, canManage = false }: Pro
                     </div>
                     <div className="mt-6 flex justify-end gap-2">
                         <SecondaryButton type="button" onClick={closeModal}>Cancelar</SecondaryButton>
-                        <PrimaryButton type="submit" disabled={processing}>
-                            {isEditing ? 'Salvar' : 'Criar'}
+                        <PrimaryButton type="submit" disabled={saving}>
+                            {saving ? 'Salvando…' : isEditing ? 'Salvar' : 'Criar'}
                         </PrimaryButton>
                     </div>
                 </form>

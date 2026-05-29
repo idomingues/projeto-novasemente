@@ -230,6 +230,7 @@ class User extends Authenticatable
             'active' => true,
             'name' => $name,
             'email' => $this->email,
+            'phone' => filled($this->phone) ? $this->phone : ($volunteer?->phone ?? null),
             'role' => $volunteer?->role ?? $this->volunteerRoleMirrorForProfile(),
         ];
 

@@ -11,6 +11,7 @@ import Modal from '@/Components/Modal';
 import InputError from '@/Components/InputError';
 import { FormEventHandler, useMemo, useState } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import { textIncludesSearch } from '@/utils/searchText';
 import { appRoleLabel } from '@/lib/appRoleLabels';
 import { TrashIcon } from '@heroicons/react/24/outline';
@@ -197,10 +198,10 @@ export default function RolesIndex({ roles, permissions }: Props) {
     const submitCreate: FormEventHandler = (e) => {
         e.preventDefault();
         createForm.post(route('roles.store'), {
-            preserveScroll: true,
+            ...inertiaListModalSave,
             onSuccess: () => {
-                setCreateOpen(false);
                 createForm.reset();
+                createForm.clearErrors();
             },
         });
     };

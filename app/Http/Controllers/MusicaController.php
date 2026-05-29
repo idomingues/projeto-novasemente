@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Support\ListModalRedirect;
 use App\Models\Church;
 use App\Models\Musica;
 use App\Services\YoutubePlaylistImportService;
@@ -76,7 +77,7 @@ class MusicaController extends Controller
             $publishedAt = now();
         }
 
-        Musica::create([
+        $musica = Musica::create([
             'church_id' => $churchId,
             'title' => $title,
             'youtube_url' => $data['youtube_url'],
@@ -84,7 +85,7 @@ class MusicaController extends Controller
             'created_by' => $request->user()?->id,
         ]);
 
-        return redirect()->route('musica.index')->with('success', 'Música adicionada com sucesso.');
+        return ListModalRedirect::toIndexEdit('musica.index', $musica, 'Música adicionada com sucesso.');
     }
 
     public function update(Request $request, Musica $musica)
@@ -112,7 +113,7 @@ class MusicaController extends Controller
             'published_at' => $data['published_at'] ?? null,
         ]);
 
-        return redirect()->route('musica.index')->with('success', 'Música atualizada com sucesso.');
+        return ListModalRedirect::toIndexEdit('musica.index', $musica, 'Música atualizada com sucesso.');
     }
 
     public function destroy(Musica $musica)

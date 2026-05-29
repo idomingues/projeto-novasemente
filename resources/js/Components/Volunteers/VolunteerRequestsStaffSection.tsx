@@ -421,7 +421,7 @@ export default function VolunteerRequestsStaffSection({
         e.preventDefault();
         if (!panelRow?.can_edit || !panelRow.update_url) return;
         panelEditForm.put(panelRow.update_url, {
-            preserveScroll: true,
+            ...inertiaListModalSave,
             onSuccess: () => {
                 void refetchPanelPayload();
                 router.reload({ only: ['volunteerRequestRows'] });

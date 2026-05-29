@@ -2,8 +2,9 @@ import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PasswordInput from '@/Components/PasswordInput';
 import PrimaryButton from '@/Components/PrimaryButton';
-import { useForm } from '@inertiajs/react';
-import { FormEventHandler } from 'react';
+import { applyVolunteerModalFormErrors, submitVolunteerModalPatch } from '@/utils/volunteerPipelineModalSave';
+import { useForm, usePage } from '@inertiajs/react';
+import { FormEventHandler, useState } from 'react';
 
 type Props = {
     submitUrl: string;
@@ -11,23 +12,44 @@ type Props = {
 };
 
 export default function VolunteerPasswordChangeForm({ submitUrl, onSuccess }: Props) {
-    const { data, setData, patch, processing, errors, reset, recentlySuccessful } = useForm({
+    const page = usePage();
+    const csrf = (page.props as { csrf_token?: string }).csrf_token ?? '';
+    const [saving, setSaving] = useState(false);
+    const [saved, setSaved] = useState(false);
+    const { data, setData, processing, errors, reset, setError, clearErrors } = useForm({
         app_password: '',
         app_password_confirmation: '',
     });
 
-    const submit: FormEventHandler = (e) => {
+    const submit: FormEventHandler = async (e) => {
         e.preventDefault();
-        if (!data.app_password.trim()) {
+        if (!data.app_password.trim() || saving) {
             return;
         }
-        patch(submitUrl, {
-            preserveScroll: true,
-            onSuccess: () => {
-                reset();
-                onSuccess?.();
-            },
-        });
+        clearErrors();
+        setSaving(true);
+        setSaved(false);
+        try {
+            const result = await submitVolunteerModalPatch(
+                submitUrl,
+                {
+                    app_password: data.app_password,
+                    app_password_confirmation: data.app_password_confirmation,
+                },
+                csrf,
+            );
+            if (!result.ok) {
+                applyVolunteerModalFormErrors(result.errors, (field, message) =>
+                    setError(field as 'app_password' | 'app_password_confirmation', message),
+                );
+                return;
+            }
+            reset();
+            setSaved(true);
+            onSuccess?.();
+        } finally {
+            setSaving(false);
+        }
     };
 
     return (
@@ -63,10 +85,10 @@ export default function VolunteerPasswordChangeForm({ submitUrl, onSuccess }: Pr
                     </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
-                    <PrimaryButton type="submit" disabled={processing}>
-                        Salvar senha
+                    <PrimaryButton type="submit" disabled={processing || saving}>
+                        {saving ? 'Salvando…' : 'Salvar senha'}
                     </PrimaryButton>
-                    {recentlySuccessful ? (
+                    {saved ? (
                         <p className="text-sm text-amber-900/90 dark:text-amber-100/90">Senha atualizada.</p>
                     ) : null}
                 </div>

@@ -20,6 +20,14 @@ import MinistryLeaderStatusSection, {
 } from '@/Components/Volunteers/MinistryLeaderStatusSection';
 import SplitSortedMultiCheckboxPicker from '@/Components/SplitSortedMultiCheckboxPicker';
 import { confirmAction } from '@/utils/confirmDialog';
+import {
+    applyVolunteerModalFormErrors,
+    parseVolunteerModalFromUrl,
+    submitVolunteerModalPatch,
+    submitVolunteerModalPost,
+    syncVolunteerModalUrl,
+    type VolunteerModalUrlTab,
+} from '@/utils/volunteerPipelineModalSave';
 import { volunteerDetailSections, type VolunteerDetailData } from '@/utils/volunteerDetailRows';
 import { centerVolunteersQuery, type CenterGroupBy } from '@/utils/centerVolunteersQuery';
 import type { VolunteerRosterBoardFilters, VolunteerRosterListRow } from '@/utils/volunteerRosterList';
@@ -92,6 +100,8 @@ type Props = {
     volunteersAdminUrl: string;
 };
 
+type DetailTab = VolunteerModalUrlTab;
+
 type DetailJson = {
     volunteer: VolunteerDetailData;
     pipeline?: { stageId: number | null; stageName: string | null; adminWorkflowStageId: number | null };
@@ -153,12 +163,16 @@ export default function ManagementCenter({
     const [modalOpen, setModalOpen] = useState(false);
     const [detailLoading, setDetailLoading] = useState(false);
     const [selectedId, setSelectedId] = useState<number | null>(null);
-    const [detailTab, setDetailTab] = useState<'ficha' | 'notas' | 'departamentos' | 'historico'>('ficha');
+    const [detailTab, setDetailTab] = useState<DetailTab>('ficha');
     const [detail, setDetail] = useState<DetailJson | null>(null);
+    const [modalSaveMessage, setModalSaveMessage] = useState<string | null>(null);
+    const [stageSaving, setStageSaving] = useState(false);
+    const [ministriesSaving, setMinistriesSaving] = useState(false);
     const isPhaseGroup = groupBy === 'fase';
     const boardFiltersRef = useRef(boardFilters);
     boardFiltersRef.current = boardFilters;
     const page = usePage();
+    const pageUrl = page.url;
     const csrf = (page.props as { csrf_token?: string }).csrf_token ?? '';
     const authProps = page.props as { auth?: { openVolunteerRequestsCount?: number } };
     const openVolunteerRequestsCount =
@@ -275,20 +289,8 @@ export default function ManagementCenter({
         return q.includes('sem') || q.includes('depto') || 'sem departamento'.includes(q);
     }, [isPhaseGroup, withoutDepartmentCount, sidebarSearch]);
 
-    const openVolunteer = async (id: number, tab: 'ficha' | 'notas' | 'departamentos' | 'historico' = 'ficha') => {
-        setSelectedId(id);
-        setModalOpen(true);
-        setDetailTab(tab);
-        setDetail(null);
-        setDetailLoading(true);
-        noteForm.reset('body');
-        try {
-            const url = route('ministry-lead.volunteers.pipeline.detail', id);
-            const r = await fetch(url, {
-                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrf },
-                credentials: 'same-origin',
-            });
-            const j = (await r.json()) as DetailJson;
+    const applyDetailJson = useCallback(
+        (j: DetailJson) => {
             setDetail(j);
             const explicitSid = j.pipeline?.adminWorkflowStageId;
             const pipelineSid =
@@ -299,6 +301,65 @@ export default function ManagementCenter({
             stageMoveForm.setData('stage_id', sid != null ? String(sid) : '');
             const attachedIds = (j.ministryOptions ?? []).filter((o) => o.attached).map((o) => o.id);
             ministriesForm.setData('ministry_ids', attachedIds);
+        },
+        [ministriesForm, stageMoveForm],
+    );
+
+    const refreshVolunteerDetail = useCallback(
+        async (id: number) => {
+            try {
+                const url = route('ministry-lead.volunteers.pipeline.detail', id);
+                const r = await fetch(url, {
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrf },
+                    credentials: 'same-origin',
+                });
+                if (!r.ok) {
+                    return;
+                }
+                const j = (await r.json()) as DetailJson;
+                applyDetailJson(j);
+            } catch {
+                // Mantém o conteúdo atual do modal em caso de falha na atualização.
+            }
+        },
+        [applyDetailJson, csrf],
+    );
+
+    const closeVolunteerModal = useCallback(() => {
+        setModalOpen(false);
+        setDetail(null);
+        setSelectedId(null);
+        setModalSaveMessage(null);
+        syncVolunteerModalUrl(null, null);
+    }, []);
+
+    const showModalSaveMessage = useCallback((message: string) => {
+        setModalSaveMessage(message);
+        window.setTimeout(() => setModalSaveMessage(null), 5000);
+    }, []);
+
+    const openVolunteer = async (id: number, tab: DetailTab = 'ficha', options?: { silent?: boolean }) => {
+        setSelectedId(id);
+        setModalOpen(true);
+        setDetailTab(tab);
+        syncVolunteerModalUrl(id, tab);
+        if (!options?.silent) {
+            setDetail(null);
+            setDetailLoading(true);
+            noteForm.reset('body');
+        }
+        try {
+            const url = route('ministry-lead.volunteers.pipeline.detail', id);
+            const r = await fetch(url, {
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrf },
+                credentials: 'same-origin',
+            });
+            if (!r.ok) {
+                setDetail(null);
+                return;
+            }
+            const j = (await r.json()) as DetailJson;
+            applyDetailJson(j);
         } catch {
             setDetail(null);
         } finally {
@@ -308,74 +369,87 @@ export default function ManagementCenter({
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
-        const params = new URLSearchParams(window.location.search);
-        const modal = params.get('modal');
-        const idParam = params.get('id');
-        if (modal !== 'volunteer' || !idParam) return;
-        const id = Number(idParam);
-        if (Number.isNaN(id) || id <= 0) return;
-        void openVolunteer(id, 'ficha');
-        params.delete('modal');
-        params.delete('id');
-        const q = params.toString();
-        window.history.replaceState({}, '', `${window.location.pathname}${q ? `?${q}` : ''}`);
+        const parsed = parseVolunteerModalFromUrl(window.location.search);
+        if (!parsed) {
+            return;
+        }
+        if (!modalOpen || selectedId !== parsed.id) {
+            void openVolunteer(parsed.id, parsed.tab);
+            return;
+        }
+        if (detailTab !== parsed.tab) {
+            setDetailTab(parsed.tab);
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [pageUrl]);
 
-    const submitNote: React.FormEventHandler = (e) => {
+    const submitNote: React.FormEventHandler = async (e) => {
         e.preventDefault();
-        if (!detail) return;
-        noteForm.post(detail.storeNoteUrl, {
-            preserveScroll: true,
-            onSuccess: () => {
-                noteForm.reset('body');
-                if (selectedId) void openVolunteer(selectedId, 'notas');
-            },
-        });
+        if (!detail || noteForm.processing) return;
+        noteForm.clearErrors();
+        const result = await submitVolunteerModalPost(detail.storeNoteUrl, { body: noteForm.data.body }, csrf);
+        if (!result.ok) {
+            applyVolunteerModalFormErrors(result.errors, (field, message) => noteForm.setError(field as 'body', message));
+            return;
+        }
+        noteForm.reset('body');
+        showModalSaveMessage('Anotação registrada.');
+        if (selectedId) await refreshVolunteerDetail(selectedId);
     };
 
-    const submitStageMove: React.FormEventHandler = (e) => {
+    const submitStageMove: React.FormEventHandler = async (e) => {
         e.preventDefault();
-        if (!detail) return;
-        stageMoveForm.patch(detail.updateStageUrl, {
-            preserveScroll: true,
-            onSuccess: () => {
-                if (selectedId) void openVolunteer(selectedId);
-                const url = `${window.location.pathname}${window.location.search}`;
-                router.get(
-                    url,
-                    {},
-                    {
-                        only: ['volunteers', 'phases', 'departments', 'withoutDepartmentCount'],
-                        preserveState: true,
-                        preserveScroll: true,
-                        replace: true,
-                    },
+        if (!detail || stageSaving) return;
+        stageMoveForm.clearErrors();
+        setStageSaving(true);
+        try {
+            const result = await submitVolunteerModalPatch(
+                detail.updateStageUrl,
+                { stage_id: stageMoveForm.data.stage_id },
+                csrf,
+            );
+            if (!result.ok) {
+                applyVolunteerModalFormErrors(result.errors, (field, message) =>
+                    stageMoveForm.setError(field as 'stage_id', message),
                 );
-            },
-        });
+                return;
+            }
+            showModalSaveMessage('Fase principal atualizada.');
+            if (selectedId) await refreshVolunteerDetail(selectedId);
+        } finally {
+            setStageSaving(false);
+        }
     };
 
-    const submitMinistries: React.FormEventHandler = (e) => {
+    const submitMinistries: React.FormEventHandler = async (e) => {
         e.preventDefault();
-        if (!detail?.syncMinistriesUrl) return;
-        ministriesForm.patch(detail.syncMinistriesUrl, {
-            preserveScroll: true,
-            onSuccess: () => {
-                if (selectedId) void openVolunteer(selectedId, 'departamentos');
-                const url = `${window.location.pathname}${window.location.search}`;
-                router.get(
-                    url,
-                    {},
-                    {
-                        only: ['volunteers', 'phases', 'departments', 'withoutDepartmentCount'],
-                        preserveState: true,
-                        preserveScroll: true,
-                        replace: true,
-                    },
+        if (!detail?.syncMinistriesUrl || ministriesSaving) return;
+        ministriesForm.clearErrors();
+        setMinistriesSaving(true);
+        try {
+            const result = await submitVolunteerModalPatch(
+                detail.syncMinistriesUrl,
+                { ministry_ids: ministriesForm.data.ministry_ids },
+                csrf,
+            );
+            if (!result.ok) {
+                applyVolunteerModalFormErrors(result.errors, (field, message) =>
+                    ministriesForm.setError(field as 'ministry_ids', message),
                 );
-            },
-        });
+                return;
+            }
+            showModalSaveMessage('Departamentos atualizados.');
+            if (selectedId) await refreshVolunteerDetail(selectedId);
+        } finally {
+            setMinistriesSaving(false);
+        }
+    };
+
+    const selectDetailTab = (tab: DetailTab) => {
+        setDetailTab(tab);
+        if (selectedId) {
+            syncVolunteerModalUrl(selectedId, tab);
+        }
     };
 
     const volunteerMinistryCheckboxOptions = useMemo(
@@ -679,7 +753,7 @@ export default function ManagementCenter({
                 </div>
             </div>
 
-            <Modal show={modalOpen} onClose={() => setModalOpen(false)} maxWidth="4xl" disableBodyScroll>
+            <Modal show={modalOpen} onClose={closeVolunteerModal} maxWidth="4xl" disableBodyScroll>
                 <div className="flex max-h-[min(100dvh-1rem,880px)] min-h-0 w-full flex-col overflow-hidden sm:max-h-[min(90dvh,860px)]">
                     {detailLoading ? (
                         <div className="p-6">
@@ -700,7 +774,7 @@ export default function ManagementCenter({
                                         (detail.volunteer.user as { photo_url?: string | null } | null)?.photo_url ??
                                         null
                                     }
-                                    onClose={() => setModalOpen(false)}
+                                    onClose={closeVolunteerModal}
                                 />
 
                                 <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-700 dark:bg-zinc-900/40">
@@ -724,8 +798,12 @@ export default function ManagementCenter({
                                                     ))}
                                                 </SelectInput>
                                             </div>
-                                            <PrimaryButton type="submit" disabled={stageMoveForm.processing}>
-                                                {canVolunteerManage ? 'Salvar fase principal' : 'Salvar fase'}
+                                            <PrimaryButton type="submit" disabled={stageSaving}>
+                                                {stageSaving
+                                                    ? 'Salvando…'
+                                                    : canVolunteerManage
+                                                      ? 'Salvar fase principal'
+                                                      : 'Salvar fase'}
                                             </PrimaryButton>
                                             <InputError message={stageMoveForm.errors.stage_id} />
                                         </form>
@@ -744,10 +822,19 @@ export default function ManagementCenter({
                                     )}
                                 </div>
 
+                                {modalSaveMessage ? (
+                                    <p
+                                        className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-100"
+                                        role="status"
+                                    >
+                                        {modalSaveMessage}
+                                    </p>
+                                ) : null}
+
                                 <div className="flex gap-1 overflow-x-auto overscroll-x-contain rounded-xl bg-zinc-100 p-1 [-webkit-overflow-scrolling:touch] dark:bg-zinc-800">
                                     <button
                                         type="button"
-                                        onClick={() => setDetailTab('ficha')}
+                                        onClick={() => selectDetailTab('ficha')}
                                         className={`shrink-0 cursor-pointer rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
                                             detailTab === 'ficha'
                                                 ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
@@ -758,7 +845,7 @@ export default function ManagementCenter({
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setDetailTab('departamentos')}
+                                        onClick={() => selectDetailTab('departamentos')}
                                         className={`shrink-0 cursor-pointer rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
                                             detailTab === 'departamentos'
                                                 ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
@@ -769,7 +856,7 @@ export default function ManagementCenter({
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setDetailTab('historico')}
+                                        onClick={() => selectDetailTab('historico')}
                                         className={`shrink-0 cursor-pointer rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
                                             detailTab === 'historico'
                                                 ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
@@ -780,7 +867,7 @@ export default function ManagementCenter({
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setDetailTab('notas')}
+                                        onClick={() => selectDetailTab('notas')}
                                         className={`shrink-0 cursor-pointer rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
                                             detailTab === 'notas'
                                                 ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
@@ -828,7 +915,15 @@ export default function ManagementCenter({
                                                                 icon: 'question',
                                                             });
                                                             if (ok) {
-                                                                router.post(detail.archiveVolunteerUrl!, {}, { preserveScroll: true });
+                                                                const result = await submitVolunteerModalPost(
+                                                                    detail.archiveVolunteerUrl!,
+                                                                    {},
+                                                                    csrf,
+                                                                );
+                                                                if (result.ok) {
+                                                                    showModalSaveMessage('Voluntário arquivado.');
+                                                                    if (selectedId) await refreshVolunteerDetail(selectedId);
+                                                                }
                                                             }
                                                         }}
                                                     >
@@ -846,7 +941,15 @@ export default function ManagementCenter({
                                                                 icon: 'question',
                                                             });
                                                             if (ok) {
-                                                                router.post(detail.unarchiveVolunteerUrl!, {}, { preserveScroll: true });
+                                                                const result = await submitVolunteerModalPost(
+                                                                    detail.unarchiveVolunteerUrl!,
+                                                                    {},
+                                                                    csrf,
+                                                                );
+                                                                if (result.ok) {
+                                                                    showModalSaveMessage('Voluntário restaurado na lista ativa.');
+                                                                    if (selectedId) await refreshVolunteerDetail(selectedId);
+                                                                }
                                                             }
                                                         }}
                                                     >
@@ -888,7 +991,8 @@ export default function ManagementCenter({
                                                     key={section.ministryId}
                                                     section={section}
                                                     onSaved={() => {
-                                                        if (selectedId) void openVolunteer(selectedId, 'historico');
+                                                        showModalSaveMessage('Status atualizado.');
+                                                        if (selectedId) void refreshVolunteerDetail(selectedId);
                                                     }}
                                                 />
                                             ))
@@ -912,8 +1016,8 @@ export default function ManagementCenter({
                                             />
                                         )}
                                         {detail.syncMinistriesUrl && canPipelineMutate ? (
-                                            <PrimaryButton type="submit" disabled={ministriesForm.processing}>
-                                                Salvar departamentos
+                                            <PrimaryButton type="submit" disabled={ministriesSaving}>
+                                                {ministriesSaving ? 'Salvando…' : 'Salvar departamentos'}
                                             </PrimaryButton>
                                         ) : (
                                             <p className="text-xs text-zinc-500 dark:text-zinc-400">

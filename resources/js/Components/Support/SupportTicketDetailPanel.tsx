@@ -1,6 +1,7 @@
 import { router, useForm } from '@inertiajs/react';
 import { useEffect, useState, FormEventHandler } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import { CheckCircleIcon, ChatBubbleLeftRightIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import PersonListIdentity from '@/Components/PersonListIdentity';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -105,7 +106,7 @@ export default function SupportTicketDetailPanel({
     variant = 'page',
     section: sectionProp = 'full',
 }: SupportTicketDetailPanelProps) {
-    const inertiaScrollOpts = { preserveScroll: true };
+    const inertiaScrollOpts = inertiaListModalSave;
     const isOpen = ['open', 'in_progress', 'waiting_user'].includes(ticket.status);
     const internalCoordination = ticket.allowStaffInternalChat === true;
     const guestNoAppUser = ticket.isGuest && !internalCoordination;

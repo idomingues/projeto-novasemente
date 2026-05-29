@@ -15,6 +15,7 @@ import SelectInput from '@/Components/SelectInput';
 import SupportKanban from '@/Components/Support/SupportKanban';
 import SupportTicketDetailPanel, { type SupportTicketDetailPanelProps } from '@/Components/Support/SupportTicketDetailPanel';
 import { usePersistedViewMode } from '@/hooks/usePersistedViewMode';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
 type TicketRow = {
     publicToken: string;
@@ -72,7 +73,7 @@ export default function SupportIndex({
     priorityOptions,
     kanbanStatusColumns,
 }: Props) {
-    const inertiaScrollOpts = { preserveScroll: true };
+    const inertiaScrollOpts = inertiaListModalSave;
     const [viewMode, setViewMode] = usePersistedViewMode('support-admin-view-mode', 'list');
     const [modalTab, setModalTab] = useState<'detalhes' | 'chat'>('detalhes');
     const [createOpen, setCreateOpen] = useState(false);

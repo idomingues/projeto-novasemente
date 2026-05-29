@@ -8,6 +8,7 @@ import Modal from '@/Components/Modal';
 import { Head, router, useForm } from '@inertiajs/react';
 import { BanknotesIcon, MagnifyingGlassIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 import { FormEventHandler, useState } from 'react';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
 interface DonationRow {
     id: number;
@@ -128,8 +129,8 @@ export default function TreasurerDashboard({
         e.preventDefault();
         if (!adjustDonation) return;
         adjustForm.patch(route('finance.donations.update', adjustDonation.id), {
+            ...inertiaListModalSave,
             onSuccess: () => {
-                setAdjustDonation(null);
                 adjustForm.reset();
             },
         });
@@ -145,8 +146,8 @@ export default function TreasurerDashboard({
         e.preventDefault();
         if (!resolveDonation) return;
         resolveForm.post(route('finance.donations.resolve-dispute', resolveDonation.id), {
+            ...inertiaListModalSave,
             onSuccess: () => {
-                setResolveDonation(null);
                 resolveForm.reset();
             },
         });

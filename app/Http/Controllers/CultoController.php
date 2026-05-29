@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Support\ListModalRedirect;
 use App\Models\Church;
 use App\Models\Culto;
 use App\Models\User;
@@ -84,7 +85,7 @@ class CultoController extends Controller
             return redirect()->route('culto.index')->with('error', 'Nenhuma igreja ativa. Associe uma igreja primeiro.');
         }
 
-        Culto::create([
+        $culto = Culto::create([
             'church_id' => $churchId,
             'title' => $title,
             'youtube_url' => $data['youtube_url'],
@@ -92,7 +93,7 @@ class CultoController extends Controller
             'created_by' => $request->user()?->id,
         ]);
 
-        return redirect()->route('culto.index')->with('success', 'Culto criado com sucesso.');
+        return ListModalRedirect::toIndexEdit('culto.index', $culto, 'Culto criado com sucesso.');
     }
 
     public function update(Request $request, Culto $culto)
@@ -120,7 +121,7 @@ class CultoController extends Controller
             'published_at' => $data['published_at'] ?? null,
         ]);
 
-        return redirect()->route('culto.index')->with('success', 'Culto atualizado com sucesso.');
+        return ListModalRedirect::toIndexEdit('culto.index', $culto, 'Culto atualizado com sucesso.');
     }
 
     public function destroy(Culto $culto)

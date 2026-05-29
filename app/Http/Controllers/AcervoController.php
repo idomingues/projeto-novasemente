@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Support\ListModalRedirect;
 use App\Models\AcervoItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -50,7 +51,7 @@ class AcervoController extends Controller
 
         $maxOrder = AcervoItem::max('order') ?? 0;
 
-        AcervoItem::create([
+        $item = AcervoItem::create([
             'url' => $normalizedUrl,
             'title' => $data['title'],
             'thumbnail_url' => $data['thumbnail_url'],
@@ -58,7 +59,7 @@ class AcervoController extends Controller
             'order' => $maxOrder + 1,
         ]);
 
-        return redirect()->route('acervo.index')->with('success', 'Item adicionado ao acervo.');
+        return ListModalRedirect::toIndexEdit('acervo.index', $item, 'Item adicionado ao acervo.');
     }
 
     public function update(Request $request, AcervoItem $acervo)
@@ -84,7 +85,7 @@ class AcervoController extends Controller
             'video_count' => $data['video_count'],
         ]);
 
-        return redirect()->route('acervo.index')->with('success', 'Item atualizado.');
+        return ListModalRedirect::toIndexEdit('acervo.index', $acervo, 'Item atualizado.');
     }
 
     public function destroy(AcervoItem $acervo)

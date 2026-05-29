@@ -31,6 +31,18 @@ import axios from 'axios';
 import type { VolunteerDetailData } from '@/utils/volunteerDetailRows';
 import { confirmAction } from '@/utils/confirmDialog';
 import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
+import {
+    applyVolunteerModalFormErrors,
+    departmentIdFromRedirectLocation,
+    parseDepartmentEditModalFromUrl,
+    parseVolunteerModalFromUrl,
+    submitVolunteerModalPatch,
+    submitVolunteerModalPost,
+    submitVolunteerModalPut,
+    syncDepartmentEditModalUrl,
+    syncVolunteerModalUrl,
+    type VolunteerModalUrlTab,
+} from '@/utils/volunteerPipelineModalSave';
 import SortedMultiCheckboxList from '@/Components/SortedMultiCheckboxList';
 import SplitSortedMultiCheckboxPicker from '@/Components/SplitSortedMultiCheckboxPicker';
 import { textMatchesSearchFields } from '@/utils/searchText';
@@ -97,6 +109,8 @@ interface Props {
     filters: { search?: string };
     volunteerDetailUrlPattern: string | null;
 }
+
+type DetailTab = VolunteerModalUrlTab;
 
 type DetailJson = {
     volunteer: VolunteerDetailData;
@@ -426,10 +440,16 @@ export default function Index({
     const [iconPickerOpen, setIconPickerOpen] = useState(false);
     const [detailOpen, setDetailOpen] = useState(false);
     const [detailLoading, setDetailLoading] = useState(false);
-    const [detailTab, setDetailTab] = useState<'ficha' | 'notas' | 'departamentos' | 'historico'>('ficha');
+    const [detailTab, setDetailTab] = useState<DetailTab>('ficha');
     const [detailPayload, setDetailPayload] = useState<DetailJson | null>(null);
     const [selectedVolunteerId, setSelectedVolunteerId] = useState<number | null>(null);
+    const [modalSaveMessage, setModalSaveMessage] = useState<string | null>(null);
+    const [stageSaving, setStageSaving] = useState(false);
+    const [ministriesSaving, setMinistriesSaving] = useState(false);
+    const [departmentSaving, setDepartmentSaving] = useState(false);
+    const [departmentSaveMessage, setDepartmentSaveMessage] = useState<string | null>(null);
     const page = usePage();
+    const pageUrl = page.url;
     const csrf = (page.props as { csrf_token?: string }).csrf_token ?? '';
 
     const noteForm = useForm({ body: '' });
@@ -439,87 +459,192 @@ export default function Index({
     const [rolesModalDepartmentId, setRolesModalDepartmentId] = useState<number | null>(null);
     const [rolesModalNewRoleName, setRolesModalNewRoleName] = useState('');
 
-    const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
+    const { data, setData, errors, reset, clearErrors, setError } = useForm({
         name: '',
         icon: '' as string | null,
         leader_user_ids: [] as number[],
         volunteer_ids: [] as number[],
     });
 
-    const openVolunteerDetail = useCallback(
+    const applyDepartmentToForm = useCallback(
+        (d: Department, options?: { resetRosterTab?: boolean }) => {
+            if (options?.resetRosterTab !== false) {
+                setRosterTab('leaders');
+            }
+            setIconPickerOpen(false);
+            setLeaderAddedAtById(personAddedAtMap(d.leaders));
+            setVolunteerAddedAtById(personAddedAtMap(d.volunteers));
+            setData({
+                name: d.name,
+                icon: d.icon ?? '',
+                leader_user_ids: d.leaders.map((l) => l.id),
+                volunteer_ids: d.volunteers.map((v) => v.id),
+            });
+            clearErrors();
+        },
+        [clearErrors, setData],
+    );
+
+    const applyDetailJson = useCallback(
+        (j: DetailJson) => {
+            setDetailPayload(j);
+            const explicitSid = j.pipeline?.adminWorkflowStageId;
+            const pipelineSid =
+                j.pipeline?.stageId != null && j.stages?.some((s) => s.id === j.pipeline?.stageId)
+                    ? j.pipeline.stageId
+                    : null;
+            const sid = explicitSid ?? pipelineSid;
+            stageMoveForm.setData('stage_id', sid != null ? String(sid) : '');
+            const attachedIds = (j.ministryOptions ?? []).filter((o) => o.attached).map((o) => o.id);
+            ministriesForm.setData('ministry_ids', attachedIds);
+        },
+        [ministriesForm, stageMoveForm],
+    );
+
+    const refreshVolunteerDetail = useCallback(
         async (id: number) => {
-            setSelectedVolunteerId(id);
-            setDetailOpen(true);
-            setDetailLoading(true);
-            setDetailTab('ficha');
-            setDetailPayload(null);
-            noteForm.reset('body');
             try {
                 const url = route('ministry-lead.volunteers.pipeline.detail', id);
                 const r = await fetch(url, {
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrf },
                     credentials: 'same-origin',
                 });
+                if (!r.ok) {
+                    return;
+                }
                 const j = (await r.json()) as DetailJson;
-                setDetailPayload(j);
-                const explicitSid = j.pipeline?.adminWorkflowStageId;
-                const pipelineSid =
-                    j.pipeline?.stageId != null && j.stages?.some((s) => s.id === j.pipeline?.stageId)
-                        ? j.pipeline.stageId
-                        : null;
-                const sid = explicitSid ?? pipelineSid;
-                stageMoveForm.setData('stage_id', sid != null ? String(sid) : '');
-                const attachedIds = (j.ministryOptions ?? []).filter((o) => o.attached).map((o) => o.id);
-                ministriesForm.setData('ministry_ids', attachedIds);
+                applyDetailJson(j);
+            } catch {
+                // Mantém o conteúdo atual do modal em caso de falha na atualização.
+            }
+        },
+        [applyDetailJson, csrf],
+    );
+
+    const showModalSaveMessage = useCallback((message: string) => {
+        setModalSaveMessage(message);
+        window.setTimeout(() => setModalSaveMessage(null), 5000);
+    }, []);
+
+    const openVolunteerDetail = useCallback(
+        async (id: number, tab: DetailTab = 'ficha', options?: { silent?: boolean }) => {
+            setSelectedVolunteerId(id);
+            setDetailOpen(true);
+            setDetailTab(tab);
+            syncVolunteerModalUrl(id, tab);
+            if (!options?.silent) {
+                setDetailLoading(true);
+                setDetailPayload(null);
+                noteForm.reset('body');
+            }
+            try {
+                const url = route('ministry-lead.volunteers.pipeline.detail', id);
+                const r = await fetch(url, {
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrf },
+                    credentials: 'same-origin',
+                });
+                if (!r.ok) {
+                    setDetailPayload(null);
+                    return;
+                }
+                const j = (await r.json()) as DetailJson;
+                applyDetailJson(j);
             } catch {
                 setDetailPayload(null);
             } finally {
                 setDetailLoading(false);
             }
         },
-        [csrf],
+        [applyDetailJson, csrf],
     );
 
     const closeVolunteerDetail = useCallback(() => {
         setDetailOpen(false);
         setDetailPayload(null);
         setSelectedVolunteerId(null);
+        setModalSaveMessage(null);
+        syncVolunteerModalUrl(null, null);
     }, []);
 
-    const submitNote: FormEventHandler = (e) => {
-        e.preventDefault();
-        if (!detailPayload) return;
-        noteForm.post(detailPayload.storeNoteUrl, {
-            preserveScroll: true,
-            onSuccess: () => {
-                noteForm.reset('body');
-                if (selectedVolunteerId) void openVolunteerDetail(selectedVolunteerId);
-                setDetailTab('notas');
-            },
-        });
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const parsed = parseVolunteerModalFromUrl(window.location.search);
+        if (!parsed) return;
+        if (!detailOpen || selectedVolunteerId !== parsed.id) {
+            void openVolunteerDetail(parsed.id, parsed.tab);
+            return;
+        }
+        if (detailTab !== parsed.tab) {
+            setDetailTab(parsed.tab);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pageUrl]);
+
+    const selectDetailTab = (tab: DetailTab) => {
+        setDetailTab(tab);
+        if (selectedVolunteerId) syncVolunteerModalUrl(selectedVolunteerId, tab);
     };
 
-    const submitStageMove: FormEventHandler = (e) => {
+    const submitNote: FormEventHandler = async (e) => {
         e.preventDefault();
-        if (!detailPayload) return;
-        stageMoveForm.patch(detailPayload.updateStageUrl, {
-            preserveScroll: true,
-            onSuccess: () => {
-                if (selectedVolunteerId) void openVolunteerDetail(selectedVolunteerId);
-            },
-        });
+        if (!detailPayload || noteForm.processing) return;
+        noteForm.clearErrors();
+        const result = await submitVolunteerModalPost(detailPayload.storeNoteUrl, { body: noteForm.data.body }, csrf);
+        if (!result.ok) {
+            applyVolunteerModalFormErrors(result.errors, (field, message) => noteForm.setError(field as 'body', message));
+            return;
+        }
+        noteForm.reset('body');
+        showModalSaveMessage('Anotação registrada.');
+        if (selectedVolunteerId) await refreshVolunteerDetail(selectedVolunteerId);
     };
 
-    const submitMinistries: FormEventHandler = (e) => {
+    const submitStageMove: FormEventHandler = async (e) => {
         e.preventDefault();
-        if (!detailPayload?.syncMinistriesUrl) return;
-        ministriesForm.patch(detailPayload.syncMinistriesUrl, {
-            preserveScroll: true,
-            onSuccess: () => {
-                if (selectedVolunteerId) void openVolunteerDetail(selectedVolunteerId);
-                setDetailTab('departamentos');
-            },
-        });
+        if (!detailPayload || stageSaving) return;
+        stageMoveForm.clearErrors();
+        setStageSaving(true);
+        try {
+            const result = await submitVolunteerModalPatch(
+                detailPayload.updateStageUrl,
+                { stage_id: stageMoveForm.data.stage_id },
+                csrf,
+            );
+            if (!result.ok) {
+                applyVolunteerModalFormErrors(result.errors, (field, message) =>
+                    stageMoveForm.setError(field as 'stage_id', message),
+                );
+                return;
+            }
+            showModalSaveMessage('Fase principal atualizada.');
+            if (selectedVolunteerId) await refreshVolunteerDetail(selectedVolunteerId);
+        } finally {
+            setStageSaving(false);
+        }
+    };
+
+    const submitMinistries: FormEventHandler = async (e) => {
+        e.preventDefault();
+        if (!detailPayload?.syncMinistriesUrl || ministriesSaving) return;
+        ministriesForm.clearErrors();
+        setMinistriesSaving(true);
+        try {
+            const result = await submitVolunteerModalPatch(
+                detailPayload.syncMinistriesUrl,
+                { ministry_ids: ministriesForm.data.ministry_ids },
+                csrf,
+            );
+            if (!result.ok) {
+                applyVolunteerModalFormErrors(result.errors, (field, message) =>
+                    ministriesForm.setError(field as 'ministry_ids', message),
+                );
+                return;
+            }
+            showModalSaveMessage('Departamentos atualizados.');
+            if (selectedVolunteerId) await refreshVolunteerDetail(selectedVolunteerId);
+        } finally {
+            setMinistriesSaving(false);
+        }
     };
 
     const volunteerMinistryCheckboxOptions = useMemo(
@@ -567,9 +692,16 @@ export default function Index({
     );
     const SelectedIconPreview = selectedIconOption?.Icon;
 
+    const showDepartmentSaveMessage = useCallback((message: string) => {
+        setDepartmentSaveMessage(message);
+        window.setTimeout(() => setDepartmentSaveMessage(null), 5000);
+    }, []);
+
     const openCreateModal = () => {
         setIsEditing(false);
         setEditingId(null);
+        setDepartmentSaveMessage(null);
+        syncDepartmentEditModalUrl(null);
         setRosterTab('leaders');
         setIconPickerOpen(false);
         setLeaderAddedAtById({});
@@ -582,56 +714,33 @@ export default function Index({
     const openEditModal = (d: Department) => {
         setIsEditing(true);
         setEditingId(d.id);
-        setRosterTab('leaders');
-        setIconPickerOpen(false);
-        setLeaderAddedAtById(personAddedAtMap(d.leaders));
-        setVolunteerAddedAtById(personAddedAtMap(d.volunteers));
-        setData({
-            name: d.name,
-            icon: d.icon ?? '',
-            leader_user_ids: d.leaders.map((l) => l.id),
-            volunteer_ids: d.volunteers.map((v) => v.id),
-        });
-        clearErrors();
+        setDepartmentSaveMessage(null);
+        syncDepartmentEditModalUrl(d.id);
+        applyDepartmentToForm(d);
         setIsModalOpen(true);
     };
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
-        const params = new URLSearchParams(window.location.search);
-        const modal = params.get('modal');
-        const idParam = params.get('id');
-        if (modal !== 'edit' || !idParam) return;
-        const id = Number(idParam);
-        if (Number.isNaN(id) || id <= 0) return;
-        const dept = departments.find((d) => d.id === id);
+        const parsed = parseDepartmentEditModalFromUrl(window.location.search);
+        if (!parsed) return;
+        const dept = departments.find((d) => d.id === parsed.id);
         if (!dept) return;
-
-        setIsEditing(true);
-        setEditingId(dept.id);
-        setRosterTab('leaders');
-        setIconPickerOpen(false);
-        setLeaderAddedAtById(personAddedAtMap(dept.leaders));
-        setVolunteerAddedAtById(personAddedAtMap(dept.volunteers));
-        setData({
-            name: dept.name,
-            icon: dept.icon ?? '',
-            leader_user_ids: dept.leaders.map((l) => l.id),
-            volunteer_ids: dept.volunteers.map((v) => v.id),
-        });
-        clearErrors();
-        setIsModalOpen(true);
-
-        params.delete('modal');
-        params.delete('id');
-        const q = params.toString();
-        window.history.replaceState({}, '', `${window.location.pathname}${q ? `?${q}` : ''}`);
+        if (!isModalOpen || editingId !== parsed.id) {
+            setIsEditing(true);
+            setEditingId(dept.id);
+            applyDepartmentToForm(dept);
+            setIsModalOpen(true);
+            syncDepartmentEditModalUrl(dept.id);
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [departments]);
+    }, [pageUrl, departments]);
 
     const closeModal = () => {
         setIsModalOpen(false);
         setIconPickerOpen(false);
+        setDepartmentSaveMessage(null);
+        syncDepartmentEditModalUrl(null);
         reset();
     };
 
@@ -651,22 +760,52 @@ export default function Index({
         setRolesModalNewRoleName('');
     };
 
-    const submitDepartment = () => {
-        if (isEditing && editingId) {
-            put(route('departments.update', editingId), {
-                ...inertiaListModalSave,
-                onSuccess: () => clearErrors(),
-            });
-        } else {
-            post(route('departments.store'), {
-                ...inertiaListModalSave,
-            });
+    const submitDepartment = async () => {
+        if (departmentSaving) return;
+        clearErrors();
+        setDepartmentSaving(true);
+        const payload = {
+            name: data.name,
+            icon: data.icon || null,
+            leader_user_ids: data.leader_user_ids,
+            volunteer_ids: data.volunteer_ids,
+        };
+        try {
+            if (isEditing && editingId) {
+                const result = await submitVolunteerModalPut(route('departments.update', editingId), payload, csrf);
+                if (!result.ok) {
+                    applyVolunteerModalFormErrors(result.errors, setError);
+                    return;
+                }
+                showDepartmentSaveMessage('Departamento atualizado.');
+                syncDepartmentEditModalUrl(editingId);
+                return;
+            }
+
+            const result = await submitVolunteerModalPost(route('departments.store'), payload, csrf);
+            if (!result.ok) {
+                applyVolunteerModalFormErrors(result.errors, setError);
+                return;
+            }
+            const newId = departmentIdFromRedirectLocation(result.redirectLocation ?? null);
+            showDepartmentSaveMessage('Departamento criado.');
+            if (newId) {
+                setIsEditing(true);
+                setEditingId(newId);
+                syncDepartmentEditModalUrl(newId);
+                const created = departments.find((d) => d.id === newId);
+                if (created) {
+                    applyDepartmentToForm(created);
+                }
+            }
+        } finally {
+            setDepartmentSaving(false);
         }
     };
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        submitDepartment();
+        void submitDepartment();
     };
 
     const handleDelete = async (id: number) => {
@@ -896,6 +1035,14 @@ export default function Index({
                     <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-6">
                         {isEditing ? 'Editar departamento' : 'Novo departamento'}
                     </h2>
+                    {departmentSaveMessage ? (
+                        <p
+                            className="-mt-3 mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-100"
+                            role="status"
+                        >
+                            {departmentSaveMessage}
+                        </p>
+                    ) : null}
                     <div>
                         <InputLabel htmlFor="name" value="Nome" />
                         <TextInput
@@ -1045,8 +1192,12 @@ export default function Index({
                             Cancelar
                         </SecondaryButton>
                         {canManage ? (
-                            <PrimaryButton type="button" onClick={submitDepartment} disabled={processing}>
-                                {isEditing ? 'Salvar' : 'Criar'}
+                            <PrimaryButton
+                                type="button"
+                                onClick={() => void submitDepartment()}
+                                disabled={departmentSaving}
+                            >
+                                {departmentSaving ? 'Salvando…' : isEditing ? 'Salvar' : 'Criar'}
                             </PrimaryButton>
                         ) : null}
                     </div>
@@ -1194,18 +1345,27 @@ export default function Index({
                                                     ))}
                                                 </SelectInput>
                                             </div>
-                                            <PrimaryButton type="submit" disabled={stageMoveForm.processing}>
-                                                Salvar fase principal
+                                            <PrimaryButton type="submit" disabled={stageSaving}>
+                                                {stageSaving ? 'Salvando…' : 'Salvar fase principal'}
                                             </PrimaryButton>
                                             <InputError message={stageMoveForm.errors.stage_id} />
                                         </form>
                                     ) : null}
                                 </div>
 
+                                {modalSaveMessage ? (
+                                    <p
+                                        className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-100"
+                                        role="status"
+                                    >
+                                        {modalSaveMessage}
+                                    </p>
+                                ) : null}
+
                                 <div className="flex gap-1 overflow-x-auto overscroll-x-contain rounded-xl bg-zinc-100 p-1 [-webkit-overflow-scrolling:touch] dark:bg-zinc-800">
                                     <button
                                         type="button"
-                                        onClick={() => setDetailTab('ficha')}
+                                        onClick={() => selectDetailTab('ficha')}
                                         className={`shrink-0 cursor-pointer rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
                                             detailTab === 'ficha'
                                                 ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
@@ -1216,7 +1376,7 @@ export default function Index({
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setDetailTab('departamentos')}
+                                        onClick={() => selectDetailTab('departamentos')}
                                         className={`shrink-0 cursor-pointer rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
                                             detailTab === 'departamentos'
                                                 ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
@@ -1227,7 +1387,7 @@ export default function Index({
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setDetailTab('historico')}
+                                        onClick={() => selectDetailTab('historico')}
                                         className={`shrink-0 cursor-pointer rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
                                             detailTab === 'historico'
                                                 ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
@@ -1238,7 +1398,7 @@ export default function Index({
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setDetailTab('notas')}
+                                        onClick={() => selectDetailTab('notas')}
                                         className={`shrink-0 cursor-pointer rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
                                             detailTab === 'notas'
                                                 ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
@@ -1290,8 +1450,8 @@ export default function Index({
                                                     key={section.ministryId}
                                                     section={section}
                                                     onSaved={() => {
-                                                        if (selectedVolunteerId) void openVolunteerDetail(selectedVolunteerId);
-                                                        setDetailTab('historico');
+                                                        showModalSaveMessage('Status atualizado.');
+                                                        if (selectedVolunteerId) void refreshVolunteerDetail(selectedVolunteerId);
                                                     }}
                                                 />
                                             ))
@@ -1315,8 +1475,8 @@ export default function Index({
                                             />
                                         )}
                                         {detailPayload.syncMinistriesUrl && canManage ? (
-                                            <PrimaryButton type="submit" disabled={ministriesForm.processing}>
-                                                Salvar departamentos
+                                            <PrimaryButton type="submit" disabled={ministriesSaving}>
+                                                {ministriesSaving ? 'Salvando…' : 'Salvar departamentos'}
                                             </PrimaryButton>
                                         ) : null}
                                     </form>

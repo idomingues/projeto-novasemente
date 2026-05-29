@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreRoomRequest;
 use App\Http\Requests\UpdateRoomRequest;
+use App\Http\Support\ListModalRedirect;
 use App\Models\Church;
 use App\Models\Room;
 use Illuminate\Http\Request;
@@ -50,18 +51,18 @@ class RoomController extends Controller
         if ($churchId === null) {
             return redirect()->route('rooms.index')->with('error', 'Nenhuma igreja ativa. Selecione uma igreja para trabalhar.');
         }
-        Room::create(array_merge($request->validated(), [
+        $room = Room::create(array_merge($request->validated(), [
             'church_id' => $churchId,
         ]));
 
-        return redirect()->route('rooms.index')->with('success', 'Sala criada com sucesso!');
+        return ListModalRedirect::toIndexEdit('rooms.index', $room, 'Sala criada com sucesso!');
     }
 
     public function update(UpdateRoomRequest $request, Room $room)
     {
         $room->update($request->validated());
 
-        return redirect()->route('rooms.index')->with('success', 'Sala atualizada com sucesso!');
+        return ListModalRedirect::toIndexEdit('rooms.index', $room, 'Sala atualizada com sucesso!');
     }
 
     public function destroy(Room $room)

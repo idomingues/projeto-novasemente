@@ -28,6 +28,7 @@ import SolicitationDetailPanel, {
 import PastorVisitScheduleSection from '@/Components/Solicitations/PastorVisitScheduleSection';
 import type { ComponentType, SVGProps } from 'react';
 import { FormEventHandler, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
 interface TypeItem {
     type: string;
@@ -199,7 +200,14 @@ export default function Hub({
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        post(storeUrl);
+        post(storeUrl, {
+            ...inertiaListModalSave,
+            onSuccess: () => {
+                reset();
+                setStep('pick');
+                setTypeLabel('');
+            },
+        });
     };
 
     const openDetail = useCallback((row: SolicitationHubRow, tab: DetailTab = 'detalhes') => {

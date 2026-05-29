@@ -13,6 +13,6 @@ Ao adicionar **novas telas de gestão** onde o usuário cria registros (pedidos,
 2. Colocar um botão **+** (`AddButton` com `variant="icon"` ao lado do título, alinhado ao padrão de Acervo / Culto) que abre um **modal** com o formulário de criação.
 3. **Evitar** uma rota/página dedicada só ao formulário de criação em tela cheia, salvo razão forte (fluxo muito longo, vários passos, ou requisito explícito de produto).
 
-Após sucesso do `POST`, fechar o modal, repor o formulário e **voltar à lista** (redirect Inertia ou `onSuccess` com dados atualizados).
+Após sucesso do `POST`, **manter o modal aberto** (`inertiaListModalSave`), repor o formulário com `reset()` e atualizar a lista pelos props da resposta. Fechar só no cancelar ou quando o registro deixa de existir na vista (excluir/arquivar).
 
 Referência no projeto: `resources/js/Pages/VolunteerRequests/Index.tsx` (pedidos de voluntário).

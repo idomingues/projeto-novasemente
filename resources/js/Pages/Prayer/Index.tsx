@@ -12,6 +12,7 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
 import Modal from '@/Components/Modal';
 import { FormEventHandler, useState } from 'react';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import { PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { confirmAction } from '@/utils/confirmDialog';
 
@@ -68,11 +69,8 @@ export default function PrayerIndex({ requests, canManage }: Props) {
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         post(route('prayer.store'), {
-            onSuccess: () => {
-                reset();
-                setCreateOpen(false);
-            },
-            preserveScroll: true,
+            ...inertiaListModalSave,
+            onSuccess: () => reset(),
         });
     };
 
@@ -265,8 +263,7 @@ export default function PrayerIndex({ requests, canManage }: Props) {
                                 e.preventDefault();
                                 if (!editingId) return;
                                 editForm.put(route('prayer.update', editingId), {
-                                    preserveScroll: true,
-                                    onSuccess: () => setEditOpen(false),
+                                    ...inertiaListModalSave,
                                 });
                             }}
                             className="p-6"

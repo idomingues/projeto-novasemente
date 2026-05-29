@@ -21,6 +21,7 @@ import {
     TrashIcon,
 } from '@heroicons/react/24/outline';
 import { confirmAction } from '@/utils/confirmDialog';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import { formatListPreview } from '@/utils/formatListPreview';
 
 interface MinistryRef {
@@ -201,7 +202,7 @@ export default function Board({
     const submitCriterion: FormEventHandler = (e) => {
         e.preventDefault();
         criterionForm.post(storeCriterionUrl, {
-            preserveScroll: true,
+            ...inertiaListModalSave,
             onSuccess: () => {
                 criterionForm.reset('label');
             },
@@ -211,9 +212,8 @@ export default function Board({
     const attachVolunteer: FormEventHandler = (e) => {
         e.preventDefault();
         attachForm.post(attachVolunteerUrl, {
-            preserveScroll: true,
+            ...inertiaListModalSave,
             onSuccess: () => {
-                setAddOpen(false);
                 setLookupQ('');
                 setLookupResults([]);
                 attachForm.reset('volunteer_id');

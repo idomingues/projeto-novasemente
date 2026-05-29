@@ -9,6 +9,7 @@ import VolunteerRequestSuggestions from '@/Components/VolunteerRequests/Voluntee
 import { useForm } from '@inertiajs/react';
 import { UserPlusIcon } from '@heroicons/react/24/outline';
 import { FormEventHandler, useEffect, useState } from 'react';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
 export type VolunteerRequestAttachTarget = {
     id: number;
@@ -73,9 +74,10 @@ export default function VolunteerRequestAttachModal({
         e.preventDefault();
         if (!row?.attach_volunteer_url) return;
         attachForm.post(row.attach_volunteer_url, {
-            preserveScroll: true,
+            ...inertiaListModalSave,
             onSuccess: () => {
-                close();
+                attachForm.reset('volunteer_id');
+                attachForm.clearErrors();
             },
         });
     };

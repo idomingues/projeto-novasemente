@@ -34,6 +34,15 @@ import VolunteerAppInviteButton, { volunteerEncaminharButtonClass } from '@/Comp
 import VolunteerDeleteConfirmBlock from '@/Components/Volunteers/VolunteerDeleteConfirmBlock';
 import VolunteerPasswordChangeForm from '@/Components/Volunteers/VolunteerPasswordChangeForm';
 import { confirmAction } from '@/utils/confirmDialog';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
+import {
+    applyVolunteerModalFormErrors,
+    parseVolunteerModalFromUrl,
+    submitVolunteerModalPatch,
+    submitVolunteerModalPost,
+    syncVolunteerModalUrl,
+    type VolunteerModalUrlTab,
+} from '@/utils/volunteerPipelineModalSave';
 import MinistryLeaderStatusSection, {
     type MinistryLeaderStatusSectionData,
 } from '@/Components/Volunteers/MinistryLeaderStatusSection';
@@ -199,6 +208,8 @@ type MinistryOption = { id: number; name: string; attached: boolean; canEdit: bo
 
 type MinistryStatusHistorySection = MinistryLeaderStatusSectionData;
 
+type DetailTab = VolunteerModalUrlTab;
+
 type DetailJson = {
     volunteer: DetailVolunteer;
     pipeline: { stageId?: number; stageName?: string; adminWorkflowStageId?: number };
@@ -353,6 +364,7 @@ export default function Pipeline({
     const [viewMode, setViewMode] = usePersistedViewMode(PIPELINE_VIEW_STORAGE_KEY);
 
     const page = usePage();
+    const pageUrl = page.url;
     const authProps = page.props as { auth?: { openVolunteerRequestsCount?: number } };
     const openVolunteerRequestsCount =
         typeof authProps.auth?.openVolunteerRequestsCount === 'number' ? authProps.auth.openVolunteerRequestsCount : 0;
@@ -422,7 +434,10 @@ export default function Pipeline({
     const [detailLoading, setDetailLoading] = useState(false);
     const [detail, setDetail] = useState<DetailJson | null>(null);
     const [selectedId, setSelectedId] = useState<number | null>(null);
-    const [detailTab, setDetailTab] = useState<'ficha' | 'notas' | 'departamentos' | 'historico'>('ficha');
+    const [detailTab, setDetailTab] = useState<DetailTab>('ficha');
+    const [modalSaveMessage, setModalSaveMessage] = useState<string | null>(null);
+    const [stageSaving, setStageSaving] = useState(false);
+    const [ministriesSaving, setMinistriesSaving] = useState(false);
     const [publicInviteOpen, setPublicInviteOpen] = useState(false);
     const [inviteShareOpen, setInviteShareOpen] = useState(false);
     const [inviteShare, setInviteShare] = useState<{ link: string; name: string } | null>(null);
@@ -462,20 +477,8 @@ export default function Pipeline({
         { value: 'more_than_3_years', label: '+ 3 anos' },
     ];
 
-    const openVolunteer = async (id: number, tab: 'ficha' | 'notas' | 'departamentos' | 'historico' = 'ficha') => {
-        setSelectedId(id);
-        setModalOpen(true);
-        setDetailTab(tab);
-        setDetail(null);
-        setDetailLoading(true);
-        noteForm.reset('body');
-        try {
-            const url = route('ministry-lead.volunteers.pipeline.detail', id);
-            const r = await fetch(url, {
-                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrf },
-                credentials: 'same-origin',
-            });
-            const j = (await r.json()) as DetailJson;
+    const applyDetailJson = useCallback(
+        (j: DetailJson) => {
             setDetail(j);
             const explicitSid = j.pipeline?.adminWorkflowStageId;
             const pipelineSid =
@@ -486,6 +489,65 @@ export default function Pipeline({
             stageMoveForm.setData('stage_id', sid != null ? String(sid) : '');
             const attachedIds = (j.ministryOptions ?? []).filter((o) => o.attached).map((o) => o.id);
             ministriesForm.setData('ministry_ids', attachedIds);
+        },
+        [ministriesForm, stageMoveForm],
+    );
+
+    const refreshVolunteerDetail = useCallback(
+        async (id: number) => {
+            try {
+                const url = route('ministry-lead.volunteers.pipeline.detail', id);
+                const r = await fetch(url, {
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrf },
+                    credentials: 'same-origin',
+                });
+                if (!r.ok) {
+                    return;
+                }
+                const j = (await r.json()) as DetailJson;
+                applyDetailJson(j);
+            } catch {
+                // Mantém o conteúdo atual do modal em caso de falha na atualização.
+            }
+        },
+        [applyDetailJson, csrf],
+    );
+
+    const closeVolunteerModal = useCallback(() => {
+        setModalOpen(false);
+        setDetail(null);
+        setSelectedId(null);
+        setModalSaveMessage(null);
+        syncVolunteerModalUrl(null, null);
+    }, []);
+
+    const showModalSaveMessage = useCallback((message: string) => {
+        setModalSaveMessage(message);
+        window.setTimeout(() => setModalSaveMessage(null), 5000);
+    }, []);
+
+    const openVolunteer = async (id: number, tab: DetailTab = 'ficha', options?: { silent?: boolean }) => {
+        setSelectedId(id);
+        setModalOpen(true);
+        setDetailTab(tab);
+        syncVolunteerModalUrl(id, tab);
+        if (!options?.silent) {
+            setDetail(null);
+            setDetailLoading(true);
+            noteForm.reset('body');
+        }
+        try {
+            const url = route('ministry-lead.volunteers.pipeline.detail', id);
+            const r = await fetch(url, {
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrf },
+                credentials: 'same-origin',
+            });
+            if (!r.ok) {
+                setDetail(null);
+                return;
+            }
+            const j = (await r.json()) as DetailJson;
+            applyDetailJson(j);
         } catch {
             setDetail(null);
         } finally {
@@ -588,49 +650,72 @@ export default function Pipeline({
         router.delete(route('ministry-lead.volunteers.pipeline.stages.destroy', stageId), { preserveScroll: true });
     };
 
-    const submitNote: FormEventHandler = (e) => {
-        e.preventDefault();
-        if (!detail) return;
-        noteForm.post(detail.storeNoteUrl, {
-            preserveScroll: true,
-            onSuccess: () => {
-                noteForm.reset('body');
-                if (selectedId) void openVolunteer(selectedId, 'notas');
-            },
-        });
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const parsed = parseVolunteerModalFromUrl(window.location.search);
+        if (!parsed) return;
+        if (!modalOpen || selectedId !== parsed.id) {
+            void openVolunteer(parsed.id, parsed.tab);
+            return;
+        }
+        if (detailTab !== parsed.tab) {
+            setDetailTab(parsed.tab);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pageUrl]);
+
+    const selectDetailTab = (tab: DetailTab) => {
+        setDetailTab(tab);
+        if (selectedId) syncVolunteerModalUrl(selectedId, tab);
     };
 
-    const submitStageMove: FormEventHandler = (e) => {
+    const submitNote: FormEventHandler = async (e) => {
         e.preventDefault();
-        if (!detail) return;
-        stageMoveForm.patch(detail.updateStageUrl, {
-            preserveScroll: true,
-            onSuccess: () => {
-                if (selectedId) void openVolunteer(selectedId);
-                const url = `${window.location.pathname}${window.location.search}`;
-                router.get(url, {}, {
-                    only: ['volunteers', 'stages'],
-                    preserveState: true,
-                    preserveScroll: true,
-                    replace: true,
-                });
-            },
-        });
+        if (!detail || noteForm.processing) return;
+        noteForm.clearErrors();
+        const result = await submitVolunteerModalPost(detail.storeNoteUrl, { body: noteForm.data.body }, csrf);
+        if (!result.ok) {
+            applyVolunteerModalFormErrors(result.errors, (field, message) => noteForm.setError(field as 'body', message));
+            return;
+        }
+        noteForm.reset('body');
+        showModalSaveMessage('Anotação registrada.');
+        if (selectedId) await refreshVolunteerDetail(selectedId);
     };
 
-    const postInvite = (channels: string[], closeOnSuccess: boolean) => {
+    const submitStageMove: FormEventHandler = async (e) => {
+        e.preventDefault();
+        if (!detail || stageSaving) return;
+        stageMoveForm.clearErrors();
+        setStageSaving(true);
+        try {
+            const result = await submitVolunteerModalPatch(
+                detail.updateStageUrl,
+                { stage_id: stageMoveForm.data.stage_id },
+                csrf,
+            );
+            if (!result.ok) {
+                applyVolunteerModalFormErrors(result.errors, (field, message) =>
+                    stageMoveForm.setError(field as 'stage_id', message),
+                );
+                return;
+            }
+            showModalSaveMessage('Fase principal atualizada.');
+            if (selectedId) await refreshVolunteerDetail(selectedId);
+        } finally {
+            setStageSaving(false);
+        }
+    };
+
+    const postInvite = (channels: string[]) => {
         if (!inviteVolunteer || inviteMinistryIds.length === 0) return;
         router.post(
             route('ministry-lead.volunteers.ministry-invite.store', inviteVolunteer.id),
             { ministry_ids: inviteMinistryIds, channels },
             {
-                preserveScroll: true,
+                ...inertiaListModalSave,
                 onSuccess: () => {
-                    if (closeOnSuccess) {
-                        setInviteOpen(false);
-                        setInviteVolunteer(null);
-                        setInviteMinistryIds([]);
-                    }
+                    setInviteMinistryIds([]);
                 },
             },
         );
@@ -640,25 +725,31 @@ export default function Pipeline({
         e.preventDefault();
         if (!inviteVolunteer || inviteMinistryIds.length === 0) return;
         // Encaminhar não notifica o voluntário — o líder envia o convite em Meus voluntários.
-        postInvite([], true);
+        postInvite([]);
     };
 
-    const submitMinistries: FormEventHandler = (e) => {
+    const submitMinistries: FormEventHandler = async (e) => {
         e.preventDefault();
-        if (!detail?.syncMinistriesUrl) return;
-        ministriesForm.patch(detail.syncMinistriesUrl, {
-            preserveScroll: true,
-            onSuccess: () => {
-                if (selectedId) void openVolunteer(selectedId, 'departamentos');
-                const url = `${window.location.pathname}${window.location.search}`;
-                router.get(url, {}, {
-                    only: ['volunteers', 'stages'],
-                    preserveState: true,
-                    preserveScroll: true,
-                    replace: true,
-                });
-            },
-        });
+        if (!detail?.syncMinistriesUrl || ministriesSaving) return;
+        ministriesForm.clearErrors();
+        setMinistriesSaving(true);
+        try {
+            const result = await submitVolunteerModalPatch(
+                detail.syncMinistriesUrl,
+                { ministry_ids: ministriesForm.data.ministry_ids },
+                csrf,
+            );
+            if (!result.ok) {
+                applyVolunteerModalFormErrors(result.errors, (field, message) =>
+                    ministriesForm.setError(field as 'ministry_ids', message),
+                );
+                return;
+            }
+            showModalSaveMessage('Departamentos atualizados.');
+            if (selectedId) await refreshVolunteerDetail(selectedId);
+        } finally {
+            setMinistriesSaving(false);
+        }
     };
 
     const currentStageFilter = filters.pipeline_stage_id ?? '';
@@ -1729,7 +1820,7 @@ export default function Pipeline({
 
             <Modal
                 show={modalOpen}
-                onClose={() => setModalOpen(false)}
+                onClose={closeVolunteerModal}
                 maxWidth="4xl"
                 disableBodyScroll
             >
@@ -1768,7 +1859,7 @@ export default function Pipeline({
                                         }
                                         return parts.length > 0 ? parts.join(' · ') : null;
                                     })()}
-                                    onClose={() => setModalOpen(false)}
+                                    onClose={closeVolunteerModal}
                                 />
                                 <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-700 dark:bg-zinc-900/40">
                                     {canPipelineMutate ? (
@@ -1799,8 +1890,12 @@ export default function Pipeline({
                                                     </p>
                                                 ) : null}
                                             </div>
-                                            <PrimaryButton type="submit" disabled={stageMoveForm.processing}>
-                                                {canVolunteerManage ? 'Salvar fase principal' : 'Salvar fase'}
+                                            <PrimaryButton type="submit" disabled={stageSaving}>
+                                                {stageSaving
+                                                    ? 'Salvando…'
+                                                    : canVolunteerManage
+                                                      ? 'Salvar fase principal'
+                                                      : 'Salvar fase'}
                                             </PrimaryButton>
                                             <InputError message={stageMoveForm.errors.stage_id} />
                                         </form>
@@ -1819,10 +1914,18 @@ export default function Pipeline({
                                         </div>
                                     )}
                                 </div>
+                                {modalSaveMessage ? (
+                                    <p
+                                        className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-100"
+                                        role="status"
+                                    >
+                                        {modalSaveMessage}
+                                    </p>
+                                ) : null}
                                 <div className="flex gap-1 overflow-x-auto overscroll-x-contain rounded-xl bg-zinc-100 p-1 [-webkit-overflow-scrolling:touch] dark:bg-zinc-800">
                                     <button
                                         type="button"
-                                        onClick={() => setDetailTab('ficha')}
+                                        onClick={() => selectDetailTab('ficha')}
                                         className={`shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
                                             detailTab === 'ficha'
                                                 ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
@@ -1833,7 +1936,7 @@ export default function Pipeline({
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setDetailTab('departamentos')}
+                                        onClick={() => selectDetailTab('departamentos')}
                                         className={`shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
                                             detailTab === 'departamentos'
                                                 ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
@@ -1844,7 +1947,7 @@ export default function Pipeline({
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setDetailTab('historico')}
+                                        onClick={() => selectDetailTab('historico')}
                                         className={`shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
                                             detailTab === 'historico'
                                                 ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
@@ -1855,7 +1958,7 @@ export default function Pipeline({
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setDetailTab('notas')}
+                                        onClick={() => selectDetailTab('notas')}
                                         className={`shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
                                             detailTab === 'notas'
                                                 ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
@@ -1903,9 +2006,15 @@ export default function Pipeline({
                                                                 icon: 'question',
                                                             });
                                                             if (ok) {
-                                                                router.post(detail.archiveVolunteerUrl!, {}, {
-                                                                    preserveScroll: true,
-                                                                });
+                                                                const result = await submitVolunteerModalPost(
+                                                                    detail.archiveVolunteerUrl!,
+                                                                    {},
+                                                                    csrf,
+                                                                );
+                                                                if (result.ok) {
+                                                                    showModalSaveMessage('Voluntário arquivado.');
+                                                                    if (selectedId) await refreshVolunteerDetail(selectedId);
+                                                                }
                                                             }
                                                         }}
                                                     >
@@ -1923,9 +2032,15 @@ export default function Pipeline({
                                                                 icon: 'question',
                                                             });
                                                             if (ok) {
-                                                                router.post(detail.unarchiveVolunteerUrl!, {}, {
-                                                                    preserveScroll: true,
-                                                                });
+                                                                const result = await submitVolunteerModalPost(
+                                                                    detail.unarchiveVolunteerUrl!,
+                                                                    {},
+                                                                    csrf,
+                                                                );
+                                                                if (result.ok) {
+                                                                    showModalSaveMessage('Voluntário restaurado na lista ativa.');
+                                                                    if (selectedId) await refreshVolunteerDetail(selectedId);
+                                                                }
                                                             }
                                                         }}
                                                     >
@@ -1969,7 +2084,8 @@ export default function Pipeline({
                                                     key={section.ministryId}
                                                     section={section}
                                                     onSaved={() => {
-                                                        if (selectedId) void openVolunteer(selectedId, 'historico');
+                                                        showModalSaveMessage('Status atualizado.');
+                                                        if (selectedId) void refreshVolunteerDetail(selectedId);
                                                     }}
                                                 />
                                             ))
@@ -1993,8 +2109,8 @@ export default function Pipeline({
                                             />
                                         )}
                                         {detail.syncMinistriesUrl && canPipelineMutate ? (
-                                            <PrimaryButton type="submit" disabled={ministriesForm.processing}>
-                                                Salvar departamentos
+                                            <PrimaryButton type="submit" disabled={ministriesSaving}>
+                                                {ministriesSaving ? 'Salvando…' : 'Salvar departamentos'}
                                             </PrimaryButton>
                                         ) : (
                                             <p className="text-xs text-zinc-500 dark:text-zinc-400">

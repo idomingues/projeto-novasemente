@@ -16,6 +16,7 @@ import TextInput from '@/Components/TextInput';
 import SelectInput from '@/Components/SelectInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
 type DemandKind = 'solicitation' | 'pastoral';
 
@@ -280,9 +281,12 @@ export default function SolicitationsIndex({
         }
 
         router.post(informalPastoralStoreUrl, payload, {
-            preserveScroll: true,
-            onSuccess: () => closeCreateInformal(),
+            ...inertiaListModalSave,
             onError: (errors) => informalForm.setError(errors),
+            onSuccess: () => {
+                informalForm.reset();
+                informalForm.clearErrors();
+            },
         });
     };
 

@@ -22,6 +22,7 @@ interface MinistryVolunteerInviteProps {
     token: string;
     email: string;
     name: string | null;
+    phone: string | null;
     ministryName: string | null;
     ministryId: number;
 }
@@ -54,6 +55,7 @@ export default function Register({ invitation, ministryVolunteerInvite = null }:
     const { data, setData, post, processing, errors: formErrors, reset } = useForm({
         name: invitation?.name ?? ministryVolunteerInvite?.name ?? '',
         email: invitation?.email ?? ministryVolunteerInvite?.email ?? '',
+        phone: ministryVolunteerInvite?.phone ?? '',
         photo_file: null as File | null,
         password: '',
         password_confirmation: '',
@@ -130,7 +132,7 @@ export default function Register({ invitation, ministryVolunteerInvite = null }:
                 {invitation ? (
                     <p className="mb-6 text-sm text-zinc-600 dark:text-zinc-400">
                         {invitation.completes_existing_user
-                            ? 'Finalize seu cadastro informando e-mail e senha de acesso.'
+                            ? 'Finalize seu cadastro informando e-mail, telefone e senha de acesso.'
                             : 'Você foi convidado a criar sua conta. Preencha os dados abaixo.'}
                     </p>
                 ) : ministryVolunteerInvite ? (
@@ -152,7 +154,7 @@ export default function Register({ invitation, ministryVolunteerInvite = null }:
                             Cadastro para uso completo do app
                         </h1>
                         <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400 sm:text-base">
-                            Preencha nome, e-mail e senha. Com a conta você poderá usar o agendamento pastoral, falar com
+                            Preencha nome, e-mail, telefone e senha. Com a conta você poderá usar o agendamento pastoral, falar com
                             seu líder ou realizar solicitações diversas.
                         </p>
                     </div>
@@ -203,7 +205,7 @@ export default function Register({ invitation, ministryVolunteerInvite = null }:
                     </div>
 
                     <div>
-                        <InputLabel htmlFor="email" value="E-mail" />
+                        <InputLabel htmlFor="email" value="E-mail *" />
 
                         <TextInput
                             id="email"
@@ -212,12 +214,33 @@ export default function Register({ invitation, ministryVolunteerInvite = null }:
                             value={data.email}
                             className={`mt-1 block w-full ${errClass('email')}`}
                             autoComplete="username"
+                            required
                             onChange={(e) => setData('email', e.target.value)}
                             readOnly={Boolean(invitation?.email) || Boolean(ministryVolunteerInvite)}
                             aria-invalid={fieldError('email') ? 'true' : undefined}
                         />
 
                         <InputError message={fieldError('email')} className="mt-2" />
+                    </div>
+
+                    <div>
+                        <InputLabel htmlFor="phone" value="Telefone (WhatsApp) *" />
+
+                        <TextInput
+                            id="phone"
+                            type="tel"
+                            name="phone"
+                            value={data.phone}
+                            className={`mt-1 block w-full ${errClass('phone')}`}
+                            autoComplete="tel"
+                            inputMode="tel"
+                            placeholder="(11) 99999-9999"
+                            required
+                            onChange={(e) => setData('phone', e.target.value)}
+                            aria-invalid={fieldError('phone') ? 'true' : undefined}
+                        />
+
+                        <InputError message={fieldError('phone')} className="mt-2" />
                     </div>
 
                     <div>

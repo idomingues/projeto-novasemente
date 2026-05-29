@@ -24,6 +24,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { FormEventHandler, useState } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
 interface Props {
     events: EventItemForAdmin[];
@@ -63,13 +64,17 @@ export default function MissionEventsAdmin({ events, canManage }: Props) {
         e.preventDefault();
         if (editingId) {
             put(route('mission.content.events.update', editingId), {
+                ...inertiaListModalSave,
                 forceFormData: true,
-                onSuccess: () => close(),
             });
         } else {
             post(route('mission.content.events.store'), {
+                ...inertiaListModalSave,
                 forceFormData: true,
-                onSuccess: () => close(),
+                onSuccess: () => {
+                    reset();
+                    setEditingId(null);
+                },
             });
         }
     };

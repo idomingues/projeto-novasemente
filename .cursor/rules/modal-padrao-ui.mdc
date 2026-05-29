@@ -12,8 +12,18 @@ No projeto Nova Semente, **detalhe, edição e criação** de registos devem abr
 1. **Lista ou hub** como página principal (`Index`, `Support`, `Pipeline`, etc.).
 2. **Abrir modal** ao clicar num item ou no botão **+** (`Modal` + `AddButton` `variant="icon"`).
 3. **Query `modal`** (ou estado local) para carregar o payload do detalhe na mesma rota da lista, quando fizer sentido com Inertia.
-4. **Fechar** o modal: limpar query/estado, repor formulário, manter scroll (`preserveScroll`).
+4. **Fechar** o modal só quando o usuário cancelar, clicar fora ou concluir uma ação que remove o registro da vista (excluir, arquivar).
 5. **Componente reutilizável** do conteúdo (`*DetailPanel`, `*Panel`) com `variant="modal"` — evitar duplicar UI entre página e modal.
+
+## Salvar sem fechar o modal
+
+Após **criar** ou **editar** com sucesso, o modal **permanece aberto** para o usuário conferir, ajustar de novo ou cadastrar outro item.
+
+- **Lista + modal (CRUD simples):** `useListModalSubmit` + `reloadListModalProps` — salva via **fetch** (sem visita Inertia do POST) e recarrega só os props da lista. Backend: `ListModalRedirect::toIndexEdit()` no `store`/`update`. Ver `resources/js/hooks/useListModalSubmit.ts`, `resources/js/Pages/Rooms/Index.tsx`.
+- `inertiaListModalSave` sozinho **não basta** quando o controller faz `redirect()->route('*.index')` — o modal ainda fecha.
+- Ficha/detalhe com várias ações (pipeline, departamentos): `submitVolunteerModalPatch` / `submitVolunteerModalPost` — ver `resources/js/utils/volunteerPipelineModalSave.ts`.
+- Em `onSuccess`, **não** chame `closeModal`, `setIsModalOpen(false)` nem equivalente; no máximo `reset()` do formulário, mensagem de sucesso e atualizar payload (fetch/refetch).
+- **Exceção:** após excluir/destruir o registro ou arquivar da lista ativa, fechar o modal faz sentido.
 
 ## O que evitar
 

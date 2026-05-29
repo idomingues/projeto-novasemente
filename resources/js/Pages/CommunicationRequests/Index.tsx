@@ -23,6 +23,7 @@ import TextInput from '@/Components/TextInput';
 import ListViewModeToggle from '@/Components/ListViewModeToggle';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { confirmAction } from '@/utils/confirmDialog';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { ArchiveBoxIcon, ChatBubbleLeftRightIcon, ChevronRightIcon, FunnelIcon, InboxIcon } from '@heroicons/react/24/outline';
 import { FormEventHandler, useCallback, useMemo, useRef, useState } from 'react';
@@ -286,9 +287,12 @@ export default function CommunicationRequestsIndex({
     const submitRequest: FormEventHandler = (e) => {
         e.preventDefault();
         form.post(storeUrl, {
-            preserveScroll: true,
+            ...inertiaListModalSave,
             forceFormData: true,
-            onSuccess: () => closeRequestModal(),
+            onSuccess: () => {
+                form.reset();
+                form.clearErrors();
+            },
         });
     };
 

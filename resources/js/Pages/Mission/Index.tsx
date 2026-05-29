@@ -16,6 +16,7 @@ import InputError from '@/Components/InputError';
 import { Head, router, useForm } from '@inertiajs/react';
 import { FormEventHandler, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import RecordDetailHeader from '@/Components/RecordDetail/RecordDetailHeader';
 import UserListAvatar from '@/Components/UserListAvatar';
 import {
@@ -1279,7 +1280,7 @@ function DetailPanel({
     const submitNote: FormEventHandler = (e) => {
         e.preventDefault();
         noteForm.post(detail.storeNoteUrl, {
-            preserveScroll: true,
+            ...inertiaListModalSave,
             onSuccess: () => {
                 noteForm.reset('body');
                 onNoteSaved();

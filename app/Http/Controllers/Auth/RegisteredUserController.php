@@ -45,7 +45,7 @@ class RegisteredUserController extends Controller
             if (is_string($ministryInviteToken) && $ministryInviteToken !== '') {
                 $inv = VolunteerMinistryInvitation::query()
                     ->where('token', $ministryInviteToken)
-                    ->with(['volunteer:id,name,email,user_id', 'ministry:id,name'])
+                    ->with(['volunteer:id,name,email,phone,user_id', 'ministry:id,name'])
                     ->first();
                 $v = $inv?->volunteer;
                 $em = trim((string) ($v?->email ?? ''));
@@ -61,6 +61,7 @@ class RegisteredUserController extends Controller
                         'token' => (string) $inv->token,
                         'email' => $em,
                         'name' => $v->name,
+                        'phone' => is_string($v->phone) && trim($v->phone) !== '' ? trim($v->phone) : null,
                         'ministryName' => $inv->ministry?->name,
                         'ministryId' => (int) $inv->ministry_id,
                     ];
@@ -113,6 +114,7 @@ class RegisteredUserController extends Controller
         $request->validate(array_merge([
             'name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
+            'phone' => ['required', 'string', 'max:50'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'invitation_token' => ['nullable', 'string'],
             'ministry_invite_token' => ['nullable', 'string'],
@@ -128,6 +130,7 @@ class RegisteredUserController extends Controller
             return User::create([
                 'name' => $request->name,
                 'email' => $request->email,
+                'phone' => trim((string) $request->phone),
                 'password' => $request->password,
                 'photo_url' => $photoUrl,
                 'notify_via_app' => $request->boolean('notify_via_app'),
@@ -221,6 +224,7 @@ class RegisteredUserController extends Controller
                 },
             ],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'phone' => ['required', 'string', 'max:50'],
             'ministry_invite_token' => ['required', 'string'],
             'notify_via_app' => ['required', 'boolean'],
             'notify_via_email' => ['required', 'boolean'],
@@ -237,6 +241,7 @@ class RegisteredUserController extends Controller
                 return User::create([
                     'name' => $request->name,
                     'email' => $request->email,
+                    'phone' => trim((string) $request->phone),
                     'password' => $request->password,
                     'photo_url' => $photoUrl,
                     'notify_via_app' => $request->boolean('notify_via_app'),
@@ -260,6 +265,7 @@ class RegisteredUserController extends Controller
                 'user_id' => $user->id,
                 'name' => $displayName,
                 'email' => strtolower(trim((string) $request->email)),
+                'phone' => trim((string) $request->phone),
             ])->save();
 
             if (Schema::hasTable('ministry_volunteer')) {
@@ -313,6 +319,7 @@ class RegisteredUserController extends Controller
         $validated = $request->validate(array_merge([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'phone' => ['required', 'string', 'max:50'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'notify_via_app' => ['required', 'boolean'],
             'notify_via_email' => ['required', 'boolean'],
@@ -322,6 +329,7 @@ class RegisteredUserController extends Controller
 
         $user->name = $validated['name'];
         $user->email = $validated['email'];
+        $user->phone = trim((string) $validated['phone']);
         $user->password = $validated['password'];
         $photoUrl = UserProfilePhotoResolver::resolveFromRequest($request, $user->photo_url);
         if ($photoUrl !== null) {

@@ -195,7 +195,9 @@ class MinistryController extends Controller
             $ministry->volunteers()->sync($volunteerIds);
         }
 
-        return redirect()->route('departments.index')->with('success', 'Departamento atualizado com sucesso!');
+        return redirect()
+            ->route('departments.index', ['modal' => 'edit', 'id' => $ministry->id])
+            ->with('success', 'Departamento atualizado com sucesso!');
     }
 
     public function destroy(Ministry $ministry)

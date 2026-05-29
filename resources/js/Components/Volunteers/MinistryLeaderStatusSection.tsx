@@ -3,8 +3,12 @@ import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import Textarea from '@/Components/Textarea';
 import { volunteerLeaderStatusLabel } from '@/lib/volunteerLeaderStatusLabels';
-import { router, useForm } from '@inertiajs/react';
-import { useEffect } from 'react';
+import {
+    applyVolunteerModalFormErrors,
+    submitVolunteerModalPatch,
+} from '@/utils/volunteerPipelineModalSave';
+import { useForm, usePage } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
 
 export type MinistryStatusHistoryRow = {
     id: number;
@@ -45,6 +49,9 @@ export default function MinistryLeaderStatusSection({
     section: MinistryLeaderStatusSectionData;
     onSaved: () => void;
 }) {
+    const page = usePage();
+    const csrf = (page.props as { csrf_token?: string }).csrf_token ?? '';
+    const [saving, setSaving] = useState(false);
     const form = useForm({
         leader_status: (section.currentLeaderStatus as '' | 'denied' | 'reviewing' | 'training' | 'active' | null) ?? '',
         leader_note: section.currentLeaderNote ?? '',
@@ -58,15 +65,29 @@ export default function MinistryLeaderStatusSection({
         form.clearErrors();
     }, [section.ministryId, section.currentLeaderStatus, section.currentLeaderNote]);
 
-    const submit = () => {
-        if (!section.updateLeaderStatusUrl) return;
-        form.patch(section.updateLeaderStatusUrl, {
-            preserveScroll: true,
-            onSuccess: () => {
-                form.clearErrors();
-                onSaved();
-            },
-        });
+    const submit = async () => {
+        if (!section.updateLeaderStatusUrl || saving) return;
+        form.clearErrors();
+        setSaving(true);
+        try {
+            const result = await submitVolunteerModalPatch(
+                section.updateLeaderStatusUrl,
+                {
+                    leader_status: form.data.leader_status,
+                    leader_note: form.data.leader_note,
+                },
+                csrf,
+            );
+            if (!result.ok) {
+                applyVolunteerModalFormErrors(result.errors, (field, message) =>
+                    form.setError(field as 'leader_status' | 'leader_note', message),
+                );
+                return;
+            }
+            onSaved();
+        } finally {
+            setSaving(false);
+        }
     };
 
     return (
@@ -133,12 +154,12 @@ export default function MinistryLeaderStatusSection({
                             <PrimaryButton
                                 type="button"
                                 disabled={
-                                    form.processing ||
+                                    saving ||
                                     (form.data.leader_status === 'denied' && form.data.leader_note.trim().length < 5)
                                 }
                                 onClick={submit}
                             >
-                                {form.processing ? 'Salvando…' : 'Salvar status'}
+                                {saving ? 'Salvando…' : 'Salvar status'}
                             </PrimaryButton>
                         </div>
                     </div>

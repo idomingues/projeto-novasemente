@@ -8,6 +8,7 @@ import SelectInput from '@/Components/SelectInput';
 import TextInput from '@/Components/TextInput';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { useState } from 'react';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import { CHAT_MESSAGE_SENDS_EMAIL_SUBTITLE } from '@/constants/chatEmailNotice';
 
 interface InterestRow {
@@ -92,7 +93,7 @@ function InterestCard({ row }: { row: InterestRow }) {
                     onSubmit={(e) => {
                         e.preventDefault();
                         statusForm.patch(route('mobile.talents.interest.status', row.id), {
-                            onSuccess: () => setStatusOpen(false),
+                            ...inertiaListModalSave,
                         });
                     }}
                 >
@@ -118,7 +119,7 @@ function InterestCard({ row }: { row: InterestRow }) {
                     onSubmit={(e) => {
                         e.preventDefault();
                         reviewForm.post(route('mobile.talents.interest.review', row.id), {
-                            onSuccess: () => setReviewOpen(false),
+                            ...inertiaListModalSave,
                         });
                     }}
                 >

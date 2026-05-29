@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Support\ListModalRedirect;
 use App\Models\AppVersion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -62,13 +63,13 @@ class AppVersionController extends Controller
             'notes' => ['nullable', 'string', 'max:5000'],
         ]);
 
-        AppVersion::create([
+        $appVersion = AppVersion::create([
             'version' => $valid['version'],
             'released_at' => ! empty($valid['released_at']) ? Carbon::parse($valid['released_at']) : now(),
             'notes' => $valid['notes'] ?? null,
         ]);
 
-        return redirect()->route('app-versions.index')->with('success', 'Versão adicionada.');
+        return ListModalRedirect::toIndexEdit('app-versions.index', $appVersion, 'Versão adicionada.');
     }
 
     public function update(Request $request, AppVersion $appVersion)
@@ -88,7 +89,7 @@ class AppVersionController extends Controller
             'notes' => $valid['notes'] ?? null,
         ]);
 
-        return redirect()->route('app-versions.index')->with('success', 'Versão atualizada.');
+        return ListModalRedirect::toIndexEdit('app-versions.index', $appVersion, 'Versão atualizada.');
     }
 
     public function destroy(Request $request, AppVersion $appVersion)

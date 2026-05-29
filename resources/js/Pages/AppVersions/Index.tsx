@@ -11,9 +11,15 @@ import Textarea from '@/Components/Textarea';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
-import { useState, FormEventHandler } from 'react';
+import { useCallback, useState, FormEventHandler } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
-import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
+import { useListModalSubmit } from '@/hooks/useListModalSubmit';
+import {
+    useListModalEditUrl,
+    useListModalFromUrl,
+    useListModalSaveMessage,
+    useSyncFormAfterListReload,
+} from '@/hooks/useListModalEditUrl';
 
 type VersionRow = {
     id: number;
@@ -35,47 +41,95 @@ export default function AppVersionsIndex({ versions, latestVersion, schemaReady 
     const [editingId, setEditingId] = useState<number | null>(null);
     const [showAllNotes, setShowAllNotes] = useState<Record<number, boolean>>({});
 
-    const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
+    const [saveMessage, setSaveMessage] = useState<string | null>(null);
+    const { data, setData, errors, reset, clearErrors, setError } = useForm({
         version: '',
         released_at: '',
         notes: '',
     });
+    const { saving, save } = useListModalSubmit({
+        reloadOnly: ['versions', 'latestVersion'],
+        setError,
+        clearErrors,
+    });
+    const { syncListModalEditUrl } = useListModalEditUrl();
+    const showSaveMessage = useListModalSaveMessage();
+
+    const applyVersionToForm = useCallback(
+        (v: VersionRow) => {
+            setData({
+                version: v.version,
+                released_at: v.releasedAt ? v.releasedAt.split('T')[0] : '',
+                notes: v.notes ?? '',
+            });
+        },
+        [setData],
+    );
 
     const latest = latestVersion ?? versions[0]?.version ?? null;
 
     const openCreateModal = () => {
         setIsEditing(false);
         setEditingId(null);
+        setSaveMessage(null);
+        syncListModalEditUrl(null);
         reset();
         clearErrors();
         setIsModalOpen(true);
     };
 
-    const openEditModal = (v: VersionRow) => {
-        setIsEditing(true);
-        setEditingId(v.id);
-        setData({
-            version: v.version,
-            released_at: v.releasedAt ? v.releasedAt.split('T')[0] : '',
-            notes: v.notes ?? '',
-        });
-        clearErrors();
-        setIsModalOpen(true);
-    };
+    const openEditModal = useCallback(
+        (v: VersionRow) => {
+            setIsEditing(true);
+            setEditingId(v.id);
+            setSaveMessage(null);
+            syncListModalEditUrl(v.id);
+            applyVersionToForm(v);
+            clearErrors();
+            setIsModalOpen(true);
+        },
+        [applyVersionToForm, clearErrors, syncListModalEditUrl],
+    );
+
+    const { markSyncAfterReload } = useSyncFormAfterListReload(versions, editingId, isModalOpen, applyVersionToForm);
+    useListModalFromUrl(versions, isModalOpen, editingId, openEditModal);
 
     const closeModal = () => {
         setIsModalOpen(false);
+        setSaveMessage(null);
+        syncListModalEditUrl(null);
         reset();
         setEditingId(null);
+        setIsEditing(false);
     };
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        if (isEditing && editingId) {
-            put(route('app-versions.update', editingId), { ...inertiaListModalSave });
-        } else {
-            post(route('app-versions.store'), { ...inertiaListModalSave });
-        }
+        void (async () => {
+            const outcome = await save(
+                isEditing,
+                editingId,
+                {
+                    version: data.version,
+                    released_at: data.released_at || null,
+                    notes: data.notes || null,
+                },
+                route('app-versions.store'),
+                (id) => route('app-versions.update', id),
+            );
+            if (!outcome.ok) return;
+            if (isEditing) {
+                showSaveMessage(setSaveMessage, 'Versão atualizada.');
+                return;
+            }
+            showSaveMessage(setSaveMessage, 'Versão adicionada.');
+            if (outcome.createdId) {
+                markSyncAfterReload();
+                setIsEditing(true);
+                setEditingId(outcome.createdId);
+                syncListModalEditUrl(outcome.createdId);
+            }
+        })();
     };
 
     const handleDelete = async (id: number) => {
@@ -213,9 +267,14 @@ export default function AppVersionsIndex({ versions, latestVersion, schemaReady 
             {schemaReady && (
                 <Modal show={isModalOpen} onClose={closeModal}>
                     <form onSubmit={submit} className="p-6">
-                        <h2 className="mb-6 text-lg font-semibold text-zinc-900 dark:text-white">
+                        <h2 className="mb-2 text-lg font-semibold text-zinc-900 dark:text-white">
                             {isEditing ? 'Editar versão' : 'Nova versão'}
                         </h2>
+                        {saveMessage ? (
+                            <p className="mb-4 text-sm font-medium text-emerald-700 dark:text-emerald-300" role="status">
+                                {saveMessage}
+                            </p>
+                        ) : null}
                         <div className="space-y-4">
                             <div>
                                 <InputLabel value="Número da versão" />
@@ -251,11 +310,11 @@ export default function AppVersionsIndex({ versions, latestVersion, schemaReady 
                         </div>
 
                         <div className="mt-8 flex gap-2">
-                            <SecondaryButton type="button" className="flex-1" disabled={processing} onClick={closeModal}>
+                            <SecondaryButton type="button" className="flex-1" disabled={saving} onClick={closeModal}>
                                 Cancelar
                             </SecondaryButton>
-                            <PrimaryButton type="submit" className="flex-1" disabled={processing}>
-                                {isEditing ? 'Salvar' : 'Cadastrar'}
+                            <PrimaryButton type="submit" className="flex-1" disabled={saving}>
+                                {saving ? 'Salvando…' : isEditing ? 'Salvar' : 'Cadastrar'}
                             </PrimaryButton>
                         </div>
                     </form>

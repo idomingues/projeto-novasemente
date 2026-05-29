@@ -8,6 +8,7 @@ import VolunteerRosterTable from '@/Components/Volunteers/VolunteerRosterTable';
 import SortedMultiCheckboxList from '@/Components/SortedMultiCheckboxList';
 import { centerVolunteersQuery, type CenterGroupBy } from '@/utils/centerVolunteersQuery';
 import { serverSearchTerm } from '@/utils/listSearch';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import {
     formatVolunteerResultsSummary,
     rosterSortOptions,
@@ -208,10 +209,8 @@ export default function VolunteerCenterRosterPanel({
             route('ministry-lead.volunteers.ministry-invite.store', inviteVolunteer.id),
             { ministry_ids: inviteMinistryIds, channels: [] },
             {
-                preserveScroll: true,
+                ...inertiaListModalSave,
                 onSuccess: () => {
-                    setInviteOpen(false);
-                    setInviteVolunteer(null);
                     setInviteMinistryIds([]);
                 },
             },

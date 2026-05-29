@@ -6,6 +6,7 @@ import Modal from '@/Components/Modal';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { ArrowLeftIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { FormEventHandler, useState } from 'react';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
 interface Donation {
     id: number;
@@ -71,7 +72,8 @@ export default function MyDonations({ donations }: Props) {
         e.preventDefault();
         if (!disputeDonation) return;
         post(route('mobile.campaigns.dispute', disputeDonation.id), {
-            onSuccess: () => closeDispute(),
+            ...inertiaListModalSave,
+            onSuccess: () => reset(),
         });
     };
 

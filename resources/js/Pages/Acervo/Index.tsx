@@ -9,9 +9,15 @@ import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
-import { useState, FormEventHandler } from 'react';
+import { useCallback, useState, FormEventHandler } from 'react';
 import { textIncludesSearch } from '@/utils/searchText';
-import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
+import { useListModalSubmit } from '@/hooks/useListModalSubmit';
+import {
+    useListModalEditUrl,
+    useListModalFromUrl,
+    useListModalSaveMessage,
+    useSyncFormAfterListReload,
+} from '@/hooks/useListModalEditUrl';
 
 interface AcervoItem {
     id: number;
@@ -37,39 +43,73 @@ export default function AcervoIndex({ items, canManage }: Props) {
     const filteredItems = search.trim()
         ? items.filter((item) => textIncludesSearch(item.title, search))
         : items;
-    const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
-        url: '',
-    });
+    const [saveMessage, setSaveMessage] = useState<string | null>(null);
+    const { data, setData, errors, reset, clearErrors, setError } = useForm({ url: '' });
+    const { saving, save } = useListModalSubmit({ reloadOnly: ['items'], setError, clearErrors });
+    const { syncListModalEditUrl } = useListModalEditUrl();
+    const showSaveMessage = useListModalSaveMessage();
+
+    const applyItemToForm = useCallback((item: AcervoItem) => setData('url', item.url), [setData]);
 
     const openCreateModal = () => {
         setIsEditing(false);
         setEditingId(null);
+        setSaveMessage(null);
+        syncListModalEditUrl(null);
         reset();
         clearErrors();
         setData('url', '');
         setIsModalOpen(true);
     };
 
-    const openEditModal = (item: AcervoItem) => {
-        setIsEditing(true);
-        setEditingId(item.id);
-        setData('url', item.url);
-        clearErrors();
-        setIsModalOpen(true);
-    };
+    const openEditModal = useCallback(
+        (item: AcervoItem) => {
+            setIsEditing(true);
+            setEditingId(item.id);
+            setSaveMessage(null);
+            syncListModalEditUrl(item.id);
+            applyItemToForm(item);
+            clearErrors();
+            setIsModalOpen(true);
+        },
+        [applyItemToForm, clearErrors, syncListModalEditUrl],
+    );
+
+    const { markSyncAfterReload } = useSyncFormAfterListReload(items, editingId, isModalOpen, applyItemToForm);
+    useListModalFromUrl(items, isModalOpen, editingId, openEditModal);
 
     const closeModal = () => {
         setIsModalOpen(false);
+        setSaveMessage(null);
+        syncListModalEditUrl(null);
         reset();
+        setEditingId(null);
+        setIsEditing(false);
     };
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        if (isEditing && editingId) {
-            put(route('acervo.update', editingId), { ...inertiaListModalSave });
-        } else {
-            post(route('acervo.store'), { ...inertiaListModalSave });
-        }
+        void (async () => {
+            const outcome = await save(
+                isEditing,
+                editingId,
+                { url: data.url },
+                route('acervo.store'),
+                (id) => route('acervo.update', id),
+            );
+            if (!outcome.ok) return;
+            if (isEditing) {
+                showSaveMessage(setSaveMessage, 'Item atualizado.');
+                return;
+            }
+            showSaveMessage(setSaveMessage, 'Item adicionado.');
+            if (outcome.createdId) {
+                markSyncAfterReload();
+                setIsEditing(true);
+                setEditingId(outcome.createdId);
+                syncListModalEditUrl(outcome.createdId);
+            }
+        })();
     };
 
     const openDeleteModal = (item: AcervoItem) => {
@@ -271,9 +311,14 @@ export default function AcervoIndex({ items, canManage }: Props) {
 
             <Modal show={isModalOpen} onClose={closeModal}>
                 <form onSubmit={submit} className="p-6">
-                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-2">
                         {isEditing ? 'Editar item' : 'Adicionar item'}
                     </h2>
+                    {saveMessage ? (
+                        <p className="mb-2 text-sm font-medium text-emerald-700 dark:text-emerald-300" role="status">
+                            {saveMessage}
+                        </p>
+                    ) : null}
                     <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
                         Cole o link da playlist ou vídeo do YouTube. O título e a thumbnail serão obtidos automaticamente.
                     </p>
@@ -290,8 +335,8 @@ export default function AcervoIndex({ items, canManage }: Props) {
                         <InputError message={errors.url} className="mt-1" />
                     </div>
                     <div className="flex gap-2 mt-6">
-                        <PrimaryButton type="submit" disabled={processing}>
-                            {isEditing ? 'Salvar' : 'Adicionar'}
+                        <PrimaryButton type="submit" disabled={saving}>
+                            {saving ? 'Salvando…' : isEditing ? 'Salvar' : 'Adicionar'}
                         </PrimaryButton>
                         <SecondaryButton type="button" onClick={closeModal}>
                             Cancelar

@@ -14,6 +14,7 @@ import SolicitationDetailPanel, { type SolicitationDetailPanelProps } from '@/Co
 import SupportTicketDetailPanel, { type SupportTicketDetailPanelProps } from '@/Components/Support/SupportTicketDetailPanel';
 import TextInput from '@/Components/TextInput';
 import PageHeader from '@/Components/PageHeader';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
 type DemandKind = 'solicitation' | 'pastoral';
 
@@ -28,6 +29,8 @@ type DemandRow = {
     preferredDate: string | null;
     updatedAt: string;
     memberLabel: string;
+    memberEmail: string | null;
+    memberPhone: string | null;
 };
 
 type TabKey = 'pendente' | 'aguardando' | 'batizados' | 'arquivados';
@@ -82,6 +85,11 @@ function baptismListTabClass(active: boolean): string {
             ? 'border-teal-600 text-teal-800 dark:border-teal-400 dark:text-teal-200'
             : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200',
     ].join(' ');
+}
+
+function contactFieldLabel(value: string | null | undefined): string {
+    const trimmed = value?.trim();
+    return trimmed ? trimmed : '—';
 }
 
 function statusBadgeClass(status: string): string {
@@ -178,8 +186,11 @@ export default function BaptismRequestsIndex({
     const submitCreate: FormEventHandler = (e) => {
         e.preventDefault();
         createForm.post(baptismStoreUrl, {
-            preserveScroll: true,
-            onSuccess: () => closeCreate(),
+            ...inertiaListModalSave,
+            onSuccess: () => {
+                createForm.reset();
+                createForm.clearErrors();
+            },
         });
     };
 
@@ -335,6 +346,16 @@ export default function BaptismRequestsIndex({
                                                 </>
                                             ) : null}
                                         </div>
+                                        <dl className="mt-2 space-y-0.5 text-xs text-zinc-600 dark:text-zinc-300">
+                                            <div className="flex flex-wrap gap-x-1">
+                                                <dt className="font-medium text-zinc-500 dark:text-zinc-400">E-mail:</dt>
+                                                <dd className="min-w-0 break-all">{contactFieldLabel(s.memberEmail)}</dd>
+                                            </div>
+                                            <div className="flex flex-wrap gap-x-1">
+                                                <dt className="font-medium text-zinc-500 dark:text-zinc-400">Telefone:</dt>
+                                                <dd>{contactFieldLabel(s.memberPhone)}</dd>
+                                            </div>
+                                        </dl>
                                         <div className="mt-2 line-clamp-3 whitespace-pre-wrap text-sm text-zinc-700 dark:text-zinc-200">
                                             {s.messageExcerpt}
                                         </div>

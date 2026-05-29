@@ -9,6 +9,7 @@ import Textarea from '@/Components/Textarea';
 import { type MissionRosterFilters, missionVolunteersQuery } from '@/utils/missionRosterFilters';
 import { useForm } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
 type Props = {
     show: boolean;
@@ -38,8 +39,11 @@ export default function MissionBroadcastModal({ show, onClose, storeUrl, filtere
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         form.post(storeUrl, {
-            preserveScroll: true,
-            onSuccess: () => close(),
+            ...inertiaListModalSave,
+            onSuccess: () => {
+                form.reset();
+                form.clearErrors();
+            },
         });
     };
 

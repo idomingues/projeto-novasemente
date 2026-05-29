@@ -1,6 +1,7 @@
 import { router, useForm } from '@inertiajs/react';
 import { useEffect, useState, FormEventHandler } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import { CheckCircleIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
@@ -69,7 +70,7 @@ export default function MobileSupportTicketPanel({
     isGuestTicket = false,
     guestName = null,
 }: MobileSupportTicketPanelProps) {
-    const inertiaScrollOpts = { preserveScroll: true };
+    const inertiaScrollOpts = inertiaListModalSave;
 
     const { data, setData, post, patch, processing, errors, reset } = useForm({
         content: '',

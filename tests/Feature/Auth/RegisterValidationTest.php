@@ -19,6 +19,7 @@ class RegisterValidationTest extends TestCase
         $post = $this->from(route('register', absolute: false))->post(route('register', absolute: false), [
             'name' => 'Test User',
             'email' => 'test@example.com',
+            'phone' => '11999998888',
             'password' => 'password',
             'password_confirmation' => 'different',
             'notify_via_app' => true,
@@ -60,6 +61,7 @@ class RegisterValidationTest extends TestCase
             ->post(route('register', absolute: false), [
                 'name' => 'Test User',
                 'email' => 'test@example.com',
+                'phone' => '11999998888',
                 'password' => 'password',
                 'password_confirmation' => 'different',
                 'notify_via_app' => true,
@@ -79,7 +81,7 @@ class RegisterValidationTest extends TestCase
             ->post(route('register', absolute: false), []);
 
         $response->assertRedirect(route('register', absolute: false));
-        $response->assertSessionHasErrors(['name', 'email', 'password', 'notify_via_app', 'notify_via_email', 'notify_via_whatsapp', 'lgpd_accepted']);
+        $response->assertSessionHasErrors(['name', 'email', 'phone', 'password', 'notify_via_app', 'notify_via_email', 'notify_via_whatsapp', 'lgpd_accepted']);
         $this->assertGuest();
     }
 }

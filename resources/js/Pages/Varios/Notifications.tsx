@@ -14,6 +14,7 @@ import MarkInboxNotificationReadButton from '@/Components/MarkInboxNotificationR
 import { confirmAction } from '@/utils/confirmDialog';
 import SearchableSelect, { type SearchableOption } from '@/Components/SearchableSelect';
 import { FormEventHandler, useMemo, useState } from 'react';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
 type NotificationAudience = 'all' | 'user';
 
@@ -91,10 +92,10 @@ export default function VariosNotifications({
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         post(route('notifications.store'), {
+            ...inertiaListModalSave,
             onSuccess: () => {
-                closeCreateModal();
+                reset();
             },
-            preserveScroll: true,
         });
     };
 

@@ -27,6 +27,10 @@ class BaptismRequestArchiveTest extends TestCase
     public function test_baptism_index_filters_by_tab(): void
     {
         $admin = $this->actingAsAdmin();
+        $admin->forceFill([
+            'email' => 'ana.batismo@example.com',
+            'phone' => '(11) 98888-7777',
+        ])->save();
         $church = Church::query()->firstOrFail();
 
         $pending = ChurchSolicitation::query()->create([
@@ -65,6 +69,8 @@ class BaptismRequestArchiveTest extends TestCase
                 ->where('filters.aba', 'pendente')
                 ->has('demands', 1)
                 ->where('demands.0.id', $pending->id)
+                ->where('demands.0.memberEmail', 'ana.batismo@example.com')
+                ->where('demands.0.memberPhone', '(11) 98888-7777')
                 ->where('tabCounts.pendente', 1)
                 ->where('tabCounts.aguardando', 1)
                 ->where('tabCounts.arquivados', 1));

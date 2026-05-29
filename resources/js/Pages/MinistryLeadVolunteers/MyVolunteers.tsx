@@ -26,6 +26,7 @@ import {
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useMemo, useState, type FormEventHandler } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import { textMatchesSearchFields } from '@/utils/searchText';
 
 type VolunteerSortKey = 'name' | 'ministry' | 'invite' | 'leader';
@@ -443,8 +444,7 @@ export default function MyVolunteers() {
         const url = inviteHelpRow?.inviteResendEmailUrl;
         if (!url) return;
         resendInviteForm.post(url, {
-            preserveScroll: true,
-            onSuccess: () => closeInviteHelp(),
+            ...inertiaListModalSave,
         });
     };
 
@@ -552,7 +552,7 @@ export default function MyVolunteers() {
     const submit = () => {
         if (!row || !row.updateUrl) return;
         form.patch(row.updateUrl, {
-            preserveScroll: true,
+            ...inertiaListModalSave,
             onSuccess: (page) => {
                 const pageProps = page.props as {
                     invitations?: Paginated<VolunteerRow>;
@@ -597,8 +597,11 @@ export default function MyVolunteers() {
     const submitRequest: FormEventHandler = (e) => {
         e.preventDefault();
         requestForm.post(requestStoreUrl, {
-            preserveScroll: true,
-            onSuccess: () => closeRequestModal(),
+            ...inertiaListModalSave,
+            onSuccess: () => {
+                requestForm.reset();
+                requestForm.clearErrors();
+            },
         });
     };
 

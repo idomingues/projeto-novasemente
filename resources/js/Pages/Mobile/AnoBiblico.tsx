@@ -2,6 +2,7 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { AcademicCapIcon, BookOpenIcon, CheckCircleIcon, CalendarDaysIcon, ArrowPathIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
 import { useEffect, useMemo, useState } from 'react';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
 type Props =
     | {
@@ -493,9 +494,8 @@ export default function MobileAnoBiblico(props: Props) {
                                             ? { mode: 'new_end', data_fim: newEndDate }
                                             : { mode: reprogramMode },
                                         {
-                                            preserveScroll: true,
+                                            ...inertiaListModalSave,
                                             onFinish: () => setReprogramming(false),
-                                            onSuccess: () => setReprogramOpen(false),
                                         }
                                     );
                                 }}
@@ -571,8 +571,7 @@ export default function MobileAnoBiblico(props: Props) {
                                                 return;
                                             }
                                             postRecalculateChallenge(route('mobile.ano-biblico.challenges.recalculate'), {
-                                                preserveScroll: true,
-                                                onSuccess: () => setChallengeOpen(false),
+                                                ...inertiaListModalSave,
                                             });
                                         }}
                                         className="mt-3 inline-flex w-full items-center justify-center rounded-full border border-emerald-700 px-4 py-2.5 text-sm font-bold text-emerald-800 hover:bg-emerald-100/80 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-500 dark:text-emerald-100 dark:hover:bg-emerald-950/40 transition-colors"
@@ -608,7 +607,7 @@ export default function MobileAnoBiblico(props: Props) {
                                                             router.post(
                                                                 route('mobile.ano-biblico.challenges.start'),
                                                                 { challengeId: c.id, dataFim: customEnd, resetReadings },
-                                                                { preserveScroll: true, onSuccess: () => setChallengeOpen(false) }
+                                                                { ...inertiaListModalSave }
                                                             );
                                                         }}
                                                         className="inline-flex w-full items-center justify-center rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-800 active:bg-emerald-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -624,7 +623,7 @@ export default function MobileAnoBiblico(props: Props) {
                                                             router.post(
                                                                 route('mobile.ano-biblico.challenges.start'),
                                                                 { challengeId: c.id, resetReadings },
-                                                                { preserveScroll: true, onSuccess: () => setChallengeOpen(false) }
+                                                                { ...inertiaListModalSave }
                                                             );
                                                         }}
                                                         className="inline-flex w-full items-center justify-center rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-800 active:bg-emerald-900 transition-colors"
