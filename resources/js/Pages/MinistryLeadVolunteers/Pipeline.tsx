@@ -47,6 +47,7 @@ import {
 import RecordDetailSections from '@/Components/RecordDetail/RecordDetailSections';
 import { volunteerDetailSections, type VolunteerDetailData } from '@/utils/volunteerDetailRows';
 import SortedMultiCheckboxList from '@/Components/SortedMultiCheckboxList';
+import SplitSortedMultiCheckboxPicker from '@/Components/SplitSortedMultiCheckboxPicker';
 import ListViewModeToggle from '@/Components/ListViewModeToggle';
 import VolunteerPipelineKanban from '@/Components/Volunteers/VolunteerPipelineKanban';
 import { usePersistedViewMode } from '@/hooks/usePersistedViewMode';
@@ -1729,7 +1730,7 @@ export default function Pipeline({
             <Modal
                 show={modalOpen}
                 onClose={() => setModalOpen(false)}
-                maxWidth="2xl"
+                maxWidth="4xl"
                 disableBodyScroll
             >
                 <div className="flex max-h-[min(100dvh-1rem,880px)] min-h-0 w-full flex-col overflow-hidden sm:max-h-[min(90dvh,860px)]">
@@ -1982,15 +1983,15 @@ export default function Pipeline({
                                         {(detail.ministryOptions ?? []).length === 0 ? (
                                             <p className="text-sm text-zinc-500">Nenhum departamento cadastrado nesta igreja.</p>
                                         ) : (
-                                            <SortedMultiCheckboxList
+                                            <SplitSortedMultiCheckboxPicker
                                                 options={volunteerMinistryCheckboxOptions}
                                                 selectedIds={ministriesForm.data.ministry_ids}
                                                 onChange={(ids) => ministriesForm.setData('ministry_ids', ids)}
                                                 maxHeightClass="max-h-[min(50vh,360px)]"
-                                                emptyMessage="Nenhum departamento cadastrado nesta igreja."
+                                                confirmChanges
+                                                error={ministriesForm.errors.ministry_ids}
                                             />
                                         )}
-                                        <InputError message={ministriesForm.errors.ministry_ids} />
                                         {detail.syncMinistriesUrl && canPipelineMutate ? (
                                             <PrimaryButton type="submit" disabled={ministriesForm.processing}>
                                                 Salvar departamentos

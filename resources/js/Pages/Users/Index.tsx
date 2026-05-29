@@ -355,7 +355,6 @@ export default function Index({
 
         if (isEditing && editingId) {
             post(route('members.update', editingId), {
-                preserveScroll: true,
                 forceFormData: true,
                 ...inertiaListModalSave,
                 onError: (errs) => {
@@ -365,7 +364,6 @@ export default function Index({
             });
         } else {
             post(route('members.store'), {
-                preserveScroll: true,
                 forceFormData: true,
                 ...inertiaListModalSave,
                 onError: (errs) => {

@@ -18,7 +18,7 @@ import VolunteerPasswordChangeForm from '@/Components/Volunteers/VolunteerPasswo
 import MinistryLeaderStatusSection, {
     type MinistryLeaderStatusSectionData,
 } from '@/Components/Volunteers/MinistryLeaderStatusSection';
-import SortedMultiCheckboxList from '@/Components/SortedMultiCheckboxList';
+import SplitSortedMultiCheckboxPicker from '@/Components/SplitSortedMultiCheckboxPicker';
 import { confirmAction } from '@/utils/confirmDialog';
 import { volunteerDetailSections, type VolunteerDetailData } from '@/utils/volunteerDetailRows';
 import { centerVolunteersQuery, type CenterGroupBy } from '@/utils/centerVolunteersQuery';
@@ -679,7 +679,7 @@ export default function ManagementCenter({
                 </div>
             </div>
 
-            <Modal show={modalOpen} onClose={() => setModalOpen(false)} maxWidth="2xl" disableBodyScroll>
+            <Modal show={modalOpen} onClose={() => setModalOpen(false)} maxWidth="4xl" disableBodyScroll>
                 <div className="flex max-h-[min(100dvh-1rem,880px)] min-h-0 w-full flex-col overflow-hidden sm:max-h-[min(90dvh,860px)]">
                     {detailLoading ? (
                         <div className="p-6">
@@ -902,15 +902,15 @@ export default function ManagementCenter({
                                         {(detail.ministryOptions ?? []).length === 0 ? (
                                             <p className="text-sm text-zinc-500">Nenhum departamento cadastrado nesta igreja.</p>
                                         ) : (
-                                            <SortedMultiCheckboxList
+                                            <SplitSortedMultiCheckboxPicker
                                                 options={volunteerMinistryCheckboxOptions}
                                                 selectedIds={ministriesForm.data.ministry_ids}
                                                 onChange={(ids) => ministriesForm.setData('ministry_ids', ids)}
                                                 maxHeightClass="max-h-[min(50vh,360px)]"
-                                                emptyMessage="Nenhum departamento cadastrado nesta igreja."
+                                                confirmChanges
+                                                error={ministriesForm.errors.ministry_ids}
                                             />
                                         )}
-                                        <InputError message={ministriesForm.errors.ministry_ids} />
                                         {detail.syncMinistriesUrl && canPipelineMutate ? (
                                             <PrimaryButton type="submit" disabled={ministriesForm.processing}>
                                                 Salvar departamentos

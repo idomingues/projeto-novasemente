@@ -348,7 +348,7 @@ export default function VolunteerRequestsIndex({
             ...inertiaListModalSave,
             onSuccess: () => {
                 createForm.reset();
-                clearErrors();
+                createForm.clearErrors();
             },
         });
     };
