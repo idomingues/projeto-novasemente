@@ -54,7 +54,7 @@ import {
     type VolunteerMinistryPhaseRow,
 } from '@/utils/volunteerMinistryPhasesInList';
 import RecordDetailSections from '@/Components/RecordDetail/RecordDetailSections';
-import { volunteerDetailSections, type VolunteerDetailData } from '@/utils/volunteerDetailRows';
+import { volunteerDetailSections, volunteerRecordHeaderSubtitle, type VolunteerDetailData } from '@/utils/volunteerDetailRows';
 import SortedMultiCheckboxList from '@/Components/SortedMultiCheckboxList';
 import SplitSortedMultiCheckboxPicker from '@/Components/SplitSortedMultiCheckboxPicker';
 import ListViewModeToggle from '@/Components/ListViewModeToggle';
@@ -224,6 +224,7 @@ type DetailJson = {
     archiveVolunteerUrl?: string | null;
     unarchiveVolunteerUrl?: string | null;
     updatePasswordUrl?: string | null;
+    passwordFormMode?: 'create' | 'update' | null;
 };
 
 type VolunteerRequestMinistryOption = {
@@ -1838,7 +1839,7 @@ export default function Pipeline({
                                         (detail.volunteer as VolunteerDetailData).user?.name?.trim() ||
                                         'Voluntário'
                                     }
-                                    subtitle="Voluntário e conta no app (mesma pessoa)."
+                                    subtitle={volunteerRecordHeaderSubtitle(detail.volunteer as VolunteerDetailData)}
                                     photoUrl={
                                         (detail.volunteer as VolunteerDetailData).photo_url ??
                                         (detail.volunteer.user as { photo_url?: string | null } | null)?.photo_url ??
@@ -1981,14 +1982,26 @@ export default function Pipeline({
                                             <VolunteerPasswordChangeForm
                                                 key={(detail.volunteer as VolunteerDetailData).id}
                                                 submitUrl={detail.updatePasswordUrl}
+                                                mode={detail.passwordFormMode === 'create' ? 'create' : 'update'}
+                                                onSuccess={() => {
+                                                    if (selectedId) void refreshVolunteerDetail(selectedId);
+                                                }}
                                             />
                                         ) : canVolunteerManage &&
                                           !(detail.volunteer as VolunteerDetailData).has_app_account ? (
                                             <div className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-300">
                                                 <p className="font-semibold text-zinc-900 dark:text-white">Senha de acesso</p>
                                                 <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                                    Este voluntário ainda não tem conta no app. Crie o acesso em Voluntários ou
-                                                    envie um convite por e-mail.
+                                                    Cadastre um e-mail na ficha (em Voluntários) para poder criar o acesso ao app
+                                                    com senha daqui.
+                                                </p>
+                                            </div>
+                                        ) : canVolunteerManage &&
+                                          (detail.volunteer as VolunteerDetailData).has_app_account ? (
+                                            <div className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-300">
+                                                <p className="font-semibold text-zinc-900 dark:text-white">Senha de acesso</p>
+                                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                                    Conta da equipe do painel — altere a senha em Usuários.
                                                 </p>
                                             </div>
                                         ) : null}

@@ -8,10 +8,11 @@ import { FormEventHandler, useState } from 'react';
 
 type Props = {
     submitUrl: string;
+    mode?: 'create' | 'update';
     onSuccess?: () => void;
 };
 
-export default function VolunteerPasswordChangeForm({ submitUrl, onSuccess }: Props) {
+export default function VolunteerPasswordChangeForm({ submitUrl, mode = 'update', onSuccess }: Props) {
     const page = usePage();
     const csrf = (page.props as { csrf_token?: string }).csrf_token ?? '';
     const [saving, setSaving] = useState(false);
@@ -20,6 +21,8 @@ export default function VolunteerPasswordChangeForm({ submitUrl, onSuccess }: Pr
         app_password: '',
         app_password_confirmation: '',
     });
+
+    const isCreate = mode === 'create';
 
     const submit: FormEventHandler = async (e) => {
         e.preventDefault();
@@ -54,21 +57,30 @@ export default function VolunteerPasswordChangeForm({ submitUrl, onSuccess }: Pr
 
     return (
         <section className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-900/60 dark:bg-amber-950/30">
-            <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">Nova senha de acesso</p>
+            <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">
+                {isCreate ? 'Criar acesso ao app' : 'Nova senha de acesso'}
+            </p>
             <p className="mt-1 text-xs text-amber-900/80 dark:text-amber-200/90">
-                Preencha somente se quiser definir uma nova senha. Clique no olho para ver o que está digitando.
+                {isCreate
+                    ? 'Defina a senha inicial para a pessoa entrar no app com o e-mail da ficha. Clique no olho para ver o que está digitando.'
+                    : 'Preencha somente se quiser definir uma nova senha. Clique no olho para ver o que está digitando.'}
             </p>
             <form onSubmit={submit} className="mt-3 space-y-4">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
-                        <InputLabel htmlFor="pipeline_app_password" value="Nova senha (opcional)" className="mb-1" />
+                        <InputLabel
+                            htmlFor="pipeline_app_password"
+                            value={isCreate ? 'Senha inicial *' : 'Nova senha (opcional)'}
+                            className="mb-1"
+                        />
                         <PasswordInput
                             id="pipeline_app_password"
                             className="block w-full"
                             value={data.app_password}
                             onChange={(e) => setData('app_password', e.target.value)}
                             autoComplete="new-password"
-                            placeholder="Não alterar"
+                            placeholder={isCreate ? '' : 'Não alterar'}
+                            required={isCreate}
                         />
                         <InputError message={errors.app_password} className="mt-2" />
                     </div>
@@ -86,10 +98,12 @@ export default function VolunteerPasswordChangeForm({ submitUrl, onSuccess }: Pr
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                     <PrimaryButton type="submit" disabled={processing || saving}>
-                        {saving ? 'Salvando…' : 'Salvar senha'}
+                        {saving ? 'Salvando…' : isCreate ? 'Criar acesso' : 'Salvar senha'}
                     </PrimaryButton>
                     {saved ? (
-                        <p className="text-sm text-amber-900/90 dark:text-amber-100/90">Senha atualizada.</p>
+                        <p className="text-sm text-amber-900/90 dark:text-amber-100/90">
+                            {isCreate ? 'Conta criada com a senha informada.' : 'Senha atualizada.'}
+                        </p>
                     ) : null}
                 </div>
             </form>

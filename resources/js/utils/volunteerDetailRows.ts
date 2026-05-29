@@ -108,6 +108,19 @@ function appAccessLabel(v: VolunteerDetailData): string {
 }
 
 /** Seções da ficha: voluntário e conta no app numa visão só (sem telas separadas). */
+export function volunteerRecordHeaderSubtitle(v: VolunteerDetailData): string {
+    if (v.has_app_account) {
+        return 'Voluntário e conta no app (mesma pessoa).';
+    }
+
+    const email = (v.display_email ?? v.email ?? '').trim();
+    if (email !== '') {
+        return 'Cadastro de voluntário — ainda sem conta no app (pode criar o acesso abaixo).';
+    }
+
+    return 'Cadastro de voluntário — sem conta no app (cadastre e-mail em Voluntários).';
+}
+
 export function volunteerDetailSections(v: VolunteerDetailData): RecordDetailSection[] {
     const serveMinistries = (v.ministries ?? []).map((m) => m.name).join(', ') || '—';
     const roles = (v.user?.roles ?? []).map((r) => appRoleLabel(r)).join(', ') || '—';

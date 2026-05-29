@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Volunteers\ApplyVolunteerMinistryLeaderStatusUpdate;
+use App\Actions\Volunteers\ProvisionVolunteerAppPasswordFromStaff;
 use App\Domain\Volunteers\Actions\DeleteVolunteer;
 use App\Domain\Volunteers\Actions\SyncVolunteerMinistryAttachments;
 use App\Models\Church;
@@ -15,7 +16,6 @@ use App\Models\VolunteerLeaderNote;
 use App\Models\VolunteerMinistryInvitation;
 use App\Models\VolunteerMinistryInvitationStatusHistory;
 use App\Models\VolunteerPipelineStage;
-use App\Models\VolunteerSelfSignupToken;
 use App\Support\VolunteerChurchRosterBuilder;
 use App\Support\VolunteerLeadRosterFilters;
 use App\Support\VolunteerPipelineBootstrap;
@@ -27,8 +27,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
-use Inertia\Inertia;
-use Inertia\Response;
 
 class VolunteerPipelineLeadController extends Controller
 {
@@ -224,6 +222,7 @@ class VolunteerPipelineLeadController extends Controller
                 ? route('ministry-lead.volunteers.pipeline.unarchive', $volunteer)
                 : null,
             'updatePasswordUrl' => $this->pipelinePasswordUpdateUrl($request, $volunteer),
+            'passwordFormMode' => $this->pipelinePasswordFormMode($request, $volunteer),
         ]);
     }
 
@@ -244,25 +243,30 @@ class VolunteerPipelineLeadController extends Controller
         ]);
 
         $volunteer->loadMissing('user');
-        $user = $volunteer->user;
-        if ($user === null) {
-            return back()->withErrors([
-                'app_password' => 'Este voluntário ainda não tem conta no app. Crie o acesso em Voluntários ou envie um convite.',
-            ]);
-        }
+        $creating = $volunteer->user === null;
 
-        if ($user->canAccessAdminMenu()) {
-            return back()->withErrors([
-                'app_password' => 'Conta da equipe do painel — altere a senha em Usuários.',
-            ]);
-        }
+        app(ProvisionVolunteerAppPasswordFromStaff::class)(
+            $volunteer,
+            $validated['app_password'],
+            $request,
+        );
 
-        $user->forceFill(['password' => $validated['app_password']])->save();
-
-        return back()->with('success', 'Senha de acesso atualizada.');
+        return back()->with(
+            'success',
+            $creating ? 'Conta no app criada com a senha informada.' : 'Senha de acesso atualizada.',
+        );
     }
 
     private function pipelinePasswordUpdateUrl(Request $request, Volunteer $volunteer): ?string
+    {
+        if ($this->pipelinePasswordFormMode($request, $volunteer) === null) {
+            return null;
+        }
+
+        return route('ministry-lead.volunteers.pipeline.password', $volunteer);
+    }
+
+    private function pipelinePasswordFormMode(Request $request, Volunteer $volunteer): ?string
     {
         if ($request->user()?->can('volunteers.manage') !== true) {
             return null;
@@ -270,11 +274,14 @@ class VolunteerPipelineLeadController extends Controller
 
         $volunteer->loadMissing('user');
         $user = $volunteer->user;
-        if ($user === null || $user->canAccessAdminMenu()) {
-            return null;
+
+        if ($user !== null) {
+            return $user->canAccessAdminMenu() ? null : 'update';
         }
 
-        return route('ministry-lead.volunteers.pipeline.password', $volunteer);
+        $email = trim((string) ($volunteer->email ?? ''));
+
+        return $email !== '' ? 'create' : null;
     }
 
     public function archiveVolunteer(Request $request, Volunteer $volunteer): RedirectResponse

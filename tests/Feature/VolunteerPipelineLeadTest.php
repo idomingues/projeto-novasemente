@@ -131,6 +131,42 @@ class VolunteerPipelineLeadTest extends TestCase
         $this->assertTrue($section['canEdit']);
         $this->assertNotEmpty($section['updateLeaderStatusUrl']);
         $response->assertJsonPath('updatePasswordUrl', route('ministry-lead.volunteers.pipeline.password', $volunteer));
+        $response->assertJsonPath('passwordFormMode', 'update');
+    }
+
+    public function test_pipeline_admin_can_create_app_account_from_ficha_when_volunteer_has_email(): void
+    {
+        $admin = $this->actingAsAdmin();
+        $church = Church::query()->firstOrFail();
+        $ministry = Ministry::query()->where('church_id', $church->id)->firstOrFail();
+
+        $volunteer = Volunteer::query()->create([
+            'name' => 'Karina Sem Conta',
+            'email' => 'karina.sem.conta@example.com',
+            'phone' => '11988887777',
+            'active' => true,
+        ]);
+        $volunteer->ministries()->sync([$ministry->id]);
+
+        $this->actingAs($admin)->getJson(route('ministry-lead.volunteers.pipeline.detail', $volunteer))
+            ->assertOk()
+            ->assertJsonPath('passwordFormMode', 'create')
+            ->assertJsonPath('updatePasswordUrl', route('ministry-lead.volunteers.pipeline.password', $volunteer));
+
+        $this->actingAs($admin)
+            ->from(route('ministry-lead.volunteers.index'))
+            ->patch(route('ministry-lead.volunteers.pipeline.password', $volunteer), [
+                'app_password' => 'SenhaInicial789',
+                'app_password_confirmation' => 'SenhaInicial789',
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $volunteer->refresh();
+        $this->assertNotNull($volunteer->user_id);
+        $user = User::query()->findOrFail((int) $volunteer->user_id);
+        $this->assertSame('karina.sem.conta@example.com', strtolower((string) $user->email));
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('SenhaInicial789', $user->password));
     }
 
     public function test_pipeline_admin_can_update_volunteer_password_from_ficha(): void
