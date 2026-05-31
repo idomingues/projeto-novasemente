@@ -132,6 +132,102 @@ class VolunteerPipelineLeadTest extends TestCase
         $this->assertNotEmpty($section['updateLeaderStatusUrl']);
         $response->assertJsonPath('updatePasswordUrl', route('ministry-lead.volunteers.pipeline.password', $volunteer));
         $response->assertJsonPath('passwordFormMode', 'update');
+        $response->assertJsonPath('updateVolunteerUrl', route('volunteers.update', $volunteer));
+        $this->assertNotEmpty($response->json('appRoles'));
+    }
+
+    public function test_pipeline_sync_ministries_can_set_ministry_leadership(): void
+    {
+        $admin = $this->actingAsAdmin();
+        $church = Church::query()->firstOrFail();
+        $ministryA = Ministry::query()->where('church_id', $church->id)->orderBy('id')->firstOrFail();
+        $ministryB = Ministry::query()
+            ->where('church_id', $church->id)
+            ->whereKeyNot($ministryA->id)
+            ->orderBy('id')
+            ->first();
+
+        if ($ministryB === null) {
+            $this->markTestSkipped('Precisa de pelo menos dois departamentos na igreja de teste.');
+        }
+
+        $this->actingAs($admin)->post('/volunteers', [
+            'name' => 'Lidera Depto Teste',
+            'email' => 'lidera.depto.teste@example.com',
+            'ministry_ids' => [$ministryA->id, $ministryB->id],
+            'active' => '1',
+            'app_password' => 'secret123',
+            'app_password_confirmation' => 'secret123',
+        ]);
+
+        $volunteer = Volunteer::query()->where('email', 'lidera.depto.teste@example.com')->firstOrFail();
+        $user = User::query()->findOrFail($volunteer->user_id);
+        $this->assertFalse($user->hasRole('lider_ministerio'));
+
+        $this->actingAs($admin)
+            ->patchJson(route('ministry-lead.volunteers.pipeline.ministries.sync', $volunteer), [
+                'ministry_ids' => [$ministryA->id, $ministryB->id],
+                'leader_ministry_ids' => [$ministryA->id],
+            ])
+            ->assertRedirect();
+
+        $user->refresh();
+        $this->assertTrue($user->hasRole('lider_ministerio'));
+        $this->assertTrue($user->is_ministry_leader);
+        $this->assertEqualsCanonicalizing(
+            [$ministryA->id],
+            $user->ministries()->pluck('ministries.id')->map(fn ($id) => (int) $id)->all(),
+        );
+
+        $detail = $this->actingAs($admin)->getJson(route('ministry-lead.volunteers.pipeline.detail', $volunteer));
+        $detail->assertOk();
+        $ledIds = collect($detail->json('volunteer.user.led_ministries'))->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $this->assertContains((int) $ministryA->id, $ledIds);
+    }
+
+    public function test_pipeline_admin_can_clear_ministry_leadership_for_linked_user(): void
+    {
+        $admin = $this->actingAsAdmin();
+        $church = Church::query()->firstOrFail();
+        $ministry = Ministry::query()->where('church_id', $church->id)->firstOrFail();
+
+        $this->actingAs($admin)->post('/volunteers', [
+            'name' => 'Remove Lideranca',
+            'email' => 'remove.lideranca@example.com',
+            'ministry_ids' => [$ministry->id],
+            'active' => '1',
+            'app_password' => 'secret123',
+            'app_password_confirmation' => 'secret123',
+        ]);
+
+        $volunteer = Volunteer::query()->where('email', 'remove.lideranca@example.com')->firstOrFail();
+        $user = User::query()->findOrFail($volunteer->user_id);
+        $secretaria = Role::firstOrCreate(['name' => 'secretaria']);
+        $user->assignRole($secretaria);
+
+        $this->actingAs($admin)
+            ->patchJson(route('ministry-lead.volunteers.pipeline.ministries.sync', $volunteer), [
+                'ministry_ids' => [$ministry->id],
+                'leader_ministry_ids' => [$ministry->id],
+            ])
+            ->assertRedirect();
+
+        $user->refresh();
+        $this->assertTrue($user->hasRole('secretaria'));
+        $this->assertFalse($user->hasRole('lider_ministerio'));
+        $this->assertTrue($user->is_ministry_leader);
+
+        $this->actingAs($admin)
+            ->patchJson(route('ministry-lead.volunteers.pipeline.ministries.sync', $volunteer), [
+                'ministry_ids' => [$ministry->id],
+                'leader_ministry_ids' => [],
+            ])
+            ->assertRedirect();
+
+        $user->refresh();
+        $this->assertTrue($user->hasRole('secretaria'));
+        $this->assertFalse($user->is_ministry_leader);
+        $this->assertSame([], $user->ministries()->pluck('ministries.id')->all());
     }
 
     public function test_pipeline_admin_can_create_app_account_from_ficha_when_volunteer_has_email(): void

@@ -6,8 +6,9 @@ import InputLabel from '@/Components/InputLabel';
 import Textarea from '@/Components/Textarea';
 import { Head, router, useForm } from '@inertiajs/react';
 import { FormEventHandler, useEffect, useMemo, useState } from 'react';
-import { ChevronRightIcon, FunnelIcon, InboxIcon } from '@heroicons/react/24/outline';
+import { ChevronRightIcon, AdjustmentsHorizontalIcon, ArrowsUpDownIcon, InboxIcon } from '@heroicons/react/24/outline';
 import Modal from '@/Components/Modal';
+import ListSortOptionPicker from '@/Components/ListSortOptionPicker';
 import PersonListIdentity from '@/Components/PersonListIdentity';
 import PersonModalHeader from '@/Components/PersonModalHeader';
 import SolicitationDetailPanel, { type SolicitationDetailPanelProps } from '@/Components/Solicitations/SolicitationDetailPanel';
@@ -51,7 +52,7 @@ interface Props {
     solicitationsIndexUrl: string;
     modalDetail: ModalDetail;
     canManage: boolean;
-    filters: { aba: TabKey; type: string; q: string; kind: string };
+    filters: { aba: TabKey; type: string; q: string; kind: string; sort: string };
     tabCounts: Record<TabKey, number>;
     tabs: { key: TabKey; label: string }[];
     typeOptions: { value: string; label: string }[];
@@ -74,14 +75,28 @@ const EMPTY_MESSAGES: Record<TabKey, string> = {
     arquivados: 'Nenhum pedido arquivado.',
 };
 
+const headerIconBtnClass =
+    'relative inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-600 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-800';
+
+const headerIconBtnActiveClass =
+    'border-teal-500 bg-teal-50 text-teal-800 dark:border-teal-600 dark:bg-teal-950/40 dark:text-teal-200';
+
+const SORT_OPTIONS = [
+    { value: 'updated_desc', label: 'Mais recentes' },
+    { value: 'updated_asc', label: 'Mais antigos' },
+    { value: 'preferred_date_asc', label: 'Data do pedido (mais próxima)' },
+    { value: 'member_asc', label: 'Nome (A–Z)' },
+] as const;
+
 function filterQueryParams(
-    filters: { aba: TabKey; type: string; q: string; kind: string },
+    filters: { aba: TabKey; type: string; q: string; kind: string; sort: string },
     extra: Record<string, string> = {},
 ): Record<string, string> {
     const p: Record<string, string> = { aba: filters.aba, ...extra };
     if (filters.type) p.type = filters.type;
     if (filters.kind) p.kind = filters.kind;
     if (filters.q.trim()) p.q = filters.q.trim();
+    if (filters.sort && filters.sort !== 'updated_desc') p.sort = filters.sort;
     return p;
 }
 
@@ -135,6 +150,7 @@ export default function SolicitationsIndex({
 }: Props) {
     const [modalTab, setModalTab] = useState<'detalhes' | 'chat'>('detalhes');
     const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+    const [sortModalOpen, setSortModalOpen] = useState(false);
     const [createInformalOpen, setCreateInformalOpen] = useState(false);
     const [localFilters, setLocalFilters] = useState(filtersProp);
     const [draftFilters, setDraftFilters] = useState(filtersProp);
@@ -176,9 +192,11 @@ export default function SolicitationsIndex({
     const activeFilterCount = useMemo(() => {
         let n = 0;
         if (localFilters.type) n += 1;
-        if (localFilters.q.trim()) n += 1;
         return n;
     }, [localFilters]);
+
+    const sortIsCustom = localFilters.sort !== 'updated_desc';
+    const currentSortLabel = optionLabel([...SORT_OPTIONS], localFilters.sort) ?? 'Mais recentes';
 
     const activeChips = useMemo(() => {
         const chips: { key: string; label: string }[] = [];
@@ -244,6 +262,13 @@ export default function SolicitationsIndex({
     const filterSheetSubmit: FormEventHandler = (e) => {
         e.preventDefault();
         applyFiltersFromDraft();
+    };
+
+    const selectSort = (sort: string) => {
+        const next = { ...localFilters, sort };
+        setLocalFilters(next);
+        router.get(solicitationsIndexUrl, filterQueryParams(next), { preserveScroll: true, replace: true });
+        setSortModalOpen(false);
     };
 
     const openCreateInformal = () => {
@@ -316,16 +341,42 @@ export default function SolicitationsIndex({
                             Pedidos formais, conversas com líder e agendamentos pastor. Batismo tem tela própria no menu.
                         </p>
                     </div>
-                    {canRegisterInformal ? (
-                        <AddButton
-                            variant="icon"
-                            onClick={openCreateInformal}
-                            title="Registrar atendimento acionado informalmente"
-                            className="shrink-0"
+                    <div className="flex shrink-0 items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setFilterSheetOpen(true)}
+                            title="Filtros"
+                            aria-label={
+                                activeFilterCount > 0 ? `Filtros (${activeFilterCount} ativos)` : 'Filtros'
+                            }
+                            className={`${headerIconBtnClass} ${activeFilterCount > 0 ? headerIconBtnActiveClass : ''}`}
                         >
-                            Registrar atendimento
-                        </AddButton>
-                    ) : null}
+                            <AdjustmentsHorizontalIcon className="h-5 w-5" aria-hidden />
+                            {activeFilterCount > 0 ? (
+                                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-zinc-900 px-1 text-[10px] font-bold text-white dark:bg-white dark:text-zinc-900">
+                                    {activeFilterCount > 9 ? '9+' : activeFilterCount}
+                                </span>
+                            ) : null}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setSortModalOpen(true)}
+                            title={`Ordenação: ${currentSortLabel}`}
+                            aria-label={`Ordenação: ${currentSortLabel}`}
+                            className={`${headerIconBtnClass} ${sortIsCustom ? headerIconBtnActiveClass : ''}`}
+                        >
+                            <ArrowsUpDownIcon className="h-5 w-5" aria-hidden />
+                        </button>
+                        {canRegisterInformal ? (
+                            <AddButton
+                                variant="icon"
+                                onClick={openCreateInformal}
+                                title="Registrar atendimento acionado informalmente"
+                            >
+                                Registrar atendimento
+                            </AddButton>
+                        ) : null}
+                    </div>
                 </div>
 
                 <nav
@@ -365,7 +416,7 @@ export default function SolicitationsIndex({
                     {TAB_HINTS[localFilters.aba]}
                 </p>
 
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                     <form onSubmit={applySearch} className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-end">
                         <div className="min-w-0 flex-1">
                             <label htmlFor="sol_q" className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
@@ -382,24 +433,11 @@ export default function SolicitationsIndex({
                         </div>
                         <button
                             type="submit"
-                            className="inline-flex h-12 shrink-0 items-center justify-center rounded-full bg-zinc-900 px-6 text-sm font-semibold uppercase tracking-widest text-white dark:bg-white dark:text-black"
+                            className="inline-flex h-12 shrink-0 cursor-pointer items-center justify-center rounded-full bg-zinc-900 px-6 text-sm font-semibold uppercase tracking-widest text-white dark:bg-white dark:text-black"
                         >
                             Buscar
                         </button>
                     </form>
-                    <button
-                        type="button"
-                        onClick={() => setFilterSheetOpen(true)}
-                        className="relative inline-flex h-12 shrink-0 items-center justify-center gap-2 self-stretch rounded-2xl border border-zinc-200 bg-white px-5 text-sm font-semibold text-zinc-900 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:hover:border-zinc-600 dark:hover:bg-zinc-800 sm:self-end"
-                    >
-                        <FunnelIcon className="h-5 w-5 text-zinc-500 dark:text-zinc-400" aria-hidden />
-                        Tipo
-                        {activeFilterCount > 0 ? (
-                            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-zinc-900 px-1 text-[10px] font-bold text-white dark:bg-white dark:text-zinc-900">
-                                {activeFilterCount > 9 ? '9+' : activeFilterCount}
-                            </span>
-                        ) : null}
-                    </button>
                 </div>
 
                 {activeChips.length > 0 ? (
@@ -504,7 +542,8 @@ export default function SolicitationsIndex({
                 }
             >
                 <div className="px-5 pb-2 pt-14 sm:px-6 sm:pt-16">
-                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Filtrar por tipo</h2>
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Filtros</h2>
+                    <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Refine a lista por tipo de pedido.</p>
                 </div>
                 <form id="solicitations-filter-form" onSubmit={filterSheetSubmit} className="space-y-4 px-5 pb-6 sm:px-6">
                     <div>
@@ -524,6 +563,14 @@ export default function SolicitationsIndex({
                         </SelectInput>
                     </div>
                 </form>
+            </Modal>
+
+            <Modal show={sortModalOpen} onClose={() => setSortModalOpen(false)} maxWidth="md">
+                <div className="px-5 pb-6 pt-14 sm:px-6 sm:pt-16">
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Ordenação</h2>
+                    <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Toque em uma opção para ordenar a lista.</p>
+                    <ListSortOptionPicker options={SORT_OPTIONS} value={localFilters.sort} onChange={selectSort} />
+                </div>
             </Modal>
 
             <Modal show={createInformalOpen} onClose={closeCreateInformal} maxWidth="lg">

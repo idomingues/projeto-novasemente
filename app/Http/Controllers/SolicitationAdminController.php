@@ -91,7 +91,7 @@ class SolicitationAdminController extends Controller
     private function solicitationsIndexQueryFromRequest(Request $request, array $overrides = []): array
     {
         $params = [];
-        foreach (['aba', 'type', 'q', 'kind', 'modal_kind', 'modal_id'] as $key) {
+        foreach (['aba', 'type', 'q', 'kind', 'sort', 'modal_kind', 'modal_id'] as $key) {
             if (array_key_exists($key, $overrides)) {
                 $val = $overrides[$key];
                 if (is_string($val) && $val !== '') {
@@ -107,6 +107,37 @@ class SolicitationAdminController extends Controller
         }
 
         return $params;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $rows
+     * @return list<array<string, mixed>>
+     */
+    private function sortPastoralDemandRows(array $rows, string $sort): array
+    {
+        $collection = collect($rows);
+
+        return match ($sort) {
+            'updated_asc' => $collection
+                ->sortBy(fn (array $r) => (string) ($r['updatedAt'] ?? ''))
+                ->values()
+                ->all(),
+            'preferred_date_asc' => $collection
+                ->sortBy(fn (array $r) => (string) ($r['preferredDate'] ?? '9999-99-99'))
+                ->values()
+                ->all(),
+            'member_asc' => $collection
+                ->sortBy(
+                    fn (array $r) => mb_strtolower((string) ($r['memberLabel'] ?? '')),
+                    SORT_STRING,
+                )
+                ->values()
+                ->all(),
+            default => $collection
+                ->sortByDesc(fn (array $r) => (string) ($r['updatedAt'] ?? ''))
+                ->values()
+                ->all(),
+        };
     }
 
     private function staffSolicitationModalRedirect(Request $request, ChurchSolicitation $solicitation): RedirectResponse
@@ -251,10 +282,16 @@ class SolicitationAdminController extends Controller
                 ->all();
         }
 
-        $rows = collect(array_merge($solRows, $pastoralRows))
-            ->sortByDesc(fn (array $r) => $r['updatedAt'] ?? '')
-            ->values()
-            ->all();
+        $sort = is_string($request->query('sort')) ? $request->query('sort') : 'updated_desc';
+        $allowedSorts = ['updated_desc', 'updated_asc', 'preferred_date_asc', 'member_asc'];
+        if (! in_array($sort, $allowedSorts, true)) {
+            $sort = 'updated_desc';
+        }
+
+        $rows = $this->sortPastoralDemandRows(
+            collect(array_merge($solRows, $pastoralRows))->values()->all(),
+            $sort,
+        );
 
         $modalKind = $request->query('modal_kind');
         $modalDetail = null;
@@ -337,6 +374,7 @@ class SolicitationAdminController extends Controller
                 'type' => is_string($type) ? $type : '',
                 'q' => $qStr,
                 'kind' => $kindStr,
+                'sort' => $sort,
             ],
             'tabCounts' => $tabCounts,
             'tabs' => collect(PastoralSolicitationStatus::tabLabels())

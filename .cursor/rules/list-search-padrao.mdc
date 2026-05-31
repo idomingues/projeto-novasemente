@@ -14,6 +14,7 @@ Regras:
 2. **Debounce** ~450 ms após o usuário parar de digitar.
 3. Selects e botões «Buscar» podem aplicar na hora; **campo de texto** da lista segue o hook.
 4. Leitura de código de barras / ação explícita pode ignorar o debounce com `skip` (ver Inventário).
+5. **Busca dentro do modal de filtros** (padrão global): sem debounce — rascunho + **Aplicar** com `serverSearchTerm` e `ListSearchHint`. Ver `list-filtro-ordenacao-padrao.mdc`.
 
 ## Filtro local (modal, combobox, lista já carregada)
 

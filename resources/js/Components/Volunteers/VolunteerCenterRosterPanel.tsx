@@ -1,12 +1,12 @@
 import Modal from '@/Components/Modal';
+import ListSortOptionPicker from '@/Components/ListSortOptionPicker';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
-import SelectInput from '@/Components/SelectInput';
 import TextInput from '@/Components/TextInput';
 import VolunteerRosterFiltersForm from '@/Components/Volunteers/VolunteerRosterFiltersForm';
 import VolunteerRosterTable from '@/Components/Volunteers/VolunteerRosterTable';
 import SortedMultiCheckboxList from '@/Components/SortedMultiCheckboxList';
-import { centerVolunteersQuery, type CenterGroupBy } from '@/utils/centerVolunteersQuery';
+import { centerVolunteersQuery, type CenterGroupBy, type CenterVinculo } from '@/utils/centerVolunteersQuery';
 import { serverSearchTerm } from '@/utils/listSearch';
 import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import {
@@ -41,6 +41,10 @@ type Props = {
     groupBy: CenterGroupBy;
     selectedMinistryId: number | null;
     selectedPhaseKey: string | null;
+    centerVinculo?: CenterVinculo;
+    vinculadosCount?: number | null;
+    encaminhadosCount?: number | null;
+    onCenterVinculoChange?: (vinculo: CenterVinculo) => void;
     volunteers: Paginated<VolunteerRosterListRow>;
     boardFilters: VolunteerRosterBoardFilters;
     ministries: Ministry[];
@@ -69,6 +73,10 @@ export default function VolunteerCenterRosterPanel({
     groupBy,
     selectedMinistryId,
     selectedPhaseKey,
+    centerVinculo = 'vinculados',
+    vinculadosCount = null,
+    encaminhadosCount = null,
+    onCenterVinculoChange,
     volunteers,
     boardFilters,
     ministries,
@@ -85,7 +93,6 @@ export default function VolunteerCenterRosterPanel({
 
     const [filtersModalOpen, setFiltersModalOpen] = useState(false);
     const [sortModalOpen, setSortModalOpen] = useState(false);
-    const [sortDraft, setSortDraft] = useState(rosterSortSelectValue(boardFilters.sort, boardFilters.sort_dir));
     const [invitingVolunteerId, setInvitingVolunteerId] = useState<number | null>(null);
     const [inviteOpen, setInviteOpen] = useState(false);
     const [inviteVolunteer, setInviteVolunteer] = useState<VolunteerRosterListRow | null>(null);
@@ -98,15 +105,31 @@ export default function VolunteerCenterRosterPanel({
         if (serverSearch === lastAppliedSearchRef.current) {
             setSearchQuery(serverSearch);
         }
-        setSortDraft(rosterSortSelectValue(boardFilters.sort, boardFilters.sort_dir));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filtersKey]);
 
     const buildQuery = useCallback(
         (nextFilters: VolunteerRosterBoardFilters, search: string) =>
-            centerVolunteersQuery(groupBy, selectedMinistryId, selectedPhaseKey, nextFilters, search),
-        [groupBy, selectedMinistryId, selectedPhaseKey],
+            centerVolunteersQuery(
+                groupBy,
+                selectedMinistryId,
+                selectedPhaseKey,
+                nextFilters,
+                search,
+                centerVinculo,
+            ),
+        [groupBy, selectedMinistryId, selectedPhaseKey, centerVinculo],
     );
+
+    const showVinculoTabs =
+        groupBy === 'departamento' && selectedMinistryId != null && selectedMinistryId > 0 && onCenterVinculoChange != null;
+
+    const vinculoTabClass = (active: boolean) =>
+        `cursor-pointer rounded-md px-2.5 py-1 text-[10px] font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60 ${
+            active
+                ? 'bg-emerald-600 text-white shadow-sm ring-1 ring-inset ring-emerald-700/30 dark:bg-emerald-600 dark:text-white'
+                : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200'
+        }`;
 
     const reload = useCallback(
         (nextFilters: VolunteerRosterBoardFilters, search: string) => {
@@ -156,8 +179,8 @@ export default function VolunteerCenterRosterPanel({
         reload({ ...filterForm.data, search: '', pipeline_stage_id: '' }, '');
     };
 
-    const applySort = () => {
-        const option = sortOptions.find((o) => o.value === sortDraft) ?? sortOptions[0];
+    const selectSort = (combinedValue: string) => {
+        const option = sortOptions.find((o) => o.value === combinedValue) ?? sortOptions[0];
         const resolvedSearch = serverSearchTerm(searchQuery) ?? '';
         lastAppliedSearchRef.current = resolvedSearch;
         setSortModalOpen(false);
@@ -225,7 +248,7 @@ export default function VolunteerCenterRosterPanel({
                         {listHeader.icon}
                     </span>
                     <div className="min-w-0 flex-1">
-                        <h2 className="truncate text-sm font-semibold text-zinc-900 dark:text-white">Voluntários</h2>
+                        <h2 className="truncate text-sm font-semibold text-zinc-900 dark:text-white">{listHeader.title}</h2>
                         <p className="text-[10px] text-zinc-500 dark:text-zinc-400">{listHeader.subtitle}</p>
                     </div>
                     {listHeader.actions ? <div className="flex shrink-0 items-center">{listHeader.actions}</div> : null}
@@ -270,6 +293,33 @@ export default function VolunteerCenterRosterPanel({
                     </div>
                 </div>
             </div>
+
+            {showVinculoTabs ? (
+                <div
+                    className="mt-2 flex shrink-0 gap-1 rounded-lg border border-zinc-200 bg-zinc-50 p-0.5 dark:border-zinc-700 dark:bg-zinc-800/60"
+                    role="tablist"
+                    aria-label="Tipo de vínculo com o departamento"
+                >
+                    <button
+                        type="button"
+                        role="tab"
+                        aria-selected={centerVinculo === 'vinculados'}
+                        onClick={() => onCenterVinculoChange?.('vinculados')}
+                        className={vinculoTabClass(centerVinculo === 'vinculados')}
+                    >
+                        Vinculados{vinculadosCount != null ? ` (${vinculadosCount})` : ''}
+                    </button>
+                    <button
+                        type="button"
+                        role="tab"
+                        aria-selected={centerVinculo === 'encaminhados'}
+                        onClick={() => onCenterVinculoChange?.('encaminhados')}
+                        className={vinculoTabClass(centerVinculo === 'encaminhados')}
+                    >
+                        Encaminhados{encaminhadosCount != null ? ` (${encaminhadosCount})` : ''}
+                    </button>
+                </div>
+            ) : null}
 
             <form
                 onSubmit={(e) => {
@@ -356,23 +406,14 @@ export default function VolunteerCenterRosterPanel({
             </Modal>
 
             <Modal show={sortModalOpen} onClose={() => setSortModalOpen(false)} maxWidth="md">
-                <div className="p-4 space-y-4">
+                <div className="px-5 pb-6 pt-14 sm:px-6 sm:pt-16">
                     <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Ordenação</h2>
-                    <SelectInput value={sortDraft} onChange={(e) => setSortDraft(e.target.value)} aria-label="Ordenação">
-                        {sortOptions.map((o) => (
-                            <option key={o.value} value={o.value}>
-                                {o.label}
-                            </option>
-                        ))}
-                    </SelectInput>
-                    <div className="flex justify-end gap-2">
-                        <SecondaryButton type="button" onClick={() => setSortModalOpen(false)}>
-                            Cancelar
-                        </SecondaryButton>
-                        <PrimaryButton type="button" onClick={applySort}>
-                            Aplicar
-                        </PrimaryButton>
-                    </div>
+                    <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Toque em uma opção para ordenar a lista.</p>
+                    <ListSortOptionPicker
+                        options={sortOptions}
+                        value={currentSortValue}
+                        onChange={selectSort}
+                    />
                 </div>
             </Modal>
 

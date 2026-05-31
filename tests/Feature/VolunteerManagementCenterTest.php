@@ -114,6 +114,47 @@ class VolunteerManagementCenterTest extends TestCase
             )));
     }
 
+    public function test_management_center_sidebar_counts_ignore_list_search(): void
+    {
+        $admin = $this->actingAsAdmin();
+        $church = Church::query()->firstOrFail();
+        $ministry = Ministry::query()->where('church_id', $church->id)->firstOrFail();
+
+        $this->actingAs($admin)->post('/volunteers', [
+            'name' => 'Central Gestão',
+            'email' => 'central.gestao@example.com',
+            'ministry_ids' => [$ministry->id],
+            'active' => '1',
+            'app_password' => 'secret123',
+            'app_password_confirmation' => 'secret123',
+        ])->assertRedirect('/volunteers');
+
+        $baseline = $this->actingAs($admin)->get(route('ministry-lead.volunteers.central'));
+        $baseline->assertOk();
+        $baselinePage = json_decode(json_encode($baseline->viewData('page')), true);
+        $baselineAll = (int) ($baselinePage['props']['allVolunteersCount'] ?? 0);
+        $baselineDept = collect($baselinePage['props']['departments'] ?? [])
+            ->firstWhere('id', $ministry->id);
+        $baselineDeptCount = (int) ($baselineDept['volunteerCount'] ?? 0);
+        $this->assertGreaterThanOrEqual(1, $baselineAll);
+        $this->assertGreaterThanOrEqual(1, $baselineDeptCount);
+
+        $withSearch = $this->actingAs($admin)->get(route('ministry-lead.volunteers.central', [
+            'ministerio' => $ministry->id,
+            'search' => 'zzznomatchzz',
+        ]));
+        $withSearch->assertOk();
+        $withSearch->assertInertia(fn ($page) => $page
+            ->component('MinistryLeadVolunteers/ManagementCenter')
+            ->where('allVolunteersCount', $baselineAll)
+            ->where('departments', function ($rows) use ($ministry, $baselineDeptCount) {
+                $row = collect($rows)->firstWhere('id', $ministry->id);
+
+                return (int) ($row['volunteerCount'] ?? 0) === $baselineDeptCount;
+            })
+            ->where('volunteers.total', 0));
+    }
+
     public function test_management_center_todos_count_stays_total_when_department_selected(): void
     {
         $admin = $this->actingAsAdmin();
@@ -134,7 +175,60 @@ class VolunteerManagementCenterTest extends TestCase
         $filteredResponse->assertInertia(fn ($page) => $page
             ->component('MinistryLeadVolunteers/ManagementCenter')
             ->where('allVolunteersCount', $allCount)
+            ->where('centerVinculo', 'vinculados')
             ->where('volunteers.total', fn ($deptTotal) => (int) $deptTotal <= $allCount));
+    }
+
+    public function test_management_center_separates_attached_from_forwarded_in_department(): void
+    {
+        $admin = $this->actingAsAdmin();
+        $church = Church::query()->firstOrFail();
+        $ministries = Ministry::query()->where('church_id', $church->id)->orderBy('id')->limit(2)->get();
+        $this->assertGreaterThanOrEqual(2, $ministries->count());
+        $ministryA = $ministries[0];
+        $ministryB = $ministries[1];
+
+        $this->actingAs($admin)->post('/volunteers', [
+            'name' => 'Só Encaminhado Depto',
+            'email' => 'so.encaminhado.depto@example.com',
+            'ministry_ids' => [$ministryA->id],
+            'active' => '1',
+            'app_password' => 'secret123',
+            'app_password_confirmation' => 'secret123',
+        ])->assertRedirect('/volunteers');
+
+        $volunteer = \App\Models\Volunteer::query()->where('email', 'so.encaminhado.depto@example.com')->firstOrFail();
+
+        \App\Models\VolunteerMinistryInvitation::query()->create([
+            'church_id' => $church->id,
+            'volunteer_id' => $volunteer->id,
+            'ministry_id' => $ministryB->id,
+            'invited_by_user_id' => $admin->id,
+            'token' => \App\Models\VolunteerMinistryInvitation::createToken(),
+            'status' => 'pending',
+            'expires_at' => now()->addDays(14),
+        ]);
+
+        $attachedResponse = $this->actingAs($admin)->get(route('ministry-lead.volunteers.central', [
+            'ministerio' => $ministryB->id,
+        ]));
+        $attachedResponse->assertOk();
+        $attachedResponse->assertInertia(fn ($page) => $page
+            ->where('centerVinculo', 'vinculados')
+            ->where('volunteers.data', fn ($rows) => collect($rows)->doesntContain(
+                fn ($row) => ($row['email'] ?? null) === 'so.encaminhado.depto@example.com',
+            )));
+
+        $forwardedResponse = $this->actingAs($admin)->get(route('ministry-lead.volunteers.central', [
+            'ministerio' => $ministryB->id,
+            'vinculo' => 'encaminhados',
+        ]));
+        $forwardedResponse->assertOk();
+        $forwardedResponse->assertInertia(fn ($page) => $page
+            ->where('centerVinculo', 'encaminhados')
+            ->where('volunteers.data', fn ($rows) => collect($rows)->contains(
+                fn ($row) => ($row['email'] ?? null) === 'so.encaminhado.depto@example.com',
+            )));
     }
 
     public function test_admin_can_open_pedidos_page(): void

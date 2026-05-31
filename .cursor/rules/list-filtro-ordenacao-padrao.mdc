@@ -1,0 +1,60 @@
+---
+description: Padrão global do sistema — filtros e ordenação compactos em listas (ícones + modais)
+alwaysApply: true
+---
+
+# Filtro e ordenação em listas (padrão global)
+
+Em **qualquer lista** do sistema (admin, mobile web, hubs Inertia), filtros e ordenação seguem este padrão. Não criar blocos fixos de selects acima do conteúdo.
+
+## Princípio
+
+**Lista visível primeiro.** Filtro e ordenação são ações ocasionais — ícones compactos no header; modais só quando o usuário pede.
+
+## Filtros
+
+1. **Ícone** `AdjustmentsHorizontalIcon` no `PageHeader` `actions` (ou barra equivalente).
+2. **Badge** com contagem de filtros ativos (ignorar vazios, abas e ordenação).
+3. **Modal** (`Modal` `maxWidth="md"`) com rascunho (`draftFilters` / `useState` sincronizado ao abrir).
+4. Rodapé: **Limpar filtros**, **Fechar**, **Aplicar** → `router.get` com query params.
+5. **Chips** removíveis abaixo das abas (só filtros, não ordenação).
+6. Busca no modal: `LIST_SEARCH_MIN_LENGTH`, `ListSearchHint`, `serverSearchTerm` ao aplicar — ver `list-search-padrao.mdc`.
+7. Exceção aceita: **um** campo de busca inline visível (ex.: `Solicitations/Index.tsx`) + modal só para os demais filtros.
+
+### Classes de referência (header)
+
+```tsx
+const headerIconBtnClass =
+    'relative inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-600 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-800';
+const headerIconBtnActiveClass =
+    'border-teal-500 bg-teal-50 text-teal-800 dark:border-teal-600 dark:bg-teal-950/40 dark:text-teal-200';
+```
+
+## Ordenação
+
+1. **Ícone separado** `ArrowsUpDownIcon` — nunca misturar com filtros no mesmo modal.
+2. **Tooltip** `Ordenação: {rótulo atual}`; destaque no ícone quando ≠ opção padrão.
+3. **Modal** com `ListSortOptionPicker` (`resources/js/Components/ListSortOptionPicker.tsx`).
+4. **Toque na opção aplica na hora** e fecha o modal — sem `<select>`, sem Cancelar/Aplicar.
+5. Backend: query `sort` (ou par `sort` + `sort_dir`); valor padrão omitido na URL.
+
+## Referências
+
+| Peça | Onde |
+|------|------|
+| Filtro + ordenação completos | `resources/js/Pages/CommunicationRequests/Index.tsx` |
+| Busca inline + modal de tipo | `resources/js/Pages/Solicitations/Index.tsx` |
+| Ordenação (picker) | `resources/js/Components/ListSortOptionPicker.tsx` |
+| Filtro + ordenação (hub) | `resources/js/Components/Volunteers/VolunteerCenterRosterPanel.tsx` |
+
+## Ao implementar telas novas
+
+- Perguntar: **dá para ser ícone + modal?** Na dúvida, **sim**.
+- Migrar telas legadas com card de filtros ou `<select>` no modal de ordenação para este padrão.
+
+## Evitar
+
+- Card fixo com 3+ selects empilhados antes da lista (mobile).
+- `<SelectInput>` / `<select>` dentro do modal de ordenação.
+- Um único ícone «Filtros e ordenação» com tudo junto.
+- Chips de ordenação misturados com filtros.

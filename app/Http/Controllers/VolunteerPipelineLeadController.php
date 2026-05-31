@@ -16,7 +16,10 @@ use App\Models\VolunteerLeaderNote;
 use App\Models\VolunteerMinistryInvitation;
 use App\Models\VolunteerMinistryInvitationStatusHistory;
 use App\Models\VolunteerPipelineStage;
+use App\Support\MemberRoleAssignment;
 use App\Support\VolunteerChurchRosterBuilder;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 use App\Support\VolunteerLeadRosterFilters;
 use App\Support\VolunteerPipelineBootstrap;
 use App\Support\VolunteerSignupDetailPresenter;
@@ -223,6 +226,18 @@ class VolunteerPipelineLeadController extends Controller
                 : null,
             'updatePasswordUrl' => $this->pipelinePasswordUpdateUrl($request, $volunteer),
             'passwordFormMode' => $this->pipelinePasswordFormMode($request, $volunteer),
+            'updateVolunteerUrl' => $request->user()?->can('volunteers.manage')
+                ? route('volunteers.update', $volunteer)
+                : null,
+            'appRoles' => $request->user()?->can('volunteers.manage')
+                ? Role::query()
+                    ->where('name', '!=', 'super_admin')
+                    ->orderBy('name')
+                    ->get(['id', 'name'])
+                    ->map(fn (Role $r) => ['id' => (int) $r->id, 'name' => $r->name])
+                    ->values()
+                    ->all()
+                : [],
         ]);
     }
 
@@ -450,6 +465,8 @@ class VolunteerPipelineLeadController extends Controller
         $valid = $request->validate([
             'ministry_ids' => ['present', 'array'],
             'ministry_ids.*' => ['integer', Rule::exists('ministries', 'id')->where('church_id', $churchId)],
+            'leader_ministry_ids' => ['nullable', 'array'],
+            'leader_ministry_ids.*' => ['integer', Rule::exists('ministries', 'id')->where('church_id', $churchId)],
         ]);
 
         $requestedIds = collect($valid['ministry_ids'] ?? [])
@@ -491,7 +508,80 @@ class VolunteerPipelineLeadController extends Controller
             }
         });
 
+        if ($request->user()?->can('volunteers.manage') && $request->has('leader_ministry_ids')) {
+            $leaderRequested = collect($valid['leader_ministry_ids'] ?? [])
+                ->map(fn ($id) => (int) $id)
+                ->filter(fn ($id) => $id > 0)
+                ->unique()
+                ->values()
+                ->all();
+            $this->syncVolunteerMinistryLeadership($volunteer, $finalIds, $leaderRequested, true);
+        }
+
         return back()->with('success', 'Departamentos atualizados.');
+    }
+
+    /**
+     * @param  list<int>  $serveMinistryIds
+     * @param  list<int>  $leaderMinistryIds
+     */
+    private function syncVolunteerMinistryLeadership(
+        Volunteer $volunteer,
+        array $serveMinistryIds,
+        array $leaderMinistryIds,
+        bool $byVolunteerManager = false,
+    ): void {
+        $volunteer->loadMissing('user');
+        $user = $volunteer->user;
+
+        if ($user === null || $user->hasRole('super_admin')) {
+            return;
+        }
+
+        if (! $byVolunteerManager && $user->isPrivilegedTeamAccount()) {
+            return;
+        }
+
+        $leaderMinistryIds = array_values(array_unique(array_values(array_intersect(
+            $leaderMinistryIds,
+            $serveMinistryIds,
+        ))));
+
+        if ($leaderMinistryIds !== []) {
+            $user->ministries()->sync($leaderMinistryIds);
+            MemberRoleAssignment::applyMinistryLeaderRole($user->fresh());
+
+            return;
+        }
+
+        $user->ministries()->detach();
+        if ($byVolunteerManager) {
+            $this->clearMinistryLeadershipForManagedUser($user);
+        } else {
+            MemberRoleAssignment::clearMinistryLeaderRole($user->fresh());
+        }
+    }
+
+    private function clearMinistryLeadershipForManagedUser(User $user): void
+    {
+        if ($user->hasRole('lider_ministerio')) {
+            $remaining = array_values(array_diff(
+                $user->getRoleNames()->map(fn ($n) => (string) $n)->all(),
+                ['lider_ministerio'],
+            ));
+            if ($remaining === []) {
+                $guard = (string) config('auth.defaults.guard');
+                $remaining = Role::query()->where('name', 'membro')->where('guard_name', $guard)->exists()
+                    ? ['membro']
+                    : [];
+            }
+            $user->syncRoles($remaining);
+            app(PermissionRegistrar::class)->forgetCachedPermissions();
+            $user->syncRoleIdFromSpatieAssignments();
+        }
+
+        $user->forceFill(['is_ministry_leader' => false])->save();
+        $user->syncVolunteerRecord();
     }
 
     public function updateStage(Request $request, Volunteer $volunteer): RedirectResponse

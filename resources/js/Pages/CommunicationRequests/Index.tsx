@@ -25,10 +25,11 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import { confirmAction } from '@/utils/confirmDialog';
 import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { ArchiveBoxIcon, ChatBubbleLeftRightIcon, ChevronRightIcon, FunnelIcon, InboxIcon } from '@heroicons/react/24/outline';
-import { FormEventHandler, useCallback, useMemo, useRef, useState } from 'react';
+import { AdjustmentsHorizontalIcon, ArchiveBoxIcon, ArrowsUpDownIcon, ChatBubbleLeftRightIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { FormEventHandler, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ListSearchHint from '@/Components/ListSearchHint';
-import { useDebouncedServerSearch } from '@/hooks/useDebouncedServerSearch';
+import ListSortOptionPicker from '@/Components/ListSortOptionPicker';
+import { isListSearchBelowMinimum, serverSearchTerm } from '@/utils/listSearch';
 import { usePersistedViewMode } from '@/hooks/usePersistedViewMode';
 import type { ListKanbanViewMode } from '@/utils/persistedViewMode';
 
@@ -72,8 +73,27 @@ interface Props {
         demand_type: string;
         priority: string;
         q: string;
+        sort: string;
         arquivados: boolean;
     };
+}
+
+const filterIconBtnClass =
+    'relative inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-600 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-800';
+
+const filterIconBtnActiveClass =
+    'border-teal-500 bg-teal-50 text-teal-800 dark:border-teal-600 dark:bg-teal-950/40 dark:text-teal-200';
+
+const SORT_OPTIONS = [
+    { value: 'updated_desc', label: 'Mais recentes' },
+    { value: 'updated_asc', label: 'Mais antigos' },
+    { value: 'created_desc', label: 'Criados recentemente' },
+    { value: 'priority_desc', label: 'Prioridade (alta primeiro)' },
+] as const;
+
+function optionLabel(options: { value: string; label: string }[], value: string): string | null {
+    const hit = options.find((o) => o.value === value);
+    return hit?.label ?? null;
 }
 
 function listTabClass(active: boolean): string {
@@ -112,6 +132,9 @@ export default function CommunicationRequestsIndex({
 
     const [viewMode, setViewMode] = usePersistedViewMode('ns-communication-requests-view', 'list');
     const [requestModalOpen, setRequestModalOpen] = useState(false);
+    const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+    const [sortModalOpen, setSortModalOpen] = useState(false);
+    const [draftFilters, setDraftFilters] = useState(filters);
     const [panelOpen, setPanelOpen] = useState(false);
     const [panelRow, setPanelRow] = useState<CommunicationRow | null>(null);
     const [panelPayload, setPanelPayload] = useState<CommunicationPanelPayload | null>(null);
@@ -165,32 +188,100 @@ export default function CommunicationRequestsIndex({
 
     const applyFilters = useCallback((next: Partial<Props['filters']>) => {
         const merged = { ...filtersRef.current, ...next };
+        const resolvedQ = serverSearchTerm(merged.q) ?? '';
         router.get(
             indexUrl,
             {
                 status: merged.status || undefined,
                 demand_type: merged.demand_type || undefined,
                 priority: merged.priority || undefined,
-                q: merged.q.trim() || undefined,
+                q: resolvedQ || undefined,
+                sort: merged.sort !== 'updated_desc' ? merged.sort : undefined,
                 arquivados: merged.arquivados ? '1' : undefined,
             },
             { preserveScroll: true, replace: true },
         );
     }, [indexUrl]);
 
-    const {
-        value: qDraft,
-        setValue: setQDraft,
-        isBelowMinimum: qBelowMinimum,
-    } = useDebouncedServerSearch({
-        serverValue: filters.q,
-        onApply: useCallback(
-            (term) => {
-                applyFilters({ q: term ?? '' });
-            },
-            [applyFilters],
-        ),
-    });
+    useEffect(() => {
+        if (filterSheetOpen) {
+            setDraftFilters(filters);
+        }
+    }, [filterSheetOpen, filters]);
+
+    const activeFilterCount = useMemo(() => {
+        let n = 0;
+        if (filters.status) n += 1;
+        if (filters.demand_type) n += 1;
+        if (filters.priority) n += 1;
+        if (filters.q.trim()) n += 1;
+        return n;
+    }, [filters]);
+
+    const sortIsCustom = filters.sort !== 'updated_desc';
+    const currentSortLabel = optionLabel([...SORT_OPTIONS], filters.sort) ?? 'Mais recentes';
+
+    const activeChips = useMemo(() => {
+        const chips: { key: string; label: string }[] = [];
+        if (filters.status) {
+            const lb = optionLabel(statusOptions, filters.status);
+            if (lb) chips.push({ key: 'status', label: lb });
+        }
+        if (filters.demand_type) {
+            const lb = optionLabel(demandTypeOptions, filters.demand_type);
+            if (lb) chips.push({ key: 'demand_type', label: lb });
+        }
+        if (filters.priority) {
+            const lb = optionLabel(priorityOptions, filters.priority);
+            if (lb) chips.push({ key: 'priority', label: lb });
+        }
+        if (filters.q.trim()) {
+            const q = filters.q.trim();
+            chips.push({ key: 'q', label: q.length > 28 ? `${q.slice(0, 28)}…` : q });
+        }
+        return chips;
+    }, [filters, statusOptions, demandTypeOptions, priorityOptions]);
+
+    const applyFiltersFromDraft = () => {
+        applyFilters(draftFilters);
+        setFilterSheetOpen(false);
+    };
+
+    const clearFiltersAndApply = () => {
+        const empty = {
+            ...filters,
+            status: '',
+            demand_type: '',
+            priority: '',
+            q: '',
+        };
+        setDraftFilters(empty);
+        applyFilters(empty);
+        setFilterSheetOpen(false);
+    };
+
+    const selectSort = (sort: string) => {
+        applyFilters({ sort });
+        setSortModalOpen(false);
+    };
+
+    const removeChip = (key: string) => {
+        const next = {
+            ...filters,
+            status: key === 'status' ? '' : filters.status,
+            demand_type: key === 'demand_type' ? '' : filters.demand_type,
+            priority: key === 'priority' ? '' : filters.priority,
+            q: key === 'q' ? '' : filters.q,
+        };
+        applyFilters(next);
+    };
+
+    const filterSheetSubmit: FormEventHandler = (e) => {
+        e.preventDefault();
+        applyFiltersFromDraft();
+    };
+
+    const draftSearchBelowMinimum = isListSearchBelowMinimum(draftFilters.q);
 
     const goToListTab = (arquivados: boolean) => {
         applyFilters({ arquivados });
@@ -340,6 +431,31 @@ export default function CommunicationRequestsIndex({
                 subtitle={subtitle}
                 actions={
                     <div className="flex flex-wrap items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setFilterSheetOpen(true)}
+                            title="Filtros"
+                            aria-label={
+                                activeFilterCount > 0 ? `Filtros (${activeFilterCount} ativos)` : 'Filtros'
+                            }
+                            className={`${filterIconBtnClass} ${activeFilterCount > 0 ? filterIconBtnActiveClass : ''}`}
+                        >
+                            <AdjustmentsHorizontalIcon className="h-5 w-5" aria-hidden />
+                            {activeFilterCount > 0 ? (
+                                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-zinc-900 px-1 text-[10px] font-bold text-white dark:bg-white dark:text-zinc-900">
+                                    {activeFilterCount > 9 ? '9+' : activeFilterCount}
+                                </span>
+                            ) : null}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setSortModalOpen(true)}
+                            title={`Ordenação: ${currentSortLabel}`}
+                            aria-label={`Ordenação: ${currentSortLabel}`}
+                            className={`${filterIconBtnClass} ${sortIsCustom ? filterIconBtnActiveClass : ''}`}
+                        >
+                            <ArrowsUpDownIcon className="h-5 w-5" aria-hidden />
+                        </button>
                         {canManage && !filters.arquivados ? (
                             <ListViewModeToggle value={viewMode as ListKanbanViewMode} onChange={setViewMode} />
                         ) : null}
@@ -364,69 +480,27 @@ export default function CommunicationRequestsIndex({
                 </div>
             ) : null}
 
-            <Card className="mb-4 p-4">
-                <div className="grid gap-3 md:grid-cols-4">
-                    <div>
-                        <InputLabel value="Status" />
-                        <SelectInput
-                            className="mt-1 block w-full"
-                            value={filters.status}
-                            onChange={(e) => applyFilters({ status: e.target.value })}
+            {activeChips.length > 0 ? (
+                <div className="mb-4 flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+                        Filtros
+                    </span>
+                    {activeChips.map((c) => (
+                        <button
+                            key={c.key}
+                            type="button"
+                            onClick={() => removeChip(c.key)}
+                            className="group inline-flex max-w-full cursor-pointer items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 py-1 pl-3 pr-2 text-xs font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-white dark:border-zinc-600 dark:bg-zinc-800/80 dark:text-zinc-200"
+                            title="Remover filtro"
                         >
-                            {statusOptions.map((o) => (
-                                <option key={o.value || 'all-status'} value={o.value}>
-                                    {o.label}
-                                </option>
-                            ))}
-                        </SelectInput>
-                    </div>
-                    <div>
-                        <InputLabel value="Tipo de demanda" />
-                        <SelectInput
-                            className="mt-1 block w-full"
-                            value={filters.demand_type}
-                            onChange={(e) => applyFilters({ demand_type: e.target.value })}
-                        >
-                            <option value="">Todos os tipos</option>
-                            {demandTypeOptions.map((o) => (
-                                <option key={o.value} value={o.value}>
-                                    {o.label}
-                                </option>
-                            ))}
-                        </SelectInput>
-                    </div>
-                    <div>
-                        <InputLabel value="Prioridade" />
-                        <SelectInput
-                            className="mt-1 block w-full"
-                            value={filters.priority}
-                            onChange={(e) => applyFilters({ priority: e.target.value })}
-                        >
-                            <option value="">Todas as prioridades</option>
-                            {priorityOptions.map((o) => (
-                                <option key={o.value} value={o.value}>
-                                    {o.label}
-                                </option>
-                            ))}
-                        </SelectInput>
-                    </div>
-                    <div>
-                        <InputLabel value="Pesquisar" />
-                        <div className="mt-1 flex gap-2">
-                            <TextInput
-                                className="w-full"
-                                value={qDraft}
-                                onChange={(e) => setQDraft(e.target.value)}
-                                placeholder="Assunto ou mensagem"
-                            />
-                            <span className="inline-flex items-center justify-center rounded-xl border border-zinc-200 px-3 text-zinc-500 dark:border-zinc-700 dark:text-zinc-300">
-                                <FunnelIcon className="h-4 w-4" />
+                            <span className="truncate">{c.label}</span>
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-zinc-400 group-hover:bg-zinc-200 dark:group-hover:bg-zinc-700">
+                                ×
                             </span>
-                        </div>
-                        <ListSearchHint show={qBelowMinimum} className="mt-1" />
-                    </div>
+                        </button>
+                    ))}
                 </div>
-            </Card>
+            ) : null}
 
             {effectiveViewMode === 'kanban' ? (
                 <CommunicationRequestsKanban
@@ -440,7 +514,9 @@ export default function CommunicationRequestsIndex({
                 <div className="space-y-3">
                     {rows.length === 0 ? (
                         <Card className="p-10 text-center text-sm text-zinc-600 dark:text-zinc-400">
-                            Ainda não há solicitações de comunicação.
+                            {activeFilterCount > 0
+                                ? 'Nenhuma solicitação encontrada com estes filtros.'
+                                : 'Ainda não há solicitações de comunicação.'}
                         </Card>
                     ) : (
                         rows.map((row) => (
@@ -536,6 +612,112 @@ export default function CommunicationRequestsIndex({
                     />
                     
                 </form>
+            </Modal>
+
+            <Modal
+                show={filterSheetOpen}
+                onClose={() => setFilterSheetOpen(false)}
+                maxWidth="md"
+                footer={
+                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <button
+                            type="button"
+                            onClick={clearFiltersAndApply}
+                            className="cursor-pointer text-center text-sm font-medium text-zinc-500 underline-offset-2 hover:text-zinc-800 hover:underline dark:text-zinc-400"
+                        >
+                            Limpar filtros
+                        </button>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                            <SecondaryButton type="button" className="justify-center sm:w-auto" onClick={() => setFilterSheetOpen(false)}>
+                                Fechar
+                            </SecondaryButton>
+                            <PrimaryButton
+                                type="submit"
+                                form="communication-requests-filter-form"
+                                className="justify-center sm:w-auto"
+                                disabled={draftSearchBelowMinimum}
+                            >
+                                Aplicar
+                            </PrimaryButton>
+                        </div>
+                    </div>
+                }
+            >
+                <div className="px-5 pb-2 pt-14 sm:px-6 sm:pt-16">
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Filtros</h2>
+                    <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                        Refine a lista por status, tipo, prioridade ou texto.
+                    </p>
+                </div>
+                <form id="communication-requests-filter-form" onSubmit={filterSheetSubmit} className="space-y-4 px-5 pb-6 sm:px-6">
+                    <div>
+                        <InputLabel htmlFor="cr_f_status" value="Status" />
+                        <SelectInput
+                            id="cr_f_status"
+                            className="mt-1 block w-full"
+                            value={draftFilters.status}
+                            onChange={(e) => setDraftFilters((f) => ({ ...f, status: e.target.value }))}
+                        >
+                            {statusOptions.map((o) => (
+                                <option key={o.value || 'all-status'} value={o.value}>
+                                    {o.label}
+                                </option>
+                            ))}
+                        </SelectInput>
+                    </div>
+                    <div>
+                        <InputLabel htmlFor="cr_f_demand_type" value="Tipo de demanda" />
+                        <SelectInput
+                            id="cr_f_demand_type"
+                            className="mt-1 block w-full"
+                            value={draftFilters.demand_type}
+                            onChange={(e) => setDraftFilters((f) => ({ ...f, demand_type: e.target.value }))}
+                        >
+                            <option value="">Todos os tipos</option>
+                            {demandTypeOptions.map((o) => (
+                                <option key={o.value} value={o.value}>
+                                    {o.label}
+                                </option>
+                            ))}
+                        </SelectInput>
+                    </div>
+                    <div>
+                        <InputLabel htmlFor="cr_f_priority" value="Prioridade" />
+                        <SelectInput
+                            id="cr_f_priority"
+                            className="mt-1 block w-full"
+                            value={draftFilters.priority}
+                            onChange={(e) => setDraftFilters((f) => ({ ...f, priority: e.target.value }))}
+                        >
+                            <option value="">Todas as prioridades</option>
+                            {priorityOptions.map((o) => (
+                                <option key={o.value} value={o.value}>
+                                    {o.label}
+                                </option>
+                            ))}
+                        </SelectInput>
+                    </div>
+                    <div>
+                        <InputLabel htmlFor="cr_f_q" value="Pesquisar" />
+                        <TextInput
+                            id="cr_f_q"
+                            type="search"
+                            className="mt-1 block w-full"
+                            value={draftFilters.q}
+                            onChange={(e) => setDraftFilters((f) => ({ ...f, q: e.target.value }))}
+                            placeholder="Assunto ou mensagem"
+                        />
+                        <ListSearchHint show={draftSearchBelowMinimum} className="mt-1" />
+                    </div>
+                </form>
+            </Modal>
+
+            <Modal show={sortModalOpen} onClose={() => setSortModalOpen(false)} maxWidth="md">
+                <div className="px-5 pb-6 pt-14 sm:px-6 sm:pt-16">
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Ordenação</h2>
+                    <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Toque em uma opção para ordenar a lista.</p>
+                    <ListSortOptionPicker options={SORT_OPTIONS} value={filters.sort} onChange={selectSort} />
+                </div>
             </Modal>
 
             <Modal show={panelOpen} onClose={closePanel} disableBodyScroll maxWidth="2xl">

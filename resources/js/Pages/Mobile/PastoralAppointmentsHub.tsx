@@ -9,8 +9,9 @@ import PastoralAppointmentEditForm, {
 import { Head, Link, router } from '@inertiajs/react';
 import { FormEventHandler, useEffect, useState } from 'react';
 import { activeInactivePillClass } from '@/lib/statusBadges';
-import { PencilSquareIcon } from '@heroicons/react/24/outline';
+import { ExclamationTriangleIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 import PrimaryButton from '@/Components/PrimaryButton';
+import SecondaryButton from '@/Components/SecondaryButton';
 import Textarea from '@/Components/Textarea';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
@@ -107,6 +108,7 @@ export default function PastoralAppointmentsHub({
     modalDetail,
 }: Props) {
     const [createOpen, setCreateOpen] = useState(false);
+    const [noSlotsOpen, setNoSlotsOpen] = useState(false);
     const [createKey, setCreateKey] = useState(0);
 
     const [detailTab, setDetailTab] = useState<DetailTab>('detalhes');
@@ -118,6 +120,10 @@ export default function PastoralAppointmentsHub({
     const hasAnyFreeSlot = pastors.some((p) => p.slots.length > 0);
 
     const openCreate = () => {
+        if (!hasAnyFreeSlot) {
+            setNoSlotsOpen(true);
+            return;
+        }
         setCreateKey((k) => k + 1);
         setCreateOpen(true);
     };
@@ -157,24 +163,35 @@ export default function PastoralAppointmentsHub({
                         </Link>
                     }
                     title="Agendamentos pastor"
-                    subtitle={
-                        <>
-                            <span className="block text-zinc-600 dark:text-zinc-400">
-                                Toque num pedido para ver ou editar. Use o aba «Chat» para falar com a equipe pastoral.
-                            </span>
-                            {!hasAnyFreeSlot ? (
-                                <span className="mt-2 block text-xs text-amber-700 dark:text-amber-300">
-                                    Ainda não há horários livres publicados na agenda pastoral — pode abrir «Novo pedido» para ver os pastores, mas só conseguirá enviar quando existir pelo menos um horário livre para escolher.
-                                </span>
-                            ) : null}
-                        </>
-                    }
+                    subtitle="Toque num pedido para ver ou editar. Use o aba «Chat» para falar com a equipe pastoral."
                     actions={
                         <AddButton variant="icon" onClick={openCreate} title="Novo pedido de agendamento pastoral">
                             Novo pedido
                         </AddButton>
                     }
                 />
+
+                {!hasAnyFreeSlot ? (
+                    <div
+                        className="rounded-2xl border border-amber-200/80 bg-amber-50/90 p-4 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100"
+                        role="status"
+                    >
+                        <div className="flex items-start gap-3">
+                            <ExclamationTriangleIcon
+                                className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400"
+                                aria-hidden
+                            />
+                            <div>
+                                <p className="font-medium">Sem horários disponíveis</p>
+                                <p className="mt-1 text-xs leading-relaxed opacity-90">
+                                    De momento, todos os horários publicados na agenda pastoral estão preenchidos. Não é
+                                    possível enviar um novo pedido até que surja pelo menos um horário livre. Tente
+                                    novamente mais tarde.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                ) : null}
 
                 <div>
                     <h2 className="text-sm font-semibold text-zinc-900 dark:text-white mb-3">Os meus pedidos</h2>
@@ -265,6 +282,33 @@ export default function PastoralAppointmentsHub({
                     )}
                 </div>
             </div>
+
+            <Modal show={noSlotsOpen} onClose={() => setNoSlotsOpen(false)} maxWidth="md">
+                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain p-5 sm:p-6">
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white pr-10">Novo pedido</h2>
+                    <div className="mt-4 rounded-2xl border border-amber-200/80 bg-amber-50/90 p-4 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100">
+                        <div className="flex items-start gap-3">
+                            <ExclamationTriangleIcon
+                                className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400"
+                                aria-hidden
+                            />
+                            <div>
+                                <p className="font-medium">Sem horários disponíveis</p>
+                                <p className="mt-1 text-xs leading-relaxed opacity-90">
+                                    De momento, todos os horários publicados na agenda pastoral estão preenchidos. Não é
+                                    possível enviar um novo pedido até que surja pelo menos um horário livre. Tente
+                                    novamente mais tarde.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="mt-6 flex justify-end">
+                        <SecondaryButton type="button" onClick={() => setNoSlotsOpen(false)}>
+                            Fechar
+                        </SecondaryButton>
+                    </div>
+                </div>
+            </Modal>
 
             <Modal show={createOpen} onClose={() => setCreateOpen(false)} maxWidth="2xl" disableBodyScroll>
                 <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain p-5 sm:p-6">

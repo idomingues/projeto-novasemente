@@ -62,6 +62,7 @@ class VolunteerManagementCenterController extends Controller
         string $groupBy,
         ?int $selectedMinistryId,
         ?string $selectedPhaseKey,
+        string $centerVinculo,
     ): void {
         if ($groupBy === 'fase' && is_string($selectedPhaseKey) && $selectedPhaseKey !== '') {
             $request->merge(['center_phase_key' => $selectedPhaseKey]);
@@ -80,8 +81,20 @@ class VolunteerManagementCenterController extends Controller
         }
 
         if ($selectedMinistryId > 0) {
-            $request->merge(['ministry_ids' => (string) $selectedMinistryId]);
+            $request->merge([
+                'ministry_ids' => (string) $selectedMinistryId,
+                'center_vinculo' => $centerVinculo,
+            ]);
         }
+    }
+
+    private function resolveCenterVinculo(Request $request, ?int $selectedMinistryId): string
+    {
+        if ($selectedMinistryId === null || $selectedMinistryId <= 0) {
+            return 'vinculados';
+        }
+
+        return VolunteerManagementCenterBuilder::normalizedCenterVinculo($request);
     }
 
     public function index(Request $request): Response
@@ -97,6 +110,7 @@ class VolunteerManagementCenterController extends Controller
         $phases = VolunteerManagementCenterBuilder::phasesWithCounts($request, (int) $churchId);
 
         [$groupBy, $selectedMinistryId, $selectedPhaseKey] = $this->resolveCenterSelection($request, $departments, $phases);
+        $centerVinculo = $this->resolveCenterVinculo($request, $selectedMinistryId);
 
         if ($groupBy === 'departamento' && $selectedMinistryId !== null && $selectedMinistryId > 0) {
             $ministry = VolunteerManagementCenterBuilder::visibleMinistriesQuery($request, (int) $churchId)
@@ -109,9 +123,7 @@ class VolunteerManagementCenterController extends Controller
         // Mantemos um limite alto por segurança/performance.
         $perPage = 500;
 
-        $this->applyCenterScopeToRequest($request, $groupBy, $selectedMinistryId, $selectedPhaseKey);
-        // Central: quando o usuário filtra por departamento nos filtros do quadro (ministry_ids),
-        // normalmente espera incluir também encaminhados (convites pendentes) daquele departamento.
+        $this->applyCenterScopeToRequest($request, $groupBy, $selectedMinistryId, $selectedPhaseKey, $centerVinculo);
         $request->merge(['center_mode' => '1']);
         $roster = VolunteerChurchRosterBuilder::paginated($request, (int) $churchId, $user, $perPage, false);
 
@@ -167,6 +179,7 @@ class VolunteerManagementCenterController extends Controller
             'selectedPhaseKey' => $selectedPhaseKey,
             'selectedMinistry' => $selectedMinistry,
             'selectedPhase' => $selectedPhase,
+            'centerVinculo' => $centerVinculo,
             'volunteers' => $roster['volunteers'],
             'boardFilters' => $roster['filters'],
             'ministries' => $roster['ministries'],

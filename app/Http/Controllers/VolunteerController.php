@@ -444,7 +444,9 @@ class VolunteerController extends Controller
             'photo',
         )->all();
         $volunteer->update($data);
-        $this->syncVolunteerMinistries($request, $volunteer);
+        if ($request->has('ministry_ids')) {
+            $this->syncVolunteerMinistries($request, $volunteer);
+        }
 
         $this->syncVolunteerAppUser($request, $volunteer->fresh());
 

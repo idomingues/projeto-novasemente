@@ -21,6 +21,58 @@ class VolunteerManagementCenterBuilder
 {
     private const MAX_VOLUNTEERS = 500;
 
+    public static function normalizedCenterVinculo(Request $request): string
+    {
+        $raw = trim((string) $request->input('center_vinculo', $request->query('vinculo', 'vinculados')));
+
+        return in_array($raw, ['vinculados', 'encaminhados'], true) ? $raw : 'vinculados';
+    }
+
+    /**
+     * Contagens da lateral (departamentos, fases, «Todos») não devem seguir busca da lista.
+     * Mantém filtros do quadro (fase do pipeline, cadastro, etc.).
+     */
+    private static function requestForSidebarCounts(Request $request): Request
+    {
+        $rq = clone $request;
+        $rq->merge([
+            'search' => '',
+            'text_interest' => '',
+        ]);
+
+        return $rq;
+    }
+
+    /**
+     * @param  list<int>  $ministryIds
+     */
+    private static function rosterCountForMinistries(Request $request, int $churchId, array $ministryIds, string $centerVinculo): int
+    {
+        if ($ministryIds === []) {
+            return 0;
+        }
+
+        $rq = self::requestForSidebarCounts($request);
+        $rq->merge([
+            'center_mode' => '1',
+            'center_phase_key' => '',
+            'center_sem_departamento' => '',
+            'pipeline_stage_id' => '',
+            'ministry_ids' => implode(',', $ministryIds),
+            'center_vinculo' => $centerVinculo,
+        ]);
+
+        $q = VolunteerChurchRosterBuilder::volunteersVisibleInChurchQuery($churchId);
+        VolunteerLeadRosterFilters::apply($rq, $q, $churchId);
+        VolunteerChurchRosterBuilder::applyStaffArchivedFilter(
+            $q,
+            $churchId,
+            VolunteerLeadRosterFilters::showsArchivedRoster($rq),
+        );
+
+        return (int) $q->distinct('volunteers.id')->count('volunteers.id');
+    }
+
     /**
      * @return list<array{key: string, label: string}>
      */
@@ -45,7 +97,7 @@ class VolunteerManagementCenterBuilder
     {
         // Contagens exatas: cada fase deve bater com a lista quando clicada.
         // Isso exige contar "pessoas únicas" (DISTINCT volunteers.id) com a mesma lógica do filtro + fase.
-        $filtersRequest = clone $request;
+        $filtersRequest = self::requestForSidebarCounts($request);
         $filtersRequest->merge(['center_mode' => '1']);
 
         $rows = [];
@@ -217,7 +269,8 @@ class VolunteerManagementCenterBuilder
      *     name: string,
      *     icon: string|null,
      *     leaders: list<string>,
-     *     volunteerCount: int
+     *     volunteerCount: int,
+     *     forwardedCount: int
      * }>
      */
     public static function departments(Request $request, int $churchId): array
@@ -231,16 +284,6 @@ class VolunteerManagementCenterBuilder
             return [];
         }
 
-        // Contagens exatas por departamento (pessoas únicas), usando o mesmo filtro do roster.
-        // Importante: no modo central, "departamento" inclui vinculados e encaminhados.
-        $baseRq = clone $request;
-        $baseRq->merge([
-            'center_mode' => '1',
-            'center_phase_key' => '',
-            'center_sem_departamento' => '',
-            'pipeline_stage_id' => '',
-        ]);
-
         $rows = [];
         foreach ($ministries as $m) {
             $leaders = $m->users
@@ -249,22 +292,15 @@ class VolunteerManagementCenterBuilder
                 ->values()
                 ->all();
 
-            $rq = clone $baseRq;
-            $rq->merge(['ministry_ids' => (string) $m->id]);
-            $q = VolunteerChurchRosterBuilder::volunteersVisibleInChurchQuery($churchId);
-            VolunteerLeadRosterFilters::apply($rq, $q, $churchId);
-            VolunteerChurchRosterBuilder::applyStaffArchivedFilter(
-                $q,
-                $churchId,
-                VolunteerLeadRosterFilters::showsArchivedRoster($rq),
-            );
+            $ministryId = (int) $m->id;
 
             $rows[] = [
-                'id' => (int) $m->id,
+                'id' => $ministryId,
                 'name' => $m->name,
                 'icon' => $m->icon,
                 'leaders' => $leaders,
-                'volunteerCount' => (int) $q->distinct('volunteers.id')->count('volunteers.id'),
+                'volunteerCount' => self::rosterCountForMinistries($request, $churchId, [$ministryId], 'vinculados'),
+                'forwardedCount' => self::rosterCountForMinistries($request, $churchId, [$ministryId], 'encaminhados'),
             ];
         }
 
@@ -273,8 +309,8 @@ class VolunteerManagementCenterBuilder
 
     public static function allVolunteersCount(Request $request, int $churchId): int
     {
-        // Total de pessoas únicas na igreja (com filtros do quadro), sem recorte da lateral.
-        $rq = clone $request;
+        // Total de pessoas únicas na igreja (com filtros do quadro), sem recorte da lateral nem busca.
+        $rq = self::requestForSidebarCounts($request);
         $rq->merge([
             'center_mode' => '1',
             'ministry_ids' => '',
@@ -295,8 +331,8 @@ class VolunteerManagementCenterBuilder
 
     public static function volunteersWithoutDepartmentCount(Request $request, int $churchId): int
     {
-        // Contagem exata com os mesmos filtros do roster.
-        $rq = clone $request;
+        // Contagem exata com os mesmos filtros do roster (exceto busca da lista).
+        $rq = self::requestForSidebarCounts($request);
         $rq->merge([
             'center_mode' => '1',
             'ministry_ids' => '',

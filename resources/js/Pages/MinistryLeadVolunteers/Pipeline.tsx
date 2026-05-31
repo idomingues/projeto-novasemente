@@ -56,7 +56,9 @@ import {
 import RecordDetailSections from '@/Components/RecordDetail/RecordDetailSections';
 import { volunteerDetailSections, volunteerRecordHeaderSubtitle, type VolunteerDetailData } from '@/utils/volunteerDetailRows';
 import SortedMultiCheckboxList from '@/Components/SortedMultiCheckboxList';
-import SplitSortedMultiCheckboxPicker from '@/Components/SplitSortedMultiCheckboxPicker';
+import VolunteerServeMinistriesPicker from '@/Components/Volunteers/VolunteerServeMinistriesPicker';
+import VolunteerUsuarioAppTabPanel from '@/Components/Volunteers/VolunteerUsuarioAppTabPanel';
+import { leaderMinistryIdsFromVolunteer } from '@/utils/volunteerMinistryLeadership';
 import ListViewModeToggle from '@/Components/ListViewModeToggle';
 import VolunteerPipelineKanban from '@/Components/Volunteers/VolunteerPipelineKanban';
 import { usePersistedViewMode } from '@/hooks/usePersistedViewMode';
@@ -225,6 +227,8 @@ type DetailJson = {
     unarchiveVolunteerUrl?: string | null;
     updatePasswordUrl?: string | null;
     passwordFormMode?: 'create' | 'update' | null;
+    updateVolunteerUrl?: string | null;
+    appRoles?: Array<{ id: number; name: string }>;
 };
 
 type VolunteerRequestMinistryOption = {
@@ -448,7 +452,10 @@ export default function Pipeline({
     const [inviteMinistryIds, setInviteMinistryIds] = useRemember<number[]>([], 'pipeline.inviteMinistryIds');
     const noteForm = useForm({ body: '' });
     const stageMoveForm = useForm({ stage_id: '' as string | number });
-    const ministriesForm = useForm<{ ministry_ids: number[] }>({ ministry_ids: [] });
+    const ministriesForm = useForm<{ ministry_ids: number[]; leader_ministry_ids: number[] }>({
+        ministry_ids: [],
+        leader_ministry_ids: [],
+    });
 
     const encaminharMinistries = useMemo(() => {
         if (encaminharMinistryIds == null) {
@@ -489,7 +496,10 @@ export default function Pipeline({
             const sid = explicitSid ?? pipelineSid;
             stageMoveForm.setData('stage_id', sid != null ? String(sid) : '');
             const attachedIds = (j.ministryOptions ?? []).filter((o) => o.attached).map((o) => o.id);
-            ministriesForm.setData('ministry_ids', attachedIds);
+            ministriesForm.setData({
+                ministry_ids: attachedIds,
+                leader_ministry_ids: leaderMinistryIdsFromVolunteer(j.volunteer as VolunteerDetailData),
+            });
         },
         [ministriesForm, stageMoveForm],
     );
@@ -735,14 +745,16 @@ export default function Pipeline({
         ministriesForm.clearErrors();
         setMinistriesSaving(true);
         try {
-            const result = await submitVolunteerModalPatch(
-                detail.syncMinistriesUrl,
-                { ministry_ids: ministriesForm.data.ministry_ids },
-                csrf,
-            );
+            const payload: Record<string, unknown> = {
+                ministry_ids: ministriesForm.data.ministry_ids,
+            };
+            if (canVolunteerManage) {
+                payload.leader_ministry_ids = ministriesForm.data.leader_ministry_ids;
+            }
+            const result = await submitVolunteerModalPatch(detail.syncMinistriesUrl, payload, csrf);
             if (!result.ok) {
                 applyVolunteerModalFormErrors(result.errors, (field, message) =>
-                    ministriesForm.setError(field as 'ministry_ids', message),
+                    ministriesForm.setError(field as 'ministry_ids' | 'leader_ministry_ids', message),
                 );
                 return;
             }
@@ -1935,10 +1947,23 @@ export default function Pipeline({
                                     >
                                         Ficha
                                     </button>
+                                    {canVolunteerManage && detail.updateVolunteerUrl ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => selectDetailTab('usuario')}
+                                            className={`shrink-0 cursor-pointer rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
+                                                detailTab === 'usuario'
+                                                    ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
+                                                    : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+                                            }`}
+                                        >
+                                            Usuário APP
+                                        </button>
+                                    ) : null}
                                     <button
                                         type="button"
                                         onClick={() => selectDetailTab('departamentos')}
-                                        className={`shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
+                                        className={`shrink-0 cursor-pointer rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
                                             detailTab === 'departamentos'
                                                 ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
                                                 : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
@@ -1978,7 +2003,7 @@ export default function Pipeline({
                                             sections={volunteerDetailSections(detail.volunteer as VolunteerDetailData)}
                                         />
 
-                                        {detail.updatePasswordUrl ? (
+                                        {detail.updateVolunteerUrl ? null : detail.updatePasswordUrl ? (
                                             <VolunteerPasswordChangeForm
                                                 key={(detail.volunteer as VolunteerDetailData).id}
                                                 submitUrl={detail.updatePasswordUrl}
@@ -1987,23 +2012,6 @@ export default function Pipeline({
                                                     if (selectedId) void refreshVolunteerDetail(selectedId);
                                                 }}
                                             />
-                                        ) : canVolunteerManage &&
-                                          !(detail.volunteer as VolunteerDetailData).has_app_account ? (
-                                            <div className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-300">
-                                                <p className="font-semibold text-zinc-900 dark:text-white">Senha de acesso</p>
-                                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                                    Cadastre um e-mail na ficha (em Voluntários) para poder criar o acesso ao app
-                                                    com senha daqui.
-                                                </p>
-                                            </div>
-                                        ) : canVolunteerManage &&
-                                          (detail.volunteer as VolunteerDetailData).has_app_account ? (
-                                            <div className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-300">
-                                                <p className="font-semibold text-zinc-900 dark:text-white">Senha de acesso</p>
-                                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                                    Conta da equipe do painel — altere a senha em Usuários.
-                                                </p>
-                                            </div>
                                         ) : null}
 
                                         {detail.archiveVolunteerUrl || detail.unarchiveVolunteerUrl ? (
@@ -2081,6 +2089,18 @@ export default function Pipeline({
                                             />
                                         ) : null}
                                     </div>
+                                ) : detailTab === 'usuario' && detail.updateVolunteerUrl ? (
+                                    <VolunteerUsuarioAppTabPanel
+                                        volunteer={detail.volunteer as VolunteerDetailData}
+                                        appRoles={detail.appRoles ?? []}
+                                        submitUrl={detail.updateVolunteerUrl}
+                                        volunteersAdminUrl={volunteersAdminUrl}
+                                        onSuccess={() => {
+                                            showModalSaveMessage('Usuário APP salvo.');
+                                            if (selectedId) void refreshVolunteerDetail(selectedId);
+                                        }}
+                                        idPrefix="pipe-vol-app"
+                                    />
                                 ) : detailTab === 'historico' ? (
                                     <div className="space-y-4">
                                         <p className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -2106,21 +2126,20 @@ export default function Pipeline({
                                     </div>
                                 ) : detailTab === 'departamentos' ? (
                                     <form onSubmit={submitMinistries} className="space-y-4">
-                                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                            Marque os departamentos em que o voluntário está. Desmarque para remover; marque outros para adicionar.
-                                        </p>
-                                        {(detail.ministryOptions ?? []).length === 0 ? (
-                                            <p className="text-sm text-zinc-500">Nenhum departamento cadastrado nesta igreja.</p>
-                                        ) : (
-                                            <SplitSortedMultiCheckboxPicker
-                                                options={volunteerMinistryCheckboxOptions}
-                                                selectedIds={ministriesForm.data.ministry_ids}
-                                                onChange={(ids) => ministriesForm.setData('ministry_ids', ids)}
-                                                maxHeightClass="max-h-[min(50vh,360px)]"
-                                                confirmChanges
-                                                error={ministriesForm.errors.ministry_ids}
-                                            />
-                                        )}
+                                        <VolunteerServeMinistriesPicker
+                                            volunteer={detail.volunteer as VolunteerDetailData}
+                                            canVolunteerManage={canVolunteerManage}
+                                            options={volunteerMinistryCheckboxOptions}
+                                            ministryIds={ministriesForm.data.ministry_ids}
+                                            leaderMinistryIds={ministriesForm.data.leader_ministry_ids}
+                                            onMinistryIdsChange={(ids) =>
+                                                ministriesForm.setData('ministry_ids', ids)
+                                            }
+                                            onLeaderMinistryIdsChange={(ids) =>
+                                                ministriesForm.setData('leader_ministry_ids', ids)
+                                            }
+                                            error={ministriesForm.errors.ministry_ids}
+                                        />
                                         {detail.syncMinistriesUrl && canPipelineMutate ? (
                                             <PrimaryButton type="submit" disabled={ministriesSaving}>
                                                 {ministriesSaving ? 'Salvando…' : 'Salvar departamentos'}

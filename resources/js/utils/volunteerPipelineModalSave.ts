@@ -80,6 +80,36 @@ export async function submitVolunteerModalPut(
     return parseErrorBody(res);
 }
 
+export async function submitVolunteerModalFormDataPut(
+    url: string,
+    formData: FormData,
+    csrf: string,
+): Promise<VolunteerModalSaveResult> {
+    formData.append('_method', 'PUT');
+
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+            Accept: 'application/json',
+            'X-CSRF-TOKEN': csrf,
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+        credentials: 'same-origin',
+        body: formData,
+        redirect: 'manual',
+    });
+
+    if (res.status === 422) {
+        return parseErrorBody(res);
+    }
+
+    if (res.status === 302 || res.status === 303 || (res.status >= 200 && res.status < 300)) {
+        return { ok: true, redirectLocation: res.headers.get('Location') };
+    }
+
+    return parseErrorBody(res);
+}
+
 export async function submitVolunteerModalPost(
     url: string,
     data: Record<string, unknown>,
@@ -153,9 +183,15 @@ export function syncDepartmentEditModalUrl(id: number | null): void {
     }
 }
 
-export type VolunteerModalUrlTab = 'ficha' | 'notas' | 'departamentos' | 'historico';
+export type VolunteerModalUrlTab = 'ficha' | 'usuario' | 'notas' | 'departamentos' | 'historico';
 
-const VALID_TABS = new Set<VolunteerModalUrlTab>(['ficha', 'notas', 'departamentos', 'historico']);
+const VALID_TABS = new Set<VolunteerModalUrlTab>([
+    'ficha',
+    'usuario',
+    'notas',
+    'departamentos',
+    'historico',
+]);
 
 export function parseVolunteerModalFromUrl(search: string): { id: number; tab: VolunteerModalUrlTab } | null {
     const params = new URLSearchParams(search);

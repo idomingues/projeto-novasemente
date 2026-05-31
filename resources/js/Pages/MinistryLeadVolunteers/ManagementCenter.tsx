@@ -18,7 +18,9 @@ import VolunteerPasswordChangeForm from '@/Components/Volunteers/VolunteerPasswo
 import MinistryLeaderStatusSection, {
     type MinistryLeaderStatusSectionData,
 } from '@/Components/Volunteers/MinistryLeaderStatusSection';
-import SplitSortedMultiCheckboxPicker from '@/Components/SplitSortedMultiCheckboxPicker';
+import VolunteerServeMinistriesPicker from '@/Components/Volunteers/VolunteerServeMinistriesPicker';
+import VolunteerUsuarioAppTabPanel from '@/Components/Volunteers/VolunteerUsuarioAppTabPanel';
+import { leaderMinistryIdsFromVolunteer } from '@/utils/volunteerMinistryLeadership';
 import { confirmAction } from '@/utils/confirmDialog';
 import {
     applyVolunteerModalFormErrors,
@@ -29,7 +31,7 @@ import {
     type VolunteerModalUrlTab,
 } from '@/utils/volunteerPipelineModalSave';
 import { volunteerDetailSections, volunteerRecordHeaderSubtitle, type VolunteerDetailData } from '@/utils/volunteerDetailRows';
-import { centerVolunteersQuery, type CenterGroupBy } from '@/utils/centerVolunteersQuery';
+import { centerVolunteersQuery, type CenterGroupBy, type CenterVinculo } from '@/utils/centerVolunteersQuery';
 import type { VolunteerRosterBoardFilters, VolunteerRosterListRow } from '@/utils/volunteerRosterList';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { MagnifyingGlassIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
@@ -51,6 +53,7 @@ type DepartmentRow = {
     icon: string | null;
     leaders: string[];
     volunteerCount: number;
+    forwardedCount: number;
 };
 
 type PhaseRow = {
@@ -89,6 +92,7 @@ type Props = {
     selectedPhaseKey: string | null;
     selectedMinistry: SelectedMinistry | null;
     selectedPhase: SelectedPhase | null;
+    centerVinculo: CenterVinculo;
     volunteers: PaginatedVolunteers;
     boardFilters: VolunteerRosterBoardFilters;
     ministries: { id: number; name: string }[];
@@ -117,6 +121,8 @@ type DetailJson = {
     unarchiveVolunteerUrl: string | null;
     updatePasswordUrl: string | null;
     passwordFormMode?: 'create' | 'update' | null;
+    updateVolunteerUrl?: string | null;
+    appRoles?: Array<{ id: number; name: string }>;
 };
 
 function formatDateTime(iso: string): string {
@@ -150,6 +156,7 @@ export default function ManagementCenter({
     selectedPhaseKey,
     selectedMinistry,
     selectedPhase,
+    centerVinculo,
     volunteers,
     boardFilters,
     ministries,
@@ -172,6 +179,8 @@ export default function ManagementCenter({
     const isPhaseGroup = groupBy === 'fase';
     const boardFiltersRef = useRef(boardFilters);
     boardFiltersRef.current = boardFilters;
+    const centerVinculoRef = useRef(centerVinculo);
+    centerVinculoRef.current = centerVinculo;
     const page = usePage();
     const pageUrl = page.url;
     const csrf = (page.props as { csrf_token?: string }).csrf_token ?? '';
@@ -181,7 +190,10 @@ export default function ManagementCenter({
 
     const noteForm = useForm({ body: '' });
     const stageMoveForm = useForm({ stage_id: '' as string | number });
-    const ministriesForm = useForm<{ ministry_ids: number[] }>({ ministry_ids: [] });
+    const ministriesForm = useForm<{ ministry_ids: number[]; leader_ministry_ids: number[] }>({
+        ministry_ids: [],
+        leader_ministry_ids: [],
+    });
 
     const { width: departmentPaneWidth, resetWidth: resetDepartmentPaneWidth, onSeparatorMouseDown } =
         useResizablePaneWidth({
@@ -197,6 +209,7 @@ export default function ManagementCenter({
             ministerio?: number | 'none' | 'all';
             fase?: string | 'all';
             search?: string;
+            vinculo?: CenterVinculo;
         }) => {
             // Ao trocar para "Fase", o padrão esperado é ver todas as pessoas da igreja.
             // Se deixarmos `ministry_ids` preso no querystring, o usuário fica vendo um recorte pequeno (ex.: só um depto)
@@ -213,6 +226,9 @@ export default function ManagementCenter({
                           ? 0
                           : (options.ministerio ?? selectedMinistryId ?? null)
                     : null;
+            const vinculo =
+                options.vinculo ??
+                (options.group === 'departamento' ? centerVinculoRef.current : 'vinculados');
             const params = centerVolunteersQuery(
                 options.group,
                 mid,
@@ -223,6 +239,7 @@ export default function ManagementCenter({
                     : null,
                 effectiveBoardFilters,
                 options.search ?? boardFiltersRef.current.search ?? '',
+                vinculo,
             );
             router.get(route('ministry-lead.volunteers.central'), params, {
                 preserveState: true,
@@ -230,7 +247,14 @@ export default function ManagementCenter({
                 replace: true,
             });
         },
-        [selectedPhaseKey],
+        [selectedPhaseKey, selectedMinistryId],
+    );
+
+    const onCenterVinculoChange = useCallback(
+        (vinculo: CenterVinculo) => {
+            navigate({ group: 'departamento', vinculo });
+        },
+        [navigate],
     );
 
     const selectDepartment = (id: number | 'none') => {
@@ -301,7 +325,10 @@ export default function ManagementCenter({
             const sid = explicitSid ?? pipelineSid;
             stageMoveForm.setData('stage_id', sid != null ? String(sid) : '');
             const attachedIds = (j.ministryOptions ?? []).filter((o) => o.attached).map((o) => o.id);
-            ministriesForm.setData('ministry_ids', attachedIds);
+            ministriesForm.setData({
+                ministry_ids: attachedIds,
+                leader_ministry_ids: leaderMinistryIdsFromVolunteer(j.volunteer as VolunteerDetailData),
+            });
         },
         [ministriesForm, stageMoveForm],
     );
@@ -428,14 +455,16 @@ export default function ManagementCenter({
         ministriesForm.clearErrors();
         setMinistriesSaving(true);
         try {
-            const result = await submitVolunteerModalPatch(
-                detail.syncMinistriesUrl,
-                { ministry_ids: ministriesForm.data.ministry_ids },
-                csrf,
-            );
+            const payload: Record<string, unknown> = {
+                ministry_ids: ministriesForm.data.ministry_ids,
+            };
+            if (canVolunteerManage) {
+                payload.leader_ministry_ids = ministriesForm.data.leader_ministry_ids;
+            }
+            const result = await submitVolunteerModalPatch(detail.syncMinistriesUrl, payload, csrf);
             if (!result.ok) {
                 applyVolunteerModalFormErrors(result.errors, (field, message) =>
-                    ministriesForm.setError(field as 'ministry_ids', message),
+                    ministriesForm.setError(field as 'ministry_ids' | 'leader_ministry_ids', message),
                 );
                 return;
             }
@@ -484,6 +513,17 @@ export default function ManagementCenter({
         () => (phases ?? []).reduce((sum, p) => sum + (p.volunteerCount ?? 0), 0),
         [phases],
     );
+    const selectedDepartment = useMemo(
+        () =>
+            selectedMinistryId != null && selectedMinistryId > 0
+                ? departments.find((d) => d.id === selectedMinistryId)
+                : undefined,
+        [departments, selectedMinistryId],
+    );
+
+    const vinculadosCount = selectedDepartment?.volunteerCount ?? null;
+    const encaminhadosCount = selectedDepartment?.forwardedCount ?? null;
+
     const selectedGroupTotal = useMemo(() => {
         if (isPhaseGroup) {
             if (selectedPhaseKey == null) return allPhasesTotal;
@@ -491,12 +531,19 @@ export default function ManagementCenter({
         }
         if (selectedMinistryId == null) return volunteersTotal;
         if (selectedMinistryId === 0) return withoutDepartmentCount ?? 0;
-        return departments.find((d) => d.id === selectedMinistryId)?.volunteerCount ?? volunteersTotal;
+        if (selectedDepartment) {
+            if (centerVinculo === 'encaminhados') {
+                return selectedDepartment.forwardedCount ?? volunteersTotal;
+            }
+            return selectedDepartment.volunteerCount ?? volunteersTotal;
+        }
+        return volunteersTotal;
     }, [
         allPhasesTotal,
-        departments,
+        centerVinculo,
         isPhaseGroup,
         phases,
+        selectedDepartment,
         selectedMinistryId,
         selectedPhaseKey,
         volunteersTotal,
@@ -736,6 +783,10 @@ export default function ManagementCenter({
                                 groupBy={groupBy}
                                 selectedMinistryId={selectedMinistryId}
                                 selectedPhaseKey={selectedPhaseKey}
+                                centerVinculo={centerVinculo}
+                                vinculadosCount={vinculadosCount}
+                                encaminhadosCount={encaminhadosCount}
+                                onCenterVinculoChange={onCenterVinculoChange}
                                 volunteers={volunteers}
                                 boardFilters={boardFilters}
                                 ministries={ministries}
@@ -844,6 +895,19 @@ export default function ManagementCenter({
                                     >
                                         Ficha
                                     </button>
+                                    {canVolunteerManage && detail.updateVolunteerUrl ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => selectDetailTab('usuario')}
+                                            className={`shrink-0 cursor-pointer rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
+                                                detailTab === 'usuario'
+                                                    ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
+                                                    : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+                                            }`}
+                                        >
+                                            Usuário APP
+                                        </button>
+                                    ) : null}
                                     <button
                                         type="button"
                                         onClick={() => selectDetailTab('departamentos')}
@@ -887,7 +951,7 @@ export default function ManagementCenter({
                                             sections={volunteerDetailSections(detail.volunteer as VolunteerDetailData)}
                                         />
 
-                                        {detail.updatePasswordUrl ? (
+                                        {detail.updateVolunteerUrl ? null : detail.updatePasswordUrl ? (
                                             <VolunteerPasswordChangeForm
                                                 key={(detail.volunteer as VolunteerDetailData).id}
                                                 submitUrl={detail.updatePasswordUrl}
@@ -896,23 +960,6 @@ export default function ManagementCenter({
                                                     if (selectedId) void refreshVolunteerDetail(selectedId);
                                                 }}
                                             />
-                                        ) : canVolunteerManage &&
-                                          !(detail.volunteer as VolunteerDetailData).has_app_account ? (
-                                            <div className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-300">
-                                                <p className="font-semibold text-zinc-900 dark:text-white">Senha de acesso</p>
-                                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                                    Cadastre um e-mail na ficha (em Voluntários) para poder criar o acesso ao app
-                                                    com senha daqui.
-                                                </p>
-                                            </div>
-                                        ) : canVolunteerManage &&
-                                          (detail.volunteer as VolunteerDetailData).has_app_account ? (
-                                            <div className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-300">
-                                                <p className="font-semibold text-zinc-900 dark:text-white">Senha de acesso</p>
-                                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                                    Conta da equipe do painel — altere a senha em Usuários.
-                                                </p>
-                                            </div>
                                         ) : null}
 
                                         {detail.archiveVolunteerUrl || detail.unarchiveVolunteerUrl ? (
@@ -988,6 +1035,18 @@ export default function ManagementCenter({
                                             />
                                         ) : null}
                                     </div>
+                                ) : detailTab === 'usuario' && detail.updateVolunteerUrl ? (
+                                    <VolunteerUsuarioAppTabPanel
+                                        volunteer={detail.volunteer as VolunteerDetailData}
+                                        appRoles={detail.appRoles ?? []}
+                                        submitUrl={detail.updateVolunteerUrl}
+                                        volunteersAdminUrl={volunteersAdminUrl}
+                                        onSuccess={() => {
+                                            showModalSaveMessage('Usuário APP salvo.');
+                                            if (selectedId) void refreshVolunteerDetail(selectedId);
+                                        }}
+                                        idPrefix="mgmt-vol-app"
+                                    />
                                 ) : detailTab === 'historico' ? (
                                     <div className="space-y-4">
                                         <p className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -1013,21 +1072,20 @@ export default function ManagementCenter({
                                     </div>
                                 ) : detailTab === 'departamentos' ? (
                                     <form onSubmit={submitMinistries} className="space-y-4">
-                                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                            Marque os departamentos em que o voluntário está. Desmarque para remover; marque outros para adicionar.
-                                        </p>
-                                        {(detail.ministryOptions ?? []).length === 0 ? (
-                                            <p className="text-sm text-zinc-500">Nenhum departamento cadastrado nesta igreja.</p>
-                                        ) : (
-                                            <SplitSortedMultiCheckboxPicker
-                                                options={volunteerMinistryCheckboxOptions}
-                                                selectedIds={ministriesForm.data.ministry_ids}
-                                                onChange={(ids) => ministriesForm.setData('ministry_ids', ids)}
-                                                maxHeightClass="max-h-[min(50vh,360px)]"
-                                                confirmChanges
-                                                error={ministriesForm.errors.ministry_ids}
-                                            />
-                                        )}
+                                        <VolunteerServeMinistriesPicker
+                                            volunteer={detail.volunteer as VolunteerDetailData}
+                                            canVolunteerManage={canVolunteerManage}
+                                            options={volunteerMinistryCheckboxOptions}
+                                            ministryIds={ministriesForm.data.ministry_ids}
+                                            leaderMinistryIds={ministriesForm.data.leader_ministry_ids}
+                                            onMinistryIdsChange={(ids) =>
+                                                ministriesForm.setData('ministry_ids', ids)
+                                            }
+                                            onLeaderMinistryIdsChange={(ids) =>
+                                                ministriesForm.setData('leader_ministry_ids', ids)
+                                            }
+                                            error={ministriesForm.errors.ministry_ids}
+                                        />
                                         {detail.syncMinistriesUrl && canPipelineMutate ? (
                                             <PrimaryButton type="submit" disabled={ministriesSaving}>
                                                 {ministriesSaving ? 'Salvando…' : 'Salvar departamentos'}

@@ -180,14 +180,19 @@ class VolunteerLeadRosterFilters
         if ($ministryIds !== []) {
             $centerMode = $request->query('center_mode') === '1' || $request->input('center_mode') === '1';
             if ($centerMode && Schema::hasTable('volunteer_ministry_invitations')) {
-                $q->where(function ($outer) use ($ministryIds, $churchId) {
-                    $outer->whereHas('ministries', fn ($mq) => $mq
+                $centerVinculo = VolunteerManagementCenterBuilder::normalizedCenterVinculo($request);
+                if ($centerVinculo === 'encaminhados') {
+                    $q->whereHas('ministryInvitations', fn ($iq) => $iq
+                        ->where('church_id', $churchId)
+                        ->whereIn('ministry_id', $ministryIds))
+                        ->whereDoesntHave('ministries', fn ($mq) => $mq
+                            ->whereIn('ministries.id', $ministryIds)
+                            ->where('church_id', $churchId));
+                } else {
+                    $q->whereHas('ministries', fn ($mq) => $mq
                         ->whereIn('ministries.id', $ministryIds)
-                        ->where('church_id', $churchId))
-                        ->orWhereHas('ministryInvitations', fn ($iq) => $iq
-                            ->where('church_id', $churchId)
-                            ->whereIn('ministry_id', $ministryIds));
-                });
+                        ->where('church_id', $churchId));
+                }
             } else {
                 $q->whereHas('ministries', fn ($mq) => $mq->whereIn('ministries.id', $ministryIds)->where('church_id', $churchId));
             }

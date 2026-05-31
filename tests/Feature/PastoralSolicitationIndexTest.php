@@ -112,4 +112,40 @@ class PastoralSolicitationIndexTest extends TestCase
 
         $this->assertSame(PastoralSolicitationStatus::ARCHIVED, $solicitation->fresh()->status);
     }
+
+    public function test_solicitations_index_sorts_by_updated_at_asc(): void
+    {
+        $admin = $this->actingAsAdmin();
+        $church = Church::query()->firstOrFail();
+
+        $older = ChurchSolicitation::query()->create([
+            'church_id' => $church->id,
+            'user_id' => $admin->id,
+            'type' => 'pastor_visit',
+            'status' => PastoralSolicitationStatus::PENDING,
+            'subject' => 'Visita antiga',
+            'message' => 'Mensagem',
+        ]);
+        $older->forceFill(['updated_at' => now()->subDays(2)])->saveQuietly();
+
+        $newer = ChurchSolicitation::query()->create([
+            'church_id' => $church->id,
+            'user_id' => $admin->id,
+            'type' => 'pastor_visit',
+            'status' => PastoralSolicitationStatus::PENDING,
+            'subject' => 'Visita recente',
+            'message' => 'Mensagem',
+        ]);
+        $newer->forceFill(['updated_at' => now()])->saveQuietly();
+
+        $this->actingAs($admin)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('solicitations.index', ['sort' => 'updated_asc']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('filters.sort', 'updated_asc')
+                ->has('demands', 2)
+                ->where('demands.0.id', $older->id)
+                ->where('demands.1.id', $newer->id));
+    }
 }

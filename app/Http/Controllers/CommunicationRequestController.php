@@ -171,8 +171,18 @@ class CommunicationRequestController extends Controller
             });
         }
 
+        $sort = is_string($request->query('sort')) ? $request->query('sort') : 'updated_desc';
+        match ($sort) {
+            'updated_asc' => $query->orderBy('updated_at'),
+            'created_desc' => $query->orderByDesc('created_at'),
+            'priority_desc' => $query->orderByRaw(
+                "CASE JSON_UNQUOTE(JSON_EXTRACT(meta, '$.communication_priority')) "
+                ."WHEN 'urgent' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5 END"
+            )->orderByDesc('updated_at'),
+            default => $query->orderByDesc('updated_at'),
+        };
+
         $rows = $query
-            ->orderByDesc('updated_at')
             ->limit(120)
             ->get(['id', 'subject', 'message', 'status', 'created_at', 'preferred_date', 'meta', 'user_id'])
             ->map(function (ChurchSolicitation $s) use ($mode, $user) {
@@ -221,6 +231,9 @@ class CommunicationRequestController extends Controller
                 'demand_type' => is_string($demandType) ? $demandType : '',
                 'priority' => is_string($priority) ? $priority : '',
                 'q' => is_string($q) ? $q : '',
+                'sort' => in_array($sort, ['updated_desc', 'updated_asc', 'created_desc', 'priority_desc'], true)
+                    ? $sort
+                    : 'updated_desc',
                 'arquivados' => $mode === 'staff' && $request->query('arquivados') === '1',
             ],
             'indexUrl' => route('communication-requests.index'),

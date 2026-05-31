@@ -44,7 +44,9 @@ import {
     type VolunteerModalUrlTab,
 } from '@/utils/volunteerPipelineModalSave';
 import SortedMultiCheckboxList from '@/Components/SortedMultiCheckboxList';
-import SplitSortedMultiCheckboxPicker from '@/Components/SplitSortedMultiCheckboxPicker';
+import VolunteerServeMinistriesPicker from '@/Components/Volunteers/VolunteerServeMinistriesPicker';
+import VolunteerUsuarioAppTabPanel from '@/Components/Volunteers/VolunteerUsuarioAppTabPanel';
+import { leaderMinistryIdsFromVolunteer } from '@/utils/volunteerMinistryLeadership';
 import { textMatchesSearchFields } from '@/utils/searchText';
 import RecordDetailHeader from '@/Components/RecordDetail/RecordDetailHeader';
 import RecordDetailSections from '@/Components/RecordDetail/RecordDetailSections';
@@ -126,6 +128,8 @@ type DetailJson = {
     archiveVolunteerUrl: string | null;
     unarchiveVolunteerUrl: string | null;
     updatePasswordUrl: string | null;
+    updateVolunteerUrl?: string | null;
+    appRoles?: Array<{ id: number; name: string }>;
 };
 
 function detailUrlFromPattern(pattern: string, id: number): string {
@@ -454,7 +458,10 @@ export default function Index({
 
     const noteForm = useForm({ body: '' });
     const stageMoveForm = useForm({ stage_id: '' as string | number });
-    const ministriesForm = useForm<{ ministry_ids: number[] }>({ ministry_ids: [] });
+    const ministriesForm = useForm<{ ministry_ids: number[]; leader_ministry_ids: number[] }>({
+        ministry_ids: [],
+        leader_ministry_ids: [],
+    });
 
     const [rolesModalDepartmentId, setRolesModalDepartmentId] = useState<number | null>(null);
     const [rolesModalNewRoleName, setRolesModalNewRoleName] = useState('');
@@ -496,7 +503,10 @@ export default function Index({
             const sid = explicitSid ?? pipelineSid;
             stageMoveForm.setData('stage_id', sid != null ? String(sid) : '');
             const attachedIds = (j.ministryOptions ?? []).filter((o) => o.attached).map((o) => o.id);
-            ministriesForm.setData('ministry_ids', attachedIds);
+            ministriesForm.setData({
+                ministry_ids: attachedIds,
+                leader_ministry_ids: leaderMinistryIdsFromVolunteer(j.volunteer as VolunteerDetailData),
+            });
         },
         [ministriesForm, stageMoveForm],
     );
@@ -629,14 +639,16 @@ export default function Index({
         ministriesForm.clearErrors();
         setMinistriesSaving(true);
         try {
-            const result = await submitVolunteerModalPatch(
-                detailPayload.syncMinistriesUrl,
-                { ministry_ids: ministriesForm.data.ministry_ids },
-                csrf,
-            );
+            const payload: Record<string, unknown> = {
+                ministry_ids: ministriesForm.data.ministry_ids,
+            };
+            if (canManage) {
+                payload.leader_ministry_ids = ministriesForm.data.leader_ministry_ids;
+            }
+            const result = await submitVolunteerModalPatch(detailPayload.syncMinistriesUrl, payload, csrf);
             if (!result.ok) {
                 applyVolunteerModalFormErrors(result.errors, (field, message) =>
-                    ministriesForm.setError(field as 'ministry_ids', message),
+                    ministriesForm.setError(field as 'ministry_ids' | 'leader_ministry_ids', message),
                 );
                 return;
             }
@@ -1374,6 +1386,19 @@ export default function Index({
                                     >
                                         Ficha
                                     </button>
+                                    {canManage && detailPayload.updateVolunteerUrl ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => selectDetailTab('usuario')}
+                                            className={`shrink-0 cursor-pointer rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
+                                                detailTab === 'usuario'
+                                                    ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
+                                                    : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+                                            }`}
+                                        >
+                                            Usuário APP
+                                        </button>
+                                    ) : null}
                                     <button
                                         type="button"
                                         onClick={() => selectDetailTab('departamentos')}
@@ -1417,7 +1442,7 @@ export default function Index({
                                             sections={volunteerDetailSections(detailPayload.volunteer as VolunteerDetailData)}
                                         />
 
-                                        {detailPayload.updatePasswordUrl ? (
+                                        {detailPayload.updateVolunteerUrl ? null : detailPayload.updatePasswordUrl ? (
                                             <VolunteerPasswordChangeForm
                                                 key={(detailPayload.volunteer as VolunteerDetailData).id}
                                                 submitUrl={detailPayload.updatePasswordUrl}
@@ -1435,6 +1460,18 @@ export default function Index({
                                             />
                                         ) : null}
                                     </div>
+                                ) : detailTab === 'usuario' && detailPayload.updateVolunteerUrl ? (
+                                    <VolunteerUsuarioAppTabPanel
+                                        volunteer={detailPayload.volunteer as VolunteerDetailData}
+                                        appRoles={detailPayload.appRoles ?? []}
+                                        submitUrl={detailPayload.updateVolunteerUrl}
+                                        volunteersAdminUrl={route('volunteers.index')}
+                                        onSuccess={() => {
+                                            showModalSaveMessage('Usuário APP salvo.');
+                                            if (selectedVolunteerId) void refreshVolunteerDetail(selectedVolunteerId);
+                                        }}
+                                        idPrefix="dept-vol-app"
+                                    />
                                 ) : detailTab === 'historico' ? (
                                     <div className="space-y-4">
                                         <p className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -1459,21 +1496,20 @@ export default function Index({
                                     </div>
                                 ) : detailTab === 'departamentos' ? (
                                     <form onSubmit={submitMinistries} className="space-y-4">
-                                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                            Marque os departamentos em que o voluntário está.
-                                        </p>
-                                        {(detailPayload.ministryOptions ?? []).length === 0 ? (
-                                            <p className="text-sm text-zinc-500">Nenhum departamento cadastrado nesta igreja.</p>
-                                        ) : (
-                                            <SplitSortedMultiCheckboxPicker
-                                                options={volunteerMinistryCheckboxOptions}
-                                                selectedIds={ministriesForm.data.ministry_ids}
-                                                onChange={(ids) => ministriesForm.setData('ministry_ids', ids)}
-                                                maxHeightClass="max-h-[min(50vh,360px)]"
-                                                confirmChanges
-                                                error={ministriesForm.errors.ministry_ids}
-                                            />
-                                        )}
+                                        <VolunteerServeMinistriesPicker
+                                            volunteer={detailPayload.volunteer as VolunteerDetailData}
+                                            canVolunteerManage={canManage}
+                                            options={volunteerMinistryCheckboxOptions}
+                                            ministryIds={ministriesForm.data.ministry_ids}
+                                            leaderMinistryIds={ministriesForm.data.leader_ministry_ids}
+                                            onMinistryIdsChange={(ids) =>
+                                                ministriesForm.setData('ministry_ids', ids)
+                                            }
+                                            onLeaderMinistryIdsChange={(ids) =>
+                                                ministriesForm.setData('leader_ministry_ids', ids)
+                                            }
+                                            error={ministriesForm.errors.ministry_ids}
+                                        />
                                         {detailPayload.syncMinistriesUrl && canManage ? (
                                             <PrimaryButton type="submit" disabled={ministriesSaving}>
                                                 {ministriesSaving ? 'Salvando…' : 'Salvar departamentos'}
