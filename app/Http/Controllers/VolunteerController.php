@@ -17,11 +17,13 @@ use App\Support\SearchTerm;
 use App\Support\StorageUrl;
 use App\Support\VolunteerChurchRosterBuilder;
 use App\Support\VolunteerContactDuplicateChecker;
+use App\Support\VolunteerEncaminhadoMissaoExport;
 use App\Support\VolunteerPipelineBootstrap;
 use App\Support\VolunteerSignupDetailPresenter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -361,7 +363,20 @@ class VolunteerController extends Controller
                 'search' => $search,
             ],
             'detailUrlPattern' => route('volunteers.detail', ['volunteer' => 0]),
+            'exportEncaminhadoMissaoUrl' => $churchId !== null
+                ? route('volunteers.export-encaminhado-missao')
+                : null,
         ]);
+    }
+
+    public function exportEncaminhadoMissao(Request $request): StreamedResponse
+    {
+        abort_unless($request->user()?->can('volunteers.view') || $request->user()?->can('volunteers.manage'), 403);
+
+        $churchId = $this->currentChurchId($request);
+        abort_unless($churchId, 404, 'Nenhuma igreja ativa.');
+
+        return VolunteerEncaminhadoMissaoExport::streamedDownload((int) $churchId);
     }
 
     public function show(Request $request, Volunteer $volunteer): RedirectResponse

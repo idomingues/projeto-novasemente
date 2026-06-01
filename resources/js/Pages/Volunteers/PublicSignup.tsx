@@ -8,6 +8,12 @@ import BrDateInput from '@/Components/BrDateInput';
 import TextInput from '@/Components/TextInput';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { compressImageForUpload, ImageCompressError } from '@/utils/compressImageForUpload';
+import {
+    clearPhotoPickPending,
+    markPhotoPickStarted,
+    revokeBlobPreviewUrl,
+    shouldWarnPhotoPickReload,
+} from '@/utils/mobilePhotoPick';
 import type { VolunteerSignupCompletion } from '@/utils/volunteerSignupCompletion';
 import {
     buildVolunteerSignupCompletionInput,
@@ -717,6 +723,9 @@ export default function PublicSignup({
     }, [isEdit, initial?.full_name, data.full_name]);
     const [photoPreparing, setPhotoPreparing] = useState(false);
     const [photoClientError, setPhotoClientError] = useState<string | null>(null);
+    const [photoReloadWarning, setPhotoReloadWarning] = useState(false);
+    const [photoPendingServerSave, setPhotoPendingServerSave] = useState(false);
+    const photoPreviewObjectUrlRef = useRef<string | null>(null);
     const [nameDuplicateHint, setNameDuplicateHint] = useState<string | null>(null);
     const [emailDuplicateHint, setEmailDuplicateHint] = useState<string | null>(null);
     const [phoneDuplicateHint, setPhoneDuplicateHint] = useState<string | null>(null);
@@ -827,9 +836,7 @@ export default function PublicSignup({
         setAutosaveMessage(response.message);
         setAutosaveStatus('saved');
 
-        if (response.completion.is_complete) {
-            router.visit(route('mobile.profile.edit'));
-        }
+        // Não redirecionar no autosave: evita “sair” da ficha ao enviar só a foto.
     }, []);
 
     const performAutosave = useCallback(
@@ -967,28 +974,54 @@ export default function PublicSignup({
         });
     };
 
+    const revokePhotoPreviewObjectUrl = useCallback(() => {
+        revokeBlobPreviewUrl(photoPreviewObjectUrlRef);
+    }, []);
+
+    useEffect(() => {
+        if (
+            shouldWarnPhotoPickReload(
+                data.photo_file !== null || (isEdit && hasExistingPhoto) || Boolean(photoPreview),
+            )
+        ) {
+            setPhotoReloadWarning(true);
+        }
+    }, [data.photo_file, hasExistingPhoto, isEdit, photoPreview]);
+
+    useEffect(() => () => revokePhotoPreviewObjectUrl(), [revokePhotoPreviewObjectUrl]);
+
     const handlePhotoFileChosen = async (raw: File | null) => {
+        setPhotoReloadWarning(false);
         setPhotoClientError(null);
         clearClientError('photo_file');
         if (!raw) {
             setData('photo_file', null);
-            setPhotoPreview(null);
+            revokePhotoPreviewObjectUrl();
+            setPhotoPreview(isEdit ? initial?.photo_url ?? null : null);
+            setPhotoPendingServerSave(false);
+            clearPhotoPickPending();
             return;
         }
         setPhotoPreparing(true);
         try {
             const compressed = await compressImageForUpload(raw);
             setData('photo_file', compressed);
-            setPhotoPreview(URL.createObjectURL(compressed));
+            revokePhotoPreviewObjectUrl();
+            const preview = URL.createObjectURL(compressed);
+            photoPreviewObjectUrlRef.current = preview;
+            setPhotoPreview(preview);
+            clearPhotoPickPending();
             if (isEdit) {
-                syncNameParts(data.full_name);
-                void performAutosave(['photo_file']);
+                setPhotoPendingServerSave(true);
             }
         } catch (e) {
             const msg = e instanceof ImageCompressError ? e.message : 'Não foi possível preparar a foto.';
             setPhotoClientError(msg);
             setData('photo_file', null);
-            setPhotoPreview(null);
+            revokePhotoPreviewObjectUrl();
+            setPhotoPreview(isEdit ? initial?.photo_url ?? null : null);
+            setPhotoPendingServerSave(false);
+            clearPhotoPickPending();
         } finally {
             setPhotoPreparing(false);
         }
@@ -996,9 +1029,12 @@ export default function PublicSignup({
 
     const handlePhotoClear = () => {
         setData('photo_file', null);
-        setPhotoPreview(null);
+        revokePhotoPreviewObjectUrl();
+        setPhotoPreview(isEdit ? initial?.photo_url ?? null : null);
         setPhotoClientError(null);
+        setPhotoPendingServerSave(false);
         clearClientError('photo_file');
+        clearPhotoPickPending();
     };
 
     const computePageErrors = useCallback(
@@ -1101,6 +1137,9 @@ export default function PublicSignup({
                 const fieldsToSave = collectVolunteerSignupAutosaveFields(page, showField, data);
                 const saved = await performAutosave(fieldsToSave);
                 if (!saved) return;
+                if (fieldsToSave.includes('photo_file')) {
+                    setPhotoPendingServerSave(false);
+                }
             }
 
             setClientErrors((cur) => {
@@ -1456,6 +1495,21 @@ export default function PublicSignup({
                                             <span className="ml-0.5 text-red-600 dark:text-red-400">*</span>
                                         ) : null}
                                     </h3>
+                                    {photoReloadWarning ? (
+                                        <p
+                                            className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-100"
+                                            role="status"
+                                        >
+                                            O app pode ter recarregado ao abrir a câmera. Escolha a foto de novo (de
+                                            preferência pela galeria).
+                                        </p>
+                                    ) : null}
+                                    {photoPendingServerSave && isEdit ? (
+                                        <p className="mb-3 text-xs text-teal-800 dark:text-teal-200">
+                                            Foto pronta. Toque em <strong>Avançar</strong> ou salve a etapa para enviar
+                                            ao servidor.
+                                        </p>
+                                    ) : null}
                                     <ProfilePhotoPicker
                                         previewUrl={photoPreview}
                                         photoPreparing={photoPreparing}
@@ -1463,6 +1517,7 @@ export default function PublicSignup({
                                         serverPhotoError={errors.photo_file}
                                         inputId="volunteer_photo"
                                         required={!(isEdit && hasExistingPhoto)}
+                                        onPickStart={markPhotoPickStarted}
                                         onPhotoFile={handlePhotoFileChosen}
                                         onClear={handlePhotoClear}
                                     />

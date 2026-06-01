@@ -72,6 +72,7 @@ interface Props {
     };
     publicVolunteerSignupUrl: string | null;
     detailUrlPattern: string;
+    exportEncaminhadoMissaoUrl?: string | null;
 }
 
 function detailUrlFromPattern(pattern: string, id: number): string {
@@ -93,6 +94,7 @@ export default function Index({
     filters,
     publicVolunteerSignupUrl,
     detailUrlPattern,
+    exportEncaminhadoMissaoUrl = null,
 }: Props) {
     const page = usePage().props as {
         flash?: {
@@ -462,7 +464,22 @@ export default function Index({
             <Head title="Voluntários" />
             <PageHeader
                 title="Voluntários"
-                actions={<AddButton variant="icon" onClick={openCreateModal} title="Novo voluntário">Novo Voluntário</AddButton>}
+                actions={
+                    <div className="flex items-center gap-2">
+                        {exportEncaminhadoMissaoUrl ? (
+                            <a
+                                href={exportEncaminhadoMissaoUrl}
+                                className="inline-flex h-10 cursor-pointer items-center rounded-xl border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                                title="Baixar Excel: departamento Missão (vinculados + encaminhados)"
+                            >
+                                Excel Missão
+                            </a>
+                        ) : null}
+                        <AddButton variant="icon" onClick={openCreateModal} title="Novo voluntário">
+                            Novo Voluntário
+                        </AddButton>
+                    </div>
+                }
             >
                 <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="w-full min-w-0 sm:max-w-md">

@@ -358,6 +358,9 @@ Route::middleware('auth')->group(function () {
 
     // Voluntários (CRUD) — departamento no cadastro
     Route::get('/volunteers', [VolunteerController::class, 'index'])->name('volunteers.index')->middleware('permission:volunteers.view|volunteers.manage');
+    Route::get('/volunteers/export/encaminhado-missao', [VolunteerController::class, 'exportEncaminhadoMissao'])
+        ->name('volunteers.export-encaminhado-missao')
+        ->middleware('permission:volunteers.view|volunteers.manage');
     Route::get('/volunteers/{volunteer}', [VolunteerController::class, 'show'])->name('volunteers.show')->middleware('permission:volunteers.view|volunteers.manage');
     Route::get('/volunteers/{volunteer}/detalhe', [VolunteerController::class, 'detail'])->name('volunteers.detail')->middleware('permission:volunteers.view|volunteers.manage');
     Route::post('/volunteers', [VolunteerController::class, 'store'])->name('volunteers.store')->middleware('permission:volunteers.manage');

@@ -3,7 +3,6 @@ import { Head, useForm, router, Link, usePage } from '@inertiajs/react';
 import {
     PencilIcon,
     TrashIcon,
-    CameraIcon,
     UserGroupIcon,
     EnvelopeIcon,
     LinkIcon,
@@ -26,8 +25,15 @@ import InputError from '@/Components/InputError';
 import { useState, useEffect, useRef, useCallback, FormEventHandler } from 'react';
 import ListSearchHint from '@/Components/ListSearchHint';
 import { useDebouncedServerSearch } from '@/hooks/useDebouncedServerSearch';
-import { PhotoPreviewButton } from '@/Components/PhotoPreview';
+import ProfilePhotoPicker from '@/Components/ProfilePhotoPicker';
 import RecordDetailHeader from '@/Components/RecordDetail/RecordDetailHeader';
+import { compressImageForUpload, ImageCompressError } from '@/utils/compressImageForUpload';
+import {
+    clearPhotoPickPending,
+    markPhotoPickStarted,
+    revokeBlobPreviewUrl,
+    shouldWarnPhotoPickReload,
+} from '@/utils/mobilePhotoPick';
 import UserListAvatar from '@/Components/UserListAvatar';
 import { activeInactivePillClass } from '@/lib/statusBadges';
 import { confirmAction } from '@/utils/confirmDialog';
@@ -213,7 +219,11 @@ export default function Index({
     const departmentsSectionRef = useRef<HTMLDivElement | null>(null);
     const lastLeaderFlagRef = useRef<boolean>(false);
     const lastSavedMemberPhotoRef = useRef<string | null>(null);
+    const memberPhotoBlobRef = useRef<string | null>(null);
     const [avatarPreviewSrc, setAvatarPreviewSrc] = useState<string | null>(null);
+    const [memberPhotoPreparing, setMemberPhotoPreparing] = useState(false);
+    const [memberPhotoClientError, setMemberPhotoClientError] = useState<string | null>(null);
+    const [memberPhotoReloadWarning, setMemberPhotoReloadWarning] = useState(false);
     const [submitMessage, setSubmitMessage] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
     const [leaderShareOpen, setLeaderShareOpen] = useState(false);
     const [leaderShareUrl, setLeaderShareUrl] = useState<string | null>(null);
@@ -340,14 +350,67 @@ export default function Index({
     const closeModal = () => {
         memberFormModeRef.current = { isEditing: false, editingId: null };
         setSubmitMessage(null);
-        if (avatarPreviewSrc?.startsWith('blob:')) {
-            URL.revokeObjectURL(avatarPreviewSrc);
-        }
+        revokeBlobPreviewUrl(memberPhotoBlobRef);
         setIsModalOpen(false);
         setAvatarPreviewSrc(null);
         lastSavedMemberPhotoRef.current = null;
+        setMemberPhotoClientError(null);
+        setMemberPhotoReloadWarning(false);
+        clearPhotoPickPending();
         reset();
         hydratedErrorKey.current = null;
+    };
+
+    useEffect(() => {
+        if (!isModalOpen) {
+            return;
+        }
+        if (shouldWarnPhotoPickReload(data.photo !== null || Boolean(avatarPreviewSrc))) {
+            setMemberPhotoReloadWarning(true);
+        }
+    }, [isModalOpen, data.photo, avatarPreviewSrc]);
+
+    const handleMemberPhotoFile = async (raw: File | null) => {
+        setMemberPhotoClientError(null);
+        setMemberPhotoReloadWarning(false);
+        if (!raw) {
+            setData('photo', null);
+            revokeBlobPreviewUrl(memberPhotoBlobRef);
+            setAvatarPreviewSrc(lastSavedMemberPhotoRef.current);
+            clearPhotoPickPending();
+            return;
+        }
+        setMemberPhotoPreparing(true);
+        try {
+            const prepared = await compressImageForUpload(raw);
+            setData('photo', prepared);
+            revokeBlobPreviewUrl(memberPhotoBlobRef);
+            const preview = URL.createObjectURL(prepared);
+            memberPhotoBlobRef.current = preview;
+            setAvatarPreviewSrc(preview);
+            clearPhotoPickPending();
+        } catch (err) {
+            setData('photo', null);
+            revokeBlobPreviewUrl(memberPhotoBlobRef);
+            setAvatarPreviewSrc(lastSavedMemberPhotoRef.current);
+            setMemberPhotoClientError(
+                err instanceof ImageCompressError
+                    ? err.message
+                    : 'Não foi possível preparar a imagem para envio.',
+            );
+            clearPhotoPickPending();
+        } finally {
+            setMemberPhotoPreparing(false);
+        }
+    };
+
+    const handleMemberPhotoClear = () => {
+        setData('photo', null);
+        revokeBlobPreviewUrl(memberPhotoBlobRef);
+        setAvatarPreviewSrc(lastSavedMemberPhotoRef.current);
+        setMemberPhotoClientError(null);
+        setMemberPhotoReloadWarning(false);
+        clearPhotoPickPending();
     };
 
     const submit: FormEventHandler = (e) => {
@@ -1031,60 +1094,29 @@ export default function Index({
                         <section className="rounded-2xl border border-zinc-200 bg-zinc-50/90 p-4 dark:border-zinc-700 dark:bg-zinc-800/40">
                             <p className="text-sm font-semibold text-zinc-900 dark:text-white">Foto</p>
                             <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                Aparece no app e no painel. No celular pode usar a câmera; no computador, escolha uma imagem (máx. 4 MB).
+                                Aparece no app e no painel. Opcional; no celular, prefira escolher na galeria.
                             </p>
-                            <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start">
-                                {avatarPreviewSrc ? (
-                                    <PhotoPreviewButton
-                                        photoUrl={avatarPreviewSrc}
-                                        name={data.name?.trim() || memberForLgpd?.name}
-                                        className="h-20 w-20 shrink-0 rounded-2xl border border-zinc-200 dark:border-zinc-600"
-                                        imageClassName="h-full w-full rounded-2xl object-cover"
-                                        stopPropagation={false}
-                                    />
-                                ) : (
-                                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800">
-                                        <CameraIcon className="h-8 w-8 text-zinc-400" aria-hidden />
-                                    </div>
-                                )}
-                                <div className="min-w-0 flex-1 space-y-2">
-                                    <input
-                                        id="member_face_photo"
-                                        type="file"
-                                        accept="image/*"
-                                        capture="user"
-                                        className="block w-full text-sm text-zinc-600 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-900 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white hover:file:bg-zinc-800 dark:text-zinc-400 dark:file:bg-zinc-100 dark:file:text-zinc-900"
-                                        onChange={(e) => {
-                                            const file = e.target.files?.[0] ?? null;
-                                            if (avatarPreviewSrc?.startsWith('blob:')) {
-                                                URL.revokeObjectURL(avatarPreviewSrc);
-                                            }
-                                            setData('photo', file);
-                                            if (file) {
-                                                setAvatarPreviewSrc(URL.createObjectURL(file));
-                                            } else {
-                                                setAvatarPreviewSrc(lastSavedMemberPhotoRef.current);
-                                            }
-                                            e.target.value = '';
-                                        }}
-                                    />
-                                    {data.photo ? (
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                if (avatarPreviewSrc?.startsWith('blob:')) {
-                                                    URL.revokeObjectURL(avatarPreviewSrc);
-                                                }
-                                                setData('photo', null);
-                                                setAvatarPreviewSrc(lastSavedMemberPhotoRef.current);
-                                            }}
-                                            className="text-xs font-semibold text-primary-600 underline dark:text-primary-400"
-                                        >
-                                            Remover foto nova
-                                        </button>
-                                    ) : null}
-                                    <InputError message={errors.photo} className="!mt-1" />
-                                </div>
+                            {memberPhotoReloadWarning ? (
+                                <p
+                                    className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-100"
+                                    role="status"
+                                >
+                                    Se a tela recarregou ao escolher a foto, toque em <strong>Selecionar foto</strong> de novo
+                                    antes de salvar.
+                                </p>
+                            ) : null}
+                            <div className="mt-4">
+                                <ProfilePhotoPicker
+                                    previewUrl={avatarPreviewSrc}
+                                    photoPreparing={memberPhotoPreparing}
+                                    clientError={memberPhotoClientError}
+                                    serverPhotoError={errors.photo}
+                                    required={false}
+                                    inputId="member_face_photo"
+                                    onPhotoFile={handleMemberPhotoFile}
+                                    onClear={handleMemberPhotoClear}
+                                    onPickStart={markPhotoPickStarted}
+                                />
                             </div>
                         </section>
 

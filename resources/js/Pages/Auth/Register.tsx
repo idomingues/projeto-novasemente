@@ -7,8 +7,14 @@ import PasswordInput from '@/Components/PasswordInput';
 import TextInput from '@/Components/TextInput';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { compressImageForUpload, ImageCompressError } from '@/utils/compressImageForUpload';
+import {
+    clearPhotoPickPending,
+    markPhotoPickStarted,
+    revokeBlobPreviewUrl,
+    shouldWarnPhotoPickReload,
+} from '@/utils/mobilePhotoPick';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import { FormEventHandler, useMemo, useState } from 'react';
+import { FormEventHandler, useEffect, useMemo, useRef, useState } from 'react';
 
 interface InvitationProps {
     email: string | null;
@@ -91,27 +97,48 @@ export default function Register({ invitation, ministryVolunteerInvite = null }:
     const [photoPreparing, setPhotoPreparing] = useState(false);
     const [photoClientError, setPhotoClientError] = useState<string | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+    const [photoReloadWarning, setPhotoReloadWarning] = useState(false);
+    const photoPreviewObjectUrlRef = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (shouldWarnPhotoPickReload(data.photo_file !== null || Boolean(photoPreview))) {
+            setPhotoReloadWarning(true);
+        }
+    }, [data.photo_file, photoPreview]);
+
+    useEffect(() => {
+        return () => revokeBlobPreviewUrl(photoPreviewObjectUrlRef);
+    }, []);
 
     const handlePhotoFile = async (raw: File | null) => {
         setPhotoClientError(null);
+        setPhotoReloadWarning(false);
         if (!raw) {
             setData('photo_file', null);
+            revokeBlobPreviewUrl(photoPreviewObjectUrlRef);
             setPhotoPreview(null);
+            clearPhotoPickPending();
             return;
         }
         setPhotoPreparing(true);
         try {
             const prepared = await compressImageForUpload(raw);
             setData('photo_file', prepared);
-            setPhotoPreview(URL.createObjectURL(prepared));
+            revokeBlobPreviewUrl(photoPreviewObjectUrlRef);
+            const preview = URL.createObjectURL(prepared);
+            photoPreviewObjectUrlRef.current = preview;
+            setPhotoPreview(preview);
+            clearPhotoPickPending();
         } catch (err) {
             setData('photo_file', null);
+            revokeBlobPreviewUrl(photoPreviewObjectUrlRef);
             setPhotoPreview(null);
             const msg =
                 err instanceof ImageCompressError
                     ? err.message
                     : 'Não foi possível preparar a imagem para envio.';
             setPhotoClientError(msg);
+            clearPhotoPickPending();
         } finally {
             setPhotoPreparing(false);
         }
@@ -119,8 +146,11 @@ export default function Register({ invitation, ministryVolunteerInvite = null }:
 
     const handlePhotoClear = () => {
         setData('photo_file', null);
+        revokeBlobPreviewUrl(photoPreviewObjectUrlRef);
         setPhotoPreview(null);
         setPhotoClientError(null);
+        setPhotoReloadWarning(false);
+        clearPhotoPickPending();
     };
 
     return (
@@ -172,6 +202,15 @@ export default function Register({ invitation, ministryVolunteerInvite = null }:
                 <form noValidate onSubmit={submit} className="space-y-5 pb-6 sm:pb-8">
                     <div>
                         <InputLabel value="Foto *" />
+                        {photoReloadWarning ? (
+                            <p
+                                className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-100"
+                                role="status"
+                            >
+                                Se a tela recarregou ao escolher a foto, toque em <strong>Escolher foto</strong> de novo e
+                                selecione a imagem na galeria antes de enviar o cadastro.
+                            </p>
+                        ) : null}
                         <div className="mt-2">
                             <ProfilePhotoPicker
                                 previewUrl={photoPreview}
@@ -179,9 +218,10 @@ export default function Register({ invitation, ministryVolunteerInvite = null }:
                                 clientError={photoClientError}
                                 serverPhotoError={fieldError('photo_file')}
                                 inputId="photo_file"
-                                description="Tire ou envie uma foto. A imagem é comprimida automaticamente quando você envia um arquivo."
+                                description="No celular, prefira escolher na galeria. A imagem é comprimida automaticamente."
                                 onPhotoFile={handlePhotoFile}
                                 onClear={handlePhotoClear}
+                                onPickStart={markPhotoPickStarted}
                             />
                         </div>
                     </div>

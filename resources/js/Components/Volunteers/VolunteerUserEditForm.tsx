@@ -6,8 +6,10 @@ import PasswordInput from '@/Components/PasswordInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SelectInput from '@/Components/SelectInput';
 import TextInput from '@/Components/TextInput';
-import { PhotoPreviewButton } from '@/Components/PhotoPreview';
+import ProfilePhotoPicker from '@/Components/ProfilePhotoPicker';
 import { appRoleLabel } from '@/lib/appRoleLabels';
+import { compressImageForUpload, ImageCompressError } from '@/utils/compressImageForUpload';
+import { clearPhotoPickPending, markPhotoPickStarted, revokeBlobPreviewUrl } from '@/utils/mobilePhotoPick';
 import {
     buildVolunteerEditFormData,
     volunteerEditFormDataFromDetail,
@@ -20,7 +22,6 @@ import {
     applyVolunteerModalFormErrors,
     submitVolunteerModalFormDataPut,
 } from '@/utils/volunteerPipelineModalSave';
-import { CameraIcon } from '@heroicons/react/24/outline';
 import { usePage } from '@inertiajs/react';
 import { FormEventHandler, useEffect, useRef, useState } from 'react';
 
@@ -56,7 +57,10 @@ export default function VolunteerUserEditForm({
     const savedPhoto =
         volunteer.photo_url?.trim() || volunteer.user?.photo_url?.trim() || null;
     const lastSavedPhotoRef = useRef<string | null>(savedPhoto);
+    const photoBlobRef = useRef<string | null>(null);
     const [avatarPreviewSrc, setAvatarPreviewSrc] = useState<string | null>(savedPhoto);
+    const [photoPreparing, setPhotoPreparing] = useState(false);
+    const [photoClientError, setPhotoClientError] = useState<string | null>(null);
 
     const editingUserIsSuperAdmin = volunteerUserIsSuperAdmin(volunteer);
     const editingUserIsPanelTeam = volunteerUserIsPanelTeam(volunteer);
@@ -71,11 +75,54 @@ export default function VolunteerUserEditForm({
         setSavedMessage(null);
         const photo = volunteer.photo_url?.trim() || volunteer.user?.photo_url?.trim() || null;
         lastSavedPhotoRef.current = photo;
+        revokeBlobPreviewUrl(photoBlobRef);
         setAvatarPreviewSrc(photo);
+        setPhotoClientError(null);
     }, [volunteer]);
 
     const setField = <K extends keyof VolunteerEditFormData>(key: K, value: VolunteerEditFormData[K]) => {
         setData((prev) => ({ ...prev, [key]: value }));
+    };
+
+    const handlePhotoFile = async (raw: File | null) => {
+        setPhotoClientError(null);
+        if (!raw) {
+            setField('photo', null);
+            revokeBlobPreviewUrl(photoBlobRef);
+            setAvatarPreviewSrc(lastSavedPhotoRef.current);
+            clearPhotoPickPending();
+            return;
+        }
+        setPhotoPreparing(true);
+        try {
+            const prepared = await compressImageForUpload(raw);
+            setField('photo', prepared);
+            revokeBlobPreviewUrl(photoBlobRef);
+            const preview = URL.createObjectURL(prepared);
+            photoBlobRef.current = preview;
+            setAvatarPreviewSrc(preview);
+            clearPhotoPickPending();
+        } catch (err) {
+            setField('photo', null);
+            revokeBlobPreviewUrl(photoBlobRef);
+            setAvatarPreviewSrc(lastSavedPhotoRef.current);
+            setPhotoClientError(
+                err instanceof ImageCompressError
+                    ? err.message
+                    : 'Não foi possível preparar a imagem para envio.',
+            );
+            clearPhotoPickPending();
+        } finally {
+            setPhotoPreparing(false);
+        }
+    };
+
+    const handlePhotoClear = () => {
+        setField('photo', null);
+        revokeBlobPreviewUrl(photoBlobRef);
+        setAvatarPreviewSrc(lastSavedPhotoRef.current);
+        setPhotoClientError(null);
+        clearPhotoPickPending();
     };
 
     const submit: FormEventHandler = async (e) => {
@@ -117,39 +164,19 @@ export default function VolunteerUserEditForm({
 
             <section className="rounded-2xl border border-zinc-200 bg-zinc-50/90 p-4 dark:border-zinc-700 dark:bg-zinc-800/40">
                 <p className="text-sm font-semibold text-zinc-900 dark:text-white">Foto</p>
-                <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start">
-                    {avatarPreviewSrc ? (
-                        <PhotoPreviewButton
-                            photoUrl={avatarPreviewSrc}
-                            name={data.name?.trim() || volunteer.name}
-                            className="h-20 w-20 shrink-0 rounded-2xl border border-zinc-200 dark:border-zinc-600"
-                            imageClassName="h-full w-full rounded-2xl object-cover"
-                            stopPropagation={false}
-                        />
-                    ) : (
-                        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800">
-                            <CameraIcon className="h-8 w-8 text-zinc-400" aria-hidden />
-                        </div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                        <input
-                            id={`${idPrefix}_photo`}
-                            type="file"
-                            accept="image/*"
-                            capture="user"
-                            className="block w-full cursor-pointer text-sm text-zinc-600 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-zinc-900 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white dark:file:bg-zinc-100 dark:file:text-zinc-900"
-                            onChange={(e) => {
-                                const file = e.target.files?.[0] ?? null;
-                                if (avatarPreviewSrc?.startsWith('blob:')) {
-                                    URL.revokeObjectURL(avatarPreviewSrc);
-                                }
-                                setField('photo', file);
-                                setAvatarPreviewSrc(file ? URL.createObjectURL(file) : lastSavedPhotoRef.current);
-                                e.target.value = '';
-                            }}
-                        />
-                        <InputError message={errors.photo} className="!mt-1" />
-                    </div>
+                <div className="mt-4">
+                    <ProfilePhotoPicker
+                        previewUrl={avatarPreviewSrc}
+                        photoPreparing={photoPreparing}
+                        clientError={photoClientError}
+                        serverPhotoError={errors.photo}
+                        required={false}
+                        inputId={`${idPrefix}_photo`}
+                        description="A imagem é redimensionada e comprimida automaticamente antes do envio."
+                        onPhotoFile={handlePhotoFile}
+                        onClear={handlePhotoClear}
+                        onPickStart={markPhotoPickStarted}
+                    />
                 </div>
             </section>
 
