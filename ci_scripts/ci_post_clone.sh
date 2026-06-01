@@ -123,6 +123,7 @@ echo "==> Installing JS dependencies (npm ci)"
 npm ci --no-audit --no-fund
 
 echo "==> Xcode Cloud: building web bundle"
+export NODE_OPTIONS="--max-old-space-size=4096"
 npm run build
 
 echo "==> Xcode Cloud: syncing Capacitor native projects"

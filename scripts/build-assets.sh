@@ -10,6 +10,7 @@ if ! command -v node &>/dev/null; then
   exit 1
 fi
 rm -rf node_modules
-npm ci
+npm ci --no-fund
+export NODE_OPTIONS="--max-old-space-size=4096"
 npm run build
 echo "Build concluído. Verifique: ls -la public/build/"

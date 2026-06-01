@@ -3,7 +3,7 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "build": "tsc && vite build",
+        "build": "node --max-old-space-size=4096 ./node_modules/typescript/bin/tsc && node --max-old-space-size=4096 ./node_modules/vite/bin/vite.js build",
         "lint:pt-br": "bash scripts/check-pt-br.sh",
         "dev": "vite",
         "serve": "concurrently -n \"artisan,vite\" -c \"blue,green\" \"bash scripts/artisan-serve.sh\" \"npm run dev\"",
