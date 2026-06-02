@@ -1,5 +1,4 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import VolunteerSignupStatusCard from '@/Components/Volunteers/VolunteerSignupStatusCard';
 import { PageProps } from '@/types';
 import type { VolunteerSignupCompletion } from '@/utils/volunteerSignupCompletion';
 import { Head, Link, usePage } from '@inertiajs/react';
@@ -21,7 +20,6 @@ export default function Edit({
         auth?: { permissions?: string[]; user?: { is_volunteer?: boolean } };
     };
     const perms = auth?.permissions ?? [];
-    const showVolunteerSignupPrompt = volunteerSignupCompletion !== null;
     /** Suporte administrativo fica só no menu ADM (super admin); no perfil web usamos sempre o fluxo da app. */
     const supportRouteName = 'mobile.support.index';
     const showPastorsCadastro = canAccessPastorsCadastro(auth?.permissions);
@@ -38,10 +36,6 @@ export default function Edit({
 
             <div className="py-12">
                 <div className="mx-auto max-w-7xl space-y-6 sm:px-6 lg:px-8">
-                    {showVolunteerSignupPrompt ? (
-                        <VolunteerSignupStatusCard completion={volunteerSignupCompletion} variant="desktop" />
-                    ) : null}
-
                     <div className="bg-white dark:bg-zinc-800 p-4 shadow sm:rounded-lg sm:p-8">
                         <UpdateProfileInformationForm
                             mustVerifyEmail={mustVerifyEmail}

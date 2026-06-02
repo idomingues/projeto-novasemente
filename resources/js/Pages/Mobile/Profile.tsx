@@ -215,17 +215,6 @@ export default function MobileProfile({ church, user, profileCounts, volunteerSi
                   },
               ] as Row[])
             : []),
-        ...(volunteerSignupCompletion !== null && route().has('volunteers.self-signup.edit')
-            ? ([
-                  {
-                      title: 'Cadastro de voluntário',
-                      description: 'Complete as perguntas que faltam no seu cadastro',
-                      icon: UserGroupIcon,
-                      href: route('volunteers.self-signup.edit'),
-                      tone: 'member',
-                  },
-              ] as Row[])
-            : []),
         ...(route().has('mobile.solicitations.hub')
             ? ([
                   {

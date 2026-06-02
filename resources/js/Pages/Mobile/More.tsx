@@ -11,7 +11,6 @@ import {
     BookOpenIcon,
     UserGroupIcon,
     UserCircleIcon,
-    UserPlusIcon,
     FilmIcon,
     HandRaisedIcon,
     NewspaperIcon,
@@ -75,12 +74,6 @@ const items: MoreMenuItem[] = [
     { name: 'Nossos pastores', description: 'Conheça a equipe pastoral', route: 'mobile.pastors', icon: UserCircleIcon },
     { name: 'Quem somos', description: 'História e significado do nome', route: 'mobile.quem-somos', icon: UserGroupIcon },
     { name: 'Em que acreditamos', description: '28 princípios de fé (IASD)', route: 'mobile.beliefs', icon: BookOpenIcon },
-    {
-        name: 'Voluntário',
-        description: 'Seja um voluntário na Nova Semente',
-        route: 'volunteers.public-signup.page',
-        icon: UserPlusIcon,
-    },
     { name: 'Séries', description: 'Veja todas as séries já passadas na Nova Semente', route: 'mobile.acervo', icon: PlayCircleIcon },
     { name: 'Classe Começos', description: 'Estudo bíblico presencial ou on-line', route: 'varios.classe-comecos', icon: AcademicCapIcon },
     {

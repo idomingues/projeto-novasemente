@@ -1,5 +1,4 @@
 import MobileLayout from '@/Layouts/MobileLayout';
-import VolunteerSignupStatusCard from '@/Components/Volunteers/VolunteerSignupStatusCard';
 import type { VolunteerSignupCompletion } from '@/utils/volunteerSignupCompletion';
 import { Head, Link } from '@inertiajs/react';
 import DeleteUserForm from '@/Pages/Profile/Partials/DeleteUserForm';
@@ -13,8 +12,6 @@ interface Props {
 }
 
 export default function MobileProfileEdit({ mustVerifyEmail, status, volunteerSignupCompletion = null }: Props) {
-    const showVolunteerSignupPrompt = volunteerSignupCompletion !== null;
-
     return (
         <MobileLayout>
             <Head title="Editar perfil" />
@@ -29,8 +26,6 @@ export default function MobileProfileEdit({ mustVerifyEmail, status, volunteerSi
                 </div>
 
                 <div className="space-y-4">
-                    {showVolunteerSignupPrompt ? <VolunteerSignupStatusCard completion={volunteerSignupCompletion} /> : null}
-
                     <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
                         <UpdateProfileInformationForm mustVerifyEmail={mustVerifyEmail} status={status} className="max-w-xl" />
                     </div>

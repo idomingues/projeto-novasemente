@@ -1,5 +1,4 @@
 import MobileLayout from '@/Layouts/MobileLayout';
-import VolunteerSignupIncompleteBanner from '@/Components/Volunteers/VolunteerSignupIncompleteBanner';
 import type { VolunteerSignupCompletion } from '@/utils/volunteerSignupCompletion';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
@@ -11,7 +10,6 @@ import {
     MusicalNoteIcon,
     PhotoIcon,
     SparklesIcon,
-    UserPlusIcon,
 } from '@heroicons/react/24/outline';
 import type { ComponentType, SVGProps } from 'react';
 import CoverWithVideoLink from '@/Components/News/CoverWithVideoLink';
@@ -159,12 +157,6 @@ const quickActionsGuest: QuickAction[] = [
         icon: BookOpenIcon,
     },
     {
-        label: 'Seja um voluntário',
-        subtitle: 'Venha servir na Nova Semente',
-        route: 'volunteers.public-signup.page',
-        icon: UserPlusIcon,
-    },
-    {
         label: 'Séries',
         subtitle: 'Conheça todas as nossas séries',
         route: 'mobile.acervo',
@@ -255,9 +247,6 @@ export default function MobileHome({
                             Você já está conectado(a). Explore notícias, eventos e o restante do aplicativo.
                         </p>
                     </div>
-                ) : null}
-                {volunteerSignupCompletion ? (
-                    <VolunteerSignupIncompleteBanner completion={volunteerSignupCompletion} />
                 ) : null}
                 <header className="flex items-center justify-between gap-4">
                     <div className="min-w-0">
