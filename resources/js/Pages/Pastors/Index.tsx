@@ -15,6 +15,7 @@ import { confirmAction } from '@/utils/confirmDialog';
 import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import ImageDownloadButton from '@/Components/ImageDownloadButton';
 import SelectInput from '@/Components/SelectInput';
+import { GALLERY_IMAGE_ACCEPT } from '@/utils/mobilePhotoPick';
 
 interface PastorRow {
     id: number;
@@ -329,7 +330,7 @@ export default function PastorsIndex({ pastors, canManage, linkableUsers }: Prop
                                     <input
                                         id="pastor_photo"
                                         type="file"
-                                        accept="image/jpeg,image/png,image/webp,image/gif"
+                                        accept={GALLERY_IMAGE_ACCEPT}
                                         onChange={onPhotoChange}
                                         className="block w-full text-sm text-zinc-600 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-200 file:px-3 file:py-2 file:text-sm file:font-medium file:text-zinc-800 hover:file:bg-zinc-300 dark:text-zinc-400 dark:file:bg-zinc-700 dark:file:text-zinc-100 dark:hover:file:bg-zinc-600"
                                     />

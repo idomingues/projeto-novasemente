@@ -5,9 +5,10 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import ProfilePhotoPicker from '@/Components/ProfilePhotoPicker';
 import TextInput from '@/Components/TextInput';
 import { compressImageForUpload, ImageCompressError } from '@/utils/compressImageForUpload';
+import { markPhotoPickStarted, shouldWarnPhotoPickReload } from '@/utils/mobilePhotoPick';
 import { Transition } from '@headlessui/react';
 import { Link, useForm, usePage } from '@inertiajs/react';
-import { FormEventHandler, useMemo, useState } from 'react';
+import { FormEventHandler, useEffect, useMemo, useState } from 'react';
 
 interface VolunteerMinistry {
     id: number;
@@ -70,6 +71,13 @@ export default function UpdateProfileInformation({
     const [photoPreparing, setPhotoPreparing] = useState(false);
     const [photoClientError, setPhotoClientError] = useState<string | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(user.photo_url ?? null);
+    const [photoPickReloadWarn, setPhotoPickReloadWarn] = useState(false);
+
+    useEffect(() => {
+        setPhotoPickReloadWarn(
+            shouldWarnPhotoPickReload(data.photo_file !== null || Boolean(photoPreview)),
+        );
+    }, [data.photo_file, photoPreview]);
 
     const errorMessages = useMemo(() => {
         const list: string[] = [];
@@ -155,6 +163,15 @@ export default function UpdateProfileInformation({
                 <div>
                     <InputLabel value="Foto de perfil" />
                     <div className="mt-2">
+                        {photoPickReloadWarn ? (
+                            <p
+                                className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-100"
+                                role="status"
+                            >
+                                O app pode ter recarregado ao abrir a câmera. Escolha a foto de novo (de preferência pela
+                                galeria).
+                            </p>
+                        ) : null}
                         <ProfilePhotoPicker
                             previewUrl={photoPreview}
                             photoPreparing={photoPreparing}
@@ -162,7 +179,7 @@ export default function UpdateProfileInformation({
                             serverPhotoError={errors.photo_file}
                             required={false}
                             inputId="photo_file"
-                            description="Tire ou envie uma nova foto. Fotos grandes são reduzidas automaticamente (cerca de 500 KB) para o envio no celular."
+                            onPickStart={markPhotoPickStarted}
                             onPhotoFile={handlePhotoFile}
                             onClear={handlePhotoClear}
                         />

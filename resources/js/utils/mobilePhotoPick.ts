@@ -1,3 +1,7 @@
+/** MIME e extensões para galeria no celular (inclui HEIC/HEIF do iOS). Sem `capture` no input. */
+export const GALLERY_IMAGE_ACCEPT =
+    'image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif';
+
 /** Celular / app nativo (Capacitor): abrir câmera costuma recarregar o WebView. */
 export function prefersGalleryPhotoPicker(): boolean {
     if (typeof window === 'undefined') {

@@ -12,6 +12,7 @@ import Checkbox from '@/Components/Checkbox';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { MagnifyingGlassIcon, SparklesIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import { FormEventHandler, useEffect, useMemo, useState } from 'react';
+import { GALLERY_IMAGE_ACCEPT } from '@/utils/mobilePhotoPick';
 
 interface Listing {
     id: number;
@@ -413,7 +414,7 @@ export default function SharedTalentIndex({
                             <div className="min-w-0 flex-1 space-y-2">
                                 <input
                                     type="file"
-                                    accept="image/*"
+                                    accept={GALLERY_IMAGE_ACCEPT}
                                     className="block w-full text-sm text-zinc-900 file:mr-4 file:rounded-full file:border-0 file:bg-zinc-900 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-white hover:file:bg-zinc-800 dark:text-zinc-100 dark:file:bg-zinc-100 dark:file:text-zinc-900"
                                     onChange={(e) => {
                                         const file = e.currentTarget.files?.[0] ?? null;

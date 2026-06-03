@@ -30,6 +30,7 @@ import { EVENT_COVER_SPECS } from '@/constants/mediaCoverSpecs';
 import { useState, FormEventHandler, useMemo } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
 import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
+import { GALLERY_IMAGE_ACCEPT } from '@/utils/mobilePhotoPick';
 
 /** Cores sugeridas (hex) — complementam o código livre e o seletor nativo. */
 const EVENT_COLOR_PRESETS = [
@@ -792,7 +793,7 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
                                         <input
                                             id="image_file"
                                             type="file"
-                                            accept="image/*"
+                                            accept={GALLERY_IMAGE_ACCEPT}
                                             aria-describedby="event_cover_specs"
                                             onChange={(e) => {
                                                 const file = e.target.files?.[0] ?? null;

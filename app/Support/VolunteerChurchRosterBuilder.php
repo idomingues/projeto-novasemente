@@ -128,9 +128,15 @@ class VolunteerChurchRosterBuilder
                 ->count();
         }
 
+        $useAdminWorkflowStages = (bool) $user?->can('volunteers.manage');
+        $adminWorkflowStageIds = VolunteerPipelineBootstrap::adminWorkflowStageIdsForChurch($churchId);
         $stageCountsById = self::filteredStageCountsById($request, $churchId, $user);
         $stages = VolunteerPipelineStage::query()
             ->where('church_id', $churchId)
+            ->when(! $useAdminWorkflowStages, fn ($q) => $q->whereNotIn(
+                'id',
+                $adminWorkflowStageIds === [] ? [-1] : $adminWorkflowStageIds,
+            ))
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get(['id', 'name', 'sort_order'])
@@ -179,6 +185,14 @@ class VolunteerChurchRosterBuilder
                     $pipe?->admin_workflow_stage_id,
                     $pipe?->stage_id,
                 );
+                $leaderStageId = VolunteerPipelineBootstrap::leaderVisiblePipelineStageId($churchId, $pipe?->stage_id);
+                $leaderStage = $leaderStageId !== null
+                    ? VolunteerPipelineStage::query()->where('church_id', $churchId)->find($leaderStageId)
+                    : null;
+                $rosterStageId = $user?->can('volunteers.manage') ? $stage?->id : $leaderStageId;
+                $rosterStageName = $user?->can('volunteers.manage')
+                    ? ($stage?->name ?? 'Não definido')
+                    : ($leaderStage?->name ?? 'Não definido');
 
                 return [
                     'id' => $v->id,
@@ -189,8 +203,8 @@ class VolunteerChurchRosterBuilder
                     'phone' => $mask['phone'],
                     'active' => (bool) $v->active,
                     'createdAt' => $v->created_at?->toIso8601String(),
-                    'stageId' => $stage?->id,
-                    'stageName' => $stage?->name ?? 'Não definido',
+                    'stageId' => $rosterStageId,
+                    'stageName' => $rosterStageName,
                     'adminWorkflowStageId' => $adminWorkflowStageId,
                     'adminWorkflowStageName' => $effectiveAdminWorkflowStageId !== null
                         ? ($pipe?->adminWorkflowStage?->name ?? $stage?->name)
@@ -278,19 +292,66 @@ class VolunteerChurchRosterBuilder
         $q->columns = null;
 
         // Atenção: a filteredRosterQuery já restringe app_access_only=false no Volunteer.
-        $rows = DB::query()
+        $adminWorkflowStageIds = VolunteerPipelineBootstrap::adminWorkflowStageIdsForChurch($churchId);
+        $useAdminWorkflowCounts = $user !== null && $user->can('volunteers.manage')
+            && Schema::hasColumn('volunteer_church_pipelines', 'admin_workflow_stage_id');
+
+        $baseJoin = DB::query()
             ->fromSub($q, 'v')
             ->join('volunteer_church_pipelines as p', function ($join) use ($churchId) {
                 $join->on('p.volunteer_id', '=', 'v.id')
                     ->where('p.church_id', '=', $churchId)
                     ->whereNull('p.staff_archived_at');
-            })
+            });
+
+        $out = [];
+
+        if ($useAdminWorkflowCounts) {
+            $adminRows = (clone $baseJoin)
+                ->selectRaw('p.admin_workflow_stage_id as stage_id, COUNT(*) as c')
+                ->whereNotNull('p.admin_workflow_stage_id')
+                ->groupBy('p.admin_workflow_stage_id')
+                ->get();
+
+            foreach ($adminRows as $r) {
+                $sid = (int) ($r->stage_id ?? 0);
+                if ($sid <= 0) {
+                    continue;
+                }
+                $out[$sid] = (int) ($r->c ?? 0);
+            }
+
+            if ($adminWorkflowStageIds !== []) {
+                $legacyRows = (clone $baseJoin)
+                    ->selectRaw('p.stage_id as stage_id, COUNT(*) as c')
+                    ->whereNull('p.admin_workflow_stage_id')
+                    ->whereIn('p.stage_id', $adminWorkflowStageIds)
+                    ->whereNotNull('p.stage_id')
+                    ->groupBy('p.stage_id')
+                    ->get();
+
+                foreach ($legacyRows as $r) {
+                    $sid = (int) ($r->stage_id ?? 0);
+                    if ($sid <= 0) {
+                        continue;
+                    }
+                    $out[$sid] = ($out[$sid] ?? 0) + (int) ($r->c ?? 0);
+                }
+            }
+
+            return $out;
+        }
+
+        $rows = (clone $baseJoin)
             ->selectRaw('p.stage_id as stage_id, COUNT(*) as c')
             ->whereNotNull('p.stage_id')
+            ->when(
+                $adminWorkflowStageIds !== [],
+                fn ($query) => $query->whereNotIn('p.stage_id', $adminWorkflowStageIds),
+            )
             ->groupBy('p.stage_id')
             ->get();
 
-        $out = [];
         foreach ($rows as $r) {
             $sid = (int) ($r->stage_id ?? 0);
             if ($sid <= 0) {

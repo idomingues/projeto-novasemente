@@ -55,7 +55,7 @@ export const adminSidebarRoutePermissions: Record<string, string[]> = {
     'ministry-lead.volunteer-requests.panel': [],
     'ministry-lead.volunteer-requests.messages.store': [],
     'ministry-lead.volunteers.pipeline.stages.store': ['volunteers.ministry_operate', 'volunteers.manage'],
-    'ministry-lead.volunteers.pipeline.detail': ['volunteers.ministry_operate', 'volunteers.manage'],
+    'ministry-lead.volunteers.pipeline.detail': ['volunteers.view', 'volunteers.manage', 'volunteers.ministry_operate'],
     'ministry-lead.volunteers.pipeline.notes.store': ['volunteers.ministry_operate', 'volunteers.manage'],
     'ministry-lead.volunteers.pipeline.stage': ['volunteers.ministry_operate', 'volunteers.manage'],
     'ministry-lead.volunteers.board': ['volunteers.ministry_operate', 'volunteers.manage'],

@@ -14,6 +14,7 @@ import { FormEventHandler, useEffect, useMemo, useState } from 'react';
 import { DONATION_CAMPAIGN_COVER_SPECS } from '@/constants/mediaCoverSpecs';
 import { confirmAction } from '@/utils/confirmDialog';
 import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
+import { GALLERY_IMAGE_ACCEPT } from '@/utils/mobilePhotoPick';
 
 interface CampaignPhoto {
     id: number;
@@ -492,7 +493,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                                 <input
                                     id="cover_image"
                                     type="file"
-                                    accept="image/jpeg,image/png,image/webp,image/gif"
+                                    accept={GALLERY_IMAGE_ACCEPT}
                                     aria-describedby="donation_campaign_cover_specs"
                                     onChange={(e) => setData('cover_image', e.target.files?.[0] ?? null)}
                                     className="block w-full cursor-pointer rounded-xl border border-zinc-300 bg-white px-3 py-3 text-sm text-zinc-700 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-zinc-900 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-zinc-800 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:file:bg-zinc-100 dark:file:text-zinc-900"
@@ -682,7 +683,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                         <input
                             id="manual_receipt"
                             type="file"
-                            accept="image/jpeg,image/png,image/webp,image/gif"
+                            accept={GALLERY_IMAGE_ACCEPT}
                             onChange={(e) => manualForm.setData('receipt', e.target.files?.[0] ?? null)}
                             className="mt-1 block w-full text-sm"
                         />
@@ -813,7 +814,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                             </div>
                             <input
                                 type="file"
-                                accept="image/*"
+                                accept={GALLERY_IMAGE_ACCEPT}
                                 className="mt-3 block w-full text-sm"
                                 onChange={(e) => {
                                     const file = e.target.files?.[0];
@@ -905,7 +906,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                                 </div>
                                 <input
                                     type="file"
-                                    accept="image/*"
+                                    accept={GALLERY_IMAGE_ACCEPT}
                                     className="mt-3 block w-full text-sm"
                                     onChange={(e) => {
                                         const file = e.target.files?.[0];

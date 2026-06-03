@@ -188,6 +188,11 @@ class VolunteerManagementCenterController extends Controller
             'canManageVolunteerRequests' => $canManageVolunteerRequests,
             'canPipelineMutate' => $user && ($user->can('volunteers.manage') || $user->can('volunteers.ministry_operate')),
             'canVolunteerManage' => $user && $user->can('volunteers.manage'),
+            'canViewVolunteerNotes' => $user && (
+                $user->can('volunteers.view')
+                || $user->can('volunteers.manage')
+                || $user->can('volunteers.ministry_operate')
+            ),
             'volunteersAdminUrl' => route('volunteers.index'),
         ]);
     }

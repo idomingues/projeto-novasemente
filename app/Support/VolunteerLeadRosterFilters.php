@@ -239,7 +239,18 @@ class VolunteerLeadRosterFilters
             return;
         }
         if ($sid !== null && $sid !== '' && $sid !== self::PIPELINE_STAGE_ARCHIVED && is_numeric($sid)) {
-            $q->whereHas('churchPipelines', fn ($p) => $p->where('church_id', $churchId)->where('stage_id', (int) $sid));
+            $stageId = (int) $sid;
+            $q->whereHas('churchPipelines', function ($p) use ($churchId, $stageId) {
+                $p->where('church_id', $churchId);
+                if (VolunteerPipelineBootstrap::isAdminWorkflowStageId($churchId, $stageId)) {
+                    $p->where(function ($sub) use ($stageId) {
+                        $sub->where('admin_workflow_stage_id', $stageId)
+                            ->orWhere('stage_id', $stageId);
+                    });
+                } else {
+                    $p->where('stage_id', $stageId);
+                }
+            });
         }
     }
 

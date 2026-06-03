@@ -15,6 +15,7 @@ import { FormEventHandler, useMemo, useState } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
 import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import { compressImageForUpload, ImageCompressError } from '@/utils/compressImageForUpload';
+import { GALLERY_IMAGE_ACCEPT } from '@/utils/mobilePhotoPick';
 
 type WallAlbumRow = {
     id: number;
@@ -317,7 +318,7 @@ export default function MissionWallAdmin({ items, canManage, hasDriveApiKey }: P
                                     <input
                                         id="wall_cover_image_file"
                                         type="file"
-                                        accept="image/*"
+                                        accept={GALLERY_IMAGE_ACCEPT}
                                         className="mt-1 block w-full text-sm text-zinc-700 dark:text-zinc-200 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-900 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-zinc-800 dark:file:bg-white dark:file:text-black dark:hover:file:bg-zinc-100"
                                         onChange={async (e) => {
                                             const raw = e.currentTarget.files?.[0] ?? null;

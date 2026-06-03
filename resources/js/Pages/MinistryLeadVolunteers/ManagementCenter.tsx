@@ -20,6 +20,7 @@ import MinistryLeaderStatusSection, {
 } from '@/Components/Volunteers/MinistryLeaderStatusSection';
 import VolunteerServeMinistriesPicker from '@/Components/Volunteers/VolunteerServeMinistriesPicker';
 import VolunteerUsuarioAppTabPanel from '@/Components/Volunteers/VolunteerUsuarioAppTabPanel';
+import VolunteerPipelineDetailTabBar from '@/Components/Volunteers/VolunteerPipelineDetailTabBar';
 import { leaderMinistryIdsFromVolunteer } from '@/utils/volunteerMinistryLeadership';
 import { confirmAction } from '@/utils/confirmDialog';
 import {
@@ -100,6 +101,7 @@ type Props = {
     pedidosUrl: string;
     canPipelineMutate: boolean;
     canVolunteerManage: boolean;
+    canViewVolunteerNotes?: boolean;
     canManageVolunteerRequests?: boolean;
     volunteersAdminUrl: string;
 };
@@ -164,6 +166,7 @@ export default function ManagementCenter({
     pedidosUrl,
     canPipelineMutate,
     canVolunteerManage,
+    canViewVolunteerNotes = true,
     canManageVolunteerRequests = false,
     volunteersAdminUrl,
 }: Props) {
@@ -476,6 +479,9 @@ export default function ManagementCenter({
     };
 
     const selectDetailTab = (tab: DetailTab) => {
+        if (tab === 'notas' && !canViewVolunteerNotes) {
+            tab = 'ficha';
+        }
         setDetailTab(tab);
         if (selectedId) {
             syncVolunteerModalUrl(selectedId, tab);
@@ -883,65 +889,14 @@ export default function ManagementCenter({
                                     </p>
                                 ) : null}
 
-                                <div className="flex gap-1 overflow-x-auto overscroll-x-contain rounded-xl bg-zinc-100 p-1 [-webkit-overflow-scrolling:touch] dark:bg-zinc-800">
-                                    <button
-                                        type="button"
-                                        onClick={() => selectDetailTab('ficha')}
-                                        className={`shrink-0 cursor-pointer rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
-                                            detailTab === 'ficha'
-                                                ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
-                                                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
-                                        }`}
-                                    >
-                                        Ficha
-                                    </button>
-                                    {canVolunteerManage && detail.updateVolunteerUrl ? (
-                                        <button
-                                            type="button"
-                                            onClick={() => selectDetailTab('usuario')}
-                                            className={`shrink-0 cursor-pointer rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
-                                                detailTab === 'usuario'
-                                                    ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
-                                                    : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
-                                            }`}
-                                        >
-                                            Usuário APP
-                                        </button>
-                                    ) : null}
-                                    <button
-                                        type="button"
-                                        onClick={() => selectDetailTab('departamentos')}
-                                        className={`shrink-0 cursor-pointer rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
-                                            detailTab === 'departamentos'
-                                                ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
-                                                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
-                                        }`}
-                                    >
-                                        Departamentos
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => selectDetailTab('historico')}
-                                        className={`shrink-0 cursor-pointer rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
-                                            detailTab === 'historico'
-                                                ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
-                                                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
-                                        }`}
-                                    >
-                                        Histórico e status
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => selectDetailTab('notas')}
-                                        className={`shrink-0 cursor-pointer rounded-lg px-3 py-2 text-xs font-medium transition sm:flex-1 sm:px-3 sm:text-sm ${
-                                            detailTab === 'notas'
-                                                ? 'bg-white text-zinc-900 shadow dark:bg-zinc-950 dark:text-white'
-                                                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
-                                        }`}
-                                    >
-                                        Anotações
-                                    </button>
-                                </div>
+                                <VolunteerPipelineDetailTabBar
+                                    detailTab={detailTab}
+                                    onSelectTab={selectDetailTab}
+                                    canVolunteerManage={canVolunteerManage}
+                                    showUsuarioAppTab={Boolean(detail.updateVolunteerUrl)}
+                                    canViewVolunteerNotes={canViewVolunteerNotes}
+                                    notesCount={detail.notes?.length ?? 0}
+                                />
                             </div>
 
                             <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4">
@@ -1135,7 +1090,8 @@ export default function ManagementCenter({
                                             </form>
                                         ) : (
                                             <p className="border-t border-zinc-200 pt-4 text-xs text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                                                Apenas consulta: não tem permissão para alterar fases nem adicionar anotações.
+                                                Você pode ler as anotações da equipe acima. Apenas quem gere o quadro pode
+                                                adicionar novas.
                                             </p>
                                         )}
                                     </div>

@@ -1,6 +1,6 @@
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
-import { prefersGalleryPhotoPicker } from '@/utils/mobilePhotoPick';
+import { GALLERY_IMAGE_ACCEPT, prefersGalleryPhotoPicker } from '@/utils/mobilePhotoPick';
 
 export type ProfilePhotoPickerProps = {
     previewUrl: string | null;
@@ -54,7 +54,7 @@ export default function ProfilePhotoPicker({
                     <input
                         id={inputId}
                         type="file"
-                        accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
+                        accept={GALLERY_IMAGE_ACCEPT}
                         disabled={photoPreparing}
                         onClick={() => onPickStart?.()}
                         onChange={(e) => {

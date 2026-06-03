@@ -10,6 +10,7 @@ import TextInput from '@/Components/TextInput';
 import Modal from '@/Components/Modal';
 import { buildPixCopyPaste, parseMoneyInput } from '@/lib/pixPayload';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import { GALLERY_IMAGE_ACCEPT } from '@/utils/mobilePhotoPick';
 import {
     ArrowLeftIcon,
     BoltIcon,
@@ -393,7 +394,7 @@ export default function MobileDonationCampaignShow({ campaign, recentDonations, 
                             </p>
                             <input
                                 type="file"
-                                accept="image/*"
+                                accept={GALLERY_IMAGE_ACCEPT}
                                 disabled={uploading}
                                 onChange={(e) => {
                                     const file = e.target.files?.[0];

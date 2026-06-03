@@ -245,4 +245,55 @@ class VolunteerManagementCenterTest extends TestCase
                 ->has('volunteerRequestRows')
                 ->has('centralUrl'));
     }
+
+    public function test_ministry_leader_can_view_volunteer_notes_in_management_center(): void
+    {
+        $this->seed();
+
+        $church = Church::query()->firstOrFail();
+        $ministry = Ministry::query()->where('church_id', $church->id)->firstOrFail();
+
+        $admin = User::factory()->create();
+        $admin->assignRole(Role::firstOrCreate(['name' => 'admin']));
+
+        $this->actingAs($admin)->post('/volunteers', [
+            'name' => 'Voluntário Com Nota',
+            'email' => 'voluntario.com.nota@example.com',
+            'ministry_ids' => [$ministry->id],
+            'active' => '1',
+            'app_password' => 'secret123',
+            'app_password_confirmation' => 'secret123',
+        ])->assertRedirect('/volunteers');
+
+        $volunteer = \App\Models\Volunteer::query()->where('email', 'voluntario.com.nota@example.com')->firstOrFail();
+
+        $this->actingAs($admin)
+            ->withSession(['working_church_id' => $church->id])
+            ->post(route('ministry-lead.volunteers.pipeline.notes.store', $volunteer), [
+                'body' => 'Orientação interna para o líder do departamento.',
+            ])
+            ->assertRedirect();
+
+        $leader = User::factory()->create([
+            'church_id' => $church->id,
+            'is_ministry_leader' => true,
+        ]);
+        $leader->assignRole(Role::firstOrCreate(['name' => 'lider_ministerio']));
+        $leader->ministries()->sync([(int) $ministry->id]);
+
+        $this->actingAs($leader)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('ministry-lead.volunteers.central', ['ministerio' => $ministry->id]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('MinistryLeadVolunteers/ManagementCenter')
+                ->where('canViewVolunteerNotes', true)
+                ->where('canPipelineMutate', true));
+
+        $this->actingAs($leader)
+            ->withSession(['working_church_id' => $church->id])
+            ->getJson(route('ministry-lead.volunteers.pipeline.detail', $volunteer))
+            ->assertOk()
+            ->assertJsonPath('notes.0.body', 'Orientação interna para o líder do departamento.');
+    }
 }

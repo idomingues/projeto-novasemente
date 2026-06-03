@@ -120,7 +120,8 @@ class MinistryController extends Controller
         $canManageEscalasRoles = $request->user()?->can('escalas.manage') ?? false;
         $canManage = $request->user()?->can('departments.manage') ?? false;
         $canViewVolunteerDetail = ($request->user()?->can('volunteers.view') ?? false)
-            || ($request->user()?->can('volunteers.manage') ?? false);
+            || ($request->user()?->can('volunteers.manage') ?? false)
+            || ($request->user()?->can('volunteers.ministry_operate') ?? false);
 
         return Inertia::render('Departments/Index', [
             'departments' => $departments->map(fn (Ministry $m) => [
@@ -143,6 +144,7 @@ class MinistryController extends Controller
             'volunteerOptions' => $volunteerOptions,
             'canManageEscalasRoles' => $canManageEscalasRoles,
             'canManage' => $canManage,
+            'canViewVolunteerNotes' => $canViewVolunteerDetail,
             'volunteerDetailUrlPattern' => $canViewVolunteerDetail
                 ? route('volunteers.detail', ['volunteer' => 0])
                 : null,

@@ -1,6 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm, router, Link, usePage } from '@inertiajs/react';
-import { PencilIcon, TrashIcon, UserPlusIcon, CameraIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, UserPlusIcon } from '@heroicons/react/24/outline';
+import ProfilePhotoPicker from '@/Components/ProfilePhotoPicker';
 import VolunteerAppInviteButton from '@/Components/Volunteers/VolunteerAppInviteButton';
 import VolunteerInviteShareModal from '@/Components/Volunteers/VolunteerInviteShareModal';
 import PublicVolunteerSignupShareModal from '@/Components/Volunteers/PublicVolunteerSignupShareModal';
@@ -29,8 +30,9 @@ import VolunteerDeleteConfirmBlock from '@/Components/Volunteers/VolunteerDelete
 import { activeInactivePillClass } from '@/lib/statusBadges';
 import { appRoleLabel } from '@/lib/appRoleLabels';
 import SortedMultiCheckboxList from '@/Components/SortedMultiCheckboxList';
-import { PhotoPreviewButton } from '@/Components/PhotoPreview';
 import UserListAvatar from '@/Components/UserListAvatar';
+import { compressImageForUpload, ImageCompressError } from '@/utils/compressImageForUpload';
+import { markPhotoPickStarted, revokeBlobPreviewUrl } from '@/utils/mobilePhotoPick';
 
 interface Ministry { id: number; name: string; }
 interface AppRole { id: number; name: string; }
@@ -138,7 +140,10 @@ export default function Index({
     const [detailVolunteer, setDetailVolunteer] = useState<VolunteerDetailData | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<Volunteer | null>(null);
     const [avatarPreviewSrc, setAvatarPreviewSrc] = useState<string | null>(null);
+    const [photoPreparing, setPhotoPreparing] = useState(false);
+    const [photoClientError, setPhotoClientError] = useState<string | null>(null);
     const lastSavedPhotoRef = useRef<string | null>(null);
+    const avatarBlobRef = useRef<string | null>(null);
     const openedVoluntarioFromUrl = useRef(false);
 
     const { data, setData, post, put, processing, errors, reset, clearErrors, transform } = useForm({
@@ -176,12 +181,48 @@ export default function Index({
         };
     });
 
-    const openCreateModal = () => {
-        if (avatarPreviewSrc?.startsWith('blob:')) {
-            URL.revokeObjectURL(avatarPreviewSrc);
+    const handleVolunteerPhoto = async (raw: File | null) => {
+        setPhotoClientError(null);
+        if (!raw) {
+            revokeBlobPreviewUrl(avatarBlobRef);
+            setData('photo', null);
+            setAvatarPreviewSrc(lastSavedPhotoRef.current);
+            return;
         }
+        setPhotoPreparing(true);
+        try {
+            const prepared = await compressImageForUpload(raw);
+            revokeBlobPreviewUrl(avatarBlobRef);
+            const url = URL.createObjectURL(prepared);
+            avatarBlobRef.current = url;
+            setData('photo', prepared);
+            setAvatarPreviewSrc(url);
+        } catch (err) {
+            revokeBlobPreviewUrl(avatarBlobRef);
+            setData('photo', null);
+            setAvatarPreviewSrc(lastSavedPhotoRef.current);
+            setPhotoClientError(
+                err instanceof ImageCompressError
+                    ? err.message
+                    : 'Não foi possível preparar a imagem para envio.',
+            );
+        } finally {
+            setPhotoPreparing(false);
+        }
+    };
+
+    const handleVolunteerPhotoClear = () => {
+        setPhotoClientError(null);
+        revokeBlobPreviewUrl(avatarBlobRef);
+        setData('photo', null);
+        setAvatarPreviewSrc(lastSavedPhotoRef.current);
+    };
+
+    const openCreateModal = () => {
+        revokeBlobPreviewUrl(avatarBlobRef);
         setAvatarPreviewSrc(null);
         lastSavedPhotoRef.current = null;
+        setPhotoClientError(null);
         setIsEditing(false);
         setEditingId(null);
         reset();
@@ -243,11 +284,10 @@ export default function Index({
     };
 
     const closeModal = () => {
-        if (avatarPreviewSrc?.startsWith('blob:')) {
-            URL.revokeObjectURL(avatarPreviewSrc);
-        }
+        revokeBlobPreviewUrl(avatarBlobRef);
         setAvatarPreviewSrc(null);
         lastSavedPhotoRef.current = null;
+        setPhotoClientError(null);
         setIsModalOpen(false);
         reset();
         // Não limpar submitToast aqui: queremos mostrar feedback após fechar o modal.
@@ -720,60 +760,21 @@ export default function Index({
                             <section className="rounded-2xl border border-zinc-200 bg-zinc-50/90 p-4 dark:border-zinc-700 dark:bg-zinc-800/40">
                                 <p className="text-sm font-semibold text-zinc-900 dark:text-white">Foto</p>
                                 <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                    Aparece no app e no painel. No celular pode usar a câmera; no computador, escolha uma imagem.
+                                    Aparece no app e no painel.
                                 </p>
-                                <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start">
-                                    {avatarPreviewSrc ? (
-                                        <PhotoPreviewButton
-                                            photoUrl={avatarPreviewSrc}
-                                            name={data.name?.trim() || detailVolunteer?.name}
-                                            className="h-20 w-20 shrink-0 rounded-2xl border border-zinc-200 dark:border-zinc-600"
-                                            imageClassName="h-full w-full rounded-2xl object-cover"
-                                            stopPropagation={false}
-                                        />
-                                    ) : (
-                                        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800">
-                                            <CameraIcon className="h-8 w-8 text-zinc-400" aria-hidden />
-                                        </div>
-                                    )}
-                                    <div className="min-w-0 flex-1 space-y-2">
-                                        <input
-                                            id="volunteer_face_photo"
-                                            type="file"
-                                            accept="image/*"
-                                            capture="user"
-                                            className="block w-full text-sm text-zinc-600 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-900 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white hover:file:bg-zinc-800 dark:text-zinc-400 dark:file:bg-zinc-100 dark:file:text-zinc-900"
-                                            onChange={(e) => {
-                                                const file = e.target.files?.[0] ?? null;
-                                                if (avatarPreviewSrc?.startsWith('blob:')) {
-                                                    URL.revokeObjectURL(avatarPreviewSrc);
-                                                }
-                                                setData('photo', file);
-                                                if (file) {
-                                                    setAvatarPreviewSrc(URL.createObjectURL(file));
-                                                } else {
-                                                    setAvatarPreviewSrc(lastSavedPhotoRef.current);
-                                                }
-                                                e.target.value = '';
-                                            }}
-                                        />
-                                        {data.photo ? (
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    if (avatarPreviewSrc?.startsWith('blob:')) {
-                                                        URL.revokeObjectURL(avatarPreviewSrc);
-                                                    }
-                                                    setData('photo', null);
-                                                    setAvatarPreviewSrc(lastSavedPhotoRef.current);
-                                                }}
-                                                className="text-xs font-semibold text-primary-600 underline dark:text-primary-400"
-                                            >
-                                                Remover foto nova
-                                            </button>
-                                        ) : null}
-                                        <InputError message={errors.photo} className="!mt-1" />
-                                    </div>
+                                <div className="mt-4">
+                                    <ProfilePhotoPicker
+                                        previewUrl={avatarPreviewSrc}
+                                        photoPreparing={photoPreparing}
+                                        clientError={photoClientError}
+                                        serverPhotoError={errors.photo}
+                                        required={false}
+                                        inputId="volunteer_face_photo"
+                                        description="Escolha da galeria ou da câmera; a imagem é comprimida antes do envio."
+                                        onPickStart={markPhotoPickStarted}
+                                        onPhotoFile={handleVolunteerPhoto}
+                                        onClear={handleVolunteerPhotoClear}
+                                    />
                                 </div>
                             </section>
 

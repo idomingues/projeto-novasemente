@@ -13,6 +13,7 @@ import Card from '@/Components/Card';
 import { useState, FormEventHandler } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
 import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
+import { GALLERY_IMAGE_ACCEPT } from '@/utils/mobilePhotoPick';
 import ImageDownloadButton from '@/Components/ImageDownloadButton';
 
 interface Church {
@@ -298,7 +299,7 @@ export default function Index({ churches }: Props) {
                                     <input
                                         id="logo"
                                         type="file"
-                                        accept="image/*"
+                                        accept={GALLERY_IMAGE_ACCEPT}
                                         className="block w-full text-sm text-zinc-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-zinc-100 file:text-zinc-700 hover:file:bg-zinc-200 dark:file:bg-zinc-800 dark:file:text-zinc-300 dark:hover:file:bg-zinc-700"
                                         onChange={(e) => {
                                             const file = e.target.files?.[0];

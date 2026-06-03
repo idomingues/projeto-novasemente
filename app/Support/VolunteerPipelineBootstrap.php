@@ -43,6 +43,23 @@ class VolunteerPipelineBootstrap
             ->all();
     }
 
+    public static function isAdminWorkflowStageId(int $churchId, ?int $stageId): bool
+    {
+        if ($stageId === null || $stageId <= 0) {
+            return false;
+        }
+
+        return in_array((int) $stageId, self::adminWorkflowStageIdsForChurch($churchId), true);
+    }
+
+    /**
+     * Fase do quadro do líder: macro-fases da secretaria (Interessado, Atuante, …) não entram na coluna do kanban.
+     */
+    public static function leaderVisiblePipelineStageId(int $churchId, ?int $pipelineStageId): ?int
+    {
+        return self::isAdminWorkflowStageId($churchId, $pipelineStageId) ? null : $pipelineStageId;
+    }
+
     /**
      * Garante as fases padrão quando a igreja ainda não tem nenhuma (ex.: igreja nova).
      */
@@ -205,18 +222,21 @@ class VolunteerPipelineBootstrap
 
         self::ensureRowForVolunteerInChurch($volunteer, $churchId);
 
-        $update = ['stage_id' => (int) $stageId];
+        $isAdminWorkflow = in_array($needle, self::ADMIN_WORKFLOW_STAGE_NAMES, true);
+        $update = $isAdminWorkflow ? [] : ['stage_id' => (int) $stageId];
         if (
             Schema::hasColumn('volunteer_church_pipelines', 'admin_workflow_stage_id')
-            && in_array($needle, self::ADMIN_WORKFLOW_STAGE_NAMES, true)
+            && $isAdminWorkflow
         ) {
             $update['admin_workflow_stage_id'] = (int) $stageId;
         }
 
-        VolunteerChurchPipeline::query()
-            ->where('volunteer_id', $volunteer->id)
-            ->where('church_id', $churchId)
-            ->update($update);
+        if ($update !== []) {
+            VolunteerChurchPipeline::query()
+                ->where('volunteer_id', $volunteer->id)
+                ->where('church_id', $churchId)
+                ->update($update);
+        }
     }
 
     /**

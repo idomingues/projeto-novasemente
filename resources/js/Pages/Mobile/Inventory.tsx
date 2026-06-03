@@ -14,6 +14,7 @@ import { FormEventHandler, useEffect, useRef, useState } from 'react';
 import ImageDownloadButton from '@/Components/ImageDownloadButton';
 import SelectInput from '@/Components/SelectInput';
 import AddButton from '@/Components/AddButton';
+import { GALLERY_IMAGE_ACCEPT } from '@/utils/mobilePhotoPick';
 
 const SCANNER_ELEMENT_ID = 'inventory-barcode-scanner';
 
@@ -645,12 +646,12 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
                                             </label>
                                             <input
                                                 type="file"
-                                                accept="image/*"
-                                                capture="environment"
+                                                accept={GALLERY_IMAGE_ACCEPT}
                                                 className="w-full text-xs text-zinc-600 dark:text-zinc-400 file:mr-2 file:py-1.5 file:px-2.5 file:rounded-lg file:border-0 file:bg-zinc-900 file:text-white dark:file:bg-zinc-200 dark:file:text-zinc-900"
                                                 onChange={(e) => {
-                                                    const f = e.target.files?.[0];
-                                                    registerForm.setData('photo', f ?? null);
+                                                    const f = e.target.files?.[0] ?? null;
+                                                    registerForm.setData('photo', f);
+                                                    e.currentTarget.value = '';
                                                 }}
                                             />
                                             {registerPhotoPreview && (

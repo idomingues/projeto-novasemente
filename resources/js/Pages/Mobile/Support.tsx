@@ -13,6 +13,7 @@ import InputLabel from '@/Components/InputLabel';
 import Textarea from '@/Components/Textarea';
 import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
+import { GALLERY_IMAGE_ACCEPT } from '@/utils/mobilePhotoPick';
 import InputError from '@/Components/InputError';
 import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
@@ -292,7 +293,7 @@ export default function MobileSupport({
                                     <InputLabel value="Anexar imagem" />
                                     <input
                                         type="file"
-                                        accept="image/*"
+                                        accept={GALLERY_IMAGE_ACCEPT}
                                         onChange={(e) => setData('screenshot_file', e.target.files?.[0] ?? null)}
                                         className="mt-1 block w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
                                     />

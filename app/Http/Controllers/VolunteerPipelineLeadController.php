@@ -136,10 +136,12 @@ class VolunteerPipelineLeadController extends Controller
         $adminWorkflowStageId = $isAdminWorkflow
             ? VolunteerPipelineBootstrap::resolveAdminWorkflowStageId($churchId, $pipe?->admin_workflow_stage_id)
             : null;
+        $adminWorkflowStageIds = VolunteerPipelineBootstrap::adminWorkflowStageIdsForChurch($churchId);
         $stages = $isAdminWorkflow
             ? VolunteerPipelineBootstrap::adminWorkflowStagesForChurch($churchId)
             : VolunteerPipelineStage::query()
                 ->where('church_id', $churchId)
+                ->whereNotIn('id', $adminWorkflowStageIds === [] ? [-1] : $adminWorkflowStageIds)
                 ->orderBy('sort_order')
                 ->orderBy('id')
                 ->get(['id', 'name', 'sort_order'])
@@ -150,6 +152,14 @@ class VolunteerPipelineLeadController extends Controller
                 ])
                 ->values()
                 ->all();
+
+        $leaderStageId = VolunteerPipelineBootstrap::leaderVisiblePipelineStageId($churchId, $pipe?->stage_id);
+        $leaderStage = $leaderStageId !== null
+            ? VolunteerPipelineStage::query()->where('church_id', $churchId)->find($leaderStageId)
+            : null;
+        $adminWorkflowStage = $adminWorkflowStageId !== null
+            ? VolunteerPipelineStage::query()->where('church_id', $churchId)->find($adminWorkflowStageId)
+            : null;
 
         $notes = VolunteerLeaderNote::query()
             ->where('volunteer_id', $volunteer->id)
@@ -202,8 +212,10 @@ class VolunteerPipelineLeadController extends Controller
         return response()->json([
             'volunteer' => VolunteerSignupDetailPresenter::forVolunteer($volunteer),
             'pipeline' => [
-                'stageId' => $pipe?->stage_id,
-                'stageName' => $pipe?->stage?->name,
+                'stageId' => $isAdminWorkflow ? ($adminWorkflowStageId ?? $pipe?->stage_id) : $leaderStageId,
+                'stageName' => $isAdminWorkflow
+                    ? ($adminWorkflowStage?->name ?? $pipe?->stage?->name)
+                    : ($leaderStage?->name ?? $pipe?->stage?->name),
                 'adminWorkflowStageId' => $adminWorkflowStageId,
             ],
             'stages' => $stages,
@@ -620,9 +632,6 @@ class VolunteerPipelineLeadController extends Controller
             VolunteerPipelineBootstrap::ensureRowForVolunteerInChurch($volunteer, $churchId);
 
             $update = ['admin_workflow_stage_id' => $stageId];
-            if ($stageId !== null) {
-                $update['stage_id'] = $stageId;
-            }
 
             VolunteerChurchPipeline::query()
                 ->where('volunteer_id', $volunteer->id)
@@ -656,11 +665,9 @@ class VolunteerPipelineLeadController extends Controller
         if (! $isAdminManage) {
             $leaderSet = array_flip($this->leaderMinistryIdsForChurch($request, $churchId));
             abort_unless(isset($leaderSet[(int) $ministry->id]), 403);
-            abort_unless(
-                $volunteer->ministries()->where('ministries.id', (int) $ministry->id)->exists(),
-                404,
-                'Voluntário não está neste departamento.'
-            );
+            $linkedToMinistry = $volunteer->ministries()->where('ministries.id', (int) $ministry->id)->exists()
+                || $this->invitationForVolunteerMinistry($churchId, (int) $volunteer->id, (int) $ministry->id) !== null;
+            abort_unless($linkedToMinistry, 404, 'Voluntário não está encaminhado nem vinculado a este departamento.');
         }
 
         $invitation = $this->findOrCreateLeaderStatusInvitation(
@@ -750,7 +757,9 @@ class VolunteerPipelineLeadController extends Controller
             $ministry = $attachedMinistries->get($ministryId) ?? $invitations->get($ministryId)?->ministry;
             $inv = $invitations->get($ministryId);
             $isAttached = isset($attachedSet[$ministryId]);
-            $canEdit = $canManageAll || ($isAttached && isset($leaderSet[$ministryId]));
+            $hasInvitation = $inv !== null;
+            $canEdit = $canManageAll
+                || (isset($leaderSet[$ministryId]) && ($isAttached || $hasInvitation));
 
             $sections[] = [
                 'ministryId' => $ministryId,

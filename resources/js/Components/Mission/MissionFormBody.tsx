@@ -1,5 +1,6 @@
 import Checkbox from '@/Components/Checkbox';
 import InputError from '@/Components/InputError';
+import ProfilePhotoPicker from '@/Components/ProfilePhotoPicker';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
@@ -7,6 +8,7 @@ import BrDateInput from '@/Components/BrDateInput';
 import TextInput from '@/Components/TextInput';
 import Textarea from '@/Components/Textarea';
 import { compressImageForUpload, ImageCompressError } from '@/utils/compressImageForUpload';
+import { markPhotoPickStarted } from '@/utils/mobilePhotoPick';
 import { todayIsoLocal } from '@/utils/brDate';
 import { findMissionFormIssue, missionErrorPage } from '@/utils/missionFormValidation';
 import { useForm } from '@inertiajs/react';
@@ -122,58 +124,28 @@ function MissionPhotoField({
     onFileChosen: (file: File | null) => void;
     onClear: () => void;
 }) {
-    const displayError = clientError ?? serverError ?? (missingOnAdvance ? 'Envie uma foto antes de avançar.' : undefined);
+    const advanceError = missingOnAdvance ? 'Envie uma foto antes de avançar.' : null;
 
     return (
         <section
             id="mission-photo"
             className="scroll-mt-32 rounded-2xl border border-zinc-200/90 bg-white p-4 shadow-sm dark:border-zinc-700/80 dark:bg-zinc-900/60 sm:scroll-mt-36 sm:p-5"
         >
-            <h3 className="mb-1 text-base font-semibold leading-snug text-zinc-900 dark:text-white">
+            <h3 className="mb-3 text-base font-semibold leading-snug text-zinc-900 dark:text-white">
                 Foto
                 <span className="ml-0.5 text-red-600 dark:text-red-400">*</span>
             </h3>
-            <p className="mb-3 text-xs text-zinc-500 dark:text-zinc-400">
-                No celular você pode usar a câmera; no computador, escolha uma imagem (máx. 4 MB). A foto ajuda a equipe a
-                reconhecer você.
-            </p>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-                <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
-                    {previewUrl ? (
-                        <img src={previewUrl} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                        <span className="text-2xl font-semibold text-zinc-500 dark:text-zinc-400">?</span>
-                    )}
-                </div>
-                <div className="min-w-0 flex-1 space-y-2">
-                    <InputLabel htmlFor="mission_photo" value="Selecionar foto" className="sr-only" />
-                    <input
-                        id="mission_photo"
-                        type="file"
-                        accept="image/*"
-                        capture="user"
-                        disabled={photoPreparing}
-                        onChange={(e) => {
-                            const raw = e.currentTarget.files?.[0] ?? null;
-                            e.currentTarget.value = '';
-                            onFileChosen(raw);
-                        }}
-                        className="block w-full text-sm text-zinc-600 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-zinc-700 hover:file:bg-zinc-200 disabled:opacity-60 dark:text-zinc-300 dark:file:bg-zinc-800 dark:file:text-zinc-100 dark:hover:file:bg-zinc-700"
-                    />
-                    {photoPreparing ? (
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400">Preparando a imagem…</p>
-                    ) : previewUrl ? (
-                        <button
-                            type="button"
-                            onClick={onClear}
-                            className="text-xs font-semibold text-teal-700 underline dark:text-teal-400"
-                        >
-                            Remover foto
-                        </button>
-                    ) : null}
-                    {displayError ? <InputError message={displayError} /> : null}
-                </div>
-            </div>
+            <ProfilePhotoPicker
+                previewUrl={previewUrl}
+                photoPreparing={photoPreparing}
+                clientError={clientError ?? advanceError}
+                serverPhotoError={serverError}
+                inputId="mission_photo"
+                description="A foto ajuda a equipe a reconhecer você (máx. 4 MB após compressão)."
+                onPickStart={markPhotoPickStarted}
+                onPhotoFile={onFileChosen}
+                onClear={onClear}
+            />
         </section>
     );
 }

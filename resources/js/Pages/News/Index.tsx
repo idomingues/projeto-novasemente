@@ -25,6 +25,7 @@ import ListSearchHint from '@/Components/ListSearchHint';
 import { useDebouncedServerSearch } from '@/hooks/useDebouncedServerSearch';
 import { confirmAction } from '@/utils/confirmDialog';
 import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
+import { GALLERY_IMAGE_ACCEPT } from '@/utils/mobilePhotoPick';
 import ImageDownloadButton from '@/Components/ImageDownloadButton';
 import { youtubeThumbUrlFromVideoUrl } from '@/utils/youtube';
 import FeedCaptionBody from '@/Components/News/FeedCaptionBody';
@@ -764,7 +765,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                             <input
                                                 id="image_file"
                                                 type="file"
-                                                accept={isInstagramFeed ? 'image/jpeg,image/png,image/webp' : 'image/*'}
+                                                accept={isInstagramFeed ? 'image/jpeg,image/png,image/webp' : GALLERY_IMAGE_ACCEPT}
                                                 aria-describedby={
                                                     isInstagramFeed ? 'instagram_feed_image_specs' : 'news_cover_specs'
                                                 }

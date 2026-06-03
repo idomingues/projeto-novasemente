@@ -10,6 +10,7 @@ import NewsPostCover from '@/Components/News/NewsPostCover';
 import { EVENT_COVER_SPECS } from '@/constants/mediaCoverSpecs';
 import { PhotoIcon, TicketIcon } from '@heroicons/react/24/outline';
 import { FormEventHandler } from 'react';
+import { GALLERY_IMAGE_ACCEPT } from '@/utils/mobilePhotoPick';
 import type { EventItemForAdmin } from '@/Components/Events/eventAdminTypes';
 import {
     EVENT_COLOR_PRESETS,
@@ -320,7 +321,7 @@ export default function EventAdminModal({
                                     <input
                                         id="event_image_file"
                                         type="file"
-                                        accept="image/*"
+                                        accept={GALLERY_IMAGE_ACCEPT}
                                         aria-describedby="event_cover_specs"
                                         onChange={(e) => {
                                             setData('image_file', e.target.files?.[0] ?? null);

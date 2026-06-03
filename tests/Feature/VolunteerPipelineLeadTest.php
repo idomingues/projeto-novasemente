@@ -615,8 +615,12 @@ class VolunteerPipelineLeadTest extends TestCase
             ->where('church_id', $church->id)
             ->firstOrFail();
 
-        $this->assertSame((int) $encaminhadoId, (int) $pipe->stage_id);
         $this->assertSame((int) $encaminhadoId, (int) $pipe->admin_workflow_stage_id);
+        $this->assertNotSame(
+            (int) $encaminhadoId,
+            (int) $pipe->stage_id,
+            'Macro-fase da secretaria não deve sobrescrever a fase do quadro do líder.',
+        );
 
         $response = $this->actingAs($admin)->getJson(
             route('ministry-lead.volunteers.pipeline.detail', $volunteer),
@@ -664,7 +668,7 @@ class VolunteerPipelineLeadTest extends TestCase
             ->firstOrFail();
 
         $this->assertSame((int) $finalizadoId, (int) $pipe->admin_workflow_stage_id);
-        $this->assertSame((int) $finalizadoId, (int) $pipe->stage_id);
+        $stageBeforeClear = (int) $pipe->stage_id;
 
         $this->actingAs($admin)
             ->patch(route('ministry-lead.volunteers.pipeline.stage', $volunteer), [
@@ -675,7 +679,7 @@ class VolunteerPipelineLeadTest extends TestCase
 
         $pipe->refresh();
         $this->assertNull($pipe->admin_workflow_stage_id);
-        $this->assertSame((int) $finalizadoId, (int) $pipe->stage_id);
+        $this->assertSame($stageBeforeClear, (int) $pipe->stage_id);
     }
 
     public function test_admin_can_set_atuante_as_admin_workflow_stage(): void
@@ -717,7 +721,7 @@ class VolunteerPipelineLeadTest extends TestCase
             ->firstOrFail();
 
         $this->assertSame((int) $atuanteId, (int) $pipe->admin_workflow_stage_id);
-        $this->assertSame((int) $atuanteId, (int) $pipe->stage_id);
+        $this->assertNotSame((int) $atuanteId, (int) $pipe->stage_id);
 
         $response = $this->actingAs($admin)->getJson(
             route('ministry-lead.volunteers.pipeline.detail', $volunteer),
@@ -904,5 +908,78 @@ class VolunteerPipelineLeadTest extends TestCase
         $this->assertNotFalse($recenteIndex);
         $this->assertNotFalse($antigoIndex);
         $this->assertLessThan($antigoIndex, $recenteIndex);
+    }
+
+    public function test_ministry_leader_can_update_leader_status_for_forwarded_volunteer_not_attached(): void
+    {
+        $this->seed();
+
+        $church = Church::query()->firstOrFail();
+        $conviva = Ministry::query()->where('church_id', $church->id)->orderBy('id')->firstOrFail();
+        $reception = Ministry::query()
+            ->where('church_id', $church->id)
+            ->whereKeyNot($conviva->id)
+            ->orderBy('id')
+            ->first();
+
+        if ($reception === null) {
+            $this->markTestSkipped('Precisa de pelo menos dois departamentos na igreja de teste.');
+        }
+
+        $receptionLeader = User::factory()->create([
+            'church_id' => $church->id,
+            'is_ministry_leader' => true,
+        ]);
+        $receptionLeader->assignRole(Role::firstOrCreate(['name' => 'lider_ministerio']));
+        $receptionLeader->ministries()->sync([(int) $reception->id]);
+
+        $volunteer = Volunteer::query()->create([
+            'name' => 'Maria Encaminhada',
+            'email' => 'maria.encaminhada@example.com',
+            'active' => true,
+        ]);
+        $volunteer->ministries()->attach($conviva->id);
+
+        \App\Support\VolunteerPipelineBootstrap::ensureAtuanteStageForChurch((int) $church->id);
+        \App\Support\VolunteerPipelineBootstrap::moveVolunteerToStageByNormalizedName($volunteer, (int) $church->id, 'atuante');
+
+        VolunteerMinistryInvitation::query()->create([
+            'church_id' => $church->id,
+            'volunteer_id' => $volunteer->id,
+            'ministry_id' => $reception->id,
+            'invited_by_user_id' => $receptionLeader->id,
+            'token' => VolunteerMinistryInvitation::createToken(),
+            'status' => 'pending',
+        ]);
+
+        $this->assertFalse($volunteer->ministries()->whereKey($reception->id)->exists());
+
+        $response = $this->actingAs($receptionLeader)
+            ->withSession(['working_church_id' => $church->id])
+            ->patch(
+                route('ministry-lead.volunteers.pipeline.ministry-leader-status', [$volunteer, $reception]),
+                ['leader_status' => 'reviewing'],
+            );
+
+        $response->assertRedirect();
+        $response->assertSessionHasNoErrors();
+
+        $invitation = VolunteerMinistryInvitation::query()
+            ->where('volunteer_id', $volunteer->id)
+            ->where('ministry_id', $reception->id)
+            ->first();
+
+        $this->assertNotNull($invitation);
+        $this->assertSame('reviewing', $invitation->leader_status);
+
+        $detail = $this->actingAs($receptionLeader)
+            ->withSession(['working_church_id' => $church->id])
+            ->getJson(route('ministry-lead.volunteers.pipeline.detail', $volunteer))
+            ->assertOk()
+            ->json('statusHistoryByMinistry');
+
+        $section = collect($detail)->firstWhere('ministryId', $reception->id);
+        $this->assertNotNull($section);
+        $this->assertTrue($section['canEdit']);
     }
 }

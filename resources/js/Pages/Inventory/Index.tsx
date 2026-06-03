@@ -23,6 +23,7 @@ import { useState, useEffect, useRef, useCallback, FormEventHandler } from 'reac
 import ListSearchHint from '@/Components/ListSearchHint';
 import { useDebouncedServerSearch } from '@/hooks/useDebouncedServerSearch';
 import axios from 'axios';
+import { GALLERY_IMAGE_ACCEPT } from '@/utils/mobilePhotoPick';
 import { confirmAction } from '@/utils/confirmDialog';
 import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import ImageDownloadButton from '@/Components/ImageDownloadButton';
@@ -497,17 +498,17 @@ export default function Index({ items, filters }: Props) {
                             <div className="mt-4 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white/80 p-3 dark:bg-zinc-950/40">
                                 <InputLabel htmlFor="photo" value="Foto do objeto (opcional)" />
                                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 mb-2">
-                                    Tire uma foto ou escolha um arquivo da galeria (celular: pode usar a câmera).
+                                    Escolha uma foto da galeria ou da câmera do celular.
                                 </p>
                                 <input
                                     id="photo"
                                     type="file"
-                                    accept="image/*"
-                                    capture="environment"
+                                    accept={GALLERY_IMAGE_ACCEPT}
                                     className="block w-full text-sm text-zinc-600 dark:text-zinc-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-zinc-900 file:text-white dark:file:bg-zinc-200 dark:file:text-zinc-900"
                                     onChange={(e) => {
-                                        const f = e.target.files?.[0];
-                                        setData('photo', f ?? null);
+                                        const f = e.target.files?.[0] ?? null;
+                                        setData('photo', f);
+                                        e.currentTarget.value = '';
                                     }}
                                 />
                                 <InputError message={errors.photo} className="mt-2" />

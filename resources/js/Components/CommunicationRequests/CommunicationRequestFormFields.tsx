@@ -5,6 +5,7 @@ import SelectInput from '@/Components/SelectInput';
 import TextInput from '@/Components/TextInput';
 import Textarea from '@/Components/Textarea';
 import { useForm } from '@inertiajs/react';
+import { GALLERY_IMAGE_ACCEPT } from '@/utils/mobilePhotoPick';
 
 type CommunicationFormReturn = ReturnType<typeof useForm<CommunicationRequestFormData>>;
 
@@ -262,7 +263,7 @@ export default function CommunicationRequestFormFields({
                     id={`${idPrefix}_attachments`}
                     type="file"
                     multiple
-                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip"
+                    accept={`${GALLERY_IMAGE_ACCEPT},.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip`}
                     className="mt-1 block w-full text-sm text-zinc-600 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-900 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white dark:text-zinc-300 dark:file:bg-zinc-100 dark:file:text-zinc-900"
                     onChange={(e) => {
                         const files = Array.from(e.target.files ?? []).slice(0, maxAttachments);
