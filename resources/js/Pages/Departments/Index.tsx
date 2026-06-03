@@ -54,6 +54,7 @@ import VolunteerPasswordChangeForm from '@/Components/Volunteers/VolunteerPasswo
 import VolunteerDeleteConfirmBlock from '@/Components/Volunteers/VolunteerDeleteConfirmBlock';
 import MinistryLeaderStatusSection, { type MinistryLeaderStatusSectionData } from '@/Components/Volunteers/MinistryLeaderStatusSection';
 import VolunteerPipelineDetailTabBar from '@/Components/Volunteers/VolunteerPipelineDetailTabBar';
+import VolunteerPipelineNotesPanel from '@/Components/Volunteers/VolunteerPipelineNotesPanel';
 import { volunteerDetailSections } from '@/utils/volunteerDetailRows';
 
 interface PersonRef {
@@ -121,7 +122,7 @@ type DetailJson = {
     pipeline?: { stageId: number | null; stageName: string | null; adminWorkflowStageId: number | null };
     stages: Array<{ id: number; name: string; sort_order: number }>;
     statusHistoryByMinistry?: MinistryLeaderStatusSectionData[];
-    notes: Array<{ id: number; body: string; authorName: string; createdAt: string }>;
+    notes: Array<{ id: number; body: string; authorName: string; createdAt: string; destroyUrl?: string | null }>;
     ministryOptions?: Array<{ id: number; name: string; attached: boolean; canEdit: boolean }>;
     updateStageUrl: string;
     storeNoteUrl: string;
@@ -459,7 +460,6 @@ export default function Index({
     const pageUrl = page.url;
     const csrf = (page.props as { csrf_token?: string }).csrf_token ?? '';
 
-    const noteForm = useForm({ body: '' });
     const stageMoveForm = useForm({ stage_id: '' as string | number });
     const ministriesForm = useForm<{ ministry_ids: number[]; leader_ministry_ids: number[] }>({
         ministry_ids: [],
@@ -521,6 +521,7 @@ export default function Index({
                 const r = await fetch(url, {
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrf },
                     credentials: 'same-origin',
+                    cache: 'no-store',
                 });
                 if (!r.ok) {
                     return;
@@ -548,13 +549,13 @@ export default function Index({
             if (!options?.silent) {
                 setDetailLoading(true);
                 setDetailPayload(null);
-                noteForm.reset('body');
             }
             try {
                 const url = route('ministry-lead.volunteers.pipeline.detail', id);
                 const r = await fetch(url, {
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrf },
                     credentials: 'same-origin',
+                    cache: 'no-store',
                 });
                 if (!r.ok) {
                     setDetailPayload(null);
@@ -596,20 +597,6 @@ export default function Index({
     const selectDetailTab = (tab: DetailTab) => {
         setDetailTab(tab);
         if (selectedVolunteerId) syncVolunteerModalUrl(selectedVolunteerId, tab);
-    };
-
-    const submitNote: FormEventHandler = async (e) => {
-        e.preventDefault();
-        if (!detailPayload || noteForm.processing) return;
-        noteForm.clearErrors();
-        const result = await submitVolunteerModalPost(detailPayload.storeNoteUrl, { body: noteForm.data.body }, csrf);
-        if (!result.ok) {
-            applyVolunteerModalFormErrors(result.errors, (field, message) => noteForm.setError(field as 'body', message));
-            return;
-        }
-        noteForm.reset('body');
-        showModalSaveMessage('Anotação registrada.');
-        if (selectedVolunteerId) await refreshVolunteerDetail(selectedVolunteerId);
     };
 
     const submitStageMove: FormEventHandler = async (e) => {
@@ -1469,46 +1456,21 @@ export default function Index({
                                         ) : null}
                                     </form>
                                 ) : (
-                                    <div className="space-y-4">
-                                        <ul className="max-h-[min(45vh,320px)] space-y-2 overflow-y-auto text-sm">
-                                            {(detailPayload.notes ?? []).length === 0 ? (
-                                                <li className="text-zinc-500">Ainda sem notas.</li>
-                                            ) : (
-                                                detailPayload.notes.map((n) => (
-                                                    <li
-                                                        key={n.id}
-                                                        className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-                                                    >
-                                                        <div className="text-xs text-zinc-500">
-                                                            {n.authorName} · {formatDateTime(n.createdAt)}
-                                                        </div>
-                                                        <div className="whitespace-pre-wrap text-zinc-800 dark:text-zinc-200">{n.body}</div>
-                                                    </li>
-                                                ))
-                                            )}
-                                        </ul>
-                                        {canManage ? (
-                                            <form onSubmit={submitNote} className="space-y-2 border-t border-zinc-200 pt-4 dark:border-zinc-700">
-                                                <InputLabel value="Nova anotação" />
-                                                <Textarea
-                                                    value={noteForm.data.body}
-                                                    onChange={(e) => noteForm.setData('body', e.target.value)}
-                                                    rows={4}
-                                                    className="w-full"
-                                                    placeholder="Escreva uma nota visível à equipe…"
-                                                />
-                                                <InputError message={noteForm.errors.body} />
-                                                <PrimaryButton type="submit" disabled={noteForm.processing}>
-                                                    Adicionar nota
-                                                </PrimaryButton>
-                                            </form>
-                                        ) : (
-                                            <p className="border-t border-zinc-200 pt-4 text-xs text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                                                Você pode ler as anotações da equipe acima. Apenas quem gere o quadro pode
-                                                adicionar novas.
-                                            </p>
-                                        )}
-                                    </div>
+                                    <VolunteerPipelineNotesPanel
+                                        notes={detailPayload.notes ?? []}
+                                        canAddNote={canManage}
+                                        storeNoteUrl={detailPayload.storeNoteUrl}
+                                        csrf={csrf}
+                                        onNotesChange={(notes) =>
+                                            setDetailPayload((prev) => (prev ? { ...prev, notes } : prev))
+                                        }
+                                        onSuccessMessage={showModalSaveMessage}
+                                        onRefresh={
+                                            selectedVolunteerId
+                                                ? () => refreshVolunteerDetail(selectedVolunteerId)
+                                                : undefined
+                                        }
+                                    />
                                 )}
                             </div>
                         </>

@@ -290,10 +290,37 @@ class VolunteerManagementCenterTest extends TestCase
                 ->where('canViewVolunteerNotes', true)
                 ->where('canPipelineMutate', true));
 
-        $this->actingAs($leader)
+        $detail = $this->actingAs($leader)
             ->withSession(['working_church_id' => $church->id])
             ->getJson(route('ministry-lead.volunteers.pipeline.detail', $volunteer))
             ->assertOk()
-            ->assertJsonPath('notes.0.body', 'Orientação interna para o líder do departamento.');
+            ->json();
+
+        $this->assertSame('Orientação interna para o líder do departamento.', $detail['notes'][0]['body']);
+        $this->assertNotEmpty($detail['notes'][0]['destroyUrl']);
+
+        $noteId = $detail['notes'][0]['id'];
+
+        $this->actingAs($admin)
+            ->withSession(['working_church_id' => $church->id])
+            ->postJson(route('ministry-lead.volunteers.pipeline.notes.store', $volunteer), [
+                'body' => 'Segunda nota via JSON.',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('note.body', 'Segunda nota via JSON.');
+
+        $this->actingAs($admin)
+            ->withSession(['working_church_id' => $church->id])
+            ->deleteJson(route('ministry-lead.volunteers.pipeline.notes.destroy', [$volunteer, $noteId]))
+            ->assertOk();
+
+        $afterDelete = $this->actingAs($leader)
+            ->withSession(['working_church_id' => $church->id])
+            ->getJson(route('ministry-lead.volunteers.pipeline.detail', $volunteer))
+            ->assertOk()
+            ->json('notes');
+
+        $this->assertCount(1, $afterDelete);
+        $this->assertSame('Segunda nota via JSON.', $afterDelete[0]['body']);
     }
 }

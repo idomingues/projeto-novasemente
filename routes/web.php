@@ -489,6 +489,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/lideranca/voluntarios/{volunteer}/notas', [VolunteerPipelineLeadController::class, 'storeNote'])
         ->name('ministry-lead.volunteers.pipeline.notes.store')
         ->middleware('permission:volunteers.ministry_operate|volunteers.manage');
+    Route::delete('/lideranca/voluntarios/{volunteer}/notas/{note}', [VolunteerPipelineLeadController::class, 'destroyNote'])
+        ->name('ministry-lead.volunteers.pipeline.notes.destroy')
+        ->middleware('permission:volunteers.ministry_operate|volunteers.manage');
     Route::patch('/lideranca/voluntarios/{volunteer}/fase', [VolunteerPipelineLeadController::class, 'updateStage'])
         ->name('ministry-lead.volunteers.pipeline.stage')
         ->middleware('permission:volunteers.ministry_operate|volunteers.manage');

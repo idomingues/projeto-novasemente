@@ -161,19 +161,16 @@ class VolunteerPipelineLeadController extends Controller
             ? VolunteerPipelineStage::query()->where('church_id', $churchId)->find($adminWorkflowStageId)
             : null;
 
-        $notes = VolunteerLeaderNote::query()
+        $noteRows = VolunteerLeaderNote::query()
             ->where('volunteer_id', $volunteer->id)
             ->where('church_id', $churchId)
             ->with('user:id,name')
             ->orderByDesc('created_at')
             ->limit(80)
-            ->get()
-            ->map(fn (VolunteerLeaderNote $n) => [
-                'id' => $n->id,
-                'body' => $n->body,
-                'authorName' => $n->user?->name ?? 'Equipe',
-                'createdAt' => $n->created_at?->toIso8601String(),
-            ])
+            ->get();
+        $canMutate = $request->user()?->can('volunteers.ministry_operate') || $request->user()?->can('volunteers.manage');
+        $notes = $noteRows
+            ->map(fn (VolunteerLeaderNote $n) => $this->volunteerLeaderNotePayload($n, $volunteer, $canMutate))
             ->values()
             ->all();
 
@@ -186,7 +183,6 @@ class VolunteerPipelineLeadController extends Controller
         $attachedSet = array_flip($attachedIds);
         $leaderIds = $this->leaderMinistryIdsForChurch($request, $churchId);
         $leaderSet = array_flip($leaderIds);
-        $canMutate = $request->user()?->can('volunteers.ministry_operate') || $request->user()?->can('volunteers.manage');
 
         $churchMinistries = Ministry::query()
             ->where('church_id', $churchId)
@@ -446,7 +442,23 @@ class VolunteerPipelineLeadController extends Controller
         return back()->with('success', 'Fase excluída.');
     }
 
-    public function storeNote(Request $request, Volunteer $volunteer): RedirectResponse
+    /**
+     * @return array{id: int, body: string, authorName: string, createdAt: string|null, destroyUrl: string|null}
+     */
+    private function volunteerLeaderNotePayload(VolunteerLeaderNote $note, Volunteer $volunteer, bool $canMutate): array
+    {
+        return [
+            'id' => (int) $note->id,
+            'body' => (string) $note->body,
+            'authorName' => $note->user?->name ?? 'Equipe',
+            'createdAt' => $note->created_at?->toIso8601String(),
+            'destroyUrl' => $canMutate
+                ? route('ministry-lead.volunteers.pipeline.notes.destroy', [$volunteer, $note])
+                : null,
+        ];
+    }
+
+    public function storeNote(Request $request, Volunteer $volunteer): JsonResponse|RedirectResponse
     {
         $this->canUseMutate($request);
         $churchId = $this->churchId($request);
@@ -457,14 +469,41 @@ class VolunteerPipelineLeadController extends Controller
             'body' => ['required', 'string', 'max:10000'],
         ]);
 
-        VolunteerLeaderNote::create([
+        $note = VolunteerLeaderNote::create([
             'volunteer_id' => $volunteer->id,
             'church_id' => $churchId,
             'user_id' => $request->user()?->id,
             'body' => $valid['body'],
         ]);
+        $note->load('user:id,name');
 
-        return back()->with('success', 'Anotação registada.');
+        if ($request->expectsJson()) {
+            return response()->json([
+                'note' => $this->volunteerLeaderNotePayload($note, $volunteer, true),
+            ], 201);
+        }
+
+        return back()->with('success', 'Anotação registrada.');
+    }
+
+    public function destroyNote(Request $request, Volunteer $volunteer, VolunteerLeaderNote $note): JsonResponse|RedirectResponse
+    {
+        $this->canUseMutate($request);
+        $churchId = $this->churchId($request);
+        abort_unless($churchId, 404);
+        abort_unless($this->volunteerVisibleInChurch($volunteer, $churchId), 404);
+        abort_unless(
+            (int) $note->volunteer_id === (int) $volunteer->id && (int) $note->church_id === (int) $churchId,
+            404,
+        );
+
+        $note->delete();
+
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true]);
+        }
+
+        return back()->with('success', 'Anotação excluída.');
     }
 
     public function syncMinistries(Request $request, Volunteer $volunteer): RedirectResponse

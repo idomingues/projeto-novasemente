@@ -59,6 +59,7 @@ import SortedMultiCheckboxList from '@/Components/SortedMultiCheckboxList';
 import VolunteerServeMinistriesPicker from '@/Components/Volunteers/VolunteerServeMinistriesPicker';
 import VolunteerUsuarioAppTabPanel from '@/Components/Volunteers/VolunteerUsuarioAppTabPanel';
 import VolunteerPipelineDetailTabBar from '@/Components/Volunteers/VolunteerPipelineDetailTabBar';
+import VolunteerPipelineNotesPanel from '@/Components/Volunteers/VolunteerPipelineNotesPanel';
 import { leaderMinistryIdsFromVolunteer } from '@/utils/volunteerMinistryLeadership';
 import ListViewModeToggle from '@/Components/ListViewModeToggle';
 import VolunteerPipelineKanban from '@/Components/Volunteers/VolunteerPipelineKanban';
@@ -205,7 +206,7 @@ function formatVolunteerResultsSummary(volunteers: Paginated<unknown>): string {
 
 type DetailVolunteer = Record<string, unknown> & { id: number; name: string | null };
 
-type DetailNote = { id: number; body: string; authorName: string; createdAt: string };
+type DetailNote = { id: number; body: string; authorName: string; createdAt: string; destroyUrl?: string | null };
 
 type MinistryOption = { id: number; name: string; attached: boolean; canEdit: boolean };
 
@@ -453,7 +454,6 @@ export default function Pipeline({
     const [inviteOpen, setInviteOpen] = useRemember(false, 'pipeline.inviteOpen');
     const [inviteVolunteer, setInviteVolunteer] = useRemember<VolunteerListRow | null>(null, 'pipeline.inviteVolunteer');
     const [inviteMinistryIds, setInviteMinistryIds] = useRemember<number[]>([], 'pipeline.inviteMinistryIds');
-    const noteForm = useForm({ body: '' });
     const stageMoveForm = useForm({ stage_id: '' as string | number });
     const ministriesForm = useForm<{ ministry_ids: number[]; leader_ministry_ids: number[] }>({
         ministry_ids: [],
@@ -514,6 +514,7 @@ export default function Pipeline({
                 const r = await fetch(url, {
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrf },
                     credentials: 'same-origin',
+                    cache: 'no-store',
                 });
                 if (!r.ok) {
                     return;
@@ -548,13 +549,13 @@ export default function Pipeline({
         if (!options?.silent) {
             setDetail(null);
             setDetailLoading(true);
-            noteForm.reset('body');
         }
         try {
             const url = route('ministry-lead.volunteers.pipeline.detail', id);
             const r = await fetch(url, {
                 headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrf },
                 credentials: 'same-origin',
+                cache: 'no-store',
             });
             if (!r.ok) {
                 setDetail(null);
@@ -681,20 +682,6 @@ export default function Pipeline({
     const selectDetailTab = (tab: DetailTab) => {
         setDetailTab(tab);
         if (selectedId) syncVolunteerModalUrl(selectedId, tab);
-    };
-
-    const submitNote: FormEventHandler = async (e) => {
-        e.preventDefault();
-        if (!detail || noteForm.processing) return;
-        noteForm.clearErrors();
-        const result = await submitVolunteerModalPost(detail.storeNoteUrl, { body: noteForm.data.body }, csrf);
-        if (!result.ok) {
-            applyVolunteerModalFormErrors(result.errors, (field, message) => noteForm.setError(field as 'body', message));
-            return;
-        }
-        noteForm.reset('body');
-        showModalSaveMessage('Anotação registrada.');
-        if (selectedId) await refreshVolunteerDetail(selectedId);
     };
 
     const submitStageMove: FormEventHandler = async (e) => {
@@ -2103,46 +2090,19 @@ export default function Pipeline({
                                         )}
                                     </form>
                                 ) : (
-                                    <div className="space-y-4">
-                                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                            Notas internas da equipe de voluntariado (histórico abaixo).
-                                        </p>
-                                        <ul className="max-h-[min(45vh,320px)] space-y-2 overflow-y-auto text-sm">
-                                            {detail.notes.length === 0 ? (
-                                                <li className="text-zinc-500">Ainda sem notas.</li>
-                                            ) : (
-                                                detail.notes.map((n) => (
-                                                    <li key={n.id} className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900">
-                                                        <div className="text-xs text-zinc-500">
-                                                            {n.authorName} · {formatDateTime(n.createdAt)}
-                                                        </div>
-                                                        <div className="text-zinc-800 whitespace-pre-wrap dark:text-zinc-200">{n.body}</div>
-                                                    </li>
-                                                ))
-                                            )}
-                                        </ul>
-                                        {canPipelineMutate ? (
-                                            <form onSubmit={submitNote} className="space-y-2 border-t border-zinc-200 pt-4 dark:border-zinc-700">
-                                                <InputLabel value="Nova anotação" />
-                                                <Textarea
-                                                    value={noteForm.data.body}
-                                                    onChange={(e) => noteForm.setData('body', e.target.value)}
-                                                    rows={4}
-                                                    className="w-full"
-                                                    placeholder="Escreva uma nota visível à equipe de voluntariado…"
-                                                />
-                                                <InputError message={noteForm.errors.body} />
-                                                <PrimaryButton type="submit" disabled={noteForm.processing}>
-                                                    Adicionar nota
-                                                </PrimaryButton>
-                                            </form>
-                                        ) : (
-                                            <p className="border-t border-zinc-200 pt-4 text-xs text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                                                Você pode ler as anotações da equipe acima. Apenas quem gere o quadro pode
-                                                adicionar novas.
-                                            </p>
-                                        )}
-                                    </div>
+                                    <VolunteerPipelineNotesPanel
+                                        notes={detail.notes}
+                                        canAddNote={canPipelineMutate}
+                                        storeNoteUrl={detail.storeNoteUrl}
+                                        csrf={csrf}
+                                        onNotesChange={(notes) =>
+                                            setDetail((prev) => (prev ? { ...prev, notes } : prev))
+                                        }
+                                        onSuccessMessage={showModalSaveMessage}
+                                        onRefresh={
+                                            selectedId ? () => refreshVolunteerDetail(selectedId) : undefined
+                                        }
+                                    />
                                 )}
                             </div>
                         </>

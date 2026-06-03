@@ -1,8 +1,16 @@
 /**
  * Salva ações da ficha do voluntário (modal) sem visita Inertia — evita fechar o modal ou resetar a tela.
  */
+export type VolunteerLeaderNoteJson = {
+    id: number;
+    body: string;
+    authorName: string;
+    createdAt: string;
+    destroyUrl?: string | null;
+};
+
 export type VolunteerModalSaveResult =
-    | { ok: true; redirectLocation?: string | null }
+    | { ok: true; redirectLocation?: string | null; note?: VolunteerLeaderNoteJson }
     | { ok: false; errors: Record<string, string | string[]>; message?: string };
 
 function normalizeErrors(raw: Record<string, string | string[]> | undefined): Record<string, string | string[]> {
@@ -110,6 +118,15 @@ export async function submitVolunteerModalFormDataPut(
     return parseErrorBody(res);
 }
 
+async function parseSuccessBody(res: Response): Promise<{ note?: VolunteerLeaderNoteJson }> {
+    try {
+        const body = (await res.json()) as { note?: VolunteerLeaderNoteJson };
+        return body?.note ? { note: body.note } : {};
+    } catch {
+        return {};
+    }
+}
+
 export async function submitVolunteerModalPost(
     url: string,
     data: Record<string, unknown>,
@@ -125,6 +142,33 @@ export async function submitVolunteerModalPost(
         },
         credentials: 'same-origin',
         body: JSON.stringify(data),
+        redirect: 'manual',
+    });
+
+    if (res.status === 422) {
+        return parseErrorBody(res);
+    }
+
+    if (res.status === 302 || res.status === 303 || (res.status >= 200 && res.status < 300)) {
+        const { note } = await parseSuccessBody(res);
+        return { ok: true, redirectLocation: res.headers.get('Location'), note };
+    }
+
+    return parseErrorBody(res);
+}
+
+export async function submitVolunteerModalDelete(
+    url: string,
+    csrf: string,
+): Promise<VolunteerModalSaveResult> {
+    const res = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+            Accept: 'application/json',
+            'X-CSRF-TOKEN': csrf,
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+        credentials: 'same-origin',
         redirect: 'manual',
     });
 
