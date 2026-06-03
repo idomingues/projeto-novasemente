@@ -297,21 +297,34 @@ class VolunteerManagementCenterTest extends TestCase
             ->json();
 
         $this->assertSame('Orientação interna para o líder do departamento.', $detail['notes'][0]['body']);
-        $this->assertNotEmpty($detail['notes'][0]['destroyUrl']);
+        $this->assertNull($detail['notes'][0]['destroyUrl']);
 
-        $noteId = $detail['notes'][0]['id'];
+        $adminNoteId = $detail['notes'][0]['id'];
 
-        $this->actingAs($admin)
+        $this->actingAs($leader)
+            ->withSession(['working_church_id' => $church->id])
+            ->deleteJson(route('ministry-lead.volunteers.pipeline.notes.destroy', [$volunteer, $adminNoteId]))
+            ->assertForbidden();
+
+        $leaderNote = $this->actingAs($leader)
             ->withSession(['working_church_id' => $church->id])
             ->postJson(route('ministry-lead.volunteers.pipeline.notes.store', $volunteer), [
-                'body' => 'Segunda nota via JSON.',
+                'body' => 'Nota do líder.',
             ])
             ->assertCreated()
-            ->assertJsonPath('note.body', 'Segunda nota via JSON.');
+            ->json('note');
+
+        $this->assertSame('Nota do líder.', $leaderNote['body']);
+        $this->assertNotEmpty($leaderNote['destroyUrl']);
+
+        $this->actingAs($leader)
+            ->withSession(['working_church_id' => $church->id])
+            ->deleteJson(route('ministry-lead.volunteers.pipeline.notes.destroy', [$volunteer, $leaderNote['id']]))
+            ->assertOk();
 
         $this->actingAs($admin)
             ->withSession(['working_church_id' => $church->id])
-            ->deleteJson(route('ministry-lead.volunteers.pipeline.notes.destroy', [$volunteer, $noteId]))
+            ->deleteJson(route('ministry-lead.volunteers.pipeline.notes.destroy', [$volunteer, $adminNoteId]))
             ->assertOk();
 
         $afterDelete = $this->actingAs($leader)
@@ -320,7 +333,6 @@ class VolunteerManagementCenterTest extends TestCase
             ->assertOk()
             ->json('notes');
 
-        $this->assertCount(1, $afterDelete);
-        $this->assertSame('Segunda nota via JSON.', $afterDelete[0]['body']);
+        $this->assertCount(0, $afterDelete);
     }
 }

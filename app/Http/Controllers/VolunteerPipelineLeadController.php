@@ -170,7 +170,7 @@ class VolunteerPipelineLeadController extends Controller
             ->get();
         $canMutate = $request->user()?->can('volunteers.ministry_operate') || $request->user()?->can('volunteers.manage');
         $notes = $noteRows
-            ->map(fn (VolunteerLeaderNote $n) => $this->volunteerLeaderNotePayload($n, $volunteer, $canMutate))
+            ->map(fn (VolunteerLeaderNote $n) => $this->volunteerLeaderNotePayload($request, $n, $volunteer))
             ->values()
             ->all();
 
@@ -442,17 +442,31 @@ class VolunteerPipelineLeadController extends Controller
         return back()->with('success', 'Fase excluída.');
     }
 
+    private function canDeleteVolunteerLeaderNote(Request $request, VolunteerLeaderNote $note): bool
+    {
+        $user = $request->user();
+        if ($user === null) {
+            return false;
+        }
+
+        if (! $user->can('volunteers.ministry_operate') && ! $user->can('volunteers.manage')) {
+            return false;
+        }
+
+        return $note->user_id !== null && (int) $note->user_id === (int) $user->id;
+    }
+
     /**
      * @return array{id: int, body: string, authorName: string, createdAt: string|null, destroyUrl: string|null}
      */
-    private function volunteerLeaderNotePayload(VolunteerLeaderNote $note, Volunteer $volunteer, bool $canMutate): array
+    private function volunteerLeaderNotePayload(Request $request, VolunteerLeaderNote $note, Volunteer $volunteer): array
     {
         return [
             'id' => (int) $note->id,
             'body' => (string) $note->body,
             'authorName' => $note->user?->name ?? 'Equipe',
             'createdAt' => $note->created_at?->toIso8601String(),
-            'destroyUrl' => $canMutate
+            'destroyUrl' => $this->canDeleteVolunteerLeaderNote($request, $note)
                 ? route('ministry-lead.volunteers.pipeline.notes.destroy', [$volunteer, $note])
                 : null,
         ];
@@ -479,7 +493,7 @@ class VolunteerPipelineLeadController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'note' => $this->volunteerLeaderNotePayload($note, $volunteer, true),
+                'note' => $this->volunteerLeaderNotePayload($request, $note, $volunteer),
             ], 201);
         }
 
@@ -496,6 +510,7 @@ class VolunteerPipelineLeadController extends Controller
             (int) $note->volunteer_id === (int) $volunteer->id && (int) $note->church_id === (int) $churchId,
             404,
         );
+        abort_unless($this->canDeleteVolunteerLeaderNote($request, $note), 403);
 
         $note->delete();
 
