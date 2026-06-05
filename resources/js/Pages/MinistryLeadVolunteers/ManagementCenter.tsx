@@ -8,6 +8,7 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import SelectInput from '@/Components/SelectInput';
 import TextInput from '@/Components/TextInput';
 import VolunteerCenterRosterPanel from '@/Components/Volunteers/VolunteerCenterRosterPanel';
+import VolunteerCenterScopePanel from '@/Components/Volunteers/VolunteerCenterScopePanel';
 import { titleBarAddIconClass } from '@/Components/AddButton';
 import { getMinistryIcon, getMinistryIconByKey } from '@/lib/ministryIcons';
 import RecordDetailHeader from '@/Components/RecordDetail/RecordDetailHeader';
@@ -35,7 +36,7 @@ import { volunteerDetailSections, volunteerRecordHeaderSubtitle, type VolunteerD
 import { centerVolunteersQuery, type CenterGroupBy, type CenterVinculo } from '@/utils/centerVolunteersQuery';
 import type { VolunteerRosterBoardFilters, VolunteerRosterListRow } from '@/utils/volunteerRosterList';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { MagnifyingGlassIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon } from '@heroicons/react/24/outline';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useResizablePaneWidth } from '@/hooks/useResizablePaneWidth';
@@ -158,6 +159,7 @@ export default function ManagementCenter({
     volunteersAdminUrl,
 }: Props) {
     const [sidebarSearch, setSidebarSearch] = useState('');
+    const [scopeModalOpen, setScopeModalOpen] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
     const [detailLoading, setDetailLoading] = useState(false);
     const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -248,10 +250,12 @@ export default function ManagementCenter({
 
     const selectDepartment = (id: number | 'none') => {
         navigate({ group: 'departamento', ministerio: id });
+        setScopeModalOpen(false);
     };
 
     const selectPhase = (key: string) => {
         navigate({ group: 'fase', fase: key });
+        setScopeModalOpen(false);
     };
 
     const switchGroupBy = (next: CenterGroupBy) => {
@@ -529,12 +533,68 @@ export default function ManagementCenter({
         withoutDepartmentCount,
     ]);
 
+    const scopeFilterTooltip = useMemo(() => {
+        if (isPhaseGroup) {
+            if (selectedPhaseKey) {
+                const phase = phases.find((p) => p.key === selectedPhaseKey);
+                return `Recorte: ${phase?.label ?? selectedPhaseKey}`;
+            }
+
+            return 'Recorte: Fase — Todos';
+        }
+        if (selectedMinistryId === 0) {
+            return 'Recorte: Sem departamento';
+        }
+        if (selectedMinistryId != null && selectedMinistry) {
+            return `Recorte: ${selectedMinistry.name}`;
+        }
+        if (selectedMinistryId != null) {
+            const department = departments.find((d) => d.id === selectedMinistryId);
+            if (department) {
+                return `Recorte: ${department.name}`;
+            }
+        }
+
+        return 'Recorte: Departamento — Todos';
+    }, [departments, isPhaseGroup, phases, selectedMinistry, selectedMinistryId, selectedPhaseKey]);
+
+    const scopeFilterActive =
+        isPhaseGroup || selectedMinistryId !== null || selectedPhaseKey !== null;
+
+    const scopePanelProps = {
+        groupBy,
+        onGroupByChange: switchGroupBy,
+        sidebarSearch,
+        onSidebarSearchChange: setSidebarSearch,
+        departments,
+        phases,
+        filteredDepartments,
+        filteredPhases,
+        selectedMinistryId,
+        selectedPhaseKey,
+        allDepartmentsTotal,
+        allPhasesTotal,
+        withoutDepartmentCount,
+        showWithoutDepartment,
+        onSelectAllDepartments: () => {
+            navigate({ group: 'departamento', ministerio: 'all' });
+            setScopeModalOpen(false);
+        },
+        onSelectDepartment: selectDepartment,
+        onSelectAllPhases: () => {
+            navigate({ group: 'fase', fase: 'all' });
+            setScopeModalOpen(false);
+        },
+        onSelectPhase: selectPhase,
+        compactInputClass,
+    };
+
     return (
         <AdminLayout wideLayout compactChrome modalOverlayOpen={modalOpen}>
             <Head title="Gestão de voluntários" />
             <FlashMessages />
 
-            <div className="flex h-full min-h-0 flex-col md:h-[calc(100dvh-7.5rem)] md:min-h-[28rem]">
+            <div className="flex min-h-0 flex-1 flex-col">
                 <div className="flex shrink-0 items-center justify-between gap-2 pb-2">
                     <div className="min-w-0">
                         <h1 className="truncate text-lg font-semibold text-zinc-900 dark:text-white">
@@ -572,174 +632,10 @@ export default function ManagementCenter({
 
                 <div className="flex min-h-0 flex-1 flex-col gap-2 lg:flex-row lg:items-stretch">
                     <aside
-                        className="flex w-full min-h-0 max-h-40 shrink-0 flex-col lg:max-h-none lg:max-w-[min(100%,var(--dept-pane-w))] lg:w-[var(--dept-pane-w)]"
+                        className="hidden min-h-0 w-full shrink-0 flex-col lg:flex lg:max-h-none lg:max-w-[min(100%,var(--dept-pane-w))] lg:w-[var(--dept-pane-w)]"
                         style={{ ['--dept-pane-w' as string]: `${departmentPaneWidth}px` }}
                     >
-                        <div
-                            className="mb-1.5 flex shrink-0 rounded-lg border border-zinc-200 bg-zinc-50 p-0.5 dark:border-zinc-700 dark:bg-zinc-800/80"
-                            role="tablist"
-                            aria-label="Agrupar por"
-                        >
-                            <button
-                                type="button"
-                                role="tab"
-                                aria-selected={!isPhaseGroup}
-                                onClick={() => switchGroupBy('departamento')}
-                                className={`flex-1 cursor-pointer rounded-md px-2 py-1 text-[10px] font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60 ${
-                                    !isPhaseGroup
-                                        ? 'bg-emerald-600 text-white shadow-sm ring-1 ring-inset ring-emerald-700/30 dark:bg-emerald-600 dark:text-white'
-                                        : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-white/70 dark:hover:bg-zinc-900/40'
-                                }`}
-                            >
-                                Departamento
-                            </button>
-                            <button
-                                type="button"
-                                role="tab"
-                                aria-selected={isPhaseGroup}
-                                onClick={() => switchGroupBy('fase')}
-                                className={`flex-1 cursor-pointer rounded-md px-2 py-1 text-[10px] font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60 ${
-                                    isPhaseGroup
-                                        ? 'bg-emerald-600 text-white shadow-sm ring-1 ring-inset ring-emerald-700/30 dark:bg-emerald-600 dark:text-white'
-                                        : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-white/70 dark:hover:bg-zinc-900/40'
-                                }`}
-                            >
-                                Fase
-                            </button>
-                        </div>
-                        {!isPhaseGroup ? (
-                            <div className="relative mb-1.5 shrink-0">
-                                <MagnifyingGlassIcon className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
-                                <TextInput
-                                    type="search"
-                                    value={sidebarSearch}
-                                    onChange={(e) => setSidebarSearch(e.target.value)}
-                                    placeholder="Buscar departamento…"
-                                    className={`${compactInputClass} !pl-7`}
-                                    autoComplete="off"
-                                />
-                            </div>
-                        ) : null}
-                        <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto rounded-xl border border-zinc-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-900">
-                            {isPhaseGroup
-                                ? (
-                                    <>
-                                        <button
-                                            type="button"
-                                            onClick={() => navigate({ group: 'fase', fase: 'all' })}
-                                            className={`flex w-full cursor-pointer items-center justify-between gap-1.5 rounded-lg border px-2 py-1 text-left transition ${
-                                                selectedPhaseKey === null
-                                                    ? 'border-emerald-500 bg-emerald-50/90 dark:border-emerald-600 dark:bg-emerald-950/40'
-                                                    : 'border-transparent hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
-                                            }`}
-                                        >
-                                            <span className="min-w-0 flex-1 truncate text-[11px] font-medium leading-tight text-zinc-900 dark:text-white">
-                                                Todos
-                                            </span>
-                                            <span className="shrink-0 rounded-full bg-zinc-200 px-1.5 py-px text-[10px] font-semibold tabular-nums text-zinc-700 dark:bg-zinc-700 dark:text-zinc-100">
-                                                {allPhasesTotal}
-                                            </span>
-                                        </button>
-                                        {filteredPhases.map((p) => {
-                                            const selected = selectedPhaseKey === p.key;
-                                            return (
-                                                <button
-                                                    key={p.key}
-                                                    type="button"
-                                                    onClick={() => selectPhase(p.key)}
-                                                    title={p.label}
-                                                    className={`flex w-full cursor-pointer items-center justify-between gap-1.5 rounded-lg border px-2 py-1 text-left transition ${
-                                                        selected
-                                                            ? 'border-emerald-500 bg-emerald-50/90 dark:border-emerald-600 dark:bg-emerald-950/40'
-                                                            : 'border-transparent hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
-                                                    }`}
-                                                >
-                                                    <span className="min-w-0 flex-1 truncate text-[11px] font-medium leading-tight text-zinc-900 dark:text-white">
-                                                        {p.label}
-                                                    </span>
-                                                    <span className="shrink-0 rounded-full bg-zinc-200 px-1.5 py-px text-[10px] font-semibold tabular-nums text-zinc-700 dark:bg-zinc-700 dark:text-zinc-100">
-                                                        {p.volunteerCount}
-                                                    </span>
-                                                </button>
-                                            );
-                                        })}
-                                    </>
-                                )
-                                : null}
-                            {!isPhaseGroup
-                                ? (
-                                    <>
-                                        <button
-                                            type="button"
-                                            onClick={() => navigate({ group: 'departamento', ministerio: 'all' })}
-                                            className={`flex w-full cursor-pointer items-center justify-between gap-1.5 rounded-lg border px-2 py-1 text-left transition ${
-                                                selectedMinistryId === null
-                                                    ? 'border-emerald-500 bg-emerald-50/90 dark:border-emerald-600 dark:bg-emerald-950/40'
-                                                    : 'border-transparent hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
-                                            }`}
-                                        >
-                                            <span className="min-w-0 flex-1 truncate text-[11px] font-medium leading-tight text-zinc-900 dark:text-white">
-                                                Todos
-                                            </span>
-                                            <span className="shrink-0 rounded-full bg-zinc-200 px-1.5 py-px text-[10px] font-semibold tabular-nums text-zinc-700 dark:bg-zinc-700 dark:text-zinc-100">
-                                                {allDepartmentsTotal}
-                                            </span>
-                                        </button>
-                                        {filteredDepartments.map((d) => {
-                                            const Icon = d.icon ? getMinistryIconByKey(d.icon) : getMinistryIcon(d.name);
-                                            const selected = selectedMinistryId === d.id;
-                                            return (
-                                                <button
-                                                    key={d.id}
-                                                    type="button"
-                                                    onClick={() => selectDepartment(d.id)}
-                                                    title={d.name}
-                                                    className={`flex w-full cursor-pointer items-center gap-1.5 rounded-lg border px-1.5 py-1 text-left transition ${
-                                                        selected
-                                                            ? 'border-emerald-500 bg-emerald-50/90 dark:border-emerald-600 dark:bg-emerald-950/40'
-                                                            : 'border-transparent hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
-                                                    }`}
-                                                >
-                                                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-                                                        <Icon className="h-3.5 w-3.5" />
-                                                    </span>
-                                                    <span className="min-w-0 flex-1 truncate text-[11px] font-medium leading-tight text-zinc-900 dark:text-white">
-                                                        {d.name}
-                                                    </span>
-                                                    <span className="shrink-0 rounded-full bg-zinc-200 px-1.5 py-px text-[10px] font-semibold tabular-nums text-zinc-700 dark:bg-zinc-700 dark:text-zinc-100">
-                                                        {d.volunteerCount}
-                                                    </span>
-                                                </button>
-                                            );
-                                        })}
-                                    </>
-                                )
-                                : null}
-                            {showWithoutDepartment ? (
-                                <button
-                                    type="button"
-                                    onClick={() => selectDepartment('none')}
-                                    className={`flex w-full cursor-pointer items-center justify-between gap-1 rounded-lg border px-2 py-1 text-left transition ${
-                                        selectedMinistryId === 0
-                                            ? 'border-violet-500 bg-violet-50/90 dark:border-violet-600 dark:bg-violet-950/40'
-                                            : 'border-transparent hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
-                                    }`}
-                                >
-                                    <span className="truncate text-[11px] font-medium text-zinc-800 dark:text-zinc-100">
-                                        Sem departamento
-                                    </span>
-                                    <span className="shrink-0 rounded-full bg-violet-100 px-1.5 py-px text-[10px] font-semibold text-violet-800 dark:bg-violet-950/50 dark:text-violet-200">
-                                        {withoutDepartmentCount}
-                                    </span>
-                                </button>
-                            ) : null}
-                            {isPhaseGroup && filteredPhases.length === 0 ? (
-                                <p className="px-2 py-3 text-center text-[11px] text-zinc-500">Nenhuma fase.</p>
-                            ) : null}
-                            {!isPhaseGroup && filteredDepartments.length === 0 && !showWithoutDepartment ? (
-                                <p className="px-2 py-3 text-center text-[11px] text-zinc-500">Nenhum departamento.</p>
-                            ) : null}
-                        </div>
+                        <VolunteerCenterScopePanel {...scopePanelProps} density="compact" />
                     </aside>
 
                     <div
@@ -773,6 +669,11 @@ export default function ManagementCenter({
                                 canVolunteerManage={canVolunteerManage}
                                 canPipelineMutate={canPipelineMutate}
                                 onOpenVolunteer={(id) => void openVolunteer(id)}
+                                scopeFilter={{
+                                    tooltip: scopeFilterTooltip,
+                                    active: scopeFilterActive,
+                                    onOpen: () => setScopeModalOpen(true),
+                                }}
                                 listHeader={{
                                     title: selectedTitle,
                                     subtitle: `${selectedGroupTotal} voluntário${selectedGroupTotal === 1 ? '' : 's'}`,
@@ -783,6 +684,18 @@ export default function ManagementCenter({
                     </section>
                 </div>
             </div>
+
+            <Modal show={scopeModalOpen} onClose={() => setScopeModalOpen(false)} maxWidth="md">
+                <div className="max-h-[min(90dvh,720px)] overflow-y-auto px-5 pb-6 pt-14 sm:px-6 sm:pt-16">
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Departamento ou fase</h2>
+                    <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                        Escolha o recorte da lista. Toque em uma opção para aplicar na hora.
+                    </p>
+                    <div className="mt-4">
+                        <VolunteerCenterScopePanel {...scopePanelProps} density="comfortable" />
+                    </div>
+                </div>
+            </Modal>
 
             <Modal show={modalOpen} onClose={closeVolunteerModal} maxWidth="4xl" disableBodyScroll>
                 <div className="flex max-h-[min(100dvh-1rem,880px)] min-h-0 w-full flex-col overflow-hidden sm:max-h-[min(90dvh,860px)]">

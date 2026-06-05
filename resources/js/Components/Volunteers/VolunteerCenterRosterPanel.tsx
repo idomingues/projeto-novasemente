@@ -16,7 +16,7 @@ import {
     type VolunteerRosterBoardFilters,
     type VolunteerRosterListRow,
 } from '@/utils/volunteerRosterList';
-import { AdjustmentsHorizontalIcon, ArrowsUpDownIcon } from '@heroicons/react/24/outline';
+import { AdjustmentsHorizontalIcon, ArrowsUpDownIcon, BuildingOffice2Icon } from '@heroicons/react/24/outline';
 import { Link, router, useForm } from '@inertiajs/react';
 import { FormEventHandler, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
@@ -53,6 +53,11 @@ type Props = {
     canPipelineMutate: boolean;
     onOpenVolunteer: (id: number) => void;
     listHeader: VolunteerCenterRosterListHeader;
+    scopeFilter?: {
+        tooltip: string;
+        active: boolean;
+        onOpen: () => void;
+    };
 };
 
 const headerIconBtnClass =
@@ -85,6 +90,7 @@ export default function VolunteerCenterRosterPanel({
     canPipelineMutate,
     onOpenVolunteer,
     listHeader,
+    scopeFilter,
 }: Props) {
     const filterForm = useForm<VolunteerRosterBoardFilters>({ ...boardFilters });
     const filtersRef = useRef(boardFilters);
@@ -241,7 +247,7 @@ export default function VolunteerCenterRosterPanel({
     };
 
     return (
-        <>
+        <div className="flex min-h-0 flex-1 flex-col">
             <div className="shrink-0 border-b border-zinc-200 px-2.5 py-2 dark:border-zinc-800">
                 <div className="flex items-center gap-2">
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
@@ -250,9 +256,21 @@ export default function VolunteerCenterRosterPanel({
                     <div className="min-w-0 flex-1">
                         <h2 className="truncate text-sm font-semibold text-zinc-900 dark:text-white">{listHeader.title}</h2>
                         <p className="text-[10px] text-zinc-500 dark:text-zinc-400">{listHeader.subtitle}</p>
+                        <p className="text-[10px] font-medium text-zinc-600 dark:text-zinc-300">{resultsSummary}</p>
                     </div>
                     {listHeader.actions ? <div className="flex shrink-0 items-center">{listHeader.actions}</div> : null}
                     <div className="flex shrink-0 items-center gap-1">
+                        {scopeFilter ? (
+                            <button
+                                type="button"
+                                onClick={scopeFilter.onOpen}
+                                title={scopeFilter.tooltip}
+                                aria-label={scopeFilter.tooltip}
+                                className={`lg:hidden ${headerIconBtnClass} ${scopeFilter.active ? headerIconBtnActiveClass : ''}`}
+                            >
+                                <BuildingOffice2Icon className="h-4 w-4" aria-hidden />
+                            </button>
+                        ) : null}
                         <button
                             type="button"
                             onClick={() => setFiltersModalOpen(true)}
@@ -348,7 +366,7 @@ export default function VolunteerCenterRosterPanel({
                 </div>
             </form>
 
-            <div className="mt-1 min-h-0 flex-1 overflow-auto">
+            <div className="mt-1 min-h-0 flex-1 overflow-y-auto overscroll-contain">
                 <VolunteerRosterTable
                     volunteers={volunteers.data}
                     canVolunteerManage={canVolunteerManage}
@@ -362,7 +380,7 @@ export default function VolunteerCenterRosterPanel({
             </div>
 
             {volunteers.links.length > 1 ? (
-                <nav className="mt-2 flex flex-wrap gap-1 border-t border-zinc-200 pt-2 dark:border-zinc-800">
+                <nav className="mt-2 flex shrink-0 flex-wrap gap-1 border-t border-zinc-200 bg-white pt-2 dark:border-zinc-800 dark:bg-zinc-900">
                     {volunteers.links.map((link, i) =>
                         link.url ? (
                             <button
@@ -428,6 +446,6 @@ export default function VolunteerCenterRosterPanel({
                     </div>
                 </form>
             </Modal>
-        </>
+        </div>
     );
 }

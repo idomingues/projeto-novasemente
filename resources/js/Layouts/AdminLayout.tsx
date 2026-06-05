@@ -33,10 +33,14 @@ export default function AdminLayout({
     const mainClassName = modalOverlayOpen
         ? 'overflow-hidden p-0'
         : compactChrome
-          ? 'overflow-hidden pt-[calc(4rem+env(safe-area-inset-top,0px))] px-3 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pt-24 md:px-4 md:pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))]'
+          ? 'flex flex-col overflow-hidden pt-[calc(4rem+env(safe-area-inset-top,0px))] px-3 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pt-24 md:px-4 md:pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))]'
           : 'overflow-y-auto pt-[calc(4rem+env(safe-area-inset-top,0px))] px-4 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] sm:px-6 md:pt-24 md:px-6 md:pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] lg:px-8';
 
-    const innerClassName = modalOverlayOpen ? '' : compactChrome ? 'pt-0 md:pt-0' : 'pt-6';
+    const innerClassName = modalOverlayOpen
+        ? ''
+        : compactChrome
+          ? 'flex h-full min-h-0 flex-1 flex-col pt-0 md:pt-0'
+          : 'pt-6';
 
     return (
         <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-black">
