@@ -14,6 +14,7 @@ import {
 import type { ComponentType, SVGProps } from 'react';
 import CoverWithVideoLink from '@/Components/News/CoverWithVideoLink';
 import PromiseBoxModal from '@/Components/Mobile/PromiseBoxModal';
+import SabbathHomeBanner, { type SabbathHomeBannerData } from '@/Components/Mobile/SabbathHomeBanner';
 
 type MenuIcon = ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
 
@@ -35,6 +36,7 @@ interface Props {
     upcomingEvents: MobileEventListItem[];
     showPostRegistrationBanner?: boolean;
     volunteerSignupCompletion?: VolunteerSignupCompletion | null;
+    sabbathBanner?: SabbathHomeBannerData | null;
 }
 
 type PageProps = {
@@ -194,6 +196,7 @@ export default function MobileHome({
     upcomingEvents,
     showPostRegistrationBanner = false,
     volunteerSignupCompletion = null,
+    sabbathBanner = null,
 }: Props) {
     const page = usePage();
     const { appUrl = '', auth } = page.props as unknown as PageProps;
@@ -259,6 +262,8 @@ export default function MobileHome({
                     </div>
 
                 </header>
+
+                {sabbathBanner ? <SabbathHomeBanner banner={sabbathBanner} appUrl={appUrl} /> : null}
 
                 <section aria-label="Atalhos">
                     <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-3">

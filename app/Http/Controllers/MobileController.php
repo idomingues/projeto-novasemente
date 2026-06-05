@@ -24,6 +24,7 @@ use App\Models\Volunteer;
 use App\Services\DriveFolderCoverService;
 use App\Services\DriveFolderImagesService;
 use App\Services\LibraryExternalPageExtractService;
+use App\Services\SabbathSunsetService;
 use App\Services\ScheduleAssignmentPresenter;
 use App\Services\SolicitationChatNotifier;
 use App\Services\VolunteerScheduleOverview;
@@ -232,11 +233,14 @@ class MobileController extends Controller
             ? VolunteerSignupCompletion::incompleteForUser($user)
             : null;
 
+        $sabbathBanner = app(SabbathSunsetService::class)->homeBannerPayload();
+
         return Inertia::render('Mobile/Home', [
             'latestNews' => $latestNews,
             'upcomingEvents' => $upcomingEvents,
             'showPostRegistrationBanner' => $request->boolean('reg_ok') && $request->user() !== null,
             'volunteerSignupCompletion' => $volunteerSignupCompletion,
+            'sabbathBanner' => $sabbathBanner,
         ]);
     }
 
