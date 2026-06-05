@@ -20,7 +20,7 @@ final class VolunteerRosterSignals
 
         $sixMonths = false;
         if ($v->user_id) {
-            $u = User::query()->find($v->user_id);
+            $u = $v->relationLoaded('user') ? $v->user : User::query()->find($v->user_id);
             if ($u?->created_at) {
                 $sixMonths = $u->created_at->lte(now()->subMonths(6));
             }

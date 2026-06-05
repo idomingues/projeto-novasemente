@@ -110,56 +110,67 @@ class VolunteerChurchRosterBuilder
             ? \App\Models\VolunteerMinistryInvitation::blockingMinistryIdsByVolunteerIds($churchId, $volunteerIds)
             : [];
 
+        $centerMode = $request->query('center_mode') === '1' || $request->input('center_mode') === '1';
+
         VolunteerPipelineBootstrap::ensureRecusaStagesForChurch($churchId);
         $adminWorkflowBlankVolunteerCount = 0;
-        if (Schema::hasColumn('volunteer_church_pipelines', 'admin_workflow_stage_id')) {
-            $allowed = VolunteerPipelineBootstrap::adminWorkflowStageIdsForChurch($churchId);
-            if ($allowed === []) {
-                $allowed = [-1];
-            }
-            $adminWorkflowBlankVolunteerCount = self::filteredRosterQuery($request, $churchId, $user)
-                ->whereHas('churchPipelines', fn ($p) => $p
-                    ->where('church_id', $churchId)
-                    ->whereNull('staff_archived_at')
-                    ->whereNull('admin_workflow_stage_id')
-                    ->where(function ($sub) use ($allowed) {
-                        $sub->whereNull('stage_id')->orWhereNotIn('stage_id', $allowed);
-                    }))
-                ->count();
-        }
-
-        $useAdminWorkflowStages = (bool) $user?->can('volunteers.manage');
-        $adminWorkflowStageIds = VolunteerPipelineBootstrap::adminWorkflowStageIdsForChurch($churchId);
-        $stageCountsById = self::filteredStageCountsById($request, $churchId, $user);
-        $stages = VolunteerPipelineStage::query()
-            ->where('church_id', $churchId)
-            ->when(! $useAdminWorkflowStages, fn ($q) => $q->whereNotIn(
-                'id',
-                $adminWorkflowStageIds === [] ? [-1] : $adminWorkflowStageIds,
-            ))
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->get(['id', 'name', 'sort_order'])
-            ->map(fn (VolunteerPipelineStage $s) => [
-                'id' => (int) $s->id,
-                'name' => $s->name,
-                'sort_order' => (int) $s->sort_order,
-                'volunteer_count' => (int) ($stageCountsById[(int) $s->id] ?? 0),
-            ])
-            ->values()
-            ->all();
-
         $archivedVolunteerCount = 0;
-        if (Schema::hasColumn('volunteer_church_pipelines', 'staff_archived_at')) {
-            $archivedVolunteerCount = self::filteredRosterQuery($request, $churchId, $user)
-                ->whereHas('churchPipelines', fn ($p) => $p
-                    ->where('church_id', $churchId)
-                    ->whereNotNull('staff_archived_at'))
-                ->count();
+        $stages = [];
+
+        if (! $centerMode) {
+            if (Schema::hasColumn('volunteer_church_pipelines', 'admin_workflow_stage_id')) {
+                $allowed = VolunteerPipelineBootstrap::adminWorkflowStageIdsForChurch($churchId);
+                if ($allowed === []) {
+                    $allowed = [-1];
+                }
+                $adminWorkflowBlankVolunteerCount = self::boardFilteredVolunteerQuery($request, $churchId)
+                    ->whereHas('churchPipelines', fn ($p) => $p
+                        ->where('church_id', $churchId)
+                        ->whereNull('staff_archived_at')
+                        ->whereNull('admin_workflow_stage_id')
+                        ->where(function ($sub) use ($allowed) {
+                            $sub->whereNull('stage_id')->orWhereNotIn('stage_id', $allowed);
+                        }))
+                    ->count();
+            }
+
+            $useAdminWorkflowStages = (bool) $user?->can('volunteers.manage');
+            $adminWorkflowStageIds = VolunteerPipelineBootstrap::adminWorkflowStageIdsForChurch($churchId);
+            $stageCountsById = self::filteredStageCountsById($request, $churchId, $user);
+            $stages = VolunteerPipelineStage::query()
+                ->where('church_id', $churchId)
+                ->when(! $useAdminWorkflowStages, fn ($q) => $q->whereNotIn(
+                    'id',
+                    $adminWorkflowStageIds === [] ? [-1] : $adminWorkflowStageIds,
+                ))
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get(['id', 'name', 'sort_order'])
+                ->map(fn (VolunteerPipelineStage $s) => [
+                    'id' => (int) $s->id,
+                    'name' => $s->name,
+                    'sort_order' => (int) $s->sort_order,
+                    'volunteer_count' => (int) ($stageCountsById[(int) $s->id] ?? 0),
+                ])
+                ->values()
+                ->all();
+
+            if (Schema::hasColumn('volunteer_church_pipelines', 'staff_archived_at')) {
+                $archivedVolunteerCount = self::boardFilteredVolunteerQuery($request, $churchId)
+                    ->whereHas('churchPipelines', fn ($p) => $p
+                        ->where('church_id', $churchId)
+                        ->whereNotNull('staff_archived_at'))
+                    ->count();
+            }
         }
+
+        $pipelineStagesById = VolunteerPipelineStage::query()
+            ->where('church_id', $churchId)
+            ->get(['id', 'name'])
+            ->keyBy('id');
 
         $volunteers->setCollection(
-            $volunteers->getCollection()->map(function (Volunteer $v) use ($user, $churchId, $alwaysShowFullContact, $forwardedMinistryIdsByVolunteer) {
+            $volunteers->getCollection()->map(function (Volunteer $v) use ($user, $churchId, $alwaysShowFullContact, $forwardedMinistryIdsByVolunteer, $pipelineStagesById) {
                 $pipe = $v->churchPipelines->firstWhere('church_id', $churchId);
                 $stage = $pipe?->stage;
                 $mask = $alwaysShowFullContact
@@ -187,7 +198,7 @@ class VolunteerChurchRosterBuilder
                 );
                 $leaderStageId = VolunteerPipelineBootstrap::leaderVisiblePipelineStageId($churchId, $pipe?->stage_id);
                 $leaderStage = $leaderStageId !== null
-                    ? VolunteerPipelineStage::query()->where('church_id', $churchId)->find($leaderStageId)
+                    ? $pipelineStagesById->get($leaderStageId)
                     : null;
                 $rosterStageId = $user?->can('volunteers.manage') ? $stage?->id : $leaderStageId;
                 $rosterStageName = $user?->can('volunteers.manage')
@@ -243,6 +254,24 @@ class VolunteerChurchRosterBuilder
     }
 
     /**
+     * Query base do roster com filtros de quadro/arquivados (sem ordenação da lista).
+     *
+     * @return Builder<Volunteer>
+     */
+    public static function boardFilteredVolunteerQuery(Request $request, int $churchId): Builder
+    {
+        $q = self::volunteersVisibleInChurchQuery($churchId);
+        VolunteerLeadRosterFilters::apply($request, $q, $churchId);
+        self::applyStaffArchivedFilter(
+            $q,
+            $churchId,
+            VolunteerLeadRosterFilters::showsArchivedRoster($request),
+        );
+
+        return $q;
+    }
+
+    /**
      * Query base do roster com filtros/sort/arquivados aplicados (mesmo conjunto que o usuário vê na lista).
      *
      * @param  Request  $request
@@ -250,7 +279,7 @@ class VolunteerChurchRosterBuilder
      */
     private static function filteredRosterQuery(Request $request, int $churchId, ?User $user): Builder
     {
-        $q = self::volunteersVisibleInChurchQuery($churchId)
+        $q = self::boardFilteredVolunteerQuery($request, $churchId)
             ->with([
                 'user:id,email,photo_url',
                 'ministries' => fn ($m) => $m->where('church_id', $churchId),
@@ -258,8 +287,6 @@ class VolunteerChurchRosterBuilder
                 'ministryInvitations' => fn ($i) => $i->where('church_id', $churchId)->with('ministry:id,name,church_id'),
             ]);
 
-        VolunteerLeadRosterFilters::apply($request, $q, $churchId);
-        self::applyStaffArchivedFilter($q, $churchId, VolunteerLeadRosterFilters::showsArchivedRoster($request));
         VolunteerLeadRosterFilters::applySort(
             $request,
             $q,

@@ -45,11 +45,12 @@ class VolunteerManagementCenterBuilder
 
     /**
      * @param  list<int>  $ministryIds
+     * @return array<int, int>
      */
-    private static function rosterCountForMinistries(Request $request, int $churchId, array $ministryIds, string $centerVinculo): int
+    private static function attachedVolunteerCountsByMinistry(Request $request, int $churchId, array $ministryIds): array
     {
-        if ($ministryIds === []) {
-            return 0;
+        if ($ministryIds === [] || ! Schema::hasTable('ministry_volunteer')) {
+            return [];
         }
 
         $rq = self::requestForSidebarCounts($request);
@@ -58,19 +59,73 @@ class VolunteerManagementCenterBuilder
             'center_phase_key' => '',
             'center_sem_departamento' => '',
             'pipeline_stage_id' => '',
-            'ministry_ids' => implode(',', $ministryIds),
-            'center_vinculo' => $centerVinculo,
+            'ministry_ids' => '',
         ]);
 
-        $q = VolunteerChurchRosterBuilder::volunteersVisibleInChurchQuery($churchId);
-        VolunteerLeadRosterFilters::apply($rq, $q, $churchId);
-        VolunteerChurchRosterBuilder::applyStaffArchivedFilter(
-            $q,
-            $churchId,
-            VolunteerLeadRosterFilters::showsArchivedRoster($rq),
-        );
+        $volunteerSub = VolunteerChurchRosterBuilder::boardFilteredVolunteerQuery($rq, $churchId)
+            ->select('volunteers.id');
 
-        return (int) $q->distinct('volunteers.id')->count('volunteers.id');
+        $rows = DB::table('ministry_volunteer as mv')
+            ->joinSub($volunteerSub, 'vf', 'vf.id', '=', 'mv.volunteer_id')
+            ->join('ministries as m', function ($join) use ($churchId) {
+                $join->on('m.id', '=', 'mv.ministry_id')
+                    ->where('m.church_id', '=', $churchId);
+            })
+            ->whereIn('m.id', $ministryIds)
+            ->groupBy('m.id')
+            ->selectRaw('m.id as ministry_id, COUNT(DISTINCT vf.id) as aggregate')
+            ->get();
+
+        $out = [];
+        foreach ($rows as $row) {
+            $out[(int) $row->ministry_id] = (int) $row->aggregate;
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  list<int>  $ministryIds
+     * @return array<int, int>
+     */
+    private static function forwardedVolunteerCountsByMinistry(Request $request, int $churchId, array $ministryIds): array
+    {
+        if ($ministryIds === [] || ! Schema::hasTable('volunteer_ministry_invitations')) {
+            return [];
+        }
+
+        $rq = self::requestForSidebarCounts($request);
+        $rq->merge([
+            'center_mode' => '1',
+            'center_phase_key' => '',
+            'center_sem_departamento' => '',
+            'pipeline_stage_id' => '',
+            'ministry_ids' => '',
+        ]);
+
+        $volunteerSub = VolunteerChurchRosterBuilder::boardFilteredVolunteerQuery($rq, $churchId)
+            ->select('volunteers.id');
+
+        $rows = DB::table('volunteer_ministry_invitations as inv')
+            ->joinSub($volunteerSub, 'vf', 'vf.id', '=', 'inv.volunteer_id')
+            ->where('inv.church_id', $churchId)
+            ->whereIn('inv.ministry_id', $ministryIds)
+            ->whereNotExists(function ($sub) {
+                $sub->selectRaw('1')
+                    ->from('ministry_volunteer as mv')
+                    ->whereColumn('mv.volunteer_id', 'vf.id')
+                    ->whereColumn('mv.ministry_id', 'inv.ministry_id');
+            })
+            ->groupBy('inv.ministry_id')
+            ->selectRaw('inv.ministry_id as ministry_id, COUNT(DISTINCT vf.id) as aggregate')
+            ->get();
+
+        $out = [];
+        foreach ($rows as $row) {
+            $out[(int) $row->ministry_id] = (int) $row->aggregate;
+        }
+
+        return $out;
     }
 
     /**
@@ -105,13 +160,7 @@ class VolunteerManagementCenterBuilder
             $rq = clone $filtersRequest;
             $rq->merge(['center_phase_key' => (string) $def['key']]);
 
-            $q = VolunteerChurchRosterBuilder::volunteersVisibleInChurchQuery($churchId);
-            VolunteerLeadRosterFilters::apply($rq, $q, $churchId);
-            VolunteerChurchRosterBuilder::applyStaffArchivedFilter(
-                $q,
-                $churchId,
-                VolunteerLeadRosterFilters::showsArchivedRoster($rq),
-            );
+            $q = VolunteerChurchRosterBuilder::boardFilteredVolunteerQuery($rq, $churchId);
 
             $rows[] = [
                 'key' => $def['key'],
@@ -284,6 +333,10 @@ class VolunteerManagementCenterBuilder
             return [];
         }
 
+        $ministryIds = $ministries->map(fn (Ministry $m) => (int) $m->id)->values()->all();
+        $attachedCounts = self::attachedVolunteerCountsByMinistry($request, $churchId, $ministryIds);
+        $forwardedCounts = self::forwardedVolunteerCountsByMinistry($request, $churchId, $ministryIds);
+
         $rows = [];
         foreach ($ministries as $m) {
             $leaders = $m->users
@@ -299,8 +352,8 @@ class VolunteerManagementCenterBuilder
                 'name' => $m->name,
                 'icon' => $m->icon,
                 'leaders' => $leaders,
-                'volunteerCount' => self::rosterCountForMinistries($request, $churchId, [$ministryId], 'vinculados'),
-                'forwardedCount' => self::rosterCountForMinistries($request, $churchId, [$ministryId], 'encaminhados'),
+                'volunteerCount' => (int) ($attachedCounts[$ministryId] ?? 0),
+                'forwardedCount' => (int) ($forwardedCounts[$ministryId] ?? 0),
             ];
         }
 
@@ -318,13 +371,7 @@ class VolunteerManagementCenterBuilder
             'center_sem_departamento' => '',
             'pipeline_stage_id' => '',
         ]);
-        $q = VolunteerChurchRosterBuilder::volunteersVisibleInChurchQuery($churchId);
-        VolunteerLeadRosterFilters::apply($rq, $q, $churchId);
-        VolunteerChurchRosterBuilder::applyStaffArchivedFilter(
-            $q,
-            $churchId,
-            VolunteerLeadRosterFilters::showsArchivedRoster($rq),
-        );
+        $q = VolunteerChurchRosterBuilder::boardFilteredVolunteerQuery($rq, $churchId);
 
         return (int) $q->distinct('volunteers.id')->count('volunteers.id');
     }
@@ -340,13 +387,7 @@ class VolunteerManagementCenterBuilder
             'pipeline_stage_id' => '',
             'center_sem_departamento' => '1',
         ]);
-        $q = VolunteerChurchRosterBuilder::volunteersVisibleInChurchQuery($churchId);
-        VolunteerLeadRosterFilters::apply($rq, $q, $churchId);
-        VolunteerChurchRosterBuilder::applyStaffArchivedFilter(
-            $q,
-            $churchId,
-            VolunteerLeadRosterFilters::showsArchivedRoster($rq),
-        );
+        $q = VolunteerChurchRosterBuilder::boardFilteredVolunteerQuery($rq, $churchId);
 
         return (int) $q->distinct('volunteers.id')->count('volunteers.id');
     }
