@@ -57,6 +57,20 @@ class VolunteerManagementCenterTest extends TestCase
             ->where('selectedMinistryId', $ministry->id));
     }
 
+    public function test_volunteers_index_renders_management_center_without_redirect(): void
+    {
+        $admin = $this->actingAsAdmin();
+        $church = Church::query()->firstOrFail();
+
+        $this->actingAs($admin)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('ministry-lead.volunteers.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('MinistryLeadVolunteers/ManagementCenter')
+                ->has('volunteers.data'));
+    }
+
     public function test_management_center_lists_volunteer_without_department(): void
     {
         $admin = $this->actingAsAdmin();

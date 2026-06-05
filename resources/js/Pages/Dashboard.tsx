@@ -81,7 +81,7 @@ export default function Dashboard({
             name: 'Voluntários',
             value: formatStat(stats.volunteers),
             icon: UserGroupIcon,
-            href: route('ministry-lead.volunteers.index'),
+            href: route('ministry-lead.volunteers.central'),
             linkLabel: 'Ver voluntários',
         },
         {

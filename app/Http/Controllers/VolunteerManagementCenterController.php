@@ -119,9 +119,10 @@ class VolunteerManagementCenterController extends Controller
             abort_unless($ministry, 404);
         }
 
-        // Central: evitar paginação para que os números da lateral batam com a lista.
-        // Mantemos um limite alto por segurança/performance.
-        $perPage = 500;
+        // Lista paginada: totais da lateral vêm de contagens separadas; limitar payload (mobile/produção).
+        $userAgent = (string) $request->userAgent();
+        $isMobileClient = preg_match('/Mobile|Android|iPhone|iPad|iPod/i', $userAgent) === 1;
+        $perPage = min(max((int) $request->query('por_pagina', $isMobileClient ? 50 : 100), 25), 100);
 
         $this->applyCenterScopeToRequest($request, $groupBy, $selectedMinistryId, $selectedPhaseKey, $centerVinculo);
         $request->merge(['center_mode' => '1']);

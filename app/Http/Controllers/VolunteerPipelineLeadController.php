@@ -26,6 +26,7 @@ use App\Support\VolunteerSignupDetailPresenter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Inertia\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
@@ -95,8 +96,10 @@ class VolunteerPipelineLeadController extends Controller
         return $user->can('solicitations.manage');
     }
 
-    public function index(Request $request, VolunteerRequestSolicitationController $volunteerRequests): RedirectResponse
-    {
+    public function index(
+        Request $request,
+        VolunteerManagementCenterController $managementCenter,
+    ): RedirectResponse|Response {
         $this->canUseRead($request);
 
         if ($request->query('secao') === 'pedidos') {
@@ -106,7 +109,8 @@ class VolunteerPipelineLeadController extends Controller
             return redirect()->route('ministry-lead.volunteers.pedidos', $query);
         }
 
-        return redirect()->route('ministry-lead.volunteers.central', $request->query());
+        // Mesma tela que /central — evita redirect HTTP (load duplo no PC/mobile).
+        return $managementCenter->index($request);
     }
 
     public function detail(Request $request, Volunteer $volunteer): JsonResponse
