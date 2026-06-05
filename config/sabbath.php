@@ -9,4 +9,6 @@ return [
     'longitude' => (float) env('SABBATH_LONGITUDE', -46.644722),
     'timezone' => env('SABBATH_TIMEZONE', 'America/Sao_Paulo'),
     'banner_image' => '/images/sabbath-sunset-bg.jpg',
+    /** Banner de sábado (despedida) só a partir deste horário, no fuso acima. */
+    'saturday_banner_from_hour' => (int) env('SABBATH_SATURDAY_BANNER_FROM_HOUR', 15),
 ];

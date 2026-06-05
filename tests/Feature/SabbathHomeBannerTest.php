@@ -21,6 +21,7 @@ class SabbathHomeBannerTest extends TestCase
             'sabbath.latitude' => -23.574389,
             'sabbath.longitude' => -46.644722,
             'sabbath.timezone' => 'America/Sao_Paulo',
+            'sabbath.saturday_banner_from_hour' => 15,
         ]);
     }
 
@@ -60,12 +61,36 @@ class SabbathHomeBannerTest extends TestCase
                     ->where('title', 'Sábado começa em')
                     ->where('sunset_time', '17:32')
                     ->where('day_label', 'Hoje, sexta-feira')
+                    ->where('message', 'Prepare seu coração para o sábado.')
                     ->etc()
                 )
             );
     }
 
-    public function test_home_shows_saturday_sabbath_banner_with_sunset_from_api(): void
+    public function test_home_hides_friday_banner_after_friday_sunset(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-06-05 18:30:00', 'America/Sao_Paulo'));
+        Cache::flush();
+
+        Http::fake([
+            'api.sunrise-sunset.org/*' => Http::response([
+                'results' => [
+                    'sunset' => '2026-06-05T17:32:00-03:00',
+                ],
+                'status' => 'OK',
+                'tzid' => 'America/Sao_Paulo',
+            ], 200),
+        ]);
+
+        $this->get(route('mobile.home'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Mobile/Home')
+                ->where('sabbathBanner', null)
+            );
+    }
+
+    public function test_home_hides_saturday_banner_before_fifteen_hours(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-06-06 10:00:00', 'America/Sao_Paulo'));
         Cache::flush();
@@ -84,11 +109,35 @@ class SabbathHomeBannerTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Mobile/Home')
+                ->where('sabbathBanner', null)
+            );
+    }
+
+    public function test_home_shows_saturday_farewell_banner_after_fifteen_hours(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-06-06 16:00:00', 'America/Sao_Paulo'));
+        Cache::flush();
+
+        Http::fake([
+            'api.sunrise-sunset.org/*' => Http::response([
+                'results' => [
+                    'sunset' => '2026-06-06T17:28:00-03:00',
+                ],
+                'status' => 'OK',
+                'tzid' => 'America/Sao_Paulo',
+            ], 200),
+        ]);
+
+        $this->get(route('mobile.home'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Mobile/Home')
                 ->has('sabbathBanner', fn (Assert $banner) => $banner
                     ->where('variant', 'saturday')
-                    ->where('title', 'Sábado sagrado')
+                    ->where('title', 'Despedida do sábado')
                     ->where('sunset_time', '17:28')
                     ->where('day_label', 'Hoje, sábado')
+                    ->where('message', 'Agradeça a Deus por este dia sagrado.')
                     ->etc()
                 )
             );

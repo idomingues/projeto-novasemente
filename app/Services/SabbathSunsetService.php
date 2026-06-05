@@ -27,70 +27,40 @@ class SabbathSunsetService
 
         if ($dayOfWeek === Carbon::FRIDAY) {
             $fridaySunset = $this->sunsetForDate($now->toDateString(), $timezone);
-            if ($fridaySunset === null) {
+            if ($fridaySunset === null || $now->greaterThanOrEqualTo($fridaySunset)) {
                 return null;
             }
 
-            if ($now->lessThan($fridaySunset)) {
-                return [
-                    'variant' => 'friday',
-                    'title' => 'Sábado começa em',
-                    'subtitle' => 'Pôr do sol de hoje',
-                    'sunset_at' => $fridaySunset->toIso8601String(),
-                    'sunset_time' => $fridaySunset->format('H:i'),
-                    'day_label' => 'Hoje, sexta-feira',
-                    'message' => 'Prepare seu coração para o sábado.',
-                    'image_url' => $imageUrl,
-                ];
-            }
+            return [
+                'variant' => 'friday',
+                'title' => 'Sábado começa em',
+                'subtitle' => 'Pôr do sol de hoje',
+                'sunset_at' => $fridaySunset->toIso8601String(),
+                'sunset_time' => $fridaySunset->format('H:i'),
+                'day_label' => 'Hoje, sexta-feira',
+                'message' => 'Prepare seu coração para o sábado.',
+                'image_url' => $imageUrl,
+            ];
+        }
 
-            $saturdaySunset = $this->sunsetForDate($now->copy()->addDay()->toDateString(), $timezone);
-            if ($saturdaySunset === null) {
-                return null;
-            }
-
-            return $this->sabbathDayPayload(
-                $saturdaySunset,
-                $imageUrl,
-                dayLabel: 'Sábado sagrado em curso',
-                subtitle: 'Pôr do sol de amanhã',
-            );
+        $saturdayFromHour = (int) config('sabbath.saturday_banner_from_hour', 15);
+        if ($now->hour < $saturdayFromHour) {
+            return null;
         }
 
         $saturdaySunset = $this->sunsetForDate($now->toDateString(), $timezone);
-        if ($saturdaySunset === null) {
+        if ($saturdaySunset === null || $now->greaterThanOrEqualTo($saturdaySunset)) {
             return null;
         }
 
-        if ($now->greaterThanOrEqualTo($saturdaySunset)) {
-            return null;
-        }
-
-        return $this->sabbathDayPayload(
-            $saturdaySunset,
-            $imageUrl,
-            dayLabel: 'Hoje, sábado',
-            subtitle: 'Pôr do sol de hoje',
-        );
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function sabbathDayPayload(
-        Carbon $sunset,
-        string $imageUrl,
-        string $dayLabel,
-        string $subtitle,
-    ): array {
         return [
             'variant' => 'saturday',
-            'title' => 'Sábado sagrado',
-            'subtitle' => $subtitle,
-            'sunset_at' => $sunset->toIso8601String(),
-            'sunset_time' => $sunset->format('H:i'),
-            'day_label' => $dayLabel,
-            'message' => 'Descanse no Senhor e celebre este dia.',
+            'title' => 'Despedida do sábado',
+            'subtitle' => 'Pôr do sol de hoje',
+            'sunset_at' => $saturdaySunset->toIso8601String(),
+            'sunset_time' => $saturdaySunset->format('H:i'),
+            'day_label' => 'Hoje, sábado',
+            'message' => 'Agradeça a Deus por este dia sagrado.',
             'image_url' => $imageUrl,
         ];
     }
