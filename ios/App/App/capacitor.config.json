@@ -10,6 +10,7 @@
 		"AppPlugin",
 		"DevicePlugin",
 		"CAPNetworkPlugin",
-		"PushNotificationsPlugin"
+		"PushNotificationsPlugin",
+		"NativeBiometricPlugin"
 	]
 }

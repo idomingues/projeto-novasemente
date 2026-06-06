@@ -1,3 +1,4 @@
+import BiometricDisableButton from '@/Components/Auth/BiometricDisableButton';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
 import {
@@ -370,7 +371,8 @@ export default function MobileProfile({ church, user, profileCounts, volunteerSi
                     </div>
                 ) : null}
 
-                <div className="pt-1">
+                <div className="space-y-3 pt-1">
+                    <BiometricDisableButton />
                     <RowItem row={logoutRow} />
                 </div>
 

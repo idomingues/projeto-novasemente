@@ -1,3 +1,4 @@
+import BiometricLoginPanel from '@/Components/Auth/BiometricLoginPanel';
 import Checkbox from '@/Components/Checkbox';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -5,8 +6,22 @@ import PasswordInput from '@/Components/PasswordInput';
 import TextInput from '@/Components/TextInput';
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import GuestLayout from '@/Layouts/GuestLayout';
-import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import { FormEventHandler, useEffect } from 'react';
+import {
+    canShowBiometricLogin,
+    getBiometricCredentials,
+    offerStoreBrowserPassword,
+    queueBiometricOptIn,
+} from '@/utils/biometricLogin';
+import {
+    clearLastLogin,
+    maskLoginIdentifier,
+    readLastLogin,
+    readRememberPreference,
+    saveLastLogin,
+    saveRememberPreference,
+} from '@/utils/loginPreferences';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import { FormEventHandler, useCallback, useEffect, useState } from 'react';
 
 /** Evita zoom bloqueado e faz o Chrome redimensionar a área útil quando o teclado/autofill abre (melhor que sobrepor o formulário). */
 const LOGIN_VIEWPORT =
@@ -45,6 +60,15 @@ function firstErrorMessage(
     return undefined;
 }
 
+type LoginPayload = {
+    login: string;
+    password: string;
+    remember: boolean;
+    redirect: string;
+    _token: string;
+    website: string;
+};
+
 export default function Login({
     status,
     volunteerSignupWelcome = false,
@@ -65,7 +89,7 @@ export default function Login({
 
     const sharedErrors = (page.props as { errors?: Record<string, string | string[] | undefined> }).errors;
 
-    const { data, setData, post, processing, errors, reset, setError, clearErrors } = useForm({
+    const { data, setData, processing, errors, reset, setError, clearErrors } = useForm({
         login: '',
         password: '',
         remember: false as boolean,
@@ -74,6 +98,11 @@ export default function Login({
         /** Honeypot (deixar vazio): bots preenchem; o servidor rejeita. */
         website: '',
     });
+
+    const [showPasswordForm, setShowPasswordForm] = useState(true);
+    const [biometricLabel, setBiometricLabel] = useState('Biometria');
+    const [biometricLoginHint, setBiometricLoginHint] = useState('');
+    const [prefsLoaded, setPrefsLoaded] = useState(false);
 
     /**
      * Validação com Inertia neste projeto usa redirect 303 + erros na sessão (`page.props.errors`),
@@ -91,6 +120,34 @@ export default function Login({
     );
 
     const bannerMessage = passwordError || loginError;
+    const lastLogin = readLastLogin();
+    const showContinueAs = Boolean(lastLogin && data.login.trim() === lastLogin && showPasswordForm);
+
+    const onLoginSuccess = useCallback((login: string, password: string, remember: boolean) => {
+        saveLastLogin(login);
+        saveRememberPreference(remember);
+        void offerStoreBrowserPassword(login, password);
+        queueBiometricOptIn(login, password);
+    }, []);
+
+    const submitLogin = useCallback(
+        (payload: LoginPayload) => {
+            clearErrors();
+            router.post(route('login'), payload, {
+                preserveState: true,
+                onError: (errs) => {
+                    setError(errs);
+                },
+                onSuccess: () => {
+                    onLoginSuccess(payload.login, payload.password, payload.remember);
+                },
+                onFinish: () => {
+                    reset('password');
+                },
+            });
+        },
+        [clearErrors, onLoginSuccess, reset, setError],
+    );
 
     useEffect(() => {
         const meta = document.querySelector('meta[name="viewport"]');
@@ -102,18 +159,66 @@ export default function Login({
         };
     }, []);
 
+    useEffect(() => {
+        const savedLogin = readLastLogin();
+        const savedRemember = readRememberPreference();
+        setData((current) => ({
+            ...current,
+            login: savedLogin ?? current.login,
+            remember: savedRemember,
+        }));
+        setPrefsLoaded(true);
+    }, [setData]);
+
+    useEffect(() => {
+        if (!prefsLoaded || volunteerSignupWelcome) {
+            setShowPasswordForm(true);
+            return;
+        }
+
+        void (async () => {
+            const biometric = await canShowBiometricLogin();
+            if (biometric?.canUse) {
+                setBiometricLabel(biometric.label);
+                setBiometricLoginHint(biometric.maskedLogin);
+                setShowPasswordForm(false);
+            }
+        })();
+    }, [prefsLoaded, volunteerSignupWelcome]);
+
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        clearErrors();
-        post(route('login'), {
-            preserveState: true,
-            onError: (errs) => {
-                setError(errs);
-            },
-            onFinish: () => {
-                reset('password');
-            },
+        submitLogin({
+            login: data.login,
+            password: data.password,
+            remember: data.remember,
+            redirect: data.redirect,
+            _token: data._token,
+            website: data.website,
         });
+    };
+
+    const handleBiometricLogin = async () => {
+        const credentials = await getBiometricCredentials();
+        if (!credentials) {
+            setShowPasswordForm(true);
+            return;
+        }
+
+        submitLogin({
+            login: credentials.login,
+            password: credentials.password,
+            remember: data.remember,
+            redirect: data.redirect,
+            _token: data._token,
+            website: data.website,
+        });
+    };
+
+    const handleSwitchAccount = () => {
+        clearLastLogin();
+        setData('login', '');
+        setShowPasswordForm(true);
     };
 
     return (
@@ -190,7 +295,9 @@ export default function Login({
                         <p className="mt-3 text-sm sm:text-base text-zinc-600 leading-relaxed">
                             {volunteerSignupWelcome
                                 ? 'Seu cadastro de voluntário foi concluído. Entre com o e-mail e a senha que você definiu para acessar o aplicativo.'
-                                : 'Acesse sua conta para acompanhar a gestão da igreja.'}
+                                : showPasswordForm
+                                  ? 'Entre com o e-mail ou nome e a senha do seu cadastro.'
+                                  : 'Use biometria ou informe sua senha para continuar.'}
                         </p>
 
                         {bannerMessage ? (
@@ -199,75 +306,113 @@ export default function Login({
                             </div>
                         ) : null}
 
-                        <form onSubmit={submit} className="mt-6 space-y-5">
-                            <input
-                                type="text"
-                                name="website"
-                                value={data.website}
-                                tabIndex={-1}
-                                autoComplete="off"
-                                aria-hidden
-                                className="absolute -left-[9999px] h-0 w-0 overflow-hidden opacity-0"
-                                onChange={(e) => setData('website', e.target.value)}
+                        {!showPasswordForm ? (
+                            <BiometricLoginPanel
+                                biometricLabel={biometricLabel}
+                                loginHint={biometricLoginHint}
+                                processing={processing}
+                                onBiometricLogin={() => void handleBiometricLogin()}
+                                onUsePassword={() => setShowPasswordForm(true)}
                             />
-                            <div>
-                                <InputLabel htmlFor="login" value="E-mail ou nome" />
-                                <TextInput
-                                    id="login"
+                        ) : (
+                            <form
+                                onSubmit={submit}
+                                method="post"
+                                action={route('login')}
+                                className="mt-6 space-y-5"
+                                autoComplete="on"
+                            >
+                                <input
                                     type="text"
-                                    name="login"
-                                    value={data.login}
-                                    className="mt-1.5 block w-full !bg-zinc-50 dark:!bg-zinc-100 !border-zinc-300 dark:!border-zinc-300 !text-zinc-900 placeholder:!text-zinc-500"
-                                    autoComplete="username"
-                                    placeholder="seu@email.com ou nome cadastrado"
-                                    onChange={(e) => setData('login', e.target.value)}
-                                    required
+                                    name="website"
+                                    value={data.website}
+                                    tabIndex={-1}
+                                    autoComplete="off"
+                                    aria-hidden
+                                    className="absolute -left-[9999px] h-0 w-0 overflow-hidden opacity-0"
+                                    onChange={(e) => setData('website', e.target.value)}
                                 />
-                            </div>
-
-                            <div>
-                                <InputLabel htmlFor="password" value="Senha" />
-                                <PasswordInput
-                                    id="password"
-                                    name="password"
-                                    value={data.password}
-                                    className="mt-1.5 block w-full !bg-zinc-50 dark:!bg-zinc-100 !border-zinc-300 dark:!border-zinc-300 !text-zinc-900 placeholder:!text-zinc-500"
-                                    autoComplete="current-password"
-                                    onChange={(e) => setData('password', e.target.value)}
-                                    required
-                                />
-                            </div>
-
-                            {/* Ação principal logo após as credenciais — mais espaço para o dropdown de autofill sem tapar o botão */}
-                            <div className="pt-1">
-                                <PrimaryButton
-                                    type="submit"
-                                    className="relative z-10 w-full justify-center !rounded-xl !bg-zinc-900 !py-3.5 !text-sm !font-semibold !normal-case !tracking-normal !text-white shadow-sm hover:!bg-zinc-800 disabled:!opacity-50"
-                                    disabled={processing}
-                                >
-                                    Entrar
-                                </PrimaryButton>
-                            </div>
-
-                            <div className="flex flex-col gap-3 border-t border-zinc-100 pt-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 dark:border-zinc-200/80">
-                                <label className="flex cursor-pointer items-center gap-2.5">
-                                    <Checkbox
-                                        name="remember"
-                                        checked={data.remember}
-                                        onChange={(e) => setData('remember', (e.target.checked || false) as false)}
+                                {showContinueAs && lastLogin ? (
+                                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-700">
+                                        <span>
+                                            Continuar como{' '}
+                                            <span className="font-semibold text-zinc-900">
+                                                {maskLoginIdentifier(lastLogin)}
+                                            </span>
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={handleSwitchAccount}
+                                            className="cursor-pointer font-medium text-zinc-600 underline-offset-4 hover:text-zinc-900 hover:underline"
+                                        >
+                                            Trocar conta
+                                        </button>
+                                    </div>
+                                ) : null}
+                                <div>
+                                    <InputLabel htmlFor="login" value="E-mail ou nome" />
+                                    <TextInput
+                                        id="login"
+                                        type="text"
+                                        name="login"
+                                        value={data.login}
+                                        className="mt-1.5 block w-full !bg-zinc-50 dark:!bg-zinc-100 !border-zinc-300 dark:!border-zinc-300 !text-zinc-900 placeholder:!text-zinc-500"
+                                        autoComplete="username"
+                                        placeholder="seu@email.com ou nome cadastrado"
+                                        onChange={(e) => setData('login', e.target.value)}
+                                        required
                                     />
-                                    <span className="text-sm text-zinc-600">Manter conectado</span>
-                                </label>
-                                {canResetPassword && (
-                                    <Link
-                                        href={route('password.request')}
-                                        className="shrink-0 text-sm font-medium text-zinc-600 underline-offset-4 hover:text-zinc-900 hover:underline sm:text-right"
+                                    <p className="mt-1.5 text-xs text-zinc-500">
+                                        Use o mesmo e-mail do cadastro de voluntário ou da sua conta na igreja.
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <InputLabel htmlFor="password" value="Senha" />
+                                    <PasswordInput
+                                        id="password"
+                                        name="password"
+                                        value={data.password}
+                                        className="mt-1.5 block w-full !bg-zinc-50 dark:!bg-zinc-100 !border-zinc-300 dark:!border-zinc-300 !text-zinc-900 placeholder:!text-zinc-500"
+                                        autoComplete="current-password"
+                                        onChange={(e) => setData('password', e.target.value)}
+                                        required
+                                    />
+                                </div>
+
+                                {/* Ação principal logo após as credenciais — mais espaço para o dropdown de autofill sem tapar o botão */}
+                                <div className="pt-1">
+                                    <PrimaryButton
+                                        type="submit"
+                                        className="relative z-10 w-full justify-center !rounded-xl !bg-zinc-900 !py-3.5 !text-sm !font-semibold !normal-case !tracking-normal !text-white shadow-sm hover:!bg-zinc-800 disabled:!opacity-50"
+                                        disabled={processing}
                                     >
-                                        Esqueceu a senha?
-                                    </Link>
-                                )}
-                            </div>
-                        </form>
+                                        Entrar
+                                    </PrimaryButton>
+                                </div>
+
+                                <div className="flex flex-col gap-3 border-t border-zinc-100 pt-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 dark:border-zinc-200/80">
+                                    <label className="flex cursor-pointer items-center gap-2.5">
+                                        <Checkbox
+                                            name="remember"
+                                            checked={data.remember}
+                                            onChange={(e) =>
+                                                setData('remember', (e.target.checked || false) as false)
+                                            }
+                                        />
+                                        <span className="text-sm text-zinc-600">Manter conectado</span>
+                                    </label>
+                                    {canResetPassword && (
+                                        <Link
+                                            href={route('password.request')}
+                                            className="shrink-0 text-sm font-medium text-zinc-600 underline-offset-4 hover:text-zinc-900 hover:underline sm:text-right"
+                                        >
+                                            Esqueceu a senha?
+                                        </Link>
+                                    )}
+                                </div>
+                            </form>
+                        )}
 
                         <div className="mt-4">
                             <Link
