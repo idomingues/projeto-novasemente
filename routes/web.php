@@ -581,6 +581,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/missao/gestao/quem-somos', [\App\Http\Controllers\MissionContentController::class, 'aboutIndex'])->name('mission.content.about')->middleware('permission:mission.view|mission.manage');
     Route::put('/missao/gestao/quem-somos', [\App\Http\Controllers\MissionContentController::class, 'updateAbout'])->name('mission.content.about.update')->middleware('permission:mission.manage');
 
+    Route::get('/missao/gestao/usuarios', [MissionVolunteerController::class, 'usersIndex'])->name('mission.users.index')->middleware('permission:mission.view|mission.manage');
+    Route::patch('/missao/gestao/usuarios/{user}', [MissionVolunteerController::class, 'updatePhaseLeader'])->name('mission.users.update')->middleware('permission:mission.manage');
+
     Route::get('/missao/gestao/mural', [\App\Http\Controllers\MissionContentController::class, 'wallIndex'])->name('mission.content.wall')->middleware('permission:mission.view|mission.manage');
     Route::post('/missao/gestao/mural', [\App\Http\Controllers\MissionContentController::class, 'storeWallItem'])->name('mission.content.wall.store')->middleware('permission:mission.manage');
     Route::put('/missao/gestao/mural/{missionWallItem}', [\App\Http\Controllers\MissionContentController::class, 'updateWallItem'])->name('mission.content.wall.update')->middleware('permission:mission.manage');
@@ -591,7 +594,6 @@ Route::middleware('auth')->group(function () {
     Route::patch('/missao/gestao/{missionVolunteer}/fase', [MissionVolunteerController::class, 'updatePhase'])->name('mission.volunteers.phase')->middleware('permission:mission.view|mission.manage');
     Route::post('/missao/gestao/{missionVolunteer}/notas', [MissionVolunteerController::class, 'storeNote'])->name('mission.volunteers.notes.store')->middleware('permission:mission.view|mission.manage');
     Route::delete('/missao/gestao/{missionVolunteer}', [MissionVolunteerController::class, 'destroy'])->name('mission.volunteers.destroy')->middleware('permission:mission.manage');
-    Route::patch('/missao/equipe/{user}', [MissionVolunteerController::class, 'updateTeamMember'])->name('mission.team.update')->middleware('permission:mission.manage');
     Route::post('/missao/fases', [MissionVolunteerController::class, 'storeStage'])->name('mission.phases.store')->middleware('permission:mission.manage');
     Route::put('/missao/fases/{phase}', [MissionVolunteerController::class, 'updateStageMeta'])->name('mission.phases.update')->middleware('permission:mission.manage');
     Route::delete('/missao/fases/{phase}', [MissionVolunteerController::class, 'destroyStage'])->name('mission.phases.destroy')->middleware('permission:mission.manage');

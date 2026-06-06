@@ -1,9 +1,10 @@
 import { Link } from '@inertiajs/react';
 
-export type MissionAdminTab = 'cadastros' | 'eventos' | 'depoimentos' | 'quem-somos' | 'mural';
+export type MissionAdminTab = 'cadastros' | 'usuarios' | 'eventos' | 'depoimentos' | 'quem-somos' | 'mural';
 
 const tabs: { key: MissionAdminTab; label: string; route: string }[] = [
     { key: 'cadastros', label: 'Cadastros', route: 'mission.index' },
+    { key: 'usuarios', label: 'Usuários', route: 'mission.users.index' },
     { key: 'eventos', label: 'Eventos', route: 'mission.content.events' },
     { key: 'depoimentos', label: 'Depoimentos', route: 'mission.content.messages' },
     { key: 'quem-somos', label: 'Quem somos', route: 'mission.content.about' },

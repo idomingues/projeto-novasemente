@@ -11,6 +11,7 @@ use App\Models\MissionPhase;
 use App\Models\MissionVolunteer;
 use App\Models\User;
 use App\Support\MissionPhaseBootstrap;
+use App\Support\MissionPhaseLeaders;
 use App\Support\MissionSla;
 use App\Support\MissionTeamAccess;
 use App\Support\MissionVolunteerFilteredRoster;
@@ -137,24 +138,6 @@ class MissionVolunteerController extends Controller
             return MissionSla::metricsForVolunteer($v)['isOverdue'];
         })->count();
 
-        $teamMembers = User::query()
-            ->where('church_id', $churchId)
-            ->where(function ($q) {
-                $q->permission('mission.view')
-                    ->orWhere('is_mission_team', true);
-            })
-            ->with('missionPhases:id')
-            ->orderBy('name')
-            ->get()
-            ->map(fn (User $u) => [
-                'id' => $u->id,
-                'name' => $u->name,
-                'email' => $u->email,
-                'is_mission_team' => (bool) ($u->is_mission_team ?? false),
-                'mission_phase_ids' => $u->missionPhases->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
-                'has_mission_view' => $u->can('mission.view'),
-            ]);
-
         $canManage = MissionTeamAccess::canManagePhases($user);
 
         return Inertia::render('Mission/Index', [
@@ -165,8 +148,6 @@ class MissionVolunteerController extends Controller
             'options' => config('mission'),
             'canManage' => $canManage,
             'operablePhaseIds' => MissionTeamAccess::operablePhaseIds($user),
-            'teamMembers' => $teamMembers,
-            'teamUpdateUrlPattern' => route('mission.team.update', ['user' => 0]),
             'storeStageUrl' => route('mission.phases.store'),
             'updateStageUrlPattern' => route('mission.phases.update', ['phase' => 0]),
             'destroyStageUrlPattern' => route('mission.phases.destroy', ['phase' => 0]),
@@ -299,7 +280,7 @@ class MissionVolunteerController extends Controller
             'phaseHistory' => $phaseHistory,
             'canManage' => $canManage,
             'canEditPhase' => $canEditPhase,
-            'canAddNote' => $user->can('mission.view') || $user->can('mission.manage'),
+            'canAddNote' => $canManage || $canEditPhase,
             'updatePhaseUrl' => $canEditPhase ? route('mission.volunteers.phase', $missionVolunteer) : null,
             'storeNoteUrl' => route('mission.volunteers.notes.store', $missionVolunteer),
             'destroyUrl' => $canManage ? route('mission.volunteers.destroy', $missionVolunteer) : null,
@@ -355,6 +336,16 @@ class MissionVolunteerController extends Controller
         $this->canView($request);
         $churchId = $this->churchId($request);
         abort_unless($churchId && (int) $missionVolunteer->church_id === (int) $churchId, 404);
+
+        $user = $request->user();
+        abort_unless($user, 401);
+
+        $canManage = MissionTeamAccess::canManagePhases($user);
+        abort_unless(
+            $canManage || MissionTeamAccess::canOperateVolunteer($user, $missionVolunteer->mission_phase_id),
+            403,
+            'Você só pode alterar cadastros na sua fase.',
+        );
 
         $valid = $request->validate([
             'body' => ['required', 'string', 'max:10000'],
@@ -446,44 +437,80 @@ class MissionVolunteerController extends Controller
         return back()->with('success', 'Fase excluída.');
     }
 
-    public function updateTeamMember(Request $request, User $user): RedirectResponse
+    public function usersIndex(Request $request): Response
+    {
+        $this->canView($request);
+        $churchId = $this->churchId($request);
+        abort_unless($churchId, 404, 'Nenhuma igreja ativa.');
+
+        MissionPhaseBootstrap::ensurePhasesForChurch((int) $churchId);
+
+        $user = $request->user();
+        abort_unless($user, 401);
+
+        $phases = MissionPhase::query()
+            ->where('church_id', $churchId)
+            ->orderBy('sort_order')
+            ->get(['id', 'name'])
+            ->map(fn (MissionPhase $p) => [
+                'id' => $p->id,
+                'name' => $p->name,
+            ]);
+
+        $users = User::query()
+            ->where('church_id', $churchId)
+            ->permission('mission.view')
+            ->with('missionPhases:id,name')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (User $u) => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'email' => $u->email,
+                'is_phase_leader' => (bool) ($u->is_mission_team ?? false),
+                'mission_phase_ids' => $u->missionPhases->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+                'phase_labels' => $u->missionPhases
+                    ->sortBy(fn (MissionPhase $p) => $p->name)
+                    ->map(fn (MissionPhase $p) => $p->name)
+                    ->values()
+                    ->all(),
+            ]);
+
+        return Inertia::render('Mission/Users', [
+            'users' => $users,
+            'phases' => $phases,
+            'canManage' => MissionTeamAccess::canManagePhases($user),
+            'updateUrlPattern' => route('mission.users.update', ['user' => 0]),
+        ]);
+    }
+
+    public function updatePhaseLeader(Request $request, User $user): RedirectResponse
     {
         $this->canManage($request);
         $churchId = $this->churchId($request);
         abort_unless($churchId && (int) $user->church_id === (int) $churchId, 404);
 
         $valid = $request->validate([
-            'is_mission_team' => ['required', 'boolean'],
+            'is_phase_leader' => ['required', 'boolean'],
             'mission_phase_ids' => ['nullable', 'array'],
             'mission_phase_ids.*' => ['integer', 'exists:mission_phases,id'],
         ]);
 
-        $phaseIds = collect($valid['mission_phase_ids'] ?? [])
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values();
+        try {
+            MissionPhaseLeaders::syncForUser(
+                $user,
+                (bool) $valid['is_phase_leader'],
+                collect($valid['mission_phase_ids'] ?? [])->map(fn ($id) => (int) $id)->all(),
+                (int) $churchId,
+            );
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            if ($e->getStatusCode() === 422) {
+                return back()->with('error', $e->getMessage() ?: 'Não foi possível atualizar o líder de fase.');
+            }
 
-        if ($phaseIds->isNotEmpty()) {
-            $validPhaseCount = MissionPhase::query()
-                ->where('church_id', $churchId)
-                ->whereIn('id', $phaseIds)
-                ->count();
-            abort_unless($validPhaseCount === $phaseIds->count(), 422, 'Fase inválida para esta igreja.');
+            throw $e;
         }
 
-        $isMissionTeam = (bool) $valid['is_mission_team'];
-
-        if ($isMissionTeam && ! $user->can('mission.view')) {
-            return back()->with('error', 'Conceda a permissão «Ver Missão» ao usuário antes de marcá-lo como equipe.');
-        }
-
-        if ($isMissionTeam && $phaseIds->isEmpty()) {
-            return back()->with('error', 'Selecione ao menos uma fase para o membro da equipe Missão.');
-        }
-
-        $user->forceFill(['is_mission_team' => $isMissionTeam])->save();
-        $user->missionPhases()->sync($isMissionTeam ? $phaseIds->all() : []);
-
-        return back()->with('success', 'Equipe Missão atualizada.');
+        return back()->with('success', 'Liderança de fase atualizada.');
     }
 }

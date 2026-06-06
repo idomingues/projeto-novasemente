@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class MissionPhase extends Model
@@ -28,5 +29,11 @@ class MissionPhase extends Model
     public function volunteers(): HasMany
     {
         return $this->hasMany(MissionVolunteer::class, 'mission_phase_id');
+    }
+
+    public function leaders(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'mission_user_phases')
+            ->withTimestamps();
     }
 }

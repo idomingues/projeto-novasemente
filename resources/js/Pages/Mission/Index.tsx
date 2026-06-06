@@ -10,7 +10,6 @@ import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import SelectInput from '@/Components/SelectInput';
-import Checkbox from '@/Components/Checkbox';
 import Textarea from '@/Components/Textarea';
 import InputError from '@/Components/InputError';
 import { Head, router, useForm } from '@inertiajs/react';
@@ -110,15 +109,6 @@ type DetailJson = {
 
 type DetailTab = 'ficha' | 'historico' | 'notas';
 
-type TeamMemberRow = {
-    id: number;
-    name: string;
-    email: string | null;
-    is_mission_team: boolean;
-    mission_phase_ids: number[];
-    has_mission_view: boolean;
-};
-
 interface Paginated<T> {
     data: T[];
     links: { url: string | null; label: string; active: boolean }[];
@@ -142,8 +132,6 @@ interface Props {
     overdueTotal: number;
     canManage: boolean;
     operablePhaseIds: number[] | null;
-    teamMembers: TeamMemberRow[];
-    teamUpdateUrlPattern: string;
     storeStageUrl: string;
     detailUrlPattern: string;
     broadcastStoreUrl: string;
@@ -181,13 +169,6 @@ function phaseBtnClass(active: boolean) {
     ].join(' ');
 }
 
-function teamUpdateUrlFromPattern(pattern: string, userId: number): string {
-    return pattern.replace(/\/0(\/|$)/, `/${userId}$1`);
-}
-
-const missionAdminToolbarBtnClass =
-    'inline-flex h-10 items-center justify-center rounded-xl border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-800 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800';
-
 const missionAdminToolbarPrimaryBtnClass =
     'inline-flex h-10 items-center justify-center rounded-xl bg-zinc-900 px-3 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200';
 
@@ -199,8 +180,6 @@ export default function MissionIndex({
     overdueTotal,
     canManage,
     operablePhaseIds,
-    teamMembers,
-    teamUpdateUrlPattern,
     storeStageUrl,
     detailUrlPattern,
     broadcastStoreUrl,
@@ -208,7 +187,6 @@ export default function MissionIndex({
 }: Props) {
     const [viewMode, setViewMode] = usePersistedViewMode(MISSION_VIEW_STORAGE_KEY);
     const [stageManageOpen, setStageManageOpen] = useState(false);
-    const [teamManageOpen, setTeamManageOpen] = useState(false);
     const [broadcastOpen, setBroadcastOpen] = useState(false);
     const [stageEdits, setStageEdits] = useState(() =>
         phases.map((p) => ({ id: p.id, name: p.name, sort_order: p.sort_order, sla_days: p.sla_days })),
@@ -561,13 +539,6 @@ export default function MissionIndex({
                     <div className="flex flex-wrap items-center justify-end gap-2">
                         {canManage ? (
                             <>
-                                <button
-                                    type="button"
-                                    onClick={() => setTeamManageOpen(true)}
-                                    className={missionAdminToolbarBtnClass}
-                                >
-                                    Equipe Missão
-                                </button>
                                 <button
                                     type="button"
                                     onClick={() => setBroadcastOpen(true)}
@@ -1076,20 +1047,6 @@ export default function MissionIndex({
                 onSubmitNew={storeStage}
             />
 
-            <Modal show={teamManageOpen} onClose={() => setTeamManageOpen(false)} maxWidth="2xl">
-                <div className="max-h-[min(90vh,80vh)] overflow-y-auto p-6">
-                    <h2 className="text-lg font-semibold">Equipe Missão</h2>
-                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                        Marque usuários com permissão de ver Missão como equipe e defina em quais fases podem mover cadastros.
-                    </p>
-                    <MissionTeamPanel
-                        members={teamMembers}
-                        phases={phases}
-                        teamUpdateUrlPattern={teamUpdateUrlPattern}
-                    />
-                </div>
-            </Modal>
-
             <MissionBroadcastModal
                 show={broadcastOpen}
                 onClose={() => setBroadcastOpen(false)}
@@ -1122,121 +1079,6 @@ function SlaCell({ row }: { row: VolunteerRow }) {
         <span className="text-xs text-zinc-600 dark:text-zinc-400">
             {row.daysInPhase} / {sla} dias
         </span>
-    );
-}
-
-function MissionTeamPanel({
-    members,
-    phases,
-    teamUpdateUrlPattern,
-}: {
-    members: TeamMemberRow[];
-    phases: PhaseRow[];
-    teamUpdateUrlPattern: string;
-}) {
-    const [edits, setEdits] = useState(() =>
-        members.map((m) => ({
-            id: m.id,
-            is_mission_team: m.is_mission_team,
-            mission_phase_ids: [...m.mission_phase_ids],
-        })),
-    );
-
-    useEffect(() => {
-        setEdits(
-            members.map((m) => ({
-                id: m.id,
-                is_mission_team: m.is_mission_team,
-                mission_phase_ids: [...m.mission_phase_ids],
-            })),
-        );
-    }, [members]);
-
-    const saveMember = (memberId: number) => {
-        const row = edits.find((e) => e.id === memberId);
-        if (!row) return;
-        router.patch(teamUpdateUrlFromPattern(teamUpdateUrlPattern, memberId), row, { preserveScroll: true });
-    };
-
-    if (members.length === 0) {
-        return <p className="mt-4 text-sm text-zinc-500">Nenhum usuário com acesso à Missão nesta igreja.</p>;
-    }
-
-    return (
-        <ul className="mt-4 space-y-4">
-            {members.map((member) => {
-                const edit = edits.find((e) => e.id === member.id);
-                if (!edit) return null;
-
-                return (
-                    <li key={member.id} className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                            <div>
-                                <div className="font-medium text-zinc-900 dark:text-white">{member.name}</div>
-                                <div className="text-xs text-zinc-500">{member.email ?? 'Sem e-mail'}</div>
-                                {!member.has_mission_view && (
-                                    <p className="mt-1 text-xs text-amber-600">Sem permissão «Ver Missão» — conceda antes de ativar a equipe.</p>
-                                )}
-                            </div>
-                            <label className="flex items-center gap-2 text-sm">
-                                <Checkbox
-                                    checked={edit.is_mission_team}
-                                    onChange={(e) =>
-                                        setEdits((rows) =>
-                                            rows.map((r) =>
-                                                r.id === member.id ? { ...r, is_mission_team: e.target.checked } : r,
-                                            ),
-                                        )
-                                    }
-                                />
-                                Usuário Missão
-                            </label>
-                        </div>
-                        {edit.is_mission_team && (
-                            <div className="mt-3 flex flex-wrap gap-2">
-                                {phases.map((phase) => {
-                                    const checked = edit.mission_phase_ids.includes(phase.id);
-
-                                    return (
-                                        <label
-                                            key={phase.id}
-                                            className={[
-                                                'inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-xs ring-1',
-                                                checked
-                                                    ? 'bg-brand-50 ring-brand-300 dark:bg-brand-950/40 dark:ring-brand-700'
-                                                    : 'ring-zinc-200 dark:ring-zinc-700',
-                                            ].join(' ')}
-                                        >
-                                            <Checkbox
-                                                checked={checked}
-                                                onChange={() =>
-                                                    setEdits((rows) =>
-                                                        rows.map((r) => {
-                                                            if (r.id !== member.id) return r;
-                                                            const ids = r.mission_phase_ids.includes(phase.id)
-                                                                ? r.mission_phase_ids.filter((id) => id !== phase.id)
-                                                                : [...r.mission_phase_ids, phase.id];
-
-                                                            return { ...r, mission_phase_ids: ids };
-                                                        }),
-                                                    )
-                                                }
-                                            />
-                                            {phase.name}
-                                        </label>
-                                    );
-                                })}
-                            </div>
-                        )}
-                        <div className="mt-3">
-                            <SecondaryButton type="button" className="text-xs" onClick={() => saveMember(member.id)}>
-                                Salvar
-                            </SecondaryButton>
-                        </div>
-                    </li>
-                );
-            })}
-        </ul>
     );
 }
 

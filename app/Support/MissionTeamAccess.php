@@ -12,13 +12,8 @@ final class MissionTeamAccess
         return $user->can('mission.manage');
     }
 
-    public static function canManageMissionTeam(User $user): bool
-    {
-        return $user->can('mission.manage');
-    }
-
     /**
-     * IDs de fases em que o usuário pode mover cadastros. Null = todas (gestor).
+     * IDs de fases em que o líder de fase pode alterar cadastros. Null = todas (gestor).
      *
      * @return list<int>|null
      */

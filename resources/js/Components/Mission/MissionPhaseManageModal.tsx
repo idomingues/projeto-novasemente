@@ -100,7 +100,7 @@ export default function MissionPhaseManageModal({
                                                     type="button"
                                                     disabled={index === 0 || stageOrderBusy}
                                                     onClick={() => onSwap(index, 'up')}
-                                                    className="p-1.5 text-zinc-600 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-30 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                                                    className="cursor-pointer p-1.5 text-zinc-600 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-30 dark:text-zinc-300 dark:hover:bg-zinc-800"
                                                     aria-label="Mover fase para cima"
                                                     title="Mover para cima"
                                                 >
@@ -110,7 +110,7 @@ export default function MissionPhaseManageModal({
                                                     type="button"
                                                     disabled={index >= sortedStageEdits.length - 1 || stageOrderBusy}
                                                     onClick={() => onSwap(index, 'down')}
-                                                    className="border-l border-zinc-200 p-1.5 text-zinc-600 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-30 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                                                    className="cursor-pointer border-l border-zinc-200 p-1.5 text-zinc-600 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-30 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
                                                     aria-label="Mover fase para baixo"
                                                     title="Mover para baixo"
                                                 >
@@ -177,7 +177,7 @@ export default function MissionPhaseManageModal({
                                             <button
                                                 type="button"
                                                 onClick={() => onSave(edit)}
-                                                className="rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 dark:bg-brand-500 dark:hover:bg-brand-400 dark:focus:ring-brand-400 dark:focus:ring-offset-zinc-900"
+                                                className="cursor-pointer rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 dark:bg-brand-500 dark:hover:bg-brand-400 dark:focus:ring-brand-400 dark:focus:ring-offset-zinc-900"
                                             >
                                                 Salvar
                                             </button>
@@ -190,7 +190,7 @@ export default function MissionPhaseManageModal({
                                             <button
                                                 type="button"
                                                 onClick={() => onDelete(phase)}
-                                                className="rounded-lg px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/40"
+                                                className="cursor-pointer rounded-lg px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/40"
                                             >
                                                 Excluir
                                             </button>
