@@ -18,6 +18,8 @@ class PublicDiskFileController extends Controller
         'photos/',
         'library/',
         'donations/',
+        'talents/',
+        'shared-talents/',
     ];
 
     public function __invoke(string $path)

@@ -26,6 +26,14 @@ class PublicDiskMediaTest extends TestCase
         $this->get(route('media.public', ['path' => 'donations/campaign-covers/cover.png']))
             ->assertOk();
 
+        Storage::disk('public')->put('talents/demo/exemplo.png', 'fake-png-bytes');
+        $this->get(route('media.public', ['path' => 'talents/demo/exemplo.png']))
+            ->assertOk();
+
+        Storage::disk('public')->put('shared-talents/demo/exemplo.png', 'fake-png-bytes');
+        $this->get(route('media.public', ['path' => 'shared-talents/demo/exemplo.png']))
+            ->assertOk();
+
         $this->get(route('media.public', ['path' => 'logos/nonexistent.webp']))
             ->assertOk()
             ->assertHeaderContains('content-type', 'image');

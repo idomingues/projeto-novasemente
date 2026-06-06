@@ -33,6 +33,7 @@ interface Listing {
     can_enroll: boolean;
     has_enrollment: boolean;
     is_owner: boolean;
+    is_example?: boolean;
 }
 
 interface Props {
@@ -73,8 +74,17 @@ export default function SharedTalentShow({ listing, reportReasons }: Props) {
                 </Link>
 
                 {listing.photo_url && (
-                    <img src={listing.photo_url} alt="" className="h-48 w-full rounded-2xl object-cover" />
+                    <img src={listing.photo_url} alt="" className="h-48 w-full rounded-2xl object-cover sm:h-64" />
                 )}
+
+                {listing.is_example ? (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+                        <p className="font-semibold">Publicação de exemplo</p>
+                        <p className="mt-1 text-amber-900/90 dark:text-amber-100/90">
+                            Este talento compartilhado é apenas demonstração visual. Não há inscrições reais neste anúncio.
+                        </p>
+                    </div>
+                ) : null}
 
                 <div>
                     <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{listing.title}</h1>

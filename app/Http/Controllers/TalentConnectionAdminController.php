@@ -124,6 +124,10 @@ class TalentConnectionAdminController extends Controller
                 'description' => $l->description,
                 'locality' => $l->locality,
                 'availability' => $l->availability,
+                'contact_phone' => $l->contact_phone,
+                'contact_whatsapp' => $l->contact_whatsapp,
+                'contact_email' => $l->contact_email,
+                'contact_instagram' => $l->contact_instagram,
                 'notes' => $l->notes,
                 'allows_exchange' => $l->allows_exchange,
                 'allows_negotiation' => $l->allows_negotiation,
@@ -160,6 +164,8 @@ class TalentConnectionAdminController extends Controller
 
         $admin = $request->user();
         $data = $request->validate($this->talents->listingPayloadRules(forAdmin: true));
+        $this->talents->assertHasContactChannel($data);
+        $contact = $this->talents->normalizedContactPayload($data);
 
         $publisher = $this->talents->assertPublisherBelongsToChurch((int) $data['user_id'], $churchId);
         $this->talents->confirmMembership($publisher, $churchId);
@@ -181,6 +187,7 @@ class TalentConnectionAdminController extends Controller
             'description' => $data['description'],
             'locality' => $data['locality'] ?? null,
             'availability' => $data['availability'] ?? null,
+            ...$contact,
             'allows_exchange' => $request->boolean('allows_exchange'),
             'allows_negotiation' => $request->boolean('allows_negotiation', true),
             'notes' => $data['notes'] ?? null,
@@ -220,6 +227,8 @@ class TalentConnectionAdminController extends Controller
 
         $admin = $request->user();
         $data = $request->validate($this->talents->listingPayloadRules(forAdmin: true));
+        $this->talents->assertHasContactChannel($data);
+        $contact = $this->talents->normalizedContactPayload($data);
 
         $publisher = $this->talents->assertPublisherBelongsToChurch((int) $data['user_id'], (int) $talentListing->church_id);
 
@@ -241,6 +250,7 @@ class TalentConnectionAdminController extends Controller
             'description' => $data['description'],
             'locality' => $data['locality'] ?? null,
             'availability' => $data['availability'] ?? null,
+            ...$contact,
             'allows_exchange' => $request->boolean('allows_exchange'),
             'allows_negotiation' => $request->boolean('allows_negotiation', true),
             'notes' => $data['notes'] ?? null,

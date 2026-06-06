@@ -37,7 +37,7 @@ class VolunteerManagementCenterTest extends TestCase
             'active' => '1',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
-        ])->assertRedirect('/volunteers');
+        ])->assertRedirect();
 
         $response = $this->actingAs($admin)->get(route('ministry-lead.volunteers.central', [
             'ministerio' => $ministry->id,
@@ -82,7 +82,7 @@ class VolunteerManagementCenterTest extends TestCase
             'active' => '1',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
-        ])->assertRedirect('/volunteers');
+        ])->assertRedirect();
 
         $response = $this->actingAs($admin)->get(route('ministry-lead.volunteers.central', [
             'ministerio' => 'none',
@@ -110,7 +110,7 @@ class VolunteerManagementCenterTest extends TestCase
             'active' => '1',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
-        ])->assertRedirect('/volunteers');
+        ])->assertRedirect();
 
         $response = $this->actingAs($admin)->get(route('ministry-lead.volunteers.central', [
             'agrupar' => 'fase',
@@ -141,7 +141,7 @@ class VolunteerManagementCenterTest extends TestCase
             'active' => '1',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
-        ])->assertRedirect('/volunteers');
+        ])->assertRedirect();
 
         $baseline = $this->actingAs($admin)->get(route('ministry-lead.volunteers.central'));
         $baseline->assertOk();
@@ -209,7 +209,7 @@ class VolunteerManagementCenterTest extends TestCase
             'active' => '1',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
-        ])->assertRedirect('/volunteers');
+        ])->assertRedirect();
 
         $volunteer = \App\Models\Volunteer::query()->where('email', 'so.encaminhado.depto@example.com')->firstOrFail();
 
@@ -277,7 +277,7 @@ class VolunteerManagementCenterTest extends TestCase
             'active' => '1',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
-        ])->assertRedirect('/volunteers');
+        ])->assertRedirect();
 
         $volunteer = \App\Models\Volunteer::query()->where('email', 'voluntario.com.nota@example.com')->firstOrFail();
 

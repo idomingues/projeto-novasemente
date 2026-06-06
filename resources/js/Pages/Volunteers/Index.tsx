@@ -25,7 +25,13 @@ import { useDebouncedServerSearch } from '@/hooks/useDebouncedServerSearch';
 import axios from 'axios';
 import VolunteerRecordDetailBody from '@/Components/Volunteers/VolunteerRecordDetailBody';
 import type { VolunteerDetailData } from '@/utils/volunteerDetailRows';
-import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
+import { buildVolunteerEditFormData } from '@/utils/volunteerEditForm';
+import { editIdFromListModalRedirect, reloadListModalProps } from '@/utils/listModalFetchSave';
+import {
+    applyVolunteerModalFormErrors,
+    submitVolunteerModalFormDataPost,
+    submitVolunteerModalFormDataPut,
+} from '@/utils/volunteerPipelineModalSave';
 import VolunteerDeleteConfirmBlock from '@/Components/Volunteers/VolunteerDeleteConfirmBlock';
 import { activeInactivePillClass } from '@/lib/statusBadges';
 import { appRoleLabel } from '@/lib/appRoleLabels';
@@ -99,6 +105,7 @@ export default function Index({
     exportEncaminhadoMissaoUrl = null,
 }: Props) {
     const page = usePage().props as {
+        csrf_token?: string;
         flash?: {
             invitation_link?: string | null;
             invitation_for_name?: string | null;
@@ -145,8 +152,10 @@ export default function Index({
     const lastSavedPhotoRef = useRef<string | null>(null);
     const avatarBlobRef = useRef<string | null>(null);
     const openedVoluntarioFromUrl = useRef(false);
+    const syncFormAfterReloadRef = useRef(false);
+    const [saving, setSaving] = useState(false);
 
-    const { data, setData, post, put, processing, errors, reset, clearErrors, transform } = useForm({
+    const { data, setData, errors, reset, clearErrors, setError } = useForm({
         name: '',
         email: '',
         phone: '',
@@ -165,21 +174,6 @@ export default function Index({
     });
 
     const isMinistryLeader = data.app_role === 'lider_ministerio';
-
-    // Inertia v2: transform lives on the form, not on post()/put() options.
-    transform((form) => {
-        const ledIds = Array.isArray(form.app_ministry_ids)
-            ? form.app_ministry_ids.filter((id) => Number(id) > 0)
-            : [];
-        const appRole =
-            ledIds.length > 0 || form.app_role === 'lider_ministerio' ? 'lider_ministerio' : form.app_role;
-
-        return {
-            ...form,
-            app_role: appRole,
-            app_ministry_ids: appRole === 'lider_ministerio' ? ledIds : [],
-        };
-    });
 
     const handleVolunteerPhoto = async (raw: File | null) => {
         setPhotoClientError(null);
@@ -355,51 +349,79 @@ export default function Index({
         return parts.length > 0 ? parts.join(' · ') : null;
     };
 
+    useEffect(() => {
+        if (!syncFormAfterReloadRef.current || editingId == null || !isModalOpen) {
+            return;
+        }
+        const row = volunteers.data.find((v) => v.id === editingId);
+        if (!row) {
+            return;
+        }
+        populateEditForm(row);
+        syncFormAfterReloadRef.current = false;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [volunteers.data, editingId, isModalOpen]);
+
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        if (isEditing && editingId) {
-            put(route('volunteers.update', editingId), {
-                ...inertiaListModalSave,
-                forceFormData: true,
-                onSuccess: (page) => {
-                    const flash = (page?.props as { flash?: { error?: string | null; success?: string | null } } | undefined)?.flash;
-                    if (flash?.error) {
-                        setSubmitToast({ kind: 'error', message: flash.error });
-                        return;
-                    }
-                    setSubmitToast({ kind: 'success', message: flash?.success ?? 'Alterações salvas com sucesso.' });
-                    
-                },
-                onError: () => {
-                    setSubmitToast({ kind: 'error', message: 'Não foi possível salvar. Verifique os campos em destaque.' });
-                },
-                onFinish: () => {
-                    // Mantém o feedback visível por alguns segundos.
-                    window.setTimeout(() => setSubmitToast(null), 4500);
-                },
-            });
-        } else {
-            post(route('volunteers.store'), {
-                ...inertiaListModalSave,
-                forceFormData: true,
-                onSuccess: (page) => {
-                    const flash = (page?.props as { flash?: { error?: string | null; success?: string | null } } | undefined)?.flash;
-                    if (flash?.error) {
-                        setSubmitToast({ kind: 'error', message: flash.error });
-                        return;
-                    }
-                    setSubmitToast({ kind: 'success', message: flash?.success ?? 'Voluntário cadastrado com sucesso.' });
-                    
-                },
-                onError: () => {
-                    setSubmitToast({ kind: 'error', message: 'Não foi possível salvar. Verifique os campos em destaque.' });
-                },
-                onFinish: () => {
-                    // Mantém o feedback visível por alguns segundos.
-                    window.setTimeout(() => setSubmitToast(null), 4500);
-                },
-            });
+        if (saving) {
+            return;
         }
+        void (async () => {
+            setSaving(true);
+            clearErrors();
+            try {
+                const formData = buildVolunteerEditFormData(data);
+                const result =
+                    isEditing && editingId
+                        ? await submitVolunteerModalFormDataPut(
+                              route('volunteers.update', editingId),
+                              formData,
+                              page.csrf_token ?? '',
+                          )
+                        : await submitVolunteerModalFormDataPost(
+                              route('volunteers.store'),
+                              formData,
+                              page.csrf_token ?? '',
+                          );
+
+                if (!result.ok) {
+                    applyVolunteerModalFormErrors(result.errors, setError);
+                    setSubmitToast({
+                        kind: 'error',
+                        message: 'Não foi possível salvar. Verifique os campos em destaque.',
+                    });
+                    return;
+                }
+
+                await reloadListModalProps(['volunteers']);
+
+                if (isEditing && editingId) {
+                    syncFormAfterReloadRef.current = true;
+                    setData((prev) => ({
+                        ...prev,
+                        app_password: '',
+                        app_password_confirmation: '',
+                        photo: null,
+                    }));
+                    setSubmitToast({ kind: 'success', message: 'Alterações salvas com sucesso.' });
+                    return;
+                }
+
+                setSubmitToast({ kind: 'success', message: 'Voluntário cadastrado com sucesso.' });
+                const newId = editIdFromListModalRedirect(result.redirectLocation ?? null);
+                if (newId) {
+                    syncFormAfterReloadRef.current = true;
+                    setIsEditing(true);
+                    setEditingId(newId);
+                } else {
+                    reset();
+                }
+            } finally {
+                setSaving(false);
+                window.setTimeout(() => setSubmitToast(null), 4500);
+            }
+        })();
     };
 
     useEffect(() => {
@@ -1084,7 +1106,7 @@ export default function Index({
                                 <PrimaryButton
                                     type="submit"
                                     disabled={
-                                        processing ||
+                                        saving ||
                                         (isMinistryLeader && (data.app_ministry_ids?.length ?? 0) < 1)
                                     }
                                     className="justify-center sm:w-auto"

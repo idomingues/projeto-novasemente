@@ -1,5 +1,6 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import FlashMessages from '@/Components/FlashMessages';
+import PageHeader from '@/Components/PageHeader';
 import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
@@ -9,8 +10,14 @@ import Textarea from '@/Components/Textarea';
 import SelectInput from '@/Components/SelectInput';
 import InputError from '@/Components/InputError';
 import Checkbox from '@/Components/Checkbox';
+import ListSortOptionPicker from '@/Components/ListSortOptionPicker';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { MagnifyingGlassIcon, SparklesIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+import {
+    AdjustmentsHorizontalIcon,
+    ArrowsUpDownIcon,
+    SparklesIcon,
+    UserGroupIcon,
+} from '@heroicons/react/24/outline';
 import { FormEventHandler, useEffect, useMemo, useState } from 'react';
 import { GALLERY_IMAGE_ACCEPT } from '@/utils/mobilePhotoPick';
 
@@ -26,15 +33,54 @@ interface Listing {
     slots_total: number;
     is_new: boolean;
     has_slots: boolean;
+    is_example?: boolean;
 }
+
+type Filters = {
+    q: string;
+    category_id: string;
+    locality: string;
+    modality: string;
+    age_range: string;
+    sort: string;
+};
 
 interface Props {
     listings: Listing[];
     categories: { id: number; name: string }[];
-    filters: { q: string; category_id: string; locality: string; modality: string; age_range: string };
+    filters: Filters;
     modalityOptions: { value: string; label: string }[];
     ageRangeOptions: { value: string; label: string }[];
     hasModuleMembership: boolean;
+}
+
+const headerIconBtnClass =
+    'relative inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white text-zinc-600 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 sm:w-auto sm:px-3 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-800';
+
+const headerIconBtnActiveClass =
+    'border-teal-500 bg-teal-50 text-teal-800 dark:border-teal-600 dark:bg-teal-950/40 dark:text-teal-200';
+
+const SORT_OPTIONS = [
+    { value: 'created_desc', label: 'Mais recentes' },
+    { value: 'created_asc', label: 'Mais antigos' },
+    { value: 'title_asc', label: 'Título (A–Z)' },
+    { value: 'title_desc', label: 'Título (Z–A)' },
+] as const;
+
+function filterQueryParams(filters: Filters): Record<string, string> {
+    const p: Record<string, string> = {};
+    if (filters.q.trim()) p.q = filters.q.trim();
+    if (filters.category_id) p.category_id = filters.category_id;
+    if (filters.locality.trim()) p.locality = filters.locality.trim();
+    if (filters.modality) p.modality = filters.modality;
+    if (filters.age_range) p.age_range = filters.age_range;
+    if (filters.sort && filters.sort !== 'created_desc') p.sort = filters.sort;
+    return p;
+}
+
+function optionLabel(options: { value: string; label: string }[], value: string): string | null {
+    const hit = options.find((o) => o.value === value);
+    return hit?.label ?? null;
 }
 
 export default function SharedTalentIndex({
@@ -46,7 +92,10 @@ export default function SharedTalentIndex({
     hasModuleMembership,
 }: Props) {
     const [publishOpen, setPublishOpen] = useState(false);
+    const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+    const [sortModalOpen, setSortModalOpen] = useState(false);
     const [localFilters, setLocalFilters] = useState(filters);
+    const [draftFilters, setDraftFilters] = useState(filters);
 
     const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
         title: '',
@@ -83,8 +132,109 @@ export default function SharedTalentIndex({
 
     const ART_SPECS = 'Opcional. Recomendado: 1080×1080 px (quadrada), até 4 MB. Pode ser recortada no app.';
 
-    const applyFilters = () => {
-        router.get(route('mobile.shared-talents.index'), localFilters, { preserveState: true });
+    useEffect(() => {
+        setLocalFilters(filters);
+    }, [filters]);
+
+    useEffect(() => {
+        if (filterSheetOpen) {
+            setDraftFilters(localFilters);
+        }
+    }, [filterSheetOpen, localFilters]);
+
+    const activeFilterCount = useMemo(() => {
+        let n = 0;
+        if (localFilters.category_id) n += 1;
+        if (localFilters.modality) n += 1;
+        if (localFilters.age_range) n += 1;
+        if (localFilters.locality.trim()) n += 1;
+        return n;
+    }, [localFilters]);
+
+    const sortIsCustom = localFilters.sort !== 'created_desc';
+    const currentSortLabel = optionLabel([...SORT_OPTIONS], localFilters.sort) ?? 'Mais recentes';
+
+    const activeChips = useMemo(() => {
+        const chips: { key: string; label: string }[] = [];
+        if (localFilters.category_id) {
+            const lb = categories.find((c) => String(c.id) === localFilters.category_id)?.name;
+            if (lb) chips.push({ key: 'category_id', label: lb });
+        }
+        if (localFilters.modality) {
+            const lb = optionLabel(modalityOptions, localFilters.modality);
+            if (lb) chips.push({ key: 'modality', label: lb });
+        }
+        if (localFilters.age_range) {
+            const lb = optionLabel(ageRangeOptions, localFilters.age_range);
+            if (lb) chips.push({ key: 'age_range', label: lb });
+        }
+        if (localFilters.locality.trim()) {
+            chips.push({ key: 'locality', label: localFilters.locality.trim() });
+        }
+        if (localFilters.q.trim()) {
+            const q = localFilters.q.trim();
+            chips.push({ key: 'q', label: q.length > 28 ? `${q.slice(0, 28)}…` : q });
+        }
+        return chips;
+    }, [localFilters, categories, modalityOptions, ageRangeOptions]);
+
+    const applySearch: FormEventHandler = (e) => {
+        e.preventDefault();
+        router.get(route('mobile.shared-talents.index'), filterQueryParams(localFilters), {
+            preserveScroll: true,
+            replace: true,
+        });
+    };
+
+    const applyFiltersFromDraft = () => {
+        setLocalFilters(draftFilters);
+        router.get(route('mobile.shared-talents.index'), filterQueryParams(draftFilters), {
+            preserveScroll: true,
+            replace: true,
+        });
+        setFilterSheetOpen(false);
+    };
+
+    const clearFiltersAndApply = () => {
+        const cleared = { ...localFilters, category_id: '', modality: '', age_range: '', locality: '' };
+        setLocalFilters(cleared);
+        setDraftFilters(cleared);
+        router.get(route('mobile.shared-talents.index'), filterQueryParams(cleared), {
+            preserveScroll: true,
+            replace: true,
+        });
+        setFilterSheetOpen(false);
+    };
+
+    const removeChip = (key: string) => {
+        const next = {
+            ...localFilters,
+            category_id: key === 'category_id' ? '' : localFilters.category_id,
+            modality: key === 'modality' ? '' : localFilters.modality,
+            age_range: key === 'age_range' ? '' : localFilters.age_range,
+            locality: key === 'locality' ? '' : localFilters.locality,
+            q: key === 'q' ? '' : localFilters.q,
+        };
+        setLocalFilters(next);
+        router.get(route('mobile.shared-talents.index'), filterQueryParams(next), {
+            preserveScroll: true,
+            replace: true,
+        });
+    };
+
+    const filterSheetSubmit: FormEventHandler = (e) => {
+        e.preventDefault();
+        applyFiltersFromDraft();
+    };
+
+    const selectSort = (sort: string) => {
+        const next = { ...localFilters, sort };
+        setLocalFilters(next);
+        router.get(route('mobile.shared-talents.index'), filterQueryParams(next), {
+            preserveScroll: true,
+            replace: true,
+        });
+        setSortModalOpen(false);
     };
 
     const submitPublish: FormEventHandler = (e) => {
@@ -98,19 +248,46 @@ export default function SharedTalentIndex({
         });
     };
 
+    const listControls = (
+        <>
+            <button
+                type="button"
+                onClick={() => setFilterSheetOpen(true)}
+                title="Filtros"
+                aria-label={activeFilterCount > 0 ? `Filtros (${activeFilterCount} ativos)` : 'Filtros'}
+                className={`${headerIconBtnClass} ${activeFilterCount > 0 ? headerIconBtnActiveClass : ''}`}
+            >
+                <AdjustmentsHorizontalIcon className="h-5 w-5 shrink-0" aria-hidden />
+                <span className="hidden text-sm font-medium sm:inline">Filtros</span>
+                {activeFilterCount > 0 ? (
+                    <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-zinc-900 px-1 text-[10px] font-bold text-white dark:bg-white dark:text-zinc-900">
+                        {activeFilterCount > 9 ? '9+' : activeFilterCount}
+                    </span>
+                ) : null}
+            </button>
+            <button
+                type="button"
+                onClick={() => setSortModalOpen(true)}
+                title={`Ordenação: ${currentSortLabel}`}
+                aria-label={`Ordenação: ${currentSortLabel}`}
+                className={`${headerIconBtnClass} ${sortIsCustom ? headerIconBtnActiveClass : ''}`}
+            >
+                <ArrowsUpDownIcon className="h-5 w-5 shrink-0" aria-hidden />
+                <span className="hidden text-sm font-medium sm:inline">Ordenar</span>
+            </button>
+        </>
+    );
+
     return (
         <MobileLayout>
             <Head title="Doar Talentos" />
             <FlashMessages />
-            <div className="mx-auto max-w-3xl space-y-6">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
-                        Doar Talentos
-                    </h1>
-                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                        Compartilhe conhecimentos, apoio e crescimento com a comunidade — de forma gratuita e acolhedora.
-                    </p>
-                </div>
+            <div className="mx-auto w-full max-w-3xl space-y-6 lg:max-w-6xl">
+                <PageHeader
+                    title="Doar Talentos"
+                    subtitle="Compartilhe conhecimentos, apoio e crescimento com a comunidade — de forma gratuita e acolhedora."
+                    actions={listControls}
+                />
 
                 <div className="flex flex-wrap gap-2">
                     <Link
@@ -144,73 +321,51 @@ export default function SharedTalentIndex({
                     </button>
                 </div>
 
-                <div className="space-y-3 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-                    <div className="flex gap-2">
-                        <TextInput
-                            className="flex-1"
-                            placeholder="Buscar talentos..."
-                            value={localFilters.q}
-                            onChange={(e) => setLocalFilters({ ...localFilters, q: e.target.value })}
-                        />
-                        <button
-                            type="button"
-                            onClick={applyFilters}
-                            className="rounded-xl border border-zinc-200 p-2 dark:border-zinc-700"
-                            aria-label="Buscar"
-                        >
-                            <MagnifyingGlassIcon className="h-5 w-5" />
-                        </button>
+                <form onSubmit={applySearch} className="flex gap-2 sm:max-w-xl lg:max-w-2xl">
+                    <TextInput
+                        className="flex-1"
+                        type="search"
+                        placeholder="Buscar talentos..."
+                        value={localFilters.q}
+                        onChange={(e) => setLocalFilters({ ...localFilters, q: e.target.value })}
+                    />
+                    <button
+                        type="submit"
+                        className="inline-flex h-12 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-700 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
+                    >
+                        Buscar
+                    </button>
+                </form>
+
+                {activeChips.length > 0 ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+                            Filtros
+                        </span>
+                        {activeChips.map((c) => (
+                            <button
+                                key={c.key}
+                                type="button"
+                                onClick={() => removeChip(c.key)}
+                                className="group inline-flex max-w-full cursor-pointer items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 py-1 pl-3 pr-2 text-xs font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-white dark:border-zinc-600 dark:bg-zinc-800/80 dark:text-zinc-200"
+                                title="Remover filtro"
+                            >
+                                <span className="truncate">{c.label}</span>
+                                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-zinc-400 group-hover:bg-zinc-200 dark:group-hover:bg-zinc-700">
+                                    ×
+                                </span>
+                            </button>
+                        ))}
                     </div>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                        <SelectInput
-                            value={localFilters.category_id}
-                            onChange={(e) => setLocalFilters({ ...localFilters, category_id: e.target.value })}
-                        >
-                            <option value="">Todas as categorias</option>
-                            {categories.map((c) => (
-                                <option key={c.id} value={c.id}>
-                                    {c.name}
-                                </option>
-                            ))}
-                        </SelectInput>
-                        <SelectInput
-                            value={localFilters.modality}
-                            onChange={(e) => setLocalFilters({ ...localFilters, modality: e.target.value })}
-                        >
-                            <option value="">Todas as modalidades</option>
-                            {modalityOptions.map((m) => (
-                                <option key={m.value} value={m.value}>
-                                    {m.label}
-                                </option>
-                            ))}
-                        </SelectInput>
-                        <SelectInput
-                            value={localFilters.age_range}
-                            onChange={(e) => setLocalFilters({ ...localFilters, age_range: e.target.value })}
-                        >
-                            <option value="">Todas as faixas etárias</option>
-                            {ageRangeOptions.map((a) => (
-                                <option key={a.value} value={a.value}>
-                                    {a.label}
-                                </option>
-                            ))}
-                        </SelectInput>
-                        <TextInput
-                            placeholder="Localidade"
-                            value={localFilters.locality}
-                            onChange={(e) => setLocalFilters({ ...localFilters, locality: e.target.value })}
-                        />
-                    </div>
-                    <SecondaryButton type="button" onClick={applyFilters} className="w-full sm:w-auto">
-                        Aplicar filtros
-                    </SecondaryButton>
-                </div>
+                ) : null}
 
                 {listings.length === 0 ? (
                     <div className="rounded-2xl border border-zinc-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
                         <SparklesIcon className="mx-auto mb-3 h-10 w-10 text-zinc-400" />
                         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                            Nenhum talento disponível no momento. Seja o primeiro a compartilhar com a comunidade!
+                            {activeChips.length > 0
+                                ? 'Nenhum talento com estes filtros.'
+                                : 'Nenhum talento disponível no momento. Seja o primeiro a compartilhar com a comunidade!'}
                         </p>
                     </div>
                 ) : (
@@ -236,7 +391,12 @@ export default function SharedTalentIndex({
                                     <div className="min-w-0 flex-1">
                                         <div className="flex flex-wrap items-center gap-2">
                                             <h2 className="font-semibold text-zinc-900 dark:text-white">{listing.title}</h2>
-                                            {listing.is_new && (
+                                            {listing.is_example ? (
+                                                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                                                    Exemplo
+                                                </span>
+                                            ) : null}
+                                            {listing.is_new && !listing.is_example && (
                                                 <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
                                                     Novo
                                                 </span>
@@ -262,6 +422,116 @@ export default function SharedTalentIndex({
                     </div>
                 )}
             </div>
+
+            <Modal
+                show={filterSheetOpen}
+                onClose={() => setFilterSheetOpen(false)}
+                maxWidth="md"
+                footer={
+                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <button
+                            type="button"
+                            onClick={clearFiltersAndApply}
+                            className="cursor-pointer text-center text-sm font-medium text-zinc-500 underline-offset-2 hover:text-zinc-800 hover:underline dark:text-zinc-400"
+                        >
+                            Limpar filtros
+                        </button>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                            <SecondaryButton
+                                type="button"
+                                className="justify-center sm:w-auto"
+                                onClick={() => setFilterSheetOpen(false)}
+                            >
+                                Fechar
+                            </SecondaryButton>
+                            <PrimaryButton type="submit" form="shared-talents-filter-form" className="justify-center sm:w-auto">
+                                Aplicar
+                            </PrimaryButton>
+                        </div>
+                    </div>
+                }
+            >
+                <div className="px-5 pb-2 pt-14 sm:px-6 sm:pt-16">
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Filtros</h2>
+                    <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                        Refine por categoria, modalidade, faixa etária ou localidade.
+                    </p>
+                </div>
+                <form
+                    id="shared-talents-filter-form"
+                    onSubmit={filterSheetSubmit}
+                    className="space-y-4 px-5 pb-6 sm:px-6"
+                >
+                    <div>
+                        <InputLabel htmlFor="st_f_category" value="Categoria" />
+                        <SelectInput
+                            id="st_f_category"
+                            className="mt-1 w-full"
+                            value={draftFilters.category_id}
+                            onChange={(e) => setDraftFilters((f) => ({ ...f, category_id: e.target.value }))}
+                        >
+                            <option value="">Todas as categorias</option>
+                            {categories.map((c) => (
+                                <option key={c.id} value={c.id}>
+                                    {c.name}
+                                </option>
+                            ))}
+                        </SelectInput>
+                    </div>
+                    <div>
+                        <InputLabel htmlFor="st_f_modality" value="Modalidade" />
+                        <SelectInput
+                            id="st_f_modality"
+                            className="mt-1 w-full"
+                            value={draftFilters.modality}
+                            onChange={(e) => setDraftFilters((f) => ({ ...f, modality: e.target.value }))}
+                        >
+                            <option value="">Todas as modalidades</option>
+                            {modalityOptions.map((m) => (
+                                <option key={m.value} value={m.value}>
+                                    {m.label}
+                                </option>
+                            ))}
+                        </SelectInput>
+                    </div>
+                    <div>
+                        <InputLabel htmlFor="st_f_age_range" value="Faixa etária" />
+                        <SelectInput
+                            id="st_f_age_range"
+                            className="mt-1 w-full"
+                            value={draftFilters.age_range}
+                            onChange={(e) => setDraftFilters((f) => ({ ...f, age_range: e.target.value }))}
+                        >
+                            <option value="">Todas as faixas etárias</option>
+                            {ageRangeOptions.map((a) => (
+                                <option key={a.value} value={a.value}>
+                                    {a.label}
+                                </option>
+                            ))}
+                        </SelectInput>
+                    </div>
+                    <div>
+                        <InputLabel htmlFor="st_f_locality" value="Localidade" />
+                        <TextInput
+                            id="st_f_locality"
+                            className="mt-1 w-full"
+                            placeholder="Ex.: bairro ou cidade"
+                            value={draftFilters.locality}
+                            onChange={(e) => setDraftFilters((f) => ({ ...f, locality: e.target.value }))}
+                        />
+                    </div>
+                </form>
+            </Modal>
+
+            <Modal show={sortModalOpen} onClose={() => setSortModalOpen(false)} maxWidth="md">
+                <div className="px-5 pb-6 pt-14 sm:px-6 sm:pt-16">
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Ordenação</h2>
+                    <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                        Toque em uma opção para ordenar a lista.
+                    </p>
+                    <ListSortOptionPicker options={SORT_OPTIONS} value={localFilters.sort} onChange={selectSort} />
+                </div>
+            </Modal>
 
             <Modal show={publishOpen} onClose={() => setPublishOpen(false)} maxWidth="2xl">
                 <form onSubmit={submitPublish} className="space-y-4 p-6">

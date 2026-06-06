@@ -8,6 +8,9 @@ import Textarea from '@/Components/Textarea';
 import SelectInput from '@/Components/SelectInput';
 import InputError from '@/Components/InputError';
 import { Head, Link, useForm } from '@inertiajs/react';
+import TalentListingContactPanel, {
+    type TalentContactChannel,
+} from '@/Components/Talents/TalentListingContactPanel';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { FormEventHandler, useState } from 'react';
 
@@ -29,6 +32,8 @@ interface Listing {
     can_express_interest: boolean;
     has_interest: boolean;
     is_owner: boolean;
+    is_example?: boolean;
+    contact_channels?: TalentContactChannel[];
 }
 
 interface Props {
@@ -70,8 +75,18 @@ export default function TalentConnectionShow({ listing, reportReasons }: Props) 
                 </Link>
 
                 {listing.photo_url && (
-                    <img src={listing.photo_url} alt="" className="h-48 w-full rounded-2xl object-cover" />
+                    <img src={listing.photo_url} alt="" className="h-48 w-full rounded-2xl object-cover sm:h-64" />
                 )}
+
+                {listing.is_example ? (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+                        <p className="font-semibold">Publicação de exemplo</p>
+                        <p className="mt-1 text-amber-900/90 dark:text-amber-100/90">
+                            Este anúncio existe só para mostrar como fica uma publicação real. Não envie interesse nem trate
+                            como oferta ativa.
+                        </p>
+                    </div>
+                ) : null}
 
                 <div>
                     <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{listing.title}</h1>
@@ -81,6 +96,10 @@ export default function TalentConnectionShow({ listing, reportReasons }: Props) 
                         {listing.locality ? ` · ${listing.locality}` : ''}
                     </p>
                 </div>
+
+                {listing.contact_channels && listing.contact_channels.length > 0 ? (
+                    <TalentListingContactPanel channels={listing.contact_channels} isExample={listing.is_example} />
+                ) : null}
 
                 <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
                     <p className="text-sm font-medium text-zinc-500">Membro</p>

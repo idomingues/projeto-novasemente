@@ -42,7 +42,6 @@ class VolunteersTest extends TestCase
 
         $response = $this->actingAs($user)->post('/volunteers', $payload);
 
-        $response->assertRedirect('/volunteers');
         $response->assertSessionHasNoErrors();
 
         $this->assertDatabaseHas('volunteers', [
@@ -51,6 +50,7 @@ class VolunteersTest extends TestCase
         ]);
 
         $volunteer = Volunteer::query()->where('email', 'voluntario.teste@example.com')->firstOrFail();
+        $response->assertRedirect(route('volunteers.index', ['modal' => 'edit', 'id' => $volunteer->id]));
         $this->assertNotNull($volunteer->user_id);
 
         $this->assertDatabaseHas('users', [
@@ -129,7 +129,7 @@ class VolunteersTest extends TestCase
     {
         $admin = $this->actingAsAdmin();
 
-        $this->actingAs($admin)->post('/volunteers', [
+        $createResponse = $this->actingAs($admin)->post('/volunteers', [
             'name' => 'Com Senha',
             'email' => 'senha.voluntario@example.com',
             'ministry_ids' => [],
@@ -138,9 +138,10 @@ class VolunteersTest extends TestCase
             'app_ministry_ids' => [],
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
-        ])->assertRedirect('/volunteers');
+        ]);
 
         $volunteer = Volunteer::query()->where('email', 'senha.voluntario@example.com')->firstOrFail();
+        $createResponse->assertRedirect(route('volunteers.index', ['modal' => 'edit', 'id' => $volunteer->id]));
         $userId = (int) $volunteer->user_id;
         $oldHash = User::query()->findOrFail($userId)->password;
 
@@ -155,7 +156,7 @@ class VolunteersTest extends TestCase
             'app_password_confirmation' => 'novaSenha456',
         ]);
 
-        $response->assertRedirect('/volunteers');
+        $response->assertRedirect(route('volunteers.index', ['modal' => 'edit', 'id' => $volunteer->id]));
         $response->assertSessionHasNoErrors();
 
         $newHash = User::query()->findOrFail($userId)->password;
@@ -167,7 +168,7 @@ class VolunteersTest extends TestCase
     {
         $admin = $this->actingAsAdmin();
 
-        $this->actingAs($admin)->post('/volunteers', [
+        $createResponse = $this->actingAs($admin)->post('/volunteers', [
             'name' => 'Para Excluir',
             'email' => 'excluir.voluntario@example.com',
             'ministry_ids' => [],
@@ -176,9 +177,10 @@ class VolunteersTest extends TestCase
             'app_ministry_ids' => [],
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
-        ])->assertRedirect('/volunteers');
+        ]);
 
         $volunteer = Volunteer::query()->where('email', 'excluir.voluntario@example.com')->firstOrFail();
+        $createResponse->assertRedirect(route('volunteers.index', ['modal' => 'edit', 'id' => $volunteer->id]));
         $userId = (int) $volunteer->user_id;
 
         $response = $this->actingAs($admin)->post("/volunteers/{$volunteer->id}", [

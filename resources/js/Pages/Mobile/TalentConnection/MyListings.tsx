@@ -11,6 +11,7 @@ import InputError from '@/Components/InputError';
 import Checkbox from '@/Components/Checkbox';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { FormEventHandler, useState } from 'react';
+import TalentListingContactFields from '@/Components/Talents/TalentListingContactFields';
 import { confirmAction } from '@/utils/confirmDialog';
 
 interface Listing {
@@ -23,6 +24,10 @@ interface Listing {
     description: string;
     locality: string | null;
     availability: string | null;
+    contact_phone: string | null;
+    contact_whatsapp: string | null;
+    contact_email: string | null;
+    contact_instagram: string | null;
     notes: string | null;
     allows_exchange: boolean;
     allows_negotiation: boolean;
@@ -48,6 +53,10 @@ export default function TalentConnectionMyListings({ listings, categories }: Pro
         description: '',
         locality: '',
         availability: '',
+        contact_phone: '',
+        contact_whatsapp: '',
+        contact_email: '',
+        contact_instagram: '',
         allows_exchange: false,
         allows_negotiation: true,
         notes: '',
@@ -64,6 +73,10 @@ export default function TalentConnectionMyListings({ listings, categories }: Pro
             description: listing.description,
             locality: listing.locality ?? '',
             availability: listing.availability ?? '',
+            contact_phone: listing.contact_phone ?? '',
+            contact_whatsapp: listing.contact_whatsapp ?? '',
+            contact_email: listing.contact_email ?? '',
+            contact_instagram: listing.contact_instagram ?? '',
             allows_exchange: listing.allows_exchange,
             allows_negotiation: listing.allows_negotiation,
             notes: listing.notes ?? '',
@@ -202,6 +215,17 @@ export default function TalentConnectionMyListings({ listings, categories }: Pro
                             onChange={(e) => setData('description', e.target.value)}
                         />
                     </div>
+                    <TalentListingContactFields
+                        data={{
+                            contact_phone: data.contact_phone,
+                            contact_whatsapp: data.contact_whatsapp,
+                            contact_email: data.contact_email,
+                            contact_instagram: data.contact_instagram,
+                        }}
+                        setData={(key, value) => setData(key, value)}
+                        errors={errors}
+                        idPrefix="tc_edit_contact"
+                    />
                     <div className="flex justify-end gap-2">
                         <SecondaryButton type="button" onClick={() => setEditOpen(false)}>
                             Cancelar

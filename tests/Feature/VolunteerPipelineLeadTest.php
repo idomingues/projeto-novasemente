@@ -40,7 +40,7 @@ class VolunteerPipelineLeadTest extends TestCase
             'active' => '1',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
-        ])->assertRedirect('/volunteers');
+        ])->assertRedirect();
 
         $volunteer = Volunteer::query()->where('email', 'status.pipeline@example.com')->firstOrFail();
 
@@ -386,7 +386,7 @@ class VolunteerPipelineLeadTest extends TestCase
             'active' => '1',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
-        ])->assertRedirect('/volunteers');
+        ])->assertRedirect();
 
         $volunteer = Volunteer::query()->where('email', 'em.analise.pipeline@example.com')->firstOrFail();
 
@@ -422,7 +422,7 @@ class VolunteerPipelineLeadTest extends TestCase
             'active' => '1',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
-        ])->assertRedirect('/volunteers');
+        ])->assertRedirect();
 
         $volunteer = Volunteer::query()->where('email', 'limpar.status.pipeline@example.com')->firstOrFail();
 

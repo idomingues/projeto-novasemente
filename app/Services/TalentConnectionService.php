@@ -9,6 +9,7 @@ use App\Models\TalentListing;
 use App\Models\TalentModuleMembership;
 use App\Models\User;
 use Illuminate\Http\Request;
+use App\Support\TalentListingContact;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -155,6 +156,10 @@ class TalentConnectionService
             'description' => ['required', 'string', 'max:5000'],
             'locality' => ['nullable', 'string', 'max:120'],
             'availability' => ['nullable', 'string', 'max:500'],
+            'contact_phone' => ['nullable', 'string', 'max:40'],
+            'contact_whatsapp' => ['nullable', 'string', 'max:40'],
+            'contact_email' => ['nullable', 'email', 'max:120'],
+            'contact_instagram' => ['nullable', 'string', 'max:80'],
             'allows_exchange' => ['boolean'],
             'allows_negotiation' => ['boolean'],
             'notes' => ['nullable', 'string', 'max:2000'],
@@ -178,5 +183,44 @@ class TalentConnectionService
         }
 
         return $rules;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function assertHasContactChannel(array $data): void
+    {
+        if (TalentListingContact::hasAnyInPayload($data)) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'contact_whatsapp' => 'Informe ao menos uma forma de contato (telefone, WhatsApp, e-mail ou Instagram).',
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array{contact_phone: ?string, contact_whatsapp: ?string, contact_email: ?string, contact_instagram: ?string}
+     */
+    public function normalizedContactPayload(array $data): array
+    {
+        return [
+            'contact_phone' => $this->nullableTrim($data['contact_phone'] ?? null),
+            'contact_whatsapp' => $this->nullableTrim($data['contact_whatsapp'] ?? null),
+            'contact_email' => $this->nullableTrim($data['contact_email'] ?? null),
+            'contact_instagram' => $this->nullableTrim($data['contact_instagram'] ?? null),
+        ];
+    }
+
+    private function nullableTrim(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $trimmed = trim($value);
+
+        return $trimmed !== '' ? $trimmed : null;
     }
 }

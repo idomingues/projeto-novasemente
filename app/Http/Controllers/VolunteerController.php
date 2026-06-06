@@ -6,6 +6,7 @@ use App\Domain\Volunteers\Actions\DeleteVolunteer;
 use App\Domain\Volunteers\Actions\SyncVolunteerMinistryAttachments;
 use App\Http\Requests\StoreVolunteerRequest;
 use App\Http\Requests\UpdateVolunteerRequest;
+use App\Http\Support\ListModalRedirect;
 use App\Models\Church;
 use App\Models\Invitation;
 use App\Models\Ministry;
@@ -439,9 +440,7 @@ class VolunteerController extends Controller
             VolunteerPipelineBootstrap::setInteressadoStageForVolunteer($volunteer->fresh(), $churchId);
         }
 
-        $redirect = redirect()->route('volunteers.index')->with('success', 'Voluntário cadastrado com sucesso!');
-
-        return $redirect;
+        return ListModalRedirect::toIndexEdit('volunteers.index', $volunteer, 'Voluntário cadastrado com sucesso!');
     }
 
     public function update(UpdateVolunteerRequest $request, Volunteer $volunteer)
@@ -470,9 +469,7 @@ class VolunteerController extends Controller
             VolunteerPipelineBootstrap::ensureRowForVolunteerInChurch($volunteer->fresh(), $churchId);
         }
 
-        $redirect = redirect()->route('volunteers.index')->with('success', 'Voluntário atualizado com sucesso!');
-
-        return $redirect;
+        return ListModalRedirect::toIndexEdit('volunteers.index', $volunteer->fresh(), 'Voluntário atualizado com sucesso!');
     }
 
     public function destroy(Request $request, Volunteer $volunteer)

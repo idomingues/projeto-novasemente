@@ -13,6 +13,8 @@ use App\Models\User;
 use App\Services\TalentConnectionNotifier;
 use App\Services\TalentConnectionService;
 use App\Support\SearchTerm;
+use App\Support\TalentDemoListing;
+use App\Support\TalentListingContact;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -39,28 +41,9 @@ class TalentConnectionController extends Controller
 
     private function listingRules(bool $requireDeclaration = true): array
     {
-        $rules = [
-            'title' => ['required', 'string', 'max:120'],
-            'category_id' => ['required', 'exists:talent_categories,id'],
-            'type' => ['required', Rule::in([
-                TalentListing::TYPE_OFFER,
-                TalentListing::TYPE_SEEK,
-                TalentListing::TYPE_EXCHANGE,
-            ])],
-            'description' => ['required', 'string', 'max:5000'],
-            'locality' => ['nullable', 'string', 'max:120'],
-            'availability' => ['nullable', 'string', 'max:500'],
-            'allows_exchange' => ['boolean'],
-            'allows_negotiation' => ['boolean'],
-            'notes' => ['nullable', 'string', 'max:2000'],
-            'photo' => ['nullable', 'image', 'max:5120'],
-        ];
-
-        if ($requireDeclaration) {
-            $rules['member_declaration'] = ['accepted'];
-        }
-
-        return $rules;
+        return $this->talents->listingPayloadRules(
+            requireMemberDeclaration: $requireDeclaration,
+        );
     }
 
     private function categoriesForChurch(?int $churchId): array
@@ -101,16 +84,22 @@ class TalentConnectionController extends Controller
             'church_name' => $listing->church?->name,
             'created_at' => $listing->created_at?->toIso8601String(),
             'is_owner' => $isOwner,
+            'is_example' => TalentDemoListing::isDemoTalentListing($listing),
+            'has_contact' => TalentListingContact::hasAny($listing),
         ];
 
         if ($detail) {
+            $data['contact_channels'] = TalentListingContact::channels($listing);
             $data['description'] = $listing->description;
             $data['availability'] = $listing->availability;
-            $data['notes'] = $listing->notes;
+            $data['notes'] = $isOwner && ! TalentDemoListing::isDemoTalentListing($listing)
+                ? $listing->notes
+                : null;
             $data['rejection_reason'] = $isOwner ? $listing->rejection_reason : null;
             $data['interests_count'] = $listing->interests()->count();
             $data['can_express_interest'] = $viewer !== null
                 && ! $isOwner
+                && ! TalentDemoListing::isDemoTalentListing($listing)
                 && $listing->isVisibleToMembers();
             $data['has_interest'] = $viewer !== null
                 && $listing->interests()->where('user_id', $viewer->id)->exists();
@@ -147,7 +136,15 @@ class TalentConnectionController extends Controller
             $query->where('type', $type);
         }
 
-        $listings = $query->orderByDesc('created_at')->limit(50)->get()
+        $sort = is_string($request->query('sort')) ? $request->query('sort') : 'created_desc';
+        match ($sort) {
+            'created_asc' => $query->orderBy('created_at'),
+            'title_asc' => $query->orderBy('title'),
+            'title_desc' => $query->orderByDesc('title'),
+            default => $query->orderByDesc('created_at'),
+        };
+
+        $listings = $query->limit(50)->get()
             ->map(fn (TalentListing $l) => $this->mapListing($l, $user));
 
         return Inertia::render('Mobile/TalentConnection/Index', [
@@ -158,6 +155,7 @@ class TalentConnectionController extends Controller
                 'category_id' => $request->input('category_id', ''),
                 'locality' => $request->input('locality', ''),
                 'type' => $request->input('type', ''),
+                'sort' => $sort,
             ],
             'typeOptions' => [
                 ['value' => TalentListing::TYPE_OFFER, 'label' => TalentListing::typeLabel(TalentListing::TYPE_OFFER)],
@@ -209,6 +207,10 @@ class TalentConnectionController extends Controller
                 $mapped['allows_exchange'] = $l->allows_exchange;
                 $mapped['allows_negotiation'] = $l->allows_negotiation;
                 $mapped['locality'] = $l->locality;
+                $mapped['contact_phone'] = $l->contact_phone;
+                $mapped['contact_whatsapp'] = $l->contact_whatsapp;
+                $mapped['contact_email'] = $l->contact_email;
+                $mapped['contact_instagram'] = $l->contact_instagram;
 
                 return $mapped;
             });
@@ -285,6 +287,8 @@ class TalentConnectionController extends Controller
         }
 
         $data = $request->validate($this->listingRules());
+        $this->talents->assertHasContactChannel($data);
+        $contact = $this->talents->normalizedContactPayload($data);
 
         $this->talents->confirmMembership($user, $churchId);
 
@@ -302,6 +306,7 @@ class TalentConnectionController extends Controller
             'description' => $data['description'],
             'locality' => $data['locality'] ?? null,
             'availability' => $data['availability'] ?? null,
+            ...$contact,
             'allows_exchange' => $request->boolean('allows_exchange'),
             'allows_negotiation' => $request->boolean('allows_negotiation', true),
             'notes' => $data['notes'] ?? null,
@@ -328,6 +333,8 @@ class TalentConnectionController extends Controller
         }
 
         $data = $request->validate($this->listingRules(false));
+        $this->talents->assertHasContactChannel($data);
+        $contact = $this->talents->normalizedContactPayload($data);
 
         if ($request->hasFile('photo')) {
             if ($talentListing->photo_path) {
@@ -343,6 +350,7 @@ class TalentConnectionController extends Controller
             'description' => $data['description'],
             'locality' => $data['locality'] ?? null,
             'availability' => $data['availability'] ?? null,
+            ...$contact,
             'allows_exchange' => $request->boolean('allows_exchange'),
             'allows_negotiation' => $request->boolean('allows_negotiation', true),
             'notes' => $data['notes'] ?? null,

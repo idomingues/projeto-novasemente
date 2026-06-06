@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\SharedTalentNotifier;
 use App\Services\SharedTalentService;
 use App\Support\SearchTerm;
+use App\Support\TalentDemoListing;
 use App\Support\SharedTalentEnrollmentStatus;
 use App\Support\SharedTalentListingStatus;
 use Illuminate\Http\RedirectResponse;
@@ -65,6 +66,7 @@ class SharedTalentController extends Controller
             'is_owner' => $isOwner,
             'is_new' => $isNew,
             'has_slots' => $listing->slotsRemaining() > 0,
+            'is_example' => TalentDemoListing::isDemoSharedTalentListing($listing),
         ];
 
         if ($detail) {
@@ -73,12 +75,15 @@ class SharedTalentController extends Controller
             $data['schedule_time'] = $listing->schedule_time;
             $data['frequency'] = $listing->frequency;
             $data['duration_estimate'] = $listing->duration_estimate;
-            $data['notes'] = $listing->notes;
+            $data['notes'] = $isOwner && ! TalentDemoListing::isDemoSharedTalentListing($listing)
+                ? $listing->notes
+                : null;
             $data['age_range_notes'] = $listing->age_range_notes;
             $data['rejection_reason'] = $isOwner ? $listing->rejection_reason : null;
             $data['enrollments_count'] = $listing->enrollments()->count();
             $data['can_enroll'] = $viewer !== null
                 && ! $isOwner
+                && ! TalentDemoListing::isDemoSharedTalentListing($listing)
                 && $listing->acceptsEnrollments();
             $data['has_enrollment'] = $viewer !== null
                 && $listing->enrollments()->where('user_id', $viewer->id)->exists();
@@ -156,7 +161,15 @@ class SharedTalentController extends Controller
             $query->where('age_range', $ageRange);
         }
 
-        $listings = $query->orderByDesc('created_at')->limit(50)->get()
+        $sort = is_string($request->query('sort')) ? $request->query('sort') : 'created_desc';
+        match ($sort) {
+            'created_asc' => $query->orderBy('created_at'),
+            'title_asc' => $query->orderBy('title'),
+            'title_desc' => $query->orderByDesc('title'),
+            default => $query->orderByDesc('created_at'),
+        };
+
+        $listings = $query->limit(50)->get()
             ->map(fn (SharedTalentListing $l) => $this->mapListing($l, $user));
 
         return Inertia::render('Mobile/SharedTalent/Index', [
@@ -168,6 +181,7 @@ class SharedTalentController extends Controller
                 'locality' => $request->input('locality', ''),
                 'modality' => $request->input('modality', ''),
                 'age_range' => $request->input('age_range', ''),
+                'sort' => $sort,
             ],
             'modalityOptions' => $this->sharedTalents->modalityOptions(),
             'ageRangeOptions' => $this->sharedTalents->ageRangeOptions(),
