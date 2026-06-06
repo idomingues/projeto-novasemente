@@ -21,12 +21,17 @@ import SelectInput from '@/Components/SelectInput';
 import Textarea from '@/Components/Textarea';
 import TextInput from '@/Components/TextInput';
 import VolunteerRequestAttachModal from '@/Components/VolunteerRequests/VolunteerRequestAttachModal';
+import VolunteerRequestAreaTags from '@/Components/VolunteerRequests/VolunteerRequestAreaTags';
 import VolunteerQuestionnaireProfileModal, {
     type VolunteerQuestionnaireProfile,
 } from '@/Components/Volunteers/VolunteerQuestionnaireProfileModal';
 import SolicitationDetailPanel, { type SolicitationDetailPanelProps } from '@/Components/Solicitations/SolicitationDetailPanel';
 import { confirmAction } from '@/utils/confirmDialog';
 import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
+import {
+    buildVolunteerRequestAreaTags,
+    filterVolunteerRequestRowsByArea,
+} from '@/utils/volunteerRequestAreas';
 
 type ScheduleRoleOption = { id: number; name: string };
 
@@ -112,12 +117,6 @@ function formatCreatedAt(iso: string | null): string {
     }
 }
 
-function areaLabelFromSubject(subject: string): string {
-    const parts = subject.split('—').map((part) => part.trim()).filter(Boolean);
-    if (parts.length >= 2) return parts[1] ?? 'Sem área';
-    return 'Sem área';
-}
-
 export default function VolunteerRequestsStaffSection({
     rows,
     ministries,
@@ -201,22 +200,15 @@ export default function VolunteerRequestsStaffSection({
         return map;
     }, [ministries]);
 
-    const groupedRows = useMemo(() => {
-        const groups = new Map<string, VolunteerRequestRow[]>();
-        rows.forEach((row) => {
-            const area =
-                (row.ministry_id != null && row.ministry_id > 0 ? ministryNameById.get(row.ministry_id) : null) ??
-                areaLabelFromSubject(row.subject);
-            const key = area || 'Sem área';
-            const current = groups.get(key) ?? [];
-            current.push(row);
-            groups.set(key, current);
-        });
+    const areaTags = useMemo(
+        () => buildVolunteerRequestAreaTags(rows, ministries, ministryNameById),
+        [rows, ministries, ministryNameById],
+    );
 
-        return Array.from(groups.entries())
-            .sort(([a], [b]) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }))
-            .map(([area, items]) => ({ area, items }));
-    }, [rows, ministryNameById]);
+    const selectedAreaRows = useMemo(() => {
+        if (!selectedArea) return [];
+        return filterVolunteerRequestRowsByArea(rows, selectedArea, ministryNameById);
+    }, [rows, selectedArea, ministryNameById]);
 
     useEffect(() => {
         if (!groupByArea) {
@@ -224,12 +216,12 @@ export default function VolunteerRequestsStaffSection({
             return;
         }
 
-        if (selectedArea && groupedRows.some((group) => group.area === selectedArea)) {
+        if (selectedArea && areaTags.some((tag) => tag.area === selectedArea)) {
             return;
         }
 
-        setSelectedArea(groupedRows[0]?.area ?? null);
-    }, [groupByArea, groupedRows, selectedArea]);
+        setSelectedArea(areaTags.find((tag) => tag.count > 0)?.area ?? areaTags[0]?.area ?? null);
+    }, [groupByArea, areaTags, selectedArea]);
 
     const onMinistryChangeCreate = (v: string) => {
         const id = v === '' ? '' : Number(v);
@@ -334,31 +326,36 @@ export default function VolunteerRequestsStaffSection({
     const canAdd = ministries.length > 0;
 
     const goToPedidosView = (mode: 'lista' | 'por-area' | 'arquivados') => {
-        setViewTab(mode);
-        if (mode === 'por-area') {
-            setSelectedArea(null);
-            router.get(route('ministry-lead.volunteers.pedidos'), pedidosIndexParams(false), {
-                preserveState: false,
-                preserveScroll: false,
-                replace: true,
-            });
-            return;
-        }
         if (mode === 'arquivados') {
+            if (filters.arquivados) {
+                setViewTab('arquivados');
+                return;
+            }
             setSelectedArea(null);
             router.get(route('ministry-lead.volunteers.pedidos'), pedidosIndexParams(true), {
                 preserveState: false,
                 preserveScroll: false,
                 replace: true,
+                onFinish: () => setViewTab('arquivados'),
             });
             return;
         }
-        setSelectedArea(null);
-        router.get(route('ministry-lead.volunteers.pedidos'), pedidosIndexParams(false), {
-            preserveState: false,
-            preserveScroll: false,
-            replace: true,
-        });
+
+        if (filters.arquivados) {
+            setSelectedArea(null);
+            router.get(route('ministry-lead.volunteers.pedidos'), pedidosIndexParams(false), {
+                preserveState: false,
+                preserveScroll: false,
+                replace: true,
+                onFinish: () => setViewTab(mode),
+            });
+            return;
+        }
+
+        setViewTab(mode);
+        if (mode === 'lista') {
+            setSelectedArea(null);
+        }
     };
 
     const handleArchiveStaff = async () => {
@@ -708,7 +705,7 @@ export default function VolunteerRequestsStaffSection({
                                 : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
                         }`}
                     >
-                        Por área ({groupedRows.length})
+                        Por área ({areaTags.length})
                     </button>
                     <button
                         type="button"
@@ -722,6 +719,16 @@ export default function VolunteerRequestsStaffSection({
                         Arquivados ({filters.arquivados ? rows.length : archivedCount})
                     </button>
                 </div>
+
+                {viewTab === 'por-area' && !filters.arquivados ? (
+                    <div className="mt-3 border-t border-zinc-200 px-1 pt-3 dark:border-zinc-700">
+                        <VolunteerRequestAreaTags
+                            tags={areaTags}
+                            selectedArea={selectedArea}
+                            onSelect={setSelectedArea}
+                        />
+                    </div>
+                ) : null}
             </Card>
 
             <div className="space-y-4">
@@ -741,67 +748,25 @@ export default function VolunteerRequestsStaffSection({
                 ) : (
                     groupByArea ? (
                         <div className="space-y-4">
-                            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                                {groupedRows.map((group) => {
-                                    const isActive = selectedArea === group.area;
-                                    return (
-                                        <button
-                                            key={group.area}
-                                            type="button"
-                                            onClick={() => setSelectedArea(group.area)}
-                                            className={`rounded-2xl border p-4 text-left transition ${
-                                                isActive
-                                                    ? 'border-emerald-300 bg-emerald-50 shadow-sm dark:border-emerald-800 dark:bg-emerald-950/30'
-                                                    : 'border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700 dark:hover:bg-zinc-800/70'
-                                            }`}
-                                        >
-                                            <p
-                                                className={`text-sm font-semibold uppercase tracking-wide ${
-                                                    isActive
-                                                        ? 'text-emerald-800 dark:text-emerald-200'
-                                                        : 'text-zinc-700 dark:text-zinc-200'
-                                                }`}
-                                            >
-                                                {group.area}
-                                            </p>
-                                            <p
-                                                className={`mt-2 text-2xl font-bold leading-none ${
-                                                    isActive
-                                                        ? 'text-emerald-900 dark:text-emerald-100'
-                                                        : 'text-zinc-900 dark:text-white'
-                                                }`}
-                                            >
-                                                {group.items.length}
-                                            </p>
-                                            <p
-                                                className={`mt-1 text-xs ${
-                                                    isActive
-                                                        ? 'text-emerald-700 dark:text-emerald-300'
-                                                        : 'text-zinc-500 dark:text-zinc-400'
-                                                }`}
-                                            >
-                                                {group.items.length === 1 ? 'pedido' : 'pedidos'}
-                                            </p>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-
                             {selectedArea ? (
                                 <section className="space-y-3">
-                                    <div className="flex items-center justify-between">
+                                    <div className="flex items-center justify-between gap-2">
                                         <h3 className="text-sm font-semibold uppercase tracking-wide text-zinc-700 dark:text-zinc-300">
-                                            Área selecionada: {selectedArea}
+                                            {selectedArea}
                                         </h3>
-                                        <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-                                            {(groupedRows.find((group) => group.area === selectedArea)?.items.length ?? 0).toString()}
+                                        <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                                            {selectedAreaRows.length}
                                         </span>
                                     </div>
-                                    <div className="space-y-3">
-                                        {(groupedRows.find((group) => group.area === selectedArea)?.items ?? []).map((row) =>
-                                            renderRequestCard(row),
-                                        )}
-                                    </div>
+                                    {selectedAreaRows.length === 0 ? (
+                                        <Card className="p-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
+                                            Nenhum pedido nesta área.
+                                        </Card>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {selectedAreaRows.map((row) => renderRequestCard(row))}
+                                        </div>
+                                    )}
                                 </section>
                             ) : null}
                         </div>
