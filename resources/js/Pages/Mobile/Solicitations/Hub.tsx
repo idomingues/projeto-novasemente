@@ -25,7 +25,6 @@ import SolicitationDetailPanel, {
     type SolicitationDetailShape,
     type SolicitationMessageRow,
 } from '@/Components/Solicitations/SolicitationDetailPanel';
-import PastorVisitScheduleSection from '@/Components/Solicitations/PastorVisitScheduleSection';
 import type { ComponentType, SVGProps } from 'react';
 import { FormEventHandler, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
@@ -63,8 +62,6 @@ interface Props {
     storeUrl: string;
     pastorOptions: PastorOption[];
     mySolicitations: SolicitationHubRow[];
-    /** Horários publicados para «Visita aos pastores» (criar pedido). */
-    pastoralBooking?: MemberPastoralBookingPayload | null;
     pastoralAgendaUrl?: string;
     /** Tela dedicada a batismo (menu principal mobile). */
     pageTitle?: string;
@@ -115,7 +112,6 @@ export default function Hub({
     storeUrl,
     pastorOptions,
     mySolicitations,
-    pastoralBooking = null,
     pastoralAgendaUrl = '',
     pageTitle,
     pageSubtitle,
@@ -139,8 +135,6 @@ export default function Hub({
         message: '',
         preferred_date: '',
         assigned_pastor_id: '',
-        preferred_start: '',
-        preferred_modality: '' as '' | 'presential' | 'online',
     });
 
     const typeLabelByType = useMemo(() => {
@@ -150,23 +144,6 @@ export default function Hub({
         }
         return m;
     }, [types]);
-
-    const pastorVisitPastor = useMemo(() => {
-        if (data.type !== 'pastor_visit' || !pastoralBooking) return null;
-        const pid = data.assigned_pastor_id === '' ? null : Number(data.assigned_pastor_id);
-        if (pid === null || Number.isNaN(pid)) return null;
-        return pastoralBooking.pastors.find((p) => p.id === pid) ?? null;
-    }, [data.type, data.assigned_pastor_id, pastoralBooking]);
-
-    const pastorVisitReady = useMemo(() => {
-        if (!pastorVisitPastor || !data.preferred_start) return false;
-        const slot = pastorVisitPastor.slots.find((s) => s.value === data.preferred_start);
-        if (!slot) return false;
-        if (slot.modality === 'both') {
-            return data.preferred_modality === 'presential' || data.preferred_modality === 'online';
-        }
-        return true;
-    }, [pastorVisitPastor, data.preferred_start, data.preferred_modality]);
 
     const openCreate = useCallback(() => {
         reset();
@@ -191,8 +168,6 @@ export default function Hub({
 
     const pickType = (type: string) => {
         setData('type', type);
-        setData('preferred_start', '');
-        setData('preferred_modality', '');
         setData('assigned_pastor_id', '');
         setTypeLabel(typeLabelByType.get(type) ?? type);
         setStep('form');
@@ -256,7 +231,7 @@ export default function Hub({
     const heading = pageTitle ?? 'Solicitações';
     const sub =
         pageSubtitle ??
-        'Batismo, apresentação, visita pastoral. Toque num pedido para editar ou conversar.';
+        'Batismo, apresentação e outros pedidos. Toque num pedido para editar ou conversar.';
 
     const listHeading = singleBaptismType ? 'Os meus pedidos de batismo' : 'Os meus pedidos';
     const modalOverlayOpen = createOpen || detailOpen;
@@ -392,8 +367,6 @@ export default function Hub({
                                 onClick={() => {
                                     setStep('pick');
                                     setData('type', '');
-                                    setData('preferred_start', '');
-                                    setData('preferred_modality', '');
                                     setData('assigned_pastor_id', '');
                                     setTypeLabel('');
                                 }}
@@ -410,105 +383,54 @@ export default function Hub({
                         </p>
 
                         <form onSubmit={submit} className="space-y-4">
-                            {data.type === 'pastor_visit' ? (
-                                <>
-                                    {!pastoralBooking ? (
-                                        <div className="rounded-2xl border border-amber-200/80 bg-amber-50/90 p-4 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100">
-                                            <p className="font-medium">Não foi possível carregar os horários da igreja.</p>
-                                            <p className="mt-1 text-xs opacity-90">
-                                                Confirme que tem uma igreja activa na app ou utilize «Agendar com pastor» em Mais.
-                                            </p>
-                                        </div>
-                                    ) : (
-                                        <PastorVisitScheduleSection
-                                            pastors={pastoralBooking.pastors}
-                                            value={{
-                                                assigned_pastor_id: data.assigned_pastor_id,
-                                                preferred_start: data.preferred_start,
-                                                preferred_modality: data.preferred_modality,
-                                            }}
-                                            onChange={(patch) => {
-                                                setData((prev) => ({ ...prev, ...patch }));
-                                            }}
-                                            errors={errors}
-                                            fieldIdPrefix="hub_pv"
-                                            pastoralAgendaUrl={pastoralAgendaUrl || undefined}
-                                        />
-                                    )}
-                                    <div>
-                                        <InputLabel htmlFor="hub_sol_message_pv" value="Notas ou motivo da visita (opcional)" />
-                                        <Textarea
-                                            id="hub_sol_message_pv"
-                                            value={data.message}
-                                            onChange={(e) => setData('message', e.target.value)}
-                                            rows={5}
-                                            className="mt-1 block w-full"
-                                            placeholder="Se quiser, explique o que gostaria de tratar com o pastor…"
-                                        />
-                                        <InputError message={errors.message} className="mt-1" />
-                                    </div>
-                                </>
-                            ) : (
-                                <>
-                                    <div>
-                                        <InputLabel htmlFor="hub_sol_message" value="Mensagem" />
-                                        <Textarea
-                                            id="hub_sol_message"
-                                            value={data.message}
-                                            onChange={(e) => setData('message', e.target.value)}
-                                            rows={8}
-                                            className="mt-1 block w-full"
-                                            placeholder="Escreva os detalhes do seu pedido…"
-                                            required
-                                        />
-                                        <InputError message={errors.message} className="mt-1" />
-                                    </div>
-                                    <div>
-                                        <InputLabel htmlFor="hub_sol_pref_date" value="Data pretendida ou relevante (opcional)" />
-                                        <input
-                                            id="hub_sol_pref_date"
-                                            type="date"
-                                            value={data.preferred_date}
-                                            onChange={(e) => setData('preferred_date', e.target.value)}
-                                            className="mt-1 block h-11 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 text-sm text-zinc-900 dark:text-zinc-100 shadow-sm focus:border-zinc-900 dark:focus:border-white focus:ring-1 focus:ring-zinc-900/20 dark:focus:ring-white/20"
-                                        />
-                                        <InputError message={errors.preferred_date} className="mt-1" />
-                                    </div>
-                                    {pastorOptions.length > 0 && (
-                                        <div>
-                                            <InputLabel htmlFor="hub_sol_pastor" value="Pastor (opcional)" />
-                                            <SelectInput
-                                                id="hub_sol_pastor"
-                                                className="mt-1"
-                                                value={data.assigned_pastor_id}
-                                                onChange={(e) => setData('assigned_pastor_id', e.target.value)}
-                                            >
-                                                <option value="">— Nenhum —</option>
-                                                {pastorOptions.map((o) => (
-                                                    <option key={o.value} value={String(o.value)}>
-                                                        {o.label}
-                                                    </option>
-                                                ))}
-                                            </SelectInput>
-                                            <InputError message={errors.assigned_pastor_id} className="mt-1" />
-                                        </div>
-                                    )}
-                                </>
+                            <div>
+                                <InputLabel htmlFor="hub_sol_message" value="Mensagem" />
+                                <Textarea
+                                    id="hub_sol_message"
+                                    value={data.message}
+                                    onChange={(e) => setData('message', e.target.value)}
+                                    rows={8}
+                                    className="mt-1 block w-full"
+                                    placeholder="Escreva os detalhes do seu pedido…"
+                                    required
+                                />
+                                <InputError message={errors.message} className="mt-1" />
+                            </div>
+                            <div>
+                                <InputLabel htmlFor="hub_sol_pref_date" value="Data pretendida ou relevante (opcional)" />
+                                <input
+                                    id="hub_sol_pref_date"
+                                    type="date"
+                                    value={data.preferred_date}
+                                    onChange={(e) => setData('preferred_date', e.target.value)}
+                                    className="mt-1 block h-11 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 text-sm text-zinc-900 dark:text-zinc-100 shadow-sm focus:border-zinc-900 dark:focus:border-white focus:ring-1 focus:ring-zinc-900/20 dark:focus:ring-white/20"
+                                />
+                                <InputError message={errors.preferred_date} className="mt-1" />
+                            </div>
+                            {pastorOptions.length > 0 && (
+                                <div>
+                                    <InputLabel htmlFor="hub_sol_pastor" value="Pastor (opcional)" />
+                                    <SelectInput
+                                        id="hub_sol_pastor"
+                                        className="mt-1"
+                                        value={data.assigned_pastor_id}
+                                        onChange={(e) => setData('assigned_pastor_id', e.target.value)}
+                                    >
+                                        <option value="">— Nenhum —</option>
+                                        {pastorOptions.map((o) => (
+                                            <option key={o.value} value={String(o.value)}>
+                                                {o.label}
+                                            </option>
+                                        ))}
+                                    </SelectInput>
+                                    <InputError message={errors.assigned_pastor_id} className="mt-1" />
+                                </div>
                             )}
                             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end pt-2">
                                 <SecondaryButton type="button" className="justify-center" onClick={closeCreate}>
                                     Cancelar
                                 </SecondaryButton>
-                                <PrimaryButton
-                                    type="submit"
-                                    disabled={
-                                        processing ||
-                                        (data.type === 'pastor_visit'
-                                            ? !pastoralBooking || !pastorVisitReady
-                                            : !data.message.trim())
-                                    }
-                                    className="justify-center"
-                                >
+                                <PrimaryButton type="submit" disabled={processing || !data.message.trim()} className="justify-center">
                                     Enviar pedido
                                 </PrimaryButton>
                             </div>

@@ -220,7 +220,7 @@ export default function MobileProfile({ church, user, profileCounts, volunteerSi
             ? ([
                   {
                       title: 'Solicitações',
-                      description: 'Batismo, apresentação, visita pastoral e outros pedidos',
+                      description: 'Batismo, apresentação e outros pedidos',
                       icon: SparklesIcon,
                       href: route('mobile.solicitations.hub'),
                       tone: 'member',

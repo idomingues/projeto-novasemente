@@ -1,4 +1,5 @@
 import SobreOAppModal from '@/Components/Mobile/SobreOAppModal';
+import { useAppVersionLabels } from '@/hooks/useAppVersionLabels';
 import { useMinWidthMd } from '@/hooks/useMinWidthMd';
 import { Link } from '@inertiajs/react';
 import { BookOpenIcon } from '@heroicons/react/24/outline';
@@ -10,6 +11,16 @@ const settingsRowClass =
 const moreCardClass =
     'flex w-full items-center gap-4 rounded-2xl border border-zinc-200 bg-white p-4 text-left transition-colors hover:border-zinc-300 active:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700 dark:active:bg-zinc-800';
 
+function VersionSummary({ className = '' }: { className?: string }) {
+    const { summaryLabel } = useAppVersionLabels();
+
+    return (
+        <span className={className} title={summaryLabel}>
+            {summaryLabel}
+        </span>
+    );
+}
+
 export default function SobreOAppNavItem({ variant, from }: { variant: 'settings' | 'more'; from?: 'settings' }) {
     const isDesktop = useMinWidthMd();
     const [open, setOpen] = useState(false);
@@ -19,16 +30,22 @@ export default function SobreOAppNavItem({ variant, from }: { variant: 'settings
         if (isDesktop) {
             return (
                 <>
-                    <button type="button" className={settingsRowClass} onClick={() => setOpen(true)}>
-                        Sobre o APP
+                    <button
+                        type="button"
+                        className={`${settingsRowClass} flex items-center justify-between gap-3`}
+                        onClick={() => setOpen(true)}
+                    >
+                        <span>Sobre o APP</span>
+                        <VersionSummary className="shrink-0 text-xs text-zinc-500 dark:text-zinc-400" />
                     </button>
                     <SobreOAppModal show={open} onClose={() => setOpen(false)} />
                 </>
             );
         }
         return (
-            <Link href={href} className={settingsRowClass}>
-                Sobre o APP
+            <Link href={href} className={`${settingsRowClass} flex items-center justify-between gap-3`}>
+                <span>Sobre o APP</span>
+                <VersionSummary className="shrink-0 text-xs text-zinc-500 dark:text-zinc-400" />
             </Link>
         );
     }
@@ -42,6 +59,7 @@ export default function SobreOAppNavItem({ variant, from }: { variant: 'settings
                     </div>
                     <div className="min-w-0 flex-1">
                         <span className="block font-semibold text-zinc-900 dark:text-white">Sobre o APP</span>
+                        <VersionSummary className="mt-0.5 block text-sm text-zinc-500 dark:text-zinc-400" />
                     </div>
                 </button>
                 <SobreOAppModal show={open} onClose={() => setOpen(false)} />
@@ -56,6 +74,7 @@ export default function SobreOAppNavItem({ variant, from }: { variant: 'settings
             </div>
             <div className="min-w-0 flex-1">
                 <span className="block font-semibold text-zinc-900 dark:text-white">Sobre o APP</span>
+                <VersionSummary className="mt-0.5 block text-sm text-zinc-500 dark:text-zinc-400" />
             </div>
         </Link>
     );

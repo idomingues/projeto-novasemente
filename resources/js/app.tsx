@@ -20,7 +20,11 @@ bootstrapAppUiVersion();
 
 const defaultAppName = import.meta.env.VITE_APP_NAME || '';
 
-type SharedPageProps = { csrf_token?: string; appName?: string };
+type SharedPageProps = {
+    csrf_token?: string;
+    appName?: string;
+    auth?: { user?: { id?: number } | null };
+};
 
 function hideSplashScreen() {
     const el = document.getElementById('ns-splash');
@@ -126,7 +130,7 @@ createInertiaApp({
             <ThemeProvider>
                 <BiometricOptInGate />
                 <OfflineBanner />
-                <PushNotificationsSync />
+                <PushNotificationsSync initialUserId={inertiaProps.initialPage.props.auth?.user?.id ?? null} />
                 <ProgressIndicator />
                 <App {...props} />
             </ThemeProvider>

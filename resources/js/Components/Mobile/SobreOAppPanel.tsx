@@ -1,30 +1,16 @@
-import InstalledAppVersion from '@/Components/InstalledAppVersion';
+import { useAppVersionLabels } from '@/hooks/useAppVersionLabels';
 import { usePage } from '@inertiajs/react';
-import { useMemo } from 'react';
 
 const OFFICIAL_LINKS: { title: string; href: string }[] = [
     { title: 'Site institucional (Brasil)', href: 'https://novasemente.org.br/' },
     { title: 'Aplicação web', href: 'https://app.novasemente.com.br/' },
 ];
 
-function formatVersionLabel(raw: string | null | undefined): string {
-    const t = (raw ?? '').trim();
-    if (!t) {
-        return '—';
-    }
-    return t.startsWith('v') || t.startsWith('V') ? t : `v${t}`;
-}
-
 export default function SobreOAppPanel({ className = '' }: { className?: string }) {
-    const { appVersion, appVersionHistory = [], appRootUrl = '' } = usePage().props as {
-        appVersion?: string | null;
-        appVersionHistory?: { version: string }[];
+    const { webLabel: webVersionLabel, installedLabel } = useAppVersionLabels();
+    const { appRootUrl = '' } = usePage().props as {
         appRootUrl?: string;
     };
-    const bundleHint = typeof __APP_FRONT_BUNDLE_VERSION__ === 'string' ? __APP_FRONT_BUNDLE_VERSION__.trim() : '';
-    const historyHead = appVersionHistory[0]?.version?.trim() || '';
-    const webVersionRaw = (appVersion ?? '').trim() || historyHead || bundleHint;
-    const webVersionLabel = useMemo(() => formatVersionLabel(webVersionRaw), [webVersionRaw]);
     const rootUrl = (appRootUrl ?? '').trim();
 
     return (
@@ -39,7 +25,7 @@ export default function SobreOAppPanel({ className = '' }: { className?: string 
                     <div className="flex items-baseline justify-between gap-3">
                         <span className="text-sm text-zinc-600 dark:text-zinc-400">App instalada</span>
                         <span className="text-sm font-medium text-zinc-900 dark:text-white">
-                            <InstalledAppVersion fallbackLabel={webVersionRaw || null} />
+                            {installedLabel}
                         </span>
                     </div>
                 </div>

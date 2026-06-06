@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { Device } from '@capacitor/device';
+import { router } from '@inertiajs/react';
 
 type InertiaPage = {
     props?: {
@@ -10,21 +11,27 @@ type InertiaPage = {
     };
 };
 
-function currentUserId(): number | null {
-    const page = (window as unknown as { __inertia?: { page?: InertiaPage } }).__inertia?.page;
+function pageUserId(page?: InertiaPage | null): number | null {
     const id = page?.props?.auth?.user?.id;
     return typeof id === 'number' ? id : null;
 }
 
-export default function PushNotificationsSync() {
+type Props = {
+    initialUserId?: number | null;
+};
+
+export default function PushNotificationsSync({ initialUserId = null }: Props) {
     useEffect(() => {
         if (!Capacitor.isNativePlatform()) return;
-        if (!currentUserId()) return;
 
         let cancelled = false;
         let removeListeners: Array<() => void> = [];
+        let startedForUserId: number | null = null;
 
-        const start = async () => {
+        const start = async (userId: number | null) => {
+            if (!userId || startedForUserId === userId) return;
+            startedForUserId = userId;
+
             try {
                 const perm = await PushNotifications.requestPermissions();
                 if (perm.receive !== 'granted') return;
@@ -61,7 +68,12 @@ export default function PushNotificationsSync() {
             }
         };
 
-        void start();
+        void start(initialUserId);
+
+        const removeRouterListener = router.on('success', (event) => {
+            void start(pageUserId(event.detail.page as InertiaPage));
+        });
+        removeListeners.push(removeRouterListener);
 
         return () => {
             cancelled = true;
