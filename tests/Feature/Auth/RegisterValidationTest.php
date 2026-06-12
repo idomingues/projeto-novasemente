@@ -52,6 +52,40 @@ class RegisterValidationTest extends TestCase
         $this->assertIsArray($errors);
         $this->assertArrayHasKey('password', $errors);
         $this->assertNotEmpty($errors['password']);
+        $oldInput = $page['props']['oldInput'] ?? null;
+        $this->assertIsArray($oldInput);
+        $this->assertSame('Test User', $oldInput['name'] ?? null);
+        $this->assertSame('test@example.com', $oldInput['email'] ?? null);
+        $this->assertSame('11999998888', $oldInput['phone'] ?? null);
+        $this->assertSame('password', $oldInput['password'] ?? null);
+        $this->assertSame('different', $oldInput['password_confirmation'] ?? null);
+        $this->assertGuest();
+    }
+
+    public function test_register_validation_preserves_text_fields_in_old_input(): void
+    {
+        $response = $this->from(route('register', absolute: false))
+            ->post(route('register', absolute: false), [
+                'name' => 'Maria Silva',
+                'email' => 'maria@example.com',
+                'phone' => '11988887777',
+                'password' => 'Password1!xx',
+                'password_confirmation' => 'Password1!xx',
+                'notify_via_app' => true,
+                'notify_via_email' => true,
+                'notify_via_whatsapp' => false,
+                'lgpd_accepted' => true,
+            ]);
+
+        $response->assertRedirect(route('register', absolute: false));
+        $response->assertSessionHasErrors('photo_file');
+        $old = session()->getOldInput();
+        $this->assertSame('Maria Silva', $old['name'] ?? null);
+        $this->assertSame('maria@example.com', $old['email'] ?? null);
+        $this->assertSame('11988887777', $old['phone'] ?? null);
+        $this->assertSame('Password1!xx', $old['password'] ?? null);
+        $this->assertSame('Password1!xx', $old['password_confirmation'] ?? null);
+        $this->assertTrue(in_array($old['lgpd_accepted'] ?? null, [true, 1, '1', 'true', 'on'], true));
         $this->assertGuest();
     }
 

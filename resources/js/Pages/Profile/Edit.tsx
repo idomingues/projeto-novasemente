@@ -1,4 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import ProfileVolunteerSection from '@/Components/Profile/ProfileVolunteerSection';
 import { PageProps } from '@/types';
 import type { VolunteerSignupCompletion } from '@/utils/volunteerSignupCompletion';
 import { Head, Link, usePage } from '@inertiajs/react';
@@ -15,9 +16,15 @@ export default function Edit({
     mustVerifyEmail,
     status,
     volunteerSignupCompletion = null,
-}: PageProps<{ mustVerifyEmail: boolean; status?: string; volunteerSignupCompletion?: VolunteerSignupCompletion | null }>) {
+    volunteerSignupProgress = null,
+}: PageProps<{
+    mustVerifyEmail: boolean;
+    status?: string;
+    volunteerSignupCompletion?: VolunteerSignupCompletion | null;
+    volunteerSignupProgress?: VolunteerSignupCompletion | null;
+}>) {
     const { auth } = usePage().props as {
-        auth?: { permissions?: string[]; user?: { is_volunteer?: boolean } };
+        auth?: { permissions?: string[] };
     };
     const perms = auth?.permissions ?? [];
     /** Suporte administrativo fica só no menu ADM (super admin); no perfil web usamos sempre o fluxo da app. */
@@ -43,6 +50,13 @@ export default function Edit({
                             className="max-w-xl"
                         />
                     </div>
+
+                    <ProfileVolunteerSection
+                        volunteerSignupCompletion={volunteerSignupCompletion}
+                        volunteerSignupProgress={volunteerSignupProgress}
+                        variant="desktop"
+                        className="max-w-xl mx-auto sm:px-6 lg:px-8"
+                    />
 
                     <div className="bg-white dark:bg-zinc-800 p-4 shadow sm:rounded-lg sm:p-8">
                         <UpdatePasswordForm className="max-w-xl" />

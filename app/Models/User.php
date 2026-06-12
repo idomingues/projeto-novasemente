@@ -145,7 +145,21 @@ class User extends Authenticatable
     }
 
     /**
+     * Questionário de voluntário iniciado (rascunho salvo), ainda sem efetivação como voluntário.
+     */
+    public function hasVolunteerSignupInProgress(): bool
+    {
+        $volunteer = $this->volunteerProfile()->first();
+        if ($volunteer === null) {
+            return false;
+        }
+
+        return ! $this->volunteerRecordIsRemovableMirror($volunteer);
+    }
+
+    /**
      * Espelho automático criado só para login — pode ser removido sem apagar o usuário.
+     * Rascunho do questionário de voluntário (mesmo `app_access_only`) não é removível.
      */
     public function volunteerRecordIsRemovableMirror(?\App\Models\Volunteer $volunteer = null): bool
     {
@@ -154,15 +168,12 @@ class User extends Authenticatable
             return false;
         }
 
-        if ((bool) ($volunteer->app_access_only ?? false)) {
-            return true;
-        }
-
         if ($volunteer->ministries()->exists()) {
             return false;
         }
 
         foreach ([
+            'birth_date',
             'attendance_duration',
             'is_official_member',
             'member_record_at_nova_semente',
@@ -171,6 +182,7 @@ class User extends Authenticatable
             'other_ministry_interest',
             'gifts_to_develop',
             'professional_area',
+            'lgpd_data_consent',
         ] as $field) {
             $value = $volunteer->{$field};
             if ($value !== null && $value !== '' && $value !== false) {

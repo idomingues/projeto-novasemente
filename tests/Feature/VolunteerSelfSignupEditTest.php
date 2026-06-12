@@ -98,6 +98,7 @@ class VolunteerSelfSignupEditTest extends TestCase
         $this->assertTrue($volunteer->lgpd_data_consent);
         $this->assertStringContainsString($ministry->name, (string) $volunteer->other_ministry_interest);
         $this->assertTrue($volunteer->ministries()->whereKey($ministry->id)->exists());
+        $this->assertTrue($user->is_volunteer);
     }
 
     public function test_volunteer_can_update_password_on_self_signup_edit(): void

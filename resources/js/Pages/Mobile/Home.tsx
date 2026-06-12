@@ -1,4 +1,5 @@
 import MobileLayout from '@/Layouts/MobileLayout';
+import VolunteerSignupIncompleteBanner from '@/Components/Volunteers/VolunteerSignupIncompleteBanner';
 import type { VolunteerSignupCompletion } from '@/utils/volunteerSignupCompletion';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
@@ -251,6 +252,11 @@ export default function MobileHome({
                         </p>
                     </div>
                 ) : null}
+
+                {user && volunteerSignupCompletion ? (
+                    <VolunteerSignupIncompleteBanner completion={volunteerSignupCompletion} />
+                ) : null}
+
                 <header className="flex items-center justify-between gap-4">
                     <div className="min-w-0">
                         <p className="truncate text-lg font-bold leading-snug text-zinc-900 dark:text-white lg:text-2xl lg:font-semibold">

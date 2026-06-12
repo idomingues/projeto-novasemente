@@ -93,7 +93,7 @@ class VolunteerSelfSignupEditController extends Controller
         $completion = VolunteerSignupCompletion::forUser($user);
 
         if ($request->boolean('missing') && $completion['is_complete']) {
-            return redirect()->route('mobile.profile.edit')->with(
+            return redirect()->route('mobile.home')->with(
                 'status',
                 'Seu cadastro de voluntário já está completo.'
             );
@@ -107,7 +107,7 @@ class VolunteerSelfSignupEditController extends Controller
             'ministries' => $ministries,
             'initial' => VolunteerSignupFormPrefill::forUser($user),
             'cancelHref' => route('mobile.profile.edit'),
-            'redirectAfterSave' => 'mobile.profile.edit',
+            'redirectAfterSave' => 'mobile.home',
             'focusMissingOnly' => $focusMissingOnly,
             'missingFields' => $focusMissingOnly ? $completion['missing_fields'] : [],
             'signupCompletion' => $completion,
@@ -419,13 +419,13 @@ class VolunteerSelfSignupEditController extends Controller
 
     private function resolveRedirectRoute(?string $candidate): string
     {
-        $allowed = ['mobile.profile.edit', 'mobile.profile', 'profile.edit'];
+        $allowed = ['mobile.home', 'mobile.profile.edit', 'mobile.profile', 'profile.edit'];
         $name = trim((string) $candidate);
         if ($name !== '' && in_array($name, $allowed, true) && \Illuminate\Support\Facades\Route::has($name)) {
             return $name;
         }
 
-        return 'mobile.profile.edit';
+        return 'mobile.home';
     }
 
     private function resolveResumePageFromQuery(Request $request): ?int

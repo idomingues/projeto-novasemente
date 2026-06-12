@@ -49,8 +49,9 @@ class ProfileController extends Controller
 
         $user->loadMissing('volunteerProfile');
         $volunteerMinistries = $this->volunteerMinistriesForUser($user, $churchId);
-        $volunteerSignupCompletion = ($user->is_volunteer && Route::has('volunteers.self-signup.edit'))
-            ? VolunteerSignupCompletion::incompleteForUser($user)
+        $volunteerSignupCompletion = VolunteerSignupCompletion::profileAlertForUser($user);
+        $volunteerSignupProgress = Route::has('volunteers.self-signup.edit')
+            ? VolunteerSignupCompletion::forUser($user)
             : null;
 
         return Inertia::render('Profile/Edit', [
@@ -59,6 +60,7 @@ class ProfileController extends Controller
             'volunteerMinistries' => $volunteerMinistries,
             'profileRedirectTo' => 'profile.edit',
             'volunteerSignupCompletion' => $volunteerSignupCompletion,
+            'volunteerSignupProgress' => $volunteerSignupProgress,
         ]);
     }
 

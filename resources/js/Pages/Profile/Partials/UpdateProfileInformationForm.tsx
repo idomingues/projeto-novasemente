@@ -10,11 +10,6 @@ import { Transition } from '@headlessui/react';
 import { Link, useForm, usePage } from '@inertiajs/react';
 import { FormEventHandler, useEffect, useMemo, useState } from 'react';
 
-interface VolunteerMinistry {
-    id: number;
-    name: string;
-}
-
 export default function UpdateProfileInformation({
     mustVerifyEmail,
     status,
@@ -35,12 +30,6 @@ export default function UpdateProfileInformation({
         notify_via_whatsapp?: boolean;
     };
 
-    const { volunteerMinistries = [] } = (page.props as {
-        volunteerMinistries?: VolunteerMinistry[];
-        profileRedirectTo?: string;
-    }) || {};
-    const isVolunteer =
-        (page.props as { auth?: { user?: { is_volunteer?: boolean } } }).auth?.user?.is_volunteer === true;
     const profileRedirectTo =
         typeof (page.props as { profileRedirectTo?: string }).profileRedirectTo === 'string'
             ? (page.props as { profileRedirectTo?: string }).profileRedirectTo
@@ -290,33 +279,6 @@ export default function UpdateProfileInformation({
                     </Transition>
                 </div>
             </form>
-
-            {isVolunteer ? (
-                <div
-                    className="mt-8 rounded-xl border border-dashed border-zinc-300 bg-zinc-50/60 p-4 dark:border-zinc-600 dark:bg-zinc-800/30 space-y-3"
-                    aria-label="Departamentos em que serve — somente leitura"
-                >
-                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Departamentos em que serve</p>
-                    <p className="text-xs text-gray-600 dark:text-gray-400">
-                        Somente consulta. A lista é definida pela equipe de voluntariado. Para alterações, fale com um líder ou com a
-                        secretaria.
-                    </p>
-                    {volunteerMinistries.length > 0 ? (
-                        <ul className="space-y-1.5 text-sm text-gray-800 dark:text-gray-200">
-                            {volunteerMinistries.map((m) => (
-                                <li key={m.id} className="flex items-center gap-2">
-                                    <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-500 dark:bg-zinc-400" />
-                                    {m.name}
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                            Você ainda não está vinculado a nenhum departamento.
-                        </p>
-                    )}
-                </div>
-            ) : null}
         </section>
     );
 }

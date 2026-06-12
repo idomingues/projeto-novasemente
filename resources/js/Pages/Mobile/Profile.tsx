@@ -1,5 +1,7 @@
 import BiometricDisableButton from '@/Components/Auth/BiometricDisableButton';
 import MobileLayout from '@/Layouts/MobileLayout';
+import VolunteerSignupIncompleteBanner from '@/Components/Volunteers/VolunteerSignupIncompleteBanner';
+import type { VolunteerSignupCompletion } from '@/utils/volunteerSignupCompletion';
 import { Head, Link, usePage } from '@inertiajs/react';
 import {
     ArrowRightOnRectangleIcon,
@@ -19,7 +21,7 @@ import {
 interface Props {
     church: { name: string } | null;
     user: { name: string; email: string };
-    volunteerSignupCompletion?: { is_complete: boolean; missing_count: number } | null;
+    volunteerSignupCompletion?: VolunteerSignupCompletion | null;
     profileCounts: {
         /** Pedidos em aberto no painel Atendimento Pastoral (null se o usuário não vê o painel). */
         atendimento_open: number | null;
@@ -348,6 +350,10 @@ export default function MobileProfile({ church, user, profileCounts, volunteerSi
                         Editar perfil
                     </Link>
                 </div>
+
+                {volunteerSignupCompletion ? (
+                    <VolunteerSignupIncompleteBanner completion={volunteerSignupCompletion} />
+                ) : null}
 
                 {adminRows.length > 0 ? (
                     <div className="space-y-3">

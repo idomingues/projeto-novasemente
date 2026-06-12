@@ -1,7 +1,7 @@
 import { Link } from '@inertiajs/react';
 import { UserGroupIcon } from '@heroicons/react/24/outline';
 import type { VolunteerSignupCompletion } from '@/utils/volunteerSignupCompletion';
-import { volunteerSignupMissingOnlyHref } from '@/utils/volunteerSignupCompletion';
+import { formatVolunteerSignupProgressLabel, volunteerSignupMissingOnlyHref } from '@/utils/volunteerSignupCompletion';
 
 interface Props {
     completion: VolunteerSignupCompletion;
@@ -20,6 +20,8 @@ export default function VolunteerSignupStatusCard({ completion, variant = 'mobil
             ? 'Falta 1 pergunta obrigatória para concluir o cadastro.'
             : `Faltam ${completion.missing_count} perguntas obrigatórias para concluir o cadastro.`;
 
+    const progressLabel = formatVolunteerSignupProgressLabel(completion);
+
     const titleClass =
         variant === 'desktop'
             ? 'text-lg font-medium text-gray-900 dark:text-gray-100'
@@ -29,8 +31,8 @@ export default function VolunteerSignupStatusCard({ completion, variant = 'mobil
         <>
             <div className="flex flex-wrap items-center gap-2">
                 <div className={titleClass}>Cadastro de voluntário</div>
-                <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900 dark:bg-amber-950/50 dark:text-amber-200">
-                    {completion.percent}%
+                <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-amber-900 dark:bg-amber-950/50 dark:text-amber-200">
+                    {progressLabel}
                 </span>
             </div>
             <p
@@ -41,6 +43,15 @@ export default function VolunteerSignupStatusCard({ completion, variant = 'mobil
                 }
             >
                 {missingLabel}
+            </p>
+            <p
+                className={
+                    variant === 'desktop'
+                        ? 'mt-1 text-xs text-gray-500 dark:text-gray-400'
+                        : 'mt-1 text-xs text-zinc-500 dark:text-zinc-400'
+                }
+            >
+                Suas respostas são salvas automaticamente enquanto você preenche.
             </p>
             <CardActions missingHref={missingHref} desktop={variant === 'desktop'} />
         </>
@@ -74,7 +85,7 @@ function CardActions({ missingHref, desktop = false }: { missingHref: string; de
             href={missingHref}
             className={`${topMargin} inline-flex items-center justify-center rounded-xl bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-400`}
         >
-            Responder perguntas faltantes
+            Continuar cadastro
         </Link>
     );
 }

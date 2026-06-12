@@ -63,7 +63,7 @@ class MembersTest extends TestCase
         $this->assertNotContains('super_admin', $names);
     }
 
-    public function test_volunteer_member_requires_at_least_one_department_when_ministries_exist(): void
+    public function test_volunteer_member_can_be_saved_without_department(): void
     {
         $this->seed();
 
@@ -86,7 +86,12 @@ class MembersTest extends TestCase
                 'notify_via_whatsapp' => false,
                 'lgpd_accepted' => true,
             ])
-            ->assertSessionHasErrors('volunteer_ministry_ids');
+            ->assertRedirect(route('users.index'));
+
+        $user = User::query()->where('email', 'sem-depto-membro@example.com')->firstOrFail();
+        $this->assertTrue($user->is_volunteer);
+        $this->assertNotNull($user->volunteerProfile);
+        $this->assertSame(0, $user->volunteerProfile->ministries()->count());
     }
 
     public function test_store_member_syncs_volunteer_departments(): void

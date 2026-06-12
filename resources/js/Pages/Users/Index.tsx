@@ -1386,7 +1386,8 @@ export default function Index({
                             >
                                 <p className="text-sm font-semibold text-zinc-900 dark:text-white">Departamentos</p>
                                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                    Ministérios em que serve e/ou que lidera.
+                                    Opcional para voluntários — pode vincular departamentos depois. Obrigatório apenas para líder de
+                                    ministério.
                                 </p>
                                 {ministryOptions.length > 0 ? (
                                     <div className="border-t border-zinc-200 pt-3 dark:border-zinc-600 space-y-2">

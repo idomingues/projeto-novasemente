@@ -242,6 +242,35 @@ class VolunteerSignupCompletionTest extends TestCase
                 ->where('volunteerSignupCompletion', null));
     }
 
+    public function test_mobile_profile_edit_hides_signup_alert_for_non_volunteer_with_draft(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+
+        $user = User::factory()->create([
+            'church_id' => $churchId,
+            'is_volunteer' => false,
+            'name' => 'Ana Lima',
+            'email' => 'ana.perfil@example.com',
+            'photo_url' => 'https://example.com/photos/ana.jpg',
+        ]);
+
+        $this->actingAs($user)
+            ->postJson(route('volunteers.self-signup.autosave'), [
+                'autosave_fields' => ['attendance_duration'],
+                'attendance_duration' => 'years_1_3',
+            ])
+            ->assertOk();
+
+        $this->actingAs($user)
+            ->get(route('mobile.profile.edit'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Mobile/ProfileEdit')
+                ->where('volunteerSignupCompletion', null));
+    }
+
     public function test_describe_missing_fields_returns_readable_labels(): void
     {
         $text = VolunteerSignupCompletion::describeMissingFields(['full_name', 'lgpd_data_consent']);

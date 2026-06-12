@@ -92,22 +92,6 @@ class StoreMemberRequest extends FormRequest
                     }
                 }
             }
-
-            if (! $this->boolean('is_volunteer')) {
-                return;
-            }
-            $cid = Church::resolveWorkingId($this);
-            if ($cid === null || ! Ministry::query()->where('church_id', $cid)->exists()) {
-                return;
-            }
-            $ids = $this->input('volunteer_ministry_ids', []);
-            $n = is_array($ids) ? count(array_filter($ids, fn ($v) => (int) $v > 0)) : 0;
-            if ($n < 1) {
-                $validator->errors()->add(
-                    'volunteer_ministry_ids',
-                    'Selecione pelo menos um departamento em que serve ou irá servir.'
-                );
-            }
         });
     }
 }

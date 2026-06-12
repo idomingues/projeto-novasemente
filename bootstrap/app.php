@@ -39,7 +39,10 @@ return Application::configure(basePath: dirname(__DIR__))
          * 303 See Other após POST é o comportamento esperado para o próximo pedido GET e alinha com o fluxo Inertia.
          */
         $exceptions->render(function (ValidationException $e, Request $request) {
-            if (! $request->header(Header::INERTIA)) {
+            $isRegister = $request->is('register') || $request->routeIs('register');
+            $isInertia = (bool) $request->header(Header::INERTIA);
+
+            if (! $isInertia && ! $isRegister) {
                 return null;
             }
 
@@ -54,16 +57,21 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null;
             }
 
-            return redirect()->to($target)
+            $flashExcept = [
+                'current_password',
+                'app_password',
+                'app_password_confirmation',
+            ];
+            if (! $isRegister) {
+                $flashExcept[] = 'password';
+                $flashExcept[] = 'password_confirmation';
+            }
+
+            $redirect = redirect()->to($target)
                 ->withErrors($e->errors(), $e->errorBag)
-                ->withInput(Arr::except($request->input(), [
-                    'password',
-                    'password_confirmation',
-                    'current_password',
-                    'app_password',
-                    'app_password_confirmation',
-                ]))
-                ->setStatusCode(303);
+                ->withInput(Arr::except($request->input(), $flashExcept));
+
+            return $isInertia ? $redirect->setStatusCode(303) : $redirect;
         });
 
         /*

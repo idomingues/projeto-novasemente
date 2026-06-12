@@ -9,6 +9,14 @@ export type VolunteerSignupCompletion = {
     missing_fields: string[];
 };
 
+/** Rótulo de progresso «10 de 20» (respondidas de total obrigatório). */
+export function formatVolunteerSignupProgressLabel(completion: Pick<VolunteerSignupCompletion, 'missing_count' | 'total_required'>): string {
+    const total = Math.max(0, completion.total_required);
+    const answered = Math.max(0, Math.min(total, total - completion.missing_count));
+
+    return `${answered} de ${total}`;
+}
+
 const MIN_VOLUNTEER_AGE = 10;
 
 /** Campos que não entram no alerta de cadastro incompleto (espelha backend). */
@@ -463,8 +471,10 @@ export function mergeVolunteerSignupWithInitial(
     prepared: Record<string, unknown>,
     initial: VolunteerSignupInitial,
     missingFields: string[],
+    options?: { focusMissingOnly?: boolean },
 ): Record<string, unknown> {
-    if (missingFields.length === 0) {
+    const focusMissingOnly = options?.focusMissingOnly ?? false;
+    if (missingFields.length === 0 && !focusMissingOnly) {
         return prepared;
     }
 
@@ -495,7 +505,43 @@ export function mergeVolunteerSignupWithInitial(
     keep('professional_area', initial.professional_area);
     keep('lgpd_data_consent', initial.lgpd_data_consent);
 
+    if (focusMissingOnly) {
+        applyVolunteerSignupFormBranchingPreferences(out, prepared);
+    }
+
     return applyVolunteerSignupBranchingCleanup(out);
+}
+
+/** No modo «só faltantes», respostas da sessão atual prevalecem sobre o initial nas ramificações. */
+function applyVolunteerSignupFormBranchingPreferences(
+    out: Record<string, unknown>,
+    prepared: Record<string, unknown>,
+): void {
+    const boolFields = [
+        'is_official_member',
+        'member_record_at_nova_semente',
+        'has_previous_ministry_volunteer_experience',
+        'is_active_in_ministry',
+        'wants_other_ministry',
+        'lgpd_data_consent',
+    ] as const;
+
+    for (const key of boolFields) {
+        const formVal = normalizeBool(prepared[key] as BoolLike);
+        if (formVal !== null) {
+            out[key] = formVal;
+        }
+    }
+
+    for (const key of ['previous_ministry_ids', 'active_ministry_ids', 'other_ministry_ids'] as const) {
+        if (hasPositiveIds(prepared[key])) {
+            out[key] = prepared[key];
+        }
+    }
+
+    if (String(prepared.member_record_church ?? '').trim() !== '') {
+        out.member_record_church = prepared.member_record_church;
+    }
 }
 
 export const VOLUNTEER_SIGNUP_PAGE_STORAGE_KEY = 'volunteer-signup-active-page';
@@ -540,6 +586,88 @@ export function resolveVolunteerSignupInitialPageSlot(
 
 export function volunteerSignupMissingOnlyHref(): string {
     return `${route('volunteers.self-signup.edit')}?missing=1`;
+}
+
+const VOLUNTEER_SIGNUP_INITIAL_FORM_KEYS = [
+    'full_name',
+    'first_name',
+    'last_name',
+    'birth_date',
+    'has_whatsapp',
+    'email',
+    'phone',
+    'has_social_networks',
+    'attendance_duration',
+    'is_official_member',
+    'member_record_at_nova_semente',
+    'member_record_church',
+    'has_previous_ministry_volunteer_experience',
+    'previous_ministry_ids',
+    'is_active_in_ministry',
+    'active_ministry_ids',
+    'wants_other_ministry',
+    'other_ministry_ids',
+    'gifts_to_develop',
+    'professional_area',
+    'lgpd_data_consent',
+] as const;
+
+function volunteerSignupFormPatchAllFromInitial(initial: VolunteerSignupInitial): Record<string, unknown> {
+    return {
+        full_name: initial.full_name,
+        first_name: initial.first_name,
+        last_name: initial.last_name,
+        birth_date: initial.birth_date,
+        has_whatsapp: initial.has_whatsapp,
+        email: initial.email,
+        phone: initial.phone,
+        has_social_networks: initial.has_social_networks,
+        attendance_duration: initial.attendance_duration,
+        is_official_member: initial.is_official_member,
+        member_record_at_nova_semente: initial.member_record_at_nova_semente,
+        member_record_church: initial.member_record_church,
+        has_previous_ministry_volunteer_experience: initial.has_previous_ministry_volunteer_experience,
+        previous_ministry_ids: initial.previous_ministry_ids ?? [],
+        is_active_in_ministry: initial.is_active_in_ministry,
+        active_ministry_ids: initial.active_ministry_ids ?? [],
+        wants_other_ministry: initial.wants_other_ministry,
+        other_ministry_ids: initial.other_ministry_ids ?? [],
+        gifts_to_develop: initial.gifts_to_develop,
+        professional_area: initial.professional_area,
+        lgpd_data_consent: initial.lgpd_data_consent,
+    };
+}
+
+/** Atualiza o formulário com o que já foi salvo no servidor (modo edição / só faltantes). */
+export function volunteerSignupFormPatchFromInitial(initial: VolunteerSignupInitial): Record<string, unknown> {
+    return volunteerSignupFormPatchAllFromInitial(initial);
+}
+
+/** Atualiza só os campos gravados no autosave (evita apagar respostas em andamento na tela). */
+export function volunteerSignupFormPatchFromInitialFields(
+    initial: VolunteerSignupInitial,
+    savedFields: string[],
+): Record<string, unknown> {
+    const all = volunteerSignupFormPatchAllFromInitial(initial);
+    const patch: Record<string, unknown> = {};
+    const saved = new Set(savedFields);
+
+    if (saved.has('first_name') || saved.has('last_name')) {
+        patch.full_name = all.full_name;
+        patch.first_name = all.first_name;
+        patch.last_name = all.last_name;
+    }
+
+    for (const key of VOLUNTEER_SIGNUP_INITIAL_FORM_KEYS) {
+        if (key === 'full_name' || key === 'first_name' || key === 'last_name') {
+            continue;
+        }
+        if (saved.has(key)) {
+            patch[key] = all[key];
+        }
+    }
+
+    return patch;
 }
 
 export function volunteerSignupFullEditHref(): string {

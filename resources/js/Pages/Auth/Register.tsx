@@ -51,27 +51,54 @@ function firstError(errors: LooseErrors, field: string): string | undefined {
     return typeof v === 'string' ? v : String(v);
 }
 
+function oldInputString(old: Record<string, unknown>, key: string, fallback = ''): string {
+    const v = old[key];
+    return typeof v === 'string' ? v : v != null && v !== '' ? String(v) : fallback;
+}
+
+function oldInputBool(old: Record<string, unknown>, key: string, fallback: boolean): boolean {
+    const v = old[key];
+    if (v === true || v === 1 || v === '1' || v === 'true' || v === 'on') {
+        return true;
+    }
+    if (v === false || v === 0 || v === '0' || v === 'false') {
+        return false;
+    }
+    return fallback;
+}
+
+function registerFormDefaults(
+    oldInput: Record<string, unknown>,
+    invitation: InvitationProps | null,
+    ministryVolunteerInvite: MinistryVolunteerInviteProps | null,
+) {
+    return {
+        name: oldInputString(oldInput, 'name', invitation?.name ?? ministryVolunteerInvite?.name ?? ''),
+        email: oldInputString(oldInput, 'email', invitation?.email ?? ministryVolunteerInvite?.email ?? ''),
+        phone: oldInputString(oldInput, 'phone', ministryVolunteerInvite?.phone ?? ''),
+        photo_file: null as File | null,
+        password: oldInputString(oldInput, 'password', ''),
+        password_confirmation: oldInputString(oldInput, 'password_confirmation', ''),
+        invitation_token: oldInputString(oldInput, 'invitation_token', invitation?.token ?? ''),
+        ministry_invite_token: oldInputString(oldInput, 'ministry_invite_token', ministryVolunteerInvite?.token ?? ''),
+        notify_via_app: oldInputBool(oldInput, 'notify_via_app', true),
+        notify_via_email: oldInputBool(oldInput, 'notify_via_email', true),
+        notify_via_whatsapp: oldInputBool(oldInput, 'notify_via_whatsapp', false),
+        lgpd_accepted: oldInputBool(oldInput, 'lgpd_accepted', false),
+    };
+}
+
 export default function Register({ invitation, ministryVolunteerInvite = null }: Props) {
     const page = usePage();
+    const oldInput = ((page.props as { oldInput?: Record<string, unknown> }).oldInput ?? {}) as Record<string, unknown>;
     const pageErrors = ((page.props as { errors?: Record<string, string | string[]> }).errors ?? {}) as Record<
         string,
         string | string[]
     >;
 
-    const { data, setData, post, processing, errors: formErrors, reset } = useForm({
-        name: invitation?.name ?? ministryVolunteerInvite?.name ?? '',
-        email: invitation?.email ?? ministryVolunteerInvite?.email ?? '',
-        phone: ministryVolunteerInvite?.phone ?? '',
-        photo_file: null as File | null,
-        password: '',
-        password_confirmation: '',
-        invitation_token: invitation?.token ?? '',
-        ministry_invite_token: ministryVolunteerInvite?.token ?? '',
-        notify_via_app: true,
-        notify_via_email: true,
-        notify_via_whatsapp: false,
-        lgpd_accepted: false as boolean,
-    });
+    const { data, setData, post, processing, errors: formErrors } = useForm(
+        registerFormDefaults(oldInput, invitation, ministryVolunteerInvite),
+    );
 
     const fieldError = (field: string) => firstError(formErrors, field) ?? firstError(pageErrors, field);
 
@@ -88,7 +115,9 @@ export default function Register({ invitation, ministryVolunteerInvite = null }:
         post(route('register'), {
             forceFormData: true,
             preserveScroll: true,
-            onFinish: () => reset('password', 'password_confirmation'),
+            onError: () => {
+                document.getElementById('register-form-errors')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            },
         });
     };
 
@@ -192,6 +221,7 @@ export default function Register({ invitation, ministryVolunteerInvite = null }:
 
                 {hasAnyError ? (
                     <div
+                        id="register-form-errors"
                         className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-100"
                         role="alert"
                     >

@@ -254,13 +254,11 @@ class HandleInertiaRequests extends Middleware
             'oldInput' => fn () => Arr::except(
                 $request->session()->getOldInput() ?? [],
                 [
-                    'password',
-                    'password_confirmation',
                     'current_password',
                     'app_password',
                     'app_password_confirmation',
                     'photo',
-                    'lgpd_accepted',
+                    'photo_file',
                     '_token',
                     '_method',
                 ]

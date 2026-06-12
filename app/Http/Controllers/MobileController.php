@@ -229,8 +229,8 @@ class MobileController extends Controller
             });
 
         $user = $request->user();
-        $volunteerSignupCompletion = ($user !== null && $user->is_volunteer && \Illuminate\Support\Facades\Route::has('volunteers.self-signup.edit'))
-            ? VolunteerSignupCompletion::incompleteForUser($user)
+        $volunteerSignupCompletion = $user !== null
+            ? VolunteerSignupCompletion::profileAlertForUser($user)
             : null;
 
         $sabbathBanner = app(SabbathSunsetService::class)->homeBannerPayload();
@@ -1429,9 +1429,7 @@ class MobileController extends Controller
 
         $notificationsTotal = NotificationFeed::mergedTotalCountForUser($request, $churchId);
 
-        $volunteerSignupCompletion = ($user->is_volunteer && \Illuminate\Support\Facades\Route::has('volunteers.self-signup.edit'))
-            ? VolunteerSignupCompletion::incompleteForUser($user)
-            : null;
+        $volunteerSignupCompletion = VolunteerSignupCompletion::profileAlertForUser($user);
 
         return Inertia::render('Mobile/Profile', [
             'church' => $church ? [
@@ -1474,8 +1472,9 @@ class MobileController extends Controller
                 ->all()
             : [];
 
-        $volunteerSignupCompletion = ($user->is_volunteer && \Illuminate\Support\Facades\Route::has('volunteers.self-signup.edit'))
-            ? VolunteerSignupCompletion::incompleteForUser($user)
+        $volunteerSignupCompletion = VolunteerSignupCompletion::profileAlertForUser($user);
+        $volunteerSignupProgress = \Illuminate\Support\Facades\Route::has('volunteers.self-signup.edit')
+            ? VolunteerSignupCompletion::forUser($user)
             : null;
 
         return Inertia::render('Mobile/ProfileEdit', [
@@ -1484,6 +1483,7 @@ class MobileController extends Controller
             'volunteerMinistries' => $volunteerMinistries,
             'profileRedirectTo' => 'mobile.profile.edit',
             'volunteerSignupCompletion' => $volunteerSignupCompletion,
+            'volunteerSignupProgress' => $volunteerSignupProgress,
         ]);
     }
 }

@@ -1,6 +1,7 @@
 import MobileLayout from '@/Layouts/MobileLayout';
+import ProfileVolunteerSection from '@/Components/Profile/ProfileVolunteerSection';
 import type { VolunteerSignupCompletion } from '@/utils/volunteerSignupCompletion';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import DeleteUserForm from '@/Pages/Profile/Partials/DeleteUserForm';
 import UpdatePasswordForm from '@/Pages/Profile/Partials/UpdatePasswordForm';
 import UpdateProfileInformationForm from '@/Pages/Profile/Partials/UpdateProfileInformationForm';
@@ -12,6 +13,10 @@ interface Props {
 }
 
 export default function MobileProfileEdit({ mustVerifyEmail, status, volunteerSignupCompletion = null }: Props) {
+    const { volunteerSignupProgress = null } = (usePage().props as {
+        volunteerSignupProgress?: VolunteerSignupCompletion | null;
+    }) || {};
+
     return (
         <MobileLayout>
             <Head title="Editar perfil" />
@@ -28,6 +33,12 @@ export default function MobileProfileEdit({ mustVerifyEmail, status, volunteerSi
                 <div className="space-y-4">
                     <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
                         <UpdateProfileInformationForm mustVerifyEmail={mustVerifyEmail} status={status} className="max-w-xl" />
+                        <ProfileVolunteerSection
+                            volunteerSignupCompletion={volunteerSignupCompletion}
+                            volunteerSignupProgress={volunteerSignupProgress}
+                            variant="mobile"
+                            embedded
+                        />
                     </div>
 
                     <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">

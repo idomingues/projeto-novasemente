@@ -59,6 +59,30 @@ final class VolunteerSignupCompletion
     }
 
     /**
+     * Alerta de cadastro incompleto (home / perfil): só voluntários já efetivados com questionário pendente.
+     *
+     * @return array{
+     *     is_complete: bool,
+     *     missing_count: int,
+     *     total_required: int,
+     *     percent: int,
+     *     missing_fields: list<string>
+     * }|null
+     */
+    public static function profileAlertForUser(User $user): ?array
+    {
+        if (! \Illuminate\Support\Facades\Route::has('volunteers.self-signup.edit')) {
+            return null;
+        }
+
+        if (! (bool) ($user->is_volunteer ?? false)) {
+            return null;
+        }
+
+        return self::incompleteForUser($user);
+    }
+
+    /**
      * @param  list<string>  $missingFields
      */
     public static function describeMissingFields(array $missingFields): string

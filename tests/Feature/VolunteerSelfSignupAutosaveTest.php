@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\Church;
+use App\Models\Ministry;
 use App\Models\User;
 use Database\Seeders\ChurchSeeder;
+use Database\Seeders\MinistrySeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -43,6 +45,35 @@ class VolunteerSelfSignupAutosaveTest extends TestCase
         $volunteer->refresh();
         $this->assertSame('years_1_3', $volunteer->attendance_duration);
         $this->assertTrue($volunteer->has_social_networks);
+
+        $user->refresh();
+        $this->assertFalse($user->is_volunteer);
+    }
+
+    public function test_autosave_does_not_mark_user_as_volunteer_until_signup_is_complete(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+
+        $user = User::factory()->create([
+            'church_id' => $churchId,
+            'is_volunteer' => false,
+            'name' => 'Pedro Souza',
+            'email' => 'pedro.autosave@example.com',
+            'photo_url' => 'https://example.com/photos/pedro.jpg',
+        ]);
+
+        $this->actingAs($user)
+            ->postJson(route('volunteers.self-signup.autosave'), [
+                'autosave_fields' => ['attendance_duration', 'has_social_networks'],
+                'attendance_duration' => 'years_1_3',
+                'has_social_networks' => true,
+            ])
+            ->assertOk();
+
+        $this->assertFalse($user->fresh()->is_volunteer);
+        $this->assertTrue($user->fresh()->hasVolunteerSignupInProgress());
     }
 
     public function test_guest_cannot_autosave_volunteer_signup(): void
@@ -51,5 +82,79 @@ class VolunteerSelfSignupAutosaveTest extends TestCase
             'autosave_fields' => ['attendance_duration'],
             'attendance_duration' => 'years_1_3',
         ])->assertUnauthorized();
+    }
+
+    public function test_autosave_is_active_in_ministry_without_ministry_ids_does_not_detach_existing_departments(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class, MinistrySeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+        $ministry = Ministry::query()->where('church_id', $churchId)->orderBy('name')->firstOrFail();
+
+        $user = User::factory()->create([
+            'church_id' => $churchId,
+            'is_volunteer' => false,
+            'name' => 'Fabio Silva',
+            'email' => 'fabio.autosave@example.com',
+            'photo_url' => 'https://example.com/photos/fabio.jpg',
+        ]);
+
+        $user->ensureVolunteerProfile();
+        $volunteer = $user->fresh()->volunteerProfile;
+        $this->assertNotNull($volunteer);
+        $volunteer->ministries()->sync([$ministry->id]);
+
+        $this->actingAs($user)
+            ->postJson(route('volunteers.self-signup.autosave'), [
+                'autosave_fields' => ['is_active_in_ministry'],
+                'first_name' => 'Fabio',
+                'last_name' => 'Silva',
+                'is_active_in_ministry' => true,
+            ])
+            ->assertOk();
+
+        $volunteer->refresh();
+        $this->assertTrue($volunteer->ministries()->whereKey($ministry->id)->exists());
+        $this->assertNotNull($volunteer->ministry_involvement);
+        $this->assertNotSame('Não', (string) $volunteer->ministry_involvement);
+    }
+
+    public function test_partial_autosave_does_not_clear_existing_birth_date(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+
+        $user = User::factory()->create([
+            'church_id' => $churchId,
+            'is_volunteer' => false,
+            'name' => 'Fabio Silva',
+            'email' => 'fabio.birth@example.com',
+            'photo_url' => 'https://example.com/photos/fabio.jpg',
+        ]);
+
+        $user->ensureVolunteerProfile();
+        $volunteer = $user->fresh()->volunteerProfile;
+        $this->assertNotNull($volunteer);
+        $volunteer->forceFill([
+            'birth_date' => '1990-03-15',
+            'attendance_duration' => 'years_1_3',
+            'has_social_networks' => true,
+        ])->save();
+
+        $this->actingAs($user)
+            ->postJson(route('volunteers.self-signup.autosave'), [
+                'autosave_fields' => ['is_active_in_ministry'],
+                'first_name' => 'Fabio',
+                'last_name' => 'Silva',
+                'is_active_in_ministry' => false,
+            ])
+            ->assertOk();
+
+        $volunteer->refresh();
+        $this->assertSame('1990-03-15', $volunteer->birth_date?->format('Y-m-d'));
+        $this->assertSame('years_1_3', $volunteer->attendance_duration);
+        $this->assertTrue($volunteer->has_social_networks);
+        $this->assertSame('Não', $volunteer->ministry_involvement);
     }
 }
