@@ -60,7 +60,7 @@ fi
 echo ""
 echo "==> Atualizando descritivo da versão (Comunidades)..."
 if [[ -f deployment/release-notes.txt ]]; then
-  php artisan app:release-notes || true
+  php artisan app:release-notes --for-version=20.0.5 || php artisan app:release-notes || true
 fi
 
 echo ""

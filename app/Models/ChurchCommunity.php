@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
 class ChurchCommunity extends Model
 {
@@ -43,6 +44,10 @@ class ChurchCommunity extends Model
         }
 
         $mediaPath = route('media.public', ['path' => $path], absolute: false);
+
+        if (Storage::disk('public')->exists($path)) {
+            $mediaPath .= '?v='.Storage::disk('public')->lastModified($path);
+        }
 
         if (is_string($baseUrl) && $baseUrl !== '') {
             return rtrim($baseUrl, '/').$mediaPath;
