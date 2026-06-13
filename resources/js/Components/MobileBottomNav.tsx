@@ -88,6 +88,7 @@ const navItems = [
             'mobile.health',
             'mobile.health.show',
             'mobile.mission',
+            'mobile.mission.home',
             'mobile.mission.events',
             'mobile.mission.messages',
             'mobile.mission.about',

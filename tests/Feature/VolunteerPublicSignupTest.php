@@ -22,7 +22,7 @@ class VolunteerPublicSignupTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function signupPayload(string $token, string $email = 'novo.voluntario@example.com', ?int $otherMinistryId = null): array
+    private function signupPayload(string $token, string $email = 'novo.voluntario@example.com'): array
     {
         return [
             'token' => $token,
@@ -33,13 +33,16 @@ class VolunteerPublicSignupTest extends TestCase
             'has_whatsapp' => true,
             'email' => $email,
             'phone' => '11999998888',
-            'has_social_networks' => false,
-            'attendance_duration' => 'years_1_3',
+            'has_social_networks' => true,
+            'social_network_profiles' => '@maria.ns',
+            'professional_area' => 'Administração',
+            'attendance_duration' => 'years_1_2',
             'is_official_member' => false,
-            'has_previous_ministry_volunteer_experience' => false,
-            'is_active_in_ministry' => false,
-            'wants_other_ministry' => $otherMinistryId !== null,
-            'other_ministry_ids' => $otherMinistryId !== null ? [$otherMinistryId] : [],
+            'volunteer_phase' => 'interested',
+            'service_ease_areas' => ['reception', 'communication'],
+            'comfortable_with_digital_tools' => true,
+            'service_greatest_strength' => 'Acolhimento',
+            'service_greatest_challenge' => 'Disponibilidade de tempo',
             'lgpd_data_consent' => true,
             'password' => 'Password1!xx',
             'password_confirmation' => 'Password1!xx',
@@ -51,13 +54,12 @@ class VolunteerPublicSignupTest extends TestCase
         $this->seed([RolePermissionSeeder::class, ChurchSeeder::class, MinistrySeeder::class]);
 
         $churchId = (int) Church::query()->orderBy('id')->value('id');
-        $ministry = Ministry::query()->where('church_id', $churchId)->orderBy('name')->firstOrFail();
         $token = VolunteerSelfSignupToken::query()->create([
             'church_id' => $churchId,
             'token' => (string) Str::uuid(),
         ])->token;
 
-        $response = $this->post(route('volunteers.self-signup.store'), $this->signupPayload($token, 'novo.voluntario@example.com', $ministry->id));
+        $response = $this->post(route('volunteers.self-signup.store'), $this->signupPayload($token, 'novo.voluntario@example.com'));
 
         $response->assertRedirect(route('login', absolute: false));
         $response->assertSessionHas('status');
@@ -82,8 +84,8 @@ class VolunteerPublicSignupTest extends TestCase
         $this->assertNotNull($user->photo_url);
         $volunteer = Volunteer::query()->where('user_id', $user->id)->first();
         $this->assertNotNull($volunteer);
-        $this->assertSame($ministry->name, $volunteer->other_ministry_interest);
-        $this->assertTrue($volunteer->ministries()->where('ministries.id', $ministry->id)->exists());
+        $this->assertSame('interested', $volunteer->volunteer_phase);
+        $this->assertSame('Administração', $volunteer->professional_area);
 
         $interessadoStageId = VolunteerPipelineStage::query()
             ->where('church_id', $churchId)

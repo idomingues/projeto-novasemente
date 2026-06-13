@@ -1,9 +1,6 @@
 import type { VolunteerSignupInitial } from '@/Pages/Volunteers/PublicSignup';
-import {
-    hasMinistrySelection,
-    isVolunteerSignupFieldVisible,
-    type VolunteerSignupLegacyMinistryTexts,
-} from '@/utils/volunteerSignupCompletion';
+import { hasServiceEaseAreaSelection, isValidVolunteerPhase } from '@/utils/volunteerSignupOptions';
+import { isVolunteerSignupFieldVisible } from '@/utils/volunteerSignupCompletion';
 
 export const MIN_VOLUNTEER_SIGNUP_AGE = 10;
 
@@ -74,7 +71,7 @@ type PageValidationOptions = {
     hasExistingPhoto: boolean;
     focusMissingOnly: boolean;
     missingFields: string[];
-    legacyMinistryTexts?: VolunteerSignupLegacyMinistryTexts;
+    pinnedMultiSelectFields?: string[];
     duplicateHints?: {
         nameHint: string | null;
         emailHint: string | null;
@@ -90,12 +87,13 @@ export function computeVolunteerSignupPageErrors({
     hasExistingPhoto,
     focusMissingOnly,
     missingFields,
-    legacyMinistryTexts,
+    pinnedMultiSelectFields = [],
     duplicateHints = { nameHint: null, emailHint: null, phoneHint: null },
 }: PageValidationOptions): Record<string, string> {
     const next: Record<string, string> = {};
     const visible = (fieldKey: string) =>
-        !focusMissingOnly || isVolunteerSignupFieldVisible(fieldKey, true, missingFields, data);
+        !focusMissingOnly
+        || isVolunteerSignupFieldVisible(fieldKey, true, missingFields, data, pinnedMultiSelectFields);
 
     if (page === 0) {
         if (visible('photo_file') && !data.photo_file && !(isEdit && hasExistingPhoto)) {
@@ -120,17 +118,27 @@ export function computeVolunteerSignupPageErrors({
         if (visible('has_social_networks') && normalizeSignupBool(data.has_social_networks) === null) {
             next.has_social_networks = 'Informe se você usa redes sociais.';
         }
+        if (
+            visible('social_network_profiles') &&
+            normalizeSignupBool(data.has_social_networks) === true &&
+            !data.social_network_profiles.trim()
+        ) {
+            next.social_network_profiles = 'Informe o nome do seu perfil nas redes sociais.';
+        }
+        if (visible('professional_area') && !data.professional_area.trim()) {
+            next.professional_area = 'Informe sua área de atuação profissional.';
+        }
         if (visible('full_name') && duplicateHints.nameHint) next.full_name = duplicateHints.nameHint;
         if (visible('email') && duplicateHints.emailHint) next.email = duplicateHints.emailHint;
         if (duplicateHints.phoneHint) next.phone = duplicateHints.phoneHint;
-        if (!isEdit) {
+        if (!isEdit && !focusMissingOnly) {
             if (!data.password) next.password = 'Defina uma senha para acessar o aplicativo.';
             else if ((data.password ?? '').length < 6) next.password = 'A senha deve ter pelo menos 6 caracteres.';
             if (!data.password_confirmation) next.password_confirmation = 'Confirme a senha.';
             if (data.password && data.password_confirmation && data.password !== data.password_confirmation) {
                 next.password_confirmation = 'As senhas não coincidem.';
             }
-        } else {
+        } else if (!focusMissingOnly) {
             const changingPassword =
                 (data.password ?? '').trim() !== '' ||
                 (data.password_confirmation ?? '').trim() !== '' ||
@@ -156,56 +164,23 @@ export function computeVolunteerSignupPageErrors({
         if (visible('is_official_member') && normalizeSignupBool(data.is_official_member) === null) {
             next.is_official_member = 'Selecione uma opção.';
         }
-        if (visible('is_official_member') && normalizeSignupBool(data.is_official_member) === true) {
-            if (visible('member_record_at_nova_semente') && normalizeSignupBool(data.member_record_at_nova_semente) === null) {
-                next.member_record_at_nova_semente = 'Selecione uma opção.';
-            }
-            if (
-                visible('member_record_church') &&
-                normalizeSignupBool(data.member_record_at_nova_semente) === false &&
-                !data.member_record_church.trim()
-            ) {
-                next.member_record_church = 'Informe em qual igreja está o seu registro.';
-            }
+        if (visible('volunteer_phase') && !isValidVolunteerPhase(data.volunteer_phase)) {
+            next.volunteer_phase = 'Selecione sua fase no voluntariado.';
+        }
+        if (visible('service_ease_areas') && !hasServiceEaseAreaSelection(data.service_ease_areas)) {
+            next.service_ease_areas = 'Marque pelo menos uma área em que você tem facilidade para servir.';
+        }
+        if (visible('comfortable_with_digital_tools') && normalizeSignupBool(data.comfortable_with_digital_tools) === null) {
+            next.comfortable_with_digital_tools = 'Selecione uma opção.';
         }
     }
 
     if (page === 2) {
-        if (
-            visible('has_previous_ministry_volunteer_experience') &&
-            normalizeSignupBool(data.has_previous_ministry_volunteer_experience) === null
-        ) {
-            next.has_previous_ministry_volunteer_experience = 'Selecione uma opção.';
+        if (visible('service_greatest_strength') && !data.service_greatest_strength.trim()) {
+            next.service_greatest_strength = 'Descreva seu maior ponto forte no serviço.';
         }
-        if (
-            visible('previous_ministry_ids') &&
-            normalizeSignupBool(data.has_previous_ministry_volunteer_experience) === true &&
-            !hasMinistrySelection(data.previous_ministry_ids, legacyMinistryTexts?.previous_ministry_details)
-        ) {
-            next.previous_ministry_ids = 'Selecione em quais ministérios você já serviu.';
-        }
-    }
-
-    if (page === 3) {
-        if (visible('is_active_in_ministry') && normalizeSignupBool(data.is_active_in_ministry) === null) {
-            next.is_active_in_ministry = 'Selecione uma opção.';
-        }
-        if (
-            visible('active_ministry_ids') &&
-            normalizeSignupBool(data.is_active_in_ministry) === true &&
-            !hasMinistrySelection(data.active_ministry_ids, legacyMinistryTexts?.ministry_involvement)
-        ) {
-            next.active_ministry_ids = 'Selecione pelo menos um ministério.';
-        }
-        if (visible('wants_other_ministry') && normalizeSignupBool(data.wants_other_ministry) === null) {
-            next.wants_other_ministry = 'Selecione uma opção.';
-        }
-        if (
-            visible('other_ministry_ids') &&
-            normalizeSignupBool(data.wants_other_ministry) === true &&
-            !hasMinistrySelection(data.other_ministry_ids, legacyMinistryTexts?.other_ministry_interest)
-        ) {
-            next.other_ministry_ids = 'Selecione pelo menos um ministério.';
+        if (visible('service_greatest_challenge') && !data.service_greatest_challenge.trim()) {
+            next.service_greatest_challenge = 'Descreva seu maior desafio ao servir.';
         }
         if (visible('lgpd_data_consent') && normalizeSignupBool(data.lgpd_data_consent) === null) {
             next.lgpd_data_consent = 'Selecione uma opção.';

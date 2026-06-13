@@ -1,4 +1,5 @@
 import type { VolunteerSignupInitial } from '@/Pages/Volunteers/PublicSignup';
+import { hasServiceEaseAreaSelection, isValidVolunteerPhase } from '@/utils/volunteerSignupOptions';
 import { normalizeVolunteerFullName } from '@/utils/volunteerSignupPageValidation';
 
 export type VolunteerSignupCompletion = {
@@ -20,30 +21,7 @@ export function formatVolunteerSignupProgressLabel(completion: Pick<VolunteerSig
 const MIN_VOLUNTEER_AGE = 10;
 
 /** Campos que não entram no alerta de cadastro incompleto (espelha backend). */
-export const VOLUNTEER_SIGNUP_OPTIONAL_FIELD_KEYS = [
-    'phone',
-    'gifts_to_develop',
-    'professional_area',
-    'password',
-    'password_confirmation',
-    'current_password',
-] as const;
-
-/** Marcador interno (espelha backend): Sim sem departamentos escolhidos ainda. */
-export const VOLUNTEER_MINISTRY_YES_AWAITING_PICK = '—';
-
-export function hasMinistrySelection(ids: unknown, storedText?: string | null): boolean {
-    if (hasPositiveIds(ids)) return true;
-    const text = (storedText ?? '').trim();
-    if (text === VOLUNTEER_MINISTRY_YES_AWAITING_PICK) return false;
-    return text !== '' && text.toLowerCase() !== 'não';
-}
-
-export type VolunteerSignupLegacyMinistryTexts = {
-    ministry_involvement?: string;
-    previous_ministry_details?: string;
-    other_ministry_interest?: string;
-};
+export const VOLUNTEER_SIGNUP_OPTIONAL_FIELD_KEYS = ['phone', 'password', 'password_confirmation', 'current_password'] as const;
 
 /** Ordem estável para rolar/destacar o primeiro erro (todas as etapas). */
 export const VOLUNTEER_SIGNUP_FIELD_ORDER = [
@@ -57,16 +35,15 @@ export const VOLUNTEER_SIGNUP_FIELD_ORDER = [
     'password',
     'password_confirmation',
     'has_social_networks',
+    'social_network_profiles',
+    'professional_area',
     'attendance_duration',
     'is_official_member',
-    'member_record_at_nova_semente',
-    'member_record_church',
-    'has_previous_ministry_volunteer_experience',
-    'previous_ministry_ids',
-    'is_active_in_ministry',
-    'active_ministry_ids',
-    'wants_other_ministry',
-    'other_ministry_ids',
+    'volunteer_phase',
+    'service_ease_areas',
+    'comfortable_with_digital_tools',
+    'service_greatest_strength',
+    'service_greatest_challenge',
     'lgpd_data_consent',
 ] as const;
 
@@ -77,16 +54,15 @@ const MISSING_FIELD_MESSAGES: Record<string, string> = {
     has_whatsapp: 'Informe se este número tem WhatsApp.',
     email: 'Informe um e-mail válido.',
     has_social_networks: 'Informe se você usa redes sociais.',
-    attendance_duration: 'Selecione há quanto tempo frequenta a igreja.',
-    is_official_member: 'Informe se você é membro oficial da igreja.',
-    member_record_at_nova_semente: 'Informe se seu registro de membro está na Nova Semente.',
-    member_record_church: 'Informe em qual igreja está o seu registro de membro.',
-    has_previous_ministry_volunteer_experience: 'Informe se você já foi voluntário em algum ministério.',
-    previous_ministry_ids: 'Selecione em quais ministérios você já serviu.',
-    is_active_in_ministry: 'Informe se você é atuante em algum ministério.',
-    active_ministry_ids: 'Selecione pelo menos um ministério em que é atuante.',
-    wants_other_ministry: 'Informe se gostaria de servir em outro ministério.',
-    other_ministry_ids: 'Selecione pelo menos um ministério de interesse.',
+    social_network_profiles: 'Informe o nome do seu perfil nas redes sociais.',
+    professional_area: 'Informe sua área de atuação profissional.',
+    attendance_duration: 'Selecione há quanto tempo frequenta a Nova Semente.',
+    is_official_member: 'Informe se você é membro oficial da Igreja Adventista do 7º dia.',
+    volunteer_phase: 'Informe sua fase atual no voluntariado da Nova Semente.',
+    service_ease_areas: 'Marque pelo menos uma área em que você tem facilidade para servir.',
+    comfortable_with_digital_tools: 'Informe se você se sente confortável com ferramentas digitais.',
+    service_greatest_strength: 'Descreva seu maior ponto forte no serviço.',
+    service_greatest_challenge: 'Descreva seu maior desafio ao servir.',
     lgpd_data_consent: 'Para continuar, autorize o uso dos dados (LGPD).',
 };
 
@@ -109,23 +85,12 @@ export function volunteerSignupErrorsForMissingFields(missingFields: string[]): 
 export function applyVolunteerSignupBranchingCleanup(payload: Record<string, unknown>): Record<string, unknown> {
     const out = { ...payload };
 
-    if (normalizeBool(out.is_official_member as BoolLike) !== true) {
-        delete out.member_record_at_nova_semente;
-        delete out.member_record_church;
-    } else if (normalizeBool(out.member_record_at_nova_semente as BoolLike) !== false) {
-        delete out.member_record_church;
+    if (normalizeBool(out.has_social_networks as BoolLike) !== true) {
+        out.social_network_profiles = '';
     }
 
-    if (normalizeBool(out.has_previous_ministry_volunteer_experience as BoolLike) !== true) {
-        out.previous_ministry_ids = [];
-    }
-
-    if (normalizeBool(out.is_active_in_ministry as BoolLike) !== true) {
-        out.active_ministry_ids = [];
-    }
-
-    if (normalizeBool(out.wants_other_ministry as BoolLike) !== true) {
-        out.other_ministry_ids = [];
+    if (!hasServiceEaseAreaSelection(out.service_ease_areas)) {
+        out.service_ease_areas = [];
     }
 
     return out;
@@ -134,10 +99,8 @@ export function applyVolunteerSignupBranchingCleanup(payload: Record<string, unk
 /** Monta o snapshot usado pelo cálculo de pendências a partir do payload enviado. */
 export function buildVolunteerSignupCompletionInput(
     payload: Record<string, unknown>,
-    options: { hasExistingPhoto: boolean; legacy?: VolunteerSignupLegacyMinistryTexts },
-): VolunteerSignupInitial & VolunteerSignupLegacyMinistryTexts {
-    const legacy = options.legacy ?? {};
-
+    options: { hasExistingPhoto: boolean },
+): VolunteerSignupInitial {
     return {
         has_existing_photo: options.hasExistingPhoto,
         full_name: `${String(payload.first_name ?? '').trim()} ${String(payload.last_name ?? '').trim()}`.trim(),
@@ -148,26 +111,18 @@ export function buildVolunteerSignupCompletionInput(
         email: String(payload.email ?? ''),
         phone: String(payload.phone ?? ''),
         has_social_networks: (payload.has_social_networks as boolean | null | undefined) ?? null,
+        social_network_profiles: String(payload.social_network_profiles ?? ''),
+        professional_area: String(payload.professional_area ?? ''),
         attendance_duration: (payload.attendance_duration as VolunteerSignupInitial['attendance_duration']) ?? '',
         is_official_member: normalizeBool(payload.is_official_member as BoolLike),
-        member_record_at_nova_semente: normalizeBool(payload.member_record_at_nova_semente as BoolLike),
-        member_record_church: String(payload.member_record_church ?? ''),
-        has_previous_ministry_volunteer_experience: normalizeBool(
-            payload.has_previous_ministry_volunteer_experience as BoolLike,
-        ),
-        previous_ministry_ids: Array.isArray(payload.previous_ministry_ids)
-            ? (payload.previous_ministry_ids as number[])
+        volunteer_phase: (payload.volunteer_phase as VolunteerSignupInitial['volunteer_phase']) ?? '',
+        service_ease_areas: Array.isArray(payload.service_ease_areas)
+            ? (payload.service_ease_areas as string[])
             : [],
-        is_active_in_ministry: normalizeBool(payload.is_active_in_ministry as BoolLike),
-        active_ministry_ids: Array.isArray(payload.active_ministry_ids) ? (payload.active_ministry_ids as number[]) : [],
-        wants_other_ministry: normalizeBool(payload.wants_other_ministry as BoolLike),
-        other_ministry_ids: Array.isArray(payload.other_ministry_ids) ? (payload.other_ministry_ids as number[]) : [],
-        gifts_to_develop: String(payload.gifts_to_develop ?? ''),
-        professional_area: String(payload.professional_area ?? ''),
+        comfortable_with_digital_tools: normalizeBool(payload.comfortable_with_digital_tools as BoolLike),
+        service_greatest_strength: String(payload.service_greatest_strength ?? ''),
+        service_greatest_challenge: String(payload.service_greatest_challenge ?? ''),
         lgpd_data_consent: normalizeBool(payload.lgpd_data_consent as BoolLike),
-        ministry_involvement: legacy.ministry_involvement,
-        previous_ministry_details: legacy.previous_ministry_details,
-        other_ministry_interest: legacy.other_ministry_interest,
     };
 }
 
@@ -197,11 +152,6 @@ function isBirthDateAtLeastMinAge(birthDate: string, minYears: number): boolean 
     return birthDate <= maxBirthDateForMinAge(minYears);
 }
 
-function hasPositiveIds(ids: unknown): boolean {
-    if (!Array.isArray(ids)) return false;
-    return ids.some((id) => Number(id) > 0);
-}
-
 function isValidEmail(value: string): boolean {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
@@ -227,11 +177,8 @@ export function computeVolunteerSignupCompletion(initial: VolunteerSignupInitial
         if (!isFilled) missing.push(field);
     };
 
-    const hasExistingPhoto = initial.has_existing_photo === true;
-    track('photo_file', true, hasExistingPhoto);
-
+    track('photo_file', true, initial.has_existing_photo === true);
     track('full_name', true, splitFullName(initial.full_name) !== null);
-
     track('birth_date', true, isBirthDateAtLeastMinAge(initial.birth_date, MIN_VOLUNTEER_AGE));
 
     const phoneFilled = initial.phone.trim() !== '';
@@ -239,47 +186,21 @@ export function computeVolunteerSignupCompletion(initial: VolunteerSignupInitial
 
     track('email', true, initial.email.trim() !== '' && isValidEmail(initial.email));
 
-    track('has_social_networks', true, isBoolSet(initial.has_social_networks));
+    const hasSocialNetworks = normalizeBool(initial.has_social_networks);
+    track('has_social_networks', true, hasSocialNetworks !== null);
 
+    if (hasSocialNetworks === true) {
+        track('social_network_profiles', true, initial.social_network_profiles.trim() !== '');
+    }
+
+    track('professional_area', true, initial.professional_area.trim() !== '');
     track('attendance_duration', true, initial.attendance_duration.trim() !== '');
-
-    const isOfficialMember = normalizeBool(initial.is_official_member);
-    track('is_official_member', true, isOfficialMember !== null);
-
-    if (isOfficialMember === true) {
-        const memberAtNovaSemente = normalizeBool(initial.member_record_at_nova_semente);
-        track('member_record_at_nova_semente', true, memberAtNovaSemente !== null);
-
-        if (memberAtNovaSemente === false) {
-            track('member_record_church', true, initial.member_record_church.trim() !== '');
-        }
-    }
-
-    const hasPrevious = normalizeBool(initial.has_previous_ministry_volunteer_experience);
-    track('has_previous_ministry_volunteer_experience', true, hasPrevious !== null);
-
-    const previousDetails = (initial as VolunteerSignupInitial & { previous_ministry_details?: string })
-        .previous_ministry_details;
-    if (hasPrevious === true) {
-        track('previous_ministry_ids', true, hasMinistrySelection(initial.previous_ministry_ids, previousDetails));
-    }
-
-    const isActive = normalizeBool(initial.is_active_in_ministry);
-    track('is_active_in_ministry', true, isActive !== null);
-
-    const ministryInvolvement = (initial as VolunteerSignupInitial & { ministry_involvement?: string }).ministry_involvement;
-    if (isActive === true) {
-        track('active_ministry_ids', true, hasMinistrySelection(initial.active_ministry_ids, ministryInvolvement));
-    }
-
-    const wantsOther = normalizeBool(initial.wants_other_ministry);
-    track('wants_other_ministry', true, wantsOther !== null);
-
-    const otherInterest = (initial as VolunteerSignupInitial & { other_ministry_interest?: string }).other_ministry_interest;
-    if (wantsOther === true) {
-        track('other_ministry_ids', true, hasMinistrySelection(initial.other_ministry_ids, otherInterest));
-    }
-
+    track('is_official_member', true, normalizeBool(initial.is_official_member) !== null);
+    track('volunteer_phase', true, isValidVolunteerPhase(initial.volunteer_phase));
+    track('service_ease_areas', true, hasServiceEaseAreaSelection(initial.service_ease_areas));
+    track('comfortable_with_digital_tools', true, isBoolSet(initial.comfortable_with_digital_tools));
+    track('service_greatest_strength', true, initial.service_greatest_strength.trim() !== '');
+    track('service_greatest_challenge', true, initial.service_greatest_challenge.trim() !== '');
     track('lgpd_data_consent', true, normalizeBool(initial.lgpd_data_consent) === true);
 
     const totalRequired = applicable.length;
@@ -307,24 +228,29 @@ export function resolveVolunteerSignupFieldPage(field: string): number {
         'email',
         'phone',
         'has_social_networks',
-    ]);
-    const page1 = new Set(['attendance_duration', 'is_official_member', 'member_record_at_nova_semente', 'member_record_church']);
-    const page2 = new Set(['has_previous_ministry_volunteer_experience', 'previous_ministry_ids']);
-    const page3 = new Set([
-        'is_active_in_ministry',
-        'active_ministry_ids',
-        'wants_other_ministry',
-        'other_ministry_ids',
-        'gifts_to_develop',
+        'social_network_profiles',
         'professional_area',
+        'current_password',
+        'password',
+        'password_confirmation',
+    ]);
+    const page1 = new Set([
+        'attendance_duration',
+        'is_official_member',
+        'volunteer_phase',
+        'service_ease_areas',
+        'comfortable_with_digital_tools',
+    ]);
+    const page2 = new Set([
+        'service_greatest_strength',
+        'service_greatest_challenge',
         'lgpd_data_consent',
     ]);
 
     if (page0.has(base)) return 0;
     if (page1.has(base)) return 1;
     if (page2.has(base)) return 2;
-    if (page3.has(base)) return 3;
-    return 3;
+    return 2;
 }
 
 export function visiblePagesForMissingFields(missingFields: string[]): number[] {
@@ -338,12 +264,7 @@ export function shouldShowVolunteerSignupField(fieldKey: string, missingFields: 
 
 type SignupFormSlice = Pick<
     VolunteerSignupInitial,
-    | 'phone'
-    | 'is_official_member'
-    | 'member_record_at_nova_semente'
-    | 'has_previous_ministry_volunteer_experience'
-    | 'is_active_in_ministry'
-    | 'wants_other_ministry'
+    'phone' | 'has_social_networks' | 'is_official_member'
 >;
 
 /** Campo visível no modo «só perguntas faltantes» (inclui perguntas condicionais abertas na etapa). */
@@ -352,8 +273,13 @@ export function isVolunteerSignupFieldVisible(
     focusMissingOnly: boolean,
     missingFields: string[],
     data: SignupFormSlice,
+    pinnedMultiSelectFields: string[] = [],
 ): boolean {
     if (!focusMissingOnly) {
+        return true;
+    }
+
+    if (pinnedMultiSelectFields.includes(fieldKey)) {
         return true;
     }
 
@@ -361,80 +287,26 @@ export function isVolunteerSignupFieldVisible(
         return missingFields.includes('has_whatsapp') && data.phone.trim() !== '';
     }
 
+    if (fieldKey === 'social_network_profiles') {
+        if (missingFields.includes('social_network_profiles')) {
+            return normalizeBool(data.has_social_networks) === true;
+        }
+        if (
+            missingFields.includes('has_social_networks') &&
+            normalizeBool(data.has_social_networks) === true
+        ) {
+            return true;
+        }
+        return false;
+    }
+
     if (missingFields.includes(fieldKey)) {
-        if (fieldKey === 'member_record_at_nova_semente') {
-            return normalizeBool(data.is_official_member) === true;
-        }
-        if (fieldKey === 'member_record_church') {
-            return (
-                normalizeBool(data.is_official_member) === true &&
-                normalizeBool(data.member_record_at_nova_semente) === false
-            );
-        }
-        if (fieldKey === 'previous_ministry_ids') {
-            return normalizeBool(data.has_previous_ministry_volunteer_experience) === true;
-        }
-        if (fieldKey === 'active_ministry_ids') {
-            return normalizeBool(data.is_active_in_ministry) === true;
-        }
-        if (fieldKey === 'other_ministry_ids') {
-            return normalizeBool(data.wants_other_ministry) === true;
-        }
-        return true;
-    }
-
-    if (
-        fieldKey === 'previous_ministry_ids' &&
-        missingFields.includes('has_previous_ministry_volunteer_experience') &&
-        normalizeBool(data.has_previous_ministry_volunteer_experience) === true
-    ) {
-        return true;
-    }
-
-    if (
-        fieldKey === 'member_record_at_nova_semente' &&
-        missingFields.includes('is_official_member') &&
-        normalizeBool(data.is_official_member) === true
-    ) {
-        return true;
-    }
-
-    if (fieldKey === 'member_record_church') {
-        if (
-            missingFields.includes('member_record_at_nova_semente') &&
-            normalizeBool(data.member_record_at_nova_semente) === false
-        ) {
-            return true;
-        }
-        if (
-            missingFields.includes('is_official_member') &&
-            normalizeBool(data.is_official_member) === true &&
-            normalizeBool(data.member_record_at_nova_semente) === false
-        ) {
-            return true;
-        }
-    }
-
-    if (
-        fieldKey === 'active_ministry_ids' &&
-        missingFields.includes('is_active_in_ministry') &&
-        normalizeBool(data.is_active_in_ministry) === true
-    ) {
-        return true;
-    }
-
-    if (
-        fieldKey === 'other_ministry_ids' &&
-        missingFields.includes('wants_other_ministry') &&
-        normalizeBool(data.wants_other_ministry) === true
-    ) {
         return true;
     }
 
     return false;
 }
 
-/** Evita reenviar sobrenome vazio do cadastro antigo quando o nome completo não está na tela. */
 function reconcileVolunteerSignupMergedName(
     out: Record<string, unknown>,
     prepared: Record<string, unknown>,
@@ -495,18 +367,15 @@ export function mergeVolunteerSignupWithInitial(
     keep('email', initial.email);
     keep('phone', initial.phone);
     keep('has_social_networks', initial.has_social_networks);
+    keep('social_network_profiles', initial.social_network_profiles);
+    keep('professional_area', initial.professional_area);
     keep('attendance_duration', initial.attendance_duration);
     keep('is_official_member', initial.is_official_member);
-    keep('member_record_at_nova_semente', initial.member_record_at_nova_semente);
-    keep('member_record_church', initial.member_record_church);
-    keep('has_previous_ministry_volunteer_experience', initial.has_previous_ministry_volunteer_experience);
-    keep('previous_ministry_ids', initial.previous_ministry_ids);
-    keep('is_active_in_ministry', initial.is_active_in_ministry);
-    keep('active_ministry_ids', initial.active_ministry_ids);
-    keep('wants_other_ministry', initial.wants_other_ministry);
-    keep('other_ministry_ids', initial.other_ministry_ids);
-    keep('gifts_to_develop', initial.gifts_to_develop);
-    keep('professional_area', initial.professional_area);
+    keep('volunteer_phase', initial.volunteer_phase);
+    keep('service_ease_areas', initial.service_ease_areas);
+    keep('comfortable_with_digital_tools', initial.comfortable_with_digital_tools);
+    keep('service_greatest_strength', initial.service_greatest_strength);
+    keep('service_greatest_challenge', initial.service_greatest_challenge);
     keep('lgpd_data_consent', initial.lgpd_data_consent);
 
     if (focusMissingOnly) {
@@ -516,17 +385,14 @@ export function mergeVolunteerSignupWithInitial(
     return applyVolunteerSignupBranchingCleanup(out);
 }
 
-/** No modo «só faltantes», respostas da sessão atual prevalecem sobre o initial nas ramificações. */
 function applyVolunteerSignupFormBranchingPreferences(
     out: Record<string, unknown>,
     prepared: Record<string, unknown>,
 ): void {
     const boolFields = [
+        'has_social_networks',
         'is_official_member',
-        'member_record_at_nova_semente',
-        'has_previous_ministry_volunteer_experience',
-        'is_active_in_ministry',
-        'wants_other_ministry',
+        'comfortable_with_digital_tools',
         'lgpd_data_consent',
     ] as const;
 
@@ -537,14 +403,18 @@ function applyVolunteerSignupFormBranchingPreferences(
         }
     }
 
-    for (const key of ['previous_ministry_ids', 'active_ministry_ids', 'other_ministry_ids'] as const) {
-        if (hasPositiveIds(prepared[key])) {
-            out[key] = prepared[key];
-        }
+    if (String(prepared.social_network_profiles ?? '').trim() !== '') {
+        out.social_network_profiles = prepared.social_network_profiles;
     }
 
-    if (String(prepared.member_record_church ?? '').trim() !== '') {
-        out.member_record_church = prepared.member_record_church;
+    if (hasServiceEaseAreaSelection(prepared.service_ease_areas)) {
+        out.service_ease_areas = prepared.service_ease_areas;
+    }
+
+    for (const key of ['volunteer_phase', 'professional_area', 'service_greatest_strength', 'service_greatest_challenge'] as const) {
+        if (String(prepared[key] ?? '').trim() !== '') {
+            out[key] = prepared[key];
+        }
     }
 }
 
@@ -559,11 +429,11 @@ export function readVolunteerSignupStoredPage(): number | null {
         return null;
     }
     const page = parseInt(raw, 10);
-    return !Number.isNaN(page) && page >= 0 && page <= 3 ? page : null;
+    return !Number.isNaN(page) && page >= 0 && page <= 2 ? page : null;
 }
 
 export function writeVolunteerSignupStoredPage(page: number): void {
-    if (typeof window === 'undefined' || page < 0 || page > 3) {
+    if (typeof window === 'undefined' || page < 0 || page > 2) {
         return;
     }
     sessionStorage.setItem(VOLUNTEER_SIGNUP_PAGE_STORAGE_KEY, String(page));
@@ -601,18 +471,15 @@ const VOLUNTEER_SIGNUP_INITIAL_FORM_KEYS = [
     'email',
     'phone',
     'has_social_networks',
+    'social_network_profiles',
+    'professional_area',
     'attendance_duration',
     'is_official_member',
-    'member_record_at_nova_semente',
-    'member_record_church',
-    'has_previous_ministry_volunteer_experience',
-    'previous_ministry_ids',
-    'is_active_in_ministry',
-    'active_ministry_ids',
-    'wants_other_ministry',
-    'other_ministry_ids',
-    'gifts_to_develop',
-    'professional_area',
+    'volunteer_phase',
+    'service_ease_areas',
+    'comfortable_with_digital_tools',
+    'service_greatest_strength',
+    'service_greatest_challenge',
     'lgpd_data_consent',
 ] as const;
 
@@ -626,28 +493,23 @@ function volunteerSignupFormPatchAllFromInitial(initial: VolunteerSignupInitial)
         email: initial.email,
         phone: initial.phone,
         has_social_networks: initial.has_social_networks,
+        social_network_profiles: initial.social_network_profiles,
+        professional_area: initial.professional_area,
         attendance_duration: initial.attendance_duration,
         is_official_member: initial.is_official_member,
-        member_record_at_nova_semente: initial.member_record_at_nova_semente,
-        member_record_church: initial.member_record_church,
-        has_previous_ministry_volunteer_experience: initial.has_previous_ministry_volunteer_experience,
-        previous_ministry_ids: initial.previous_ministry_ids ?? [],
-        is_active_in_ministry: initial.is_active_in_ministry,
-        active_ministry_ids: initial.active_ministry_ids ?? [],
-        wants_other_ministry: initial.wants_other_ministry,
-        other_ministry_ids: initial.other_ministry_ids ?? [],
-        gifts_to_develop: initial.gifts_to_develop,
-        professional_area: initial.professional_area,
+        volunteer_phase: initial.volunteer_phase,
+        service_ease_areas: initial.service_ease_areas ?? [],
+        comfortable_with_digital_tools: initial.comfortable_with_digital_tools,
+        service_greatest_strength: initial.service_greatest_strength,
+        service_greatest_challenge: initial.service_greatest_challenge,
         lgpd_data_consent: initial.lgpd_data_consent,
     };
 }
 
-/** Atualiza o formulário com o que já foi salvo no servidor (modo edição / só faltantes). */
 export function volunteerSignupFormPatchFromInitial(initial: VolunteerSignupInitial): Record<string, unknown> {
     return volunteerSignupFormPatchAllFromInitial(initial);
 }
 
-/** Atualiza só os campos gravados no autosave (evita apagar respostas em andamento na tela). */
 export function volunteerSignupFormPatchFromInitialFields(
     initial: VolunteerSignupInitial,
     savedFields: string[],
@@ -685,20 +547,18 @@ const MISSING_FIELD_LABELS: Record<string, string> = {
     has_whatsapp: 'WhatsApp no telefone',
     email: 'E-mail',
     has_social_networks: 'Uso de redes sociais',
-    attendance_duration: 'Tempo de frequência na igreja',
-    is_official_member: 'Membro oficial da igreja',
-    member_record_at_nova_semente: 'Registro de membro na Nova Semente',
-    member_record_church: 'Igreja do registro de membro',
-    has_previous_ministry_volunteer_experience: 'Experiência anterior como voluntário',
-    previous_ministry_ids: 'Ministérios em que já serviu',
-    is_active_in_ministry: 'Atuação em ministério',
-    active_ministry_ids: 'Ministérios em que é atuante',
-    wants_other_ministry: 'Interesse em outro ministério',
-    other_ministry_ids: 'Ministérios de interesse',
+    social_network_profiles: 'Nome do perfil nas redes sociais',
+    professional_area: 'Área de atuação profissional',
+    attendance_duration: 'Tempo de frequência na Nova Semente',
+    is_official_member: 'Membro oficial da Igreja Adventista do 7º dia',
+    volunteer_phase: 'Fase no voluntariado da Nova Semente',
+    service_ease_areas: 'Áreas de facilidade para servir',
+    comfortable_with_digital_tools: 'Conforto com ferramentas digitais',
+    service_greatest_strength: 'Maior ponto forte no serviço',
+    service_greatest_challenge: 'Maior desafio ao servir',
     lgpd_data_consent: 'Consentimento LGPD',
 };
 
-/** Rótulos legíveis das perguntas ainda pendentes (para avisos e modo «só faltantes»). */
 export function describeMissingVolunteerSignupFields(missingFields: string[]): string {
     if (missingFields.length === 0) {
         return '';

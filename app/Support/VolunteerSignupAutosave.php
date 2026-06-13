@@ -2,10 +2,8 @@
 
 namespace App\Support;
 
-use App\Models\Ministry;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -13,6 +11,27 @@ use Illuminate\Validation\ValidationException;
  */
 final class VolunteerSignupAutosave
 {
+    /** @var list<string> */
+    private const ALLOWED_KEYS = [
+        'first_name',
+        'last_name',
+        'birth_date',
+        'has_whatsapp',
+        'email',
+        'phone',
+        'has_social_networks',
+        'social_network_profiles',
+        'professional_area',
+        'attendance_duration',
+        'is_official_member',
+        'volunteer_phase',
+        'service_ease_areas',
+        'comfortable_with_digital_tools',
+        'service_greatest_strength',
+        'service_greatest_challenge',
+        'lgpd_data_consent',
+    ];
+
     /**
      * @return array{
      *     merged: array<string, mixed>,
@@ -33,32 +52,9 @@ final class VolunteerSignupAutosave
             ]);
         }
 
-        $allowedKeys = [
-            'first_name',
-            'last_name',
-            'birth_date',
-            'has_whatsapp',
-            'email',
-            'phone',
-            'has_social_networks',
-            'attendance_duration',
-            'is_official_member',
-            'member_record_at_nova_semente',
-            'member_record_church',
-            'has_previous_ministry_volunteer_experience',
-            'previous_ministry_ids',
-            'is_active_in_ministry',
-            'active_ministry_ids',
-            'wants_other_ministry',
-            'other_ministry_ids',
-            'gifts_to_develop',
-            'professional_area',
-            'lgpd_data_consent',
-        ];
-
         $autosaveFields = array_values(array_unique(array_filter(
             array_map('strval', $autosaveFields),
-            fn (string $key) => in_array($key, $allowedKeys, true) || $key === 'photo_file'
+            fn (string $key) => in_array($key, self::ALLOWED_KEYS, true) || $key === 'photo_file'
         )));
 
         if ($autosaveFields === [] && ! $request->hasFile('photo_file')) {
@@ -78,13 +74,11 @@ final class VolunteerSignupAutosave
         $fieldKeys = array_filter($autosaveFields, fn (string $k) => $k !== 'photo_file');
 
         foreach ($fieldKeys as $field) {
-            $rules = array_merge($rules, $this->rulesForField(
+            $rules = array_merge($rules, VolunteerSignupValidation::rulesForAutosaveField(
                 $field,
                 $user,
-                $request,
                 $merged,
-                $minBirthDate,
-                $churchId
+                $minBirthDate
             ));
         }
 
@@ -101,7 +95,7 @@ final class VolunteerSignupAutosave
             : [];
 
         $validated = $this->buildValidatedFromMerged($merged, $validatedSlice);
-        $this->assertBranchRules($validated, $autosaveFields, $churchId);
+        $this->assertBranchRules($validated, $autosaveFields);
 
         if (in_array('email', $autosaveFields, true)) {
             $this->assertEmailAvailable($user, (string) $validated['email']);
@@ -145,42 +139,33 @@ final class VolunteerSignupAutosave
             'has_social_networks' => $request->has('has_social_networks')
                 ? $request->input('has_social_networks')
                 : ($prefill['has_social_networks'] ?? null),
+            'social_network_profiles' => $request->has('social_network_profiles')
+                ? (string) $request->input('social_network_profiles')
+                : (string) ($prefill['social_network_profiles'] ?? ''),
+            'professional_area' => $request->has('professional_area')
+                ? (string) $request->input('professional_area')
+                : (string) ($prefill['professional_area'] ?? ''),
             'attendance_duration' => $request->has('attendance_duration')
                 ? (string) $request->input('attendance_duration')
                 : (string) ($prefill['attendance_duration'] ?? ''),
             'is_official_member' => $request->has('is_official_member')
                 ? $request->input('is_official_member')
                 : ($prefill['is_official_member'] ?? null),
-            'member_record_at_nova_semente' => $request->has('member_record_at_nova_semente')
-                ? $request->input('member_record_at_nova_semente')
-                : ($prefill['member_record_at_nova_semente'] ?? null),
-            'member_record_church' => $request->has('member_record_church')
-                ? (string) $request->input('member_record_church')
-                : (string) ($prefill['member_record_church'] ?? ''),
-            'has_previous_ministry_volunteer_experience' => $request->has('has_previous_ministry_volunteer_experience')
-                ? $request->input('has_previous_ministry_volunteer_experience')
-                : ($prefill['has_previous_ministry_volunteer_experience'] ?? null),
-            'previous_ministry_ids' => $request->has('previous_ministry_ids')
-                ? $request->input('previous_ministry_ids', [])
-                : ($prefill['previous_ministry_ids'] ?? []),
-            'is_active_in_ministry' => $request->has('is_active_in_ministry')
-                ? $request->input('is_active_in_ministry')
-                : ($prefill['is_active_in_ministry'] ?? null),
-            'active_ministry_ids' => $request->has('active_ministry_ids')
-                ? $request->input('active_ministry_ids', [])
-                : ($prefill['active_ministry_ids'] ?? []),
-            'wants_other_ministry' => $request->has('wants_other_ministry')
-                ? $request->input('wants_other_ministry')
-                : ($prefill['wants_other_ministry'] ?? null),
-            'other_ministry_ids' => $request->has('other_ministry_ids')
-                ? $request->input('other_ministry_ids', [])
-                : ($prefill['other_ministry_ids'] ?? []),
-            'gifts_to_develop' => $request->has('gifts_to_develop')
-                ? (string) $request->input('gifts_to_develop')
-                : (string) ($prefill['gifts_to_develop'] ?? ''),
-            'professional_area' => $request->has('professional_area')
-                ? (string) $request->input('professional_area')
-                : (string) ($prefill['professional_area'] ?? ''),
+            'volunteer_phase' => $request->has('volunteer_phase')
+                ? (string) $request->input('volunteer_phase')
+                : (string) ($prefill['volunteer_phase'] ?? ''),
+            'service_ease_areas' => $request->has('service_ease_areas')
+                ? $request->input('service_ease_areas', [])
+                : ($prefill['service_ease_areas'] ?? []),
+            'comfortable_with_digital_tools' => $request->has('comfortable_with_digital_tools')
+                ? $request->input('comfortable_with_digital_tools')
+                : ($prefill['comfortable_with_digital_tools'] ?? null),
+            'service_greatest_strength' => $request->has('service_greatest_strength')
+                ? (string) $request->input('service_greatest_strength')
+                : (string) ($prefill['service_greatest_strength'] ?? ''),
+            'service_greatest_challenge' => $request->has('service_greatest_challenge')
+                ? (string) $request->input('service_greatest_challenge')
+                : (string) ($prefill['service_greatest_challenge'] ?? ''),
             'lgpd_data_consent' => $request->has('lgpd_data_consent')
                 ? $request->input('lgpd_data_consent')
                 : ($prefill['lgpd_data_consent'] ?? null),
@@ -203,10 +188,7 @@ final class VolunteerSignupAutosave
             'has_whatsapp',
             'has_social_networks',
             'is_official_member',
-            'member_record_at_nova_semente',
-            'has_previous_ministry_volunteer_experience',
-            'is_active_in_ministry',
-            'wants_other_ministry',
+            'comfortable_with_digital_tools',
             'lgpd_data_consent',
         ] as $boolField) {
             if (array_key_exists($boolField, $out)) {
@@ -214,136 +196,31 @@ final class VolunteerSignupAutosave
             }
         }
 
-        $out['previous_ministry_ids'] = $this->normalizeIdList($out['previous_ministry_ids'] ?? []);
-        $out['active_ministry_ids'] = $this->normalizeIdList($out['active_ministry_ids'] ?? []);
-        $out['other_ministry_ids'] = $this->normalizeIdList($out['other_ministry_ids'] ?? []);
+        $out['service_ease_areas'] = VolunteerSignupServiceEaseAreas::decode($out['service_ease_areas'] ?? []);
 
         return $out;
-    }
-
-    /**
-     * @param  array<string, mixed>  $merged
-     * @return array<string, mixed>
-     */
-    private function rulesForField(
-        string $field,
-        User $user,
-        Request $request,
-        array $merged,
-        string $minBirthDate,
-        int $churchId,
-    ): array {
-        return match ($field) {
-            'first_name' => ['first_name' => ['required', 'string', 'max:100']],
-            'last_name' => ['last_name' => ['required', 'string', 'max:155']],
-            'birth_date' => [
-                'birth_date' => ['required', 'date', 'before_or_equal:'.$minBirthDate],
-            ],
-            'has_whatsapp' => [
-                'has_whatsapp' => [
-                    Rule::requiredIf(fn () => trim((string) ($merged['phone'] ?? '')) !== ''),
-                    'boolean',
-                ],
-            ],
-            'email' => [
-                'email' => [
-                    'required',
-                    'string',
-                    'lowercase',
-                    'email',
-                    'max:255',
-                    Rule::unique('users', 'email')->ignore($user->id),
-                ],
-            ],
-            'phone' => ['phone' => ['nullable', 'string', 'max:50']],
-            'has_social_networks' => ['has_social_networks' => ['required', 'boolean']],
-            'attendance_duration' => ['attendance_duration' => ['required', 'string', 'max:50']],
-            'is_official_member' => ['is_official_member' => ['required', 'boolean']],
-            'member_record_at_nova_semente' => ['member_record_at_nova_semente' => ['nullable', 'boolean']],
-            'member_record_church' => ['member_record_church' => ['nullable', 'string', 'max:255']],
-            'has_previous_ministry_volunteer_experience' => [
-                'has_previous_ministry_volunteer_experience' => ['required', 'boolean'],
-            ],
-            'previous_ministry_ids' => [
-                'previous_ministry_ids' => ['nullable', 'array'],
-                'previous_ministry_ids.*' => ['integer'],
-            ],
-            'is_active_in_ministry' => ['is_active_in_ministry' => ['required', 'boolean']],
-            'active_ministry_ids' => [
-                'active_ministry_ids' => ['nullable', 'array'],
-                'active_ministry_ids.*' => ['integer'],
-            ],
-            'wants_other_ministry' => ['wants_other_ministry' => ['required', 'boolean']],
-            'other_ministry_ids' => [
-                'other_ministry_ids' => ['nullable', 'array'],
-                'other_ministry_ids.*' => ['integer'],
-            ],
-            'gifts_to_develop' => ['gifts_to_develop' => ['nullable', 'string', 'max:5000']],
-            'professional_area' => ['professional_area' => ['nullable', 'string', 'max:5000']],
-            'lgpd_data_consent' => ['lgpd_data_consent' => ['required', 'boolean']],
-            default => [],
-        };
     }
 
     /**
      * @param  array<string, mixed>  $validated
      * @param  list<string>  $autosaveFields
      */
-    private function assertBranchRules(array $validated, array $autosaveFields, int $churchId): void
+    private function assertBranchRules(array $validated, array $autosaveFields): void
     {
-        if (($validated['is_official_member'] ?? false) === true) {
-            if (in_array('member_record_at_nova_semente', $autosaveFields, true)
-                && (! array_key_exists('member_record_at_nova_semente', $validated) || $validated['member_record_at_nova_semente'] === null)) {
-                throw ValidationException::withMessages([
-                    'member_record_at_nova_semente' => ['Informe se o seu registro de membro está na Nova Semente.'],
-                ]);
-            }
-            if (($validated['member_record_at_nova_semente'] ?? null) === false
-                && in_array('member_record_church', $autosaveFields, true)
-                && trim((string) ($validated['member_record_church'] ?? '')) === '') {
-                throw ValidationException::withMessages([
-                    'member_record_church' => ['Informe em qual igreja está o seu registro de membro.'],
-                ]);
-            }
+        if (($validated['has_social_networks'] ?? false) === true
+            && (in_array('social_network_profiles', $autosaveFields, true)
+                || in_array('has_social_networks', $autosaveFields, true))
+            && trim((string) ($validated['social_network_profiles'] ?? '')) === '') {
+            throw ValidationException::withMessages([
+                'social_network_profiles' => ['Informe o nome do seu perfil nas redes sociais.'],
+            ]);
         }
 
-        if (($validated['has_previous_ministry_volunteer_experience'] ?? false) === true
-            && in_array('previous_ministry_ids', $autosaveFields, true)) {
-            $ids = $this->validateMinistryIdsForChurch(
-                $validated['previous_ministry_ids'] ?? [],
-                $churchId
-            );
-            if ($ids === []) {
-                throw ValidationException::withMessages([
-                    'previous_ministry_ids' => ['Selecione em quais ministérios você já serviu.'],
-                ]);
-            }
-        }
-
-        if (($validated['is_active_in_ministry'] ?? false) === true
-            && in_array('active_ministry_ids', $autosaveFields, true)) {
-            $ids = $this->validateMinistryIdsForChurch(
-                $validated['active_ministry_ids'] ?? [],
-                $churchId
-            );
-            if ($ids === []) {
-                throw ValidationException::withMessages([
-                    'active_ministry_ids' => ['Selecione pelo menos um ministério em que você é atuante.'],
-                ]);
-            }
-        }
-
-        if (($validated['wants_other_ministry'] ?? false) === true
-            && in_array('other_ministry_ids', $autosaveFields, true)) {
-            $ids = $this->validateMinistryIdsForChurch(
-                $validated['other_ministry_ids'] ?? [],
-                $churchId
-            );
-            if ($ids === []) {
-                throw ValidationException::withMessages([
-                    'other_ministry_ids' => ['Selecione pelo menos um ministério em que gostaria de servir.'],
-                ]);
-            }
+        if (in_array('service_ease_areas', $autosaveFields, true)
+            && ! VolunteerSignupServiceEaseAreas::hasSelection($validated['service_ease_areas'] ?? [])) {
+            throw ValidationException::withMessages([
+                'service_ease_areas' => ['Selecione pelo menos uma área em que você tem facilidade para servir.'],
+            ]);
         }
     }
 
@@ -360,39 +237,5 @@ final class VolunteerSignupAutosave
         if ($msg = VolunteerContactDuplicateChecker::privilegedAccountVolunteerLinkMessage($existingOther, $user->id)) {
             throw ValidationException::withMessages(['email' => [$msg]]);
         }
-    }
-
-    /**
-     * @param  array<int, mixed>  $ids
-     * @return list<int>
-     */
-    private function validateMinistryIdsForChurch(array $ids, int $churchId): array
-    {
-        $normalized = $this->normalizeIdList($ids);
-        if ($normalized === []) {
-            return [];
-        }
-
-        $allowedCount = Ministry::query()
-            ->where('church_id', $churchId)
-            ->whereIn('id', $normalized)
-            ->count();
-
-        if ($allowedCount !== count($normalized)) {
-            throw ValidationException::withMessages([
-                'active_ministry_ids' => ['Selecione apenas departamentos válidos desta igreja.'],
-            ]);
-        }
-
-        return $normalized;
-    }
-
-    /**
-     * @param  array<int, mixed>  $ids
-     * @return list<int>
-     */
-    private function normalizeIdList(array $ids): array
-    {
-        return array_values(array_unique(array_filter(array_map('intval', $ids), fn ($id) => $id > 0)));
     }
 }

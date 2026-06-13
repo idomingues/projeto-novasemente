@@ -15,27 +15,17 @@ final class VolunteerSignupPayloadNormalizer
     {
         $out = $payload;
 
-        if (self::normalizeBool($out['is_official_member'] ?? null) !== true) {
-            unset($out['member_record_at_nova_semente'], $out['member_record_church']);
-        } elseif (self::normalizeBool($out['member_record_at_nova_semente'] ?? null) !== false) {
-            unset($out['member_record_church']);
-        }
-
-        if (self::normalizeBool($out['has_previous_ministry_volunteer_experience'] ?? null) !== true) {
-            $out['previous_ministry_ids'] = [];
-        }
-
-        if (self::normalizeBool($out['is_active_in_ministry'] ?? null) !== true) {
-            $out['active_ministry_ids'] = [];
-        }
-
-        if (self::normalizeBool($out['wants_other_ministry'] ?? null) !== true) {
-            $out['other_ministry_ids'] = [];
+        if (self::normalizeBool($out['has_social_networks'] ?? null) !== true) {
+            $out['social_network_profiles'] = null;
         }
 
         $phone = trim((string) ($out['phone'] ?? ''));
         if ($phone === '') {
             $out['has_whatsapp'] = false;
+        }
+
+        if (array_key_exists('service_ease_areas', $out)) {
+            $out['service_ease_areas'] = VolunteerSignupServiceEaseAreas::decode($out['service_ease_areas']);
         }
 
         return $out;

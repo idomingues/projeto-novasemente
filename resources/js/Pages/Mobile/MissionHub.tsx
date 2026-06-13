@@ -4,6 +4,7 @@ import {
     CalendarDaysIcon,
     ChatBubbleLeftRightIcon,
     GlobeAltIcon,
+    GlobeAsiaAustraliaIcon,
     PhotoIcon,
     UserGroupIcon,
 } from '@heroicons/react/24/outline';
@@ -18,6 +19,7 @@ type HubCard = {
 };
 
 const iconByRoute: Record<string, MenuIcon> = {
+    'mobile.mission.home': GlobeAsiaAustraliaIcon,
     'mobile.mission.events': CalendarDaysIcon,
     'mobile.mission.messages': ChatBubbleLeftRightIcon,
     'mobile.mission.about': UserGroupIcon,
@@ -43,7 +45,8 @@ export default function MissionHub({ cards }: Props) {
                     </Link>
                     <h1 className="mt-3 text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">Missão</h1>
                     <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                        Eventos, depoimentos, quem somos e mural da comunidade missionária Nova Semente.
+                        Missão Tailândia & Mianmar, eventos, depoimentos, quem somos e mural da comunidade missionária
+                        Nova Semente.
                     </p>
                 </div>
 

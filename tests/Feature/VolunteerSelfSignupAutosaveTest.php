@@ -3,13 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\Church;
-use App\Models\Ministry;
 use App\Models\User;
-use App\Support\VolunteerSignupMinistryMapper;
 use Database\Seeders\ChurchSeeder;
-use Database\Seeders\MinistrySeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\CompleteVolunteerSignup;
 use Tests\TestCase;
 
 class VolunteerSelfSignupAutosaveTest extends TestCase
@@ -35,17 +33,19 @@ class VolunteerSelfSignupAutosaveTest extends TestCase
 
         $this->actingAs($user)
             ->postJson(route('volunteers.self-signup.autosave'), [
-                'autosave_fields' => ['attendance_duration', 'has_social_networks'],
-                'attendance_duration' => 'years_1_3',
+                'autosave_fields' => ['attendance_duration', 'has_social_networks', 'social_network_profiles'],
+                'attendance_duration' => 'years_1_2',
                 'has_social_networks' => true,
+                'social_network_profiles' => '@maria.ns',
             ])
             ->assertOk()
             ->assertJsonPath('completion.is_complete', false)
             ->assertJsonStructure(['message', 'completion', 'initial']);
 
         $volunteer->refresh();
-        $this->assertSame('years_1_3', $volunteer->attendance_duration);
+        $this->assertSame('years_1_2', $volunteer->attendance_duration);
         $this->assertTrue($volunteer->has_social_networks);
+        $this->assertSame('@maria.ns', $volunteer->social_network_profiles);
 
         $user->refresh();
         $this->assertFalse($user->is_volunteer);
@@ -67,9 +67,10 @@ class VolunteerSelfSignupAutosaveTest extends TestCase
 
         $this->actingAs($user)
             ->postJson(route('volunteers.self-signup.autosave'), [
-                'autosave_fields' => ['attendance_duration', 'has_social_networks'],
-                'attendance_duration' => 'years_1_3',
+                'autosave_fields' => ['attendance_duration', 'has_social_networks', 'social_network_profiles'],
+                'attendance_duration' => 'years_1_2',
                 'has_social_networks' => true,
+                'social_network_profiles' => '@pedro.ns',
             ])
             ->assertOk();
 
@@ -81,47 +82,11 @@ class VolunteerSelfSignupAutosaveTest extends TestCase
     {
         $this->postJson(route('volunteers.self-signup.autosave'), [
             'autosave_fields' => ['attendance_duration'],
-            'attendance_duration' => 'years_1_3',
+            'attendance_duration' => 'years_1_2',
         ])->assertUnauthorized();
     }
 
-    public function test_autosave_is_active_in_ministry_without_ministry_ids_does_not_detach_existing_departments(): void
-    {
-        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class, MinistrySeeder::class]);
-
-        $churchId = (int) Church::query()->orderBy('id')->value('id');
-        $ministry = Ministry::query()->where('church_id', $churchId)->orderBy('name')->firstOrFail();
-
-        $user = User::factory()->create([
-            'church_id' => $churchId,
-            'is_volunteer' => false,
-            'name' => 'Fabio Silva',
-            'email' => 'fabio.autosave@example.com',
-            'photo_url' => 'https://example.com/photos/fabio.jpg',
-        ]);
-
-        $user->ensureVolunteerProfile();
-        $volunteer = $user->fresh()->volunteerProfile;
-        $this->assertNotNull($volunteer);
-        $volunteer->ministries()->sync([$ministry->id]);
-
-        $this->actingAs($user)
-            ->postJson(route('volunteers.self-signup.autosave'), [
-                'autosave_fields' => ['is_active_in_ministry'],
-                'first_name' => 'Fabio',
-                'last_name' => 'Silva',
-                'is_active_in_ministry' => true,
-            ])
-            ->assertOk()
-            ->assertJsonPath('initial.is_active_in_ministry', true);
-
-        $volunteer->refresh();
-        $this->assertTrue($volunteer->ministries()->whereKey($ministry->id)->exists());
-        $this->assertNotNull($volunteer->ministry_involvement);
-        $this->assertNotSame('Não', (string) $volunteer->ministry_involvement);
-    }
-
-    public function test_autosave_yes_to_active_ministry_keeps_yes_in_form_prefill_before_picking_departments(): void
+    public function test_autosave_service_ease_areas_persists_json_slugs(): void
     {
         $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
 
@@ -131,26 +96,23 @@ class VolunteerSelfSignupAutosaveTest extends TestCase
             'church_id' => $churchId,
             'is_volunteer' => false,
             'name' => 'Ana Souza',
-            'email' => 'ana.ministry@example.com',
+            'email' => 'ana.areas@example.com',
             'photo_url' => 'https://example.com/photos/ana.jpg',
         ]);
 
-        $user->ensureVolunteerProfile();
-
         $this->actingAs($user)
             ->postJson(route('volunteers.self-signup.autosave'), [
-                'autosave_fields' => ['is_active_in_ministry'],
+                'autosave_fields' => ['service_ease_areas'],
                 'first_name' => 'Ana',
                 'last_name' => 'Souza',
-                'is_active_in_ministry' => true,
+                'service_ease_areas' => ['music', 'reception'],
             ])
             ->assertOk()
-            ->assertJsonPath('initial.is_active_in_ministry', true)
-            ->assertJsonPath('initial.active_ministry_ids', []);
+            ->assertJsonPath('initial.service_ease_areas', ['music', 'reception']);
 
         $volunteer = $user->fresh()->volunteerProfile;
         $this->assertNotNull($volunteer);
-        $this->assertSame(VolunteerSignupMinistryMapper::YES_AWAITING_MINISTRY_PICK, $volunteer->ministry_involvement);
+        $this->assertSame(['music', 'reception'], \App\Support\VolunteerSignupServiceEaseAreas::decode($volunteer->service_ease_areas));
     }
 
     public function test_partial_autosave_does_not_clear_existing_birth_date(): void
@@ -172,23 +134,24 @@ class VolunteerSelfSignupAutosaveTest extends TestCase
         $this->assertNotNull($volunteer);
         $volunteer->forceFill([
             'birth_date' => '1990-03-15',
-            'attendance_duration' => 'years_1_3',
+            'attendance_duration' => 'years_1_2',
             'has_social_networks' => true,
+            'social_network_profiles' => '@fabio.ns',
         ])->save();
 
         $this->actingAs($user)
             ->postJson(route('volunteers.self-signup.autosave'), [
-                'autosave_fields' => ['is_active_in_ministry'],
+                'autosave_fields' => ['volunteer_phase'],
                 'first_name' => 'Fabio',
                 'last_name' => 'Silva',
-                'is_active_in_ministry' => false,
+                'volunteer_phase' => 'active',
             ])
             ->assertOk();
 
         $volunteer->refresh();
         $this->assertSame('1990-03-15', $volunteer->birth_date?->format('Y-m-d'));
-        $this->assertSame('years_1_3', $volunteer->attendance_duration);
+        $this->assertSame('years_1_2', $volunteer->attendance_duration);
         $this->assertTrue($volunteer->has_social_networks);
-        $this->assertSame('Não', $volunteer->ministry_involvement);
+        $this->assertSame('active', $volunteer->volunteer_phase);
     }
 }

@@ -8,11 +8,34 @@ use App\Support\VolunteerSignupName;
 use Database\Seeders\ChurchSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\CompleteVolunteerSignup;
 use Tests\TestCase;
 
 class VolunteerSignupNameValidationTest extends TestCase
 {
     use RefreshDatabase;
+
+    /** @return array<string, mixed> */
+    private function completePayload(array $overrides = []): array
+    {
+        return array_merge([
+            'birth_date' => '1988-05-20',
+            'has_whatsapp' => true,
+            'phone' => '',
+            'has_social_networks' => true,
+            'social_network_profiles' => '@usuario.ns',
+            'professional_area' => 'Administração',
+            'attendance_duration' => 'years_1_2',
+            'is_official_member' => false,
+            'volunteer_phase' => 'interested',
+            'service_ease_areas' => ['administration'],
+            'comfortable_with_digital_tools' => true,
+            'service_greatest_strength' => 'Organização',
+            'service_greatest_challenge' => 'Tempo',
+            'lgpd_data_consent' => true,
+            'redirect_after_save' => 'mobile.profile.edit',
+        ], $overrides);
+    }
 
     public function test_split_requires_first_and_last_name(): void
     {
@@ -49,35 +72,14 @@ class VolunteerSignupNameValidationTest extends TestCase
         $volunteer = $user->fresh()->volunteerProfile;
         $this->assertNotNull($volunteer);
 
-        $volunteer->forceFill([
-            'birth_date' => '1988-05-20',
-            'has_whatsapp' => true,
-            'has_social_networks' => true,
-            'attendance_duration' => 'years_1_3',
-            'is_official_member' => false,
-            'has_previous_ministry_volunteer_experience' => false,
-            'ministry_involvement' => 'Não',
-            'other_ministry_interest' => 'Não',
-            'lgpd_data_consent' => true,
-        ])->save();
+        CompleteVolunteerSignup::apply($user, $volunteer);
 
         $this->actingAs($user)
-            ->put(route('volunteers.self-signup.edit.update'), [
+            ->put(route('volunteers.self-signup.edit.update'), $this->completePayload([
                 'first_name' => 'Admin',
                 'last_name' => '',
-                'birth_date' => '1988-05-20',
-                'has_whatsapp' => true,
                 'email' => 'admin.nome@example.com',
-                'phone' => '',
-                'has_social_networks' => true,
-                'attendance_duration' => 'years_1_3',
-                'is_official_member' => false,
-                'has_previous_ministry_volunteer_experience' => false,
-                'is_active_in_ministry' => false,
-                'wants_other_ministry' => false,
-                'lgpd_data_consent' => true,
-                'redirect_after_save' => 'mobile.profile.edit',
-            ])
+            ]))
             ->assertSessionHasErrors(['full_name'])
             ->assertSessionHasErrors([
                 'full_name' => VolunteerSignupName::FULL_NAME_REQUIRED_MESSAGE,
@@ -184,35 +186,15 @@ class VolunteerSignupNameValidationTest extends TestCase
         $volunteer = $user->fresh()->volunteerProfile;
         $this->assertNotNull($volunteer);
 
-        $volunteer->forceFill([
-            'birth_date' => '1990-03-15',
-            'has_whatsapp' => true,
-            'has_social_networks' => true,
-            'attendance_duration' => 'years_1_3',
-            'is_official_member' => false,
-            'has_previous_ministry_volunteer_experience' => false,
-            'ministry_involvement' => 'Não',
-            'other_ministry_interest' => 'Não',
-            'lgpd_data_consent' => true,
-        ])->save();
+        CompleteVolunteerSignup::apply($user, $volunteer);
 
         $this->actingAs($user)
-            ->put(route('volunteers.self-signup.edit.update'), [
+            ->put(route('volunteers.self-signup.edit.update'), $this->completePayload([
                 'first_name' => 'Maria',
                 'last_name' => 'Oliveira Santos',
                 'birth_date' => '1990-03-15',
-                'has_whatsapp' => true,
                 'email' => 'maria.santos@example.com',
-                'phone' => '',
-                'has_social_networks' => true,
-                'attendance_duration' => 'years_1_3',
-                'is_official_member' => false,
-                'has_previous_ministry_volunteer_experience' => false,
-                'is_active_in_ministry' => false,
-                'wants_other_ministry' => false,
-                'lgpd_data_consent' => true,
-                'redirect_after_save' => 'mobile.profile.edit',
-            ])
+            ]))
             ->assertRedirect(route('mobile.profile.edit', absolute: false));
 
         $user->refresh();

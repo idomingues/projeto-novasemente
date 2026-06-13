@@ -27,7 +27,18 @@ class MissionHubTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Mobile/MissionHub')
-                ->has('cards', 5));
+                ->has('cards', 6));
+    }
+
+    public function test_mobile_mission_home_renders(): void
+    {
+        $this->seed(ChurchSeeder::class);
+        $church = Church::query()->firstOrFail();
+
+        $this->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.mission.home'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Mobile/MissionHome'));
     }
 
     public function test_mission_event_appears_on_mobile_list(): void

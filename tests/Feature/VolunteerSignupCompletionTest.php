@@ -8,6 +8,7 @@ use App\Support\VolunteerSignupCompletion;
 use Database\Seeders\ChurchSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\CompleteVolunteerSignup;
 use Tests\TestCase;
 
 class VolunteerSignupCompletionTest extends TestCase
@@ -35,12 +36,12 @@ class VolunteerSignupCompletionTest extends TestCase
         $this->assertContains('birth_date', $completion['missing_fields']);
         $this->assertNotContains('password', $completion['missing_fields']);
         $this->assertNotContains('current_password', $completion['missing_fields']);
-        foreach (\App\Support\VolunteerSignupCompletion::OPTIONAL_FIELD_KEYS as $optional) {
+        foreach (VolunteerSignupCompletion::OPTIONAL_FIELD_KEYS as $optional) {
             $this->assertNotContains($optional, $completion['missing_fields'], "Campo opcional {$optional} não deve aparecer como pendente.");
         }
     }
 
-    public function test_legacy_ministry_text_counts_as_complete_without_mapped_ids(): void
+    public function test_social_profiles_required_when_user_uses_social_networks(): void
     {
         $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
 
@@ -50,7 +51,7 @@ class VolunteerSignupCompletionTest extends TestCase
             'church_id' => $churchId,
             'is_volunteer' => true,
             'name' => 'Carlos Souza',
-            'email' => 'carlos.legacy@example.com',
+            'email' => 'carlos.social@example.com',
             'photo_url' => 'https://example.com/photos/carlos.jpg',
         ]);
 
@@ -61,18 +62,22 @@ class VolunteerSignupCompletionTest extends TestCase
             'birth_date' => '1985-03-10',
             'has_whatsapp' => true,
             'has_social_networks' => true,
-            'attendance_duration' => 'years_1_3',
+            'social_network_profiles' => '',
+            'professional_area' => 'Administração',
+            'attendance_duration' => 'years_1_2',
             'is_official_member' => false,
-            'has_previous_ministry_volunteer_experience' => false,
-            'ministry_involvement' => 'Departamento antigo (nome fora do catálogo)',
-            'other_ministry_interest' => 'Não',
+            'volunteer_phase' => 'interested',
+            'service_ease_areas' => json_encode(['administration']),
+            'comfortable_with_digital_tools' => true,
+            'service_greatest_strength' => 'Comunicação',
+            'service_greatest_challenge' => 'Disponibilidade',
             'lgpd_data_consent' => true,
         ])->save();
 
         $completion = VolunteerSignupCompletion::forUser($user->fresh());
 
-        $this->assertTrue($completion['is_complete'], 'Texto legado de ministério deve satisfazer a pergunta condicional.');
-        $this->assertNotContains('active_ministry_ids', $completion['missing_fields']);
+        $this->assertFalse($completion['is_complete']);
+        $this->assertSame(['social_network_profiles'], $completion['missing_fields']);
     }
 
     public function test_whatsapp_not_required_when_phone_empty(): void
@@ -92,18 +97,8 @@ class VolunteerSignupCompletionTest extends TestCase
         $volunteer = $user->fresh()->volunteerProfile;
         $this->assertNotNull($volunteer);
 
-        $volunteer->forceFill([
-            'phone' => null,
-            'has_whatsapp' => null,
-            'birth_date' => '1992-08-01',
-            'has_social_networks' => true,
-            'attendance_duration' => 'years_1_3',
-            'is_official_member' => false,
-            'has_previous_ministry_volunteer_experience' => false,
-            'ministry_involvement' => 'Não',
-            'other_ministry_interest' => 'Não',
-            'lgpd_data_consent' => true,
-        ])->save();
+        CompleteVolunteerSignup::apply($user, $volunteer);
+        $volunteer->forceFill(['phone' => null, 'has_whatsapp' => null])->save();
 
         $completion = VolunteerSignupCompletion::forUser($user->fresh());
 
@@ -127,17 +122,8 @@ class VolunteerSignupCompletionTest extends TestCase
         $volunteer = $user->fresh()->volunteerProfile;
         $this->assertNotNull($volunteer);
 
-        $volunteer->forceFill([
-            'birth_date' => now()->toDateString(),
-            'has_whatsapp' => true,
-            'has_social_networks' => true,
-            'attendance_duration' => 'years_1_3',
-            'is_official_member' => false,
-            'has_previous_ministry_volunteer_experience' => false,
-            'ministry_involvement' => 'Não',
-            'other_ministry_interest' => 'Não',
-            'lgpd_data_consent' => true,
-        ])->save();
+        CompleteVolunteerSignup::apply($user, $volunteer);
+        $volunteer->forceFill(['birth_date' => now()->toDateString()])->save();
 
         $completion = VolunteerSignupCompletion::forUser($user->fresh());
 
@@ -163,17 +149,7 @@ class VolunteerSignupCompletionTest extends TestCase
         $volunteer = $user->fresh()->volunteerProfile;
         $this->assertNotNull($volunteer);
 
-        $volunteer->forceFill([
-            'birth_date' => '1988-05-20',
-            'has_whatsapp' => true,
-            'has_social_networks' => true,
-            'attendance_duration' => 'years_1_3',
-            'is_official_member' => false,
-            'has_previous_ministry_volunteer_experience' => false,
-            'ministry_involvement' => 'Não',
-            'other_ministry_interest' => 'Não',
-            'lgpd_data_consent' => true,
-        ])->save();
+        CompleteVolunteerSignup::apply($user, $volunteer);
 
         $completion = VolunteerSignupCompletion::forUser($user->fresh());
 
@@ -222,17 +198,7 @@ class VolunteerSignupCompletionTest extends TestCase
         $volunteer = $user->fresh()->volunteerProfile;
         $this->assertNotNull($volunteer);
 
-        $volunteer->forceFill([
-            'birth_date' => '1988-05-20',
-            'has_whatsapp' => true,
-            'has_social_networks' => true,
-            'attendance_duration' => 'years_1_3',
-            'is_official_member' => false,
-            'has_previous_ministry_volunteer_experience' => false,
-            'ministry_involvement' => 'Não',
-            'other_ministry_interest' => 'Não',
-            'lgpd_data_consent' => true,
-        ])->save();
+        CompleteVolunteerSignup::apply($user, $volunteer);
 
         $this->actingAs($user)
             ->get(route('mobile.profile.edit'))
@@ -259,7 +225,7 @@ class VolunteerSignupCompletionTest extends TestCase
         $this->actingAs($user)
             ->postJson(route('volunteers.self-signup.autosave'), [
                 'autosave_fields' => ['attendance_duration'],
-                'attendance_duration' => 'years_1_3',
+                'attendance_duration' => 'years_1_2',
             ])
             ->assertOk();
 
@@ -296,17 +262,7 @@ class VolunteerSignupCompletionTest extends TestCase
         $volunteer = $user->fresh()->volunteerProfile;
         $this->assertNotNull($volunteer);
 
-        $volunteer->forceFill([
-            'birth_date' => '1988-05-20',
-            'has_whatsapp' => true,
-            'has_social_networks' => true,
-            'attendance_duration' => 'years_1_3',
-            'is_official_member' => false,
-            'has_previous_ministry_volunteer_experience' => false,
-            'ministry_involvement' => 'Não',
-            'other_ministry_interest' => 'Não',
-            'lgpd_data_consent' => true,
-        ])->save();
+        CompleteVolunteerSignup::apply($user, $volunteer);
 
         $this->actingAs($user)
             ->get(route('mobile.home'))

@@ -67,7 +67,7 @@ function parseEnvelope(raw: string): VolunteerSignupDraftEnvelope | null {
             return {
                 v: DRAFT_VERSION,
                 savedAt: env.savedAt,
-                page: page >= 0 && page <= 3 ? page : 0,
+                page: page >= 0 && page <= 2 ? page : 0,
                 fields: env.fields && typeof env.fields === 'object' ? env.fields : {},
                 photoPreview:
                     typeof env.photoPreview === 'string' && canStoreVolunteerSignupPhotoPreview(env.photoPreview)
@@ -158,19 +158,22 @@ export function volunteerSignupDraftHasAnswers(fields: Partial<DraftFields> | nu
         fields.has_whatsapp,
         fields.has_social_networks,
         fields.is_official_member,
-        fields.has_previous_ministry_volunteer_experience,
-        fields.is_active_in_ministry,
-        fields.wants_other_ministry,
+        fields.comfortable_with_digital_tools,
         fields.lgpd_data_consent,
     ];
     if (boolFields.some((v) => v === true || v === false)) {
         return true;
     }
-    const idFields = [fields.previous_ministry_ids, fields.active_ministry_ids, fields.other_ministry_ids];
-    if (idFields.some((ids) => (ids?.length ?? 0) > 0)) {
+    if ((fields.service_ease_areas?.length ?? 0) > 0) {
         return true;
     }
-    return Boolean(fields.gifts_to_develop?.trim() || fields.professional_area?.trim() || fields.member_record_church?.trim());
+    return Boolean(
+        fields.social_network_profiles?.trim() ||
+            fields.professional_area?.trim() ||
+            fields.service_greatest_strength?.trim() ||
+            fields.service_greatest_challenge?.trim() ||
+            fields.volunteer_phase,
+    );
 }
 
 export function writeVolunteerSignupDraft(
@@ -196,7 +199,7 @@ export function writeVolunteerSignupDraft(
     const envelope: VolunteerSignupDraftEnvelope = {
         v: DRAFT_VERSION,
         savedAt: new Date().toISOString(),
-        page: page >= 0 && page <= 3 ? page : 0,
+        page: page >= 0 && page <= 2 ? page : 0,
         fields: stripDraftFields(data),
         ...(photoPreview ? { photoPreview } : {}),
     };

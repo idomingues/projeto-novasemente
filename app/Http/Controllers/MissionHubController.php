@@ -29,6 +29,11 @@ class MissionHubController extends Controller
         return Inertia::render('Mobile/MissionHub', [
             'cards' => [
                 [
+                    'label' => 'Missão Tailândia & Mianmar',
+                    'subtitle' => 'Missão transcultural Nova Semente',
+                    'route' => 'mobile.mission.home',
+                ],
+                [
                     'label' => 'Próximos eventos',
                     'subtitle' => 'Agenda e encontros da missão',
                     'route' => 'mobile.mission.events',
@@ -55,6 +60,11 @@ class MissionHubController extends Controller
                 ],
             ],
         ]);
+    }
+
+    public function home(Request $request): Response
+    {
+        return Inertia::render('Mobile/MissionHome');
     }
 
     public function events(Request $request): Response

@@ -46,6 +46,7 @@ final class PageViewRouteLabels
         'mobile.health' => 'Saúde',
         'mobile.health.show' => 'Saúde — artigo',
         'mobile.mission' => 'Missão',
+        'mobile.mission.home' => 'Missão Tailândia & Mianmar',
         'mobile.mission.events' => 'Missão — eventos',
         'mobile.mission.messages' => 'Missão — depoimentos',
         'mobile.mission.about' => 'Missão — quem somos',

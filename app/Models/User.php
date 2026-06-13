@@ -182,12 +182,21 @@ class User extends Authenticatable
             'other_ministry_interest',
             'gifts_to_develop',
             'professional_area',
+            'social_network_profiles',
+            'volunteer_phase',
+            'service_ease_areas',
+            'service_greatest_strength',
+            'service_greatest_challenge',
             'lgpd_data_consent',
         ] as $field) {
             $value = $volunteer->{$field};
             if ($value !== null && $value !== '' && $value !== false) {
                 return false;
             }
+        }
+
+        if ($volunteer->has_social_networks === true || $volunteer->comfortable_with_digital_tools !== null) {
+            return false;
         }
 
         if ($volunteer->churchPipelines()->exists()) {

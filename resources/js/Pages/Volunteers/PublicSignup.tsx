@@ -1,4 +1,5 @@
 import Checkbox from '@/Components/Checkbox';
+import VolunteerSignupMultiCheckboxField from '@/Components/Volunteers/VolunteerSignupMultiCheckboxField';
 import InputError from '@/Components/InputError';
 import ProfilePhotoPicker from '@/Components/ProfilePhotoPicker';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -19,7 +20,6 @@ import {
     buildVolunteerSignupCompletionInput,
     computeVolunteerSignupCompletion,
     firstVolunteerSignupErrorKey,
-    hasMinistrySelection,
     isVolunteerSignupFieldVisible,
     mergeVolunteerSignupWithInitial,
     resolveVolunteerSignupFieldPage,
@@ -48,15 +48,25 @@ import {
     fieldTriggersImmediateAutosave,
     isVolunteerSignupFieldAnswered,
     postVolunteerSignupAutosave,
+    VOLUNTEER_SIGNUP_PAGE_FIELD_KEYS,
+    volunteerSignupFieldIsMultiSelect,
+    volunteerSignupMultiSelectDiffersOnPage,
     type VolunteerSignupAutosaveResponse,
 } from '@/utils/volunteerSignupAutosave';
+import {
+    ATTENDANCE_DURATION_OPTIONS,
+    SERVICE_EASE_AREA_OPTIONS,
+    VOLUNTEER_PHASE_OPTIONS,
+    type AttendanceDuration,
+    type VolunteerPhase,
+} from '@/utils/volunteerSignupOptions';
 import {
     buildVolunteerSignupQuestionNumbers,
     questionRangeForPage,
 } from '@/utils/volunteerSignupQuestionNumbers';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { UserPlusIcon } from '@heroicons/react/24/outline';
 import axios from 'axios';
+import { UserPlusIcon } from '@heroicons/react/24/outline';
 import { FormEventHandler, MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface Ministry {
@@ -75,22 +85,16 @@ export interface VolunteerSignupInitial {
     email: string;
     phone: string;
     has_social_networks: boolean | null;
+    social_network_profiles: string;
+    professional_area: string;
     attendance_duration: AttendanceDuration | '';
     is_official_member: boolean | null;
-    member_record_at_nova_semente: boolean | null;
-    member_record_church: string;
-    has_previous_ministry_volunteer_experience: boolean | null;
-    previous_ministry_ids: number[];
-    is_active_in_ministry: boolean | null;
-    active_ministry_ids: number[];
-    wants_other_ministry: boolean | null;
-    other_ministry_ids: number[];
-    gifts_to_develop: string;
-    professional_area: string;
+    volunteer_phase: VolunteerPhase | '';
+    service_ease_areas: string[];
+    comfortable_with_digital_tools: boolean | null;
+    service_greatest_strength: string;
+    service_greatest_challenge: string;
     lgpd_data_consent: boolean | null;
-    ministry_involvement?: string;
-    previous_ministry_details?: string;
-    other_ministry_interest?: string;
 }
 
 interface Props {
@@ -104,26 +108,11 @@ interface Props {
     focusMissingOnly?: boolean;
     missingFields?: string[];
     signupCompletion?: VolunteerSignupCompletion;
-    /** Etapa lógica do questionário (0–3) vinda de `?etapa=` após salvar. */
+    /** Etapa lógica do questionário (0–2) vinda de `?etapa=` após salvar. */
     resumePage?: number | null;
 }
 
-type AttendanceDuration =
-    | 'less_than_3_months'
-    | 'months_3_6'
-    | 'months_6_12'
-    | 'years_1_3'
-    | 'more_than_3_years';
-
-const PAGE_TITLES = ['Dados pessoais', 'Nova Semente', 'Experiência', 'Ministérios'];
-
-const ATTENDANCE_OPTIONS: { value: AttendanceDuration; label: string }[] = [
-    { value: 'less_than_3_months', label: 'Menos de 3 meses' },
-    { value: 'months_3_6', label: '3–6 meses' },
-    { value: 'months_6_12', label: '6–12 meses' },
-    { value: 'years_1_3', label: '1–3 anos' },
-    { value: 'more_than_3_years', label: '+ 3 anos' },
-];
+const PAGE_TITLES = ['Dados pessoais', 'Nova Semente', 'Sobre o serviço'];
 
 function resolveErrorPage(field: string): number {
     const base = field.split('.')[0];
@@ -140,24 +129,22 @@ function resolveErrorPage(field: string): number {
         'password_confirmation',
         'phone',
         'has_social_networks',
-    ]);
-    const page1 = new Set(['attendance_duration', 'is_official_member', 'member_record_at_nova_semente', 'member_record_church']);
-    const page2 = new Set(['has_previous_ministry_volunteer_experience', 'previous_ministry_ids']);
-    const page3 = new Set([
-        'is_active_in_ministry',
-        'active_ministry_ids',
-        'wants_other_ministry',
-        'other_ministry_ids',
-        'gifts_to_develop',
+        'social_network_profiles',
         'professional_area',
-        'lgpd_data_consent',
     ]);
+    const page1 = new Set([
+        'attendance_duration',
+        'is_official_member',
+        'volunteer_phase',
+        'service_ease_areas',
+        'comfortable_with_digital_tools',
+    ]);
+    const page2 = new Set(['service_greatest_strength', 'service_greatest_challenge', 'lgpd_data_consent']);
 
     if (page0.has(base)) return 0;
     if (page1.has(base)) return 1;
     if (page2.has(base)) return 2;
-    if (page3.has(base)) return 3;
-    return 3;
+    return 2;
 }
 
 function stepIndexForPage(visibleSteps: number[], pageNum: number): number {
@@ -181,16 +168,15 @@ const FIELD_SCROLL_TARGETS: Record<string, string> = {
     has_whatsapp: 'field-has_whatsapp',
     email: 'field-email',
     has_social_networks: 'field-has_social_networks',
+    social_network_profiles: 'field-social_network_profiles',
+    professional_area: 'field-professional_area',
     attendance_duration: 'field-attendance_duration',
     is_official_member: 'field-is_official_member',
-    member_record_at_nova_semente: 'field-member_record_at_nova_semente',
-    member_record_church: 'field-member_record_church',
-    has_previous_ministry_volunteer_experience: 'field-has_previous_ministry_volunteer_experience',
-    previous_ministry_ids: 'field-previous_ministry_ids',
-    is_active_in_ministry: 'field-is_active_in_ministry',
-    active_ministry_ids: 'field-active_ministry_ids',
-    wants_other_ministry: 'field-wants_other_ministry',
-    other_ministry_ids: 'field-other_ministry_ids',
+    volunteer_phase: 'field-volunteer_phase',
+    service_ease_areas: 'field-service_ease_areas',
+    comfortable_with_digital_tools: 'field-comfortable_with_digital_tools',
+    service_greatest_strength: 'field-service_greatest_strength',
+    service_greatest_challenge: 'field-service_greatest_challenge',
     lgpd_data_consent: 'field-lgpd_data_consent',
     current_password: 'field-current_password',
     password: 'field-password',
@@ -239,10 +225,7 @@ const SIGNUP_BOOL_FIELDS = [
     'has_whatsapp',
     'has_social_networks',
     'is_official_member',
-    'member_record_at_nova_semente',
-    'has_previous_ministry_volunteer_experience',
-    'is_active_in_ministry',
-    'wants_other_ministry',
+    'comfortable_with_digital_tools',
     'lgpd_data_consent',
 ] as const;
 
@@ -257,21 +240,8 @@ function prepareSignupPayload(form: Record<string, unknown>, firstName: string, 
         out.has_whatsapp = false;
     }
 
-    if (normalizeSignupBool(out.is_official_member as BoolLike) !== true) {
-        delete out.member_record_at_nova_semente;
-        delete out.member_record_church;
-    }
-
-    if (normalizeSignupBool(out.has_previous_ministry_volunteer_experience as BoolLike) !== true) {
-        out.previous_ministry_ids = [];
-    }
-
-    if (normalizeSignupBool(out.is_active_in_ministry as BoolLike) !== true) {
-        out.active_ministry_ids = [];
-    }
-
-    if (normalizeSignupBool(out.wants_other_ministry as BoolLike) !== true) {
-        out.other_ministry_ids = [];
+    if (normalizeSignupBool(out.has_social_networks as BoolLike) !== true) {
+        out.social_network_profiles = '';
     }
 
     delete out.full_name;
@@ -392,6 +362,9 @@ function MinistryCheckboxList({
 }) {
     return (
         <div>
+            <p className="mb-2 text-sm text-zinc-600 dark:text-zinc-400">
+                Marque todas as opções que se aplicam. As respostas são salvas ao tocar em Continuar.
+            </p>
             <div className="max-h-52 space-y-2 overflow-y-auto rounded-xl border border-zinc-200 p-3 dark:border-zinc-700">
                 {ministries.length === 0 ? (
                     <p className="text-sm text-zinc-500 dark:text-zinc-400">{emptyMessage}</p>
@@ -494,18 +467,15 @@ function buildFormDefaults(
         email: '',
         phone: '',
         has_social_networks: null,
+        social_network_profiles: '',
+        professional_area: '',
         attendance_duration: '' as AttendanceDuration | '',
         is_official_member: null,
-        member_record_at_nova_semente: null,
-        member_record_church: '',
-        has_previous_ministry_volunteer_experience: null,
-        previous_ministry_ids: [],
-        is_active_in_ministry: null,
-        active_ministry_ids: [],
-        wants_other_ministry: null,
-        other_ministry_ids: [],
-        gifts_to_develop: '',
-        professional_area: '',
+        volunteer_phase: '' as VolunteerPhase | '',
+        service_ease_areas: [] as string[],
+        comfortable_with_digital_tools: null,
+        service_greatest_strength: '',
+        service_greatest_challenge: '',
         lgpd_data_consent: null,
     };
 
@@ -523,18 +493,15 @@ function buildFormDefaults(
         email: merged.email,
         phone: merged.phone,
         has_social_networks: merged.has_social_networks,
+        social_network_profiles: merged.social_network_profiles,
+        professional_area: merged.professional_area,
         attendance_duration: merged.attendance_duration,
         is_official_member: merged.is_official_member,
-        member_record_at_nova_semente: merged.member_record_at_nova_semente,
-        member_record_church: merged.member_record_church,
-        has_previous_ministry_volunteer_experience: merged.has_previous_ministry_volunteer_experience,
-        previous_ministry_ids: merged.previous_ministry_ids ?? [],
-        is_active_in_ministry: merged.is_active_in_ministry,
-        active_ministry_ids: merged.active_ministry_ids ?? [],
-        wants_other_ministry: merged.wants_other_ministry,
-        other_ministry_ids: merged.other_ministry_ids ?? [],
-        gifts_to_develop: merged.gifts_to_develop,
-        professional_area: merged.professional_area,
+        volunteer_phase: merged.volunteer_phase,
+        service_ease_areas: merged.service_ease_areas ?? [],
+        comfortable_with_digital_tools: merged.comfortable_with_digital_tools,
+        service_greatest_strength: merged.service_greatest_strength,
+        service_greatest_challenge: merged.service_greatest_challenge,
         lgpd_data_consent: merged.lgpd_data_consent,
         current_password: '',
         password: '',
@@ -565,6 +532,7 @@ export default function PublicSignup({
     const backHref = cancelHref ?? (isEdit ? route('mobile.profile.edit') : route('more.index'));
     const savedInitialRef = useRef(initial);
     const [liveMissingFields, setLiveMissingFields] = useState<string[]>(missingFieldsProp ?? []);
+    const [pinnedMultiSelectFields, setPinnedMultiSelectFields] = useState<string[]>([]);
     const [liveSignupCompletion, setLiveSignupCompletion] = useState(signupCompletion);
     const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const [autosaveMessage, setAutosaveMessage] = useState<string | null>(null);
@@ -590,7 +558,7 @@ export default function PublicSignup({
 
     const missingFields = liveMissingFields;
     const visiblePages = useMemo(
-        () => (focusMissingOnly ? visiblePagesForMissingFields(missingFields) : [0, 1, 2, 3]),
+        () => (focusMissingOnly ? visiblePagesForMissingFields(missingFields) : [0, 1, 2]),
         [focusMissingOnly, missingFields],
     );
     const lastVisiblePageIndex = Math.max(0, visiblePages.length - 1);
@@ -613,8 +581,9 @@ export default function PublicSignup({
     }, [data]);
 
     const showField = useCallback(
-        (fieldKey: string) => isVolunteerSignupFieldVisible(fieldKey, focusMissingOnly, missingFields, data),
-        [data, focusMissingOnly, missingFields],
+        (fieldKey: string) =>
+            isVolunteerSignupFieldVisible(fieldKey, focusMissingOnly, missingFields, data, pinnedMultiSelectFields),
+        [data, focusMissingOnly, missingFields, pinnedMultiSelectFields],
     );
 
     const questionNumberContext = useMemo(
@@ -634,18 +603,6 @@ export default function PublicSignup({
     );
 
     const qn = (fieldKey: string) => questionNumbers[fieldKey] ?? 0;
-
-    const legacyMinistryTexts = useMemo(
-        () =>
-            initial
-                ? {
-                      ministry_involvement: initial.ministry_involvement,
-                      previous_ministry_details: initial.previous_ministry_details,
-                      other_ministry_interest: initial.other_ministry_interest,
-                  }
-                : undefined,
-        [initial],
-    );
 
     const [photoPreview, setPhotoPreview] = useState<string | null>(() => {
         if (isEdit) {
@@ -673,6 +630,23 @@ export default function PublicSignup({
     });
     const page = visiblePages[pageSlot] ?? 0;
     const activePageRef = useRef(page);
+
+    useEffect(() => {
+        if (!focusMissingOnly) {
+            setPinnedMultiSelectFields([]);
+            return;
+        }
+
+        const multiOnPage = (VOLUNTEER_SIGNUP_PAGE_FIELD_KEYS[page] ?? []).filter((fieldKey) =>
+            volunteerSignupFieldIsMultiSelect(fieldKey),
+        );
+        setPinnedMultiSelectFields((current) => {
+            const withoutThisPage = current.filter((fieldKey) => resolveVolunteerSignupFieldPage(fieldKey) !== page);
+            const toPin = multiOnPage.filter((fieldKey) => missingFields.includes(fieldKey));
+
+            return [...withoutThisPage, ...toPin];
+        });
+    }, [focusMissingOnly, missingFields, page]);
 
     const questionRange = useMemo(
         () => questionRangeForPage(questionNumberContext, page),
@@ -815,13 +789,6 @@ export default function PublicSignup({
         clearErrors();
     }, [clearErrors]);
 
-    const toggleIds = (field: 'previous_ministry_ids' | 'active_ministry_ids' | 'other_ministry_ids', id: number) => {
-        const current = data[field];
-        const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
-        setData(field, next);
-        clearClientError(field);
-    };
-
     const flushGuestDraft = useCallback(() => {
         if (isEdit || processing) return;
         writeVolunteerSignupDraft(signupToken, data, {
@@ -888,18 +855,12 @@ export default function PublicSignup({
             setData((current) => {
                 const patch = volunteerSignupFormPatchFromInitialFields(response.initial, savedFields);
                 const saved = new Set(savedFields);
-                for (const key of [
-                    'is_active_in_ministry',
-                    'wants_other_ministry',
-                    'has_previous_ministry_volunteer_experience',
-                ] as const) {
-                    if (
-                        saved.has(key) &&
-                        normalizeSignupBool(current[key]) === true &&
-                        normalizeSignupBool(patch[key] as BoolLike) !== true
-                    ) {
-                        delete patch[key];
-                    }
+                if (
+                    saved.has('has_social_networks') &&
+                    normalizeSignupBool(current.has_social_networks) === true &&
+                    normalizeSignupBool(patch.has_social_networks as BoolLike) !== true
+                ) {
+                    delete patch.has_social_networks;
                 }
                 return {
                     ...current,
@@ -909,6 +870,14 @@ export default function PublicSignup({
             });
 
             if (response.completion.is_complete) {
+                const localPayload = dataRef.current as unknown as Record<string, unknown>;
+                const serverInitial = response.initial as unknown as Record<string, unknown>;
+                if (volunteerSignupMultiSelectDiffersOnPage(localPayload, serverInitial, activePageRef.current)) {
+                    setAutosaveMessage('Toque em Continuar para salvar todas as opções marcadas.');
+                    setAutosaveStatus('saved');
+                    return;
+                }
+
                 setClientErrors({});
                 setStepBlocked(false);
                 setAutosaveStatus('saved');
@@ -1168,7 +1137,7 @@ export default function PublicSignup({
                 hasExistingPhoto,
                 focusMissingOnly,
                 missingFields,
-                legacyMinistryTexts,
+                pinnedMultiSelectFields,
                 duplicateHints,
             }),
         [
@@ -1180,13 +1149,14 @@ export default function PublicSignup({
             phoneDuplicateHint,
             focusMissingOnly,
             missingFields,
-            legacyMinistryTexts,
+            pinnedMultiSelectFields,
         ],
     );
 
     const scheduleFieldAutosave = useCallback(
         (fieldKey: string, extraFields: string[] = []) => {
             if (!isEdit) return;
+            if (volunteerSignupFieldIsMultiSelect(fieldKey)) return;
             if (autosaveDebounceRef.current) clearTimeout(autosaveDebounceRef.current);
             autosaveDebounceRef.current = setTimeout(() => {
                 const snapshot = dataRef.current;
@@ -1198,7 +1168,7 @@ export default function PublicSignup({
                     hasExistingPhoto,
                     focusMissingOnly,
                     missingFields,
-                    legacyMinistryTexts,
+                    pinnedMultiSelectFields,
                 });
                 const errorKey = fieldKey === 'full_name' ? 'full_name' : fieldKey;
                 if (pageErrors[errorKey]) return;
@@ -1215,7 +1185,7 @@ export default function PublicSignup({
                 void performAutosave([...new Set(fields)]);
             }, 500);
         },
-        [focusMissingOnly, hasExistingPhoto, isEdit, legacyMinistryTexts, missingFields, page, performAutosave],
+        [focusMissingOnly, hasExistingPhoto, isEdit, missingFields, page, performAutosave, pinnedMultiSelectFields],
     );
 
     const persistFieldAnswer = useCallback(
@@ -1280,6 +1250,9 @@ export default function PublicSignup({
             });
             setStepBlocked(false);
             dismissSubmitErrors();
+            setPinnedMultiSelectFields((current) =>
+                current.filter((fieldKey) => resolveVolunteerSignupFieldPage(fieldKey) !== page),
+            );
             goToPageSlot(pageSlot + 1);
             window.scrollTo({ top: 0, behavior: 'smooth' });
         } finally {
@@ -1327,23 +1300,8 @@ export default function PublicSignup({
 
     const evaluateMergedSignupCompletion = useCallback(
         (prepared: Record<string, unknown>) => {
-            const baseline = savedInitialRef.current ?? initial;
             const completionInput = buildVolunteerSignupCompletionInput(prepared, {
                 hasExistingPhoto: hasExistingPhoto || data.photo_file !== null,
-                legacy: {
-                    ministry_involvement:
-                        normalizeSignupBool(prepared.is_active_in_ministry as BoolLike) === true
-                            ? baseline?.ministry_involvement
-                            : undefined,
-                    previous_ministry_details:
-                        normalizeSignupBool(prepared.has_previous_ministry_volunteer_experience as BoolLike) === true
-                            ? baseline?.previous_ministry_details
-                            : undefined,
-                    other_ministry_interest:
-                        normalizeSignupBool(prepared.wants_other_ministry as BoolLike) === true
-                            ? baseline?.other_ministry_interest
-                            : undefined,
-                },
             });
 
             return computeVolunteerSignupCompletion(completionInput);
@@ -1494,27 +1452,6 @@ export default function PublicSignup({
             splitVolunteerFullName(data.full_name) &&
             !showSubmitErrors &&
             (clientErrors.full_name || clientErrors.first_name || clientErrors.last_name)
-        ) {
-            return undefined;
-        }
-        if (
-            key === 'active_ministry_ids' &&
-            hasMinistrySelection(data.active_ministry_ids, legacyMinistryTexts?.ministry_involvement) &&
-            clientErrors.active_ministry_ids
-        ) {
-            return undefined;
-        }
-        if (
-            key === 'previous_ministry_ids' &&
-            hasMinistrySelection(data.previous_ministry_ids, legacyMinistryTexts?.previous_ministry_details) &&
-            clientErrors.previous_ministry_ids
-        ) {
-            return undefined;
-        }
-        if (
-            key === 'other_ministry_ids' &&
-            hasMinistrySelection(data.other_ministry_ids, legacyMinistryTexts?.other_ministry_interest) &&
-            clientErrors.other_ministry_ids
         ) {
             return undefined;
         }
@@ -1739,6 +1676,88 @@ export default function PublicSignup({
                                     />
                                 </section>
                                 ) : null}
+                                {showField('birth_date') ? (
+                                <Question fieldKey="birth_date" number={qn('birth_date')} label="Data de nascimento" error={err('birth_date')}>
+                                    <BrDateInput
+                                        className="w-full max-w-xs"
+                                        value={data.birth_date}
+                                        max={maxBirthDate}
+                                        onChange={(iso) => {
+                                            setData('birth_date', iso);
+                                            clearClientError('birth_date');
+                                        }}
+                                        onBlur={() => {
+                                            if (isEdit) scheduleFieldAutosave('birth_date');
+                                        }}
+                                    />
+                                </Question>
+                                ) : null}
+                                {showField('has_social_networks') ? (
+                                <Question
+                                    fieldKey="has_social_networks"
+                                    number={qn('has_social_networks')}
+                                    label="Redes sociais?"
+                                    error={err('has_social_networks')}
+                                >
+                                    <YesNoRadio
+                                        name="has_social_networks"
+                                        value={data.has_social_networks}
+                                        onChange={(v) => {
+                                            setData((d) => ({
+                                                ...d,
+                                                has_social_networks: v,
+                                                social_network_profiles: v ? d.social_network_profiles : '',
+                                            }));
+                                            clearClientError('has_social_networks');
+                                            if (!v) clearClientError('social_network_profiles');
+                                            persistFieldAnswer('has_social_networks');
+                                        }}
+                                    />
+                                </Question>
+                                ) : null}
+                                {(focusMissingOnly
+                                    ? showField('social_network_profiles')
+                                    : normalizeSignupBool(data.has_social_networks) === true) ? (
+                                    <Question
+                                        fieldKey="social_network_profiles"
+                                        number={qn('social_network_profiles')}
+                                        label="Qual o nome do seu perfil?"
+                                        error={err('social_network_profiles')}
+                                    >
+                                        <TextInput
+                                            className="w-full"
+                                            placeholder="Ex.: @seuusuario ou nome do perfil"
+                                            value={data.social_network_profiles}
+                                            onChange={(e) => {
+                                                setData('social_network_profiles', e.target.value);
+                                                clearClientError('social_network_profiles');
+                                            }}
+                                            onBlur={() => {
+                                                if (isEdit) scheduleFieldAutosave('social_network_profiles');
+                                            }}
+                                        />
+                                    </Question>
+                                ) : null}
+                                {showField('professional_area') ? (
+                                <Question
+                                    fieldKey="professional_area"
+                                    number={qn('professional_area')}
+                                    label="Qual a sua área de atuação profissional?"
+                                    error={err('professional_area')}
+                                >
+                                    <TextInput
+                                        className="w-full"
+                                        value={data.professional_area}
+                                        onChange={(e) => {
+                                            setData('professional_area', e.target.value);
+                                            clearClientError('professional_area');
+                                        }}
+                                        onBlur={() => {
+                                            if (isEdit) scheduleFieldAutosave('professional_area');
+                                        }}
+                                    />
+                                </Question>
+                                ) : null}
                                 {showField('full_name') ? (
                                 <Question
                                     fieldKey="full_name"
@@ -1758,22 +1777,6 @@ export default function PublicSignup({
                                             clearClientError('full_name');
                                         }}
                                         onBlur={onNameBlur}
-                                    />
-                                </Question>
-                                ) : null}
-                                {showField('birth_date') ? (
-                                <Question fieldKey="birth_date" number={qn('birth_date')} label="Data de nascimento" error={err('birth_date')}>
-                                    <BrDateInput
-                                        className="w-full max-w-xs"
-                                        value={data.birth_date}
-                                        max={maxBirthDate}
-                                        onChange={(iso) => {
-                                            setData('birth_date', iso);
-                                            clearClientError('birth_date');
-                                        }}
-                                        onBlur={() => {
-                                            if (isEdit) scheduleFieldAutosave('birth_date');
-                                        }}
                                     />
                                 </Question>
                                 ) : null}
@@ -1915,33 +1918,15 @@ export default function PublicSignup({
                                         </Question>
                                     </>
                                 ) : null}
-                                {showField('has_social_networks') ? (
-                                <Question
-                                    fieldKey="has_social_networks"
-                                    number={qn('has_social_networks')}
-                                    label="Redes sociais (Instagram, Facebook ou TikTok)"
-                                    error={err('has_social_networks')}
-                                >
-                                    <YesNoRadio
-                                        name="has_social_networks"
-                                        value={data.has_social_networks}
-                                        onChange={(v) => {
-                                            setData('has_social_networks', v);
-                                            clearClientError('has_social_networks');
-                                            persistFieldAnswer('has_social_networks');
-                                        }}
-                                    />
-                                </Question>
-                                ) : null}
                             </>
                         ) : null}
 
                         {page === 1 ? (
                             <>
                                 {showField('attendance_duration') ? (
-                                <Question fieldKey="attendance_duration" number={qn('attendance_duration')} label="Há quanto tempo você frequenta a Nova Semente?" error={err('attendance_duration')}>
+                                <Question fieldKey="attendance_duration" number={qn('attendance_duration')} label="A quanto tempo frequenta a Nova Semente?" error={err('attendance_duration')}>
                                     <div className="space-y-1.5" role="radiogroup">
-                                        {ATTENDANCE_OPTIONS.map((opt) => {
+                                        {ATTENDANCE_DURATION_OPTIONS.map((opt) => {
                                             const selected = data.attendance_duration === opt.value;
                                             return (
                                                 <button
@@ -1980,234 +1965,130 @@ export default function PublicSignup({
                                 </Question>
                                 ) : null}
                                 {showField('is_official_member') ? (
-                                <Question fieldKey="is_official_member" number={qn('is_official_member')} label="Você é membro oficial da igreja adventista?" error={err('is_official_member')}>
+                                <Question fieldKey="is_official_member" number={qn('is_official_member')} label="Você é membro oficial da Igreja Adventista do 7º dia?" error={err('is_official_member')}>
                                     <YesNoRadio
                                         name="is_official_member"
                                         value={data.is_official_member}
                                         onChange={(v) => {
-                                            setData((d) => ({
-                                                ...d,
-                                                is_official_member: v,
-                                                member_record_at_nova_semente: null,
-                                                member_record_church: '',
-                                            }));
+                                            setData('is_official_member', v);
                                             clearClientError('is_official_member');
                                             persistFieldAnswer('is_official_member');
                                         }}
                                     />
                                 </Question>
                                 ) : null}
-                                {(focusMissingOnly
-                                    ? showField('member_record_at_nova_semente') || showField('member_record_church')
-                                    : normalizeSignupBool(data.is_official_member) === true) ? (
-                                    <>
-                                        {showField('member_record_at_nova_semente') ? (
-                                        <Question
-                                            fieldKey="member_record_at_nova_semente"
-                                            number={qn('member_record_at_nova_semente')}
-                                            label="Seu registro de membro está na Nova Semente?"
-                                            error={err('member_record_at_nova_semente')}
-                                        >
-                                            <YesNoRadio
-                                                name="member_record_at_nova_semente"
-                                                value={data.member_record_at_nova_semente}
-                                                onChange={(v) => {
-                                                    setData((d) => ({
-                                                        ...d,
-                                                        member_record_at_nova_semente: v,
-                                                        member_record_church: v ? '' : d.member_record_church,
-                                                    }));
-                                                    clearClientError('member_record_at_nova_semente');
-                                                    persistFieldAnswer('member_record_at_nova_semente');
-                                                }}
-                                            />
-                                        </Question>
-                                        ) : null}
-                                        {(focusMissingOnly
-                                            ? showField('member_record_church')
-                                            : normalizeSignupBool(data.member_record_at_nova_semente) === false) ? (
-                                            <Question
-                                                fieldKey="member_record_church"
-                                                number={qn('member_record_church')}
-                                                label="Se não estiver, em qual igreja está?"
-                                                error={err('member_record_church')}
-                                            >
-                                                <TextInput
-                                                    className="w-full"
-                                                    value={data.member_record_church}
-                                                    onChange={(e) => {
-                                                        setData('member_record_church', e.target.value);
-                                                        clearClientError('member_record_church');
+                                {showField('volunteer_phase') ? (
+                                <Question fieldKey="volunteer_phase" number={qn('volunteer_phase')} label="Qual é a sua fase atual no voluntariado da Nova Semente?" error={err('volunteer_phase')}>
+                                    <div className="space-y-1.5" role="radiogroup">
+                                        {VOLUNTEER_PHASE_OPTIONS.map((opt) => {
+                                            const selected = data.volunteer_phase === opt.value;
+                                            return (
+                                                <button
+                                                    key={opt.value}
+                                                    type="button"
+                                                    role="radio"
+                                                    aria-checked={selected}
+                                                    onClick={() => {
+                                                        setData('volunteer_phase', opt.value);
+                                                        clearClientError('volunteer_phase');
+                                                        persistFieldAnswer('volunteer_phase');
                                                     }}
-                                                    onBlur={() => {
-                                                        if (isEdit) scheduleFieldAutosave('member_record_church');
-                                                    }}
-                                                />
-                                            </Question>
-                                        ) : null}
-                                    </>
+                                                    className={[
+                                                        'flex w-full cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition-colors sm:px-4 sm:py-3',
+                                                        selected
+                                                            ? 'border-teal-500/80 bg-teal-50/90 ring-1 ring-teal-500/30 dark:border-teal-500/50 dark:bg-teal-950/40'
+                                                            : 'border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50/80 dark:border-zinc-700 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/50',
+                                                    ].join(' ')}
+                                                >
+                                                    <span
+                                                        className={[
+                                                            'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2',
+                                                            selected ? 'border-teal-600 dark:border-teal-400' : 'border-zinc-300 dark:border-zinc-600',
+                                                        ].join(' ')}
+                                                        aria-hidden
+                                                    >
+                                                        {selected ? (
+                                                            <span className="h-2.5 w-2.5 rounded-full bg-teal-600 dark:bg-teal-400" />
+                                                        ) : null}
+                                                    </span>
+                                                    <span className="text-zinc-800 dark:text-zinc-100">{opt.label}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </Question>
+                                ) : null}
+                                {showField('service_ease_areas') ? (
+                                <Question fieldKey="service_ease_areas" number={qn('service_ease_areas')} label="Em quais áreas você acredita ter mais facilidade para servir?" error={err('service_ease_areas')}>
+                                    <VolunteerSignupMultiCheckboxField
+                                        options={SERVICE_EASE_AREA_OPTIONS}
+                                        selectedValues={data.service_ease_areas}
+                                        onChange={(next) => {
+                                            setData('service_ease_areas', next);
+                                            clearClientError('service_ease_areas');
+                                        }}
+                                    />
+                                </Question>
+                                ) : null}
+                                {showField('comfortable_with_digital_tools') ? (
+                                <Question
+                                    fieldKey="comfortable_with_digital_tools"
+                                    number={qn('comfortable_with_digital_tools')}
+                                    label="Você se sente confortável usando ferramentas digitais (ex.: planilhas, aplicativos, sistemas da igreja)?"
+                                    error={err('comfortable_with_digital_tools')}
+                                >
+                                    <YesNoRadio
+                                        name="comfortable_with_digital_tools"
+                                        value={data.comfortable_with_digital_tools}
+                                        onChange={(v) => {
+                                            setData('comfortable_with_digital_tools', v);
+                                            clearClientError('comfortable_with_digital_tools');
+                                            persistFieldAnswer('comfortable_with_digital_tools');
+                                        }}
+                                    />
+                                </Question>
                                 ) : null}
                             </>
                         ) : null}
 
                         {page === 2 ? (
                             <>
-                                {showField('has_previous_ministry_volunteer_experience') ? (
+                                {showField('service_greatest_strength') ? (
                                 <Question
-                                    fieldKey="has_previous_ministry_volunteer_experience"
-                                    number={qn('has_previous_ministry_volunteer_experience')}
-                                    label="Você já foi voluntário em algum ministério da igreja?"
-                                    error={err('has_previous_ministry_volunteer_experience')}
-                                >
-                                    <YesNoRadio
-                                        name="has_previous_ministry_volunteer_experience"
-                                        value={data.has_previous_ministry_volunteer_experience}
-                                        onChange={(v) => {
-                                            setData((d) => ({
-                                                ...d,
-                                                has_previous_ministry_volunteer_experience: v,
-                                                previous_ministry_ids: v ? d.previous_ministry_ids : [],
-                                            }));
-                                            clearClientError('has_previous_ministry_volunteer_experience');
-                                            persistFieldAnswer('has_previous_ministry_volunteer_experience');
-                                        }}
-                                    />
-                                </Question>
-                                ) : null}
-                                {(focusMissingOnly
-                                    ? showField('previous_ministry_ids')
-                                    : normalizeSignupBool(data.has_previous_ministry_volunteer_experience) === true) ? (
-                                    <Question
-                                        fieldKey="previous_ministry_ids"
-                                        number={qn('previous_ministry_ids')}
-                                        label="Se sim, quais? Em quais ministérios já serviu?"
-                                        error={err('previous_ministry_ids')}
-                                    >
-                                        <MinistryCheckboxList
-                                            ministries={ministries}
-                                            selectedIds={data.previous_ministry_ids}
-                                            onToggle={(id) => {
-                                                const next = toggleVolunteerMinistryId(data.previous_ministry_ids, id);
-                                                setData('previous_ministry_ids', next);
-                                                clearClientError('previous_ministry_ids');
-                                                persistFieldAnswer('previous_ministry_ids', [
-                                                    'has_previous_ministry_volunteer_experience',
-                                                ]);
-                                            }}
-                                        />
-                                    </Question>
-                                ) : null}
-                            </>
-                        ) : null}
-
-                        {page === 3 ? (
-                            <>
-                                {showField('is_active_in_ministry') ? (
-                                <Question
-                                    fieldKey="is_active_in_ministry"
-                                    number={qn('is_active_in_ministry')}
-                                    label="Você é atuante de algum ministério da Nova Semente?"
-                                    error={err('is_active_in_ministry')}
-                                >
-                                    <YesNoRadio
-                                        name="is_active_in_ministry"
-                                        value={data.is_active_in_ministry}
-                                        onChange={(v) => {
-                                            setData((d) => ({
-                                                ...d,
-                                                is_active_in_ministry: v,
-                                                active_ministry_ids: v ? d.active_ministry_ids : [],
-                                            }));
-                                            clearClientError('is_active_in_ministry');
-                                            persistFieldAnswer('is_active_in_ministry');
-                                        }}
-                                    />
-                                </Question>
-                                ) : null}
-                                {(focusMissingOnly
-                                    ? showField('active_ministry_ids')
-                                    : normalizeSignupBool(data.is_active_in_ministry) === true) ? (
-                                    <Question fieldKey="active_ministry_ids" number={qn('active_ministry_ids')} label="Selecione os ministérios" error={err('active_ministry_ids')}>
-                                        <MinistryCheckboxList
-                                            ministries={ministries}
-                                            selectedIds={data.active_ministry_ids}
-                                            onToggle={(id) => {
-                                                const next = toggleVolunteerMinistryId(data.active_ministry_ids, id);
-                                                setData('active_ministry_ids', next);
-                                                clearClientError('active_ministry_ids');
-                                                persistFieldAnswer('active_ministry_ids', ['is_active_in_ministry']);
-                                            }}
-                                        />
-                                    </Question>
-                                ) : null}
-                                {showField('wants_other_ministry') ? (
-                                <Question
-                                    fieldKey="wants_other_ministry"
-                                    number={qn('wants_other_ministry')}
-                                    label="Gostaria de servir em outro ministério?"
-                                    error={err('wants_other_ministry')}
-                                >
-                                    <YesNoRadio
-                                        name="wants_other_ministry"
-                                        value={data.wants_other_ministry}
-                                        onChange={(v) => {
-                                            setData((d) => ({
-                                                ...d,
-                                                wants_other_ministry: v,
-                                                other_ministry_ids: v ? d.other_ministry_ids : [],
-                                            }));
-                                            clearClientError('wants_other_ministry');
-                                            persistFieldAnswer('wants_other_ministry');
-                                        }}
-                                    />
-                                </Question>
-                                ) : null}
-                                {(focusMissingOnly
-                                    ? showField('other_ministry_ids')
-                                    : normalizeSignupBool(data.wants_other_ministry) === true) ? (
-                                    <Question fieldKey="other_ministry_ids" number={qn('other_ministry_ids')} label="Se sim, qual?" error={err('other_ministry_ids')}>
-                                        <MinistryCheckboxList
-                                            ministries={ministries}
-                                            selectedIds={data.other_ministry_ids}
-                                            onToggle={(id) => {
-                                                const next = toggleVolunteerMinistryId(data.other_ministry_ids, id);
-                                                setData('other_ministry_ids', next);
-                                                clearClientError('other_ministry_ids');
-                                                persistFieldAnswer('other_ministry_ids', ['wants_other_ministry']);
-                                            }}
-                                        />
-                                    </Question>
-                                ) : null}
-                                {!focusMissingOnly ? (
-                                <Question
-                                    number={qn('gifts_to_develop')}
-                                    label="Quais dons ou habilidades você gostaria de desenvolver no servir?"
-                                    required={false}
-                                    error={err('gifts_to_develop')}
+                                    fieldKey="service_greatest_strength"
+                                    number={qn('service_greatest_strength')}
+                                    label="O que você considera ser seu maior ponto forte no serviço?"
+                                    error={err('service_greatest_strength')}
                                 >
                                     <TextInput
                                         className="w-full"
-                                        value={data.gifts_to_develop}
-                                        onChange={(e) => setData('gifts_to_develop', e.target.value)}
+                                        value={data.service_greatest_strength}
+                                        onChange={(e) => {
+                                            setData('service_greatest_strength', e.target.value);
+                                            clearClientError('service_greatest_strength');
+                                        }}
                                         onBlur={() => {
-                                            if (isEdit) scheduleFieldAutosave('gifts_to_develop');
+                                            if (isEdit) scheduleFieldAutosave('service_greatest_strength');
                                         }}
                                     />
                                 </Question>
                                 ) : null}
-                                {!focusMissingOnly ? (
+                                {showField('service_greatest_challenge') ? (
                                 <Question
-                                    number={qn('professional_area')}
-                                    label="Qual sua área de atuação profissional?"
-                                    required={false}
-                                    error={err('professional_area')}
+                                    fieldKey="service_greatest_challenge"
+                                    number={qn('service_greatest_challenge')}
+                                    label="O que você considera ser seu maior desafio ao servir?"
+                                    error={err('service_greatest_challenge')}
                                 >
                                     <TextInput
                                         className="w-full"
-                                        value={data.professional_area}
-                                        onChange={(e) => setData('professional_area', e.target.value)}
+                                        value={data.service_greatest_challenge}
+                                        onChange={(e) => {
+                                            setData('service_greatest_challenge', e.target.value);
+                                            clearClientError('service_greatest_challenge');
+                                        }}
                                         onBlur={() => {
-                                            if (isEdit) scheduleFieldAutosave('professional_area');
+                                            if (isEdit) scheduleFieldAutosave('service_greatest_challenge');
                                         }}
                                     />
                                 </Question>
@@ -2244,7 +2125,7 @@ export default function PublicSignup({
                             </Link>
                         ) : (
                             <p className="text-center text-xs text-zinc-500 dark:text-zinc-400 sm:text-left">
-                                Alterações em departamentos em que você já serve oficialmente podem exigir confirmação de um líder.
+                                Revise suas respostas antes de concluir o cadastro de voluntário.
                             </p>
                         )}
                         <FormNav

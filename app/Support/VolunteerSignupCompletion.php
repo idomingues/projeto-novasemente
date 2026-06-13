@@ -7,16 +7,12 @@ use Illuminate\Support\Carbon;
 
 /**
  * Progresso do questionário de cadastro/edição de voluntário (espelha validação do PublicSignup).
- *
- * Não entram no cálculo (opcionais): telefone, dons, área profissional, senha.
  */
 final class VolunteerSignupCompletion
 {
     /** @var list<string> */
     public const OPTIONAL_FIELD_KEYS = [
         'phone',
-        'gifts_to_develop',
-        'professional_area',
         'password',
         'password_confirmation',
         'current_password',
@@ -41,8 +37,6 @@ final class VolunteerSignupCompletion
     }
 
     /**
-     * Retorna o progresso apenas enquanto o questionário não estiver completo (para alertas na app).
-     *
      * @return array{
      *     is_complete: bool,
      *     missing_count: int,
@@ -59,8 +53,6 @@ final class VolunteerSignupCompletion
     }
 
     /**
-     * Alerta de cadastro incompleto (home / perfil): só voluntários já efetivados com questionário pendente.
-     *
      * @return array{
      *     is_complete: bool,
      *     missing_count: int,
@@ -98,16 +90,15 @@ final class VolunteerSignupCompletion
             'has_whatsapp' => 'WhatsApp no telefone',
             'email' => 'E-mail',
             'has_social_networks' => 'Uso de redes sociais',
-            'attendance_duration' => 'Tempo de frequência na igreja',
-            'is_official_member' => 'Membro oficial da igreja',
-            'member_record_at_nova_semente' => 'Registro de membro na Nova Semente',
-            'member_record_church' => 'Igreja do registro de membro',
-            'has_previous_ministry_volunteer_experience' => 'Experiência anterior como voluntário',
-            'previous_ministry_ids' => 'Ministérios em que já serviu',
-            'is_active_in_ministry' => 'Atuação em ministério',
-            'active_ministry_ids' => 'Ministérios em que é atuante',
-            'wants_other_ministry' => 'Interesse em outro ministério',
-            'other_ministry_ids' => 'Ministérios de interesse',
+            'social_network_profiles' => 'Nome do perfil nas redes sociais',
+            'professional_area' => 'Área de atuação profissional',
+            'attendance_duration' => 'Tempo de frequência na Nova Semente',
+            'is_official_member' => 'Membro oficial da Igreja Adventista do 7º dia',
+            'volunteer_phase' => 'Fase no voluntariado da Nova Semente',
+            'service_ease_areas' => 'Áreas de facilidade para servir',
+            'comfortable_with_digital_tools' => 'Conforto com ferramentas digitais',
+            'service_greatest_strength' => 'Maior ponto forte no serviço',
+            'service_greatest_challenge' => 'Maior desafio ao servir',
             'lgpd_data_consent' => 'Consentimento LGPD',
         ];
 
@@ -170,67 +161,48 @@ final class VolunteerSignupCompletion
         $email = trim((string) ($initial['email'] ?? ''));
         $track('email', true, $email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) !== false);
 
-        $track('has_social_networks', true, self::isBoolSet($initial['has_social_networks'] ?? null));
+        $hasSocialNetworks = self::normalizeBool($initial['has_social_networks'] ?? null);
+        $track('has_social_networks', true, $hasSocialNetworks !== null);
+
+        if ($hasSocialNetworks === true) {
+            $track(
+                'social_network_profiles',
+                true,
+                trim((string) ($initial['social_network_profiles'] ?? '')) !== ''
+            );
+        }
+
+        $track('professional_area', true, trim((string) ($initial['professional_area'] ?? '')) !== '');
 
         $track('attendance_duration', true, trim((string) ($initial['attendance_duration'] ?? '')) !== '');
 
-        $isOfficialMember = self::normalizeBool($initial['is_official_member'] ?? null);
-        $track('is_official_member', true, $isOfficialMember !== null);
+        $track('is_official_member', true, self::isBoolSet($initial['is_official_member'] ?? null));
 
-        if ($isOfficialMember === true) {
-            $memberAtNovaSemente = self::normalizeBool($initial['member_record_at_nova_semente'] ?? null);
-            $track('member_record_at_nova_semente', true, $memberAtNovaSemente !== null);
+        $track('volunteer_phase', true, self::isValidVolunteerPhase($initial['volunteer_phase'] ?? null));
 
-            if ($memberAtNovaSemente === false) {
-                $track(
-                    'member_record_church',
-                    true,
-                    trim((string) ($initial['member_record_church'] ?? '')) !== ''
-                );
-            }
-        }
+        $track(
+            'service_ease_areas',
+            true,
+            VolunteerSignupServiceEaseAreas::hasSelection($initial['service_ease_areas'] ?? null)
+        );
 
-        $hasPrevious = self::normalizeBool($initial['has_previous_ministry_volunteer_experience'] ?? null);
-        $track('has_previous_ministry_volunteer_experience', true, $hasPrevious !== null);
+        $track(
+            'comfortable_with_digital_tools',
+            true,
+            self::isBoolSet($initial['comfortable_with_digital_tools'] ?? null)
+        );
 
-        if ($hasPrevious === true) {
-            $track(
-                'previous_ministry_ids',
-                true,
-                VolunteerSignupMinistryMapper::hasMinistrySelection(
-                    $initial['previous_ministry_ids'] ?? [],
-                    isset($initial['previous_ministry_details']) ? (string) $initial['previous_ministry_details'] : null
-                )
-            );
-        }
+        $track(
+            'service_greatest_strength',
+            true,
+            trim((string) ($initial['service_greatest_strength'] ?? '')) !== ''
+        );
 
-        $isActive = self::normalizeBool($initial['is_active_in_ministry'] ?? null);
-        $track('is_active_in_ministry', true, $isActive !== null);
-
-        if ($isActive === true) {
-            $track(
-                'active_ministry_ids',
-                true,
-                VolunteerSignupMinistryMapper::hasMinistrySelection(
-                    $initial['active_ministry_ids'] ?? [],
-                    isset($initial['ministry_involvement']) ? (string) $initial['ministry_involvement'] : null
-                )
-            );
-        }
-
-        $wantsOther = self::normalizeBool($initial['wants_other_ministry'] ?? null);
-        $track('wants_other_ministry', true, $wantsOther !== null);
-
-        if ($wantsOther === true) {
-            $track(
-                'other_ministry_ids',
-                true,
-                VolunteerSignupMinistryMapper::hasMinistrySelection(
-                    $initial['other_ministry_ids'] ?? [],
-                    isset($initial['other_ministry_interest']) ? (string) $initial['other_ministry_interest'] : null
-                )
-            );
-        }
+        $track(
+            'service_greatest_challenge',
+            true,
+            trim((string) ($initial['service_greatest_challenge'] ?? '')) !== ''
+        );
 
         $track('lgpd_data_consent', true, self::normalizeBool($initial['lgpd_data_consent'] ?? null) === true);
 
@@ -266,22 +238,11 @@ final class VolunteerSignupCompletion
         return null;
     }
 
-    /**
-     * @param  array<int, mixed>|mixed  $ids
-     */
-    private static function hasPositiveIds(mixed $ids): bool
+    private static function isValidVolunteerPhase(mixed $value): bool
     {
-        if (! is_array($ids)) {
-            return false;
-        }
+        $slug = trim((string) ($value ?? ''));
 
-        foreach ($ids as $id) {
-            if ((int) $id > 0) {
-                return true;
-            }
-        }
-
-        return false;
+        return $slug !== '' && array_key_exists($slug, config('volunteer_signup.volunteer_phase', []));
     }
 
     private static function isBirthDateAtLeastMinAge(string $birthDate, int $minYears): bool

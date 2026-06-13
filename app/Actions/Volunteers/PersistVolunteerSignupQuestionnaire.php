@@ -9,8 +9,8 @@ use App\Support\UserProfilePhotoResolver;
 use App\Support\VolunteerAppLogin;
 use App\Support\VolunteerContactDuplicateChecker;
 use App\Support\VolunteerSignupCompletion;
-use App\Support\VolunteerSignupMinistryMapper;
 use App\Support\VolunteerSignupName;
+use App\Support\VolunteerSignupServiceEaseAreas;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -33,21 +33,6 @@ final class PersistVolunteerSignupQuestionnaire
         $previousIds = $this->normalizeIdList($validated['previous_ministry_ids'] ?? []);
         $activeIds = $this->normalizeIdList($validated['active_ministry_ids'] ?? []);
         $otherIds = $this->normalizeIdList($validated['other_ministry_ids'] ?? []);
-
-        $previousMinistryDetails = ($validated['has_previous_ministry_volunteer_experience'] ?? false)
-            ? VolunteerSignupMinistryMapper::storedTextForYesNoWithIds(
-                true,
-                $this->ministryNamesForChurch($previousIds, $churchId)
-            )
-            : null;
-        $ministryInvolvement = VolunteerSignupMinistryMapper::storedTextForYesNoWithIds(
-            ($validated['is_active_in_ministry'] ?? false) === true,
-            $this->ministryNamesForChurch($activeIds, $churchId)
-        );
-        $otherMinistryInterest = VolunteerSignupMinistryMapper::storedTextForYesNoWithIds(
-            ($validated['wants_other_ministry'] ?? false) === true,
-            $this->ministryNamesForChurch($otherIds, $churchId)
-        );
 
         $newMinistryIds = array_values(array_unique(array_merge($activeIds, $otherIds)));
         $existingMinistryIds = $volunteer->ministries()->pluck('ministries.id')->map(fn ($id) => (int) $id)->all();
@@ -76,9 +61,6 @@ final class PersistVolunteerSignupQuestionnaire
             $validated,
             $name,
             $emailNorm ?? VolunteerContactDuplicateChecker::normalizeEmail((string) $validated['email']),
-            $previousMinistryDetails,
-            $ministryInvolvement,
-            $otherMinistryInterest,
             $autosaveFields,
         );
 
@@ -187,30 +169,30 @@ final class PersistVolunteerSignupQuestionnaire
         array $validated,
         string $name,
         ?string $email,
-        ?string $previousMinistryDetails,
-        string $ministryInvolvement,
-        string $otherMinistryInterest,
         ?array $autosaveFields,
     ): array {
+        $hasSocialNetworks = (bool) ($validated['has_social_networks'] ?? false);
+
         $full = [
             'name' => $name,
             'email' => $email,
             'phone' => $this->nullableString($validated['phone'] ?? null),
             'birth_date' => $this->nullableDate($validated['birth_date'] ?? null),
             'has_whatsapp' => (bool) ($validated['has_whatsapp'] ?? false),
-            'has_social_networks' => (bool) $validated['has_social_networks'],
-            'attendance_duration' => $this->nullableString($validated['attendance_duration'] ?? null),
-            'is_official_member' => (bool) $validated['is_official_member'],
-            'member_record_at_nova_semente' => array_key_exists('member_record_at_nova_semente', $validated)
-                ? (is_null($validated['member_record_at_nova_semente']) ? null : (bool) $validated['member_record_at_nova_semente'])
+            'has_social_networks' => $hasSocialNetworks,
+            'social_network_profiles' => $hasSocialNetworks
+                ? $this->nullableString($validated['social_network_profiles'] ?? null)
                 : null,
-            'member_record_church' => $this->nullableString($validated['member_record_church'] ?? null),
-            'has_previous_ministry_volunteer_experience' => (bool) $validated['has_previous_ministry_volunteer_experience'],
-            'previous_ministry_details' => $previousMinistryDetails,
-            'ministry_involvement' => $ministryInvolvement,
-            'other_ministry_interest' => $otherMinistryInterest,
-            'gifts_to_develop' => $this->nullableString($validated['gifts_to_develop'] ?? null),
             'professional_area' => $this->nullableString($validated['professional_area'] ?? null),
+            'attendance_duration' => $this->nullableString($validated['attendance_duration'] ?? null),
+            'is_official_member' => (bool) ($validated['is_official_member'] ?? false),
+            'volunteer_phase' => $this->nullableString($validated['volunteer_phase'] ?? null),
+            'service_ease_areas' => VolunteerSignupServiceEaseAreas::encode($validated['service_ease_areas'] ?? []),
+            'comfortable_with_digital_tools' => array_key_exists('comfortable_with_digital_tools', $validated)
+                ? (is_null($validated['comfortable_with_digital_tools']) ? null : (bool) $validated['comfortable_with_digital_tools'])
+                : null,
+            'service_greatest_strength' => $this->nullableString($validated['service_greatest_strength'] ?? null),
+            'service_greatest_challenge' => $this->nullableString($validated['service_greatest_challenge'] ?? null),
             'lgpd_data_consent' => (bool) ($validated['lgpd_data_consent'] ?? false),
         ];
 
@@ -237,47 +219,41 @@ final class PersistVolunteerSignupQuestionnaire
             $patch['has_whatsapp'] = (bool) ($validated['has_whatsapp'] ?? false);
         }
         if (isset($saved['has_social_networks'])) {
-            $patch['has_social_networks'] = (bool) $validated['has_social_networks'];
+            $patch['has_social_networks'] = $hasSocialNetworks;
+            $patch['social_network_profiles'] = $hasSocialNetworks
+                ? $this->nullableString($validated['social_network_profiles'] ?? null)
+                : null;
+        }
+        if (isset($saved['social_network_profiles'])) {
+            $patch['social_network_profiles'] = $hasSocialNetworks
+                ? $this->nullableString($validated['social_network_profiles'] ?? null)
+                : null;
+        }
+        if (isset($saved['professional_area'])) {
+            $patch['professional_area'] = $this->nullableString($validated['professional_area'] ?? null);
         }
         if (isset($saved['attendance_duration'])) {
             $patch['attendance_duration'] = $this->nullableString($validated['attendance_duration'] ?? null);
         }
         if (isset($saved['is_official_member'])) {
-            $patch['is_official_member'] = (bool) $validated['is_official_member'];
+            $patch['is_official_member'] = (bool) ($validated['is_official_member'] ?? false);
         }
-        if (isset($saved['member_record_at_nova_semente'])) {
-            $patch['member_record_at_nova_semente'] = array_key_exists('member_record_at_nova_semente', $validated)
-                ? (is_null($validated['member_record_at_nova_semente']) ? null : (bool) $validated['member_record_at_nova_semente'])
+        if (isset($saved['volunteer_phase'])) {
+            $patch['volunteer_phase'] = $this->nullableString($validated['volunteer_phase'] ?? null);
+        }
+        if (isset($saved['service_ease_areas'])) {
+            $patch['service_ease_areas'] = VolunteerSignupServiceEaseAreas::encode($validated['service_ease_areas'] ?? []);
+        }
+        if (isset($saved['comfortable_with_digital_tools'])) {
+            $patch['comfortable_with_digital_tools'] = array_key_exists('comfortable_with_digital_tools', $validated)
+                ? (is_null($validated['comfortable_with_digital_tools']) ? null : (bool) $validated['comfortable_with_digital_tools'])
                 : null;
         }
-        if (isset($saved['member_record_church'])) {
-            $patch['member_record_church'] = $this->nullableString($validated['member_record_church'] ?? null);
+        if (isset($saved['service_greatest_strength'])) {
+            $patch['service_greatest_strength'] = $this->nullableString($validated['service_greatest_strength'] ?? null);
         }
-        if (isset($saved['has_previous_ministry_volunteer_experience'])) {
-            $patch['has_previous_ministry_volunteer_experience'] = (bool) $validated['has_previous_ministry_volunteer_experience'];
-            $patch['previous_ministry_details'] = $previousMinistryDetails;
-        }
-        if (isset($saved['previous_ministry_ids'])) {
-            $patch['has_previous_ministry_volunteer_experience'] = (bool) $validated['has_previous_ministry_volunteer_experience'];
-            $patch['previous_ministry_details'] = $previousMinistryDetails;
-        }
-        if (isset($saved['is_active_in_ministry'])) {
-            $patch['ministry_involvement'] = $ministryInvolvement;
-        }
-        if (isset($saved['active_ministry_ids'])) {
-            $patch['ministry_involvement'] = $ministryInvolvement;
-        }
-        if (isset($saved['wants_other_ministry'])) {
-            $patch['other_ministry_interest'] = $otherMinistryInterest;
-        }
-        if (isset($saved['other_ministry_ids'])) {
-            $patch['other_ministry_interest'] = $otherMinistryInterest;
-        }
-        if (isset($saved['gifts_to_develop'])) {
-            $patch['gifts_to_develop'] = $this->nullableString($validated['gifts_to_develop'] ?? null);
-        }
-        if (isset($saved['professional_area'])) {
-            $patch['professional_area'] = $this->nullableString($validated['professional_area'] ?? null);
+        if (isset($saved['service_greatest_challenge'])) {
+            $patch['service_greatest_challenge'] = $this->nullableString($validated['service_greatest_challenge'] ?? null);
         }
         if (isset($saved['lgpd_data_consent'])) {
             $patch['lgpd_data_consent'] = (bool) ($validated['lgpd_data_consent'] ?? false);
@@ -309,15 +285,13 @@ final class PersistVolunteerSignupQuestionnaire
     }
 
     /**
-     * No autosave parcial, não altere departamentos até o usuário enviar a lista de IDs.
-     *
      * @param  list<int>  $newMinistryIds
      * @param  list<string>|null  $autosaveFields
      */
     private function shouldSyncMinistryPivot(?array $autosaveFields, array $newMinistryIds): bool
     {
         if ($autosaveFields === null) {
-            return true;
+            return $newMinistryIds !== [];
         }
 
         $ministryListFields = ['active_ministry_ids', 'other_ministry_ids', 'previous_ministry_ids'];
@@ -346,22 +320,5 @@ final class PersistVolunteerSignupQuestionnaire
     private function normalizeIdList(array $ids): array
     {
         return array_values(array_unique(array_filter(array_map('intval', $ids), fn ($id) => $id > 0)));
-    }
-
-    /**
-     * @param  list<int>  $ids
-     */
-    private function ministryNamesForChurch(array $ids, int $churchId): string
-    {
-        if ($ids === []) {
-            return '';
-        }
-
-        return \App\Models\Ministry::query()
-            ->where('church_id', $churchId)
-            ->whereIn('id', $ids)
-            ->orderBy('name')
-            ->pluck('name')
-            ->join(', ');
     }
 }
