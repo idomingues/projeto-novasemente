@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             SharedTalentCategorySeeder::class,
             ChurchSeeder::class,
             MinistrySeeder::class,
+            ChurchCommunitySeeder::class,
             ScheduleRoleSeeder::class,
             MemberSeeder::class,
             VolunteerSeeder::class,

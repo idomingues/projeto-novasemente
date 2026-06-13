@@ -34,6 +34,7 @@ return [
         ['name' => 'Música', 'route' => 'musica.index', 'icon' => 'musical-note'],
         ['name' => 'Fotos', 'route' => 'photo-albums.index', 'icon' => 'camera'],
         ['name' => 'Biblioteca', 'route' => 'library-books.index', 'icon' => 'book-open'],
+        ['name' => 'Comunidades', 'route' => 'communities.index', 'icon' => 'user-group'],
         ['name' => 'Caixa de Promessas', 'route' => 'promise-box-verses.index', 'icon' => 'sparkles'],
         ['name' => 'Culto', 'route' => 'culto.index', 'icon' => 'film'],
         ['name' => 'Doação', 'route' => 'donation-campaigns.index', 'icon' => 'banknotes'],

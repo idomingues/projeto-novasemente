@@ -6,6 +6,7 @@ use App\Http\Controllers\AppVersionController;
 use App\Http\Controllers\CampaignDonationController;
 use App\Http\Controllers\ChurchController;
 use App\Http\Controllers\CommunicationRequestController;
+use App\Http\Controllers\CommunityController;
 use App\Http\Controllers\CultoController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DonationCampaignController;
@@ -124,6 +125,7 @@ Route::get('/mobile/events', [MobileController::class, 'events'])->name('mobile.
 Route::get('/mobile/schedule', [MobileController::class, 'schedule'])->name('mobile.schedule');
 Route::get('/mobile/schedule/full', [MobileController::class, 'scheduleFull'])->name('mobile.schedule.full');
 Route::get('/mobile/more', [MobileController::class, 'more'])->name('mobile.more');
+Route::get('/mobile/comunidade', [CommunityController::class, 'mobile'])->name('mobile.communities');
 Route::get('/mobile/missao', [\App\Http\Controllers\MissionHubController::class, 'index'])->name('mobile.mission');
 Route::get('/mobile/missao/home', [\App\Http\Controllers\MissionHubController::class, 'home'])->name('mobile.mission.home');
 Route::get('/mobile/missao/inscricao', [MissionTripRegistrationController::class, 'create'])
@@ -771,6 +773,15 @@ Route::middleware('auth')->group(function () {
     Route::post('/fotos', [PhotoAlbumController::class, 'store'])->name('photo-albums.store')->middleware('permission:photos.manage');
     Route::put('/fotos/{album}', [PhotoAlbumController::class, 'update'])->name('photo-albums.update')->middleware('permission:photos.manage');
     Route::delete('/fotos/{album}', [PhotoAlbumController::class, 'destroy'])->name('photo-albums.destroy')->middleware('permission:photos.manage');
+    Route::get('/comunidades', [CommunityController::class, 'index'])->name('communities.index')
+        ->middleware('permission:communities.view|communities.manage');
+    Route::post('/comunidades', [CommunityController::class, 'store'])->name('communities.store')
+        ->middleware('permission:communities.manage');
+    Route::put('/comunidades/{churchCommunity}', [CommunityController::class, 'update'])->name('communities.update')
+        ->middleware('permission:communities.manage');
+    Route::delete('/comunidades/{churchCommunity}', [CommunityController::class, 'destroy'])->name('communities.destroy')
+        ->middleware('permission:communities.manage');
+
     Route::get('/biblioteca', [LibraryBookController::class, 'index'])->name('library-books.index')->middleware('permission:library.manage');
     Route::post('/biblioteca', [LibraryBookController::class, 'store'])->name('library-books.store')->middleware('permission:library.manage');
     Route::put('/biblioteca/{libraryBook}', [LibraryBookController::class, 'update'])->name('library-books.update')->middleware('permission:library.manage');

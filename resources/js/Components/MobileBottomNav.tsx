@@ -95,6 +95,7 @@ const navItems = [
             'mobile.mission.wall',
             'mobile.mission.form',
             'mission.form',
+            'mobile.communities',
             'mobile.biblioteca',
             'mobile.biblioteca.show',
             'mobile.bible',

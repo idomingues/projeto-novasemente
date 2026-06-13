@@ -46,6 +46,12 @@ const items: MoreMenuItem[] = [
     { name: 'Notícias', description: 'Notícias e comunicados da igreja', route: 'mobile.news', icon: NewspaperIcon },
     { name: 'Saúde', description: 'Conteúdos de saúde e bem-estar', route: 'mobile.health', icon: HeartIcon },
     { name: 'Missão', description: 'Eventos, depoimentos, mural e cadastro missionário', route: 'mobile.mission', icon: GlobeAltIcon },
+    {
+        name: 'Comunidade',
+        description: 'Grupos de interesse da igreja no WhatsApp',
+        route: 'mobile.communities',
+        icon: UserGroupIcon,
+    },
     { name: 'Oração', description: 'Pedidos de oração', route: 'mobile.prayer', icon: PrayingHandsIcon },
     { name: 'Doação', description: 'Seu gesto de amor pode transformar vidas e renovar esperanças', route: 'mobile.campaigns.index', icon: BanknotesIcon },
     {

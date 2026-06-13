@@ -106,6 +106,7 @@ export const adminSidebarRoutePermissions: Record<string, string[]> = {
     'musica.index': ['music.manage'],
     'photo-albums.index': ['photos.manage'],
     'library-books.index': ['library.manage'],
+    'communities.index': ['communities.view', 'communities.manage'],
     'promise-box-verses.index': ['library.manage'],
     'services.index': [],
     /** Visibilidade: `auth.canManageSettings` (super admin ou `library.manage`). */
