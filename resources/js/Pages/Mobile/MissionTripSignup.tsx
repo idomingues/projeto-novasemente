@@ -13,6 +13,7 @@ import {
 
 interface Props extends MissionTripSignupConfig {
     missionHomeUrl: string;
+    missionCadastroUrl: string;
 }
 
 const highlights = [
@@ -21,7 +22,7 @@ const highlights = [
     { icon: UserGroupIcon, label: 'Público-alvo', value: '30 mil refugiados' },
 ];
 
-export default function MissionTripSignup({ storeUrl, professions, missionHomeUrl }: Props) {
+export default function MissionTripSignup({ storeUrl, professions, missionHomeUrl, missionCadastroUrl }: Props) {
     const flash = (usePage().props as { flash?: { trip_signup_success?: boolean; trip_signup_name?: string | null } })
         .flash;
     const [successOpen, setSuccessOpen] = useState(false);
@@ -98,6 +99,7 @@ export default function MissionTripSignup({ storeUrl, professions, missionHomeUr
                 show={successOpen}
                 onClose={() => setSuccessOpen(false)}
                 missionHomeUrl={missionHomeUrl}
+                missionCadastroUrl={missionCadastroUrl}
                 participantName={flash?.trip_signup_name ?? ''}
             />
         </MobileLayout>

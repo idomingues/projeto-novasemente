@@ -22,6 +22,7 @@ class MissionTripRegistrationController extends Controller
             'storeUrl' => route('mobile.mission.trip-registration.store'),
             'professions' => config('mission.trip_professions', []),
             'missionHomeUrl' => route('mobile.mission.home'),
+            'missionCadastroUrl' => route('mobile.mission.form'),
         ];
     }
 

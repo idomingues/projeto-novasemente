@@ -8,6 +8,7 @@ type Props = {
     show: boolean;
     onClose: () => void;
     missionHomeUrl: string;
+    missionCadastroUrl: string;
     participantName?: string;
 };
 
@@ -15,6 +16,7 @@ export default function MissionTripSignupSuccessModal({
     show,
     onClose,
     missionHomeUrl,
+    missionCadastroUrl,
     participantName,
 }: Props) {
     const greeting = participantName?.trim()
@@ -59,10 +61,29 @@ export default function MissionTripSignupSuccessModal({
                     <p className="text-center text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
                         Por favor, aguarde nosso retorno. Ficamos muito felizes com o seu desejo de servir.
                     </p>
+                    <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/70 p-4 dark:border-emerald-800/50 dark:bg-emerald-950/30">
+                        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                            Deseja se cadastrar no aplicativo?
+                        </p>
+                        <p className="mt-1 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                            Continue com o cadastro missionário para criar sua conta no app Nova Semente e acompanhar
+                            cultos, avisos e recursos da igreja.
+                        </p>
+                        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                            <Link href={missionCadastroUrl} className="w-full sm:flex-1">
+                                <PrimaryButton type="button" className="w-full">
+                                    Sim, cadastrar no app
+                                </PrimaryButton>
+                            </Link>
+                            <SecondaryButton type="button" className="w-full sm:flex-1" onClick={onClose}>
+                                Agora não
+                            </SecondaryButton>
+                        </div>
+                    </div>
                     <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
-                        <PrimaryButton type="button" onClick={onClose} className="w-full sm:w-auto">
+                        <SecondaryButton type="button" onClick={onClose} className="w-full sm:w-auto">
                             Entendi
-                        </PrimaryButton>
+                        </SecondaryButton>
                         <Link href={missionHomeUrl} className="w-full sm:w-auto">
                             <SecondaryButton type="button" className="w-full">
                                 Voltar à missão

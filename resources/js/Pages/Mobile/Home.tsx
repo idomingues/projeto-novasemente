@@ -8,6 +8,7 @@ import {
     ArchiveBoxIcon,
     BanknotesIcon,
     BookOpenIcon,
+    GlobeAltIcon,
     MusicalNoteIcon,
     PhotoIcon,
     SparklesIcon,
@@ -182,6 +183,12 @@ const quickActionsGuest: QuickAction[] = [
         subtitle: 'Faça sua oferta de forma simples',
         route: 'mobile.offerings',
         icon: BanknotesIcon,
+    },
+    {
+        label: 'Missão',
+        subtitle: 'Eventos, depoimentos, mural e cadastro missionário',
+        route: 'mobile.mission',
+        icon: GlobeAltIcon,
     },
 ];
 

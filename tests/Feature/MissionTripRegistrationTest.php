@@ -37,7 +37,8 @@ class MissionTripRegistrationTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->component('Mobile/MissionTripSignup')
                 ->has('storeUrl')
-                ->has('professions'));
+                ->has('professions')
+                ->has('missionCadastroUrl'));
     }
 
     public function test_trip_registration_is_stored_from_signup_page(): void
