@@ -9,6 +9,22 @@ use Illuminate\Support\Collection;
  */
 final class VolunteerSignupMinistryMapper
 {
+    /** Marcador interno: respondeu Sim, ainda não escolheu departamentos no catálogo. */
+    public const YES_AWAITING_MINISTRY_PICK = '—';
+
+    /**
+     * Texto gravado em cadastros Sim/Não + lista de departamentos (CSV ou marcador pendente).
+     */
+    public static function storedTextForYesNoWithIds(bool $answeredYes, string $namesCsv): string
+    {
+        if (! $answeredYes) {
+            return 'Não';
+        }
+
+        $names = trim($namesCsv);
+
+        return $names !== '' ? $names : self::YES_AWAITING_MINISTRY_PICK;
+    }
     /**
      * @param  Collection<int, object{id: int, name: string}>  $ministries
      * @return list<int>
@@ -16,7 +32,7 @@ final class VolunteerSignupMinistryMapper
     public static function idsFromStoredNames(?string $stored, Collection $ministries): array
     {
         $text = trim((string) $stored);
-        if ($text === '' || mb_strtolower($text) === 'não') {
+        if ($text === '' || mb_strtolower($text) === 'não' || $text === self::YES_AWAITING_MINISTRY_PICK) {
             return [];
         }
 
@@ -58,6 +74,10 @@ final class VolunteerSignupMinistryMapper
         }
 
         $text = trim((string) $stored);
+        if ($text === self::YES_AWAITING_MINISTRY_PICK) {
+            return true;
+        }
+
         if ($text === '') {
             return null;
         }
@@ -79,6 +99,9 @@ final class VolunteerSignupMinistryMapper
         }
 
         $text = trim((string) $storedText);
+        if ($text === self::YES_AWAITING_MINISTRY_PICK) {
+            return false;
+        }
 
         return $text !== '' && mb_strtolower($text) !== 'não';
     }

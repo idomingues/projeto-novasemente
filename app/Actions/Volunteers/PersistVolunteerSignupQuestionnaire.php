@@ -9,6 +9,7 @@ use App\Support\UserProfilePhotoResolver;
 use App\Support\VolunteerAppLogin;
 use App\Support\VolunteerContactDuplicateChecker;
 use App\Support\VolunteerSignupCompletion;
+use App\Support\VolunteerSignupMinistryMapper;
 use App\Support\VolunteerSignupName;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -34,14 +35,19 @@ final class PersistVolunteerSignupQuestionnaire
         $otherIds = $this->normalizeIdList($validated['other_ministry_ids'] ?? []);
 
         $previousMinistryDetails = ($validated['has_previous_ministry_volunteer_experience'] ?? false)
-            ? $this->ministryNamesForChurch($previousIds, $churchId)
+            ? VolunteerSignupMinistryMapper::storedTextForYesNoWithIds(
+                true,
+                $this->ministryNamesForChurch($previousIds, $churchId)
+            )
             : null;
-        $ministryInvolvement = ($validated['is_active_in_ministry'] ?? false)
-            ? $this->ministryNamesForChurch($activeIds, $churchId)
-            : 'Não';
-        $otherMinistryInterest = ($validated['wants_other_ministry'] ?? false)
-            ? $this->ministryNamesForChurch($otherIds, $churchId)
-            : 'Não';
+        $ministryInvolvement = VolunteerSignupMinistryMapper::storedTextForYesNoWithIds(
+            ($validated['is_active_in_ministry'] ?? false) === true,
+            $this->ministryNamesForChurch($activeIds, $churchId)
+        );
+        $otherMinistryInterest = VolunteerSignupMinistryMapper::storedTextForYesNoWithIds(
+            ($validated['wants_other_ministry'] ?? false) === true,
+            $this->ministryNamesForChurch($otherIds, $churchId)
+        );
 
         $newMinistryIds = array_values(array_unique(array_merge($activeIds, $otherIds)));
         $existingMinistryIds = $volunteer->ministries()->pluck('ministries.id')->map(fn ($id) => (int) $id)->all();

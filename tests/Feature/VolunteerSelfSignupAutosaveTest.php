@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Church;
 use App\Models\Ministry;
 use App\Models\User;
+use App\Support\VolunteerSignupMinistryMapper;
 use Database\Seeders\ChurchSeeder;
 use Database\Seeders\MinistrySeeder;
 use Database\Seeders\RolePermissionSeeder;
@@ -111,12 +112,45 @@ class VolunteerSelfSignupAutosaveTest extends TestCase
                 'last_name' => 'Silva',
                 'is_active_in_ministry' => true,
             ])
-            ->assertOk();
+            ->assertOk()
+            ->assertJsonPath('initial.is_active_in_ministry', true);
 
         $volunteer->refresh();
         $this->assertTrue($volunteer->ministries()->whereKey($ministry->id)->exists());
         $this->assertNotNull($volunteer->ministry_involvement);
         $this->assertNotSame('Não', (string) $volunteer->ministry_involvement);
+    }
+
+    public function test_autosave_yes_to_active_ministry_keeps_yes_in_form_prefill_before_picking_departments(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+
+        $user = User::factory()->create([
+            'church_id' => $churchId,
+            'is_volunteer' => false,
+            'name' => 'Ana Souza',
+            'email' => 'ana.ministry@example.com',
+            'photo_url' => 'https://example.com/photos/ana.jpg',
+        ]);
+
+        $user->ensureVolunteerProfile();
+
+        $this->actingAs($user)
+            ->postJson(route('volunteers.self-signup.autosave'), [
+                'autosave_fields' => ['is_active_in_ministry'],
+                'first_name' => 'Ana',
+                'last_name' => 'Souza',
+                'is_active_in_ministry' => true,
+            ])
+            ->assertOk()
+            ->assertJsonPath('initial.is_active_in_ministry', true)
+            ->assertJsonPath('initial.active_ministry_ids', []);
+
+        $volunteer = $user->fresh()->volunteerProfile;
+        $this->assertNotNull($volunteer);
+        $this->assertSame(VolunteerSignupMinistryMapper::YES_AWAITING_MINISTRY_PICK, $volunteer->ministry_involvement);
     }
 
     public function test_partial_autosave_does_not_clear_existing_birth_date(): void

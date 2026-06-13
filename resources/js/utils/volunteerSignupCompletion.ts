@@ -29,9 +29,13 @@ export const VOLUNTEER_SIGNUP_OPTIONAL_FIELD_KEYS = [
     'current_password',
 ] as const;
 
+/** Marcador interno (espelha backend): Sim sem departamentos escolhidos ainda. */
+export const VOLUNTEER_MINISTRY_YES_AWAITING_PICK = '—';
+
 export function hasMinistrySelection(ids: unknown, storedText?: string | null): boolean {
     if (hasPositiveIds(ids)) return true;
     const text = (storedText ?? '').trim();
+    if (text === VOLUNTEER_MINISTRY_YES_AWAITING_PICK) return false;
     return text !== '' && text.toLowerCase() !== 'não';
 }
 

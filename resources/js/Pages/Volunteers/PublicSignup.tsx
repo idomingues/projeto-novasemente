@@ -885,11 +885,28 @@ export default function PublicSignup({
             savedInitialRef.current = response.initial;
             setLiveMissingFields(response.completion.missing_fields);
             setLiveSignupCompletion(response.completion);
-            setData((current) => ({
-                ...current,
-                ...volunteerSignupFormPatchFromInitialFields(response.initial, savedFields),
-                photo_file: current.photo_file,
-            }));
+            setData((current) => {
+                const patch = volunteerSignupFormPatchFromInitialFields(response.initial, savedFields);
+                const saved = new Set(savedFields);
+                for (const key of [
+                    'is_active_in_ministry',
+                    'wants_other_ministry',
+                    'has_previous_ministry_volunteer_experience',
+                ] as const) {
+                    if (
+                        saved.has(key) &&
+                        normalizeSignupBool(current[key]) === true &&
+                        normalizeSignupBool(patch[key] as BoolLike) !== true
+                    ) {
+                        delete patch[key];
+                    }
+                }
+                return {
+                    ...current,
+                    ...patch,
+                    photo_file: current.photo_file,
+                };
+            });
 
             if (response.completion.is_complete) {
                 setClientErrors({});
