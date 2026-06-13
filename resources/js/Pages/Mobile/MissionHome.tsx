@@ -1,4 +1,3 @@
-import MissionArtComingSoon from '@/Components/Mission/MissionArtComingSoon';
 import MissionHubBackLink from '@/Components/Mission/MissionHubBackLink';
 import MissionPageSection from '@/Components/Mission/MissionPageSection';
 import MissionParticipateButton from '@/Components/Mission/MissionParticipateButton';
@@ -91,8 +90,6 @@ export default function MissionHome({ signupUrl }: Props) {
                 <div className="mt-4">
                     <MissionThailandHero variant="page" participateHref={signupUrl} />
                 </div>
-
-                <MissionArtComingSoon className="mt-4" />
 
                 <nav
                     aria-label="Seções da página"

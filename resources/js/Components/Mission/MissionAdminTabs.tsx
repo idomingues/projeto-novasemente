@@ -11,17 +11,17 @@ export type MissionAdminTab =
 
 const tabs: { key: MissionAdminTab; label: string; route: string; showCount?: boolean }[] = [
     { key: 'cadastros', label: 'Cadastros', route: 'mission.index' },
-    {
-        key: 'tailandia-mianmar',
-        label: 'Inscrições Tailândia',
-        route: 'mission.trip-registrations.index',
-        showCount: true,
-    },
     { key: 'usuarios', label: 'Usuários', route: 'mission.users.index' },
     { key: 'eventos', label: 'Eventos', route: 'mission.content.events' },
     { key: 'depoimentos', label: 'Depoimentos', route: 'mission.content.messages' },
     { key: 'quem-somos', label: 'Quem somos', route: 'mission.content.about' },
     { key: 'mural', label: 'Mural', route: 'mission.content.wall' },
+    {
+        key: 'tailandia-mianmar',
+        label: 'Inscrição Tailândia & Mianmar',
+        route: 'mission.trip-registrations.index',
+        showCount: true,
+    },
 ];
 
 function tabButtonClass(active: boolean): string {

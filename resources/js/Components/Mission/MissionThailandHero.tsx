@@ -1,4 +1,5 @@
 import MissionParticipateButton from '@/Components/Mission/MissionParticipateButton';
+import MissionSignupQrCode from '@/Components/Mission/MissionSignupQrCode';
 import {
     ArrowRightIcon,
     CalendarDaysIcon,
@@ -89,7 +90,8 @@ export default function MissionThailandHero({ variant = 'page', participateHref 
                     </div>
 
                     {isPage && participateHref ? (
-                        <div className="flex shrink-0 lg:min-w-[11rem]">
+                        <div className="flex shrink-0 items-center gap-4">
+                            <MissionSignupQrCode value={participateHref} />
                             <MissionParticipateButton variant="hero" href={participateHref} />
                         </div>
                     ) : null}
