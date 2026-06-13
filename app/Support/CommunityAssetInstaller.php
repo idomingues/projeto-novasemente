@@ -102,8 +102,11 @@ final class CommunityAssetInstaller
         Storage::disk('public')->makeDirectory('communities/covers');
         $target = Storage::disk('public')->path($relativePath);
 
-        if (! is_file($target) || filesize($target) === 0) {
+        // Sempre sincroniza a arte do seed (permite atualizar layout vertical em produção).
+        if (is_file($source)) {
             File::copy($source, $target);
+        } elseif (! is_file($target)) {
+            return null;
         }
 
         return is_file($target) && filesize($target) > 0 ? $relativePath : null;

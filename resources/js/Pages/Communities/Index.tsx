@@ -288,7 +288,7 @@ export default function CommunitiesIndex({
                                     <img
                                         src={imageSrc(c.coverUrl, appUrl)}
                                         alt=""
-                                        className="h-40 w-full object-cover"
+                                        className="aspect-[3/4] w-full object-cover"
                                     />
                                 ) : (
                                     <div className="flex h-40 w-full items-center justify-center bg-teal-50 dark:bg-teal-950/40">
