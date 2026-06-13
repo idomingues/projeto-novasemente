@@ -10,10 +10,12 @@ import {
 interface Props {
     ev: MobileEventListItem;
     onOpenDetail: () => void;
+    /** Quando true, toque na capa abre o detalhe (não link externo do Instagram). */
+    mediaOpensDetail?: boolean;
 }
 
 /** Capa do evento na lista: play + link Instagram ou abertura do modal (YouTube). */
-export default function EventCardMedia({ ev, onOpenDetail }: Props) {
+export default function EventCardMedia({ ev, onOpenDetail, mediaOpensDetail = false }: Props) {
     if (!ev.image_url) {
         return null;
     }
@@ -31,7 +33,7 @@ export default function EventCardMedia({ ev, onOpenDetail }: Props) {
         />
     );
 
-    if (instagramUrl) {
+    if (instagramUrl && !mediaOpensDetail) {
         return (
             <div className="relative border-t border-zinc-100 dark:border-zinc-800">
                 <CoverWithVideoLink

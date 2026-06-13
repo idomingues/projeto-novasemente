@@ -10,8 +10,8 @@ use App\Models\MissionMessage;
 use App\Models\MissionWallItem;
 use App\Services\DriveFolderCoverService;
 use App\Services\DriveFolderImagesService;
-use App\Support\EventFormSupport;
 use App\Support\MissionAboutBootstrap;
+use App\Support\MissionEventMobilePresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -34,7 +34,7 @@ class MissionHubController extends Controller
                     'route' => 'mobile.mission.home',
                 ],
                 [
-                    'label' => 'Próximos eventos',
+                    'label' => 'Agenda',
                     'subtitle' => 'Agenda e encontros da missão',
                     'route' => 'mobile.mission.events',
                 ],
@@ -78,26 +78,19 @@ class MissionHubController extends Controller
             ->where('church_id', $churchId)
             ->missionCalendar2026()
             ->orderBy('starts_at')
-            ->get()
-            ->map(fn (MissionEvent $e) => EventFormSupport::mobileListPayload(
-                $e->id,
-                $e->title,
-                $e->description,
-                $e->starts_at,
-                $e->ends_at,
-                $e->all_day,
-                $e->location,
-                $e->price,
-                $e->purchase_url,
-                $e->video_type,
-                $e->video_url,
-                $e->youtube_embed_url,
-                $e->image_url,
-                $e->color,
-            ));
+            ->get();
+
+        $allChurchEvents = MissionEvent::query()
+            ->where('church_id', $churchId)
+            ->get();
+
+        $payload = $events
+            ->map(fn (MissionEvent $e) => MissionEventMobilePresenter::listRow($e, $allChurchEvents))
+            ->values()
+            ->all();
 
         return Inertia::render('Mobile/MissionEvents', [
-            'events' => $events,
+            'events' => $payload,
         ]);
     }
 

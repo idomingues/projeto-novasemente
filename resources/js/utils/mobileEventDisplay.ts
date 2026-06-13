@@ -41,6 +41,35 @@ export function priceText(value: string | null | undefined): string | null {
     return s.length > 0 ? s : null;
 }
 
+function detailText(value: string | null | undefined): string | null {
+    if (value == null) {
+        return null;
+    }
+    const s = String(value).trim();
+
+    return s.length > 0 ? s : null;
+}
+
+/** Descrição cadastrada no evento (campo «Descrição» no admin). */
+export function eventDescriptionText(ev: MobileEventListItem): string | null {
+    return detailText(ev.description);
+}
+
+/** Texto livre de valor/condições (campo separado no admin; só no detalhe). */
+export function eventExtraDetailText(ev: MobileEventListItem): string | null {
+    return priceText(ev.price);
+}
+
+/** Indica se há conteúdo descritivo para mostrar no card ou no modal. */
+export function eventHasDetailContent(ev: MobileEventListItem): boolean {
+    return Boolean(eventDescriptionText(ev) || eventExtraDetailText(ev));
+}
+
+/** Trecho para o card da lista (descrição ou, se vazia, valor/condições). */
+export function eventListDetailPreview(ev: MobileEventListItem): string | null {
+    return eventDescriptionText(ev) ?? eventExtraDetailText(ev);
+}
+
 export function getDayMonth(iso: string): { day: string; month: string } {
     const d = new Date(iso);
 

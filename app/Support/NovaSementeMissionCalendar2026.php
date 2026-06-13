@@ -20,7 +20,30 @@ final class NovaSementeMissionCalendar2026
     {
         return [
             // Junho
-            ['title' => 'Mission Day', 'starts_at' => '2026-06-14'],
+            [
+                'title' => 'Mission Day',
+                'starts_at' => '2026-06-14',
+                'location' => 'Rua Cubatão, 48 — Paraíso, São Paulo — SP',
+                'description' => <<<'TEXT'
+O Mission Day será uma programação especial da Nova Semente pensada para inspirar, conectar e reacender o propósito de viver a missão de forma prática e real.
+
+Teremos momentos de música, reflexão, histórias inspiradoras, lançamento de iniciativas missionais da comunidade e celebração de vidas transformadas.
+
+Mais do que um evento, será um convite para lembrar que fomos chamados para servir, acolher e levar esperança às pessoas.
+
+Uma programação aberta para amigos, famílias, visitantes e todos que desejam viver uma experiência leve, acolhedora e significativa.
+
+O que teremos
+Música e adoração
+Mensagens inspiradoras
+Histórias e testemunhos
+Lançamento de iniciativas missionais
+Momentos especiais de celebração
+Ambiente acolhedor para convidados e visitantes
+
+Domingo, 14 de junho de 2026 · 17 horas
+TEXT,
+            ],
             [
                 'title' => 'Sent Care',
                 'starts_at' => '2026-06-27',

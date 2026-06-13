@@ -48,7 +48,7 @@ final class MissionCalendar2026Installer
                     ->first();
 
                 if ($existing) {
-                    $existing->fill($attributes)->save();
+                    $existing->fill(self::mergeSeedAttributes($attributes, $row))->save();
                     $updated++;
                 } else {
                     MissionEvent::query()->create(array_merge($attributes, [
@@ -72,6 +72,35 @@ final class MissionCalendar2026Installer
             'updated' => $updated,
             'removed_from_events' => $removedFromEvents,
         ];
+    }
+
+    /**
+     * Não apaga descrição, imagem ou textos editados no admin quando o pacote não traz valor.
+     *
+     * @param  array<string, mixed>  $attributes
+     * @param  array<string, mixed>  $seedRow
+     * @return array<string, mixed>
+     */
+    private static function mergeSeedAttributes(array $attributes, array $seedRow): array
+    {
+        $preserveWhenSeedEmpty = [
+            'description',
+            'location',
+            'price',
+            'purchase_url',
+            'video_type',
+            'video_url',
+            'image_url',
+        ];
+
+        foreach ($preserveWhenSeedEmpty as $field) {
+            $seedValue = $seedRow[$field] ?? null;
+            if (! is_string($seedValue) || trim($seedValue) === '') {
+                unset($attributes[$field]);
+            }
+        }
+
+        return $attributes;
     }
 
     public static function colorForTitle(string $title): string

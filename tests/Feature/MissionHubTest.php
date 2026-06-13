@@ -62,6 +62,38 @@ class MissionHubTest extends TestCase
                 ->where('events.0.title', 'Encontro missionário'));
     }
 
+    public function test_mission_day_inherits_description_from_sibling_event_on_mobile(): void
+    {
+        $this->seed(ChurchSeeder::class);
+        $church = Church::query()->firstOrFail();
+
+        MissionEvent::query()->create([
+            'church_id' => $church->id,
+            'title' => 'Mission Day Nova Semente - Teste NS',
+            'description' => 'Programação especial com todas as informações para o público.',
+            'starts_at' => '2026-05-27 00:00:00',
+            'all_day' => true,
+        ]);
+
+        MissionEvent::query()->create([
+            'church_id' => $church->id,
+            'title' => 'Mission Day',
+            'description' => null,
+            'starts_at' => '2026-06-14 00:00:00',
+            'all_day' => true,
+        ]);
+
+        $this->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.mission.events'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Mobile/MissionEvents')
+                ->where('events', fn ($events) => collect($events)->contains(
+                    fn ($event) => $event['title'] === 'Mission Day'
+                        && str_contains((string) $event['description'], 'Programação especial'),
+                )));
+    }
+
     public function test_authenticated_user_can_post_mission_message(): void
     {
         $this->seed(ChurchSeeder::class);
