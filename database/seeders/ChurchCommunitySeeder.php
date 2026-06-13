@@ -40,7 +40,7 @@ class ChurchCommunitySeeder extends Seeder
             ],
         );
 
-        if ($coverPath !== null && $community->cover_path !== $coverPath) {
+        if ($coverPath !== null && ($community->cover_path !== $coverPath || ! Storage::disk('public')->exists($coverPath))) {
             $community->update(['cover_path' => $coverPath]);
         }
     }
@@ -56,6 +56,8 @@ class ChurchCommunitySeeder extends Seeder
 
         if (! Storage::disk('public')->exists($relativePath)) {
             Storage::disk('public')->makeDirectory('communities/covers');
+            File::copy($source, Storage::disk('public')->path($relativePath));
+        } elseif (! is_file(Storage::disk('public')->path($relativePath))) {
             File::copy($source, Storage::disk('public')->path($relativePath));
         }
 

@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Support\StorageUrl;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -43,7 +42,13 @@ class ChurchCommunity extends Model
             return $path;
         }
 
-        return StorageUrl::publicMediaUrl($path);
+        $mediaPath = route('media.public', ['path' => $path], absolute: false);
+
+        if (is_string($baseUrl) && $baseUrl !== '') {
+            return rtrim($baseUrl, '/').$mediaPath;
+        }
+
+        return $mediaPath;
     }
 
     public static function normalizeWhatsappUrl(?string $url): ?string

@@ -30,14 +30,14 @@ class CommunityController extends Controller
         Storage::disk('public')->delete($path);
     }
 
-    private function mapCommunityRow(ChurchCommunity $community): array
+    private function mapCommunityRow(ChurchCommunity $community, ?string $baseUrl = null): array
     {
         return [
             'id' => $community->id,
             'name' => $community->name,
             'description' => $community->description,
             'whatsappUrl' => $community->whatsapp_url,
-            'coverUrl' => $community->resolvedCoverUrl(),
+            'coverUrl' => $community->resolvedCoverUrl($baseUrl),
             'sortOrder' => $community->sort_order,
             'isPublished' => $community->is_published,
         ];
@@ -67,7 +67,7 @@ class CommunityController extends Controller
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get()
-            ->map(fn (ChurchCommunity $c) => $this->mapCommunityRow($c))
+            ->map(fn (ChurchCommunity $c) => $this->mapCommunityRow($c, $request->getSchemeAndHttpHost()))
             ->values()
             ->all();
 
@@ -161,7 +161,7 @@ class CommunityController extends Controller
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get()
-            ->map(fn (ChurchCommunity $c) => $this->mapCommunityRow($c))
+            ->map(fn (ChurchCommunity $c) => $this->mapCommunityRow($c, $request->getSchemeAndHttpHost()))
             ->values()
             ->all();
 
