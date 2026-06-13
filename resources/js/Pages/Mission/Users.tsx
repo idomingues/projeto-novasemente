@@ -19,6 +19,7 @@ type MissionUserRow = {
     id: number | null;
     name: string;
     email: string | null;
+    photoUrl: string | null;
     has_app_account: boolean;
     is_phase_leader: boolean;
     mission_phase_ids: number[];
@@ -75,7 +76,7 @@ export default function MissionUsers({ users, phases, canManage, updateUrlPatter
                                     <tr key={user.volunteer_id} className="border-b border-zinc-100 dark:border-zinc-800">
                                         <td className="p-3">
                                             <div className="flex items-center gap-3">
-                                                <UserListAvatar name={user.name} size="md" />
+                                                <UserListAvatar name={user.name} photoUrl={user.photoUrl} size="md" />
                                                 <div className="min-w-0">
                                                     <div className="font-medium text-zinc-900 dark:text-white">{user.name}</div>
                                                     <div className="text-xs text-zinc-500">{user.email ?? 'Sem e-mail'}</div>

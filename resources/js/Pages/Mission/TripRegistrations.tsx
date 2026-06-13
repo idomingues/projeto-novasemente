@@ -3,6 +3,7 @@ import Card from '@/Components/Card';
 import FlashMessages from '@/Components/FlashMessages';
 import ListSearchHint from '@/Components/ListSearchHint';
 import MissionAdminTabs from '@/Components/Mission/MissionAdminTabs';
+import MissionSignupQrCode from '@/Components/Mission/MissionSignupQrCode';
 import MissionTripRegistrationDetailModal, {
     type MissionTripRegistrationRow,
 } from '@/Components/Mission/MissionTripRegistrationDetailModal';
@@ -54,6 +55,19 @@ export default function MissionTripRegistrations({ registrations, filters, expor
                 />
 
                 <MissionAdminTabs active="tailandia-mianmar" />
+
+                <Card className="p-5 sm:p-6">
+                    <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="min-w-0">
+                            <h2 className="text-base font-semibold text-zinc-900 dark:text-white">QR code de inscrição</h2>
+                            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                                Baixe o QR code para usar em artes, banners, redes sociais e materiais impressos. O PNG
+                                é gerado em alta resolução (2048×2048 px).
+                            </p>
+                        </div>
+                        <MissionSignupQrCode value={signupUrl} variant="admin" exportable />
+                    </div>
+                </Card>
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="relative min-w-0 flex-1 sm:max-w-md">

@@ -473,6 +473,7 @@ class MissionVolunteerController extends Controller
                     'id' => $linkedUser?->id,
                     'name' => $volunteer->full_name,
                     'email' => MissionVolunteerAccountResolver::emailForVolunteer($volunteer, $linkedUser),
+                    'photoUrl' => $volunteer->photo_url ?? $linkedUser?->photo_url,
                     'has_app_account' => $linkedUser !== null,
                     'is_phase_leader' => (bool) ($linkedUser?->is_mission_team ?? false),
                     'mission_phase_ids' => $linkedUser
