@@ -74,7 +74,7 @@ class MissionHubController extends Controller
 
         $events = MissionEvent::query()
             ->where('church_id', $churchId)
-            ->upcoming()
+            ->missionCalendar2026()
             ->orderBy('starts_at')
             ->get()
             ->map(fn (MissionEvent $e) => EventFormSupport::mobileListPayload(

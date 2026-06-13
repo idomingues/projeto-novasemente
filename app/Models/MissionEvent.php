@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\MissionCalendar2026Installer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -71,5 +72,15 @@ class MissionEvent extends Model
                 $inner->whereNull('ends_at')->where('starts_at', '>=', $now->copy()->startOfDay());
             });
         });
+    }
+
+    /** Agenda missionária jun–dez/2026 (pacote instalável). */
+    /** @param  Builder<self>  $query */
+    public function scopeMissionCalendar2026(Builder $query): Builder
+    {
+        return $query->whereBetween('starts_at', [
+            \Carbon\Carbon::parse(MissionCalendar2026Installer::CALENDAR_START)->startOfDay(),
+            \Carbon\Carbon::parse(MissionCalendar2026Installer::CALENDAR_END)->endOfDay(),
+        ]);
     }
 }

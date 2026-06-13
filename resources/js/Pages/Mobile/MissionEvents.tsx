@@ -39,8 +39,12 @@ export default function MissionEvents({ events }: Props) {
             <div className="space-y-6">
                 <div>
                     <MissionHubBackLink />
-                    <h1 className="mt-3 text-xl font-bold text-zinc-900 dark:text-white">Próximos eventos</h1>
-                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Agenda publicada pela equipe da Missão.</p>
+                    <h1 className="mt-3 text-xl font-bold text-zinc-900 dark:text-white lg:text-2xl">
+                        Agenda da Missão 2026
+                    </h1>
+                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                        Junho a dezembro — eventos da comunidade missionária Nova Semente.
+                    </p>
                 </div>
 
                 {events.length === 0 ? (

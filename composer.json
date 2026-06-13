@@ -58,6 +58,9 @@
         "lint:pt-br": [
             "bash scripts/check-pt-br.sh"
         ],
+        "mission:calendar-2026": [
+            "@php artisan mission:seed-calendar-2026"
+        ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"
