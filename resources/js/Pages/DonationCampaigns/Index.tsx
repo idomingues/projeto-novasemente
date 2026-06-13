@@ -4,6 +4,9 @@ import AddButton from '@/Components/AddButton';
 import PageHeader from '@/Components/PageHeader';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
+import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
+import ListCardIconActionButton from '@/Components/ListCard/ListCardIconActionButton';
+import ListCardTextActionButton from '@/Components/ListCard/ListCardTextActionButton';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
@@ -374,30 +377,39 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                                     />
                                 )}
                             </div>
-                            <div className="mt-4 flex flex-wrap gap-2">
-                                <SecondaryButton type="button" onClick={() => openDonations(campaign)}>
-                                    <EyeIcon className="mr-1.5 h-4 w-4" />
+                            <ListCardActionRow className="mt-4">
+                                <ListCardTextActionButton
+                                    type="button"
+                                    icon={<EyeIcon className="h-4 w-4" />}
+                                    onClick={() => openDonations(campaign)}
+                                >
                                     Doações
-                                </SecondaryButton>
+                                </ListCardTextActionButton>
                                 {canManageMedia && (
-                                    <SecondaryButton type="button" onClick={() => openMediaModal(campaign)}>
-                                        <VideoCameraIcon className="mr-1.5 h-4 w-4" />
+                                    <ListCardTextActionButton
+                                        type="button"
+                                        icon={<VideoCameraIcon className="h-4 w-4" />}
+                                        onClick={() => openMediaModal(campaign)}
+                                    >
                                         Conteúdo
-                                    </SecondaryButton>
+                                    </ListCardTextActionButton>
                                 )}
                                 {canManage && (
                                     <>
-                                        <SecondaryButton type="button" onClick={() => openEditModal(campaign)}>
-                                            <PencilIcon className="mr-1.5 h-4 w-4" />
-                                            Editar
-                                        </SecondaryButton>
-                                        <SecondaryButton type="button" onClick={() => handleDelete(campaign.id)} className="text-red-600">
-                                            <TrashIcon className="mr-1.5 h-4 w-4" />
-                                            Excluir
-                                        </SecondaryButton>
+                                        <ListCardIconActionButton
+                                            label="Editar"
+                                            icon={<PencilIcon className="h-5 w-5" />}
+                                            onClick={() => openEditModal(campaign)}
+                                        />
+                                        <ListCardIconActionButton
+                                            label="Excluir"
+                                            icon={<TrashIcon className="h-5 w-5" />}
+                                            tone="danger"
+                                            onClick={() => handleDelete(campaign.id)}
+                                        />
                                     </>
                                 )}
-                            </div>
+                            </ListCardActionRow>
                         </article>
                     ))
                 )}

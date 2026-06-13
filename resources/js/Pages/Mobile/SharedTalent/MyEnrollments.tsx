@@ -2,7 +2,8 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import FlashMessages from '@/Components/FlashMessages';
 import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
-import SecondaryButton from '@/Components/SecondaryButton';
+import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
+import ListCardTextActionButton from '@/Components/ListCard/ListCardTextActionButton';
 import InputLabel from '@/Components/InputLabel';
 import SelectInput from '@/Components/SelectInput';
 import TextInput from '@/Components/TextInput';
@@ -97,23 +98,23 @@ function EnrollmentCard({ row }: { row: EnrollmentRow }) {
                 </div>
             </form>
 
-            <div className="mt-3 flex flex-wrap gap-2">
+            <ListCardActionRow className="mt-3">
                 {row.can_review && (
-                    <SecondaryButton type="button" onClick={() => setReviewOpen(true)}>
+                    <ListCardTextActionButton type="button" onClick={() => setReviewOpen(true)}>
                         Avaliar experiência
-                    </SecondaryButton>
+                    </ListCardTextActionButton>
                 )}
                 {!['cancelled', 'rejected', 'completed'].includes(row.status) && (
-                    <SecondaryButton
+                    <ListCardTextActionButton
                         type="button"
                         onClick={() =>
                             cancelForm.patch(route('mobile.shared-talents.enrollment.status', row.id))
                         }
                     >
                         Cancelar participação
-                    </SecondaryButton>
+                    </ListCardTextActionButton>
                 )}
-            </div>
+            </ListCardActionRow>
 
             <Modal show={reviewOpen} onClose={() => setReviewOpen(false)}>
                 <form

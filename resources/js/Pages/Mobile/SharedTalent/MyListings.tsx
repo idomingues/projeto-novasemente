@@ -2,7 +2,8 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import FlashMessages from '@/Components/FlashMessages';
 import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
-import SecondaryButton from '@/Components/SecondaryButton';
+import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
+import ListCardTextActionButton from '@/Components/ListCard/ListCardTextActionButton';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import Textarea from '@/Components/Textarea';
@@ -127,32 +128,32 @@ export default function SharedTalentMyListings({ listings, categories, modalityO
                             {listing.rejection_reason && (
                                 <p className="mt-2 text-sm text-red-600">Motivo: {listing.rejection_reason}</p>
                             )}
-                            <div className="mt-3 flex flex-wrap gap-2">
-                                <SecondaryButton type="button" onClick={() => openEdit(listing)}>
+                            <ListCardActionRow className="mt-3">
+                                <ListCardTextActionButton type="button" onClick={() => openEdit(listing)}>
                                     Editar
-                                </SecondaryButton>
+                                </ListCardTextActionButton>
                                 {listing.status === 'active' || listing.status === 'full' ? (
-                                    <SecondaryButton type="button" onClick={() => changeStatus(listing.id, 'paused')}>
+                                    <ListCardTextActionButton type="button" onClick={() => changeStatus(listing.id, 'paused')}>
                                         Pausar
-                                    </SecondaryButton>
+                                    </ListCardTextActionButton>
                                 ) : null}
                                 {listing.status === 'paused' ? (
-                                    <SecondaryButton type="button" onClick={() => changeStatus(listing.id, 'active')}>
+                                    <ListCardTextActionButton type="button" onClick={() => changeStatus(listing.id, 'active')}>
                                         Reativar
-                                    </SecondaryButton>
+                                    </ListCardTextActionButton>
                                 ) : null}
                                 {['active', 'paused', 'full'].includes(listing.status) && (
-                                    <SecondaryButton type="button" onClick={() => changeStatus(listing.id, 'closed')}>
+                                    <ListCardTextActionButton type="button" onClick={() => changeStatus(listing.id, 'closed')}>
                                         Encerrar
-                                    </SecondaryButton>
+                                    </ListCardTextActionButton>
                                 )}
                                 <Link
                                     href={route('mobile.shared-talents.enrollments')}
-                                    className="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600"
+                                    className="inline-flex h-9 items-center rounded-xl border border-zinc-300 px-3 text-xs font-medium text-zinc-700 dark:border-zinc-600 dark:text-zinc-200"
                                 >
                                     Ver inscritos
                                 </Link>
-                            </div>
+                            </ListCardActionRow>
                         </div>
                     ))
                 )}

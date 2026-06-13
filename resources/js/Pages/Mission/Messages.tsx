@@ -3,7 +3,9 @@ import FlashMessages from '@/Components/FlashMessages';
 import MissionAdminTabs from '@/Components/Mission/MissionAdminTabs';
 import PageHeader from '@/Components/PageHeader';
 import PrimaryButton from '@/Components/PrimaryButton';
-import SecondaryButton from '@/Components/SecondaryButton';
+import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
+import ListCardIconActionButton from '@/Components/ListCard/ListCardIconActionButton';
+import ListCardTextActionButton from '@/Components/ListCard/ListCardTextActionButton';
 import Textarea from '@/Components/Textarea';
 import InputError from '@/Components/InputError';
 import { Head, router, useForm } from '@inertiajs/react';
@@ -180,14 +182,14 @@ export default function MissionMessagesAdmin({
                                                     <time className="text-xs text-zinc-500">{formatWhen(m.createdAt)}</time>
                                                 </div>
                                                 {canManage ? (
-                                                    <div className="flex flex-wrap gap-2">
+                                                    <ListCardActionRow>
                                                         <PrimaryButton type="button" onClick={() => approve(m.id)}>
                                                             Aprovar
                                                         </PrimaryButton>
-                                                        <SecondaryButton type="button" onClick={() => reject(m.id)}>
+                                                        <ListCardTextActionButton type="button" onClick={() => reject(m.id)}>
                                                             Não publicar
-                                                        </SecondaryButton>
-                                                    </div>
+                                                        </ListCardTextActionButton>
+                                                    </ListCardActionRow>
                                                 ) : null}
                                             </div>
                                             <MessageBody row={m} />
@@ -217,28 +219,27 @@ export default function MissionMessagesAdmin({
                                                     <time className="text-xs text-zinc-500">{formatWhen(m.createdAt)}</time>
                                                 </div>
                                                 {canManage && m.moderationStatus === 'published' ? (
-                                                    <div className="flex gap-2">
+                                                    <ListCardActionRow>
                                                         {!m.isTeamHighlight ? (
-                                                            <SecondaryButton type="button" onClick={() => toggleVisibility(m.id)}>
+                                                            <ListCardTextActionButton type="button" onClick={() => toggleVisibility(m.id)}>
                                                                 {m.is_hidden ? (
                                                                     <>
-                                                                        <EyeIcon className="mr-1 h-4 w-4" /> Exibir
+                                                                        <EyeIcon className="h-4 w-4" /> Exibir
                                                                     </>
                                                                 ) : (
                                                                     <>
-                                                                        <EyeSlashIcon className="mr-1 h-4 w-4" /> Ocultar
+                                                                        <EyeSlashIcon className="h-4 w-4" /> Ocultar
                                                                     </>
                                                                 )}
-                                                            </SecondaryButton>
+                                                            </ListCardTextActionButton>
                                                         ) : null}
-                                                        <button
-                                                            type="button"
+                                                        <ListCardIconActionButton
+                                                            label="Excluir"
+                                                            icon={<TrashIcon className="h-5 w-5" />}
+                                                            tone="danger"
                                                             onClick={() => destroy(m.id)}
-                                                            className="rounded-lg p-2 text-red-600 hover:bg-red-50"
-                                                        >
-                                                            <TrashIcon className="h-5 w-5" />
-                                                        </button>
-                                                    </div>
+                                                        />
+                                                    </ListCardActionRow>
                                                 ) : canManage ? (
                                                     <button
                                                         type="button"

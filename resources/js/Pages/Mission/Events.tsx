@@ -4,7 +4,8 @@ import MissionAdminTabs from '@/Components/Mission/MissionAdminTabs';
 import PageHeader from '@/Components/PageHeader';
 import AddButton from '@/Components/AddButton';
 import Card from '@/Components/Card';
-import SecondaryButton from '@/Components/SecondaryButton';
+import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
+import ListCardIconActionButton from '@/Components/ListCard/ListCardIconActionButton';
 import EventAdminModal, {
     defaultEventFormData,
     eventFormDataFromItem,
@@ -133,7 +134,26 @@ export default function MissionEventsAdmin({ events, canManage }: Props) {
                                     {new Date(ev.starts_at).getDate()}
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                    <h3 className="truncate font-semibold text-gray-900 dark:text-white">{ev.title}</h3>
+                                    <div className="flex items-start justify-between gap-3">
+                                        <h3 className="min-w-0 truncate font-semibold text-gray-900 dark:text-white">
+                                            {ev.title}
+                                        </h3>
+                                        {canManage ? (
+                                            <ListCardActionRow className="shrink-0 sm:w-auto">
+                                                <ListCardIconActionButton
+                                                    label="Editar"
+                                                    icon={<PencilIcon className="h-5 w-5" />}
+                                                    onClick={() => openEdit(ev)}
+                                                />
+                                                <ListCardIconActionButton
+                                                    label="Excluir"
+                                                    icon={<TrashIcon className="h-5 w-5" />}
+                                                    tone="danger"
+                                                    onClick={() => destroy(ev.id)}
+                                                />
+                                            </ListCardActionRow>
+                                        ) : null}
+                                    </div>
                                     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-600 dark:text-gray-400">
                                         <span className="flex items-center gap-1">
                                             <ClockIcon className="h-4 w-4 flex-shrink-0" />
@@ -165,22 +185,6 @@ export default function MissionEventsAdmin({ events, canManage }: Props) {
                                         </p>
                                     )}
                                 </div>
-                                {canManage ? (
-                                    <div className="flex flex-shrink-0 gap-2">
-                                        <SecondaryButton type="button" onClick={() => openEdit(ev)} className="gap-1">
-                                            <PencilIcon className="h-4 w-4" />
-                                            Editar
-                                        </SecondaryButton>
-                                        <SecondaryButton
-                                            type="button"
-                                            onClick={() => destroy(ev.id)}
-                                            className="gap-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                        >
-                                            <TrashIcon className="h-4 w-4" />
-                                            Excluir
-                                        </SecondaryButton>
-                                    </div>
-                                ) : null}
                             </Card>
                         ))}
                     </div>

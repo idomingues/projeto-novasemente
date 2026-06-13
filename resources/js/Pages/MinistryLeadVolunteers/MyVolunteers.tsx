@@ -9,6 +9,8 @@ import PageHeader from '@/Components/PageHeader';
 import PrimaryButton from '@/Components/PrimaryButton';
 import RecordDetailHeader from '@/Components/RecordDetail/RecordDetailHeader';
 import SecondaryButton from '@/Components/SecondaryButton';
+import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
+import ListCardTextActionButton from '@/Components/ListCard/ListCardTextActionButton';
 import SelectInput from '@/Components/SelectInput';
 import Textarea from '@/Components/Textarea';
 import TextInput from '@/Components/TextInput';
@@ -743,19 +745,19 @@ export default function MyVolunteers() {
                                 <td className="py-2 pr-3 text-zinc-600 dark:text-zinc-300">{inviteLabel(item)}</td>
                                 <td className="py-2 pr-3 text-zinc-700 dark:text-zinc-200">{statusLabel(item.leaderStatus)}</td>
                                 <td className="py-2 text-right">
-                                    <div className="flex flex-wrap justify-end gap-2">
-                                        <SecondaryButton type="button" onClick={() => openProfile(item)}>
+                                    <ListCardActionRow className="justify-end">
+                                        <ListCardTextActionButton type="button" onClick={() => openProfile(item)}>
                                             Ver dados
-                                        </SecondaryButton>
+                                        </ListCardTextActionButton>
                                         {item.updateUrl ? (
-                                            <SecondaryButton type="button" onClick={() => openEdit(item)}>
+                                            <ListCardTextActionButton type="button" onClick={() => openEdit(item)}>
                                                 Alterar status
-                                            </SecondaryButton>
+                                            </ListCardTextActionButton>
                                         ) : null}
                                         {item.canSendInvite && item.inviteResendEmailUrl ? (
-                                            <SecondaryButton type="button" onClick={() => setInviteHelpRow(item)}>
+                                            <ListCardTextActionButton type="button" onClick={() => setInviteHelpRow(item)}>
                                                 Enviar convite
-                                            </SecondaryButton>
+                                            </ListCardTextActionButton>
                                         ) : null}
                                         {item.removeFromMinistryUrl ? (
                                             <button
@@ -768,7 +770,7 @@ export default function MyVolunteers() {
                                                 Remover
                                             </button>
                                         ) : null}
-                                    </div>
+                                    </ListCardActionRow>
                                 </td>
                             </tr>
                         ))}

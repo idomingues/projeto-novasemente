@@ -21,6 +21,8 @@ import Modal from '@/Components/Modal';
 import PageHeader from '@/Components/PageHeader';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
+import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
+import ListCardTextActionButton from '@/Components/ListCard/ListCardTextActionButton';
 import SelectInput from '@/Components/SelectInput';
 import Textarea from '@/Components/Textarea';
 import TextInput from '@/Components/TextInput';
@@ -1087,23 +1089,23 @@ export default function VolunteerRequestsIndex({
                                                                         )}
                                                                         .
                                                                     </p>
-                                                                    <div className="mt-3 flex flex-wrap gap-2">
+                                                                    <ListCardActionRow className="mt-3">
                                                                         {mode === 'staff' && panelRow.suggest_volunteers_url ? (
-                                                                            <SecondaryButton
+                                                                            <ListCardTextActionButton
                                                                                 type="button"
+                                                                                icon={<SparklesIcon className="h-4 w-4" aria-hidden />}
                                                                                 onClick={() => openAttachModal(panelRow, true)}
                                                                             >
-                                                                                <SparklesIcon className="mr-1.5 h-4 w-4" aria-hidden />
                                                                                 Sugestão inteligente
-                                                                            </SecondaryButton>
+                                                                            </ListCardTextActionButton>
                                                                         ) : null}
-                                                                        <SecondaryButton
+                                                                        <ListCardTextActionButton
                                                                             type="button"
                                                                             onClick={() => openAttachModal(panelRow, false)}
                                                                         >
                                                                             Vincular voluntário
-                                                                        </SecondaryButton>
-                                                                    </div>
+                                                                        </ListCardTextActionButton>
+                                                                    </ListCardActionRow>
                                                                 </div>
                                                             ) : null}
                                                 </>

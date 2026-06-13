@@ -23,6 +23,8 @@ import TextInput from '@/Components/TextInput';
 import Textarea from '@/Components/Textarea';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
+import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
+import ListCardIconActionButton from '@/Components/ListCard/ListCardIconActionButton';
 import InputError from '@/Components/InputError';
 import SelectInput from '@/Components/SelectInput';
 import NewsPostCover from '@/Components/News/NewsPostCover';
@@ -498,14 +500,37 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
                                     {new Date(ev.starts_at).getDate()}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <h3 className="font-semibold text-gray-900 dark:text-white truncate">
-                                        {ev.title}
-                                        {!ev.is_active && (
-                                            <span className="ml-2 inline-flex items-center rounded-full bg-zinc-200 px-2 py-0.5 text-[11px] font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                                                Inativo
-                                            </span>
+                                    <div className="flex items-start justify-between gap-3">
+                                        <h3 className="min-w-0 font-semibold text-gray-900 dark:text-white">
+                                            <span className="truncate">{ev.title}</span>
+                                            {!ev.is_active && (
+                                                <span className="ml-2 inline-flex items-center rounded-full bg-zinc-200 px-2 py-0.5 text-[11px] font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                                                    Inativo
+                                                </span>
+                                            )}
+                                        </h3>
+                                        {canManage && (
+                                            <ListCardActionRow className="shrink-0 sm:w-auto">
+                                                <ListCardIconActionButton
+                                                    label={ev.is_active ? 'Desativar' : 'Ativar'}
+                                                    icon={<PowerIcon className="h-5 w-5" />}
+                                                    onClick={() => setActive(ev, !ev.is_active)}
+                                                    disabled={activatingId === ev.id}
+                                                />
+                                                <ListCardIconActionButton
+                                                    label="Editar"
+                                                    icon={<PencilIcon className="h-5 w-5" />}
+                                                    onClick={() => openEditModal(ev)}
+                                                />
+                                                <ListCardIconActionButton
+                                                    label="Excluir"
+                                                    icon={<TrashIcon className="h-5 w-5" />}
+                                                    tone="danger"
+                                                    onClick={() => handleDelete(ev.id)}
+                                                />
+                                            </ListCardActionRow>
                                         )}
-                                    </h3>
+                                    </div>
                                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-sm text-gray-600 dark:text-gray-400">
                                         <span className="flex items-center gap-1">
                                             <ClockIcon className="w-4 h-4 flex-shrink-0" />
@@ -537,35 +562,6 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
                                         </p>
                                     )}
                                 </div>
-                                {canManage && (
-                                    <div className="flex gap-2 flex-shrink-0">
-                                        <SecondaryButton
-                                            type="button"
-                                            onClick={() => setActive(ev, !ev.is_active)}
-                                            disabled={activatingId === ev.id}
-                                            className="gap-1"
-                                        >
-                                            <PowerIcon className="w-4 h-4" />
-                                            {ev.is_active ? 'Desativar' : 'Ativar'}
-                                        </SecondaryButton>
-                                        <SecondaryButton
-                                            type="button"
-                                            onClick={() => openEditModal(ev)}
-                                            className="gap-1"
-                                        >
-                                            <PencilIcon className="w-4 h-4" />
-                                            Editar
-                                        </SecondaryButton>
-                                        <SecondaryButton
-                                            type="button"
-                                            onClick={() => handleDelete(ev.id)}
-                                            className="gap-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                        >
-                                            <TrashIcon className="w-4 h-4" />
-                                            Excluir
-                                        </SecondaryButton>
-                                    </div>
-                                )}
                             </Card>
                         ))
                     )}

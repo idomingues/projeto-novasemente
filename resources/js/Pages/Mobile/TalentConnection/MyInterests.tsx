@@ -2,7 +2,8 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import FlashMessages from '@/Components/FlashMessages';
 import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
-import SecondaryButton from '@/Components/SecondaryButton';
+import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
+import ListCardTextActionButton from '@/Components/ListCard/ListCardTextActionButton';
 import InputLabel from '@/Components/InputLabel';
 import SelectInput from '@/Components/SelectInput';
 import TextInput from '@/Components/TextInput';
@@ -55,16 +56,16 @@ function InterestCard({ row }: { row: InterestRow }) {
             <span className="mt-1 inline-block rounded-full bg-zinc-100 px-2 py-0.5 text-xs dark:bg-zinc-800">
                 {row.status_label}
             </span>
-            <div className="mt-3 flex flex-wrap gap-2">
-                <SecondaryButton type="button" onClick={() => setStatusOpen(true)}>
+            <ListCardActionRow className="mt-3">
+                <ListCardTextActionButton type="button" onClick={() => setStatusOpen(true)}>
                     Atualizar status
-                </SecondaryButton>
+                </ListCardTextActionButton>
                 {row.can_review && (
-                    <SecondaryButton type="button" onClick={() => setReviewOpen(true)}>
+                    <ListCardTextActionButton type="button" onClick={() => setReviewOpen(true)}>
                         Avaliar
-                    </SecondaryButton>
+                    </ListCardTextActionButton>
                 )}
-            </div>
+            </ListCardActionRow>
 
             <form
                 className="mt-3 space-y-2"

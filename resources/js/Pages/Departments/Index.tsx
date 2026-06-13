@@ -19,6 +19,8 @@ import TextInput from '@/Components/TextInput';
 import Textarea from '@/Components/Textarea';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
+import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
+import ListCardIconActionButton from '@/Components/ListCard/ListCardIconActionButton';
 import SelectInput from '@/Components/SelectInput';
 import PageHeader from '@/Components/PageHeader';
 import InputError from '@/Components/InputError';
@@ -824,41 +826,30 @@ export default function Index({
     };
 
     const renderActions = (d: Department) => (
-        <div className="flex shrink-0 justify-end gap-1">
+        <ListCardActionRow className="shrink-0 justify-end gap-1 sm:w-auto">
             {canManage && (
-                <button
-                    type="button"
+                <ListCardIconActionButton
+                    label="Excluir departamento"
+                    icon={<TrashIcon className="h-5 w-5" />}
+                    tone="danger"
                     onClick={() => handleDelete(d.id)}
-                    className="p-2 text-zinc-500 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                    title="Excluir"
-                    aria-label="Excluir departamento"
-                >
-                    <TrashIcon className="w-5 h-5" />
-                </button>
+                />
             )}
             {canManage && (
-                <button
-                    type="button"
+                <ListCardIconActionButton
+                    label="Editar departamento"
+                    icon={<PencilIcon className="h-5 w-5" />}
                     onClick={() => openEditModal(d)}
-                    className="p-2 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                    title="Editar"
-                    aria-label="Editar departamento"
-                >
-                    <PencilIcon className="w-5 h-5" />
-                </button>
+                />
             )}
             {canManageEscalasRoles && (
-                <button
-                    type="button"
+                <ListCardIconActionButton
+                    label="Gerir funções"
+                    icon={<ClipboardDocumentListIcon className="h-5 w-5" />}
                     onClick={() => openRolesModal(d.id)}
-                    className="p-2 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                    title="Gerir funções"
-                    aria-label="Gerir funções"
-                >
-                    <ClipboardDocumentListIcon className="w-5 h-5" />
-                </button>
+                />
             )}
-        </div>
+        </ListCardActionRow>
     );
 
     const renderDepartmentCard = (d: Department) => {

@@ -7,6 +7,8 @@ import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
+import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
+import ListCardIconActionButton from '@/Components/ListCard/ListCardIconActionButton';
 import PageHeader from '@/Components/PageHeader';
 import InputError from '@/Components/InputError';
 import { useCallback, useEffect, useRef, useState, FormEventHandler } from 'react';
@@ -296,24 +298,19 @@ export default function Index({ rooms, byFloor, floors, canManage = false }: Pro
                                                         </div>
                                                     </div>
                                                     {canManage && (
-                                                        <div className="flex items-center gap-1 flex-shrink-0">
-                                                            <button
-                                                                type="button"
+                                                        <ListCardActionRow className="shrink-0 gap-1 sm:w-auto">
+                                                            <ListCardIconActionButton
+                                                                label="Editar"
+                                                                icon={<PencilIcon className="h-5 w-5" />}
                                                                 onClick={() => openEditModal(r)}
-                                                                className="p-1.5 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700"
-                                                                title="Editar"
-                                                            >
-                                                                <PencilIcon className="w-4 h-4" />
-                                                            </button>
-                                                            <button
-                                                                type="button"
+                                                            />
+                                                            <ListCardIconActionButton
+                                                                label="Excluir"
+                                                                icon={<TrashIcon className="h-5 w-5" />}
+                                                                tone="danger"
                                                                 onClick={() => handleDelete(r.id)}
-                                                                className="p-1.5 text-zinc-500 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700"
-                                                                title="Excluir"
-                                                            >
-                                                                <TrashIcon className="w-4 h-4" />
-                                                            </button>
-                                                        </div>
+                                                            />
+                                                        </ListCardActionRow>
                                                     )}
                                                 </div>
                                             </div>

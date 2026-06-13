@@ -1,6 +1,8 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
+import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
+import ListCardTextActionButton from '@/Components/ListCard/ListCardTextActionButton';
 import InputLabel from '@/Components/InputLabel';
 import Modal from '@/Components/Modal';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
@@ -205,24 +207,27 @@ export default function MyDonations({ donations }: Props) {
                                         </p>
                                     )}
 
-                                    <div className="mt-4 flex flex-wrap gap-2">
+                                    <ListCardActionRow className="mt-4">
                                         {d.receipt_url && (
                                             <a
                                                 href={d.receipt_url}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400"
+                                                className="inline-flex h-9 items-center text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
                                             >
                                                 Ver comprovante
                                             </a>
                                         )}
                                         {d.can_dispute && (
-                                            <SecondaryButton type="button" onClick={() => openDispute(d)} className="text-sm">
-                                                <ExclamationTriangleIcon className="mr-1.5 h-4 w-4" />
+                                            <ListCardTextActionButton
+                                                type="button"
+                                                icon={<ExclamationTriangleIcon className="h-4 w-4" />}
+                                                onClick={() => openDispute(d)}
+                                            >
                                                 Solicitar revisão
-                                            </SecondaryButton>
+                                            </ListCardTextActionButton>
                                         )}
-                                    </div>
+                                    </ListCardActionRow>
                                 </article>
                             );
                         })}

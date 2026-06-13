@@ -3,6 +3,8 @@ import FlashMessages from '@/Components/FlashMessages';
 import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
+import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
+import ListCardTextActionButton from '@/Components/ListCard/ListCardTextActionButton';
 import InputLabel from '@/Components/InputLabel';
 import SelectInput from '@/Components/SelectInput';
 import TextInput from '@/Components/TextInput';
@@ -127,11 +129,11 @@ function PublisherEnrollmentCard({ row }: { row: EnrollmentRow }) {
                 </div>
             )}
 
-            <div className="mt-3 flex flex-wrap gap-2">
-                <SecondaryButton type="button" onClick={() => setStatusOpen(true)}>
+            <ListCardActionRow className="mt-3">
+                <ListCardTextActionButton type="button" onClick={() => setStatusOpen(true)}>
                     Atualizar status
-                </SecondaryButton>
-            </div>
+                </ListCardTextActionButton>
+            </ListCardActionRow>
 
             <form
                 className="mt-2"

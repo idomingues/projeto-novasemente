@@ -5,6 +5,8 @@ import AddButton from '@/Components/AddButton';
 import PageHeader from '@/Components/PageHeader';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
+import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
+import ListCardIconActionButton from '@/Components/ListCard/ListCardIconActionButton';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
@@ -206,24 +208,19 @@ export default function CultoIndex({ cultos }: Props) {
                                         {c.author?.name && <span>• {c.author.name}</span>}
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-1 mt-3">
-                                    <button
-                                        type="button"
+                                <ListCardActionRow className="mt-3 gap-1 sm:w-auto">
+                                    <ListCardIconActionButton
+                                        label="Editar"
+                                        icon={<PencilIcon className="h-5 w-5" />}
                                         onClick={() => openEditModal(c)}
-                                        className="p-2.5 rounded-xl text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                                        title="Editar"
-                                    >
-                                        <PencilIcon className="w-5 h-5" />
-                                    </button>
-                                    <button
-                                        type="button"
+                                    />
+                                    <ListCardIconActionButton
+                                        label="Excluir"
+                                        icon={<TrashIcon className="h-5 w-5" />}
+                                        tone="danger"
                                         onClick={() => handleDelete(c.id)}
-                                        className="p-2.5 rounded-xl text-zinc-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                                        title="Excluir"
-                                    >
-                                        <TrashIcon className="w-5 h-5" />
-                                    </button>
-                                </div>
+                                    />
+                                </ListCardActionRow>
                             </div>
                         </div>
                     ))

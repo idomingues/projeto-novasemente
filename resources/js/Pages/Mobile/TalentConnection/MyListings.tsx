@@ -3,6 +3,8 @@ import FlashMessages from '@/Components/FlashMessages';
 import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
+import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
+import ListCardTextActionButton from '@/Components/ListCard/ListCardTextActionButton';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import Textarea from '@/Components/Textarea';
@@ -147,35 +149,35 @@ export default function TalentConnectionMyListings({ listings, categories }: Pro
                                         )}
                                     </div>
                                 </div>
-                                <div className="mt-3 flex flex-wrap gap-2">
+                                <ListCardActionRow className="mt-3">
                                     {listing.status === 'approved' && (
-                                        <SecondaryButton type="button" onClick={() => changeStatus(listing.id, 'paused')}>
+                                        <ListCardTextActionButton type="button" onClick={() => changeStatus(listing.id, 'paused')}>
                                             Pausar
-                                        </SecondaryButton>
+                                        </ListCardTextActionButton>
                                     )}
                                     {listing.status === 'paused' && (
-                                        <SecondaryButton type="button" onClick={() => changeStatus(listing.id, 'approved')}>
+                                        <ListCardTextActionButton type="button" onClick={() => changeStatus(listing.id, 'approved')}>
                                             Reativar
-                                        </SecondaryButton>
+                                        </ListCardTextActionButton>
                                     )}
                                     {['approved', 'paused'].includes(listing.status) && (
-                                        <SecondaryButton type="button" onClick={() => changeStatus(listing.id, 'closed')}>
+                                        <ListCardTextActionButton type="button" onClick={() => changeStatus(listing.id, 'closed')}>
                                             Encerrar
-                                        </SecondaryButton>
+                                        </ListCardTextActionButton>
                                     )}
-                                    <SecondaryButton type="button" onClick={() => openEdit(listing)}>
+                                    <ListCardTextActionButton type="button" onClick={() => openEdit(listing)}>
                                         Editar
-                                    </SecondaryButton>
+                                    </ListCardTextActionButton>
                                     {['pending', 'rejected', 'closed', 'paused'].includes(listing.status) && (
                                         <button
                                             type="button"
                                             onClick={() => destroyListing(listing.id)}
-                                            className="text-sm text-red-600"
+                                            className="inline-flex h-9 cursor-pointer items-center px-3 text-xs font-medium text-red-600"
                                         >
                                             Excluir
                                         </button>
                                     )}
-                                </div>
+                                </ListCardActionRow>
                             </div>
                         ))}
                     </div>

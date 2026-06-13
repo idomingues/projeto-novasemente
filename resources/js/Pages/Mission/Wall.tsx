@@ -9,6 +9,8 @@ import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
+import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
+import ListCardIconActionButton from '@/Components/ListCard/ListCardIconActionButton';
 import { Head, router, useForm } from '@inertiajs/react';
 import { CalendarDaysIcon, CameraIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { FormEventHandler, useMemo, useState } from 'react';
@@ -230,24 +232,19 @@ export default function MissionWallAdmin({ items, canManage, hasDriveApiKey }: P
                                         </div>
 
                                         {canManage ? (
-                                            <div className="mt-3 flex items-center gap-1">
-                                                <button
-                                                    type="button"
+                                            <ListCardActionRow className="mt-3 gap-1 sm:w-auto">
+                                                <ListCardIconActionButton
+                                                    label="Editar"
+                                                    icon={<PencilIcon className="h-5 w-5" />}
                                                     onClick={() => openEditModal(a)}
-                                                    className="rounded-xl p-2.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-                                                    title="Editar"
-                                                >
-                                                    <PencilIcon className="h-5 w-5" />
-                                                </button>
-                                                <button
-                                                    type="button"
+                                                />
+                                                <ListCardIconActionButton
+                                                    label="Excluir"
+                                                    icon={<TrashIcon className="h-5 w-5" />}
+                                                    tone="danger"
                                                     onClick={() => handleDelete(a.id)}
-                                                    className="rounded-xl p-2.5 text-zinc-500 hover:bg-zinc-100 hover:text-red-600 dark:hover:bg-zinc-800 dark:hover:text-red-400"
-                                                    title="Excluir"
-                                                >
-                                                    <TrashIcon className="h-5 w-5" />
-                                                </button>
-                                            </div>
+                                                />
+                                            </ListCardActionRow>
                                         ) : null}
                                     </div>
                                 </div>
