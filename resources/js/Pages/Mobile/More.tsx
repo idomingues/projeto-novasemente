@@ -47,7 +47,7 @@ const items: MoreMenuItem[] = [
     { name: 'Saúde', description: 'Conteúdos de saúde e bem-estar', route: 'mobile.health', icon: HeartIcon },
     { name: 'Missão', description: 'Eventos, depoimentos, mural e cadastro missionário', route: 'mobile.mission', icon: GlobeAltIcon },
     {
-        name: 'Comunidade',
+        name: 'Comunidades',
         description: 'Grupos de interesse da igreja no WhatsApp',
         route: 'mobile.communities',
         icon: UserGroupIcon,

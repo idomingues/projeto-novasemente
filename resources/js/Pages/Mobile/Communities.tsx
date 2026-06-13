@@ -1,6 +1,6 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import { WhatsAppBrandIcon } from '@/Components/SocialBrandIcons';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { ArrowTopRightOnSquareIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 
 type CommunityCard = {
@@ -15,10 +15,18 @@ interface Props {
     communities: CommunityCard[];
 }
 
+function imageSrc(url: string | null, appUrl: string): string {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    const base = appUrl || (typeof window !== 'undefined' ? window.location.origin : '');
+    return `${base}${url}`;
+}
+
 export default function MobileCommunities({ communities }: Props) {
+    const appUrl = (usePage().props as { appUrl?: string }).appUrl ?? '';
     return (
         <MobileLayout>
-            <Head title="Comunidade" />
+            <Head title="Comunidades" />
             <div className="mx-auto w-full max-w-3xl space-y-6 lg:max-w-6xl">
                 <div>
                     <Link
@@ -28,7 +36,7 @@ export default function MobileCommunities({ communities }: Props) {
                         ← Mais
                     </Link>
                     <h1 className="mt-3 text-2xl font-bold tracking-tight text-zinc-900 dark:text-white lg:text-3xl">
-                        Comunidade
+                        Comunidades
                     </h1>
                     <p className="mt-2 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400 lg:text-base">
                         Encontre grupos de interesse da igreja e entre no WhatsApp para se conectar com quem compartilha
@@ -49,7 +57,7 @@ export default function MobileCommunities({ communities }: Props) {
                             >
                                 {community.coverUrl ? (
                                     <img
-                                        src={community.coverUrl}
+                                        src={imageSrc(community.coverUrl, appUrl)}
                                         alt=""
                                         className="aspect-[16/9] w-full object-cover"
                                     />

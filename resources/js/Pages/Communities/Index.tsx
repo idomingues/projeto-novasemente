@@ -18,6 +18,13 @@ import { compressImageForUpload, ImageCompressError } from '@/utils/compressImag
 import { GALLERY_IMAGE_ACCEPT } from '@/utils/mobilePhotoPick';
 import { useListModalEditUrl, useListModalFromUrl } from '@/hooks/useListModalEditUrl';
 
+function imageSrc(url: string | null, appUrl: string): string {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    const base = appUrl || (typeof window !== 'undefined' ? window.location.origin : '');
+    return `${base}${url}`;
+}
+
 type CommunityRow = {
     id: number;
     name: string;
@@ -51,6 +58,7 @@ export default function CommunitiesIndex({
     schemaReady = true,
     formOld = {},
 }: Props) {
+    const appUrl = (usePage().props as { appUrl?: string }).appUrl ?? '';
     const pageErrors = (usePage().props as { errors?: Record<string, string> }).errors ?? {};
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
@@ -79,8 +87,8 @@ export default function CommunitiesIndex({
         if (data.cover_image_file) {
             return URL.createObjectURL(data.cover_image_file);
         }
-        return editingCommunity?.coverUrl ?? null;
-    }, [data.cover_image_file, editingCommunity?.coverUrl]);
+        return editingCommunity?.coverUrl ? imageSrc(editingCommunity.coverUrl, appUrl) : null;
+    }, [data.cover_image_file, editingCommunity?.coverUrl, appUrl]);
 
     useEffect(() => {
         return () => {
@@ -278,7 +286,7 @@ export default function CommunitiesIndex({
                             <Card key={c.id} className="flex flex-col overflow-hidden p-0">
                                 {c.coverUrl ? (
                                     <img
-                                        src={c.coverUrl}
+                                        src={imageSrc(c.coverUrl, appUrl)}
                                         alt=""
                                         className="h-40 w-full object-cover"
                                     />

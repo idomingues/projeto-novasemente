@@ -17,6 +17,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        // Mantém arte e capa — dado de conteúdo, não estrutura.
+        //
     }
 };

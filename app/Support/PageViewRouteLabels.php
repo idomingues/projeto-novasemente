@@ -54,7 +54,7 @@ final class PageViewRouteLabels
         'mobile.mission.wall' => 'Missão — mural',
         'mobile.mission.wall.show' => 'Missão — mural (álbum)',
         'mobile.mission.form' => 'Missão — cadastro',
-        'mobile.communities' => 'Comunidade',
+        'mobile.communities' => 'Comunidades',
         'communities.index' => 'Comunidades — gestão',
         'mission.form' => 'Missão — formulário',
         'mission.content.events' => 'Missão — gestão eventos',
