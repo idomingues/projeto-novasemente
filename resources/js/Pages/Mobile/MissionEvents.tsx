@@ -1,5 +1,7 @@
+import MissionDayArtBanner from '@/Components/Mission/MissionDayArtBanner';
 import MobileLayout from '@/Layouts/MobileLayout';
 import MissionHubBackLink from '@/Components/Mission/MissionHubBackLink';
+import { isMissionDayEvent } from '@/constants/missionDayArt';
 import Modal from '@/Components/Modal';
 import ImageDownloadButton from '@/Components/ImageDownloadButton';
 import EventCardMedia from '@/Components/Events/EventCardMedia';
@@ -47,6 +49,8 @@ export default function MissionEvents({ events }: Props) {
                     </p>
                 </div>
 
+                <MissionDayArtBanner />
+
                 {events.length === 0 ? (
                     <div className="rounded-2xl border border-zinc-200 bg-white py-12 text-center dark:border-zinc-800 dark:bg-zinc-900">
                         <CalendarDaysIcon className="mx-auto h-10 w-10 text-zinc-400" />
@@ -58,9 +62,19 @@ export default function MissionEvents({ events }: Props) {
                         {events.map((ev) => {
                             const { day, month } = getDayMonth(ev.starts_at);
                             const accent = ev.color || '#059669';
+                            const missionDay = isMissionDayEvent(ev.title);
                             return (
                                 <li key={ev.id} className="h-full min-w-0">
                                     <div className="group flex h-full w-full min-h-0 flex-col overflow-hidden rounded-2xl border border-zinc-200/90 bg-white text-left shadow-sm transition-all hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-600">
+                                        {missionDay ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelected(ev)}
+                                                className="block w-full shrink-0 cursor-pointer touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
+                                            >
+                                                <MissionDayArtBanner layout="card" className="rounded-none shadow-none ring-0" />
+                                            </button>
+                                        ) : null}
                                         <button
                                             type="button"
                                             onClick={() => setSelected(ev)}
@@ -116,7 +130,9 @@ export default function MissionEvents({ events }: Props) {
                 {selected && (
                     <>
                         <div className="relative">
-                            {selected.image_url ? (
+                            {isMissionDayEvent(selected.title) ? (
+                                <MissionDayArtBanner layout="modal" />
+                            ) : selected.image_url ? (
                                 eventInstagramVideoUrl(selected) ? (
                                     <CoverWithVideoLink
                                         videoHref={eventInstagramVideoUrl(selected)!}

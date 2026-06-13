@@ -1,3 +1,4 @@
+import MissionDayArtBanner from '@/Components/Mission/MissionDayArtBanner';
 import MissionHubBackLink from '@/Components/Mission/MissionHubBackLink';
 import MissionPageSection from '@/Components/Mission/MissionPageSection';
 import MissionParticipateButton from '@/Components/Mission/MissionParticipateButton';
@@ -86,6 +87,13 @@ export default function MissionHome() {
                 <div className="mt-4">
                     <MissionThailandHero variant="page" />
                 </div>
+
+                <Link
+                    href={route('mobile.mission.events')}
+                    className="group mt-4 block cursor-pointer rounded-2xl transition hover:scale-[1.005] hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"
+                >
+                    <MissionDayArtBanner />
+                </Link>
 
                 <nav
                     aria-label="Seções da página"

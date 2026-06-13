@@ -1,3 +1,4 @@
+import MissionDayArtBanner from '@/Components/Mission/MissionDayArtBanner';
 import MissionThailandHero from '@/Components/Mission/MissionThailandHero';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, Link } from '@inertiajs/react';
@@ -56,6 +57,13 @@ export default function MissionHub({ cards }: Props) {
                         Comunidade missionária Nova Semente — Tailândia & Mianmar, eventos, depoimentos e mural.
                     </p>
                 </div>
+
+                <Link
+                    href={route('mobile.mission.events')}
+                    className="group block cursor-pointer rounded-2xl transition hover:scale-[1.005] hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"
+                >
+                    <MissionDayArtBanner />
+                </Link>
 
                 {featured ? (
                     <Link
