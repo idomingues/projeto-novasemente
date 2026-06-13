@@ -111,7 +111,7 @@ export default function CommunitiesIndex({
                     ? String(o.sort_order)
                     : prev.sort_order,
             is_published:
-                o.is_published === true || o.is_published === '1' || o.is_published === 'true' || o.is_published === 1,
+                o.is_published === true || o.is_published === '1' || o.is_published === 'true',
             cover_image_file: null,
         }));
         setIsModalOpen(true);
