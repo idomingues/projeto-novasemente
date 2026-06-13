@@ -139,7 +139,6 @@ class MissionSlaTest extends TestCase
     public function test_admin_assigns_phase_leader_via_users_modal(): void
     {
         $leader = User::factory()->create(['church_id' => $this->church->id]);
-        $leader->givePermissionTo('mission.view');
 
         $this->withSession(['working_church_id' => $this->church->id])->actingAs($this->admin)
             ->patch(route('mission.users.update', $leader), [
@@ -150,14 +149,26 @@ class MissionSlaTest extends TestCase
             ->assertSessionHas('success');
 
         $leader->refresh();
+        $this->assertTrue($leader->can('mission.view'));
         $this->assertTrue($leader->is_mission_team);
         $this->assertSame([$this->phase->id], $leader->missionPhases()->pluck('id')->all());
     }
 
-    public function test_mission_users_index_lists_viewers(): void
+    public function test_mission_users_index_lists_mission_volunteers(): void
     {
-        $viewer = User::factory()->create(['church_id' => $this->church->id, 'name' => 'Ana Missão']);
-        $viewer->givePermissionTo('mission.view');
+        MissionVolunteer::query()->create([
+            'church_id' => $this->church->id,
+            'mission_phase_id' => $this->phase->id,
+            'phase_entered_at' => now(),
+            'full_name' => 'Ana Missão',
+            'phone' => '11999990004',
+            'lgpd_consent' => true,
+        ]);
+
+        User::factory()->create([
+            'church_id' => $this->church->id,
+            'name' => 'Equipe interna',
+        ])->givePermissionTo('mission.view');
 
         $response = $this->withSession(['working_church_id' => $this->church->id])->actingAs($this->admin)
             ->get(route('mission.users.index'));
@@ -166,6 +177,7 @@ class MissionSlaTest extends TestCase
         $response->assertInertia(fn ($page) => $page->component('Mission/Users')->has('users'));
         $names = collect($response->original->getData()['page']['props']['users'])->pluck('name')->all();
         $this->assertContains('Ana Missão', $names);
+        $this->assertNotContains('Equipe interna', $names);
     }
 
     public function test_admin_can_reorder_phases_by_sort_order(): void
@@ -264,7 +276,6 @@ class MissionSlaTest extends TestCase
     public function test_phase_leader_requires_at_least_one_phase(): void
     {
         $leader = User::factory()->create(['church_id' => $this->church->id]);
-        $leader->givePermissionTo('mission.view');
 
         $this->withSession(['working_church_id' => $this->church->id])->actingAs($this->admin)
             ->patch(route('mission.users.update', $leader), [

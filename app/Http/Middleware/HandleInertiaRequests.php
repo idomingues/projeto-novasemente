@@ -7,6 +7,7 @@ use App\Models\AppSupportTicket;
 use App\Models\AppVersion;
 use App\Models\Church;
 use App\Models\ChurchSolicitation;
+use App\Models\MissionTripRegistration;
 use App\Models\Pastor;
 use App\Support\MobileProjectVersionHint;
 use App\Support\NotificationFeed;
@@ -306,6 +307,22 @@ class HandleInertiaRequests extends Middleware
                     : false,
                 'canManageMission' => $request->user()?->can('mission.manage') ?? false,
             ],
+            'missionTripRegistrationsCount' => function () use ($request) {
+                $user = $request->user();
+                if ($user === null || (! $user->can('mission.view') && ! $user->can('mission.manage'))) {
+                    return 0;
+                }
+
+                $churchId = Church::resolveWorkingId($request);
+                if ($churchId === null) {
+                    return 0;
+                }
+
+                return MissionTripRegistration::query()
+                    ->where('church_id', $churchId)
+                    ->where('trip_slug', MissionTripRegistration::TRIP_THAILAND_MYANMAR_2026)
+                    ->count();
+            },
             'currentChurch' => $currentChurch,
             'churchesForSwitch' => $churchesForSwitch,
             'flash' => [
@@ -320,6 +337,8 @@ class HandleInertiaRequests extends Middleware
                 'public_volunteer_signup_church' => fn () => $request->session()->get('public_volunteer_signup_church'),
                 'leader_self_signup_url' => fn () => $request->session()->get('leader_self_signup_url'),
                 'leader_self_signup_church' => fn () => $request->session()->get('leader_self_signup_church'),
+                'trip_signup_success' => fn () => (bool) $request->session()->get('trip_signup_success'),
+                'trip_signup_name' => fn () => $request->session()->get('trip_signup_name'),
             ],
             'recentNotifications' => fn () => NotificationFeed::mergedForUser(
                 $request,

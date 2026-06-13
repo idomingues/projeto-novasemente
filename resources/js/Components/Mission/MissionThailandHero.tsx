@@ -12,6 +12,7 @@ type Variant = 'page' | 'hub';
 
 type Props = {
     variant?: Variant;
+    participateHref?: string;
 };
 
 const stats = [
@@ -20,7 +21,7 @@ const stats = [
     { icon: UserGroupIcon, label: 'Impacto', value: '+30 mil pessoas' },
 ];
 
-export default function MissionThailandHero({ variant = 'page' }: Props) {
+export default function MissionThailandHero({ variant = 'page', participateHref }: Props) {
     const isPage = variant === 'page';
 
     return (
@@ -87,9 +88,9 @@ export default function MissionThailandHero({ variant = 'page' }: Props) {
                         )}
                     </div>
 
-                    {isPage ? (
+                    {isPage && participateHref ? (
                         <div className="flex shrink-0 lg:min-w-[11rem]">
-                            <MissionParticipateButton variant="hero" />
+                            <MissionParticipateButton variant="hero" href={participateHref} />
                         </div>
                     ) : null}
                 </div>

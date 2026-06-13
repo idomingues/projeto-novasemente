@@ -2,6 +2,18 @@
 
 return [
 
+    'trip_professions' => [
+        'Médico',
+        'Dentista',
+        'Enfermeiro',
+        'Assistente Social',
+        'Nutricionista',
+        'Professor',
+        'Advogado',
+        'Funcionário público',
+        'Outro',
+    ],
+
     'professions' => [
         'Administrador(a)',
         'Advogado(a)',

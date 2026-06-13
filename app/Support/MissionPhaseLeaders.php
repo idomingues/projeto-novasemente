@@ -19,8 +19,8 @@ final class MissionPhaseLeaders
             ->unique()
             ->values();
 
-        if ($isPhaseLeader && ! $user->can('mission.view')) {
-            abort(422, 'Conceda a permissão «Ver Missão» ao usuário antes de marcá-lo como líder de fase.');
+        if ($isPhaseLeader && ! $user->can('mission.view') && ! $user->can('mission.manage')) {
+            $user->givePermissionTo('mission.view');
         }
 
         if ($isPhaseLeader && $phaseIdList->isEmpty()) {

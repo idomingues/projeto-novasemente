@@ -1,9 +1,22 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 
-export type MissionAdminTab = 'cadastros' | 'usuarios' | 'eventos' | 'depoimentos' | 'quem-somos' | 'mural';
+export type MissionAdminTab =
+    | 'cadastros'
+    | 'tailandia-mianmar'
+    | 'usuarios'
+    | 'eventos'
+    | 'depoimentos'
+    | 'quem-somos'
+    | 'mural';
 
-const tabs: { key: MissionAdminTab; label: string; route: string }[] = [
+const tabs: { key: MissionAdminTab; label: string; route: string; showCount?: boolean }[] = [
     { key: 'cadastros', label: 'Cadastros', route: 'mission.index' },
+    {
+        key: 'tailandia-mianmar',
+        label: 'Inscrições Tailândia',
+        route: 'mission.trip-registrations.index',
+        showCount: true,
+    },
     { key: 'usuarios', label: 'Usuários', route: 'mission.users.index' },
     { key: 'eventos', label: 'Eventos', route: 'mission.content.events' },
     { key: 'depoimentos', label: 'Depoimentos', route: 'mission.content.messages' },
@@ -21,6 +34,9 @@ function tabButtonClass(active: boolean): string {
 }
 
 export default function MissionAdminTabs({ active }: { active: MissionAdminTab }) {
+    const tripRegistrationsCount =
+        (usePage().props as { missionTripRegistrationsCount?: number }).missionTripRegistrationsCount ?? 0;
+
     return (
         <nav
             role="tablist"
@@ -36,7 +52,14 @@ export default function MissionAdminTabs({ active }: { active: MissionAdminTab }
                     className={tabButtonClass(active === tab.key)}
                     preserveScroll
                 >
-                    {tab.label}
+                    <span className="inline-flex items-center gap-1.5">
+                        {tab.label}
+                        {tab.showCount && tripRegistrationsCount > 0 ? (
+                            <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-teal-600 px-1.5 py-0.5 text-[0.65rem] font-bold leading-none text-white dark:bg-teal-500">
+                                {tripRegistrationsCount}
+                            </span>
+                        ) : null}
+                    </span>
                 </Link>
             ))}
         </nav>

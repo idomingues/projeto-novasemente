@@ -11,7 +11,7 @@ type PhaseOption = {
 };
 
 type MissionUserRow = {
-    id: number;
+    id: number | null;
     name: string;
     email: string | null;
     is_phase_leader: boolean;
@@ -46,7 +46,7 @@ export default function MissionPhaseLeaderModal({ show, onClose, user, phases, u
     };
 
     const save = () => {
-        if (!user) return;
+        if (!user?.id) return;
         setSaving(true);
         router.patch(
             updateUrlFromPattern(updateUrlPattern, user.id),

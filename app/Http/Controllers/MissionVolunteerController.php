@@ -14,6 +14,7 @@ use App\Support\MissionPhaseBootstrap;
 use App\Support\MissionPhaseLeaders;
 use App\Support\MissionSla;
 use App\Support\MissionTeamAccess;
+use App\Support\MissionVolunteerAccountResolver;
 use App\Support\MissionVolunteerFilteredRoster;
 use App\Support\MissionVolunteerPayload;
 use App\Support\MissionVolunteerRosterFilters;
@@ -457,24 +458,35 @@ class MissionVolunteerController extends Controller
                 'name' => $p->name,
             ]);
 
-        $users = User::query()
+        $users = MissionVolunteer::query()
             ->where('church_id', $churchId)
-            ->permission('mission.view')
-            ->with('missionPhases:id,name')
-            ->orderBy('name')
+            ->orderBy('full_name')
             ->get()
-            ->map(fn (User $u) => [
-                'id' => $u->id,
-                'name' => $u->name,
-                'email' => $u->email,
-                'is_phase_leader' => (bool) ($u->is_mission_team ?? false),
-                'mission_phase_ids' => $u->missionPhases->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
-                'phase_labels' => $u->missionPhases
-                    ->sortBy(fn (MissionPhase $p) => $p->name)
-                    ->map(fn (MissionPhase $p) => $p->name)
-                    ->values()
-                    ->all(),
-            ]);
+            ->map(function (MissionVolunteer $volunteer) {
+                $linkedUser = MissionVolunteerAccountResolver::userForVolunteer($volunteer);
+                if ($linkedUser !== null) {
+                    $linkedUser->loadMissing('missionPhases:id,name');
+                }
+
+                return [
+                    'volunteer_id' => $volunteer->id,
+                    'id' => $linkedUser?->id,
+                    'name' => $volunteer->full_name,
+                    'email' => MissionVolunteerAccountResolver::emailForVolunteer($volunteer, $linkedUser),
+                    'has_app_account' => $linkedUser !== null,
+                    'is_phase_leader' => (bool) ($linkedUser?->is_mission_team ?? false),
+                    'mission_phase_ids' => $linkedUser
+                        ? $linkedUser->missionPhases->pluck('id')->map(fn ($id) => (int) $id)->values()->all()
+                        : [],
+                    'phase_labels' => $linkedUser
+                        ? $linkedUser->missionPhases
+                            ->sortBy(fn (MissionPhase $p) => $p->name)
+                            ->map(fn (MissionPhase $p) => $p->name)
+                            ->values()
+                            ->all()
+                        : [],
+                ];
+            });
 
         return Inertia::render('Mission/Users', [
             'users' => $users,

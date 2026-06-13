@@ -24,6 +24,7 @@ use App\Http\Controllers\MemberController;
 use App\Http\Controllers\MinistryController;
 use App\Http\Controllers\MinistryLeadVolunteerController;
 use App\Http\Controllers\MissionFormController;
+use App\Http\Controllers\MissionTripRegistrationController;
 use App\Http\Controllers\MissionVolunteerController;
 use App\Http\Controllers\MobileAnoBiblicoController;
 use App\Http\Controllers\MobileBibleController;
@@ -125,6 +126,11 @@ Route::get('/mobile/schedule/full', [MobileController::class, 'scheduleFull'])->
 Route::get('/mobile/more', [MobileController::class, 'more'])->name('mobile.more');
 Route::get('/mobile/missao', [\App\Http\Controllers\MissionHubController::class, 'index'])->name('mobile.mission');
 Route::get('/mobile/missao/home', [\App\Http\Controllers\MissionHubController::class, 'home'])->name('mobile.mission.home');
+Route::get('/mobile/missao/inscricao', [MissionTripRegistrationController::class, 'create'])
+    ->name('mobile.mission.trip-registration.create');
+Route::post('/mobile/missao/inscricao', [MissionTripRegistrationController::class, 'store'])
+    ->middleware('throttle:20,1')
+    ->name('mobile.mission.trip-registration.store');
 Route::get('/mobile/missao/eventos', [\App\Http\Controllers\MissionHubController::class, 'events'])->name('mobile.mission.events');
 Route::get('/mobile/missao/recados', [\App\Http\Controllers\MissionHubController::class, 'messages'])->name('mobile.mission.messages');
 Route::post('/mobile/missao/recados', [\App\Http\Controllers\MissionHubController::class, 'storeMessage'])
@@ -565,6 +571,8 @@ Route::middleware('auth')->group(function () {
 
     // Missão — rotas literais de conteúdo antes do wildcard {missionVolunteer}
     Route::get('/missao/gestao', [MissionVolunteerController::class, 'index'])->name('mission.index')->middleware('permission:mission.view|mission.manage');
+    Route::get('/missao/gestao/tailandia-mianmar', [MissionTripRegistrationController::class, 'index'])->name('mission.trip-registrations.index')->middleware('permission:mission.view|mission.manage');
+    Route::get('/missao/gestao/tailandia-mianmar/exportar', [MissionTripRegistrationController::class, 'export'])->name('mission.trip-registrations.export')->middleware('permission:mission.view|mission.manage');
     Route::post('/missao/gestao/comunicacao', [MissionVolunteerController::class, 'sendBroadcast'])->name('mission.broadcast.store')->middleware('permission:mission.manage');
 
     Route::get('/missao/gestao/eventos', [\App\Http\Controllers\MissionContentController::class, 'eventsIndex'])->name('mission.content.events')->middleware('permission:mission.view|mission.manage');

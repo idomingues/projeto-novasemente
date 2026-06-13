@@ -64,7 +64,9 @@ class MissionHubController extends Controller
 
     public function home(Request $request): Response
     {
-        return Inertia::render('Mobile/MissionHome');
+        return Inertia::render('Mobile/MissionHome', [
+            'signupUrl' => route('mobile.mission.trip-registration.create'),
+        ]);
     }
 
     public function events(Request $request): Response

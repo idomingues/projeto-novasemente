@@ -1,4 +1,4 @@
-import MissionDayArtBanner from '@/Components/Mission/MissionDayArtBanner';
+import MissionArtComingSoon from '@/Components/Mission/MissionArtComingSoon';
 import MissionHubBackLink from '@/Components/Mission/MissionHubBackLink';
 import MissionPageSection from '@/Components/Mission/MissionPageSection';
 import MissionParticipateButton from '@/Components/Mission/MissionParticipateButton';
@@ -74,10 +74,14 @@ const sectionNav = [
     { id: 'sobre', label: 'Sobre' },
     { id: 'objetivo', label: 'Objetivo' },
     { id: 'preparo', label: 'Preparo' },
-    { id: 'participar', label: 'Participar' },
+    { id: 'participar', label: 'Inscrição' },
 ];
 
-export default function MissionHome() {
+interface Props {
+    signupUrl: string;
+}
+
+export default function MissionHome({ signupUrl }: Props) {
     return (
         <MobileLayout>
             <Head title="Missão Tailândia & Mianmar" />
@@ -85,29 +89,34 @@ export default function MissionHome() {
                 <MissionHubBackLink />
 
                 <div className="mt-4">
-                    <MissionThailandHero variant="page" />
+                    <MissionThailandHero variant="page" participateHref={signupUrl} />
                 </div>
 
-                <Link
-                    href={route('mobile.mission.events')}
-                    className="group mt-4 block cursor-pointer rounded-2xl transition hover:scale-[1.005] hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"
-                >
-                    <MissionDayArtBanner />
-                </Link>
+                <MissionArtComingSoon className="mt-4" />
 
                 <nav
                     aria-label="Seções da página"
                     className="mt-4 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] lg:hidden [&::-webkit-scrollbar]:hidden"
                 >
-                    {sectionNav.map(({ id, label }) => (
-                        <a
-                            key={id}
-                            href={`#${id}`}
-                            className="shrink-0 cursor-pointer rounded-full border border-zinc-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-zinc-700 shadow-sm transition hover:border-teal-300 hover:text-teal-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-teal-600"
-                        >
-                            {label}
-                        </a>
-                    ))}
+                    {sectionNav.map(({ id, label }) =>
+                        id === 'participar' ? (
+                            <Link
+                                key={id}
+                                href={signupUrl}
+                                className="shrink-0 cursor-pointer rounded-full border border-zinc-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-zinc-700 shadow-sm transition hover:border-teal-300 hover:text-teal-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-teal-600"
+                            >
+                                {label}
+                            </Link>
+                        ) : (
+                            <a
+                                key={id}
+                                href={`#${id}`}
+                                className="shrink-0 cursor-pointer rounded-full border border-zinc-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-zinc-700 shadow-sm transition hover:border-teal-300 hover:text-teal-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-teal-600"
+                            >
+                                {label}
+                            </a>
+                        ),
+                    )}
                 </nav>
 
                 <div className="mt-6 lg:mt-8 lg:grid lg:grid-cols-[minmax(0,1fr)_17rem] lg:items-start lg:gap-8 xl:grid-cols-[minmax(0,1fr)_18rem] xl:gap-10">
@@ -275,10 +284,11 @@ export default function MissionHome() {
                         >
                             <SparklesIcon className="mx-auto h-8 w-8 text-amber-300" aria-hidden />
                             <h2 className="mt-3 text-lg font-bold text-white">Pronto para viver essa missão?</h2>
-                            <p className="mt-2 text-sm text-teal-100/90">Junte-se a nós e faça a diferença!</p>
+                            <p className="mt-2 text-sm text-teal-100/90">Acesse a página de inscrição e manifeste seu interesse.</p>
                             <div className="mt-5">
                                 <MissionParticipateButton
                                     variant="primary"
+                                    href={signupUrl}
                                     className="!bg-amber-400 !text-amber-950 hover:!bg-amber-300 dark:!bg-amber-400 dark:!text-amber-950"
                                 />
                             </div>
@@ -297,12 +307,21 @@ export default function MissionHome() {
                                 <ul className="mt-3 space-y-1">
                                     {sectionNav.map(({ id, label }) => (
                                         <li key={id}>
-                                            <a
-                                                href={`#${id}`}
-                                                className="block cursor-pointer rounded-lg px-2 py-1.5 text-sm font-medium text-zinc-700 transition hover:bg-teal-50 hover:text-teal-900 dark:text-zinc-300 dark:hover:bg-teal-950/40 dark:hover:text-teal-100"
-                                            >
-                                                {label}
-                                            </a>
+                                            {id === 'participar' ? (
+                                                <Link
+                                                    href={signupUrl}
+                                                    className="block cursor-pointer rounded-lg px-2 py-1.5 text-sm font-medium text-zinc-700 transition hover:bg-teal-50 hover:text-teal-900 dark:text-zinc-300 dark:hover:bg-teal-950/40 dark:hover:text-teal-100"
+                                                >
+                                                    {label}
+                                                </Link>
+                                            ) : (
+                                                <a
+                                                    href={`#${id}`}
+                                                    className="block cursor-pointer rounded-lg px-2 py-1.5 text-sm font-medium text-zinc-700 transition hover:bg-teal-50 hover:text-teal-900 dark:text-zinc-300 dark:hover:bg-teal-950/40 dark:hover:text-teal-100"
+                                                >
+                                                    {label}
+                                                </a>
+                                            )}
                                         </li>
                                     ))}
                                 </ul>
@@ -312,17 +331,16 @@ export default function MissionHome() {
                                 <SparklesIcon className="h-7 w-7 text-amber-300" aria-hidden />
                                 <h2 className="mt-3 text-base font-bold text-white">Pronto para servir?</h2>
                                 <p className="mt-2 text-sm leading-relaxed text-teal-100/90">
-                                    Cadastre-se e acompanhe os próximos passos com a equipe.
+                                    Acesse a página de inscrição da missão.
                                 </p>
                                 <div className="mt-4">
-                                    <MissionParticipateButton variant="primary" fullWidth className="!bg-amber-400 !text-amber-950 hover:!bg-amber-300" />
+                                    <MissionParticipateButton
+                                        variant="primary"
+                                        fullWidth
+                                        href={signupUrl}
+                                        className="!bg-amber-400 !text-amber-950 hover:!bg-amber-300"
+                                    />
                                 </div>
-                                <Link
-                                    href={route('mobile.mission.events')}
-                                    className="mt-2 block cursor-pointer text-center text-sm font-semibold text-teal-200 hover:text-white"
-                                >
-                                    Ver eventos da missão
-                                </Link>
                             </div>
                         </div>
                     </aside>

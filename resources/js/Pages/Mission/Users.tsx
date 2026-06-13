@@ -15,9 +15,11 @@ type PhaseOption = {
 };
 
 type MissionUserRow = {
-    id: number;
+    volunteer_id: number;
+    id: number | null;
     name: string;
     email: string | null;
+    has_app_account: boolean;
     is_phase_leader: boolean;
     mission_phase_ids: number[];
     phase_labels: string[];
@@ -51,16 +53,14 @@ export default function MissionUsers({ users, phases, canManage, updateUrlPatter
             <div className="space-y-6">
                 <PageHeader
                     title="Missão"
-                    subtitle="Usuários com acesso à Missão e líderes de fase do quadro."
+                    subtitle="Mesmos cadastros da aba Cadastros. Líderes de fase só podem ser definidos para quem já tem conta no aplicativo."
                 />
 
                 <MissionAdminTabs active="usuarios" />
 
                 <Card className="overflow-x-auto">
                     {users.length === 0 ? (
-                        <p className="p-6 text-sm text-zinc-500">
-                            Nenhum usuário com permissão «Ver Missão» nesta igreja.
-                        </p>
+                        <p className="p-6 text-sm text-zinc-500">Nenhum cadastro missionário nesta igreja.</p>
                     ) : (
                         <table className="min-w-full text-sm">
                             <thead>
@@ -72,13 +72,18 @@ export default function MissionUsers({ users, phases, canManage, updateUrlPatter
                             </thead>
                             <tbody>
                                 {users.map((user) => (
-                                    <tr key={user.id} className="border-b border-zinc-100 dark:border-zinc-800">
+                                    <tr key={user.volunteer_id} className="border-b border-zinc-100 dark:border-zinc-800">
                                         <td className="p-3">
                                             <div className="flex items-center gap-3">
                                                 <UserListAvatar name={user.name} size="md" />
                                                 <div className="min-w-0">
                                                     <div className="font-medium text-zinc-900 dark:text-white">{user.name}</div>
                                                     <div className="text-xs text-zinc-500">{user.email ?? 'Sem e-mail'}</div>
+                                                    {!user.has_app_account ? (
+                                                        <div className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                                                            Sem conta no aplicativo
+                                                        </div>
+                                                    ) : null}
                                                 </div>
                                             </div>
                                         </td>
@@ -100,15 +105,19 @@ export default function MissionUsers({ users, phases, canManage, updateUrlPatter
                                         </td>
                                         {canManage ? (
                                             <td className="p-3 text-right">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => openLeaderModal(user)}
-                                                    className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-600 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
-                                                    title="Definir líder de fase"
-                                                    aria-label={`Definir liderança de fase de ${user.name}`}
-                                                >
-                                                    <ShieldCheckIcon className="h-5 w-5" strokeWidth={1.75} aria-hidden />
-                                                </button>
+                                                {user.has_app_account && user.id !== null ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => openLeaderModal(user)}
+                                                        className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-600 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
+                                                        title="Definir líder de fase"
+                                                        aria-label={`Definir liderança de fase de ${user.name}`}
+                                                    >
+                                                        <ShieldCheckIcon className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+                                                    </button>
+                                                ) : (
+                                                    <span className="text-xs text-zinc-400">—</span>
+                                                )}
                                             </td>
                                         ) : null}
                                     </tr>
