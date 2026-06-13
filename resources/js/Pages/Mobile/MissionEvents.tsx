@@ -49,8 +49,6 @@ export default function MissionEvents({ events }: Props) {
                     </p>
                 </div>
 
-                <MissionDayArtBanner />
-
                 {events.length === 0 ? (
                     <div className="rounded-2xl border border-zinc-200 bg-white py-12 text-center dark:border-zinc-800 dark:bg-zinc-900">
                         <CalendarDaysIcon className="mx-auto h-10 w-10 text-zinc-400" />
