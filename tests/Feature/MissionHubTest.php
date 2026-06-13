@@ -94,6 +94,71 @@ class MissionHubTest extends TestCase
                 )));
     }
 
+    public function test_mission_day_inherits_color_from_sibling_event_on_mobile(): void
+    {
+        $this->seed(ChurchSeeder::class);
+        $church = Church::query()->firstOrFail();
+
+        MissionEvent::query()->create([
+            'church_id' => $church->id,
+            'title' => 'Mission Day Nova Semente - Teste NS',
+            'color' => '#D97706',
+            'image_url' => '/media/events/mission-day.jpg',
+            'starts_at' => '2026-05-27 00:00:00',
+            'all_day' => true,
+        ]);
+
+        MissionEvent::query()->create([
+            'church_id' => $church->id,
+            'title' => 'Mission Day',
+            'color' => '#0D9488',
+            'starts_at' => '2026-06-14 00:00:00',
+            'all_day' => true,
+        ]);
+
+        $this->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.mission.events'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Mobile/MissionEvents')
+                ->where('events', fn ($events) => collect($events)->contains(
+                    fn ($event) => $event['title'] === 'Mission Day'
+                        && $event['color'] === '#D97706',
+                )));
+    }
+
+    public function test_mission_day_keeps_custom_color_when_explicitly_configured(): void
+    {
+        $this->seed(ChurchSeeder::class);
+        $church = Church::query()->firstOrFail();
+
+        MissionEvent::query()->create([
+            'church_id' => $church->id,
+            'title' => 'Mission Day Nova Semente - Teste NS',
+            'color' => '#D97706',
+            'starts_at' => '2026-05-27 00:00:00',
+            'all_day' => true,
+        ]);
+
+        MissionEvent::query()->create([
+            'church_id' => $church->id,
+            'title' => 'Mission Day',
+            'color' => '#EA580C',
+            'starts_at' => '2026-06-14 00:00:00',
+            'all_day' => true,
+        ]);
+
+        $this->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.mission.events'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Mobile/MissionEvents')
+                ->where('events', fn ($events) => collect($events)->contains(
+                    fn ($event) => $event['title'] === 'Mission Day'
+                        && $event['color'] === '#EA580C',
+                )));
+    }
+
     public function test_authenticated_user_can_post_mission_message(): void
     {
         $this->seed(ChurchSeeder::class);

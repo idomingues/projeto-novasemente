@@ -2,7 +2,6 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, router, useForm } from '@inertiajs/react';
 import AddButton from '@/Components/AddButton';
 import PageHeader from '@/Components/PageHeader';
-import PrayerAmenButton from '@/Components/PrayerAmenButton';
 import FlashMessages from '@/Components/FlashMessages';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
@@ -14,11 +13,13 @@ import Modal from '@/Components/Modal';
 import { FormEventHandler, useState } from 'react';
 import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import { PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import PrayerRequestCardContent from '@/Components/Prayer/PrayerRequestCardContent';
 import { confirmAction } from '@/utils/confirmDialog';
 
 interface PrayerItem {
     id: number;
     name_or_nickname: string;
+    is_anonymous: boolean;
     request: string;
     created_at: string;
     month_year: string;
@@ -56,6 +57,7 @@ function groupByMonthYear(requests: PrayerItem[]): { label: string; key: string;
 export default function PrayerIndex({ requests, canManage }: Props) {
     const { data, setData, post, processing, errors, reset } = useForm({
         name_or_nickname: '',
+        is_anonymous: false,
         request: '',
     });
     const [createOpen, setCreateOpen] = useState(false);
@@ -63,6 +65,7 @@ export default function PrayerIndex({ requests, canManage }: Props) {
     const [editingId, setEditingId] = useState<number | null>(null);
     const editForm = useForm({
         name_or_nickname: '',
+        is_anonymous: false,
         request: '',
     });
 
@@ -84,7 +87,7 @@ export default function PrayerIndex({ requests, canManage }: Props) {
                 <div className="lg:mb-6 space-y-3">
                     <PageHeader
                         title="Pedidos de oração"
-                        subtitle="Veja os pedidos e ore por alguém. Obs.: O nome não é divulgado."
+                        subtitle="Faça seu pedido de oração ou ore por alguém."
                         actions={<AddButton variant="icon" onClick={() => setCreateOpen(true)} title="Novo pedido">Novo pedido</AddButton>}
                     />
                     <p className="max-w-3xl rounded-xl border border-brand-200/90 bg-brand-50/90 px-3 py-2.5 text-sm leading-relaxed text-brand-950 dark:border-brand-900/45 dark:bg-brand-950/30 dark:text-brand-50">
@@ -116,36 +119,27 @@ export default function PrayerIndex({ requests, canManage }: Props) {
                                                 >
                                                     <div className="flex gap-3">
                                                         <div className="min-w-0 flex-1">
-                                                            <p className="font-semibold text-zinc-900 dark:text-white">
-                                                                {r.name_or_nickname}
-                                                            </p>
                                                             {!r.active ? (
                                                                 r.needs_review ? (
-                                                                    <p className="mt-1 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:bg-amber-950/30 dark:text-amber-200">
+                                                                    <p className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:bg-amber-950/30 dark:text-amber-200">
                                                                         Em análise
                                                                     </p>
                                                                 ) : (
-                                                                    <p className="mt-1 inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                                                                    <p className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
                                                                         Desativado
                                                                     </p>
                                                                 )
                                                             ) : null}
-                                                            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap">
-                                                                {r.request}
-                                                            </p>
+                                                            <PrayerRequestCardContent
+                                                                item={r}
+                                                                showAmen={r.active}
+                                                                className={!r.active ? 'mt-1' : ''}
+                                                            />
                                                             {canManage && r.needs_review && r.moderation_note ? (
                                                                 <p className="mt-2 text-xs text-amber-700/90 dark:text-amber-200/90">
                                                                     {r.moderation_note}
                                                                 </p>
                                                             ) : null}
-                                                            <div className="mt-3">
-                                                                {r.active ? (
-                                                                    <PrayerAmenButton
-                                                                        prayerId={r.id}
-                                                                        count={r.prayer_amen_count ?? 0}
-                                                                    />
-                                                                ) : null}
-                                                            </div>
                                                         </div>
                                                         {canManage ? (
                                                             <div className="flex flex-col gap-1">
@@ -155,6 +149,7 @@ export default function PrayerIndex({ requests, canManage }: Props) {
                                                                         setEditingId(r.id);
                                                                         editForm.setData({
                                                                             name_or_nickname: r.name_or_nickname,
+                                                                            is_anonymous: r.is_anonymous,
                                                                             request: r.request,
                                                                         });
                                                                         editForm.clearErrors();
@@ -216,18 +211,43 @@ export default function PrayerIndex({ requests, canManage }: Props) {
                             Novo pedido de oração
                         </h2>
                         <div className="space-y-4">
-                            <div>
-                                <InputLabel htmlFor="prayer_name" value="Nome, apelido ou codinome" />
-                                <TextInput
-                                    id="prayer_name"
-                                    value={data.name_or_nickname}
-                                    onChange={(e) => setData('name_or_nickname', e.target.value)}
-                                    placeholder="Ex: Maria ou Irmão João"
-                                    className="mt-1 block w-full"
-                                    maxLength={255}
-                                />
-                                <InputError message={errors.name_or_nickname} className="mt-1" />
+                            <div className="space-y-1">
+                                <label className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        className="mt-0.5 cursor-pointer"
+                                        checked={data.is_anonymous}
+                                        onChange={(e) => {
+                                            const checked = e.target.checked;
+                                            setData((prev) => ({
+                                                ...prev,
+                                                is_anonymous: checked,
+                                                name_or_nickname: checked ? '' : prev.name_or_nickname,
+                                            }));
+                                        }}
+                                    />
+                                    <span>
+                                        <span className="font-medium">Enviar sem nome</span>
+                                        <span className="mt-0.5 block text-xs text-zinc-500 dark:text-zinc-400">
+                                            O pedido aparecerá como «Anônimo» na lista.
+                                        </span>
+                                    </span>
+                                </label>
                             </div>
+                            {!data.is_anonymous ? (
+                                <div>
+                                    <InputLabel htmlFor="prayer_name" value="Nome, apelido ou codinome (opcional)" />
+                                    <TextInput
+                                        id="prayer_name"
+                                        value={data.name_or_nickname}
+                                        onChange={(e) => setData('name_or_nickname', e.target.value)}
+                                        placeholder="Ex: Maria ou Irmão João"
+                                        className="mt-1 block w-full"
+                                        maxLength={255}
+                                    />
+                                    <InputError message={errors.name_or_nickname} className="mt-1" />
+                                </div>
+                            ) : null}
                             <div>
                                 <InputLabel htmlFor="prayer_request" value="Pedido" />
                                 <Textarea
@@ -270,17 +290,42 @@ export default function PrayerIndex({ requests, canManage }: Props) {
                         >
                             <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-5">Editar pedido</h2>
                             <div className="space-y-4">
-                                <div>
-                                    <InputLabel htmlFor="edit_prayer_name" value="Nome, apelido ou codinome" />
-                                    <TextInput
-                                        id="edit_prayer_name"
-                                        value={editForm.data.name_or_nickname}
-                                        onChange={(e) => editForm.setData('name_or_nickname', e.target.value)}
-                                        className="mt-1 block w-full"
-                                        maxLength={255}
-                                    />
-                                    <InputError message={editForm.errors.name_or_nickname} className="mt-1" />
+                                <div className="space-y-1">
+                                    <label className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            className="mt-0.5 cursor-pointer"
+                                            checked={editForm.data.is_anonymous}
+                                            onChange={(e) => {
+                                                const checked = e.target.checked;
+                                                editForm.setData((prev) => ({
+                                                    ...prev,
+                                                    is_anonymous: checked,
+                                                    name_or_nickname: checked ? '' : prev.name_or_nickname,
+                                                }));
+                                            }}
+                                        />
+                                        <span>
+                                            <span className="font-medium">Enviar sem nome</span>
+                                            <span className="mt-0.5 block text-xs text-zinc-500 dark:text-zinc-400">
+                                                O pedido aparecerá como «Anônimo» na lista.
+                                            </span>
+                                        </span>
+                                    </label>
                                 </div>
+                                {!editForm.data.is_anonymous ? (
+                                    <div>
+                                        <InputLabel htmlFor="edit_prayer_name" value="Nome, apelido ou codinome (opcional)" />
+                                        <TextInput
+                                            id="edit_prayer_name"
+                                            value={editForm.data.name_or_nickname}
+                                            onChange={(e) => editForm.setData('name_or_nickname', e.target.value)}
+                                            className="mt-1 block w-full"
+                                            maxLength={255}
+                                        />
+                                        <InputError message={editForm.errors.name_or_nickname} className="mt-1" />
+                                    </div>
+                                ) : null}
                                 <div>
                                     <InputLabel htmlFor="edit_prayer_request" value="Pedido" />
                                     <Textarea

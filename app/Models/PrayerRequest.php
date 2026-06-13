@@ -14,6 +14,7 @@ class PrayerRequest extends Model
         'church_id',
         'user_id',
         'name_or_nickname',
+        'is_anonymous',
         'request',
         'prayer_amen_count',
         'active',
@@ -23,6 +24,7 @@ class PrayerRequest extends Model
 
     protected $casts = [
         'active' => 'boolean',
+        'is_anonymous' => 'boolean',
         'needs_review' => 'boolean',
     ];
 

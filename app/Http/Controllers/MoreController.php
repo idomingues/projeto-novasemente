@@ -48,6 +48,7 @@ class MoreController extends Controller
             ->map(fn (PrayerRequest $p) => [
                 'id' => $p->id,
                 'name_or_nickname' => $p->name_or_nickname,
+                'is_anonymous' => (bool) $p->is_anonymous,
                 'request' => \Illuminate\Support\Str::limit($p->request, 80),
                 'created_at' => $p->created_at->toIso8601String(),
             ])

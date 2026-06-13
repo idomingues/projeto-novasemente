@@ -42,6 +42,7 @@ class PrayerRequestController extends Controller
             ->map(fn (PrayerRequest $p) => [
                 'id' => $p->id,
                 'name_or_nickname' => $p->name_or_nickname,
+                'is_anonymous' => (bool) $p->is_anonymous,
                 'request' => $p->request,
                 'created_at' => $p->created_at->toIso8601String(),
                 'month_year' => $p->created_at->format('Y-m'),
@@ -72,8 +73,11 @@ class PrayerRequestController extends Controller
 
     public function store(Request $request)
     {
+        $isAnonymous = $request->boolean('is_anonymous');
+
         $data = $request->validate([
-            'name_or_nickname' => ['required', 'string', 'max:255'],
+            'is_anonymous' => ['boolean'],
+            'name_or_nickname' => ['nullable', 'string', 'max:255'],
             'request' => ['required', 'string', 'max:2000'],
         ]);
 
@@ -85,7 +89,8 @@ class PrayerRequestController extends Controller
         PrayerRequest::create([
             'church_id' => $churchId,
             'user_id' => $request->user()?->id,
-            'name_or_nickname' => $data['name_or_nickname'],
+            'name_or_nickname' => $isAnonymous ? '' : trim((string) ($data['name_or_nickname'] ?? '')),
+            'is_anonymous' => $isAnonymous,
             'request' => $data['request'],
             'active' => ! $needsReview,
             'needs_review' => $needsReview,
@@ -109,13 +114,17 @@ class PrayerRequestController extends Controller
     {
         $this->authorize('prayer.manage');
 
+        $isAnonymous = $request->boolean('is_anonymous');
+
         $data = $request->validate([
-            'name_or_nickname' => ['required', 'string', 'max:255'],
+            'is_anonymous' => ['boolean'],
+            'name_or_nickname' => ['nullable', 'string', 'max:255'],
             'request' => ['required', 'string', 'max:2000'],
         ]);
 
         $prayer->update([
-            'name_or_nickname' => $data['name_or_nickname'],
+            'name_or_nickname' => $isAnonymous ? '' : trim((string) ($data['name_or_nickname'] ?? '')),
+            'is_anonymous' => $isAnonymous,
             'request' => $data['request'],
         ]);
 

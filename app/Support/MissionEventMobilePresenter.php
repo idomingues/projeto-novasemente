@@ -26,7 +26,7 @@ final class MissionEventMobilePresenter
             self::preferText($event->video_url, $donor?->video_url),
             $event->youtube_embed_url,
             self::preferText($event->image_url, $donor?->image_url),
-            self::preferText($event->color, $donor?->color),
+            self::preferColor($event->color, $donor?->color, (string) $event->title),
         );
     }
 
@@ -35,16 +35,13 @@ final class MissionEventMobilePresenter
      */
     public static function contentDonor(MissionEvent $event, Collection $churchEvents): ?MissionEvent
     {
-        if (self::hasRichText($event->description)) {
-            return null;
-        }
-
         return $churchEvents
             ->filter(fn (MissionEvent $candidate) => $candidate->id !== $event->id)
             ->filter(fn (MissionEvent $candidate) => self::titlesMatch($event->title, $candidate->title))
             ->filter(fn (MissionEvent $candidate) => self::hasRichText($candidate->description)
                 || self::hasRichText($candidate->price)
-                || filled(trim((string) ($candidate->image_url ?? ''))))
+                || filled(trim((string) ($candidate->image_url ?? '')))
+                || self::hasConfiguredColor($candidate))
             ->sortByDesc(fn (MissionEvent $candidate) => strlen(trim((string) ($candidate->description ?? ''))))
             ->first();
     }
@@ -81,5 +78,32 @@ final class MissionEventMobilePresenter
                 )
             )
         );
+    }
+
+    private static function preferColor(?string $primary, ?string $fallback, string $title): ?string
+    {
+        $primaryColor = filled($primary) ? trim((string) $primary) : null;
+        $fallbackColor = filled($fallback) ? trim((string) $fallback) : null;
+
+        if ($primaryColor && ! self::isInstallerDefaultColor($primaryColor, $title)) {
+            return $primaryColor;
+        }
+
+        return $fallbackColor ?? $primaryColor;
+    }
+
+    private static function hasConfiguredColor(MissionEvent $event): bool
+    {
+        $color = trim((string) ($event->color ?? ''));
+        if ($color === '') {
+            return false;
+        }
+
+        return ! self::isInstallerDefaultColor($color, (string) $event->title);
+    }
+
+    private static function isInstallerDefaultColor(string $color, string $title): bool
+    {
+        return strtoupper($color) === strtoupper(MissionCalendar2026Installer::colorForTitle($title));
     }
 }

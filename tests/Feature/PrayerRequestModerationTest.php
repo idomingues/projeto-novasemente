@@ -90,5 +90,75 @@ class PrayerRequestModerationTest extends TestCase
                 ->component('Prayer/Mobile')
                 ->has('requests', 0));
     }
+
+    public function test_anonymous_prayer_request_can_be_submitted_without_name(): void
+    {
+        Http::fake([
+            'api.openai.com/*' => Http::response([
+                'results' => [['flagged' => false, 'categories' => []]],
+            ]),
+        ]);
+
+        config([
+            'prayer.request_moderation.enabled' => true,
+            'prayer.request_moderation.openai_api_key' => 'test-key',
+        ]);
+
+        $this->seed(ChurchSeeder::class);
+        $church = Church::query()->firstOrFail();
+        $user = User::factory()->create(['church_id' => $church->id]);
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->post(route('prayer.store'), [
+                'is_anonymous' => true,
+                'request' => 'Peço oração pela minha família.',
+            ])
+            ->assertRedirect(route('prayer.index'))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('prayer_requests', [
+            'church_id' => $church->id,
+            'user_id' => $user->id,
+            'name_or_nickname' => '',
+            'is_anonymous' => 1,
+            'active' => 1,
+        ]);
+    }
+
+    public function test_prayer_request_can_be_submitted_without_name_when_not_anonymous(): void
+    {
+        Http::fake([
+            'api.openai.com/*' => Http::response([
+                'results' => [['flagged' => false, 'categories' => []]],
+            ]),
+        ]);
+
+        config([
+            'prayer.request_moderation.enabled' => true,
+            'prayer.request_moderation.openai_api_key' => 'test-key',
+        ]);
+
+        $this->seed(ChurchSeeder::class);
+        $church = Church::query()->firstOrFail();
+        $user = User::factory()->create(['church_id' => $church->id]);
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->post(route('prayer.store'), [
+                'is_anonymous' => false,
+                'request' => 'Peço oração pela igreja.',
+            ])
+            ->assertRedirect(route('prayer.index'))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('prayer_requests', [
+            'church_id' => $church->id,
+            'user_id' => $user->id,
+            'name_or_nickname' => '',
+            'is_anonymous' => 0,
+            'active' => 1,
+        ]);
+    }
 }
 

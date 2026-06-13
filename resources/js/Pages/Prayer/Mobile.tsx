@@ -2,7 +2,6 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, useForm } from '@inertiajs/react';
 import AddButton from '@/Components/AddButton';
 import PageHeader from '@/Components/PageHeader';
-import PrayerAmenButton from '@/Components/PrayerAmenButton';
 import FlashMessages from '@/Components/FlashMessages';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
@@ -12,11 +11,13 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
 import Modal from '@/Components/Modal';
 import { FormEventHandler, useState } from 'react';
+import PrayerRequestCardContent from '@/Components/Prayer/PrayerRequestCardContent';
 import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
 interface PrayerItem {
     id: number;
     name_or_nickname: string;
+    is_anonymous: boolean;
     request: string;
     created_at: string;
     month_year: string;
@@ -51,6 +52,7 @@ function groupByMonthYear(requests: PrayerItem[]): { label: string; key: string;
 export default function PrayerMobile({ requests }: Props) {
     const { data, setData, post, processing, errors, reset } = useForm({
         name_or_nickname: '',
+        is_anonymous: false,
         request: '',
     });
     const [createOpen, setCreateOpen] = useState(false);
@@ -73,7 +75,7 @@ export default function PrayerMobile({ requests }: Props) {
                 <div className="lg:mb-6 space-y-3">
                     <PageHeader
                         title="Pedidos de oração"
-                        subtitle="Veja os pedidos e ore por alguém. Obs.: O nome não é divulgado."
+                        subtitle="Faça seu pedido de oração ou ore por alguém."
                         actions={<AddButton variant="icon" onClick={() => setCreateOpen(true)} title="Novo pedido">Novo pedido</AddButton>}
                     />
                     <p className="rounded-xl border border-brand-200/90 bg-brand-50/90 px-3 py-2.5 text-sm leading-relaxed text-brand-950 dark:border-brand-900/45 dark:bg-brand-950/30 dark:text-brand-50">
@@ -99,24 +101,13 @@ export default function PrayerMobile({ requests }: Props) {
                                         </h3>
                                         <ul className="space-y-2 sm:space-y-3">
                                             {items.map((r) => (
-                                                <li
-                                                    key={r.id}
-                                                    className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm"
-                                                >
-                                                    <p className="font-semibold text-zinc-900 dark:text-white">
-                                                        {r.name_or_nickname}
-                                                    </p>
-                                                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap">
-                                                        {r.request}
-                                                    </p>
-                                                    <div className="mt-3">
-                                                        <PrayerAmenButton
-                                                            prayerId={r.id}
-                                                            count={r.prayer_amen_count ?? 0}
-                                                        />
-                                                    </div>
-                                                </li>
-                                            ))}
+                                                    <li
+                                                        key={r.id}
+                                                        className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm"
+                                                    >
+                                                        <PrayerRequestCardContent item={r} />
+                                                    </li>
+                                                ))}
                                         </ul>
                                     </div>
                                 ))}
@@ -131,18 +122,43 @@ export default function PrayerMobile({ requests }: Props) {
                             Novo pedido de oração
                         </h2>
                         <div className="space-y-4">
-                            <div>
-                                <InputLabel htmlFor="prayer_name" value="Nome, apelido ou codinome" />
-                                <TextInput
-                                    id="prayer_name"
-                                    value={data.name_or_nickname}
-                                    onChange={(e) => setData('name_or_nickname', e.target.value)}
-                                    placeholder="Ex: Maria ou Irmão João"
-                                    className="mt-1 block w-full"
-                                    maxLength={255}
-                                />
-                                <InputError message={errors.name_or_nickname} className="mt-1" />
+                            <div className="space-y-1">
+                                <label className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        className="mt-0.5 cursor-pointer"
+                                        checked={data.is_anonymous}
+                                        onChange={(e) => {
+                                            const checked = e.target.checked;
+                                            setData((prev) => ({
+                                                ...prev,
+                                                is_anonymous: checked,
+                                                name_or_nickname: checked ? '' : prev.name_or_nickname,
+                                            }));
+                                        }}
+                                    />
+                                    <span>
+                                        <span className="font-medium">Enviar sem nome</span>
+                                        <span className="mt-0.5 block text-xs text-zinc-500 dark:text-zinc-400">
+                                            O pedido aparecerá como «Anônimo» na lista.
+                                        </span>
+                                    </span>
+                                </label>
                             </div>
+                            {!data.is_anonymous ? (
+                                <div>
+                                    <InputLabel htmlFor="prayer_name" value="Nome, apelido ou codinome (opcional)" />
+                                    <TextInput
+                                        id="prayer_name"
+                                        value={data.name_or_nickname}
+                                        onChange={(e) => setData('name_or_nickname', e.target.value)}
+                                        placeholder="Ex: Maria ou Irmão João"
+                                        className="mt-1 block w-full"
+                                        maxLength={255}
+                                    />
+                                    <InputError message={errors.name_or_nickname} className="mt-1" />
+                                </div>
+                            ) : null}
                             <div>
                                 <InputLabel htmlFor="prayer_request" value="Pedido" />
                                 <Textarea
