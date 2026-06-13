@@ -36,6 +36,7 @@ interface Props {
 
 const items: MoreMenuItem[] = [
     { name: 'Bíblia', description: 'Leitura e busca de versículos', route: 'mobile.bible', icon: BookOpenIcon },
+    { name: 'Dízimos e Ofertas', description: 'Contribuições e ofertas', route: 'mobile.offerings', icon: HandRaisedIcon },
     {
         name: 'Ano Bíblico',
         description: 'Escolha um plano de leitura e acompanhe o seu progresso.',
@@ -59,7 +60,6 @@ const items: MoreMenuItem[] = [
         route: 'mobile.shared-talents.index',
         icon: UserGroupIcon,
     },
-    { name: 'Dízimos e Ofertas', description: 'Contribuições e ofertas', route: 'mobile.offerings', icon: HandRaisedIcon },
     { name: 'Culto', description: 'Vídeos do culto online', route: 'mobile.culto', icon: FilmIcon },
     { name: 'Música', description: 'Cante conosco', route: 'mobile.musica', icon: MusicalNoteIcon },
     { name: 'Cultos e horários', description: 'Dias e horários dos cultos', route: 'mobile.services', icon: ClockIcon },
