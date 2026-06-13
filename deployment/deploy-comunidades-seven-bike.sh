@@ -58,4 +58,10 @@ else
 fi
 
 echo ""
+echo "==> Atualizando descritivo da versão (Comunidades)..."
+if [[ -f deployment/release-notes.txt ]]; then
+  php artisan app:release-notes || true
+fi
+
+echo ""
 echo "Pacote Seven Bike aplicado com sucesso."

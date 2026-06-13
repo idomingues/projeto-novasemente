@@ -14,3 +14,6 @@ export const EVENT_COVER_SPECS =
 
 export const DONATION_CAMPAIGN_COVER_SPECS =
     'Proporção recomendada 16:9 ou 2:1 (ex.: 1920 × 1080 px ou 1600 × 900 px). JPG, PNG ou WebP, até 5 MB. No app a capa aparece em largura total na lista e no detalhe; no painel, em miniatura quadrada — evite textos muito pequenos nas bordas, pois a imagem pode ser recortada.';
+
+export const COMMUNITY_COVER_SPECS =
+    'Capa recomendada: retrato 3:4 (ex.: 1080 × 1440 px). JPG ou PNG, até 2 MB. No app a imagem aparece em cards verticais estreitos — mantenha título e logotipo longe das bordas.';

@@ -22,6 +22,24 @@ function imageSrc(url: string | null, appUrl: string): string {
     return `${base}${url}`;
 }
 
+function CommunityPlaceholderCard() {
+    return (
+        <div className="flex cursor-default flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200/80 dark:bg-zinc-900 dark:ring-zinc-800">
+            <div className="flex aspect-[3/4] w-full flex-col items-center justify-center bg-zinc-100 px-4 dark:bg-zinc-800">
+                <UserGroupIcon className="h-10 w-10 text-zinc-400 dark:text-zinc-500" aria-hidden />
+            </div>
+            <div className="flex flex-1 flex-col gap-2 p-3 sm:p-3.5">
+                <h2 className="text-sm font-semibold leading-snug text-zinc-700 dark:text-zinc-300">
+                    Mais grupos em breve
+                </h2>
+                <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+                    Novas comunidades serão adicionadas aqui.
+                </p>
+            </div>
+        </div>
+    );
+}
+
 export default function MobileCommunities({ communities }: Props) {
     const appUrl = (usePage().props as { appUrl?: string }).appUrl ?? '';
 
@@ -62,7 +80,7 @@ export default function MobileCommunities({ communities }: Props) {
                                     <img
                                         src={imageSrc(community.coverUrl, appUrl)}
                                         alt=""
-                                        className="aspect-[3/4] w-full object-cover transition duration-300 group-hover:scale-[1.02]"
+                                        className="aspect-[3/4] w-full object-cover object-center transition duration-300 group-hover:scale-[1.02]"
                                     />
                                 ) : (
                                     <div className="flex aspect-[3/4] w-full items-center justify-center bg-teal-50 dark:bg-teal-950/40">
@@ -80,13 +98,14 @@ export default function MobileCommunities({ communities }: Props) {
                                     <p className="line-clamp-2 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
                                         {community.description}
                                     </p>
-                                    <span className="mt-auto inline-flex items-center gap-1.5 pt-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                                    <span className="mt-auto inline-flex items-center gap-1.5 self-start rounded-lg border border-[#25D366]/30 bg-[#25D366]/10 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 dark:border-emerald-600/40 dark:bg-emerald-950/40 dark:text-emerald-300">
                                         <WhatsAppBrandIcon className="h-4 w-4 shrink-0" />
                                         Entrar no grupo
                                     </span>
                                 </div>
                             </a>
                         ))}
+                        {communities.length === 1 ? <CommunityPlaceholderCard /> : null}
                     </div>
                 )}
             </div>

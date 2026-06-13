@@ -16,6 +16,7 @@ import { confirmAction } from '@/utils/confirmDialog';
 import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import { compressImageForUpload, ImageCompressError } from '@/utils/compressImageForUpload';
 import { GALLERY_IMAGE_ACCEPT } from '@/utils/mobilePhotoPick';
+import { COMMUNITY_COVER_SPECS } from '@/constants/mediaCoverSpecs';
 import { useListModalEditUrl, useListModalFromUrl } from '@/hooks/useListModalEditUrl';
 
 function imageSrc(url: string | null, appUrl: string): string {
@@ -441,6 +442,7 @@ export default function CommunitiesIndex({
                                 {coverCompressError ? (
                                     <p className="mt-1 text-xs font-medium text-red-600 dark:text-red-400">{coverCompressError}</p>
                                 ) : null}
+                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{COMMUNITY_COVER_SPECS}</p>
                             </div>
 
                             <div>

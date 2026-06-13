@@ -16,6 +16,8 @@ final class CommunityAssetInstaller
 
     public const SEVEN_BIKE_WHATSAPP = 'https://chat.whatsapp.com/HHy3EffBYja69JibdgRVhC';
 
+    public const SEVEN_BIKE_DESCRIPTION = 'Pedaladas, trilhas e comunhão no asfalto e na terra.';
+
     /**
      * @return array{ok: bool, message: string, cover_path: ?string, community_id: ?int}
      */
@@ -58,7 +60,7 @@ final class CommunityAssetInstaller
                 'name' => self::SEVEN_BIKE_NAME,
             ],
             [
-                'description' => 'Comunidade de ciclismo da Nova Semente — pedaladas, eventos e convivência no WhatsApp.',
+                'description' => self::SEVEN_BIKE_DESCRIPTION,
                 'whatsapp_url' => self::SEVEN_BIKE_WHATSAPP,
                 'sort_order' => 10,
                 'is_published' => true,
@@ -68,10 +70,12 @@ final class CommunityAssetInstaller
 
         $needsUpdate = $community->cover_path !== $coverPath
             || ! $community->is_published
-            || $community->whatsapp_url !== self::SEVEN_BIKE_WHATSAPP;
+            || $community->whatsapp_url !== self::SEVEN_BIKE_WHATSAPP
+            || $community->description !== self::SEVEN_BIKE_DESCRIPTION;
 
         if ($needsUpdate) {
             $community->update([
+                'description' => self::SEVEN_BIKE_DESCRIPTION,
                 'cover_path' => $coverPath,
                 'is_published' => true,
                 'whatsapp_url' => self::SEVEN_BIKE_WHATSAPP,

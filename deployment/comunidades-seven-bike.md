@@ -42,6 +42,19 @@ bash deployment/deploy-comunidades-seven-bike.sh
 3. Roda `php artisan communities:install-defaults` (cria/atualiza registro + copia capa para `storage/app/public`)
 4. Limpa cache
 5. Testa `GET /media/communities/covers/seven-bike-nova-semente.jpg` (HTTP 200)
+6. Atualiza o descritivo da versão mais recente (`deployment/release-notes.txt` → `php artisan app:release-notes`)
+
+## Notas de versão
+
+Edite [`release-notes.txt`](release-notes.txt) antes do deploy. O histórico aparece ao tocar no badge **v…** no topo do app.
+
+Para atualizar só o texto da versão atual em produção:
+
+```bash
+php artisan app:release-notes
+# ou versão específica:
+php artisan app:release-notes --for-version=v20.0.5
+```
 
 ## Verificação no app
 

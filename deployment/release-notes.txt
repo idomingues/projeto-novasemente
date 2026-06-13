@@ -1,0 +1,3 @@
+• Novo módulo Comunidades (Mais → Comunidades): grupos de interesse da igreja com nome, descrição, arte e link para o WhatsApp.
+• Primeiro grupo disponível: Seven Bike Nova Semente — pedaladas, eventos e convivência.
+• Gestão no painel: Publicação → Comunidades (cadastro, edição e publicação dos grupos).
