@@ -28,7 +28,7 @@ final class PageViewRouteLabels
         'mobile.prayer' => 'Oração',
         'mobile.more' => 'Mais',
         'mobile.baptism' => 'Batismo',
-        'volunteers.public-signup.page' => 'Voluntário',
+        'volunteers.public-signup.page' => 'Cadastro de voluntário',
         'prayer.index' => 'Oração (lista web)',
 
         // —— Topbar ——
@@ -170,6 +170,7 @@ final class PageViewRouteLabels
         'culto.index' => 'Culto (painel)',
         'acervo.index' => 'Acervo (painel)',
         'settings.index' => 'Configurações',
+        'settings.app-features.index' => 'Funcionalidades do app',
         'support.index' => 'Suporte APP',
         'app-versions.index' => 'Versão do APP',
         'talents.admin.dashboard' => 'Serviços (painel)',

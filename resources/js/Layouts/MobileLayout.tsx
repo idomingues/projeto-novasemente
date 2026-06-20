@@ -64,7 +64,7 @@ export default function MobileLayout({
             <GuestAppBar />
 
             <main
-                className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pt-[calc(3.5rem+env(safe-area-inset-top,0px)+1.5rem)] lg:pt-24 px-4 lg:px-8 pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] [scrollbar-gutter:stable]"
+                className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] pt-[calc(3.5rem+env(safe-area-inset-top,0px)+1.5rem)] [scrollbar-gutter:stable] md:px-8 md:pt-[calc(4rem+env(safe-area-inset-top,0px)+1.5rem)] lg:pt-24"
             >
                 <div className="max-w-7xl lg:max-w-[90rem] mx-auto w-full pb-2">
                     {children}

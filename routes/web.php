@@ -802,6 +802,12 @@ Route::middleware('auth')->group(function () {
     })->name('services.index');
     Route::get('/acervo', [AcervoController::class, 'index'])->name('acervo.index')->middleware('permission:music.manage');
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index')->middleware('role_or_permission:super_admin|library.manage|campaigns.manage|finance.view');
+    Route::get('/settings/funcionalidades', [SettingsController::class, 'appFeatures'])
+        ->name('settings.app-features.index')
+        ->middleware('role:super_admin|admin');
+    Route::put('/settings/funcionalidades', [SettingsController::class, 'updateAppFeatures'])
+        ->name('settings.app-features.update')
+        ->middleware('role:super_admin|admin');
     Route::put('/settings/solicitations-handler', [SettingsController::class, 'updateSolicitationsHandler'])
         ->name('settings.solicitations-handler.update')
         ->middleware('role:super_admin');

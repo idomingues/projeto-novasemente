@@ -52,6 +52,7 @@ return [
         ['name' => 'Perfis', 'route' => 'roles.index', 'icon' => 'key'],
         ['name' => 'Suporte APP', 'route' => 'support.index', 'icon' => 'chat-bubble'],
         ['name' => 'Versão do APP', 'route' => 'app-versions.index', 'icon' => 'cog'],
+        ['name' => 'Funcionalidades do app', 'route' => 'settings.app-features.index', 'icon' => 'sparkles'],
         ['name' => 'Configurações', 'route' => 'settings.index', 'icon' => 'cog'],
     ],
 ];

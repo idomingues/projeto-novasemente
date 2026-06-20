@@ -111,6 +111,8 @@ export const adminSidebarRoutePermissions: Record<string, string[]> = {
     'services.index': [],
     /** Visibilidade: `auth.canManageSettings` (super admin ou `library.manage`). */
     'settings.index': ['library.manage'],
+    /** Visibilidade: `auth.canManageAppFeatures` (super admin ou admin). */
+    'settings.app-features.index': [],
     'support.index': ['support.view', 'support.manage'],
     'solicitations.index': ['solicitations.view', 'solicitations.manage'],
     'pastors.index': ['pastors.view', 'pastors.manage'],

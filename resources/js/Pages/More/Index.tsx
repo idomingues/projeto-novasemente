@@ -10,18 +10,20 @@ import {
     BookOpenIcon,
     UserGroupIcon,
     UserCircleIcon,
+    UserPlusIcon,
     FilmIcon,
     HandRaisedIcon,
     LifebuoyIcon,
 } from '@heroicons/react/24/outline';
 import { PHOTOS_DRIVE_FOLDER_URL } from '@/constants/externalLinks';
+import { useAppFeatures } from '@/hooks/useAppFeatures';
 import type { ComponentType, SVGProps } from 'react';
 
 type MenuIcon = ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
 
 type MoreMenuItem =
-    | { name: string; description: string; route: string; icon: MenuIcon; externalHref?: never }
-    | { name: string; description: string; externalHref: string; icon: MenuIcon; route?: never };
+    | { name: string; description: string; route: string; icon: MenuIcon; featureKey: string; externalHref?: never }
+    | { name: string; description: string; externalHref: string; icon: MenuIcon; featureKey?: string; route?: never };
 
 interface Props {
     latestMusicas?: unknown[];
@@ -31,27 +33,36 @@ interface Props {
 const PASTORAL_ROUTE = 'mobile.pastoral-appointments.request' as const;
 
 const items: MoreMenuItem[] = [
-    { name: 'Dízimos e Ofertas', description: 'Contribuições e ofertas', route: 'mobile.offerings', icon: HandRaisedIcon },
-    { name: 'Culto', description: 'Vídeos do culto online', route: 'mobile.culto', icon: FilmIcon },
-    { name: 'Música', description: 'Cante conosco', route: 'musica.index', icon: MusicalNoteIcon },
-    { name: 'Cultos e horários', description: 'Dias e horários dos cultos', route: 'mobile.services', icon: ClockIcon },
+    { name: 'Dízimos e Ofertas', description: 'Contribuições e ofertas', route: 'mobile.offerings', featureKey: 'offerings', icon: HandRaisedIcon },
+    { name: 'Culto', description: 'Vídeos do culto online', route: 'mobile.culto', featureKey: 'culto', icon: FilmIcon },
+    { name: 'Música', description: 'Cante conosco', route: 'musica.index', featureKey: 'musica', icon: MusicalNoteIcon },
+    { name: 'Cultos e horários', description: 'Dias e horários dos cultos', route: 'mobile.services', featureKey: 'services', icon: ClockIcon },
     {
         name: 'Fotos',
         description: 'Álbum de fotos (Google Drive)',
         externalHref: PHOTOS_DRIVE_FOLDER_URL,
+        featureKey: 'photos',
         icon: PhotoIcon,
     },
-    { name: 'Biblioteca', description: 'Livros e PDFs no app', route: 'mobile.biblioteca', icon: BookOpenIcon },
-    { name: 'Localização', description: 'Endereço e mapa da igreja', route: 'mobile.location', icon: MapPinIcon },
-    { name: 'Nossos pastores', description: 'Conheça a equipe pastoral', route: 'mobile.pastors', icon: UserCircleIcon },
-    { name: 'Quem somos', description: 'História e significado do nome', route: 'mobile.quem-somos', icon: UserGroupIcon },
-    { name: 'Em que acreditamos', description: '28 princípios de fé (IASD)', route: 'mobile.beliefs', icon: BookOpenIcon },
-    { name: 'Séries', description: 'Veja todas as séries já passadas na Nova Semente', route: 'mobile.acervo', icon: PlayCircleIcon },
-    { name: 'Classe Começos', description: 'Estudo bíblico presencial ou on-line', route: 'varios.classe-comecos', icon: AcademicCapIcon },
+    { name: 'Biblioteca', description: 'Livros e PDFs no app', route: 'mobile.biblioteca', featureKey: 'library', icon: BookOpenIcon },
+    { name: 'Localização', description: 'Endereço e mapa da igreja', route: 'mobile.location', featureKey: 'location', icon: MapPinIcon },
+    { name: 'Nossos pastores', description: 'Conheça a equipe pastoral', route: 'mobile.pastors', featureKey: 'pastors', icon: UserCircleIcon },
+    { name: 'Quem somos', description: 'História e significado do nome', route: 'mobile.quem-somos', featureKey: 'quem_somos', icon: UserGroupIcon },
+    { name: 'Em que acreditamos', description: '28 princípios de fé (IASD)', route: 'mobile.beliefs', featureKey: 'beliefs', icon: BookOpenIcon },
+    {
+        name: 'Cadastro de voluntário',
+        description: 'Quero servir em ministérios (formulário completo)',
+        route: 'volunteers.public-signup.page',
+        featureKey: 'volunteer_signup',
+        icon: UserPlusIcon,
+    },
+    { name: 'Séries', description: 'Veja todas as séries já passadas na Nova Semente', route: 'mobile.acervo', featureKey: 'acervo', icon: PlayCircleIcon },
+    { name: 'Classe Começos', description: 'Estudo bíblico presencial ou on-line', route: 'varios.classe-comecos', featureKey: 'classe_comecos', icon: AcademicCapIcon },
     {
         name: 'Suporte APP',
         description: 'Problema, sugestão ou elogio sobre o app',
         route: 'mobile.support.index',
+        featureKey: 'support',
         icon: LifebuoyIcon,
     },
 ];
@@ -59,6 +70,14 @@ const items: MoreMenuItem[] = [
 export default function MoreIndex(_: Props) {
     const page = usePage();
     const authUser = (page.props as { auth?: { user?: unknown } }).auth?.user;
+    const { isEnabled } = useAppFeatures();
+    const visibleItems = items.filter((item) => {
+        if (item.featureKey) {
+            return isEnabled(item.featureKey);
+        }
+
+        return true;
+    });
 
     return (
         <AdminLayout>
@@ -93,7 +112,7 @@ export default function MoreIndex(_: Props) {
                 ) : null}
 
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {items.map((item) => {
+                    {visibleItems.map((item) => {
                         const { name, description, icon: Icon } = item;
                         const className = 'flex items-center gap-4 p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors';
                         const content = (

@@ -11,6 +11,7 @@ import {
     BookOpenIcon,
     UserGroupIcon,
     UserCircleIcon,
+    UserPlusIcon,
     FilmIcon,
     HandRaisedIcon,
     NewspaperIcon,
@@ -21,13 +22,14 @@ import {
     LifebuoyIcon,
 } from '@heroicons/react/24/outline';
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
+import { useAppFeatures } from '@/hooks/useAppFeatures';
 import type { ComponentType, SVGProps } from 'react';
 
 type MenuIcon = ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
 
 type MoreMenuItem =
-    | { name: string; description: string; route: string; icon: MenuIcon; externalHref?: never }
-    | { name: string; description: string; externalHref: string; icon: MenuIcon; route?: never };
+    | { name: string; description: string; route: string; icon: MenuIcon; featureKey: string; externalHref?: never }
+    | { name: string; description: string; externalHref: string; icon: MenuIcon; route?: never; featureKey?: never };
 
 interface Props {
     latestMusicas?: unknown[];
@@ -35,62 +37,84 @@ interface Props {
 }
 
 const items: MoreMenuItem[] = [
-    { name: 'Bíblia', description: 'Leitura e busca de versículos', route: 'mobile.bible', icon: BookOpenIcon },
-    { name: 'Dízimos e Ofertas', description: 'Contribuições e ofertas', route: 'mobile.offerings', icon: HandRaisedIcon },
+    { name: 'Bíblia', description: 'Leitura e busca de versículos', route: 'mobile.bible', featureKey: 'bible', icon: BookOpenIcon },
+    { name: 'Dízimos e Ofertas', description: 'Contribuições e ofertas', route: 'mobile.offerings', featureKey: 'offerings', icon: HandRaisedIcon },
     {
         name: 'Ano Bíblico',
         description: 'Escolha um plano de leitura e acompanhe o seu progresso.',
         route: 'mobile.ano-biblico',
+        featureKey: 'ano_biblico',
         icon: AcademicCapIcon,
     },
-    { name: 'Notícias', description: 'Notícias e comunicados da igreja', route: 'mobile.news', icon: NewspaperIcon },
-    { name: 'Saúde', description: 'Conteúdos de saúde e bem-estar', route: 'mobile.health', icon: HeartIcon },
-    { name: 'Missão', description: 'Eventos, depoimentos, mural e cadastro missionário', route: 'mobile.mission', icon: GlobeAltIcon },
+    { name: 'Notícias', description: 'Notícias e comunicados da igreja', route: 'mobile.news', featureKey: 'news', icon: NewspaperIcon },
+    { name: 'Saúde', description: 'Conteúdos de saúde e bem-estar', route: 'mobile.health', featureKey: 'health', icon: HeartIcon },
+    { name: 'Missão', description: 'Eventos, depoimentos, mural e cadastro missionário', route: 'mobile.mission', featureKey: 'mission', icon: GlobeAltIcon },
     {
         name: 'Comunidades',
         description: 'Grupos de interesse da igreja no WhatsApp',
         route: 'mobile.communities',
+        featureKey: 'communities',
         icon: UserGroupIcon,
     },
-    { name: 'Oração', description: 'Pedidos de oração', route: 'mobile.prayer', icon: PrayingHandsIcon },
-    { name: 'Doação', description: 'Seu gesto de amor pode transformar vidas e renovar esperanças', route: 'mobile.campaigns.index', icon: BanknotesIcon },
+    { name: 'Oração', description: 'Pedidos de oração', route: 'mobile.prayer', featureKey: 'prayer', icon: PrayingHandsIcon },
+    { name: 'Doação', description: 'Seu gesto de amor pode transformar vidas e renovar esperanças', route: 'mobile.campaigns.index', featureKey: 'donation_campaigns', icon: BanknotesIcon },
     {
         name: 'Central de Serviços',
         description: 'Serviços, habilidades e apoio mútuo entre membros',
         route: 'mobile.talents.index',
+        featureKey: 'talents',
         icon: SparklesIcon,
     },
     {
         name: 'Doar Talentos',
         description: 'Compartilhe talentos, aprendizado e apoio gratuito na comunidade',
         route: 'mobile.shared-talents.index',
+        featureKey: 'shared_talents',
         icon: UserGroupIcon,
     },
-    { name: 'Culto', description: 'Vídeos do culto online', route: 'mobile.culto', icon: FilmIcon },
-    { name: 'Música', description: 'Cante conosco', route: 'mobile.musica', icon: MusicalNoteIcon },
-    { name: 'Cultos e horários', description: 'Dias e horários dos cultos', route: 'mobile.services', icon: ClockIcon },
+    { name: 'Culto', description: 'Vídeos do culto online', route: 'mobile.culto', featureKey: 'culto', icon: FilmIcon },
+    { name: 'Música', description: 'Cante conosco', route: 'mobile.musica', featureKey: 'musica', icon: MusicalNoteIcon },
+    { name: 'Cultos e horários', description: 'Dias e horários dos cultos', route: 'mobile.services', featureKey: 'services', icon: ClockIcon },
     {
         name: 'Fotos',
         description: 'Álbum de fotos',
         route: 'mobile.fotos',
+        featureKey: 'photos',
         icon: PhotoIcon,
     },
-    { name: 'Biblioteca', description: 'Livros e PDFs para leitura e download', route: 'mobile.biblioteca', icon: BookOpenIcon },
-    { name: 'Localização', description: 'Endereço e mapa da igreja', route: 'mobile.location', icon: MapPinIcon },
-    { name: 'Nossos pastores', description: 'Conheça a equipe pastoral', route: 'mobile.pastors', icon: UserCircleIcon },
-    { name: 'Quem somos', description: 'História e significado do nome', route: 'mobile.quem-somos', icon: UserGroupIcon },
-    { name: 'Em que acreditamos', description: '28 princípios de fé (IASD)', route: 'mobile.beliefs', icon: BookOpenIcon },
-    { name: 'Séries', description: 'Veja todas as séries já passadas na Nova Semente', route: 'mobile.acervo', icon: PlayCircleIcon },
-    { name: 'Classe Começos', description: 'Estudo bíblico presencial ou on-line', route: 'varios.classe-comecos', icon: AcademicCapIcon },
+    { name: 'Biblioteca', description: 'Livros e PDFs para leitura e download', route: 'mobile.biblioteca', featureKey: 'library', icon: BookOpenIcon },
+    { name: 'Localização', description: 'Endereço e mapa da igreja', route: 'mobile.location', featureKey: 'location', icon: MapPinIcon },
+    { name: 'Nossos pastores', description: 'Conheça a equipe pastoral', route: 'mobile.pastors', featureKey: 'pastors', icon: UserCircleIcon },
+    { name: 'Quem somos', description: 'História e significado do nome', route: 'mobile.quem-somos', featureKey: 'quem_somos', icon: UserGroupIcon },
+    { name: 'Em que acreditamos', description: '28 princípios de fé (IASD)', route: 'mobile.beliefs', featureKey: 'beliefs', icon: BookOpenIcon },
+    {
+        name: 'Cadastro de voluntário',
+        description: 'Quero servir em ministérios (formulário completo)',
+        route: 'volunteers.public-signup.page',
+        featureKey: 'volunteer_signup',
+        icon: UserPlusIcon,
+    },
+    { name: 'Séries', description: 'Veja todas as séries já passadas na Nova Semente', route: 'mobile.acervo', featureKey: 'acervo', icon: PlayCircleIcon },
+    { name: 'Classe Começos', description: 'Estudo bíblico presencial ou on-line', route: 'varios.classe-comecos', featureKey: 'classe_comecos', icon: AcademicCapIcon },
     {
         name: 'Suporte APP',
         description: 'Problema, sugestão ou elogio sobre o app',
         route: 'mobile.support.index',
+        featureKey: 'support',
         icon: LifebuoyIcon,
     },
 ];
 
 export default function MobileMore(_: Props) {
+    const { isEnabled } = useAppFeatures();
+    const visibleItems = items.filter((item) => {
+        if ('featureKey' in item && item.featureKey) {
+            return isEnabled(item.featureKey);
+        }
+
+        return true;
+    });
+
     return (
         <MobileLayout>
             <Head title="Mais" />
@@ -108,7 +132,7 @@ export default function MobileMore(_: Props) {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-4">
-                    {items.map((item) => {
+                    {visibleItems.map((item) => {
                         const { name, description, icon: Icon } = item;
                         const className = 'flex items-center gap-4 p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 active:bg-zinc-50 dark:active:bg-zinc-800 transition-colors';
                         const content = (

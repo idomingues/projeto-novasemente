@@ -17,6 +17,7 @@ import type { ComponentType, SVGProps } from 'react';
 import CoverWithVideoLink from '@/Components/News/CoverWithVideoLink';
 import PromiseBoxModal from '@/Components/Mobile/PromiseBoxModal';
 import SabbathHomeBanner, { type SabbathHomeBannerData } from '@/Components/Mobile/SabbathHomeBanner';
+import { useAppFeatures } from '@/hooks/useAppFeatures';
 
 type MenuIcon = ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
 
@@ -134,6 +135,7 @@ type QuickAction = {
     label: string;
     subtitle: string;
     route?: string;
+    featureKey?: string;
     onClick?: () => void;
     icon: MenuIcon;
 };
@@ -146,48 +148,56 @@ const quickActionsGuest: QuickAction[] = [
     {
         label: 'Caixa de Promessas',
         subtitle: 'Uma mensagem especial para você',
+        featureKey: 'promise_box',
         icon: SparklesIcon,
     },
     {
         label: 'Batismo',
         subtitle: 'Ainda não é batizado? Faça parte da família NS',
         route: 'mobile.baptism',
+        featureKey: 'baptism',
         icon: SparklesIcon,
     },
     {
         label: 'Devocional',
         subtitle: 'Meditação diária de hoje',
         route: 'mobile.meditacao-diaria',
+        featureKey: 'devotional',
         icon: BookOpenIcon,
     },
     {
         label: 'Séries',
         subtitle: 'Conheça todas as nossas séries',
         route: 'mobile.acervo',
+        featureKey: 'acervo',
         icon: ArchiveBoxIcon,
     },
     {
         label: 'Músicas',
         subtitle: 'Cante nossas músicas',
         route: 'mobile.musica',
+        featureKey: 'musica',
         icon: MusicalNoteIcon,
     },
     {
         label: 'Fotos',
         subtitle: 'Veja o que nossos fotógrafos prepararam para você',
         route: 'mobile.fotos',
+        featureKey: 'photos',
         icon: PhotoIcon,
     },
     {
         label: 'Oferta',
         subtitle: 'Faça sua oferta de forma simples',
         route: 'mobile.offerings',
+        featureKey: 'offerings',
         icon: BanknotesIcon,
     },
     {
         label: 'Missão',
         subtitle: 'Eventos, depoimentos, mural e cadastro missionário',
         route: 'mobile.mission',
+        featureKey: 'mission',
         icon: GlobeAltIcon,
     },
 ];
@@ -196,6 +206,7 @@ const quickActionDevocional: QuickAction = {
     label: 'Devocional',
     subtitle: 'Meditação diária de hoje',
     route: 'mobile.meditacao-diaria',
+    featureKey: 'devotional',
     icon: BookOpenIcon,
 };
 
@@ -220,6 +231,7 @@ export default function MobileHome({
         () => ({
             label: 'Caixa de Promessas',
             subtitle: 'Uma mensagem especial para você',
+            featureKey: 'promise_box',
             icon: SparklesIcon,
             onClick: openPromise,
         }),
@@ -230,7 +242,10 @@ export default function MobileHome({
         (a) => a.route !== 'mobile.meditacao-diaria' && a.label !== 'Caixa de Promessas',
     );
 
-    const quickActions = [quickActionDevocional, caixaDePromessaAction, ...quickActionsExcludingDevocionalAndCaixa];
+    const { isEnabled } = useAppFeatures();
+    const quickActions = [quickActionDevocional, caixaDePromessaAction, ...quickActionsExcludingDevocionalAndCaixa].filter(
+        (action) => !action.featureKey || isEnabled(action.featureKey),
+    );
 
     useEffect(() => {
         if (!showPostRegistrationBanner || typeof window === 'undefined') {

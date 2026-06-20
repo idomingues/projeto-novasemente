@@ -81,7 +81,15 @@
     }
 }
 
-/* Safe area for mobile (notch, home indicator) */
+/* iPad / tablet: conteúdo centralizado sem parecer “app de telefone esticada” */
+@media (min-width: 768px) {
+    .ns-tablet-content {
+        margin-inline: auto;
+        width: 100%;
+        max-width: min(100%, 72rem);
+    }
+}
+
 .safe-area-top {
     padding-top: env(safe-area-inset-top, 0);
 }

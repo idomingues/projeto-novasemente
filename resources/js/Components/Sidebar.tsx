@@ -160,6 +160,7 @@ export default function Sidebar({
         user?: { name?: string; email?: string } | null;
         permissions?: string[];
         canManageSettings?: boolean;
+        canManageAppFeatures?: boolean;
         isSuperAdmin?: boolean;
         adminSidebarUnrestricted?: boolean;
         canAccessAdminMenu?: boolean;
@@ -278,6 +279,7 @@ export default function Sidebar({
     };
 
     const canManageSettings = auth?.canManageSettings === true;
+    const canManageAppFeatures = auth?.canManageAppFeatures === true;
     const canAccessAdminMenu = auth?.canAccessAdminMenu === true;
     const pastoralAgendaMenuVisible = auth?.pastoralAgendaMenuVisible === true;
     /** Equipe do painel (secretaria, pastor, líder…) ou permissões de pastores / agendamentos pastorais. */
@@ -293,6 +295,9 @@ export default function Sidebar({
           ? []
           : allMenuItems.filter((item) => {
                 if (item.route === 'settings.index' && !canManageSettings) {
+                    return false;
+                }
+                if (item.route === 'settings.app-features.index' && !canManageAppFeatures) {
                     return false;
                 }
                 if (item.route === 'pastoral-agenda.index' && !showPastoralAgendaInSidebar) {
@@ -331,6 +336,7 @@ export default function Sidebar({
         'roles.index',
         'support.index',
         'app-versions.index',
+        'settings.app-features.index',
         'settings.index',
     ] as const;
     /** Inclui `mobile.support.index` quando o item Suporte é remapeado (evita duplicar na lista principal). */
@@ -348,7 +354,7 @@ export default function Sidebar({
     const cadastroMenuItems =
         canAccessAdminMenu ? menuItems.filter((i) => cadastroRoutes.has(i.route)) : [];
     const admMenuItems =
-        canAccessAdminMenu && (isSuperAdminUser || canManageSettings)
+        canAccessAdminMenu && (isSuperAdminUser || canManageSettings || canManageAppFeatures)
             ? admRouteOrder
                   .map((r) => {
                       if (r === 'support.index') {

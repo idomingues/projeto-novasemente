@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Church;
+use App\Support\ChurchAppFeatures;
 use App\Support\SolicitationHandlerAssignee;
 use App\Support\SpatiePermissionCheck;
 use Illuminate\Http\RedirectResponse;
@@ -171,5 +172,43 @@ class SettingsController extends Controller
         ]);
 
         return redirect()->route('settings.index')->with('success', 'Link da lição atualizado.');
+    }
+
+    public function appFeatures(Request $request): Response
+    {
+        $churchId = Church::resolveWorkingId($request);
+        abort_unless($churchId, 404, 'Nenhuma igreja ativa.');
+
+        $church = Church::query()->findOrFail($churchId);
+
+        return Inertia::render('Settings/AppFeatures', [
+            'churchName' => $church->name,
+            'groups' => ChurchAppFeatures::groupedFeaturesForAdmin($church),
+            'updateUrl' => route('settings.app-features.update'),
+        ]);
+    }
+
+    public function updateAppFeatures(Request $request): RedirectResponse
+    {
+        $churchId = Church::resolveWorkingId($request);
+        abort_unless($churchId, 404, 'Nenhuma igreja ativa.');
+
+        $church = Church::query()->findOrFail($churchId);
+
+        $validated = $request->validate([
+            'enabled_features' => ['present', 'array'],
+            'enabled_features.*' => ['string'],
+        ]);
+
+        $enabled = array_values(array_filter(
+            $validated['enabled_features'],
+            fn ($key) => is_string($key) && array_key_exists($key, ChurchAppFeatures::definitions()),
+        ));
+
+        ChurchAppFeatures::syncEnabledKeys($church, $enabled);
+
+        return redirect()
+            ->route('settings.app-features.index')
+            ->with('success', 'Funcionalidades do app atualizadas.');
     }
 }

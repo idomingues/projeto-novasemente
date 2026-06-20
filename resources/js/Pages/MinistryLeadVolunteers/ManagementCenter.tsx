@@ -630,9 +630,9 @@ export default function ManagementCenter({
                     </div>
                 </div>
 
-                <div className="flex min-h-0 flex-1 flex-col gap-2 lg:flex-row lg:items-stretch">
+                <div className="flex min-h-0 flex-1 flex-col gap-2 md:flex-row md:items-stretch">
                     <aside
-                        className="hidden min-h-0 w-full shrink-0 flex-col lg:flex lg:max-h-none lg:max-w-[min(100%,var(--dept-pane-w))] lg:w-[var(--dept-pane-w)]"
+                        className="hidden min-h-0 w-full shrink-0 flex-col md:flex md:max-h-none md:max-w-[min(100%,var(--dept-pane-w))] md:w-[var(--dept-pane-w)]"
                         style={{ ['--dept-pane-w' as string]: `${departmentPaneWidth}px` }}
                     >
                         <VolunteerCenterScopePanel {...scopePanelProps} density="compact" />
@@ -647,7 +647,7 @@ export default function ManagementCenter({
                         title="Arraste para ajustar a largura. Duplo clique para restaurar."
                         onMouseDown={onSeparatorMouseDown}
                         onDoubleClick={resetDepartmentPaneWidth}
-                        className="group relative hidden w-2 shrink-0 cursor-col-resize lg:block"
+                        className="group relative hidden w-2 shrink-0 cursor-col-resize md:block"
                     >
                         <span className="absolute inset-y-2 left-1/2 w-px -translate-x-1/2 rounded-full bg-zinc-200 transition group-hover:w-0.5 group-hover:bg-emerald-500 group-active:bg-emerald-600 dark:bg-zinc-700 dark:group-hover:bg-emerald-400" />
                     </div>

@@ -101,7 +101,7 @@ export default function MobileNews({ posts, config }: Props) {
     return (
         <MobileLayout>
             <Head title={pageTitle} />
-            <div className="mx-auto w-full max-w-lg space-y-8">
+            <div className="mx-auto w-full max-w-lg space-y-8 sm:max-w-xl md:max-w-2xl lg:max-w-none">
                 {isEmpty ? (
                     <div className="py-12 text-center">
                         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-100 dark:bg-zinc-800">

@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react';
+import { useAppFeatures } from '@/hooks/useAppFeatures';
 import {
     HomeIcon,
     CalendarDaysIcon,
@@ -25,14 +26,23 @@ const navItems = [
     {
         name: 'Assistir culto',
         route: 'mobile.culto' as const,
+        featureKey: 'culto',
         activeRoutes: ['mobile.culto', 'mobile.culto.show'] as const,
         icon: PlayCircleIcon,
         iconActive: PlayCircleIconSolid,
     },
-    { name: 'Eventos', route: 'mobile.events' as const, activeRoutes: ['mobile.events'] as const, icon: CalendarDaysIcon, iconActive: CalendarDaysIconSolid },
+    {
+        name: 'Eventos',
+        route: 'mobile.events' as const,
+        featureKey: 'events',
+        activeRoutes: ['mobile.events'] as const,
+        icon: CalendarDaysIcon,
+        iconActive: CalendarDaysIconSolid,
+    },
     {
         name: 'Oração',
         route: 'mobile.prayer' as const,
+        featureKey: 'prayer',
         activeRoutes: ['mobile.prayer', 'prayer.index'] as const,
         icon: HandRaisedIcon,
         iconActive: HandRaisedIconSolid,
@@ -109,14 +119,23 @@ const navItems = [
 
 /** Barra inferior: Home, Assistir culto, Eventos, Oração, Mais (batismo e voluntário nos cartões do Início). */
 export default function MobileBottomNav() {
+    const { isEnabled } = useAppFeatures();
+    const visibleItems = navItems.filter((item) => {
+        if (!('featureKey' in item) || !item.featureKey) {
+            return true;
+        }
+
+        return isEnabled(item.featureKey);
+    });
+
     return (
         <nav
             className="fixed bottom-0 left-0 right-0 z-40 border-t border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
             aria-label="Menu principal"
         >
-            <div className="flex items-center justify-around h-14 max-w-lg lg:max-w-2xl mx-auto pt-1">
-                {navItems.map(({ name, route: routeName, activeRoutes, icon: Icon, iconActive: IconActive }) => {
+            <div className="mx-auto flex h-14 max-w-lg items-center justify-around pt-1 md:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
+                {visibleItems.map(({ name, route: routeName, activeRoutes, icon: Icon, iconActive: IconActive }) => {
                     const href = route(routeName);
                     const isActive = activeRoutes.some((r) => route().current(r));
                     const IconComponent = isActive ? IconActive : Icon;

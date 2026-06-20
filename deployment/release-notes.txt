@@ -1,4 +1,3 @@
-• Novo módulo Comunidades (Mais → Comunidades): grupos de interesse da igreja com nome, descrição, arte e link para o WhatsApp.
-• Primeiro grupo disponível: Seven Bike Nova Semente — pedaladas, trilhas e comunhão.
-• Gestão no painel: Publicação → Comunidades (cadastro, edição e publicação dos grupos).
-• Layout em grade no celular com capa vertical e botão para entrar no grupo via WhatsApp.
+• Suporte aprimorado ao iPad: layout responsivo em telas maiores (central de voluntários, home, notícias e barra inferior).
+• App iOS universal (iPhone + iPad) — nova build para instalação na App Store em tablets.
+• Compatibilidade iOS ampliada (mínimo iOS 15) para mais modelos de iPad receberem a atualização.

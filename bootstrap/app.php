@@ -22,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
             \App\Http\Middleware\PreventBrowserCacheHtmlResponses::class,
+            \App\Http\Middleware\EnsureAppFeatureEnabled::class,
             \App\Http\Middleware\RecordPageViewsAfterResponse::class,
         ]);
 

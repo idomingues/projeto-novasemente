@@ -35,6 +35,7 @@ class Church extends Model
         'donation_url',
         'treasurer_notification_email',
         'talents_moderator_notification_email',
+        'disabled_app_features',
         'youtube_playlist_url',
         'youtube_live_url',
         'library_meditation_url',
@@ -44,6 +45,7 @@ class Church extends Model
 
     protected $casts = [
         'active' => 'boolean',
+        'disabled_app_features' => 'array',
     ];
 
     /** URL pública da logo (path local vira asset, URL externa mantida). */

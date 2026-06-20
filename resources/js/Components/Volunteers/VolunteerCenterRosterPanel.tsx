@@ -266,7 +266,7 @@ export default function VolunteerCenterRosterPanel({
                                 onClick={scopeFilter.onOpen}
                                 title={scopeFilter.tooltip}
                                 aria-label={scopeFilter.tooltip}
-                                className={`lg:hidden ${headerIconBtnClass} ${scopeFilter.active ? headerIconBtnActiveClass : ''}`}
+                                className={`md:hidden ${headerIconBtnClass} ${scopeFilter.active ? headerIconBtnActiveClass : ''}`}
                             >
                                 <BuildingOffice2Icon className="h-4 w-4" aria-hidden />
                             </button>

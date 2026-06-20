@@ -9,6 +9,7 @@ use App\Models\Church;
 use App\Models\ChurchSolicitation;
 use App\Models\MissionTripRegistration;
 use App\Models\Pastor;
+use App\Support\ChurchAppFeatures;
 use App\Support\MobileProjectVersionHint;
 use App\Support\NotificationFeed;
 use Illuminate\Http\Request;
@@ -95,6 +96,10 @@ class HandleInertiaRequests extends Middleware
         $canManageSettings = $user !== null && (
             $user->hasRole('super_admin')
             || \App\Support\SpatiePermissionCheck::userHas($user, 'library.manage')
+        );
+
+        $canManageAppFeatures = $user !== null && (
+            $user->hasRole('super_admin') || $user->hasRole('admin')
         );
 
         $appVersionHistory = [];
@@ -292,6 +297,7 @@ class HandleInertiaRequests extends Middleware
                 'roleLabel' => $roleLabel,
                 'canAccessAdminMenu' => $canAccessAdminMenu,
                 'canManageSettings' => $canManageSettings,
+                'canManageAppFeatures' => $canManageAppFeatures,
                 /** Pastor com registro ligado à conta na igreja em contexto (para menu «Minha disponibilidade»). */
                 'linkedPastor' => $linkedPastor,
                 /** Mostrar «Agenda Pastoral» no menu (pastor ligado, papel pastor, ou quem gere pastores). */
@@ -348,6 +354,8 @@ class HandleInertiaRequests extends Middleware
             'unreadInboxNotificationsCount' => fn () => NotificationFeed::unreadInboxCount($request),
             /** Menu lateral: textos em config/admin_sidebar.php (não depende só do bundle JS em cache). */
             'adminSidebarMenu' => fn () => config('admin_sidebar.items', []),
+            /** Chaves de funcionalidades desativadas para membros (app mobile / Mais). */
+            'disabledAppFeatures' => fn () => ChurchAppFeatures::disabledKeysForRequest($request),
         ];
     }
 }
