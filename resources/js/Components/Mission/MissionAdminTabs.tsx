@@ -7,7 +7,8 @@ export type MissionAdminTab =
     | 'eventos'
     | 'depoimentos'
     | 'quem-somos'
-    | 'mural';
+    | 'mural'
+    | 'configuracao';
 
 const tabs: { key: MissionAdminTab; label: string; route: string; showCount?: boolean }[] = [
     { key: 'cadastros', label: 'Cadastros', route: 'mission.index' },
@@ -22,11 +23,12 @@ const tabs: { key: MissionAdminTab; label: string; route: string; showCount?: bo
         route: 'mission.trip-registrations.index',
         showCount: true,
     },
+    { key: 'configuracao', label: 'Configuração', route: 'mission.content.settings' },
 ];
 
 function tabButtonClass(active: boolean): string {
     return [
-        'flex-1 min-w-[7rem] px-3 py-3 text-sm font-semibold border-b-2 transition-colors -mb-px text-center whitespace-nowrap',
+        'shrink-0 px-4 py-3 text-sm font-semibold border-b-2 transition-colors -mb-px text-center whitespace-nowrap',
         active
             ? 'border-teal-600 text-teal-800 dark:border-teal-400 dark:text-teal-200'
             : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200',
@@ -41,7 +43,7 @@ export default function MissionAdminTabs({ active }: { active: MissionAdminTab }
         <nav
             role="tablist"
             aria-label="Seções da Missão"
-            className="flex flex-wrap gap-x-1 border-b border-zinc-200 dark:border-zinc-800 overflow-x-auto"
+            className="-mx-1 flex flex-wrap gap-x-1 gap-y-0 overflow-x-auto border-b border-zinc-200 px-1 dark:border-zinc-800 sm:gap-x-2"
         >
             {tabs.map((tab) => (
                 <Link
@@ -52,10 +54,10 @@ export default function MissionAdminTabs({ active }: { active: MissionAdminTab }
                     className={tabButtonClass(active === tab.key)}
                     preserveScroll
                 >
-                    <span className="inline-flex items-center gap-1.5">
-                        {tab.label}
+                    <span className="inline-flex items-center justify-center gap-2">
+                        <span>{tab.label}</span>
                         {tab.showCount && tripRegistrationsCount > 0 ? (
-                            <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-teal-600 px-1.5 py-0.5 text-[0.65rem] font-bold leading-none text-white dark:bg-teal-500">
+                            <span className="inline-flex min-h-[1.25rem] min-w-[1.25rem] shrink-0 items-center justify-center rounded-full bg-teal-600 px-1.5 text-[0.65rem] font-bold leading-none text-white dark:bg-teal-500">
                                 {tripRegistrationsCount}
                             </span>
                         ) : null}

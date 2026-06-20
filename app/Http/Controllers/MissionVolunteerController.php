@@ -141,6 +141,8 @@ class MissionVolunteerController extends Controller
 
         $canManage = MissionTeamAccess::canManagePhases($user);
 
+        $church = Church::query()->find($churchId);
+
         return Inertia::render('Mission/Index', [
             'volunteers' => $volunteersPaginated,
             'phases' => $phases,
@@ -156,6 +158,7 @@ class MissionVolunteerController extends Controller
             'detailUrlPattern' => route('mission.volunteers.detail', ['missionVolunteer' => 0]),
             'broadcastStoreUrl' => route('mission.broadcast.store'),
             'filteredTotal' => $total,
+            'whatsappDefaultMessage' => trim((string) ($church?->mission_whatsapp_default_message ?? '')),
         ]);
     }
 
@@ -274,6 +277,8 @@ class MissionVolunteerController extends Controller
             ->values()
             ->all();
 
+        $church = Church::query()->find($churchId);
+
         return response()->json([
             'volunteer' => $volunteerPayload,
             'stages' => $stages,
@@ -285,6 +290,7 @@ class MissionVolunteerController extends Controller
             'updatePhaseUrl' => $canEditPhase ? route('mission.volunteers.phase', $missionVolunteer) : null,
             'storeNoteUrl' => route('mission.volunteers.notes.store', $missionVolunteer),
             'destroyUrl' => $canManage ? route('mission.volunteers.destroy', $missionVolunteer) : null,
+            'whatsappDefaultMessage' => trim((string) ($church?->mission_whatsapp_default_message ?? '')),
         ]);
     }
 

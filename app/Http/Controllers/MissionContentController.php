@@ -322,6 +322,37 @@ class MissionContentController extends Controller
         return redirect()->route('mission.content.about')->with('success', 'Conteúdo salvo.');
     }
 
+    public function settingsIndex(Request $request): Response
+    {
+        $this->canView($request);
+        $churchId = $this->churchId($request);
+        abort_unless($churchId, 404);
+
+        $church = Church::query()->findOrFail($churchId);
+
+        return Inertia::render('Mission/Settings', [
+            'whatsappDefaultMessage' => $church->mission_whatsapp_default_message ?? '',
+            'canManage' => $request->user()?->can('mission.manage') ?? false,
+        ]);
+    }
+
+    public function updateSettings(Request $request): RedirectResponse
+    {
+        $this->canManage($request);
+        $churchId = $this->churchId($request);
+        abort_unless($churchId, 404);
+
+        $valid = $request->validate([
+            'whatsapp_default_message' => ['nullable', 'string', 'max:5000'],
+        ]);
+
+        Church::query()->whereKey($churchId)->update([
+            'mission_whatsapp_default_message' => $valid['whatsapp_default_message'] ?? null,
+        ]);
+
+        return redirect()->route('mission.content.settings')->with('success', 'Configurações salvas.');
+    }
+
     public function wallIndex(Request $request, DriveFolderCoverService $cover): Response
     {
         $this->canView($request);

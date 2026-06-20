@@ -60,6 +60,7 @@ final class PageViewRouteLabels
         'mission.content.events' => 'Missão — gestão eventos',
         'mission.content.messages' => 'Missão — gestão depoimentos',
         'mission.content.about' => 'Missão — gestão quem somos',
+        'mission.content.settings' => 'Missão — gestão configuração',
         'mission.content.wall' => 'Missão — gestão mural',
         'mission.index' => 'Missão — gestão',
         'mission.trip-registrations.index' => 'Missão — inscrições Tailândia & Mianmar',

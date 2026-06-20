@@ -592,6 +592,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/missao/gestao/quem-somos', [\App\Http\Controllers\MissionContentController::class, 'aboutIndex'])->name('mission.content.about')->middleware('permission:mission.view|mission.manage');
     Route::put('/missao/gestao/quem-somos', [\App\Http\Controllers\MissionContentController::class, 'updateAbout'])->name('mission.content.about.update')->middleware('permission:mission.manage');
 
+    Route::get('/missao/gestao/configuracao', [\App\Http\Controllers\MissionContentController::class, 'settingsIndex'])->name('mission.content.settings')->middleware('permission:mission.view|mission.manage');
+    Route::put('/missao/gestao/configuracao', [\App\Http\Controllers\MissionContentController::class, 'updateSettings'])->name('mission.content.settings.update')->middleware('permission:mission.manage');
+
     Route::get('/missao/gestao/usuarios', [MissionVolunteerController::class, 'usersIndex'])->name('mission.users.index')->middleware('permission:mission.view|mission.manage');
     Route::patch('/missao/gestao/usuarios/{user}', [MissionVolunteerController::class, 'updatePhaseLeader'])->name('mission.users.update')->middleware('permission:mission.manage');
 

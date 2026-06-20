@@ -42,6 +42,11 @@ import {
     missionVolunteersQuery,
 } from '@/utils/missionRosterFilters';
 import { serverSearchTerm } from '@/utils/listSearch';
+import {
+    buildMissionVolunteerWhatsAppText,
+    missionVolunteerWhatsAppUrl,
+} from '@/utils/missionVolunteerWhatsApp';
+import { ClipboardDocumentIcon } from '@heroicons/react/24/outline';
 
 type PhaseRow = {
     id: number;
@@ -105,9 +110,10 @@ type DetailJson = {
     updatePhaseUrl: string | null;
     storeNoteUrl: string;
     destroyUrl: string | null;
+    whatsappDefaultMessage: string;
 };
 
-type DetailTab = 'ficha' | 'historico' | 'notas';
+type DetailTab = 'ficha' | 'historico' | 'notas' | 'whatsapp';
 
 interface Paginated<T> {
     data: T[];
@@ -1104,6 +1110,15 @@ function DetailPanel({
     const v = detail.volunteer;
     const sections = missionVolunteerDetailSections(v);
     const noteForm = useForm({ body: '' });
+    const [whatsappMessage, setWhatsappMessage] = useState(() =>
+        buildMissionVolunteerWhatsAppText(v.fullName, detail.whatsappDefaultMessage),
+    );
+    const [whatsappCopied, setWhatsappCopied] = useState(false);
+    const whatsappHref = missionVolunteerWhatsAppUrl(v.phone, whatsappMessage);
+
+    useEffect(() => {
+        setWhatsappMessage(buildMissionVolunteerWhatsAppText(v.fullName, detail.whatsappDefaultMessage));
+    }, [v.fullName, detail.whatsappDefaultMessage]);
 
     const destroyVolunteer = async () => {
         if (!detail.destroyUrl) return;
@@ -1161,6 +1176,7 @@ function DetailPanel({
                     {tabBtn('ficha', 'Ficha')}
                     {tabBtn('historico', 'Histórico de status')}
                     {tabBtn('notas', 'Anotações')}
+                    {tabBtn('whatsapp', 'WhatsApp')}
                 </div>
             </div>
 
@@ -1263,7 +1279,7 @@ function DetailPanel({
                             )}
                         </ul>
                     </div>
-                ) : (
+                ) : detailTab === 'notas' ? (
                     <div className="space-y-4">
                         <p className="text-xs text-zinc-500 dark:text-zinc-400">Notas internas da equipe Missão sobre este cadastro.</p>
                         <ul className="max-h-[min(45vh,320px)] space-y-2 overflow-y-auto text-sm">
@@ -1298,6 +1314,70 @@ function DetailPanel({
                                     Adicionar nota
                                 </PrimaryButton>
                             </form>
+                        ) : null}
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                            Envie uma mensagem pelo WhatsApp Web. O texto inclui o nome da pessoa e a mensagem padrão configurada na aba
+                            Configuração.
+                        </p>
+                        {!v.phone?.trim() ? (
+                            <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
+                                Este cadastro não tem telefone. Adicione um número na ficha para enviar WhatsApp.
+                            </p>
+                        ) : (
+                            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                                Telefone: <span className="font-medium text-zinc-900 dark:text-zinc-100">{v.phone}</span>
+                            </p>
+                        )}
+                        <div>
+                            <InputLabel value="Mensagem" />
+                            <Textarea
+                                className="mt-1 w-full"
+                                rows={8}
+                                value={whatsappMessage}
+                                onChange={(e) => setWhatsappMessage(e.target.value)}
+                            />
+                        </div>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                            <SecondaryButton
+                                type="button"
+                                onClick={() => {
+                                    void navigator.clipboard.writeText(whatsappMessage).then(() => {
+                                        setWhatsappCopied(true);
+                                        setTimeout(() => setWhatsappCopied(false), 2000);
+                                    });
+                                }}
+                                className="inline-flex items-center justify-center gap-2"
+                            >
+                                <ClipboardDocumentIcon className="h-5 w-5 shrink-0" />
+                                {whatsappCopied ? 'Mensagem copiada!' : 'Copiar mensagem'}
+                            </SecondaryButton>
+                            <button
+                                type="button"
+                                disabled={!whatsappHref}
+                                onClick={() => {
+                                    if (whatsappHref) {
+                                        window.open(whatsappHref, '_blank', 'noopener,noreferrer');
+                                    }
+                                }}
+                                className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#20bd5a] disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                Abrir WhatsApp Web
+                            </button>
+                        </div>
+                        {!detail.whatsappDefaultMessage.trim() ? (
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                Nenhuma mensagem padrão configurada. Defina em{' '}
+                                <a
+                                    href={route('mission.content.settings')}
+                                    className="font-medium text-teal-700 underline dark:text-teal-300"
+                                >
+                                    Configuração
+                                </a>
+                                .
+                            </p>
                         ) : null}
                     </div>
                 )}

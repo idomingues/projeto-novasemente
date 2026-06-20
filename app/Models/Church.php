@@ -25,6 +25,7 @@ class Church extends Model
         'country',
         'description',
         'ministry_invitation_intro',
+        'mission_whatsapp_default_message',
         'active',
         'email',
         'phone',
