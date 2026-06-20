@@ -110,6 +110,8 @@ interface Props {
     signupCompletion?: VolunteerSignupCompletion;
     /** Etapa lógica do questionário (0–2) vinda de `?etapa=` após salvar. */
     resumePage?: number | null;
+    /** Aviso fixo: usuário já tem cadastro e está em modo de atualização. */
+    existingRegistrationNotice?: boolean;
 }
 
 const PAGE_TITLES = ['Dados pessoais', 'Nova Semente', 'Sobre o serviço'];
@@ -521,6 +523,7 @@ export default function PublicSignup({
     missingFields: missingFieldsProp = [],
     signupCompletion,
     resumePage = null,
+    existingRegistrationNotice = false,
 }: Props) {
     const isEdit = mode === 'edit';
     const signupToken = token || '';
@@ -1528,6 +1531,19 @@ export default function PublicSignup({
                         <span className="font-semibold">*</span> Obrigatória
                     </p>
                 </header>
+
+                {isEdit && existingRegistrationNotice && !focusMissingOnly ? (
+                    <div
+                        className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/35 dark:text-amber-100"
+                        role="status"
+                    >
+                        <p className="font-semibold">Você já tem cadastro de voluntário</p>
+                        <p className="mt-1 leading-relaxed text-amber-900/90 dark:text-amber-100/90">
+                            As informações abaixo são do seu cadastro atual. Você pode revisar e atualizar quando
+                            quiser — as alterações são salvas automaticamente enquanto você preenche.
+                        </p>
+                    </div>
+                ) : null}
 
                 {showDraftRestoredBanner ? (
                     <div

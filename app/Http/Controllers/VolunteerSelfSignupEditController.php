@@ -113,6 +113,7 @@ class VolunteerSelfSignupEditController extends Controller
             'missingFields' => $focusMissingOnly ? $completion['missing_fields'] : [],
             'signupCompletion' => $completion,
             'resumePage' => $this->resolveResumePageFromQuery($request),
+            'existingRegistrationNotice' => true,
         ]);
     }
 

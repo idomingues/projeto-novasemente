@@ -240,6 +240,37 @@ class VolunteerPublicSignupTest extends TestCase
         $this->assertTrue($admin->hasRole('admin'));
     }
 
+    public function test_logged_in_volunteer_redirects_public_signup_to_edit(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class, MinistrySeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+        $user = User::factory()->create([
+            'church_id' => $churchId,
+            'is_volunteer' => true,
+            'email' => 'voluntario.existente@example.com',
+        ]);
+        $this->assertNotNull($user->fresh()->volunteerProfile);
+
+        $this->actingAs($user)
+            ->get(route('volunteers.public-signup.page'))
+            ->assertRedirect(route('volunteers.self-signup.edit', absolute: false))
+            ->assertSessionHas(
+                'info',
+                'Você já possui cadastro de voluntário. Revise e atualize suas informações abaixo quando precisar.'
+            );
+
+        $token = VolunteerSelfSignupToken::query()->firstOrCreate(
+            ['church_id' => $churchId],
+            ['token' => (string) Str::uuid()],
+        )->token;
+
+        $this->actingAs($user)
+            ->post(route('volunteers.self-signup.store'), $this->signupPayload($token, 'voluntario.existente@example.com'))
+            ->assertRedirect(route('volunteers.self-signup.edit', absolute: false))
+            ->assertSessionHas('info');
+    }
+
     public function test_login_shows_hint_when_volunteer_exists_without_user_account(): void
     {
         $this->seed([RolePermissionSeeder::class, ChurchSeeder::class, MinistrySeeder::class]);

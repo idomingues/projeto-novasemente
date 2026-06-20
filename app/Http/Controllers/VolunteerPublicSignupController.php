@@ -78,7 +78,7 @@ class VolunteerPublicSignupController extends Controller
     /**
      * Cadastro Voluntário público (sem token na URL): usa a primeira igreja ativa e o token guardado na base.
      */
-    public function createPublicPage(): RedirectResponse|Response
+    public function createPublicPage(Request $request): RedirectResponse|Response
     {
         if (! Schema::hasTable('volunteer_self_signup_tokens')) {
             return redirect()->route('login')->with('error', 'Cadastro de voluntários ainda não está disponível. Entre em contato a equipe.');
@@ -98,6 +98,10 @@ class VolunteerPublicSignupController extends Controller
             ->where('church_id', $church->id)
             ->orderBy('name')
             ->get(['id', 'name']);
+
+        if ($redirect = $this->redirectLoggedInVolunteerToEdit($request)) {
+            return $redirect;
+        }
 
         return Inertia::render('Volunteers/PublicSignup', [
             'token' => $record->token,
@@ -176,6 +180,10 @@ class VolunteerPublicSignupController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
+        if ($redirect = $this->redirectLoggedInVolunteerToEdit($request)) {
+            return $redirect;
+        }
+
         return Inertia::render('Volunteers/PublicSignup', [
             'token' => $token,
             'churchName' => $church->name,
@@ -187,6 +195,10 @@ class VolunteerPublicSignupController extends Controller
     {
         if (! Schema::hasTable('volunteer_self_signup_tokens')) {
             return redirect()->route('mobile.home')->with('error', 'Cadastro público indisponível.');
+        }
+
+        if ($redirect = $this->redirectLoggedInVolunteerToEdit($request)) {
+            return $redirect;
         }
 
         $this->normalizeSignupBooleans($request);
@@ -357,6 +369,31 @@ class VolunteerPublicSignupController extends Controller
         }
 
         return redirect()->to($loginUrl);
+    }
+
+    /**
+     * Usuário logado com cadastro de voluntário: abre edição em vez de novo cadastro público.
+     */
+    private function redirectLoggedInVolunteerToEdit(Request $request): ?RedirectResponse
+    {
+        $user = $request->user();
+        if ($user === null) {
+            return null;
+        }
+
+        $user->ensureVolunteerProfile();
+        $user->load('volunteerProfile');
+
+        if ($user->volunteerProfile === null) {
+            return null;
+        }
+
+        return redirect()
+            ->route('volunteers.self-signup.edit')
+            ->with(
+                'info',
+                'Você já possui cadastro de voluntário. Revise e atualize suas informações abaixo quando precisar.'
+            );
     }
 
     /**

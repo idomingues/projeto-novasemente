@@ -74,6 +74,7 @@ class VolunteerSelfSignupEditTest extends TestCase
                 ->component('Volunteers/PublicSignup')
                 ->where('mode', 'edit')
                 ->where('focusMissingOnly', false)
+                ->where('existingRegistrationNotice', true)
                 ->has('initial')
                 ->has('ministries')
                 ->has('signupCompletion'));
