@@ -2,6 +2,7 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import SobreOAppNavItem from '@/Components/Mobile/SobreOAppNavItem';
 import { Head, Link } from '@inertiajs/react';
 import {
+    CalendarDaysIcon,
     ClockIcon,
     MapPinIcon,
     PlayCircleIcon,
@@ -14,7 +15,6 @@ import {
     UserPlusIcon,
     FilmIcon,
     HandRaisedIcon,
-    NewspaperIcon,
     HeartIcon,
     GlobeAltIcon,
     BanknotesIcon,
@@ -38,6 +38,7 @@ interface Props {
 
 const items: MoreMenuItem[] = [
     { name: 'Bíblia', description: 'Leitura e busca de versículos', route: 'mobile.bible', featureKey: 'bible', icon: BookOpenIcon },
+    { name: 'Eventos', description: 'Agenda de eventos da igreja', route: 'mobile.events', featureKey: 'events', icon: CalendarDaysIcon },
     { name: 'Dízimos e Ofertas', description: 'Contribuições e ofertas', route: 'mobile.offerings', featureKey: 'offerings', icon: HandRaisedIcon },
     {
         name: 'Ano Bíblico',
@@ -46,7 +47,6 @@ const items: MoreMenuItem[] = [
         featureKey: 'ano_biblico',
         icon: AcademicCapIcon,
     },
-    { name: 'Notícias', description: 'Notícias e comunicados da igreja', route: 'mobile.news', featureKey: 'news', icon: NewspaperIcon },
     { name: 'Saúde', description: 'Conteúdos de saúde e bem-estar', route: 'mobile.health', featureKey: 'health', icon: HeartIcon },
     { name: 'Missão', description: 'Eventos, depoimentos, mural e cadastro missionário', route: 'mobile.mission', featureKey: 'mission', icon: GlobeAltIcon },
     {

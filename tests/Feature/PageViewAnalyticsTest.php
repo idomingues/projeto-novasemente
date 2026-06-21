@@ -54,7 +54,7 @@ class PageViewAnalyticsTest extends TestCase
         $this->assertTrue(PageViewShellRoutes::isExcluded('mobile.more'));
         $this->assertTrue(PageViewShellRoutes::isExcluded('dashboard'));
         $this->assertTrue(PageViewShellRoutes::isExcluded('notifications.feed'));
-        $this->assertTrue(PageViewShellRoutes::isExcluded('mobile.events'));
+        $this->assertTrue(PageViewShellRoutes::isExcluded('mobile.news'));
         $this->assertTrue(PageViewShellRoutes::isExcluded('mobile.culto'));
         $this->assertFalse(PageViewShellRoutes::isExcluded('mobile.biblioteca'));
         $this->assertFalse(PageViewShellRoutes::isExcluded('mobile.culto.show'));

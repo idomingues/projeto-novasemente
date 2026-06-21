@@ -21,7 +21,7 @@ final class PageViewShellRoutes
             'mobile.index',
             'mobile.home',
             'mobile.culto',
-            'mobile.events',
+            'mobile.news',
             'mobile.prayer',
             'prayer.index',
             'mobile.more',

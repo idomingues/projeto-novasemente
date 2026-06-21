@@ -143,7 +143,7 @@ const MOBILE_BOTTOM_NAV_ROUTES = new Set([
     'mobile.home',
     'mobile.baptism',
     'mobile.culto',
-    'mobile.events',
+    'mobile.news',
     'mobile.prayer',
     'volunteers.public-signup.page',
     'mobile.more',

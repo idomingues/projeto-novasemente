@@ -2,15 +2,15 @@ import { Link } from '@inertiajs/react';
 import { useAppFeatures } from '@/hooks/useAppFeatures';
 import {
     HomeIcon,
-    CalendarDaysIcon,
     HandRaisedIcon,
+    NewspaperIcon,
     PlayCircleIcon,
     Squares2X2Icon,
 } from '@heroicons/react/24/outline';
 import {
     HomeIcon as HomeIconSolid,
-    CalendarDaysIcon as CalendarDaysIconSolid,
     HandRaisedIcon as HandRaisedIconSolid,
+    NewspaperIcon as NewspaperIconSolid,
     PlayCircleIcon as PlayCircleIconSolid,
     Squares2X2Icon as Squares2X2IconSolid,
 } from '@heroicons/react/24/solid';
@@ -32,12 +32,12 @@ const navItems = [
         iconActive: PlayCircleIconSolid,
     },
     {
-        name: 'Eventos',
-        route: 'mobile.events' as const,
-        featureKey: 'events',
-        activeRoutes: ['mobile.events'] as const,
-        icon: CalendarDaysIcon,
-        iconActive: CalendarDaysIconSolid,
+        name: 'Notícias',
+        route: 'mobile.news' as const,
+        featureKey: 'news',
+        activeRoutes: ['mobile.news', 'mobile.news.show'] as const,
+        icon: NewspaperIcon,
+        iconActive: NewspaperIconSolid,
     },
     {
         name: 'Oração',
@@ -93,8 +93,7 @@ const navItems = [
             'mobile.schedule',
             'escalas.index',
             'mobile.offerings',
-            'mobile.news',
-            'mobile.news.show',
+            'mobile.events',
             'mobile.health',
             'mobile.health.show',
             'mobile.mission',
@@ -117,7 +116,7 @@ const navItems = [
     },
 ] as const;
 
-/** Barra inferior: Home, Assistir culto, Eventos, Oração, Mais (batismo e voluntário nos cartões do Início). */
+/** Barra inferior: Home, Assistir culto, Notícias, Oração, Mais (batismo e voluntário nos cartões do Início). */
 export default function MobileBottomNav() {
     const { isEnabled } = useAppFeatures();
     const visibleItems = navItems.filter((item) => {

@@ -252,7 +252,7 @@ export default function OperationsIndex({
                             </p>
                             <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
                                 A contagem é feita após enviar a página ao usuário; rotas de login, arquivos, debug e itens de
-                                abas da barra inferior (Início, Culto, Eventos, etc.) não entram no ranking.
+                                abas da barra inferior (Início, Culto, Notícias, etc.) não entram no ranking.
                             </p>
                         </div>
 

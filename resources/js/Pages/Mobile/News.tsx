@@ -101,7 +101,7 @@ export default function MobileNews({ posts, config }: Props) {
     return (
         <MobileLayout>
             <Head title={pageTitle} />
-            <div className="mx-auto w-full max-w-lg space-y-8 sm:max-w-xl md:max-w-2xl lg:max-w-none">
+            <div className="mx-auto w-full max-w-lg space-y-8 sm:max-w-none">
                 {isEmpty ? (
                     <div className="py-12 text-center">
                         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-100 dark:bg-zinc-800">
@@ -111,11 +111,11 @@ export default function MobileNews({ posts, config }: Props) {
                         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">As novidades aparecerão aqui.</p>
                     </div>
                 ) : (
-                    <ul className="flex flex-col gap-6">
+                    <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                         {posts.data.map((p) => {
                             if (p.content_type === 'instagram_feed') {
                                 return (
-                                    <li key={p.id}>
+                                    <li key={p.id} className="min-w-0">
                                         <InstagramFeedCard
                                             post={p}
                                             appUrl={appUrl}
@@ -134,7 +134,7 @@ export default function MobileNews({ posts, config }: Props) {
                             return (
                                 <li
                                     key={p.id}
-                                    className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition-all hover:border-zinc-300 hover:shadow-md active:scale-[0.99] dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
+                                    className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition-all hover:border-zinc-300 hover:shadow-md active:scale-[0.99] dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
                                 >
                                                 {thumb ? (
                                                     <div className="relative rounded-t-2xl">
@@ -214,7 +214,7 @@ export default function MobileNews({ posts, config }: Props) {
                                                 )}
                                                 <Link
                                                     href={route(showRoute, p.slug)}
-                                                    className="block rounded-b-2xl p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
+                                                    className="flex flex-1 flex-col rounded-b-2xl p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
                                                 >
                                                     <h2 className="line-clamp-2 text-lg font-semibold leading-snug text-zinc-900 dark:text-white">
                                                         {p.title}
