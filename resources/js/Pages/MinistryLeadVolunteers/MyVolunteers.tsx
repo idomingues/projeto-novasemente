@@ -634,7 +634,7 @@ export default function MyVolunteers() {
         if (s === 'reviewing') return 'Em análise';
         if (s === 'training') return 'Treinamento';
         if (s === 'active') return 'Atuante';
-        return '—';
+        return 'Novo';
     };
 
     const inviteLabel = useCallback(

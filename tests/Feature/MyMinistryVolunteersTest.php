@@ -152,4 +152,82 @@ class MyMinistryVolunteersTest extends TestCase
             ->get(route('ministry-lead.my-volunteers.index'))
             ->assertForbidden();
     }
+
+    public function test_forwarded_volunteer_without_leader_status_appears_as_novo(): void
+    {
+        $this->seed();
+
+        $church = Church::query()->firstOrFail();
+        $ministry = Ministry::query()->where('church_id', $church->id)->firstOrFail();
+
+        $leader = User::factory()->create([
+            'church_id' => $church->id,
+            'is_ministry_leader' => true,
+        ]);
+        $leader->assignRole(Role::firstOrCreate(['name' => 'lider_ministerio']));
+        $leader->ministries()->sync([$ministry->id]);
+
+        $volunteer = Volunteer::query()->create([
+            'name' => 'Encaminhado Novo',
+            'email' => 'encaminhado.novo@example.com',
+            'active' => true,
+        ]);
+
+        VolunteerMinistryInvitation::query()->create([
+            'church_id' => $church->id,
+            'volunteer_id' => $volunteer->id,
+            'ministry_id' => $ministry->id,
+            'invited_by_user_id' => $leader->id,
+            'token' => VolunteerMinistryInvitation::createToken(),
+            'status' => 'pending',
+            'channel' => 'email',
+            'sent_at' => now(),
+        ]);
+
+        $response = $this->actingAs($leader)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('ministry-lead.my-volunteers.index'));
+
+        $response->assertOk();
+        $page = json_decode(json_encode($response->viewData('page')), true);
+        $rows = $page['props']['invitations']['data'] ?? [];
+        $row = collect($rows)->firstWhere('volunteer.email', 'encaminhado.novo@example.com');
+
+        $this->assertNotNull($row);
+        $this->assertNull($row['leaderStatus']);
+    }
+
+    public function test_attached_volunteer_without_invitation_leader_status_is_not_active(): void
+    {
+        $this->seed();
+
+        $church = Church::query()->firstOrFail();
+        $ministry = Ministry::query()->where('church_id', $church->id)->firstOrFail();
+
+        $leader = User::factory()->create([
+            'church_id' => $church->id,
+            'is_ministry_leader' => true,
+        ]);
+        $leader->assignRole(Role::firstOrCreate(['name' => 'lider_ministerio']));
+        $leader->ministries()->sync([$ministry->id]);
+
+        $volunteer = Volunteer::query()->create([
+            'name' => 'Vinculado Sem Convite',
+            'email' => 'vinculado.sem.convite@example.com',
+            'active' => true,
+        ]);
+        $volunteer->ministries()->attach($ministry->id);
+
+        $response = $this->actingAs($leader)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('ministry-lead.my-volunteers.index'));
+
+        $response->assertOk();
+        $page = json_decode(json_encode($response->viewData('page')), true);
+        $rows = $page['props']['activeVolunteers'] ?? [];
+        $row = collect($rows)->firstWhere('volunteer.email', 'vinculado.sem.convite@example.com');
+
+        $this->assertNotNull($row);
+        $this->assertNull($row['leaderStatus']);
+    }
 }

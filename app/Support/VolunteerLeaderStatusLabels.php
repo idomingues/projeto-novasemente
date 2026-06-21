@@ -12,7 +12,7 @@ final class VolunteerLeaderStatusLabels
             'training' => 'Em treinamento',
             'ready' => 'Pronto para servir',
             'active' => 'Atuante',
-            default => '—',
+            default => 'Novo',
         };
     }
 }

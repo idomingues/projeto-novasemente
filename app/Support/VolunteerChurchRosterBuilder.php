@@ -426,9 +426,9 @@ class VolunteerChurchRosterBuilder
             $inviteLabel = $inv !== null
                 ? VolunteerInvitationStatusLabels::forInvitation($inv)
                 : '—';
-            $departmentStatusLabel = ($inv?->leader_status !== null && $inv->leader_status !== '')
-                ? VolunteerLeaderStatusLabels::label($inv->leader_status)
-                : '—';
+            $departmentStatusLabel = VolunteerLeaderStatusLabels::label(
+                ($inv?->leader_status !== null && $inv->leader_status !== '') ? $inv->leader_status : null,
+            );
 
             $rows[] = [
                 'ministryName' => $name,

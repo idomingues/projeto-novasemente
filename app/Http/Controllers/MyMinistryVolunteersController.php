@@ -169,7 +169,7 @@ class MyMinistryVolunteersController extends Controller
                         'canSendInvite' => $invitation
                             ? ($invitation->status === 'pending' && ! $invitation->isExpired())
                             : false,
-                        'leaderStatus' => $invitation?->leader_status ?? 'active',
+                        'leaderStatus' => $invitation?->leader_status,
                         'leaderNote' => $invitation?->leader_note,
                         'updateUrl' => $invitation
                             ? route('ministry-lead.my-volunteers.update', $invitation)
@@ -465,9 +465,12 @@ class MyMinistryVolunteersController extends Controller
         ])->values();
         $invites->setCollection($inviteRows);
 
-        $invitePairs = $inviteRows
-            ->map(fn (array $r) => ((int) ($r['volunteer']['id'] ?? 0)).'-'.((int) ($r['ministryId'] ?? 0)))
-            ->filter(fn (string $pair) => $pair !== '0-0')
+        $invitePairs = VolunteerMinistryInvitation::queryLatestPerVolunteerMinistry(
+            (int) $churchId,
+            array_map('intval', $ministryIds),
+        )
+            ->get(['volunteer_id', 'ministry_id'])
+            ->map(fn (VolunteerMinistryInvitation $i) => ((int) $i->volunteer_id).'-'.((int) $i->ministry_id))
             ->values()
             ->all();
 

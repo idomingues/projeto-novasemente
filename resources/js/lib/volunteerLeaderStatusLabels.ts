@@ -5,5 +5,5 @@ export function volunteerLeaderStatusLabel(status: string | null | undefined): s
     if (status === 'training') return 'Em treinamento';
     if (status === 'ready') return 'Pronto para servir';
     if (status === 'active') return 'Atuante';
-    return '—';
+    return 'Novo';
 }

@@ -857,9 +857,9 @@ class VolunteerPipelineLeadTest extends TestCase
             ->firstWhere('id', $sentInvite->id);
 
         $this->assertSame('Convite não enviado', $forwardedRow['ministryPhases'][0]['inviteLabel']);
-        $this->assertSame('—', $forwardedRow['ministryPhases'][0]['departmentStatusLabel']);
+        $this->assertSame('Novo', $forwardedRow['ministryPhases'][0]['departmentStatusLabel']);
         $this->assertSame('Aguardando resposta', $sentRow['ministryPhases'][0]['inviteLabel']);
-        $this->assertSame('—', $sentRow['ministryPhases'][0]['departmentStatusLabel']);
+        $this->assertSame('Novo', $sentRow['ministryPhases'][0]['departmentStatusLabel']);
     }
 
     public function test_pipeline_can_sort_volunteers_by_created_at_desc(): void
