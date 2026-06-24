@@ -4,13 +4,14 @@ namespace App\Actions\Volunteers;
 
 use App\Models\User;
 use App\Models\Volunteer;
-use App\Services\VolunteerMinistryRosterNotifier;
 use App\Support\UserProfilePhotoResolver;
 use App\Support\VolunteerAppLogin;
 use App\Support\VolunteerContactDuplicateChecker;
+use App\Support\VolunteerPipelineBootstrap;
 use App\Support\VolunteerSignupCompletion;
 use App\Support\VolunteerSignupName;
 use App\Support\VolunteerSignupServiceEaseAreas;
+use App\Support\VolunteerSignupServiceActivityTypes;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -30,13 +31,13 @@ final class PersistVolunteerSignupQuestionnaire
         int $churchId,
         bool $notifyNewMinistryAttachments = true,
     ): void {
-        $previousIds = $this->normalizeIdList($validated['previous_ministry_ids'] ?? []);
-        $activeIds = $this->normalizeIdList($validated['active_ministry_ids'] ?? []);
-        $otherIds = $this->normalizeIdList($validated['other_ministry_ids'] ?? []);
+        unset($notifyNewMinistryAttachments);
 
-        $newMinistryIds = array_values(array_unique(array_merge($activeIds, $otherIds)));
-        $existingMinistryIds = $volunteer->ministries()->pluck('ministries.id')->map(fn ($id) => (int) $id)->all();
-        $addedMinistryIds = array_values(array_diff($newMinistryIds, $existingMinistryIds));
+        $intendedMinistryIds = $this->normalizeIdList(array_merge(
+            $validated['desired_ministry_ids'] ?? [],
+            $validated['active_ministry_ids'] ?? [],
+            $validated['other_ministry_ids'] ?? [],
+        ));
 
         $name = trim(((string) $validated['first_name']).' '.(((string) $validated['last_name'])));
         if ($name === '' || VolunteerSignupName::split($name) === null) {
@@ -48,7 +49,8 @@ final class PersistVolunteerSignupQuestionnaire
         $emailNorm = VolunteerContactDuplicateChecker::normalizeEmail((string) $validated['email']);
         $photoUrl = UserProfilePhotoResolver::resolveFromRequest($request);
         $autosaveFields = $this->resolveAutosaveFieldKeys($request);
-        $shouldSyncMinistryPivot = $this->shouldSyncMinistryPivot($autosaveFields, $newMinistryIds);
+        $shouldProcessMinistryIntent = $this->shouldProcessMinistryIntent($autosaveFields, $intendedMinistryIds);
+        $wasCompleteBefore = VolunteerSignupCompletion::forUser($user)['is_complete'];
 
         $userPatch = $this->buildUserPersistAttributes(
             $validated,
@@ -69,10 +71,10 @@ final class PersistVolunteerSignupQuestionnaire
             $volunteer,
             $validated,
             $photoUrl,
-            $newMinistryIds,
-            $addedMinistryIds,
-            $notifyNewMinistryAttachments,
-            $shouldSyncMinistryPivot,
+            $churchId,
+            $intendedMinistryIds,
+            $shouldProcessMinistryIntent,
+            $wasCompleteBefore,
             $userPatch,
             $volunteerPatch,
         ) {
@@ -97,18 +99,13 @@ final class PersistVolunteerSignupQuestionnaire
                 $volunteer->forceFill($volunteerPatch)->save();
             }
 
-            if ($shouldSyncMinistryPivot) {
-                if ($newMinistryIds !== []) {
-                    $volunteer->ministries()->sync($newMinistryIds);
-                    if ($notifyNewMinistryAttachments && $addedMinistryIds !== []) {
-                        app(VolunteerMinistryRosterNotifier::class)->notifyLeadersOfNewAttachments(
-                            $volunteer->fresh(),
-                            $addedMinistryIds
-                        );
-                    }
-                } else {
-                    $volunteer->ministries()->detach();
-                }
+            if ($shouldProcessMinistryIntent) {
+                app(ApplyVolunteerSignupMinistryIntent::class)(
+                    $volunteer->fresh() ?? $volunteer,
+                    $intendedMinistryIds,
+                    $churchId,
+                    $user,
+                );
             }
 
             $user->refresh();
@@ -122,6 +119,14 @@ final class PersistVolunteerSignupQuestionnaire
             $freshVolunteer = $freshUser->volunteerProfile;
             if ($freshVolunteer !== null) {
                 VolunteerAppLogin::syncLoginEmailFromVolunteer($freshUser, $freshVolunteer);
+
+                if (
+                    ! $wasCompleteBefore
+                    && $completion['is_complete']
+                    && $shouldProcessMinistryIntent
+                ) {
+                    VolunteerPipelineBootstrap::setInteressadoStageForVolunteer($freshVolunteer->fresh(), $churchId);
+                }
             }
         });
     }
@@ -188,6 +193,7 @@ final class PersistVolunteerSignupQuestionnaire
             'is_official_member' => (bool) ($validated['is_official_member'] ?? false),
             'volunteer_phase' => $this->nullableString($validated['volunteer_phase'] ?? null),
             'service_ease_areas' => VolunteerSignupServiceEaseAreas::encode($validated['service_ease_areas'] ?? []),
+            'service_activity_types' => VolunteerSignupServiceActivityTypes::encode($validated['service_activity_types'] ?? []),
             'comfortable_with_digital_tools' => array_key_exists('comfortable_with_digital_tools', $validated)
                 ? (is_null($validated['comfortable_with_digital_tools']) ? null : (bool) $validated['comfortable_with_digital_tools'])
                 : null,
@@ -244,6 +250,9 @@ final class PersistVolunteerSignupQuestionnaire
         if (isset($saved['service_ease_areas'])) {
             $patch['service_ease_areas'] = VolunteerSignupServiceEaseAreas::encode($validated['service_ease_areas'] ?? []);
         }
+        if (isset($saved['service_activity_types'])) {
+            $patch['service_activity_types'] = VolunteerSignupServiceActivityTypes::encode($validated['service_activity_types'] ?? []);
+        }
         if (isset($saved['comfortable_with_digital_tools'])) {
             $patch['comfortable_with_digital_tools'] = array_key_exists('comfortable_with_digital_tools', $validated)
                 ? (is_null($validated['comfortable_with_digital_tools']) ? null : (bool) $validated['comfortable_with_digital_tools'])
@@ -285,16 +294,25 @@ final class PersistVolunteerSignupQuestionnaire
     }
 
     /**
-     * @param  list<int>  $newMinistryIds
+     * @param  list<int>  $intendedMinistryIds
      * @param  list<string>|null  $autosaveFields
      */
-    private function shouldSyncMinistryPivot(?array $autosaveFields, array $newMinistryIds): bool
+    private function shouldProcessMinistryIntent(?array $autosaveFields, array $intendedMinistryIds): bool
     {
-        if ($autosaveFields === null) {
-            return $newMinistryIds !== [];
+        if ($intendedMinistryIds === []) {
+            return false;
         }
 
-        $ministryListFields = ['active_ministry_ids', 'other_ministry_ids', 'previous_ministry_ids'];
+        if ($autosaveFields === null) {
+            return true;
+        }
+
+        $ministryListFields = [
+            'desired_ministry_ids',
+            'active_ministry_ids',
+            'other_ministry_ids',
+            'previous_ministry_ids',
+        ];
 
         return array_intersect($autosaveFields, $ministryListFields) !== [];
     }

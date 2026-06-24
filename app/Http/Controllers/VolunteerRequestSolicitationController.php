@@ -663,7 +663,7 @@ class VolunteerRequestSolicitationController extends Controller
         });
 
         return redirect()
-            ->VolunteerRequestStaffRoutes::pipelinePedidosUrl()
+            ->to(VolunteerRequestStaffRoutes::pipelinePedidosUrl())
             ->with('success', 'Voluntário anexado: convite criado para o líder, pedido concluído e fase do voluntário atualizada.');
     }
 
@@ -731,7 +731,7 @@ class VolunteerRequestSolicitationController extends Controller
         });
 
         return redirect()
-            ->VolunteerRequestStaffRoutes::pipelinePedidosUrl()
+            ->to(VolunteerRequestStaffRoutes::pipelinePedidosUrl())
             ->with('success', 'Voluntário desanexado. O pedido voltou para pendente.');
     }
 
@@ -845,7 +845,7 @@ class VolunteerRequestSolicitationController extends Controller
         $solicitation->delete();
 
         return redirect()
-            ->VolunteerRequestStaffRoutes::pipelinePedidosUrl()
+            ->to(VolunteerRequestStaffRoutes::pipelinePedidosUrl())
             ->with('success', 'Pedido removido.');
     }
 
@@ -923,7 +923,7 @@ class VolunteerRequestSolicitationController extends Controller
                 : 'Pedido de voluntário registrado.';
 
             return redirect()
-                ->VolunteerRequestStaffRoutes::pipelinePedidosUrl()
+                ->to(VolunteerRequestStaffRoutes::pipelinePedidosUrl())
                 ->with('success', $msg);
         }
 

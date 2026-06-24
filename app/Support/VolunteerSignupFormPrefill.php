@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\User;
 use App\Models\Volunteer;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Valores iniciais do formulário de cadastro/edição de voluntário (Inertia).
@@ -45,6 +46,8 @@ final class VolunteerSignupFormPrefill
             $lastName = '';
         }
 
+        $churchId = (int) ($user->church_id ?? 0);
+
         return [
             'photo_url' => $user->photo_url,
             'has_existing_photo' => is_string($user->photo_url) && trim($user->photo_url) !== '',
@@ -61,7 +64,11 @@ final class VolunteerSignupFormPrefill
             'attendance_duration' => (string) ($volunteer->attendance_duration ?? ''),
             'is_official_member' => $volunteer->is_official_member,
             'volunteer_phase' => (string) ($volunteer->volunteer_phase ?? ''),
+            'desired_ministry_ids' => $churchId > 0
+                ? self::desiredMinistryIdsForVolunteer($volunteer, $churchId)
+                : [],
             'service_ease_areas' => VolunteerSignupServiceEaseAreas::decode($volunteer->service_ease_areas),
+            'service_activity_types' => VolunteerSignupServiceActivityTypes::decode($volunteer->service_activity_types),
             'comfortable_with_digital_tools' => $volunteer->comfortable_with_digital_tools,
             'service_greatest_strength' => (string) ($volunteer->service_greatest_strength ?? ''),
             'service_greatest_challenge' => (string) ($volunteer->service_greatest_challenge ?? ''),
@@ -93,11 +100,47 @@ final class VolunteerSignupFormPrefill
             'attendance_duration' => '',
             'is_official_member' => null,
             'volunteer_phase' => '',
+            'desired_ministry_ids' => [],
             'service_ease_areas' => [],
+            'service_activity_types' => [],
             'comfortable_with_digital_tools' => null,
             'service_greatest_strength' => '',
             'service_greatest_challenge' => '',
             'lgpd_data_consent' => null,
         ];
+    }
+
+    /**
+     * Departamentos com manifestação de interesse ainda pendente (convite), sem vínculo ativo.
+     *
+     * @return list<int>
+     */
+    public static function desiredMinistryIdsForVolunteer(Volunteer $volunteer, int $churchId): array
+    {
+        if ($churchId <= 0 || ! Schema::hasTable('volunteer_ministry_invitations')) {
+            return [];
+        }
+
+        $attachedIds = $volunteer->ministries()
+            ->where('church_id', $churchId)
+            ->pluck('ministries.id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $query = \App\Models\VolunteerMinistryInvitation::query()
+            ->where('church_id', $churchId)
+            ->where('volunteer_id', $volunteer->id)
+            ->where('status', 'pending');
+
+        if ($attachedIds !== []) {
+            $query->whereNotIn('ministry_id', $attachedIds);
+        }
+
+        return $query
+            ->pluck('ministry_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
     }
 }

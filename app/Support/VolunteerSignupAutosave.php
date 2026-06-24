@@ -25,7 +25,9 @@ final class VolunteerSignupAutosave
         'attendance_duration',
         'is_official_member',
         'volunteer_phase',
+        'desired_ministry_ids',
         'service_ease_areas',
+        'service_activity_types',
         'comfortable_with_digital_tools',
         'service_greatest_strength',
         'service_greatest_challenge',
@@ -154,9 +156,15 @@ final class VolunteerSignupAutosave
             'volunteer_phase' => $request->has('volunteer_phase')
                 ? (string) $request->input('volunteer_phase')
                 : (string) ($prefill['volunteer_phase'] ?? ''),
+            'desired_ministry_ids' => $request->has('desired_ministry_ids')
+                ? $request->input('desired_ministry_ids', [])
+                : ($prefill['desired_ministry_ids'] ?? []),
             'service_ease_areas' => $request->has('service_ease_areas')
                 ? $request->input('service_ease_areas', [])
                 : ($prefill['service_ease_areas'] ?? []),
+            'service_activity_types' => $request->has('service_activity_types')
+                ? $request->input('service_activity_types', [])
+                : ($prefill['service_activity_types'] ?? []),
             'comfortable_with_digital_tools' => $request->has('comfortable_with_digital_tools')
                 ? $request->input('comfortable_with_digital_tools')
                 : ($prefill['comfortable_with_digital_tools'] ?? null),
@@ -197,6 +205,11 @@ final class VolunteerSignupAutosave
         }
 
         $out['service_ease_areas'] = VolunteerSignupServiceEaseAreas::decode($out['service_ease_areas'] ?? []);
+        $out['service_activity_types'] = VolunteerSignupServiceActivityTypes::decode($out['service_activity_types'] ?? []);
+        $out['desired_ministry_ids'] = array_values(array_unique(array_filter(
+            array_map('intval', is_array($out['desired_ministry_ids'] ?? null) ? $out['desired_ministry_ids'] : []),
+            fn (int $id) => $id > 0
+        )));
 
         return $out;
     }
@@ -212,7 +225,7 @@ final class VolunteerSignupAutosave
                 || in_array('has_social_networks', $autosaveFields, true))
             && trim((string) ($validated['social_network_profiles'] ?? '')) === '') {
             throw ValidationException::withMessages([
-                'social_network_profiles' => ['Informe o nome do seu perfil nas redes sociais.'],
+                'social_network_profiles' => ['Informe o perfil do Instagram/Facebook.'],
             ]);
         }
 
@@ -220,6 +233,13 @@ final class VolunteerSignupAutosave
             && ! VolunteerSignupServiceEaseAreas::hasSelection($validated['service_ease_areas'] ?? [])) {
             throw ValidationException::withMessages([
                 'service_ease_areas' => ['Selecione pelo menos uma área em que você tem facilidade para servir.'],
+            ]);
+        }
+
+        if (in_array('service_activity_types', $autosaveFields, true)
+            && ! VolunteerSignupServiceActivityTypes::hasSelection($validated['service_activity_types'] ?? [])) {
+            throw ValidationException::withMessages([
+                'service_activity_types' => ['Selecione pelo menos um tipo de atividade em que você rende melhor.'],
             ]);
         }
     }

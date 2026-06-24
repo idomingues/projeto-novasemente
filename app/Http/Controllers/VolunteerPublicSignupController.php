@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Volunteers\ApplyVolunteerSignupMinistryIntent;
 use App\Models\Church;
 use App\Models\Ministry;
 use App\Models\User;
@@ -14,6 +15,7 @@ use App\Support\VolunteerContactDuplicateChecker;
 use App\Support\VolunteerPipelineBootstrap;
 use App\Support\VolunteerSignupName;
 use App\Support\VolunteerSignupServiceEaseAreas;
+use App\Support\VolunteerSignupServiceActivityTypes;
 use App\Support\VolunteerSignupValidation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -222,6 +224,12 @@ class VolunteerPublicSignupController extends Controller
         $record = VolunteerSelfSignupToken::query()->where('token', $validated['token'])->firstOrFail();
         $churchId = (int) $record->church_id;
 
+        $validated['desired_ministry_ids'] = VolunteerSignupValidation::normalizeMinistryIdsForChurch(
+            is_array($validated['desired_ministry_ids'] ?? null) ? $validated['desired_ministry_ids'] : [],
+            $churchId,
+            'desired_ministry_ids',
+        );
+
         $emailNorm = VolunteerContactDuplicateChecker::normalizeEmail($validated['email']);
         $photoUrl = UserProfilePhotoResolver::resolveFromRequest($request);
 
@@ -299,6 +307,7 @@ class VolunteerPublicSignupController extends Controller
                     'is_official_member' => (bool) $validated['is_official_member'],
                     'volunteer_phase' => (string) $validated['volunteer_phase'],
                     'service_ease_areas' => VolunteerSignupServiceEaseAreas::encode($validated['service_ease_areas'] ?? []),
+                    'service_activity_types' => VolunteerSignupServiceActivityTypes::encode($validated['service_activity_types'] ?? []),
                     'comfortable_with_digital_tools' => (bool) $validated['comfortable_with_digital_tools'],
                     'service_greatest_strength' => $validated['service_greatest_strength'] ?? null,
                     'service_greatest_challenge' => $validated['service_greatest_challenge'] ?? null,
@@ -309,6 +318,15 @@ class VolunteerPublicSignupController extends Controller
                     $volunteer->fresh(),
                     (int) $record->church_id
                 );
+
+                if (($validated['desired_ministry_ids'] ?? []) !== []) {
+                    app(ApplyVolunteerSignupMinistryIntent::class)(
+                        $volunteer->fresh(),
+                        $validated['desired_ministry_ids'],
+                        $churchId,
+                        $user,
+                    );
+                }
             }
 
             $user->syncVolunteerRecord();

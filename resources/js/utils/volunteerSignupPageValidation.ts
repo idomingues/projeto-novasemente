@@ -1,5 +1,5 @@
 import type { VolunteerSignupInitial } from '@/Pages/Volunteers/PublicSignup';
-import { hasServiceEaseAreaSelection, isValidVolunteerPhase } from '@/utils/volunteerSignupOptions';
+import { hasServiceActivityTypeSelection, hasServiceEaseAreaSelection, isValidVolunteerPhase } from '@/utils/volunteerSignupOptions';
 import { isVolunteerSignupFieldVisible } from '@/utils/volunteerSignupCompletion';
 
 export const MIN_VOLUNTEER_SIGNUP_AGE = 10;
@@ -123,7 +123,7 @@ export function computeVolunteerSignupPageErrors({
             normalizeSignupBool(data.has_social_networks) === true &&
             !data.social_network_profiles.trim()
         ) {
-            next.social_network_profiles = 'Informe o nome do seu perfil nas redes sociais.';
+            next.social_network_profiles = 'Informe o perfil do Instagram/Facebook.';
         }
         if (visible('professional_area') && !data.professional_area.trim()) {
             next.professional_area = 'Informe sua área de atuação profissional.';
@@ -169,6 +169,9 @@ export function computeVolunteerSignupPageErrors({
         }
         if (visible('service_ease_areas') && !hasServiceEaseAreaSelection(data.service_ease_areas)) {
             next.service_ease_areas = 'Marque pelo menos uma área em que você tem facilidade para servir.';
+        }
+        if (visible('service_activity_types') && !hasServiceActivityTypeSelection(data.service_activity_types)) {
+            next.service_activity_types = 'Marque pelo menos um tipo de atividade em que você rende melhor.';
         }
         if (visible('comfortable_with_digital_tools') && normalizeSignupBool(data.comfortable_with_digital_tools) === null) {
             next.comfortable_with_digital_tools = 'Selecione uma opção.';

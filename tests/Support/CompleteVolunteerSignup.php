@@ -5,6 +5,7 @@ namespace Tests\Support;
 use App\Models\User;
 use App\Models\Volunteer;
 use App\Support\VolunteerSignupServiceEaseAreas;
+use App\Support\VolunteerSignupServiceActivityTypes;
 
 final class CompleteVolunteerSignup
 {
@@ -20,6 +21,7 @@ final class CompleteVolunteerSignup
             'is_official_member' => false,
             'volunteer_phase' => 'interested',
             'service_ease_areas' => VolunteerSignupServiceEaseAreas::encode(['technology', 'communication']),
+            'service_activity_types' => VolunteerSignupServiceActivityTypes::encode(['adults_direct']),
             'comfortable_with_digital_tools' => true,
             'service_greatest_strength' => 'Organização',
             'service_greatest_challenge' => 'Tempo disponível',

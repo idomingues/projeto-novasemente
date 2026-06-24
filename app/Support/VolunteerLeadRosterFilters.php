@@ -121,10 +121,14 @@ class VolunteerLeadRosterFilters
             // Caso contrário, permite busca livre (compatibilidade com dados antigos).
             $known = [
                 'less_than_3_months',
+                'months_0_6',
                 'months_3_6',
                 'months_6_12',
+                'years_1_2',
                 'years_1_3',
+                'more_than_2_years',
                 'more_than_3_years',
+                'more_than_5_years',
             ];
             if (in_array($att, $known, true)) {
                 $q->where('attendance_duration', $att);

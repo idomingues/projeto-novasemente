@@ -185,6 +185,7 @@ class User extends Authenticatable
             'social_network_profiles',
             'volunteer_phase',
             'service_ease_areas',
+            'service_activity_types',
             'service_greatest_strength',
             'service_greatest_challenge',
             'lgpd_data_consent',

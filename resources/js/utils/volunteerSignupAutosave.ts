@@ -2,7 +2,7 @@ import type { VolunteerSignupInitial } from '@/Pages/Volunteers/PublicSignup';
 import type { VolunteerSignupCompletion } from '@/utils/volunteerSignupCompletion';
 import type { VolunteerSignupFormSlice } from '@/utils/volunteerSignupPageValidation';
 import { normalizeSignupBool, splitVolunteerFullName } from '@/utils/volunteerSignupPageValidation';
-import { hasServiceEaseAreaSelection } from '@/utils/volunteerSignupOptions';
+import { hasServiceActivityTypeSelection, hasServiceEaseAreaSelection } from '@/utils/volunteerSignupOptions';
 import axios from 'axios';
 
 export type VolunteerSignupAutosaveResponse = {
@@ -17,6 +17,8 @@ export type VolunteerSignupAutosaveResponse = {
  */
 export const VOLUNTEER_SIGNUP_MULTI_SELECT_FIELD_KEYS = [
     'service_ease_areas',
+    'service_activity_types',
+    'desired_ministry_ids',
     'active_ministry_ids',
     'previous_ministry_ids',
     'other_ministry_ids',
@@ -54,10 +56,11 @@ export const VOLUNTEER_SIGNUP_PAGE_FIELD_KEYS: Record<number, string[]> = {
         'attendance_duration',
         'is_official_member',
         'volunteer_phase',
+        'desired_ministry_ids',
         'service_ease_areas',
         'comfortable_with_digital_tools',
     ],
-    2: ['service_greatest_strength', 'service_greatest_challenge', 'lgpd_data_consent'],
+    2: ['service_activity_types', 'service_greatest_strength', 'service_greatest_challenge', 'lgpd_data_consent'],
 };
 
 export function collectVolunteerSignupAutosaveFields(
@@ -235,6 +238,8 @@ export function isVolunteerSignupFieldAnswered(fieldKey: string, data: Volunteer
             return data.volunteer_phase !== '';
         case 'service_ease_areas':
             return hasServiceEaseAreaSelection(data.service_ease_areas);
+        case 'service_activity_types':
+            return hasServiceActivityTypeSelection(data.service_activity_types);
         case 'social_network_profiles':
             return data.social_network_profiles.trim() !== '';
         case 'professional_area':

@@ -21,7 +21,14 @@ final class VolunteerQuestionnaireProfilePayload
             'birthDate' => $volunteer->birth_date?->toDateString(),
             'hasWhatsapp' => $volunteer->has_whatsapp,
             'hasSocialNetworks' => $volunteer->has_social_networks,
+            'socialNetworkProfiles' => $volunteer->social_network_profiles,
             'attendanceDuration' => $volunteer->attendance_duration,
+            'volunteerPhaseLabel' => self::volunteerPhaseLabel($volunteer->volunteer_phase),
+            'serviceEaseAreasLabel' => VolunteerSignupServiceEaseAreas::labelsForStored($volunteer->service_ease_areas),
+            'serviceActivityTypesLabel' => VolunteerSignupServiceActivityTypes::labelsForStored($volunteer->service_activity_types),
+            'comfortableWithDigitalTools' => $volunteer->comfortable_with_digital_tools,
+            'serviceGreatestStrength' => $volunteer->service_greatest_strength,
+            'serviceGreatestChallenge' => $volunteer->service_greatest_challenge,
             'isOfficialMember' => $volunteer->is_official_member,
             'memberRecordAtNovaSemente' => $volunteer->member_record_at_nova_semente,
             'memberRecordChurch' => $volunteer->member_record_church,
@@ -36,5 +43,15 @@ final class VolunteerQuestionnaireProfilePayload
             'role' => $volunteer->role,
             'appAccessOnly' => (bool) ($volunteer->app_access_only ?? false),
         ];
+    }
+
+    private static function volunteerPhaseLabel(?string $slug): ?string
+    {
+        $key = trim((string) ($slug ?? ''));
+        if ($key === '') {
+            return null;
+        }
+
+        return config('volunteer_signup.volunteer_phase.'.$key);
     }
 }

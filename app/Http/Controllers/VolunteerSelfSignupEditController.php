@@ -169,6 +169,12 @@ class VolunteerSelfSignupEditController extends Controller
 
         VolunteerSignupValidation::assertConditionalRules($validated);
 
+        $validated['desired_ministry_ids'] = VolunteerSignupValidation::normalizeMinistryIdsForChurch(
+            is_array($validated['desired_ministry_ids'] ?? null) ? $validated['desired_ministry_ids'] : [],
+            $churchId,
+            'desired_ministry_ids',
+        );
+
         $emailNorm = VolunteerContactDuplicateChecker::normalizeEmail($validated['email']);
         $existingOther = $emailNorm
             ? User::query()
@@ -262,6 +268,12 @@ class VolunteerSelfSignupEditController extends Controller
 
         $result = $autosave->mergeAndValidate($user, $request, $churchId);
         $validated = $result['validated'];
+
+        $validated['desired_ministry_ids'] = VolunteerSignupValidation::normalizeMinistryIdsForChurch(
+            is_array($validated['desired_ministry_ids'] ?? null) ? $validated['desired_ministry_ids'] : [],
+            $churchId,
+            'desired_ministry_ids',
+        );
 
         $autosaveFields = $result['autosave_fields'];
         $nameInAutosave = count(array_intersect(['first_name', 'last_name'], $autosaveFields)) > 0;

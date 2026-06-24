@@ -31,6 +31,7 @@ class VolunteerSelfSignupEditTest extends TestCase
             'is_official_member' => false,
             'volunteer_phase' => 'interested',
             'service_ease_areas' => ['technology', 'communication'],
+            'service_activity_types' => ['processes_logistics'],
             'comfortable_with_digital_tools' => true,
             'service_greatest_strength' => 'Organização',
             'service_greatest_challenge' => 'Tempo disponível',

@@ -55,6 +55,7 @@ import {
 } from '@/utils/volunteerSignupAutosave';
 import {
     ATTENDANCE_DURATION_OPTIONS,
+    SERVICE_ACTIVITY_TYPE_OPTIONS,
     SERVICE_EASE_AREA_OPTIONS,
     VOLUNTEER_PHASE_OPTIONS,
     type AttendanceDuration,
@@ -90,8 +91,10 @@ export interface VolunteerSignupInitial {
     attendance_duration: AttendanceDuration | '';
     is_official_member: boolean | null;
     volunteer_phase: VolunteerPhase | '';
+    desired_ministry_ids: number[];
     service_ease_areas: string[];
     comfortable_with_digital_tools: boolean | null;
+    service_activity_types: string[];
     service_greatest_strength: string;
     service_greatest_challenge: string;
     lgpd_data_consent: boolean | null;
@@ -138,10 +141,11 @@ function resolveErrorPage(field: string): number {
         'attendance_duration',
         'is_official_member',
         'volunteer_phase',
+        'desired_ministry_ids',
         'service_ease_areas',
         'comfortable_with_digital_tools',
     ]);
-    const page2 = new Set(['service_greatest_strength', 'service_greatest_challenge', 'lgpd_data_consent']);
+    const page2 = new Set(['service_activity_types', 'service_greatest_strength', 'service_greatest_challenge', 'lgpd_data_consent']);
 
     if (page0.has(base)) return 0;
     if (page1.has(base)) return 1;
@@ -175,8 +179,10 @@ const FIELD_SCROLL_TARGETS: Record<string, string> = {
     attendance_duration: 'field-attendance_duration',
     is_official_member: 'field-is_official_member',
     volunteer_phase: 'field-volunteer_phase',
+    desired_ministry_ids: 'field-desired_ministry_ids',
     service_ease_areas: 'field-service_ease_areas',
     comfortable_with_digital_tools: 'field-comfortable_with_digital_tools',
+    service_activity_types: 'field-service_activity_types',
     service_greatest_strength: 'field-service_greatest_strength',
     service_greatest_challenge: 'field-service_greatest_challenge',
     lgpd_data_consent: 'field-lgpd_data_consent',
@@ -474,8 +480,10 @@ function buildFormDefaults(
         attendance_duration: '' as AttendanceDuration | '',
         is_official_member: null,
         volunteer_phase: '' as VolunteerPhase | '',
+        desired_ministry_ids: [] as number[],
         service_ease_areas: [] as string[],
         comfortable_with_digital_tools: null,
+        service_activity_types: [] as string[],
         service_greatest_strength: '',
         service_greatest_challenge: '',
         lgpd_data_consent: null,
@@ -500,8 +508,10 @@ function buildFormDefaults(
         attendance_duration: merged.attendance_duration,
         is_official_member: merged.is_official_member,
         volunteer_phase: merged.volunteer_phase,
+        desired_ministry_ids: merged.desired_ministry_ids ?? [],
         service_ease_areas: merged.service_ease_areas ?? [],
         comfortable_with_digital_tools: merged.comfortable_with_digital_tools,
+        service_activity_types: merged.service_activity_types ?? [],
         service_greatest_strength: merged.service_greatest_strength,
         service_greatest_challenge: merged.service_greatest_challenge,
         lgpd_data_consent: merged.lgpd_data_consent,
@@ -1737,12 +1747,12 @@ export default function PublicSignup({
                                     <Question
                                         fieldKey="social_network_profiles"
                                         number={qn('social_network_profiles')}
-                                        label="Qual o nome do seu perfil?"
+                                        label="Qual o seu perfil do Instagram/Facebook?"
                                         error={err('social_network_profiles')}
                                     >
                                         <TextInput
                                             className="w-full"
-                                            placeholder="Ex.: @seuusuario ou nome do perfil"
+                                            placeholder="Ex.: @seuusuario ou link do perfil"
                                             value={data.social_network_profiles}
                                             onChange={(e) => {
                                                 setData('social_network_profiles', e.target.value);
@@ -2034,6 +2044,27 @@ export default function PublicSignup({
                                     </div>
                                 </Question>
                                 ) : null}
+                                {showField('desired_ministry_ids') ? (
+                                <Question
+                                    fieldKey="desired_ministry_ids"
+                                    number={qn('desired_ministry_ids')}
+                                    label="Em quais departamentos você gostaria de servir?"
+                                    error={err('desired_ministry_ids')}
+                                >
+                                    <MinistryCheckboxList
+                                        ministries={ministries}
+                                        selectedIds={data.desired_ministry_ids}
+                                        onToggle={(id) => {
+                                            const current = data.desired_ministry_ids ?? [];
+                                            const next = current.some((selectedId) => Number(selectedId) === Number(id))
+                                                ? current.filter((selectedId) => Number(selectedId) !== Number(id))
+                                                : [...current, id];
+                                            setData('desired_ministry_ids', next);
+                                            clearClientError('desired_ministry_ids');
+                                        }}
+                                    />
+                                </Question>
+                                ) : null}
                                 {showField('service_ease_areas') ? (
                                 <Question fieldKey="service_ease_areas" number={qn('service_ease_areas')} label="Em quais áreas você acredita ter mais facilidade para servir?" error={err('service_ease_areas')}>
                                     <VolunteerSignupMultiCheckboxField
@@ -2069,6 +2100,24 @@ export default function PublicSignup({
 
                         {page === 2 ? (
                             <>
+                                {showField('service_activity_types') ? (
+                                <Question
+                                    fieldKey="service_activity_types"
+                                    number={qn('service_activity_types')}
+                                    label="Em qual tipo de atividade você sente que rende melhor atuando como voluntário?"
+                                    error={err('service_activity_types')}
+                                >
+                                    <VolunteerSignupMultiCheckboxField
+                                        options={SERVICE_ACTIVITY_TYPE_OPTIONS}
+                                        selectedValues={data.service_activity_types}
+                                        maxHeightClass="max-h-80"
+                                        onChange={(next) => {
+                                            setData('service_activity_types', next);
+                                            clearClientError('service_activity_types');
+                                        }}
+                                    />
+                                </Question>
+                                ) : null}
                                 {showField('service_greatest_strength') ? (
                                 <Question
                                     fieldKey="service_greatest_strength"

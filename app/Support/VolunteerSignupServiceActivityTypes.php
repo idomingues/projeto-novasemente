@@ -3,14 +3,14 @@
 namespace App\Support;
 
 /**
- * Áreas de facilidade no serviço (questionário v2) — slugs em JSON no banco.
+ * Tipos de atividade em que o voluntário rende melhor (questionário v2) — slugs em JSON no banco.
  */
-final class VolunteerSignupServiceEaseAreas
+final class VolunteerSignupServiceActivityTypes
 {
     /** @return array<string, string> */
     public static function labels(): array
     {
-        return config('volunteer_signup.service_ease_areas', []);
+        return config('volunteer_signup.service_activity_types', []);
     }
 
     /** @return list<string> */

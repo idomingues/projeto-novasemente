@@ -9,7 +9,14 @@ export type VolunteerQuestionnaireProfile = {
     birthDate: string | null;
     hasWhatsapp: boolean | null;
     hasSocialNetworks: boolean | null;
+    socialNetworkProfiles: string | null;
     attendanceDuration: string | null;
+    volunteerPhaseLabel: string | null;
+    serviceEaseAreasLabel: string | null;
+    serviceActivityTypesLabel: string | null;
+    comfortableWithDigitalTools: boolean | null;
+    serviceGreatestStrength: string | null;
+    serviceGreatestChallenge: string | null;
     isOfficialMember: boolean | null;
     memberRecordAtNovaSemente: boolean | null;
     memberRecordChurch: string | null;
@@ -46,12 +53,26 @@ function attendanceLabel(raw: string | null | undefined) {
     if (!raw) return '—';
     const map: Record<string, string> = {
         less_than_3_months: 'Menos de 3 meses',
+        months_0_6: '0 a 6 meses',
         months_3_6: '3 a 6 meses',
         months_6_12: '6 meses a 1 ano',
+        years_1_2: '1 a 2 anos',
         years_1_3: '1 a 3 anos',
+        more_than_2_years: 'Mais de 2 anos',
         more_than_3_years: 'Mais de 3 anos',
+        more_than_5_years: 'Mais de 5 anos',
     };
     return map[raw] ?? raw;
+}
+
+function bulletListFromSemicolon(raw: string | null | undefined) {
+    const trimmed = (raw ?? '').trim();
+    if (trimmed === '') return '—';
+    return trimmed
+        .split('; ')
+        .filter((part) => part.trim() !== '')
+        .map((part) => `• ${part}`)
+        .join('\n');
 }
 
 interface Props {
@@ -109,6 +130,14 @@ export default function VolunteerQuestionnaireProfileModal({ show, onClose, prof
                             <div className="text-xs text-zinc-500">Redes Sociais (Instagram, Facebook ou TikTok)</div>
                             <div className="mt-1 text-sm text-zinc-900 dark:text-white">{boolLabel(profile.hasSocialNetworks)}</div>
                         </div>
+                        {profile.hasSocialNetworks ? (
+                            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div className="text-xs text-zinc-500">Perfil do Instagram/Facebook</div>
+                                <div className="mt-1 text-sm text-zinc-900 dark:text-white">
+                                    {textLabel(profile.socialNetworkProfiles)}
+                                </div>
+                            </div>
+                        ) : null}
                         <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
                             <div className="text-xs text-zinc-500">Há quanto tempo você frequenta a Nova Semente?</div>
                             <div className="mt-1 text-sm text-zinc-900 dark:text-white">{attendanceLabel(profile.attendanceDuration)}</div>
@@ -148,6 +177,67 @@ export default function VolunteerQuestionnaireProfileModal({ show, onClose, prof
                             <div className="mt-1 text-sm text-zinc-900 dark:text-white">{boolLabel(profile.appAccessOnly)}</div>
                         </div>
                     </div>
+
+                    {(profile.volunteerPhaseLabel ||
+                        profile.serviceEaseAreasLabel ||
+                        profile.serviceActivityTypesLabel ||
+                        profile.serviceGreatestStrength ||
+                        profile.serviceGreatestChallenge) && (
+                        <div className="space-y-3">
+                            <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Sobre o serviço</h3>
+                            {profile.volunteerPhaseLabel ? (
+                                <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                    <div className="text-xs text-zinc-500">Fase no voluntariado da Nova Semente</div>
+                                    <div className="mt-1 text-sm text-zinc-900 dark:text-white">
+                                        {textLabel(profile.volunteerPhaseLabel)}
+                                    </div>
+                                </div>
+                            ) : null}
+                            {profile.serviceEaseAreasLabel ? (
+                                <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                    <div className="text-xs text-zinc-500">Áreas de facilidade para servir</div>
+                                    <div className="mt-1 whitespace-pre-wrap text-sm text-zinc-900 dark:text-white">
+                                        {bulletListFromSemicolon(profile.serviceEaseAreasLabel)}
+                                    </div>
+                                </div>
+                            ) : null}
+                            {profile.serviceActivityTypesLabel ? (
+                                <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                    <div className="text-xs text-zinc-500">
+                                        Tipos de atividade em que rende melhor
+                                    </div>
+                                    <div className="mt-1 whitespace-pre-wrap text-sm text-zinc-900 dark:text-white">
+                                        {bulletListFromSemicolon(profile.serviceActivityTypesLabel)}
+                                    </div>
+                                </div>
+                            ) : null}
+                            {profile.comfortableWithDigitalTools !== null &&
+                            profile.comfortableWithDigitalTools !== undefined ? (
+                                <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                    <div className="text-xs text-zinc-500">Conforto com ferramentas digitais</div>
+                                    <div className="mt-1 text-sm text-zinc-900 dark:text-white">
+                                        {boolLabel(profile.comfortableWithDigitalTools)}
+                                    </div>
+                                </div>
+                            ) : null}
+                            {profile.serviceGreatestStrength ? (
+                                <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                    <div className="text-xs text-zinc-500">Maior ponto forte no serviço</div>
+                                    <div className="mt-1 whitespace-pre-wrap text-sm text-zinc-900 dark:text-white">
+                                        {textLabel(profile.serviceGreatestStrength)}
+                                    </div>
+                                </div>
+                            ) : null}
+                            {profile.serviceGreatestChallenge ? (
+                                <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                    <div className="text-xs text-zinc-500">Maior desafio ao servir</div>
+                                    <div className="mt-1 whitespace-pre-wrap text-sm text-zinc-900 dark:text-white">
+                                        {textLabel(profile.serviceGreatestChallenge)}
+                                    </div>
+                                </div>
+                            ) : null}
+                        </div>
+                    )}
 
                     <div className="space-y-3">
                         <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">

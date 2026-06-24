@@ -68,6 +68,7 @@ class VolunteerSignupCompletionTest extends TestCase
             'is_official_member' => false,
             'volunteer_phase' => 'interested',
             'service_ease_areas' => json_encode(['administration']),
+            'service_activity_types' => json_encode(['professional_expertise']),
             'comfortable_with_digital_tools' => true,
             'service_greatest_strength' => 'Comunicação',
             'service_greatest_challenge' => 'Disponibilidade',

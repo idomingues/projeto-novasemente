@@ -28,6 +28,10 @@ final class VolunteerSignupPayloadNormalizer
             $out['service_ease_areas'] = VolunteerSignupServiceEaseAreas::decode($out['service_ease_areas']);
         }
 
+        if (array_key_exists('service_activity_types', $out)) {
+            $out['service_activity_types'] = VolunteerSignupServiceActivityTypes::decode($out['service_activity_types']);
+        }
+
         return $out;
     }
 

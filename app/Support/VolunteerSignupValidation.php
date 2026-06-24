@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Regras compartilhadas de validação do questionário v2 (cadastro, edição e autosave).
@@ -70,8 +71,12 @@ final class VolunteerSignupValidation
             'attendance_duration' => ['required', 'string', Rule::in(self::attendanceDurationSlugs())],
             'is_official_member' => ['required', 'boolean'],
             'volunteer_phase' => ['required', 'string', Rule::in(self::volunteerPhaseSlugs())],
+            'desired_ministry_ids' => ['nullable', 'array'],
+            'desired_ministry_ids.*' => ['integer', 'min:1'],
             'service_ease_areas' => ['required', 'array', 'min:1'],
             'service_ease_areas.*' => ['string', Rule::in(VolunteerSignupServiceEaseAreas::allowedSlugs())],
+            'service_activity_types' => ['required', 'array', 'min:1'],
+            'service_activity_types.*' => ['string', Rule::in(VolunteerSignupServiceActivityTypes::allowedSlugs())],
             'comfortable_with_digital_tools' => ['required', 'boolean'],
             'service_greatest_strength' => ['required', 'string', 'max:5000'],
             'service_greatest_challenge' => ['required', 'string', 'max:5000'],
@@ -91,7 +96,7 @@ final class VolunteerSignupValidation
             $profiles = trim((string) ($validated['social_network_profiles'] ?? ''));
             if ($profiles === '') {
                 throw \Illuminate\Validation\ValidationException::withMessages([
-                    'social_network_profiles' => ['Informe o nome do seu perfil nas redes sociais.'],
+                    'social_network_profiles' => ['Informe o perfil do Instagram/Facebook.'],
                 ]);
             }
         }
@@ -101,6 +106,31 @@ final class VolunteerSignupValidation
                 'lgpd_data_consent' => ['Para continuar, é necessário autorizar o uso dos dados conforme a LGPD.'],
             ]);
         }
+    }
+
+    /**
+     * @param  array<int, mixed>  $ids
+     * @return list<int>
+     */
+    public static function normalizeMinistryIdsForChurch(array $ids, int $churchId, string $errorKey): array
+    {
+        $normalized = array_values(array_unique(array_filter(array_map('intval', $ids), fn ($id) => $id > 0)));
+        if ($normalized === []) {
+            return [];
+        }
+
+        $allowedCount = \App\Models\Ministry::query()
+            ->where('church_id', $churchId)
+            ->whereIn('id', $normalized)
+            ->count();
+
+        if ($allowedCount !== count($normalized)) {
+            throw ValidationException::withMessages([
+                $errorKey => ['Selecione apenas departamentos válidos desta igreja.'],
+            ]);
+        }
+
+        return $normalized;
     }
 
     /**
@@ -150,9 +180,17 @@ final class VolunteerSignupValidation
             'volunteer_phase' => [
                 'volunteer_phase' => ['required', 'string', Rule::in(self::volunteerPhaseSlugs())],
             ],
+            'desired_ministry_ids' => [
+                'desired_ministry_ids' => ['nullable', 'array'],
+                'desired_ministry_ids.*' => ['integer', 'min:1'],
+            ],
             'service_ease_areas' => [
                 'service_ease_areas' => ['required', 'array', 'min:1'],
                 'service_ease_areas.*' => ['string', Rule::in(VolunteerSignupServiceEaseAreas::allowedSlugs())],
+            ],
+            'service_activity_types' => [
+                'service_activity_types' => ['required', 'array', 'min:1'],
+                'service_activity_types.*' => ['string', Rule::in(VolunteerSignupServiceActivityTypes::allowedSlugs())],
             ],
             'comfortable_with_digital_tools' => ['comfortable_with_digital_tools' => ['required', 'boolean']],
             'service_greatest_strength' => ['service_greatest_strength' => ['required', 'string', 'max:5000']],

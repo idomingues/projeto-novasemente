@@ -24,6 +24,7 @@ class Volunteer extends Model
         'attendance_duration',
         'volunteer_phase',
         'service_ease_areas',
+        'service_activity_types',
         'comfortable_with_digital_tools',
         'is_official_member',
         'member_record_at_nova_semente',

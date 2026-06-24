@@ -1,5 +1,5 @@
 import type { VolunteerSignupInitial } from '@/Pages/Volunteers/PublicSignup';
-import { hasServiceEaseAreaSelection, isValidVolunteerPhase } from '@/utils/volunteerSignupOptions';
+import { hasServiceActivityTypeSelection, hasServiceEaseAreaSelection, isValidVolunteerPhase } from '@/utils/volunteerSignupOptions';
 import { normalizeVolunteerFullName } from '@/utils/volunteerSignupPageValidation';
 
 export type VolunteerSignupCompletion = {
@@ -40,8 +40,10 @@ export const VOLUNTEER_SIGNUP_FIELD_ORDER = [
     'attendance_duration',
     'is_official_member',
     'volunteer_phase',
+    'desired_ministry_ids',
     'service_ease_areas',
     'comfortable_with_digital_tools',
+    'service_activity_types',
     'service_greatest_strength',
     'service_greatest_challenge',
     'lgpd_data_consent',
@@ -54,13 +56,14 @@ const MISSING_FIELD_MESSAGES: Record<string, string> = {
     has_whatsapp: 'Informe se este número tem WhatsApp.',
     email: 'Informe um e-mail válido.',
     has_social_networks: 'Informe se você usa redes sociais.',
-    social_network_profiles: 'Informe o nome do seu perfil nas redes sociais.',
+    social_network_profiles: 'Informe o perfil do Instagram/Facebook.',
     professional_area: 'Informe sua área de atuação profissional.',
     attendance_duration: 'Selecione há quanto tempo frequenta a Nova Semente.',
     is_official_member: 'Informe se você é membro oficial da Igreja Adventista do 7º dia.',
     volunteer_phase: 'Informe sua fase atual no voluntariado da Nova Semente.',
     service_ease_areas: 'Marque pelo menos uma área em que você tem facilidade para servir.',
     comfortable_with_digital_tools: 'Informe se você se sente confortável com ferramentas digitais.',
+    service_activity_types: 'Marque pelo menos um tipo de atividade em que você rende melhor.',
     service_greatest_strength: 'Descreva seu maior ponto forte no serviço.',
     service_greatest_challenge: 'Descreva seu maior desafio ao servir.',
     lgpd_data_consent: 'Para continuar, autorize o uso dos dados (LGPD).',
@@ -93,6 +96,10 @@ export function applyVolunteerSignupBranchingCleanup(payload: Record<string, unk
         out.service_ease_areas = [];
     }
 
+    if (!hasServiceActivityTypeSelection(out.service_activity_types)) {
+        out.service_activity_types = [];
+    }
+
     return out;
 }
 
@@ -116,10 +123,16 @@ export function buildVolunteerSignupCompletionInput(
         attendance_duration: (payload.attendance_duration as VolunteerSignupInitial['attendance_duration']) ?? '',
         is_official_member: normalizeBool(payload.is_official_member as BoolLike),
         volunteer_phase: (payload.volunteer_phase as VolunteerSignupInitial['volunteer_phase']) ?? '',
+        desired_ministry_ids: Array.isArray(payload.desired_ministry_ids)
+            ? (payload.desired_ministry_ids as number[])
+            : [],
         service_ease_areas: Array.isArray(payload.service_ease_areas)
             ? (payload.service_ease_areas as string[])
             : [],
         comfortable_with_digital_tools: normalizeBool(payload.comfortable_with_digital_tools as BoolLike),
+        service_activity_types: Array.isArray(payload.service_activity_types)
+            ? (payload.service_activity_types as string[])
+            : [],
         service_greatest_strength: String(payload.service_greatest_strength ?? ''),
         service_greatest_challenge: String(payload.service_greatest_challenge ?? ''),
         lgpd_data_consent: normalizeBool(payload.lgpd_data_consent as BoolLike),
@@ -199,6 +212,7 @@ export function computeVolunteerSignupCompletion(initial: VolunteerSignupInitial
     track('volunteer_phase', true, isValidVolunteerPhase(initial.volunteer_phase));
     track('service_ease_areas', true, hasServiceEaseAreaSelection(initial.service_ease_areas));
     track('comfortable_with_digital_tools', true, isBoolSet(initial.comfortable_with_digital_tools));
+    track('service_activity_types', true, hasServiceActivityTypeSelection(initial.service_activity_types));
     track('service_greatest_strength', true, initial.service_greatest_strength.trim() !== '');
     track('service_greatest_challenge', true, initial.service_greatest_challenge.trim() !== '');
     track('lgpd_data_consent', true, normalizeBool(initial.lgpd_data_consent) === true);
@@ -242,6 +256,7 @@ export function resolveVolunteerSignupFieldPage(field: string): number {
         'comfortable_with_digital_tools',
     ]);
     const page2 = new Set([
+        'service_activity_types',
         'service_greatest_strength',
         'service_greatest_challenge',
         'lgpd_data_consent',
@@ -374,6 +389,7 @@ export function mergeVolunteerSignupWithInitial(
     keep('volunteer_phase', initial.volunteer_phase);
     keep('service_ease_areas', initial.service_ease_areas);
     keep('comfortable_with_digital_tools', initial.comfortable_with_digital_tools);
+    keep('service_activity_types', initial.service_activity_types);
     keep('service_greatest_strength', initial.service_greatest_strength);
     keep('service_greatest_challenge', initial.service_greatest_challenge);
     keep('lgpd_data_consent', initial.lgpd_data_consent);
@@ -409,6 +425,10 @@ function applyVolunteerSignupFormBranchingPreferences(
 
     if (hasServiceEaseAreaSelection(prepared.service_ease_areas)) {
         out.service_ease_areas = prepared.service_ease_areas;
+    }
+
+    if (hasServiceActivityTypeSelection(prepared.service_activity_types)) {
+        out.service_activity_types = prepared.service_activity_types;
     }
 
     for (const key of ['volunteer_phase', 'professional_area', 'service_greatest_strength', 'service_greatest_challenge'] as const) {
@@ -476,8 +496,10 @@ const VOLUNTEER_SIGNUP_INITIAL_FORM_KEYS = [
     'attendance_duration',
     'is_official_member',
     'volunteer_phase',
+    'desired_ministry_ids',
     'service_ease_areas',
     'comfortable_with_digital_tools',
+    'service_activity_types',
     'service_greatest_strength',
     'service_greatest_challenge',
     'lgpd_data_consent',
@@ -498,8 +520,10 @@ function volunteerSignupFormPatchAllFromInitial(initial: VolunteerSignupInitial)
         attendance_duration: initial.attendance_duration,
         is_official_member: initial.is_official_member,
         volunteer_phase: initial.volunteer_phase,
+        desired_ministry_ids: initial.desired_ministry_ids ?? [],
         service_ease_areas: initial.service_ease_areas ?? [],
         comfortable_with_digital_tools: initial.comfortable_with_digital_tools,
+        service_activity_types: initial.service_activity_types ?? [],
         service_greatest_strength: initial.service_greatest_strength,
         service_greatest_challenge: initial.service_greatest_challenge,
         lgpd_data_consent: initial.lgpd_data_consent,
@@ -547,13 +571,14 @@ const MISSING_FIELD_LABELS: Record<string, string> = {
     has_whatsapp: 'WhatsApp no telefone',
     email: 'E-mail',
     has_social_networks: 'Uso de redes sociais',
-    social_network_profiles: 'Nome do perfil nas redes sociais',
+    social_network_profiles: 'Perfil do Instagram/Facebook',
     professional_area: 'Área de atuação profissional',
     attendance_duration: 'Tempo de frequência na Nova Semente',
     is_official_member: 'Membro oficial da Igreja Adventista do 7º dia',
     volunteer_phase: 'Fase no voluntariado da Nova Semente',
     service_ease_areas: 'Áreas de facilidade para servir',
     comfortable_with_digital_tools: 'Conforto com ferramentas digitais',
+    service_activity_types: 'Tipos de atividade em que você rende melhor',
     service_greatest_strength: 'Maior ponto forte no serviço',
     service_greatest_challenge: 'Maior desafio ao servir',
     lgpd_data_consent: 'Consentimento LGPD',

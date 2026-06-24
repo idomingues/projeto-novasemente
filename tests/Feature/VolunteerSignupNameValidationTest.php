@@ -29,6 +29,7 @@ class VolunteerSignupNameValidationTest extends TestCase
             'is_official_member' => false,
             'volunteer_phase' => 'interested',
             'service_ease_areas' => ['administration'],
+            'service_activity_types' => ['strategy_planning'],
             'comfortable_with_digital_tools' => true,
             'service_greatest_strength' => 'Organização',
             'service_greatest_challenge' => 'Tempo',

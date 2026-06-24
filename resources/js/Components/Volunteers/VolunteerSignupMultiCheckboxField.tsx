@@ -31,12 +31,13 @@ export default function VolunteerSignupMultiCheckboxField({
                 className={`${maxHeightClass} space-y-2 overflow-y-auto rounded-xl border border-zinc-200 p-3 dark:border-zinc-700`}
             >
                 {options.map((opt) => (
-                    <label key={opt.value} className="flex cursor-pointer items-center gap-2.5 rounded-lg py-1">
+                    <label key={opt.value} className="flex cursor-pointer items-start gap-2.5 rounded-lg py-1">
                         <Checkbox
                             checked={selectedValues.includes(opt.value)}
                             onChange={() => {
                                 onChange(toggleMultiSelectValue(selectedValues, opt.value));
                             }}
+                            className="mt-0.5"
                         />
                         <span className="text-sm text-zinc-900 dark:text-white">{opt.label}</span>
                     </label>

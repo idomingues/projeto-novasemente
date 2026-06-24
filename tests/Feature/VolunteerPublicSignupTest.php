@@ -40,6 +40,7 @@ class VolunteerPublicSignupTest extends TestCase
             'is_official_member' => false,
             'volunteer_phase' => 'interested',
             'service_ease_areas' => ['reception', 'communication'],
+            'service_activity_types' => ['adults_direct'],
             'comfortable_with_digital_tools' => true,
             'service_greatest_strength' => 'Acolhimento',
             'service_greatest_challenge' => 'Disponibilidade de tempo',

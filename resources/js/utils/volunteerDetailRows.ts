@@ -3,10 +3,14 @@ import type { RecordDetailSection } from '@/types/recordDetail';
 
 const ATTENDANCE_LABELS: Record<string, string> = {
     less_than_3_months: 'Menos de 3 meses',
+    months_0_6: '0 a 6 meses',
     months_3_6: '3 a 6 meses',
     months_6_12: '6 meses a 1 ano',
+    years_1_2: '1 a 2 anos',
     years_1_3: '1 a 3 anos',
+    more_than_2_years: 'Mais de 2 anos',
     more_than_3_years: 'Mais de 3 anos',
+    more_than_5_years: 'Mais de 5 anos',
 };
 
 export type VolunteerDetailData = {
@@ -22,6 +26,14 @@ export type VolunteerDetailData = {
     birth_date?: string | null;
     has_whatsapp?: boolean | null;
     has_social_networks?: boolean | null;
+    social_network_profiles?: string | null;
+    volunteer_phase?: string | null;
+    volunteer_phase_label?: string | null;
+    service_ease_areas_label?: string | null;
+    service_activity_types_label?: string | null;
+    comfortable_with_digital_tools?: boolean | null;
+    service_greatest_strength?: string | null;
+    service_greatest_challenge?: string | null;
     attendance_duration?: string | null;
     is_official_member?: boolean | null;
     member_record_at_nova_semente?: boolean | null;
@@ -88,6 +100,16 @@ function formatAttendance(raw: string | null | undefined): string {
     return ATTENDANCE_LABELS[raw] ?? raw;
 }
 
+function bulletListFromSemicolon(raw: string | null | undefined): string {
+    const trimmed = (raw ?? '').trim();
+    if (trimmed === '') return '—';
+    return trimmed
+        .split('; ')
+        .filter((part) => part.trim() !== '')
+        .map((part) => `• ${part}`)
+        .join('\n');
+}
+
 function submittedAtLabel(iso: string | null | undefined): string {
     if (!iso) return '—';
     try {
@@ -95,6 +117,12 @@ function submittedAtLabel(iso: string | null | undefined): string {
     } catch {
         return iso;
     }
+}
+
+function normalizeComfortableWithDigitalTools(v: boolean | null | undefined): string {
+    if (v === true) return 'Sim';
+    if (v === false) return 'Não';
+    return '—';
 }
 
 function appAccessLabel(v: VolunteerDetailData): string {
@@ -162,6 +190,52 @@ export function volunteerDetailSections(v: VolunteerDetailData): RecordDetailSec
         },
     );
 
+    if (isYes(v.has_social_networks)) {
+        profileRows.push({
+            label: 'Perfil do Instagram/Facebook',
+            value: text(v.social_network_profiles),
+        });
+    }
+
+    const questionnaireRows: { label: string; value: string }[] = [];
+
+    if (text(v.volunteer_phase_label ?? v.volunteer_phase) !== '—') {
+        questionnaireRows.push({
+            label: 'Fase no voluntariado da Nova Semente',
+            value: text(v.volunteer_phase_label ?? v.volunteer_phase),
+        });
+    }
+    if (bulletListFromSemicolon(v.service_ease_areas_label) !== '—') {
+        questionnaireRows.push({
+            label: 'Áreas de facilidade para servir',
+            value: bulletListFromSemicolon(v.service_ease_areas_label),
+        });
+    }
+    if (bulletListFromSemicolon(v.service_activity_types_label) !== '—') {
+        questionnaireRows.push({
+            label: 'Tipos de atividade em que rende melhor',
+            value: bulletListFromSemicolon(v.service_activity_types_label),
+        });
+    }
+    if (normalizeComfortableWithDigitalTools(v.comfortable_with_digital_tools) !== '—') {
+        questionnaireRows.push({
+            label: 'Conforto com ferramentas digitais',
+            value: normalizeComfortableWithDigitalTools(v.comfortable_with_digital_tools),
+        });
+    }
+    if (text(v.service_greatest_strength) !== '—') {
+        questionnaireRows.push({
+            label: 'Maior ponto forte no serviço',
+            value: text(v.service_greatest_strength),
+        });
+    }
+    if (text(v.service_greatest_challenge) !== '—') {
+        questionnaireRows.push({
+            label: 'Maior desafio ao servir',
+            value: text(v.service_greatest_challenge),
+        });
+    }
+
     return [
         {
             title: 'Perfil (voluntário e conta no app)',
@@ -188,6 +262,14 @@ export function volunteerDetailSections(v: VolunteerDetailData): RecordDetailSec
                     : []),
             ],
         },
+        ...(questionnaireRows.length > 0
+            ? [
+                  {
+                      title: 'Sobre o serviço (questionário)',
+                      rows: questionnaireRows,
+                  },
+              ]
+            : []),
         {
             title: 'Experiência e ministérios',
             rows: [

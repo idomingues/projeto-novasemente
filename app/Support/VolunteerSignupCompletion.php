@@ -96,6 +96,7 @@ final class VolunteerSignupCompletion
             'is_official_member' => 'Membro oficial da Igreja Adventista do 7º dia',
             'volunteer_phase' => 'Fase no voluntariado da Nova Semente',
             'service_ease_areas' => 'Áreas de facilidade para servir',
+            'service_activity_types' => 'Tipos de atividade em que você rende melhor',
             'comfortable_with_digital_tools' => 'Conforto com ferramentas digitais',
             'service_greatest_strength' => 'Maior ponto forte no serviço',
             'service_greatest_challenge' => 'Maior desafio ao servir',
@@ -184,6 +185,12 @@ final class VolunteerSignupCompletion
             'service_ease_areas',
             true,
             VolunteerSignupServiceEaseAreas::hasSelection($initial['service_ease_areas'] ?? null)
+        );
+
+        $track(
+            'service_activity_types',
+            true,
+            VolunteerSignupServiceActivityTypes::hasSelection($initial['service_activity_types'] ?? null)
         );
 
         $track(

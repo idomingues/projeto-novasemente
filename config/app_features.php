@@ -161,7 +161,7 @@ return [
             'routes' => ['mobile.beliefs'],
         ],
         'volunteer_signup' => [
-            'label' => 'Cadastro de voluntário',
+            'label' => 'Área do voluntário',
             'group' => 'menu_mais',
             'routes' => [
                 'volunteers.public-signup.page',

@@ -44,7 +44,17 @@ class VolunteerSignupDetailPresenter
             'birth_date' => $v->birth_date?->format('Y-m-d'),
             'has_whatsapp' => $v->has_whatsapp,
             'has_social_networks' => $v->has_social_networks,
+            'social_network_profiles' => $v->social_network_profiles,
             'attendance_duration' => $v->attendance_duration,
+            'volunteer_phase' => $v->volunteer_phase,
+            'volunteer_phase_label' => self::volunteerPhaseLabel($v->volunteer_phase),
+            'service_ease_areas' => VolunteerSignupServiceEaseAreas::decode($v->service_ease_areas),
+            'service_ease_areas_label' => VolunteerSignupServiceEaseAreas::labelsForStored($v->service_ease_areas),
+            'service_activity_types' => VolunteerSignupServiceActivityTypes::decode($v->service_activity_types),
+            'service_activity_types_label' => VolunteerSignupServiceActivityTypes::labelsForStored($v->service_activity_types),
+            'comfortable_with_digital_tools' => $v->comfortable_with_digital_tools,
+            'service_greatest_strength' => $v->service_greatest_strength,
+            'service_greatest_challenge' => $v->service_greatest_challenge,
             'is_official_member' => $v->is_official_member,
             'member_record_at_nova_semente' => $v->member_record_at_nova_semente,
             'member_record_church' => $v->member_record_church,
@@ -88,5 +98,15 @@ class VolunteerSignupDetailPresenter
                     ->all(),
             ] : null,
         ];
+    }
+
+    private static function volunteerPhaseLabel(?string $slug): ?string
+    {
+        $key = trim((string) ($slug ?? ''));
+        if ($key === '') {
+            return null;
+        }
+
+        return config('volunteer_signup.volunteer_phase.'.$key);
     }
 }
