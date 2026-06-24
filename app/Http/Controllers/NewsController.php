@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Support\ListModalRedirect;
 use App\Models\Church;
 use App\Models\Musica;
 use App\Models\News;
@@ -287,7 +288,7 @@ class NewsController extends Controller
 
         $publishedAt = isset($data['published_at']) && $data['published_at'] !== '' ? $data['published_at'] : now();
 
-        News::create([
+        $news = News::create([
             'church_id' => $churchId,
             'section' => News::SECTION_NEWS,
             'title' => $data['title'],
@@ -304,7 +305,7 @@ class NewsController extends Controller
             'created_by' => $request->user()?->id,
         ]);
 
-        return redirect()->route('news.index')->with('success', 'Notícia criada com sucesso.');
+        return ListModalRedirect::toIndexEdit('news.index', $news, 'Notícia criada com sucesso.');
     }
 
     public function update(Request $request, News $news)
@@ -367,7 +368,7 @@ class NewsController extends Controller
             'published_at' => $publishedAt,
         ])->save();
 
-        return redirect()->route('news.index')->with('success', 'Notícia atualizada com sucesso.');
+        return ListModalRedirect::toIndexEdit('news.index', $news->fresh(), 'Notícia atualizada com sucesso.');
     }
 
     public function setActive(Request $request, News $news)

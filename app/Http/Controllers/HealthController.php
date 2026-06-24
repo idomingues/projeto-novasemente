@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Support\ListModalRedirect;
 use App\Models\Church;
 use App\Models\Musica;
 use App\Models\News;
@@ -281,7 +282,7 @@ class HealthController extends Controller
 
         $publishedAt = isset($data['published_at']) && $data['published_at'] !== '' ? $data['published_at'] : now();
 
-        News::create([
+        $health = News::create([
             'church_id' => $churchId,
             'section' => News::SECTION_HEALTH,
             'title' => $data['title'],
@@ -298,7 +299,7 @@ class HealthController extends Controller
             'created_by' => $request->user()?->id,
         ]);
 
-        return redirect()->route('health.index')->with('success', 'Publicação de saúde criada com sucesso.');
+        return ListModalRedirect::toIndexEdit('health.index', $health, 'Publicação de saúde criada com sucesso.');
     }
 
     public function update(Request $request, News $health)
@@ -361,7 +362,7 @@ class HealthController extends Controller
             'published_at' => $publishedAt,
         ])->save();
 
-        return redirect()->route('health.index')->with('success', 'Publicação de saúde atualizada com sucesso.');
+        return ListModalRedirect::toIndexEdit('health.index', $health->fresh(), 'Publicação de saúde atualizada com sucesso.');
     }
 
     public function setActive(Request $request, News $health)

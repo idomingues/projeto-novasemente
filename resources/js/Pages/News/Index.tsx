@@ -26,7 +26,22 @@ import { useState, useEffect, FormEventHandler, useMemo, useCallback } from 'rea
 import ListSearchHint from '@/Components/ListSearchHint';
 import { useDebouncedServerSearch } from '@/hooks/useDebouncedServerSearch';
 import { confirmAction } from '@/utils/confirmDialog';
-import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
+import { buildNewsFormData } from '@/utils/buildNewsFormData';
+import {
+    applyListModalFormErrors,
+    editIdFromListModalRedirect,
+    reloadListModalProps,
+} from '@/utils/listModalFetchSave';
+import {
+    submitVolunteerModalFormDataPost,
+    submitVolunteerModalFormDataPut,
+} from '@/utils/volunteerPipelineModalSave';
+import {
+    useListModalEditUrl,
+    useListModalFromUrl,
+    useListModalSaveMessage,
+    useSyncFormAfterListReload,
+} from '@/hooks/useListModalEditUrl';
 import { GALLERY_IMAGE_ACCEPT } from '@/utils/mobilePhotoPick';
 import ImageDownloadButton from '@/Components/ImageDownloadButton';
 import { youtubeThumbUrlFromVideoUrl } from '@/utils/youtube';
@@ -152,9 +167,14 @@ export default function Index({ posts, filters, canManage, config }: Props) {
     const appUrl = pageProps.appUrl ?? '';
     const publisherName = pageProps.currentChurch?.name ?? 'Nova Semente';
     const publisherLogoUrl = pageProps.currentChurch?.logo_url ?? pageProps.defaultBrandLogoUrl ?? '/logo-ns.png';
+    const csrf = (pageProps as { csrf_token?: string }).csrf_token ?? '';
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
+    const [saving, setSaving] = useState(false);
+    const [saveMessage, setSaveMessage] = useState<string | null>(null);
+    const { syncListModalEditUrl } = useListModalEditUrl();
+    const showSaveMessage = useListModalSaveMessage();
     const [existingPdfUrl, setExistingPdfUrl] = useState<string | null>(null);
     const [existingVideoUrl, setExistingVideoUrl] = useState<string | null>(null);
     const {
@@ -170,7 +190,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
             [routeIndex],
         ),
     });
-    const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
+    const { data, setData, errors, reset, clearErrors, setError } = useForm({
         content_type: 'article' as ContentType,
         title: '',
         excerpt: '',
@@ -221,9 +241,49 @@ export default function Index({ posts, filters, canManage, config }: Props) {
             ? youtubeThumbUrlFromVideoUrl(data.youtube_url.trim()) ?? ''
             : '');
 
+    const applyPostToForm = useCallback(
+        (p: NewsPost) => {
+            setExistingPdfUrl(p.pdf_url ?? null);
+            setExistingVideoUrl(p.video_url ?? null);
+            setData({
+                content_type: p.content_type ?? 'article',
+                title: p.title,
+                excerpt: p.excerpt ?? '',
+                body: p.body ?? '',
+                youtube_url: p.youtube_url ?? '',
+                instagram_url: p.instagram_url ?? '',
+                image_url: p.image_url ?? '',
+                published_at: p.published_at ? p.published_at.substring(0, 16) : '',
+            });
+            setData('image_file', null);
+            setData('video_file', null);
+            setData('pdf_file', null);
+        },
+        [setData],
+    );
+
+    const { markSyncAfterReload } = useSyncFormAfterListReload(posts.data, editingId, isModalOpen, applyPostToForm);
+
+    const openEditModal = useCallback(
+        (p: NewsPost) => {
+            setIsEditing(true);
+            setEditingId(p.id);
+            setSaveMessage(null);
+            syncListModalEditUrl(p.id);
+            applyPostToForm(p);
+            clearErrors();
+            setIsModalOpen(true);
+        },
+        [applyPostToForm, clearErrors, syncListModalEditUrl],
+    );
+
+    useListModalFromUrl(posts.data, isModalOpen, editingId, openEditModal);
+
     const openCreateModal = () => {
         setIsEditing(false);
         setEditingId(null);
+        setSaveMessage(null);
+        syncListModalEditUrl(null);
         setExistingPdfUrl(null);
         setExistingVideoUrl(null);
         reset();
@@ -235,33 +295,15 @@ export default function Index({ posts, filters, canManage, config }: Props) {
         setIsModalOpen(true);
     };
 
-    const openEditModal = (p: NewsPost) => {
-        setIsEditing(true);
-        setEditingId(p.id);
-        setExistingPdfUrl(p.pdf_url ?? null);
-        setExistingVideoUrl(p.video_url ?? null);
-        setData({
-            content_type: p.content_type ?? 'article',
-            title: p.title,
-            excerpt: p.excerpt ?? '',
-            body: p.body ?? '',
-            youtube_url: p.youtube_url ?? '',
-            instagram_url: p.instagram_url ?? '',
-            image_url: p.image_url ?? '',
-            published_at: p.published_at ? p.published_at.substring(0, 16) : '',
-        });
-        clearErrors();
-        setData('image_file', null);
-        setData('video_file', null);
-        setData('pdf_file', null);
-        setIsModalOpen(true);
-    };
-
     const closeModal = () => {
         setIsModalOpen(false);
+        setSaveMessage(null);
+        syncListModalEditUrl(null);
         setExistingPdfUrl(null);
         setExistingVideoUrl(null);
         reset();
+        setEditingId(null);
+        setIsEditing(false);
         setData('image_file', null);
         setData('video_file', null);
         setData('pdf_file', null);
@@ -269,11 +311,44 @@ export default function Index({ posts, filters, canManage, config }: Props) {
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        if (isEditing && editingId) {
-            put(route(routeUpdate, editingId), { ...inertiaListModalSave, forceFormData: true });
-        } else {
-            post(route(routeStore), { ...inertiaListModalSave, forceFormData: true });
-        }
+        void (async () => {
+            if (saving) {
+                return;
+            }
+            clearErrors();
+            setSaving(true);
+            try {
+                const formData = buildNewsFormData(data);
+                const result =
+                    isEditing && editingId
+                        ? await submitVolunteerModalFormDataPut(route(routeUpdate, editingId), formData, csrf)
+                        : await submitVolunteerModalFormDataPost(route(routeStore), formData, csrf);
+
+                if (!result.ok) {
+                    applyListModalFormErrors(result.errors, setError);
+                    return;
+                }
+
+                await reloadListModalProps(['posts']);
+
+                if (isEditing) {
+                    showSaveMessage(setSaveMessage, 'Publicação salva com sucesso.');
+                    markSyncAfterReload();
+                    return;
+                }
+
+                showSaveMessage(setSaveMessage, 'Publicação criada com sucesso.');
+                const createdId = editIdFromListModalRedirect(result.redirectLocation ?? null);
+                if (createdId) {
+                    markSyncAfterReload();
+                    setIsEditing(true);
+                    setEditingId(createdId);
+                    syncListModalEditUrl(createdId);
+                }
+            } finally {
+                setSaving(false);
+            }
+        })();
     };
 
     const handleDelete = async (id: number) => {
@@ -582,6 +657,11 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                         <h2 className="mb-6 text-lg font-semibold text-zinc-900 dark:text-white">
                             {isEditing ? `Editar ${entityLabel}` : `Nova ${entityLabel}`}
                         </h2>
+                        {saveMessage ? (
+                            <p className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+                                {saveMessage}
+                            </p>
+                        ) : null}
                         <div className="space-y-4">
                             <div>
                                 <InputLabel htmlFor="news_content_type" value="Tipo de publicação" />
@@ -952,8 +1032,8 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                             <SecondaryButton type="button" onClick={closeModal}>
                                 Cancelar
                             </SecondaryButton>
-                            <PrimaryButton type="submit" disabled={processing}>
-                                {isEditing ? 'Salvar' : 'Publicar'}
+                            <PrimaryButton type="submit" disabled={saving}>
+                                {saving ? 'Salvando…' : isEditing ? 'Salvar' : 'Publicar'}
                             </PrimaryButton>
                         </div>
                     </form>
