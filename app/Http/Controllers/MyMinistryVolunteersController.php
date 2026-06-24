@@ -406,10 +406,9 @@ class MyMinistryVolunteersController extends Controller
                 'ministry:id,name',
                 'church:id,ministry_invitation_intro',
             ])
-            ->paginate(25)
-            ->withQueryString();
+            ->get();
 
-        $inviteRows = $invites->getCollection()->map(fn (VolunteerMinistryInvitation $i) => [
+        $inviteRows = $invites->map(fn (VolunteerMinistryInvitation $i) => [
             'id' => $i->id,
             'ministryId' => (int) $i->ministry_id,
             'createdAt' => $i->created_at?->toIso8601String(),
@@ -463,7 +462,6 @@ class MyMinistryVolunteersController extends Controller
             'updateUrl' => route('ministry-lead.my-volunteers.update', $i),
             'historyUrl' => route('ministry-lead.my-volunteers.history', $i),
         ])->values();
-        $invites->setCollection($inviteRows);
 
         $invitePairs = VolunteerMinistryInvitation::queryLatestPerVolunteerMinistry(
             (int) $churchId,
@@ -482,7 +480,7 @@ class MyMinistryVolunteersController extends Controller
         $churchIntro = Church::query()->whereKey((int) $churchId)->value('ministry_invitation_intro');
 
         return Inertia::render('MinistryLeadVolunteers/MyVolunteers', [
-            'invitations' => $invites,
+            'invitations' => $inviteRows->all(),
             'activeVolunteers' => $activeVolunteers,
             'requestRows' => $this->leaderVolunteerRequestRows((int) $churchId, (int) $user?->id),
             'requestMinistries' => $leaderMinistries,

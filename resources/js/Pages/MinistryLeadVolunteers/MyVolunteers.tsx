@@ -213,11 +213,6 @@ type VolunteerRow = {
     historyUrl?: string | null;
 };
 
-interface Paginated<T> {
-    data: T[];
-    links: { url: string | null; label: string; active: boolean }[];
-}
-
 type RequestRow = {
     id: number;
     subject: string;
@@ -251,7 +246,7 @@ type ScreenTabId = 'active' | 'training' | 'reviewing' | 'new' | 'requests';
 export default function MyVolunteers() {
     const { invitations, activeVolunteers, requestRows, requestMinistries, requestStoreUrl, churchMinistryInvitationIntro } = usePage()
         .props as unknown as {
-        invitations: Paginated<VolunteerRow>;
+        invitations: VolunteerRow[];
         activeVolunteers: VolunteerRow[];
         requestRows: RequestRow[];
         requestMinistries: RequestMinistry[];
@@ -287,21 +282,21 @@ export default function MyVolunteers() {
     const newRows = useMemo(
         () =>
             sortVolunteerRows(
-                invitations.data.filter((item) => item.leaderStatus === null || item.leaderStatus === ''),
+                invitations.filter((item) => item.leaderStatus === null || item.leaderStatus === ''),
             ),
-        [invitations.data],
+        [invitations],
     );
     const trainingRows = useMemo(
-        () => sortVolunteerRows(invitations.data.filter((item) => item.leaderStatus === 'training')),
-        [invitations.data],
+        () => sortVolunteerRows(invitations.filter((item) => item.leaderStatus === 'training')),
+        [invitations],
     );
     const reviewingRows = useMemo(
-        () => sortVolunteerRows(invitations.data.filter((item) => item.leaderStatus === 'reviewing')),
-        [invitations.data],
+        () => sortVolunteerRows(invitations.filter((item) => item.leaderStatus === 'reviewing')),
+        [invitations],
     );
     const activeRows = useMemo(() => {
         const source = [
-            ...invitations.data.filter((item) => item.leaderStatus === 'active'),
+            ...invitations.filter((item) => item.leaderStatus === 'active'),
             ...activeVolunteers,
         ];
         const byVolunteerMinistry = new Map<string, VolunteerRow>();
@@ -348,7 +343,7 @@ export default function MyVolunteers() {
         });
 
         return sortVolunteerRows(Array.from(byVolunteerMinistry.values()));
-    }, [invitations.data, activeVolunteers]);
+    }, [invitations, activeVolunteers]);
 
     useEffect(() => {
         if (newRows.length > 0) {
@@ -508,11 +503,11 @@ export default function MyVolunteers() {
     const findRowForVolunteerMinistry = (
         volunteerId: number,
         ministryId: number | undefined,
-        pageProps?: { invitations?: Paginated<VolunteerRow>; activeVolunteers?: VolunteerRow[] },
+        pageProps?: { invitations?: VolunteerRow[]; activeVolunteers?: VolunteerRow[] },
     ): VolunteerRow | null => {
         const inv = pageProps?.invitations ?? invitations;
         const active = pageProps?.activeVolunteers ?? activeVolunteers;
-        const source = [...inv.data, ...active];
+        const source = [...inv, ...active];
         return (
             source.find((item) => item.volunteer.id === volunteerId && (item.ministryId ?? 0) === (ministryId ?? 0)) ??
             null
@@ -530,7 +525,7 @@ export default function MyVolunteers() {
     };
 
     const refreshEditingRowFromPage = (pageProps?: {
-        invitations?: Paginated<VolunteerRow>;
+        invitations?: VolunteerRow[];
         activeVolunteers?: VolunteerRow[];
     }) => {
         if (!row) return null;
@@ -557,7 +552,7 @@ export default function MyVolunteers() {
             ...inertiaListModalSave,
             onSuccess: (page) => {
                 const pageProps = page.props as {
-                    invitations?: Paginated<VolunteerRow>;
+                    invitations?: VolunteerRow[];
                     activeVolunteers?: VolunteerRow[];
                 };
                 const updated = refreshEditingRowFromPage(pageProps);

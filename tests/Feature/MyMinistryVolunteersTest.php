@@ -190,7 +190,7 @@ class MyMinistryVolunteersTest extends TestCase
 
         $response->assertOk();
         $page = json_decode(json_encode($response->viewData('page')), true);
-        $rows = $page['props']['invitations']['data'] ?? [];
+        $rows = $page['props']['invitations'] ?? [];
         $row = collect($rows)->firstWhere('volunteer.email', 'encaminhado.novo@example.com');
 
         $this->assertNotNull($row);
@@ -229,5 +229,67 @@ class MyMinistryVolunteersTest extends TestCase
 
         $this->assertNotNull($row);
         $this->assertNull($row['leaderStatus']);
+    }
+
+    public function test_reviewing_volunteer_beyond_old_page_limit_appears_in_index(): void
+    {
+        $this->seed();
+
+        $church = Church::query()->firstOrFail();
+        $ministry = Ministry::query()->where('church_id', $church->id)->firstOrFail();
+
+        $leader = User::factory()->create([
+            'church_id' => $church->id,
+            'is_ministry_leader' => true,
+        ]);
+        $leader->assignRole(Role::firstOrCreate(['name' => 'lider_ministerio']));
+        $leader->ministries()->sync([$ministry->id]);
+
+        for ($i = 1; $i <= 26; $i++) {
+            $volunteer = Volunteer::query()->create([
+                'name' => sprintf('Voluntário Paginação %02d', $i),
+                'email' => sprintf('paginacao.%02d@example.com', $i),
+                'active' => true,
+            ]);
+
+            VolunteerMinistryInvitation::query()->create([
+                'church_id' => $church->id,
+                'volunteer_id' => $volunteer->id,
+                'ministry_id' => $ministry->id,
+                'invited_by_user_id' => $leader->id,
+                'token' => VolunteerMinistryInvitation::createToken(),
+                'status' => 'accepted',
+                'leader_status' => null,
+            ]);
+        }
+
+        $reviewingVolunteer = Volunteer::query()->create([
+            'name' => 'Voluntário Em Análise Final',
+            'email' => 'em.analise.final@example.com',
+            'active' => true,
+        ]);
+
+        VolunteerMinistryInvitation::query()->create([
+            'church_id' => $church->id,
+            'volunteer_id' => $reviewingVolunteer->id,
+            'ministry_id' => $ministry->id,
+            'invited_by_user_id' => $leader->id,
+            'token' => VolunteerMinistryInvitation::createToken(),
+            'status' => 'accepted',
+            'leader_status' => 'reviewing',
+        ]);
+
+        $response = $this->actingAs($leader)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('ministry-lead.my-volunteers.index'));
+
+        $response->assertOk();
+        $page = json_decode(json_encode($response->viewData('page')), true);
+        $rows = $page['props']['invitations'] ?? [];
+        $row = collect($rows)->firstWhere('volunteer.email', 'em.analise.final@example.com');
+
+        $this->assertNotNull($row);
+        $this->assertSame('reviewing', $row['leaderStatus']);
+        $this->assertGreaterThanOrEqual(27, count($rows));
     }
 }
