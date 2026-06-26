@@ -173,6 +173,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
     const [editingId, setEditingId] = useState<number | null>(null);
     const [saving, setSaving] = useState(false);
     const [saveMessage, setSaveMessage] = useState<string | null>(null);
+    const [saveError, setSaveError] = useState<string | null>(null);
     const { syncListModalEditUrl } = useListModalEditUrl();
     const showSaveMessage = useListModalSaveMessage();
     const [existingPdfUrl, setExistingPdfUrl] = useState<string | null>(null);
@@ -269,6 +270,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
             setIsEditing(true);
             setEditingId(p.id);
             setSaveMessage(null);
+            setSaveError(null);
             syncListModalEditUrl(p.id);
             applyPostToForm(p);
             clearErrors();
@@ -283,6 +285,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
         setIsEditing(false);
         setEditingId(null);
         setSaveMessage(null);
+        setSaveError(null);
         syncListModalEditUrl(null);
         setExistingPdfUrl(null);
         setExistingVideoUrl(null);
@@ -298,6 +301,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
     const closeModal = () => {
         setIsModalOpen(false);
         setSaveMessage(null);
+        setSaveError(null);
         syncListModalEditUrl(null);
         setExistingPdfUrl(null);
         setExistingVideoUrl(null);
@@ -316,6 +320,8 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                 return;
             }
             clearErrors();
+            setSaveError(null);
+            setSaveMessage(null);
             setSaving(true);
             try {
                 const formData = buildNewsFormData(data);
@@ -326,6 +332,14 @@ export default function Index({ posts, filters, canManage, config }: Props) {
 
                 if (!result.ok) {
                     applyListModalFormErrors(result.errors, setError);
+                    const firstFieldError = Object.values(result.errors)
+                        .map((message) => (Array.isArray(message) ? message[0] : message))
+                        .find(Boolean);
+                    setSaveError(
+                        result.message ??
+                            firstFieldError ??
+                            'Não foi possível salvar. Revise os campos e tente novamente.',
+                    );
                     return;
                 }
 
@@ -657,6 +671,11 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                         <h2 className="mb-6 text-lg font-semibold text-zinc-900 dark:text-white">
                             {isEditing ? `Editar ${entityLabel}` : `Nova ${entityLabel}`}
                         </h2>
+                        {saveError ? (
+                            <p className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">
+                                {saveError}
+                            </p>
+                        ) : null}
                         {saveMessage ? (
                             <p className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
                                 {saveMessage}

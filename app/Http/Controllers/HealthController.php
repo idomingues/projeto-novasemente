@@ -79,6 +79,11 @@ class HealthController extends Controller
             'video_file' => ['nullable', 'file', 'mimes:mp4,mov,quicktime,webm', 'max:51200'],
             'pdf_file' => ['nullable', 'file', 'mimes:pdf', 'max:12288'],
             'published_at' => ['nullable', 'date'],
+        ], [
+            'image_file.uploaded' => 'A imagem não chegou ao servidor (413?). Aumente client_max_body_size no Nginx para 64M.',
+            'video_file.uploaded' => 'O vídeo não chegou ao servidor (413?). Aumente client_max_body_size no Nginx para 64M e PHP upload_max_filesize para 64M.',
+            'video_file.max' => 'O vídeo pode ter no máximo 50 MB.',
+            'pdf_file.uploaded' => 'O PDF não chegou ao servidor por completo. Revise limites de upload no Nginx e PHP.',
         ]);
 
         $type = $data['content_type'];
@@ -250,6 +255,9 @@ class HealthController extends Controller
         $data = $this->assertPayload($request, null);
 
         $slugBase = Str::slug($data['title']);
+        if ($slugBase === '') {
+            $slugBase = 'saude-'.now()->format('Ymd-His');
+        }
         $slug = $slugBase;
         $i = 1;
         while (News::where('slug', $slug)->exists()) {
@@ -311,6 +319,9 @@ class HealthController extends Controller
 
         if ($data['title'] !== $health->title) {
             $slugBase = Str::slug($data['title']);
+            if ($slugBase === '') {
+                $slugBase = 'saude-'.now()->format('Ymd-His');
+            }
             $slug = $slugBase;
             $i = 1;
             while (News::where('slug', $slug)->where('id', '!=', $health->id)->exists()) {
