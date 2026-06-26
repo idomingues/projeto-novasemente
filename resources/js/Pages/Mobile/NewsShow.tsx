@@ -1,5 +1,6 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import InstagramFeedCard from '@/Components/News/InstagramFeedCard';
+import MobilePdfReader from '@/Components/Mobile/MobilePdfReader';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { ArrowLeftIcon, NewspaperIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import CoverWithVideoLink from '@/Components/News/CoverWithVideoLink';
@@ -83,6 +84,38 @@ export default function MobileNewsShow({ post, config }: Props) {
     const isInstagramLink = post.content_type === 'instagram_link';
     const instagramVideoUrl = post.instagram_url?.trim() || '';
     const hasInstagramVideoLink = Boolean(instagramVideoUrl);
+    const pdfUrl = post.pdf_url ? imageSrc(post.pdf_url, appUrl) : '';
+
+    if (isPdf && pdfUrl) {
+        return (
+            <MobileLayout>
+                <Head title={post.title} />
+                <div className="space-y-4">
+                    <Link
+                        href={route(listRoute)}
+                        className="inline-flex items-center gap-2 text-sm font-medium text-primary-600 hover:underline dark:text-primary-400"
+                    >
+                        <ArrowLeftIcon className="h-4 w-4" aria-hidden />
+                        {`Voltar às ${listLabel}`}
+                    </Link>
+
+                    <header className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                                {typeLabel(post.content_type)}
+                            </span>
+                            <p className="text-sm text-zinc-500 dark:text-zinc-400">{formatDate(post.published_at)}</p>
+                        </div>
+                        <h1 className="text-2xl font-bold leading-tight tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
+                            {post.title}
+                        </h1>
+                    </header>
+
+                    <MobilePdfReader url={pdfUrl} title={post.title} />
+                </div>
+            </MobileLayout>
+        );
+    }
 
     if (isInstagramFeed) {
         return (
@@ -182,27 +215,6 @@ export default function MobileNewsShow({ post, config }: Props) {
                                         className="h-full w-full"
                                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                                         allowFullScreen
-                                    />
-                                </div>
-                            </div>
-                        )}
-
-                        {isPdf && post.pdf_url && (
-                            <div className="mt-6 space-y-3">
-                                <a
-                                    href={post.pdf_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
-                                >
-                                    <DocumentTextIcon className="h-5 w-5 shrink-0" />
-                                    Abrir PDF
-                                </a>
-                                <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950">
-                                    <iframe
-                                        title={post.title}
-                                        src={`${post.pdf_url}#view=FitH`}
-                                        className="aspect-[4/5] min-h-[480px] w-full sm:aspect-[3/4] sm:min-h-[560px]"
                                     />
                                 </div>
                             </div>

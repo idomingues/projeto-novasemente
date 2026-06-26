@@ -8,7 +8,7 @@ import {
     XMarkIcon,
 } from '@heroicons/react/24/outline';
 import Modal from '@/Components/Modal';
-import { pdfUrlWithViewerParams, usePdfViewerFragment } from '@/lib/pdfViewerUrl';
+import MobilePdfReader from '@/Components/Mobile/MobilePdfReader';
 import { useEffect, useMemo, useState } from 'react';
 
 function imageSrc(url: string | null, appUrl: string): string {
@@ -61,11 +61,6 @@ export default function MobileLibraryShow({ book }: Props) {
     const [extractStatus, setExtractStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
     const [extractHtml, setExtractHtml] = useState<string | null>(null);
     const [extractError, setExtractError] = useState<string | null>(null);
-    const pdfViewerFragment = usePdfViewerFragment();
-    const pdfOpenUrl = useMemo(
-        () => (pdf ? pdfUrlWithViewerParams(pdf, pdfViewerFragment) : ''),
-        [pdf, pdfViewerFragment],
-    );
 
     const description = (book.description ?? '').trim();
     const shortDescription = useMemo(() => {
@@ -120,6 +115,106 @@ export default function MobileLibraryShow({ book }: Props) {
         };
     }, [tryExternalReader, book.id, book.category, pdf, ext]);
 
+    if (pdf) {
+        return (
+            <MobileLayout>
+                <Head title={book.title} />
+
+                <div className="space-y-4">
+                    <Link
+                        href={route('mobile.biblioteca')}
+                        className="inline-flex items-center gap-2 text-sm font-medium text-primary-600 hover:underline dark:text-primary-400"
+                    >
+                        <ArrowLeftIcon className="h-4 w-4" aria-hidden />
+                        Voltar à biblioteca
+                    </Link>
+
+                    <header className="space-y-2">
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400">{formatDate(book.published_at)}</p>
+                        <h1 className="text-2xl font-bold leading-tight tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
+                            {book.title}
+                        </h1>
+                        {book.subtitle ? (
+                            <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                {book.subtitle}
+                            </p>
+                        ) : null}
+                    </header>
+
+                    <MobilePdfReader url={pdf} title={book.title} />
+
+                    <div className="flex justify-center">
+                        <a
+                            href={route('mobile.biblioteca.pdf-download', book.id)}
+                            className="inline-flex touch-manipulation items-center justify-center gap-2 rounded-2xl border border-zinc-300 px-4 py-3 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                        >
+                            <ArrowDownTrayIcon className="h-5 w-5 shrink-0" />
+                            Baixar PDF
+                        </a>
+                    </div>
+
+                    {description ? (
+                        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-950">
+                            <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+                                {shortDescription}
+                                {hasMore ? (
+                                    <>
+                                        {' '}
+                                        <button
+                                            type="button"
+                                            onClick={() => setDetailsOpen(true)}
+                                            className="cursor-pointer font-semibold text-primary-700 underline-offset-2 hover:underline dark:text-primary-300"
+                                        >
+                                            .. e mais
+                                        </button>
+                                    </>
+                                ) : null}
+                            </p>
+                        </div>
+                    ) : null}
+                </div>
+
+                <Modal show={detailsOpen} onClose={() => setDetailsOpen(false)} maxWidth="lg">
+                    <div className="relative">
+                        {cover ? (
+                            <img src={cover} alt="" className="max-h-52 w-full object-cover sm:max-h-64" />
+                        ) : null}
+                        <button
+                            type="button"
+                            onClick={() => setDetailsOpen(false)}
+                            className="absolute right-3 top-3 cursor-pointer rounded-full bg-black/50 p-2 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
+                            aria-label="Fechar"
+                        >
+                            <XMarkIcon className="h-5 w-5" />
+                        </button>
+                    </div>
+                    <div className="space-y-3 p-5 sm:p-6">
+                        <div>
+                            <h2 className="text-xl font-bold text-zinc-900 dark:text-white sm:text-2xl">{book.title}</h2>
+                            {book.subtitle ? (
+                                <p className="mt-1 text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                    {book.subtitle}
+                                </p>
+                            ) : null}
+                        </div>
+                        <div className="border-t border-zinc-100 pt-4 dark:border-zinc-800">
+                            <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+                                {description}
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setDetailsOpen(false)}
+                            className="w-full cursor-pointer rounded-xl border border-zinc-200 bg-zinc-50 py-3 text-sm font-semibold text-zinc-800 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 sm:w-auto sm:px-8"
+                        >
+                            Fechar
+                        </button>
+                    </div>
+                </Modal>
+            </MobileLayout>
+        );
+    }
+
     return (
         <MobileLayout>
             <Head title={book.title} />
@@ -159,56 +254,7 @@ export default function MobileLibraryShow({ book }: Props) {
                             </p>
                         ) : null}
 
-                        {pdf ? (
-                            <div className="mt-6 space-y-3">
-                                <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950">
-                                    <iframe
-                                        title={book.title}
-                                        src={pdfOpenUrl}
-                                        className="min-h-[min(90dvh,900px)] w-full border-0 sm:min-h-[min(88dvh,960px)]"
-                                    />
-                                </div>
-
-                                <div className="flex flex-col gap-2 sm:flex-row">
-                                    <a
-                                        href={pdfOpenUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex flex-1 touch-manipulation items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
-                                    >
-                                        <DocumentTextIcon className="h-5 w-5 shrink-0" />
-                                        Abrir PDF
-                                    </a>
-                                    <a
-                                        href={route('mobile.biblioteca.pdf-download', book.id)}
-                                        className="inline-flex flex-1 touch-manipulation items-center justify-center gap-2 rounded-2xl border-2 border-primary-600 px-4 py-3.5 text-sm font-semibold text-primary-700 transition hover:bg-primary-50 dark:border-primary-500 dark:text-primary-300 dark:hover:bg-primary-950/30"
-                                    >
-                                        <ArrowDownTrayIcon className="h-5 w-5 shrink-0" />
-                                        Download
-                                    </a>
-                                </div>
-
-                                {description ? (
-                                    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-950">
-                                        <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
-                                            {shortDescription}
-                                            {hasMore ? (
-                                                <>
-                                                    {' '}
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setDetailsOpen(true)}
-                                                        className="font-semibold text-primary-700 underline-offset-2 hover:underline dark:text-primary-300"
-                                                    >
-                                                        .. e mais
-                                                    </button>
-                                                </>
-                                            ) : null}
-                                        </p>
-                                    </div>
-                                ) : null}
-                            </div>
-                        ) : ext ? (
+                        {ext ? (
                             <div className="mt-6 space-y-3">
                                 {tryExternalReader && extractStatus === 'loading' ? (
                                     <p className="text-sm text-zinc-500 dark:text-zinc-400">A carregar texto…</p>

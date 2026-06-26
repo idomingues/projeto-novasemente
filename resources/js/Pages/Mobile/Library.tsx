@@ -8,7 +8,6 @@ import {
     XMarkIcon,
 } from '@heroicons/react/24/outline';
 import Modal from '@/Components/Modal';
-import { pdfUrlWithViewerParams, usePdfViewerFragment } from '@/lib/pdfViewerUrl';
 import { useEffect, useMemo, useState } from 'react';
 
 function imageSrc(url: string | null, appUrl: string): string {
@@ -89,7 +88,6 @@ export default function MobileLibrary({
 
     const meditationUrl = String(meditationUrlProp ?? '').trim();
     const lessonUrl = String(lessonUrlProp ?? '').trim();
-    const pdfViewerFragment = usePdfViewerFragment();
     const isSunsetTab = tab === 'sunset_meditation';
     const isConfiguredExternalTab = tab === 'meditation' || tab === 'lesson' || isSunsetTab;
     const configuredUrl =
@@ -351,9 +349,8 @@ export default function MobileLibrary({
                             const pdf = b.pdf_url ? imageSrc(b.pdf_url, appUrl) : '';
                             const extRaw = (b.external_url ?? '').trim();
                             const ext = extRaw ? extRaw : '';
-                            const pdfOpenUrl = pdf !== '' ? pdfUrlWithViewerParams(pdf, pdfViewerFragment) : '';
-                            const directOpen = pdf !== '' ? pdfOpenUrl : ext;
                             const showUrl = route('mobile.biblioteca.show', b.id);
+                            const directOpen = ext !== '' ? ext : '';
                             const description = (b.description ?? '').trim();
                             const maxDesc = 180;
                             const shortDesc =
@@ -378,15 +375,13 @@ export default function MobileLibrary({
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className={coverShellClass}
-                                        aria-label={
-                                            pdf !== '' ? `Abrir PDF: ${b.title}` : `Abrir no site: ${b.title}`
-                                        }
-                                        title={pdf !== '' ? 'Abrir PDF' : 'Abrir no site'}
+                                        aria-label={`Abrir no site: ${b.title}`}
+                                        title="Abrir no site"
                                     >
                                         {coverVisual}
                                     </a>
                                 ) : (
-                                    <Link href={showUrl} className={coverShellClass} aria-label={`Ver: ${b.title}`}>
+                                    <Link href={showUrl} className={coverShellClass} aria-label={`Ler: ${b.title}`}>
                                         {coverVisual}
                                     </Link>
                                 );
@@ -409,19 +404,17 @@ export default function MobileLibrary({
                                             ) : null}
                                             <div className="mt-4 flex flex-wrap items-stretch gap-2">
                                                 {pdf !== '' ? (
-                                                    <a
-                                                        href={pdfOpenUrl}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
+                                                    <Link
+                                                        href={showUrl}
                                                         className="inline-flex min-h-9 touch-manipulation items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
-                                                        aria-label={`Ler PDF: ${b.title}`}
+                                                        aria-label={`Ler: ${b.title}`}
                                                     >
                                                         <BookOpenIcon
                                                             className="h-4 w-4 shrink-0 text-white dark:text-zinc-900"
                                                             aria-hidden
                                                         />
                                                         Ler
-                                                    </a>
+                                                    </Link>
                                                 ) : ext !== '' ? (
                                                     <a
                                                         href={ext}

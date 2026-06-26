@@ -47,6 +47,7 @@
         "@tailwindcss/postcss": "^4.2.1",
         "dayjs": "^1.11.20",
         "html5-qrcode": "^2.3.8",
+        "pdfjs-dist": "^4.10.38",
         "react-qr-code": "^2.2.0",
         "sweetalert2": "^11.26.24"
     },
