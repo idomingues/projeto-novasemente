@@ -17,7 +17,108 @@ function normalizeErrors(raw: Record<string, string | string[]> | undefined): Re
     return raw ?? {};
 }
 
+function redirectLocationFromResponse(res: Response): string | null {
+    if (res.redirected && res.url) {
+        return res.url;
+    }
+
+    return res.headers.get('Location');
+}
+
+async function resolveFetchSaveResponse(
+    res: Response,
+    options?: { parseNote?: boolean },
+): Promise<VolunteerModalSaveResult> {
+    if (res.status === 422) {
+        return parseErrorBody(res);
+    }
+
+    const contentType = res.headers.get('content-type') ?? '';
+
+    if (contentType.includes('application/json') && (res.ok || res.status === 201)) {
+        try {
+            const body = (await res.json()) as {
+                redirect?: string;
+                message?: string;
+                note?: VolunteerLeaderNoteJson;
+            };
+
+            if (body.redirect) {
+                return {
+                    ok: true,
+                    redirectLocation: body.redirect,
+                    ...(options?.parseNote && body.note ? { note: body.note } : {}),
+                };
+            }
+
+            if (options?.parseNote && body.note) {
+                return { ok: true, redirectLocation: null, note: body.note };
+            }
+        } catch {
+            // Resposta JSON inválida — trata como erro abaixo.
+        }
+    }
+
+    if (res.status === 0 && res.type === 'opaqueredirect') {
+        return { ok: true, redirectLocation: null };
+    }
+
+    if (res.status === 0) {
+        return {
+            ok: false,
+            errors: {},
+            message:
+                'Conexão interrompida ao enviar. Verifique se o servidor está em execução (npm run serve) e tente novamente.',
+        };
+    }
+
+    if (res.ok || res.status === 302 || res.status === 303) {
+        if (options?.parseNote && contentType.includes('application/json')) {
+            const { note } = await parseSuccessBody(res);
+            return { ok: true, redirectLocation: redirectLocationFromResponse(res), note };
+        }
+
+        return { ok: true, redirectLocation: redirectLocationFromResponse(res) };
+    }
+
+    return parseErrorBody(res);
+}
+
 async function parseErrorBody(res: Response): Promise<VolunteerModalSaveResult> {
+    if (res.status === 419) {
+        return {
+            ok: false,
+            errors: {},
+            message: 'A sessão expirou. Atualize a página e tente novamente.',
+        };
+    }
+
+    if (res.status === 403) {
+        return {
+            ok: false,
+            errors: {},
+            message: 'Você não tem permissão para salvar esta publicação.',
+        };
+    }
+
+    if (res.status === 413) {
+        return {
+            ok: false,
+            errors: {},
+            message:
+                'Arquivo grande demais para o servidor (413). PDF até 12 MB — use «npm run serve» localmente ou aumente upload_max_filesize/post_max_size no PHP.',
+        };
+    }
+
+    if (res.status >= 500) {
+        return {
+            ok: false,
+            errors: {},
+            message:
+                'Erro no servidor ao salvar. Se o resumo/apresentação estiver muito longo, use no máximo 500 caracteres.',
+        };
+    }
+
     try {
         const body = (await res.json()) as { message?: string; errors?: Record<string, string | string[]> };
         return {
@@ -26,7 +127,20 @@ async function parseErrorBody(res: Response): Promise<VolunteerModalSaveResult> 
             message: body.message,
         };
     } catch {
-        return { ok: false, errors: {}, message: 'Não foi possível salvar. Tente novamente.' };
+        const text = await res.text().catch(() => '');
+        if (text.includes('Page Expired')) {
+            return {
+                ok: false,
+                errors: {},
+                message: 'A sessão expirou. Atualize a página e tente novamente.',
+            };
+        }
+
+        return {
+            ok: false,
+            errors: {},
+            message: `Não foi possível salvar (HTTP ${res.status}). Atualize a página e tente novamente.`,
+        };
     }
 }
 
@@ -45,18 +159,9 @@ export async function submitVolunteerModalPatch(
         },
         credentials: 'same-origin',
         body: JSON.stringify({ ...data, _method: 'PATCH' }),
-        redirect: 'manual',
     });
 
-    if (res.status === 422) {
-        return parseErrorBody(res);
-    }
-
-    if (res.status === 302 || res.status === 303 || (res.status >= 200 && res.status < 300)) {
-        return { ok: true, redirectLocation: res.headers.get('Location') };
-    }
-
-    return parseErrorBody(res);
+    return resolveFetchSaveResponse(res);
 }
 
 export async function submitVolunteerModalPut(
@@ -74,18 +179,9 @@ export async function submitVolunteerModalPut(
         },
         credentials: 'same-origin',
         body: JSON.stringify({ ...data, _method: 'PUT' }),
-        redirect: 'manual',
     });
 
-    if (res.status === 422) {
-        return parseErrorBody(res);
-    }
-
-    if (res.status === 302 || res.status === 303 || (res.status >= 200 && res.status < 300)) {
-        return { ok: true, redirectLocation: res.headers.get('Location') };
-    }
-
-    return parseErrorBody(res);
+    return resolveFetchSaveResponse(res);
 }
 
 async function submitVolunteerModalFormData(
@@ -107,18 +203,9 @@ async function submitVolunteerModalFormData(
         },
         credentials: 'same-origin',
         body: formData,
-        redirect: 'manual',
     });
 
-    if (res.status === 422) {
-        return parseErrorBody(res);
-    }
-
-    if (res.status === 302 || res.status === 303 || (res.status >= 200 && res.status < 300)) {
-        return { ok: true, redirectLocation: res.headers.get('Location') };
-    }
-
-    return parseErrorBody(res);
+    return resolveFetchSaveResponse(res);
 }
 
 export async function submitVolunteerModalFormDataPut(
@@ -161,19 +248,9 @@ export async function submitVolunteerModalPost(
         },
         credentials: 'same-origin',
         body: JSON.stringify(data),
-        redirect: 'manual',
     });
 
-    if (res.status === 422) {
-        return parseErrorBody(res);
-    }
-
-    if (res.status === 302 || res.status === 303 || (res.status >= 200 && res.status < 300)) {
-        const { note } = await parseSuccessBody(res);
-        return { ok: true, redirectLocation: res.headers.get('Location'), note };
-    }
-
-    return parseErrorBody(res);
+    return resolveFetchSaveResponse(res, { parseNote: true });
 }
 
 export async function submitVolunteerModalDelete(
@@ -188,18 +265,9 @@ export async function submitVolunteerModalDelete(
             'X-Requested-With': 'XMLHttpRequest',
         },
         credentials: 'same-origin',
-        redirect: 'manual',
     });
 
-    if (res.status === 422) {
-        return parseErrorBody(res);
-    }
-
-    if (res.status === 302 || res.status === 303 || (res.status >= 200 && res.status < 300)) {
-        return { ok: true, redirectLocation: res.headers.get('Location') };
-    }
-
-    return parseErrorBody(res);
+    return resolveFetchSaveResponse(res);
 }
 
 export function parseDepartmentEditModalFromUrl(search: string): { id: number } | null {

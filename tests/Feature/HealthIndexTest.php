@@ -6,6 +6,8 @@ use App\Models\Church;
 use App\Models\News;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -109,5 +111,166 @@ class HealthIndexTest extends TestCase
         $row = collect($rows)->firstWhere('title', 'Artigo saúde app');
 
         $this->assertNotNull($row);
+    }
+
+    public function test_health_article_accepts_excerpt_up_to_500_characters(): void
+    {
+        $this->seed();
+
+        $church = Church::query()->firstOrFail();
+        Permission::firstOrCreate(['name' => 'news.manage']);
+        $admin = User::factory()->create(['church_id' => $church->id]);
+        $admin->assignRole(Role::firstOrCreate(['name' => 'admin']));
+        $admin->givePermissionTo('news.manage');
+
+        $excerpt = str_repeat('a', 500);
+
+        $this->actingAs($admin)
+            ->withSession(['working_church_id' => $church->id])
+            ->post(route('health.store'), [
+                'content_type' => News::TYPE_ARTICLE,
+                'title' => 'Artigo com resumo longo',
+                'excerpt' => $excerpt,
+                'body' => 'Conteúdo do artigo.',
+            ])
+            ->assertRedirect();
+
+        $this->assertSame($excerpt, News::query()->where('title', 'Artigo com resumo longo')->value('excerpt'));
+    }
+
+    public function test_health_pdf_truncates_excerpt_over_500_characters_on_save(): void
+    {
+        $this->seed();
+
+        $church = Church::query()->firstOrFail();
+        Permission::firstOrCreate(['name' => 'news.manage']);
+        $admin = User::factory()->create(['church_id' => $church->id]);
+        $admin->assignRole(Role::firstOrCreate(['name' => 'admin']));
+        $admin->givePermissionTo('news.manage');
+
+        $longExcerpt = str_repeat('a', 620);
+
+        $this->actingAs($admin)
+            ->withSession(['working_church_id' => $church->id])
+            ->postJson(route('health.store'), [
+                'content_type' => News::TYPE_PDF,
+                'title' => 'PDF com apresentação longa',
+                'excerpt' => $longExcerpt,
+                'body' => str_repeat('b', 1000),
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['excerpt']);
+    }
+
+    public function test_health_pdf_store_with_file_and_excerpt(): void
+    {
+        Storage::fake('public');
+        $this->seed();
+
+        $church = Church::query()->firstOrFail();
+        Permission::firstOrCreate(['name' => 'news.manage']);
+        $admin = User::factory()->create(['church_id' => $church->id]);
+        $admin->assignRole(Role::firstOrCreate(['name' => 'admin']));
+        $admin->givePermissionTo('news.manage');
+
+        $pdf = UploadedFile::fake()->create('Artigo Blue Zone.pdf', 2400, 'application/pdf');
+        $excerpt = str_repeat('a', 400);
+
+        $this->actingAs($admin)
+            ->withSession(['working_church_id' => $church->id])
+            ->post(route('health.store'), [
+                'content_type' => News::TYPE_PDF,
+                'title' => 'O Grande Blefe do Século: O que a Ciência Descobriu sobre a Terra dos Centenários?',
+                'excerpt' => $excerpt,
+                'body' => '',
+                'pdf_file' => $pdf,
+            ])
+            ->assertRedirect();
+
+        $news = News::query()->where('title', 'like', 'O Grande Blefe do Século%')->first();
+        $this->assertNotNull($news);
+        $this->assertSame(News::TYPE_PDF, $news->content_type);
+        $this->assertSame($excerpt, $news->excerpt);
+        $this->assertNotNull($news->pdf_path);
+    }
+
+    public function test_health_pdf_rejects_excerpt_over_500_characters(): void
+    {
+        $this->seed();
+
+        $church = Church::query()->firstOrFail();
+        Permission::firstOrCreate(['name' => 'news.manage']);
+        $admin = User::factory()->create(['church_id' => $church->id]);
+        $admin->assignRole(Role::firstOrCreate(['name' => 'admin']));
+        $admin->givePermissionTo('news.manage');
+
+        $pdf = UploadedFile::fake()->create('doc.pdf', 100, 'application/pdf');
+
+        $this->actingAs($admin)
+            ->withSession(['working_church_id' => $church->id])
+            ->postJson(route('health.store'), [
+                'content_type' => News::TYPE_PDF,
+                'title' => 'PDF com apresentação longa',
+                'excerpt' => str_repeat('a', 501),
+                'body' => '',
+                'pdf_file' => $pdf,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['excerpt']);
+    }
+
+    public function test_health_store_returns_json_redirect_for_fetch_save(): void
+    {
+        $this->seed();
+
+        $church = Church::query()->firstOrFail();
+        Permission::firstOrCreate(['name' => 'news.manage']);
+        $admin = User::factory()->create(['church_id' => $church->id]);
+        $admin->assignRole(Role::firstOrCreate(['name' => 'admin']));
+        $admin->givePermissionTo('news.manage');
+
+        $pdf = UploadedFile::fake()->create('doc.pdf', 100, 'application/pdf');
+
+        $response = $this->actingAs($admin)
+            ->withSession(['working_church_id' => $church->id])
+            ->postJson(route('health.store'), [
+                'content_type' => News::TYPE_PDF,
+                'title' => 'PDF via fetch JSON',
+                'excerpt' => 'Apresentação curta',
+                'body' => '',
+                'pdf_file' => $pdf,
+            ]);
+
+        $news = News::query()->where('title', 'PDF via fetch JSON')->first();
+        $this->assertNotNull($news);
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('message', 'Publicação de saúde criada com sucesso.')
+            ->assertJsonPath('redirect', route('health.index', [
+                'modal' => 'edit',
+                'id' => $news->id,
+            ]));
+    }
+
+    public function test_health_article_rejects_body_over_limit(): void
+    {
+        $this->seed();
+
+        $church = Church::query()->firstOrFail();
+        Permission::firstOrCreate(['name' => 'news.manage']);
+        $admin = User::factory()->create(['church_id' => $church->id]);
+        $admin->assignRole(Role::firstOrCreate(['name' => 'admin']));
+        $admin->givePermissionTo('news.manage');
+
+        $this->actingAs($admin)
+            ->withSession(['working_church_id' => $church->id])
+            ->postJson(route('health.store'), [
+                'content_type' => News::TYPE_ARTICLE,
+                'title' => 'Artigo longo demais',
+                'body' => str_repeat('a', 65001),
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['body']);
     }
 }

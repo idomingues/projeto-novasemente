@@ -22,7 +22,7 @@ import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
 import ListCardIconActionButton from '@/Components/ListCard/ListCardIconActionButton';
 import InputError from '@/Components/InputError';
 import SelectInput from '@/Components/SelectInput';
-import { useState, useEffect, FormEventHandler, useMemo, useCallback } from 'react';
+import { useState, useEffect, FormEventHandler, useMemo, useCallback, useRef } from 'react';
 import ListSearchHint from '@/Components/ListSearchHint';
 import { useDebouncedServerSearch } from '@/hooks/useDebouncedServerSearch';
 import { confirmAction } from '@/utils/confirmDialog';
@@ -47,6 +47,8 @@ import ImageDownloadButton from '@/Components/ImageDownloadButton';
 import { youtubeThumbUrlFromVideoUrl } from '@/utils/youtube';
 import FeedCaptionBody from '@/Components/News/FeedCaptionBody';
 import FeedPostHeader, { type FeedPostAuthor } from '@/Components/News/FeedPostHeader';
+import NewsCoverImagePicker from '@/Components/News/NewsCoverImagePicker';
+import NewsPdfFilePicker, { PDF_MAX_MB } from '@/Components/News/NewsPdfFilePicker';
 import VideoPlayOverlay from '@/Components/News/VideoPlayOverlay';
 import { InstagramBrandIcon } from '@/Components/SocialBrandIcons';
 import { feedCaptionText } from '@/utils/feedCaption';
@@ -55,6 +57,9 @@ import {
     NEWS_INSTAGRAM_FEED_VIDEO_SPECS,
     NEWS_STANDARD_COVER_SPECS,
 } from '@/constants/mediaCoverSpecs';
+
+const NEWS_BODY_MAX_LENGTH = 65000;
+const NEWS_EXCERPT_MAX_LENGTH = 500;
 
 function imageSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
@@ -167,13 +172,17 @@ export default function Index({ posts, filters, canManage, config }: Props) {
     const appUrl = pageProps.appUrl ?? '';
     const publisherName = pageProps.currentChurch?.name ?? 'Nova Semente';
     const publisherLogoUrl = pageProps.currentChurch?.logo_url ?? pageProps.defaultBrandLogoUrl ?? '/logo-ns.png';
-    const csrf = (pageProps as { csrf_token?: string }).csrf_token ?? '';
+    const csrf =
+        (pageProps as { csrf_token?: string }).csrf_token ??
+        document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ??
+        '';
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [saving, setSaving] = useState(false);
     const [saveMessage, setSaveMessage] = useState<string | null>(null);
     const [saveError, setSaveError] = useState<string | null>(null);
+    const modalScrollRef = useRef<HTMLDivElement>(null);
     const { syncListModalEditUrl } = useListModalEditUrl();
     const showSaveMessage = useListModalSaveMessage();
     const [existingPdfUrl, setExistingPdfUrl] = useState<string | null>(null);
@@ -246,11 +255,12 @@ export default function Index({ posts, filters, canManage, config }: Props) {
         (p: NewsPost) => {
             setExistingPdfUrl(p.pdf_url ?? null);
             setExistingVideoUrl(p.video_url ?? null);
+            const isPdfPost = (p.content_type ?? 'article') === 'pdf';
             setData({
                 content_type: p.content_type ?? 'article',
                 title: p.title,
-                excerpt: p.excerpt ?? '',
-                body: p.body ?? '',
+                excerpt: isPdfPost ? (p.excerpt ?? p.body ?? '') : (p.excerpt ?? ''),
+                body: isPdfPost ? '' : (p.body ?? ''),
                 youtube_url: p.youtube_url ?? '',
                 instagram_url: p.instagram_url ?? '',
                 image_url: p.image_url ?? '',
@@ -313,6 +323,14 @@ export default function Index({ posts, filters, canManage, config }: Props) {
         setData('pdf_file', null);
     };
 
+    const scrollModalToTop = useCallback(() => {
+        const dialog = modalScrollRef.current?.closest('[role="dialog"]');
+        const scroller = dialog?.querySelector('.overflow-y-auto');
+        if (scroller instanceof HTMLElement) {
+            scroller.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }, []);
+
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         void (async () => {
@@ -322,9 +340,74 @@ export default function Index({ posts, filters, canManage, config }: Props) {
             clearErrors();
             setSaveError(null);
             setSaveMessage(null);
+
+            if (!data.title.trim()) {
+                setError('title', 'Informe o título.');
+                setSaveError('Informe o título antes de publicar.');
+                scrollModalToTop();
+                return;
+            }
+
+            if (data.content_type === 'article' && !data.body.trim()) {
+                setError('body', 'Escreva o conteúdo da publicação.');
+                setSaveError('Escreva o conteúdo antes de publicar.');
+                scrollModalToTop();
+                return;
+            }
+
+            if (data.body.length > NEWS_BODY_MAX_LENGTH) {
+                setError('body', `O conteúdo pode ter no máximo ${NEWS_BODY_MAX_LENGTH.toLocaleString('pt-BR')} caracteres.`);
+                setSaveError(
+                    `O texto está muito longo (${data.body.length.toLocaleString('pt-BR')} caracteres). Reduza o conteúdo ou divida em partes.`,
+                );
+                scrollModalToTop();
+                return;
+            }
+
+            if (data.image_url.trim().length > 1024) {
+                setError('image_url', 'A URL da capa é muito longa. Envie a imagem como arquivo.');
+                setSaveError('A URL da capa é muito longa. Use «Enviar arquivo» em vez de colar um link enorme.');
+                scrollModalToTop();
+                return;
+            }
+
+            if (data.excerpt.length > NEWS_EXCERPT_MAX_LENGTH) {
+                setError('excerpt', `O resumo pode ter no máximo ${NEWS_EXCERPT_MAX_LENGTH} caracteres.`);
+                setSaveError(
+                    `O resumo está muito longo (${data.excerpt.length} caracteres). Use no máximo ${NEWS_EXCERPT_MAX_LENGTH} caracteres.`,
+                );
+                scrollModalToTop();
+                return;
+            }
+
+            if (!csrf.trim()) {
+                setSaveError('Token de segurança ausente. Atualize a página (F5) e tente novamente.');
+                scrollModalToTop();
+                return;
+            }
+
+            if (data.content_type === 'pdf') {
+                if (!isEditing && !data.pdf_file) {
+                    setError('pdf_file', 'Envie o arquivo PDF.');
+                    setSaveError('Escolha o arquivo PDF para publicar.');
+                    scrollModalToTop();
+                    return;
+                }
+                if (data.pdf_file && data.pdf_file.size > PDF_MAX_MB * 1024 * 1024) {
+                    setError('pdf_file', `O PDF pode ter no máximo ${PDF_MAX_MB} MB.`);
+                    setSaveError(`O PDF selecionado é grande demais (máximo ${PDF_MAX_MB} MB).`);
+                    scrollModalToTop();
+                    return;
+                }
+            }
+
             setSaving(true);
             try {
-                const formData = buildNewsFormData(data);
+                const payload =
+                    data.content_type === 'pdf'
+                        ? { ...data, body: '' }
+                        : data;
+                const formData = buildNewsFormData(payload);
                 const result =
                     isEditing && editingId
                         ? await submitVolunteerModalFormDataPut(route(routeUpdate, editingId), formData, csrf)
@@ -340,6 +423,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                             firstFieldError ??
                             'Não foi possível salvar. Revise os campos e tente novamente.',
                     );
+                    scrollModalToTop();
                     return;
                 }
 
@@ -359,6 +443,9 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                     setEditingId(createdId);
                     syncListModalEditUrl(createdId);
                 }
+            } catch {
+                setSaveError('Erro de rede ao salvar. Verifique a conexão e tente novamente.');
+                scrollModalToTop();
             } finally {
                 setSaving(false);
             }
@@ -395,6 +482,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
 
     const isInstagramFeed = data.content_type === 'instagram_feed';
     const isInstagramLink = data.content_type === 'instagram_link';
+    const isPdf = data.content_type === 'pdf';
 
     const previewVideoSrc = videoPreviewUrl || (isInstagramFeed && existingVideoUrl ? existingVideoUrl : '');
     const previewHasVideo = Boolean(previewVideoSrc);
@@ -403,6 +491,8 @@ export default function Index({ posts, filters, canManage, config }: Props) {
         ? 'Imagem (opcional — 1080 × 1350 px, 4:5; capa do vídeo)'
         : data.content_type === 'image'
           ? 'Imagem (obrigatória — 16:10)'
+          : isPdf
+            ? 'Capa na lista (opcional — 16:10)'
           : data.content_type === 'youtube'
             ? 'Imagem de capa (opcional — 16:10; se vazio, usa miniatura do YouTube)'
             : isInstagramLink
@@ -413,9 +503,11 @@ export default function Index({ posts, filters, canManage, config }: Props) {
         ? 'Conteúdo'
         : isInstagramFeed
           ? 'Legenda'
-          : 'Texto / legenda (opcional)';
+          : 'Texto complementar (opcional)';
 
-    const bodyRows = data.content_type === 'article' ? 10 : isInstagramFeed ? 6 : 5;
+    const bodyRows = data.content_type === 'article' ? 10 : isInstagramFeed ? 6 : 4;
+
+    const showBodyField = data.content_type === 'article' || isInstagramFeed || data.content_type === 'image';
 
     const previewCaptionBody = data.body?.trim()
         ? isInstagramFeed
@@ -444,7 +536,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
             ? previewCaptionBody
             : data.content_type === 'youtube'
               ? 'Vídeo no YouTube'
-              : data.content_type === 'pdf'
+              : isPdf
                 ? 'Documento PDF'
                 : data.content_type === 'image'
                   ? 'Imagem'
@@ -666,22 +758,38 @@ export default function Index({ posts, filters, canManage, config }: Props) {
             )}
 
             {canManage && (
-                <Modal show={isModalOpen} onClose={closeModal} maxWidth="2xl">
-                    <form onSubmit={submit} className="p-6">
+                <Modal
+                    show={isModalOpen}
+                    onClose={closeModal}
+                    maxWidth="2xl"
+                    footer={
+                        <div className="space-y-3">
+                            {saveError ? (
+                                <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">
+                                    {saveError}
+                                </p>
+                            ) : null}
+                            {saveMessage ? (
+                                <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+                                    {saveMessage}
+                                </p>
+                            ) : null}
+                            <div className="flex justify-end gap-2">
+                                <SecondaryButton type="button" onClick={closeModal}>
+                                    Cancelar
+                                </SecondaryButton>
+                                <PrimaryButton type="submit" form="news-modal-form" disabled={saving}>
+                                    {saving ? 'Salvando…' : isEditing ? 'Salvar' : 'Publicar'}
+                                </PrimaryButton>
+                            </div>
+                        </div>
+                    }
+                >
+                    <form id="news-modal-form" onSubmit={submit} className="p-6">
                         <h2 className="mb-6 text-lg font-semibold text-zinc-900 dark:text-white">
                             {isEditing ? `Editar ${entityLabel}` : `Nova ${entityLabel}`}
                         </h2>
-                        {saveError ? (
-                            <p className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">
-                                {saveError}
-                            </p>
-                        ) : null}
-                        {saveMessage ? (
-                            <p className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
-                                {saveMessage}
-                            </p>
-                        ) : null}
-                        <div className="space-y-4">
+                        <div ref={modalScrollRef} className="space-y-4">
                             <div>
                                 <InputLabel htmlFor="news_content_type" value="Tipo de publicação" />
                                 <SelectInput
@@ -706,6 +814,13 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                         <strong>1080×1920</strong> (9:16).
                                     </p>
                                 )}
+                                {isPdf && (
+                                    <p className="mt-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs leading-relaxed text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-300">
+                                        Envie o <strong>PDF</strong>, escolha uma <strong>capa</strong> para a lista (opcional) e,
+                                        se quiser, um <strong>texto curto de apresentação</strong>. O conteúdo principal fica no
+                                        documento.
+                                    </p>
+                                )}
                                 <InputError message={errors.content_type} className="mt-1" />
                             </div>
                             <div>
@@ -718,16 +833,90 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                 />
                                 <InputError message={errors.title} className="mt-1" />
                             </div>
+
+                            {isPdf ? (
+                                <>
+                                    <NewsPdfFilePicker
+                                        file={data.pdf_file}
+                                        existingUrl={existingPdfUrl}
+                                        error={errors.pdf_file}
+                                        onFileChange={(file) => setData('pdf_file', file)}
+                                    />
+
+                                    <NewsCoverImagePicker
+                                        label={imageFieldLabel}
+                                        specsId="news_pdf_cover_specs"
+                                        specsText={
+                                            <>
+                                                <span className="font-semibold">Capa no app:</span> {NEWS_STANDARD_COVER_SPECS}
+                                            </>
+                                        }
+                                        imageFile={data.image_file}
+                                        fileThumbUrl={fileThumbUrl}
+                                        imageUrl={data.image_url}
+                                        resolvedThumbSrc={
+                                            data.image_url?.trim() ? imageSrc(data.image_url, appUrl) : ''
+                                        }
+                                        imageUrlError={errors.image_url}
+                                        imageFileError={errors.image_file}
+                                        onImageFileChange={(file) => setData('image_file', file)}
+                                        onImageUrlChange={(url) => setData('image_url', url)}
+                                    />
+
+                                    <div>
+                                        <InputLabel htmlFor="excerpt" value="Apresentação (opcional)" />
+                                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                            Texto curto que aparece na lista e acima do PDF no app. Deixe vazio se o título
+                                            bastar.
+                                        </p>
+                                        <Textarea
+                                            id="excerpt"
+                                            value={data.excerpt}
+                                            maxLength={NEWS_EXCERPT_MAX_LENGTH}
+                                            onChange={(e) => setData('excerpt', e.target.value)}
+                                            rows={3}
+                                            className="mt-1 block w-full"
+                                        />
+                                        {data.excerpt.length > 0 && (
+                                            <p
+                                                className={`mt-1 text-xs ${
+                                                    data.excerpt.length > NEWS_EXCERPT_MAX_LENGTH
+                                                        ? 'font-medium text-red-600 dark:text-red-400'
+                                                        : 'text-zinc-500 dark:text-zinc-400'
+                                                }`}
+                                            >
+                                                {data.excerpt.length.toLocaleString('pt-BR')} /{' '}
+                                                {NEWS_EXCERPT_MAX_LENGTH.toLocaleString('pt-BR')} caracteres
+                                            </p>
+                                        )}
+                                        <InputError message={errors.excerpt} className="mt-1" />
+                                    </div>
+                                </>
+                            ) : (
+                                <>
                             {!isInstagramFeed && (
                                 <div>
                                     <InputLabel htmlFor="excerpt" value="Resumo (opcional)" />
                                     <Textarea
                                         id="excerpt"
                                         value={data.excerpt}
+                                        maxLength={NEWS_EXCERPT_MAX_LENGTH}
                                         onChange={(e) => setData('excerpt', e.target.value)}
                                         rows={2}
                                         className="mt-1 block w-full"
                                     />
+                                    {data.excerpt.length > 0 && (
+                                        <p
+                                            className={`mt-1 text-xs ${
+                                                data.excerpt.length > NEWS_EXCERPT_MAX_LENGTH
+                                                    ? 'font-medium text-red-600 dark:text-red-400'
+                                                    : 'text-zinc-500 dark:text-zinc-400'
+                                            }`}
+                                        >
+                                            {data.excerpt.length.toLocaleString('pt-BR')} /{' '}
+                                            {NEWS_EXCERPT_MAX_LENGTH.toLocaleString('pt-BR')} caracteres
+                                        </p>
+                                    )}
                                     <InputError message={errors.excerpt} className="mt-1" />
                                 </div>
                             )}
@@ -766,34 +955,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                 </div>
                             )}
 
-                            {data.content_type === 'pdf' && (
-                                <div>
-                                    <InputLabel htmlFor="pdf_file" value="Arquivo PDF" />
-                                    <input
-                                        id="pdf_file"
-                                        type="file"
-                                        accept="application/pdf"
-                                        onChange={(e) => {
-                                            const file = e.target.files?.[0] ?? null;
-                                            setData('pdf_file', file);
-                                        }}
-                                        className="mt-1 block w-full text-sm text-zinc-900 file:mr-4 file:rounded-full file:border-0 file:bg-zinc-900 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-white hover:file:bg-zinc-800 dark:text-zinc-100 dark:file:bg-zinc-100 dark:file:text-zinc-900"
-                                    />
-                                    {existingPdfUrl && !data.pdf_file && (
-                                        <a
-                                            href={existingPdfUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-primary-600 hover:underline dark:text-primary-400"
-                                        >
-                                            <DocumentTextIcon className="h-4 w-4" />
-                                            Ver PDF atual
-                                        </a>
-                                    )}
-                                    <InputError message={errors.pdf_file} className="mt-1" />
-                                </div>
-                            )}
-
+                            {showBodyField && (
                             <div>
                                 <InputLabel htmlFor="body" value={bodyLabel} />
                                 <Textarea
@@ -810,7 +972,20 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                     </p>
                                 )}
                                 <InputError message={errors.body} className="mt-1" />
+                                {data.content_type === 'article' && data.body.length > 0 && (
+                                    <p
+                                        className={`mt-1 text-xs ${
+                                            data.body.length > NEWS_BODY_MAX_LENGTH
+                                                ? 'font-medium text-red-600 dark:text-red-400'
+                                                : 'text-zinc-500 dark:text-zinc-400'
+                                        }`}
+                                    >
+                                        {data.body.length.toLocaleString('pt-BR')} /{' '}
+                                        {NEWS_BODY_MAX_LENGTH.toLocaleString('pt-BR')} caracteres
+                                    </p>
+                                )}
                             </div>
+                            )}
 
                             <div>
                                 <InputLabel htmlFor="image_url" value={imageFieldLabel} />
@@ -927,6 +1102,9 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                     )}
                                     <InputError message={errors.video_file} className="mt-1" />
                                 </div>
+                            )}
+
+                                </>
                             )}
 
                             <div>
@@ -1046,14 +1224,6 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                     )}
                                 </div>
                             </div>
-                        </div>
-                        <div className="mt-6 flex justify-end gap-2">
-                            <SecondaryButton type="button" onClick={closeModal}>
-                                Cancelar
-                            </SecondaryButton>
-                            <PrimaryButton type="submit" disabled={saving}>
-                                {saving ? 'Salvando…' : isEditing ? 'Salvar' : 'Publicar'}
-                            </PrimaryButton>
                         </div>
                     </form>
                 </Modal>

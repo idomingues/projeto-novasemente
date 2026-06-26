@@ -34,6 +34,16 @@ class HealthController extends Controller
         return trim(implode("\n", $lines));
     }
 
+    private function normalizeExcerpt(?string $excerpt): ?string
+    {
+        $text = trim((string) $excerpt);
+        if ($text === '') {
+            return null;
+        }
+
+        return Str::limit($text, 500, '…');
+    }
+
     private function uploadErrorMessage(int $code): string
     {
         return match ($code) {
@@ -80,6 +90,10 @@ class HealthController extends Controller
             'pdf_file' => ['nullable', 'file', 'mimes:pdf', 'max:12288'],
             'published_at' => ['nullable', 'date'],
         ], [
+            'title.required' => 'Informe o título da publicação de saúde.',
+            'excerpt.max' => 'O resumo pode ter no máximo 500 caracteres.',
+            'body.max' => 'O conteúdo pode ter no máximo 65.000 caracteres. Reduza o texto ou divida em partes.',
+            'image_url.max' => 'A URL da capa é muito longa. Envie a imagem como arquivo em vez de colar link enorme.',
             'image_file.uploaded' => 'A imagem não chegou ao servidor (413?). Aumente client_max_body_size no Nginx para 64M.',
             'video_file.uploaded' => 'O vídeo não chegou ao servidor (413?). Aumente client_max_body_size no Nginx para 64M e PHP upload_max_filesize para 64M.',
             'video_file.max' => 'O vídeo pode ter no máximo 50 MB.',
@@ -296,8 +310,12 @@ class HealthController extends Controller
             'title' => $data['title'],
             'slug' => $slug,
             'content_type' => $data['content_type'],
-            'excerpt' => $data['content_type'] === News::TYPE_INSTAGRAM_FEED ? null : ($data['excerpt'] ?? null),
-            'body' => $this->normalizeBody((string) ($data['body'] ?? '')),
+            'excerpt' => $data['content_type'] === News::TYPE_INSTAGRAM_FEED
+                ? null
+                : $this->normalizeExcerpt($data['excerpt'] ?? null),
+            'body' => $data['content_type'] === News::TYPE_PDF
+                ? ''
+                : $this->normalizeBody((string) ($data['body'] ?? '')),
             'youtube_url' => $data['content_type'] === News::TYPE_YOUTUBE ? ($data['youtube_url'] ?? null) : null,
             'instagram_url' => $this->instagramUrlForSave($data['content_type'], $data['instagram_url'] ?? null),
             'pdf_path' => $data['content_type'] === News::TYPE_PDF ? $pdfPath : null,
@@ -363,8 +381,12 @@ class HealthController extends Controller
             'section' => News::SECTION_HEALTH,
             'title' => $data['title'],
             'content_type' => $data['content_type'],
-            'excerpt' => $data['content_type'] === News::TYPE_INSTAGRAM_FEED ? null : ($data['excerpt'] ?? null),
-            'body' => $this->normalizeBody((string) ($data['body'] ?? '')),
+            'excerpt' => $data['content_type'] === News::TYPE_INSTAGRAM_FEED
+                ? null
+                : $this->normalizeExcerpt($data['excerpt'] ?? null),
+            'body' => $data['content_type'] === News::TYPE_PDF
+                ? ''
+                : $this->normalizeBody((string) ($data['body'] ?? '')),
             'youtube_url' => $data['content_type'] === News::TYPE_YOUTUBE ? ($data['youtube_url'] ?? null) : null,
             'instagram_url' => $this->instagramUrlForSave($data['content_type'], $data['instagram_url'] ?? null),
             'pdf_path' => $pdfPath,

@@ -35,6 +35,16 @@ class NewsController extends Controller
         return trim(implode("\n", $lines));
     }
 
+    private function normalizeExcerpt(?string $excerpt): ?string
+    {
+        $text = trim((string) $excerpt);
+        if ($text === '') {
+            return null;
+        }
+
+        return Str::limit($text, 500, '…');
+    }
+
     private function uploadErrorMessage(int $code): string
     {
         return match ($code) {
@@ -81,6 +91,7 @@ class NewsController extends Controller
             'pdf_file' => ['nullable', 'file', 'mimes:pdf', 'max:12288'],
             'published_at' => ['nullable', 'date'],
         ], [
+            'excerpt.max' => 'O resumo pode ter no máximo 500 caracteres.',
             'image_file.uploaded' => 'A imagem não chegou ao servidor (413?). Aumente client_max_body_size no Nginx para 64M.',
             'video_file.uploaded' => 'O vídeo não chegou ao servidor (413?). Aumente client_max_body_size no Nginx para 64M e PHP upload_max_filesize para 64M.',
             'video_file.max' => 'O vídeo pode ter no máximo 50 MB.',
@@ -294,8 +305,12 @@ class NewsController extends Controller
             'title' => $data['title'],
             'slug' => $slug,
             'content_type' => $data['content_type'],
-            'excerpt' => $data['content_type'] === News::TYPE_INSTAGRAM_FEED ? null : ($data['excerpt'] ?? null),
-            'body' => $this->normalizeNewsBody((string) ($data['body'] ?? '')),
+            'excerpt' => $data['content_type'] === News::TYPE_INSTAGRAM_FEED
+                ? null
+                : $this->normalizeExcerpt($data['excerpt'] ?? null),
+            'body' => $data['content_type'] === News::TYPE_PDF
+                ? ''
+                : $this->normalizeNewsBody((string) ($data['body'] ?? '')),
             'youtube_url' => $data['content_type'] === News::TYPE_YOUTUBE ? ($data['youtube_url'] ?? null) : null,
             'instagram_url' => $this->instagramUrlForSave($data['content_type'], $data['instagram_url'] ?? null),
             'pdf_path' => $data['content_type'] === News::TYPE_PDF ? $pdfPath : null,
@@ -358,8 +373,12 @@ class NewsController extends Controller
             'section' => News::SECTION_NEWS,
             'title' => $data['title'],
             'content_type' => $data['content_type'],
-            'excerpt' => $data['content_type'] === News::TYPE_INSTAGRAM_FEED ? null : ($data['excerpt'] ?? null),
-            'body' => $this->normalizeNewsBody((string) ($data['body'] ?? '')),
+            'excerpt' => $data['content_type'] === News::TYPE_INSTAGRAM_FEED
+                ? null
+                : $this->normalizeExcerpt($data['excerpt'] ?? null),
+            'body' => $data['content_type'] === News::TYPE_PDF
+                ? ''
+                : $this->normalizeNewsBody((string) ($data['body'] ?? '')),
             'youtube_url' => $data['content_type'] === News::TYPE_YOUTUBE ? ($data['youtube_url'] ?? null) : null,
             'instagram_url' => $this->instagramUrlForSave($data['content_type'], $data['instagram_url'] ?? null),
             'pdf_path' => $pdfPath,

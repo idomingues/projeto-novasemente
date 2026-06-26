@@ -13,11 +13,27 @@ export const submitListModalPost = submitVolunteerModalPost;
 export const submitListModalPut = submitVolunteerModalPut;
 
 /** Atualiza só os props da lista sem visita de formulário — mantém o modal aberto. */
-export function reloadListModalProps(only: string[]): Promise<void> {
+export function reloadListModalProps(only: string[], timeoutMs = 12000): Promise<void> {
     return new Promise((resolve) => {
+        let settled = false;
+        const finish = () => {
+            if (settled) {
+                return;
+            }
+            settled = true;
+            resolve();
+        };
+        const timer = window.setTimeout(finish, timeoutMs);
         router.reload({
             only,
-            onFinish: () => resolve(),
+            onFinish: () => {
+                window.clearTimeout(timer);
+                finish();
+            },
+            onCancel: () => {
+                window.clearTimeout(timer);
+                finish();
+            },
         });
     });
 }
