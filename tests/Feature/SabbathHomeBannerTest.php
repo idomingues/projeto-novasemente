@@ -67,7 +67,7 @@ class SabbathHomeBannerTest extends TestCase
             );
     }
 
-    public function test_home_hides_friday_banner_after_friday_sunset(): void
+    public function test_home_shows_friday_banner_after_friday_sunset_until_midnight(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-06-05 18:30:00', 'America/Sao_Paulo'));
         Cache::flush();
@@ -86,7 +86,37 @@ class SabbathHomeBannerTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Mobile/Home')
-                ->where('sabbathBanner', null)
+                ->has('sabbathBanner', fn (Assert $banner) => $banner
+                    ->where('variant', 'friday')
+                    ->where('sunset_time', '17:32')
+                    ->etc()
+                )
+            );
+    }
+
+    public function test_home_shows_friday_banner_late_at_night(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-06-05 23:45:00', 'America/Sao_Paulo'));
+        Cache::flush();
+
+        Http::fake([
+            'api.sunrise-sunset.org/*' => Http::response([
+                'results' => [
+                    'sunset' => '2026-06-05T17:32:00-03:00',
+                ],
+                'status' => 'OK',
+                'tzid' => 'America/Sao_Paulo',
+            ], 200),
+        ]);
+
+        $this->get(route('mobile.home'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Mobile/Home')
+                ->has('sabbathBanner', fn (Assert $banner) => $banner
+                    ->where('variant', 'friday')
+                    ->etc()
+                )
             );
     }
 
@@ -143,7 +173,7 @@ class SabbathHomeBannerTest extends TestCase
             );
     }
 
-    public function test_home_hides_sabbath_banner_after_saturday_sunset(): void
+    public function test_home_shows_saturday_banner_after_sunset_until_midnight(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-06-06 18:30:00', 'America/Sao_Paulo'));
         Cache::flush();
@@ -162,7 +192,37 @@ class SabbathHomeBannerTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Mobile/Home')
-                ->where('sabbathBanner', null)
+                ->has('sabbathBanner', fn (Assert $banner) => $banner
+                    ->where('variant', 'saturday')
+                    ->where('sunset_time', '17:28')
+                    ->etc()
+                )
+            );
+    }
+
+    public function test_home_shows_saturday_banner_late_at_night(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-06-06 23:45:00', 'America/Sao_Paulo'));
+        Cache::flush();
+
+        Http::fake([
+            'api.sunrise-sunset.org/*' => Http::response([
+                'results' => [
+                    'sunset' => '2026-06-06T17:28:00-03:00',
+                ],
+                'status' => 'OK',
+                'tzid' => 'America/Sao_Paulo',
+            ], 200),
+        ]);
+
+        $this->get(route('mobile.home'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Mobile/Home')
+                ->has('sabbathBanner', fn (Assert $banner) => $banner
+                    ->where('variant', 'saturday')
+                    ->etc()
+                )
             );
     }
 

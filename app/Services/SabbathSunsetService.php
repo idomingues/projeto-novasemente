@@ -27,7 +27,7 @@ class SabbathSunsetService
 
         if ($dayOfWeek === Carbon::FRIDAY) {
             $fridaySunset = $this->sunsetForDate($now->toDateString(), $timezone);
-            if ($fridaySunset === null || $now->greaterThanOrEqualTo($fridaySunset)) {
+            if ($fridaySunset === null) {
                 return null;
             }
 
@@ -49,7 +49,7 @@ class SabbathSunsetService
         }
 
         $saturdaySunset = $this->sunsetForDate($now->toDateString(), $timezone);
-        if ($saturdaySunset === null || $now->greaterThanOrEqualTo($saturdaySunset)) {
+        if ($saturdaySunset === null) {
             return null;
         }
 

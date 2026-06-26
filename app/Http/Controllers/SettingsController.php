@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Church;
+use App\Services\SunsetMeditationPdfService;
 use App\Support\ChurchAppFeatures;
 use App\Support\SolicitationHandlerAssignee;
 use App\Support\SpatiePermissionCheck;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -41,6 +43,12 @@ class SettingsController extends Controller
             'libraryLessonUrl' => $church->library_lesson_url,
             'updateLibraryMeditationUrl' => route('settings.library-meditation.update'),
             'updateLibraryLessonUrl' => route('settings.library-lesson.update'),
+            'librarySunsetMeditationPdfUrl' => $church->resolvedLibrarySunsetMeditationPdfUrl(),
+            'librarySunsetMeditationSegmentCount' => is_array($church->library_sunset_meditation_segments)
+                ? count($church->library_sunset_meditation_segments)
+                : 0,
+            'librarySunsetMeditationYear' => $church->library_sunset_meditation_year,
+            'updateLibrarySunsetMeditationUrl' => route('settings.library-sunset-meditation.update'),
             'canEditTreasurerEmail' => $canEditTreasurerEmail,
             'treasurerNotificationEmail' => $church->treasurer_notification_email,
             'updateTreasurerEmailUrl' => route('settings.treasurer-email.update'),
@@ -172,6 +180,60 @@ class SettingsController extends Controller
         ]);
 
         return redirect()->route('settings.index')->with('success', 'Link da lição atualizado.');
+    }
+
+    public function updateLibrarySunsetMeditationPdf(Request $request): RedirectResponse
+    {
+        $churchId = Church::resolveWorkingId($request);
+        abort_unless($churchId, 404, 'Nenhuma igreja ativa.');
+
+        $church = Church::query()->findOrFail($churchId);
+
+        $validated = $request->validate([
+            'library_sunset_meditation_pdf_file' => ['required', 'file', 'mimes:pdf', 'max:12288'],
+            'library_sunset_meditation_year' => ['nullable', 'integer', 'min:2000', 'max:2100'],
+        ], [
+            'library_sunset_meditation_pdf_file.required' => 'Envie o arquivo PDF.',
+            'library_sunset_meditation_pdf_file.uploaded' => 'O PDF não chegou ao servidor por completo. Revise limites de upload no Nginx e PHP.',
+        ]);
+
+        $year = isset($validated['library_sunset_meditation_year'])
+            ? (int) $validated['library_sunset_meditation_year']
+            : null;
+
+        $storedPath = $request->file('library_sunset_meditation_pdf_file')->store(
+            'library/sunset-meditation/'.$churchId,
+            'public'
+        );
+
+        /** @var SunsetMeditationPdfService $svc */
+        $svc = app(SunsetMeditationPdfService::class);
+        $parsed = $svc->parseStoredPdf($storedPath, $year);
+        if (empty($parsed['ok'])) {
+            Storage::disk('public')->delete($storedPath);
+
+            return back()->withErrors([
+                'library_sunset_meditation_pdf_file' => $parsed['error'] ?? 'Não foi possível processar o PDF.',
+            ]);
+        }
+
+        $previousPath = trim((string) ($church->library_sunset_meditation_pdf_path ?? ''));
+        if ($previousPath !== '' && $previousPath !== $storedPath) {
+            Storage::disk('public')->delete($previousPath);
+        }
+
+        $church->update([
+            'library_sunset_meditation_pdf_path' => $storedPath,
+            'library_sunset_meditation_segments' => $parsed['segments'] ?? [],
+            'library_sunset_meditation_year' => $parsed['year'] ?? $year ?? (int) now()->format('Y'),
+        ]);
+
+        $count = is_array($parsed['segments']) ? count($parsed['segments']) : 0;
+
+        return redirect()->route('settings.index')->with(
+            'success',
+            'Meditação Por do Sol publicada com '.$count.' meditações semanais.'
+        );
     }
 
     public function appFeatures(Request $request): Response

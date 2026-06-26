@@ -57,12 +57,12 @@ use App\Http\Controllers\TalentConnectionAdminController;
 use App\Http\Controllers\TalentConnectionController;
 use App\Http\Controllers\TreasurerDashboardController;
 use App\Http\Controllers\VariosController;
+use App\Http\Controllers\VersiculoCaixinhaController;
 use App\Http\Controllers\VolunteerController;
 use App\Http\Controllers\VolunteerPipelineLeadController;
 use App\Http\Controllers\VolunteerPublicSignupController;
-use App\Http\Controllers\VolunteerSelfSignupEditController;
 use App\Http\Controllers\VolunteerRequestSolicitationController;
-use App\Http\Controllers\VersiculoCaixinhaController;
+use App\Http\Controllers\VolunteerSelfSignupEditController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -816,6 +816,9 @@ Route::middleware('auth')->group(function () {
         ->middleware('role:super_admin');
     Route::put('/settings/library/meditation', [SettingsController::class, 'updateLibraryMeditationUrl'])
         ->name('settings.library-meditation.update')
+        ->middleware('role_or_permission:super_admin|library.manage');
+    Route::post('/settings/library/sunset-meditation', [SettingsController::class, 'updateLibrarySunsetMeditationPdf'])
+        ->name('settings.library-sunset-meditation.update')
         ->middleware('role_or_permission:super_admin|library.manage');
     Route::put('/settings/library/lesson', [SettingsController::class, 'updateLibraryLessonUrl'])
         ->name('settings.library-lesson.update')

@@ -6,6 +6,7 @@ import PageHeader from '@/Components/PageHeader';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SelectInput from '@/Components/SelectInput';
 import TextInput from '@/Components/TextInput';
+import NewsPdfFilePicker from '@/Components/News/NewsPdfFilePicker';
 import { Head, useForm } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
 
@@ -25,6 +26,10 @@ type Props = {
     updateLibraryMeditationUrl: string;
     libraryLessonUrl: string | null;
     updateLibraryLessonUrl: string;
+    librarySunsetMeditationPdfUrl?: string | null;
+    librarySunsetMeditationSegmentCount?: number;
+    librarySunsetMeditationYear?: number | null;
+    updateLibrarySunsetMeditationUrl?: string;
     canEditTreasurerEmail?: boolean;
     treasurerNotificationEmail: string | null;
     updateTreasurerEmailUrl: string;
@@ -47,6 +52,10 @@ export default function SettingsIndex({
     updateLibraryMeditationUrl,
     libraryLessonUrl,
     updateLibraryLessonUrl,
+    librarySunsetMeditationPdfUrl = null,
+    librarySunsetMeditationSegmentCount = 0,
+    librarySunsetMeditationYear = null,
+    updateLibrarySunsetMeditationUrl = '',
     canEditTreasurerEmail = false,
     treasurerNotificationEmail,
     updateTreasurerEmailUrl,
@@ -68,6 +77,10 @@ export default function SettingsIndex({
     });
     const lessonForm = useForm({
         library_lesson_url: libraryLessonUrl ?? 'https://mais.cpb.com.br/licao/vida-de-oracao-2o-trimestre-2026/',
+    });
+    const sunsetForm = useForm({
+        library_sunset_meditation_pdf_file: null as File | null,
+        library_sunset_meditation_year: librarySunsetMeditationYear ?? new Date().getFullYear(),
     });
 
     const treasurerForm = useForm({
@@ -96,6 +109,22 @@ export default function SettingsIndex({
     const submitLesson: FormEventHandler = (e) => {
         e.preventDefault();
         lessonForm.put(updateLibraryLessonUrl, { preserveScroll: true });
+    };
+
+    const submitSunsetMeditation: FormEventHandler = (e) => {
+        e.preventDefault();
+        if (!updateLibrarySunsetMeditationUrl) return;
+        if (!sunsetForm.data.library_sunset_meditation_pdf_file && !librarySunsetMeditationPdfUrl) {
+            sunsetForm.setError('library_sunset_meditation_pdf_file', 'Envie o arquivo PDF.');
+            return;
+        }
+        if (!sunsetForm.data.library_sunset_meditation_pdf_file) {
+            return;
+        }
+        sunsetForm.post(updateLibrarySunsetMeditationUrl, {
+            forceFormData: true,
+            preserveScroll: true,
+        });
     };
 
     const submitTreasurer: FormEventHandler = (e) => {
@@ -277,9 +306,8 @@ export default function SettingsIndex({
                 <section className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6 shadow-sm">
                     <h2 className="text-base font-semibold text-zinc-900 dark:text-white">App mobile — Biblioteca</h2>
                     <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                        Nas abas <strong>Meditação</strong> e <strong>Lição</strong>, o app abre um único link configurado aqui.
-                        Se o site permitir, o app também tenta mostrar o texto dentro do nosso layout (melhor esforço) e mantém o botão
-                        para abrir a página original.
+                        Nas abas <strong>Meditação</strong>, <strong>Lição</strong> e <strong>Meditação Por do Sol</strong>, o app abre
+                        conteúdo configurado aqui. Meditação e Lição usam links externos; Meditação Por do Sol usa o PDF semanal da CPB.
                     </p>
 
                     <div className="mt-6 space-y-6">
@@ -319,6 +347,60 @@ export default function SettingsIndex({
                             <div className="flex justify-end">
                                 <PrimaryButton type="submit" disabled={lessonForm.processing}>
                                     Salvar
+                                </PrimaryButton>
+                            </div>
+                        </form>
+
+                        <form onSubmit={submitSunsetMeditation} className="space-y-4 border-t border-zinc-100 pt-6 dark:border-zinc-800">
+                            <div>
+                                <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Meditação Por do Sol</h3>
+                                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                                    Envie o PDF anual com uma meditação para cada sexta-feira. O app abre automaticamente a meditação da
+                                    próxima sexta-feira e permite escolher outras datas.
+                                </p>
+                                {librarySunsetMeditationPdfUrl ? (
+                                    <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                                        Publicado: {librarySunsetMeditationSegmentCount} meditações
+                                        {librarySunsetMeditationYear ? ` (${librarySunsetMeditationYear})` : ''}.{' '}
+                                        <a
+                                            href={librarySunsetMeditationPdfUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="font-medium text-primary-600 underline-offset-2 hover:underline dark:text-primary-400"
+                                        >
+                                            Ver PDF atual
+                                        </a>
+                                    </p>
+                                ) : null}
+                            </div>
+                            <div>
+                                <InputLabel htmlFor="library_sunset_meditation_year" value="Ano do material" />
+                                <TextInput
+                                    id="library_sunset_meditation_year"
+                                    type="number"
+                                    min={2000}
+                                    max={2100}
+                                    className="mt-1 block w-full"
+                                    value={String(sunsetForm.data.library_sunset_meditation_year ?? '')}
+                                    onChange={(e) =>
+                                        sunsetForm.setData(
+                                            'library_sunset_meditation_year',
+                                            e.target.value === '' ? new Date().getFullYear() : Number(e.target.value),
+                                        )
+                                    }
+                                />
+                                <InputError message={sunsetForm.errors.library_sunset_meditation_year} className="mt-1" />
+                            </div>
+                            <NewsPdfFilePicker
+                                inputId="library_sunset_meditation_pdf_file"
+                                file={sunsetForm.data.library_sunset_meditation_pdf_file}
+                                existingUrl={librarySunsetMeditationPdfUrl}
+                                error={sunsetForm.errors.library_sunset_meditation_pdf_file}
+                                onFileChange={(file) => sunsetForm.setData('library_sunset_meditation_pdf_file', file)}
+                            />
+                            <div className="flex justify-end">
+                                <PrimaryButton type="submit" disabled={sunsetForm.processing}>
+                                    {librarySunsetMeditationPdfUrl ? 'Atualizar PDF' : 'Publicar PDF'}
                                 </PrimaryButton>
                             </div>
                         </form>

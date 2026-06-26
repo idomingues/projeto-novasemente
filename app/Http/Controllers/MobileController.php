@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AppNotification;
 use App\Models\AcervoItem;
+use App\Models\AppNotification;
 use App\Models\Church;
 use App\Models\ChurchService;
 use App\Models\ChurchSolicitation;
@@ -36,10 +36,10 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -957,6 +957,7 @@ class MobileController extends Controller
                     ['value' => LibraryBook::CATEGORY_MAGAZINES, 'label' => 'Revistas'],
                     ['value' => LibraryBook::CATEGORY_MEDITATION, 'label' => 'Meditação'],
                     ['value' => LibraryBook::CATEGORY_LESSON, 'label' => 'Lição'],
+                    ['value' => 'sunset_meditation', 'label' => 'Meditação Por do Sol'],
                 ],
                 'librarySetupMessage' => 'A biblioteca ainda não está disponível. Peça ao responsável técnico para concluir a atualização da base de dados.',
             ]);
@@ -990,9 +991,11 @@ class MobileController extends Controller
                 ['value' => LibraryBook::CATEGORY_MAGAZINES, 'label' => 'Revistas'],
                 ['value' => LibraryBook::CATEGORY_MEDITATION, 'label' => 'Meditação'],
                 ['value' => LibraryBook::CATEGORY_LESSON, 'label' => 'Lição'],
+                ['value' => 'sunset_meditation', 'label' => 'Meditação Por do Sol'],
             ],
             'meditationUrl' => $church !== null ? $church->resolvedLibraryMeditationUrl() : null,
             'lessonUrl' => $church !== null ? $church->resolvedLibraryLessonUrl() : null,
+            'sunsetMeditationConfigured' => $church !== null && $church->hasLibrarySunsetMeditation(),
             'librarySetupMessage' => null,
         ]);
     }

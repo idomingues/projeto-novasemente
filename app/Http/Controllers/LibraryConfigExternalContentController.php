@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Church;
 use App\Services\LibraryExternalPageExtractService;
+use App\Services\SunsetMeditationPdfService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -17,6 +18,11 @@ class LibraryConfigExternalContentController extends Controller
         $church = Church::query()->findOrFail($churchId);
 
         $type = trim(strtolower($type));
+
+        if ($type === 'sunset_meditation') {
+            return $this->sunsetMeditationResponse($church);
+        }
+
         $url = match ($type) {
             'meditation' => $church->resolvedLibraryMeditationUrl(),
             'lesson' => $church->resolvedLibraryLessonUrl(),
@@ -55,5 +61,29 @@ class LibraryConfigExternalContentController extends Controller
             'source_url' => $url,
         ]);
     }
-}
 
+    private function sunsetMeditationResponse(Church $church): JsonResponse
+    {
+        if (! $church->hasLibrarySunsetMeditation()) {
+            return response()->json(['ok' => false, 'error' => 'PDF não configurado.'], 422);
+        }
+
+        $segments = $church->library_sunset_meditation_segments;
+        if (! is_array($segments) || $segments === []) {
+            return response()->json(['ok' => false, 'error' => 'Meditações indisponíveis. Envie o PDF novamente em Configurações.'], 422);
+        }
+
+        /** @var SunsetMeditationPdfService $svc */
+        $svc = app(SunsetMeditationPdfService::class);
+        $defaultIndex = $svc->resolveDefaultIndex($segments);
+        $html = (string) ($segments[$defaultIndex]['html'] ?? '');
+
+        return response()->json([
+            'ok' => true,
+            'html' => $html,
+            'segments' => $segments,
+            'default_index' => $defaultIndex,
+            'source_url' => $church->resolvedLibrarySunsetMeditationPdfUrl(),
+        ]);
+    }
+}

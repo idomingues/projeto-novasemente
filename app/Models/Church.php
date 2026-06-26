@@ -40,12 +40,17 @@ class Church extends Model
         'youtube_live_url',
         'library_meditation_url',
         'library_lesson_url',
+        'library_sunset_meditation_pdf_path',
+        'library_sunset_meditation_segments',
+        'library_sunset_meditation_year',
         'solicitations_handler_volunteer_id',
     ];
 
     protected $casts = [
         'active' => 'boolean',
         'disabled_app_features' => 'array',
+        'library_sunset_meditation_segments' => 'array',
+        'library_sunset_meditation_year' => 'integer',
     ];
 
     /** URL pública da logo (path local vira asset, URL externa mantida). */
@@ -133,5 +138,23 @@ class Church extends Model
         $v = trim((string) ($this->library_lesson_url ?? ''));
 
         return $v !== '' ? $v : self::DEFAULT_LIBRARY_LESSON_URL;
+    }
+
+    public function hasLibrarySunsetMeditation(): bool
+    {
+        $path = trim((string) ($this->library_sunset_meditation_pdf_path ?? ''));
+        $segments = $this->library_sunset_meditation_segments;
+
+        return $path !== '' && is_array($segments) && $segments !== [];
+    }
+
+    public function resolvedLibrarySunsetMeditationPdfUrl(): ?string
+    {
+        $path = trim((string) ($this->library_sunset_meditation_pdf_path ?? ''));
+        if ($path === '') {
+            return null;
+        }
+
+        return StorageUrl::publicMediaUrl($path);
     }
 }

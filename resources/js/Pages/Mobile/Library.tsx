@@ -39,6 +39,7 @@ interface Props {
     categories: CategoryTab[];
     meditationUrl?: string | null;
     lessonUrl?: string | null;
+    sunsetMeditationConfigured?: boolean;
     librarySetupMessage?: string | null;
 }
 
@@ -67,6 +68,7 @@ export default function MobileLibrary({
     categories,
     meditationUrl: meditationUrlProp = null,
     lessonUrl: lessonUrlProp = null,
+    sunsetMeditationConfigured = false,
     librarySetupMessage = null,
 }: Props) {
     const appUrl = (usePage().props as PageProps).appUrl ?? '';
@@ -88,8 +90,10 @@ export default function MobileLibrary({
     const meditationUrl = String(meditationUrlProp ?? '').trim();
     const lessonUrl = String(lessonUrlProp ?? '').trim();
     const pdfViewerFragment = usePdfViewerFragment();
-    const configuredUrl = tab === 'meditation' ? meditationUrl : tab === 'lesson' ? lessonUrl : '';
-    const isConfiguredExternalTab = tab === 'meditation' || tab === 'lesson';
+    const isSunsetTab = tab === 'sunset_meditation';
+    const isConfiguredExternalTab = tab === 'meditation' || tab === 'lesson' || isSunsetTab;
+    const configuredUrl =
+        tab === 'meditation' ? meditationUrl : tab === 'lesson' ? lessonUrl : isSunsetTab && sunsetMeditationConfigured ? 'pdf' : '';
 
     const filtered = useMemo(() => {
         const q = normalizeForSearch(search);
@@ -106,14 +110,16 @@ export default function MobileLibrary({
             return librarySetupMessage;
         }
         if (isConfiguredExternalTab) {
-            if (!configuredUrl) return 'Link não configurado.';
+            if (!configuredUrl) {
+                return isSunsetTab ? 'PDF não configurado. Peça ao responsável para publicar o arquivo em Configurações.' : 'Link não configurado.';
+            }
             return '';
         }
         const inTab = books.filter((b) => b.category === tab);
         if (inTab.length === 0) return 'Nenhuma publicação nesta categoria.';
         if (filtered.length === 0) return 'Nenhum resultado para a pesquisa.';
         return '';
-    }, [books, tab, filtered.length, librarySetupMessage, isConfiguredExternalTab, configuredUrl]);
+    }, [books, tab, filtered.length, librarySetupMessage, isConfiguredExternalTab, configuredUrl, isSunsetTab]);
 
     const closeDetails = () => setSelectedDetails(null);
 
@@ -147,6 +153,7 @@ export default function MobileLibrary({
                     segments?: ReaderSegment[] | null;
                     error?: string;
                     source_url?: string;
+                    default_index?: number;
                 } = await r.json();
                 if (cancelled) return;
                 if (data.ok && typeof data.html === 'string' && data.html.trim() !== '') {
@@ -154,6 +161,7 @@ export default function MobileLibrary({
                     const segs = Array.isArray(data.segments) ? data.segments : null;
                     setReaderSegments(segs && segs.length > 1 ? segs : null);
                     setReaderSourceUrl(typeof data.source_url === 'string' ? data.source_url : configuredUrl);
+                    setDayIdx(typeof data.default_index === 'number' ? data.default_index : 0);
                     setReaderStatus('ok');
                 } else {
                     setReaderError(typeof data.error === 'string' ? data.error : 'Não foi possível carregar o texto.');
@@ -179,6 +187,22 @@ export default function MobileLibrary({
         }
         return readerHtml;
     }, [readerSegments, readerHtml, dayIdx]);
+
+    const segmentTabs = useMemo(() => {
+        if (!readerSegments || readerSegments.length <= 1) {
+            return [];
+        }
+
+        const items = readerSegments.map((segment, index) => ({ segment, index }));
+
+        if (!isSunsetTab) {
+            return items;
+        }
+
+        const selected = Math.min(Math.max(dayIdx, 0), readerSegments.length - 1);
+
+        return [...items.slice(selected), ...items.slice(0, selected)];
+    }, [readerSegments, dayIdx, isSunsetTab]);
 
     return (
         <MobileLayout>
@@ -260,7 +284,7 @@ export default function MobileLibrary({
                                         className="inline-flex items-center gap-2 text-sm font-semibold text-primary-700 underline-offset-2 hover:underline dark:text-primary-300"
                                     >
                                         <ArrowTopRightOnSquareIcon className="h-4 w-4 shrink-0" aria-hidden />
-                                        Abrir no site original
+                                        {isSunsetTab ? 'Abrir PDF completo' : 'Abrir no site original'}
                                     </a>
                                 ) : null}
                             </div>
@@ -268,26 +292,29 @@ export default function MobileLibrary({
                             <div className="space-y-4">
                                 {readerSegments && readerSegments.length > 1 ? (
                                     <div
-                                        className="-mx-1 flex gap-1 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] px-1 [&::-webkit-scrollbar]:hidden"
+                                        className="-mx-1 flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] px-1 [&::-webkit-scrollbar]:hidden"
                                         role="tablist"
-                                        aria-label="Dias da semana"
+                                        aria-label={isSunsetTab ? 'Meditações semanais' : 'Dias da semana'}
                                     >
-                                        {readerSegments.map((s, i) => {
-                                            const active = dayIdx === i;
+                                        {segmentTabs.map(({ segment, index }) => {
+                                            const active = dayIdx === index;
                                             return (
                                                 <button
-                                                    key={s.slug}
+                                                    key={segment.slug}
                                                     type="button"
                                                     role="tab"
                                                     aria-selected={active}
-                                                    onClick={() => setDayIdx(i)}
+                                                    aria-current={active ? 'true' : undefined}
+                                                    onClick={() => setDayIdx(index)}
                                                     className={`shrink-0 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide transition sm:text-sm ${
                                                         active
-                                                            ? 'border-b-2 border-primary-600 text-primary-700 dark:border-primary-400 dark:text-primary-300'
-                                                            : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
+                                                            ? isSunsetTab
+                                                                ? 'bg-zinc-900 text-white shadow-md ring-2 ring-amber-400/80 dark:bg-white dark:text-zinc-900 dark:ring-amber-500/70'
+                                                                : 'border-b-2 border-primary-600 text-primary-700 dark:border-primary-400 dark:text-primary-300'
+                                                            : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100'
                                                     }`}
                                                 >
-                                                    {s.label}
+                                                    {segment.label}
                                                 </button>
                                             );
                                         })}
@@ -305,7 +332,7 @@ export default function MobileLibrary({
                                             rel="noopener noreferrer"
                                             className="font-medium text-primary-600 underline-offset-2 hover:underline dark:text-primary-400"
                                         >
-                                            Abrir no site original
+                                            {isSunsetTab ? 'Abrir PDF completo' : 'Abrir no site original'}
                                         </a>
                                     </p>
                                 ) : null}
