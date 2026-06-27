@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Church;
 use App\Models\LibraryBook;
+use App\Services\LibraryEgwSyncService;
 use App\Services\PublicationBroadcastNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -42,6 +43,8 @@ class LibraryBookController extends Controller
         if (! Schema::hasTable('library_books')) {
             return Inertia::render('LibraryBooks/Index', [
                 'books' => [],
+                'egwBooks' => [],
+                'libraryTab' => 'church',
                 'canManage' => $canManage,
                 'formOld' => [],
                 'categories' => [
@@ -54,38 +57,56 @@ class LibraryBookController extends Controller
         }
 
         $baseUrl = $request->getSchemeAndHttpHost();
+        $mapBook = fn (LibraryBook $b) => [
+            'id' => $b->id,
+            'title' => $b->title,
+            'subtitle' => $b->subtitle,
+            'description' => $b->description,
+            'category' => $b->category,
+            'cover_url' => $b->resolvedCoverUrl($baseUrl),
+            'pdf_url' => $b->resolvedPdfUrl($baseUrl),
+            'external_url' => $this->normalizedExternalUrl($b->external_url),
+            'published_at' => $b->published_at?->toIso8601String(),
+            'created_at' => $b->created_at->toIso8601String(),
+            'author' => $b->author ? ['name' => $b->author->name] : null,
+            'is_global' => $b->isGlobalEgw(),
+            'source_pdf_url' => $b->source_pdf_url,
+            'pdf_cached_at' => $b->pdf_cached_at?->toIso8601String(),
+        ];
+
         $books = LibraryBook::query()
             ->with('author')
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
+            ->whereIn('category', LibraryBook::churchManagedCategories())
             ->orderByDesc('order')
             ->orderByDesc('published_at')
             ->orderBy('title')
             ->get()
-            ->map(fn (LibraryBook $b) => [
-                'id' => $b->id,
-                'title' => $b->title,
-                'subtitle' => $b->subtitle,
-                'description' => $b->description,
-                'category' => $b->category,
-                'cover_url' => $b->resolvedCoverUrl($baseUrl),
-                'pdf_url' => $b->resolvedPdfUrl($baseUrl),
-                'external_url' => $this->normalizedExternalUrl($b->external_url),
-                'published_at' => $b->published_at?->toIso8601String(),
-                'created_at' => $b->created_at->toIso8601String(),
-                'author' => $b->author ? ['name' => $b->author->name] : null,
-            ]);
+            ->map($mapBook);
+
+        $egwBooks = LibraryBook::query()
+            ->global()
+            ->where('category', LibraryBook::CATEGORY_EGW)
+            ->orderByDesc('order')
+            ->orderByDesc('published_at')
+            ->orderBy('title')
+            ->get()
+            ->map($mapBook);
 
         $oldInput = $request->session()->getOldInput();
+        $libraryTab = $request->query('tab') === 'egw' ? 'egw' : 'church';
 
         return Inertia::render('LibraryBooks/Index', [
             'books' => $books,
+            'egwBooks' => $egwBooks,
+            'libraryTab' => $libraryTab,
             'canManage' => $canManage,
             'formOld' => ! empty($oldInput) ? Arr::only($oldInput, ['title', 'subtitle', 'description', 'category', 'external_url', 'published_at']) : [],
             'categories' => [
                 ['value' => LibraryBook::CATEGORY_BOOKS, 'label' => 'Livros'],
                 ['value' => LibraryBook::CATEGORY_MAGAZINES, 'label' => 'Revistas'],
-                // Meditação e Lição agora usam links globais em Configurações.
+                ['value' => LibraryBook::CATEGORY_EGW, 'label' => 'Ellen G. White'],
             ],
             'librarySetupMessage' => null,
         ]);
@@ -131,26 +152,38 @@ class LibraryBookController extends Controller
         $this->assertLibraryBookPdfOrExternalUrl($data['category'], $data['external_url'] ?? null, $request->hasFile('pdf_file'));
 
         $churchId = $this->currentChurchId($request);
-        if ($churchId === null) {
+        if ($data['category'] === LibraryBook::CATEGORY_EGW) {
+            if ($churchId === null) {
+                return redirect()->route('library-books.index')->with('error', 'Nenhuma igreja cadastrada.');
+            }
+        } elseif ($churchId === null) {
             return redirect()->route('library-books.index')->with('error', 'Nenhuma igreja cadastrada. Crie uma igreja antes de adicionar publicações.');
         }
 
-        $coverPath = $request->file('cover_image_file')->store('library/covers', 'public');
+        $coverPath = $request->file('cover_image_file')->store(
+            $data['category'] === LibraryBook::CATEGORY_EGW ? 'library/egw/covers' : 'library/covers',
+            'public',
+        );
         $externalUrl = LibraryBook::categoryAllowsExternalUrl($data['category'])
             ? $this->normalizedExternalUrl($data['external_url'] ?? null)
             : null;
         $pdfPath = null;
         if ($request->hasFile('pdf_file')) {
-            $pdfPath = $request->file('pdf_file')->store('library/pdfs', 'public');
+            $pdfPath = $request->file('pdf_file')->store(
+                $data['category'] === LibraryBook::CATEGORY_EGW ? 'library/egw/pdfs' : 'library/pdfs',
+                'public',
+            );
         }
 
         $publishedAt = $this->publishedAtFromYearMonth($data['published_at'] ?? null);
-        $maxOrder = LibraryBook::where('church_id', $churchId)->max('order') ?? 0;
+        $maxOrder = $data['category'] === LibraryBook::CATEGORY_EGW
+            ? (LibraryBook::query()->global()->where('category', LibraryBook::CATEGORY_EGW)->max('order') ?? 0)
+            : (LibraryBook::where('church_id', $churchId)->max('order') ?? 0);
 
         $book = LibraryBook::create([
-            'church_id' => $churchId,
+            'church_id' => $data['category'] === LibraryBook::CATEGORY_EGW ? null : $churchId,
             'title' => $data['title'],
-            'subtitle' => $data['subtitle'] ?? null,
+            'subtitle' => $data['subtitle'] ?? ($data['category'] === LibraryBook::CATEGORY_EGW ? 'Ellen G. White' : null),
             'description' => $data['description'] ?? null,
             'category' => $data['category'],
             'cover_path' => $coverPath,
@@ -159,9 +192,12 @@ class LibraryBookController extends Controller
             'published_at' => $publishedAt,
             'order' => $maxOrder + 1,
             'created_by' => $request->user()?->id,
+            'pdf_cached_at' => $pdfPath !== null && $data['category'] === LibraryBook::CATEGORY_EGW ? now() : null,
         ]);
 
-        $this->publicationBroadcast->notifyLibraryBook($book, $request->user()?->id);
+        if ($data['category'] !== LibraryBook::CATEGORY_EGW) {
+            $this->publicationBroadcast->notifyLibraryBook($book, $request->user()?->id);
+        }
 
         return redirect()->route('library-books.index')->with('success', 'Publicação adicionada à biblioteca.');
     }
@@ -178,7 +214,7 @@ class LibraryBookController extends Controller
         }
 
         $churchId = $this->currentChurchId($request);
-        if ($churchId === null || (int) $libraryBook->church_id !== (int) $churchId) {
+        if (! $this->canManageLibraryBook($libraryBook, $churchId)) {
             abort(404);
         }
 
@@ -268,7 +304,7 @@ class LibraryBookController extends Controller
         }
 
         $churchId = $this->currentChurchId($request);
-        if ($churchId === null || (int) $libraryBook->church_id !== (int) $churchId) {
+        if (! $this->canManageLibraryBook($libraryBook, $churchId)) {
             abort(404);
         }
 
@@ -277,6 +313,49 @@ class LibraryBookController extends Controller
         $libraryBook->delete();
 
         return redirect()->route('library-books.index')->with('success', 'Publicação removida.');
+    }
+
+    public function syncEgw(Request $request, LibraryEgwSyncService $syncService)
+    {
+        $this->authorize('library.manage');
+
+        if (! Schema::hasTable('library_books')) {
+            return redirect()->route('library-books.index', ['tab' => 'egw'])->with(
+                'error',
+                'A biblioteca ainda não está disponível. É preciso concluir a atualização da base de dados.',
+            );
+        }
+
+        $result = $syncService->sync(
+            forceCovers: $request->boolean('force_covers'),
+            cachePdfs: $request->boolean('cache_pdfs'),
+        );
+
+        if (! ($result['ok'] ?? false)) {
+            return redirect()->route('library-books.index', ['tab' => 'egw'])->with(
+                'error',
+                $result['error'] ?? 'Não foi possível sincronizar o catálogo Ellen G. White.',
+            );
+        }
+
+        return redirect()->route('library-books.index', ['tab' => 'egw'])->with(
+            'success',
+            sprintf(
+                'Catálogo sincronizado: %d novos, %d atualizados, %d removidos.',
+                $result['created'],
+                $result['updated'],
+                $result['removed'],
+            ),
+        );
+    }
+
+    private function canManageLibraryBook(LibraryBook $libraryBook, ?int $churchId): bool
+    {
+        if ($libraryBook->isGlobalEgw()) {
+            return $churchId !== null;
+        }
+
+        return $churchId !== null && (int) $libraryBook->church_id === (int) $churchId;
     }
 
     private function publishedAtFromYearMonth(mixed $value): ?Carbon

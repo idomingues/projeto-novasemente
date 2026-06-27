@@ -16,6 +16,8 @@ class LibraryBook extends Model
 
     public const CATEGORY_LESSON = 'lesson';
 
+    public const CATEGORY_EGW = 'egw';
+
     protected $fillable = [
         'church_id',
         'title',
@@ -23,7 +25,10 @@ class LibraryBook extends Model
         'description',
         'category',
         'cover_path',
+        'source_cover_url',
         'pdf_path',
+        'source_pdf_url',
+        'pdf_cached_at',
         'external_url',
         'published_at',
         'order',
@@ -32,6 +37,7 @@ class LibraryBook extends Model
 
     protected $casts = [
         'published_at' => 'datetime',
+        'pdf_cached_at' => 'datetime',
     ];
 
     public function church(): BelongsTo
@@ -52,6 +58,56 @@ class LibraryBook extends Model
                 $q->whereNull('published_at')
                     ->orWhere('published_at', '<=', now());
             });
+    }
+
+    /** Catálogo global (ex.: Ellen G. White). */
+    public function scopeGlobal($query)
+    {
+        return $query->whereNull('church_id');
+    }
+
+    /** Livros da igreja + catálogo global EGW visível. */
+    public function scopeForMobileLibrary($query, ?int $churchId)
+    {
+        return $query->where(function ($q) use ($churchId) {
+            if ($churchId !== null) {
+                $q->where('church_id', $churchId);
+            }
+            $q->orWhere(function ($q2) {
+                $q2->whereNull('church_id')
+                    ->where('category', self::CATEGORY_EGW);
+            });
+        });
+    }
+
+    public function isGlobalEgw(): bool
+    {
+        return $this->church_id === null && $this->category === self::CATEGORY_EGW;
+    }
+
+    public function resolvedSourcePdfUrl(): ?string
+    {
+        $url = trim((string) ($this->source_pdf_url ?? ''));
+        if ($url !== '' && (str_starts_with($url, 'http://') || str_starts_with($url, 'https://'))) {
+            return $url;
+        }
+
+        $path = $this->pdf_path;
+        if (is_string($path) && $path !== '' && (str_starts_with($path, 'http://') || str_starts_with($path, 'https://'))) {
+            return $path;
+        }
+
+        return null;
+    }
+
+    public function hasLocalPdf(): bool
+    {
+        $path = trim(str_replace('\\', '/', (string) ($this->pdf_path ?? '')), '/');
+        if ($path === '' || str_starts_with($path, 'http')) {
+            return false;
+        }
+
+        return \Illuminate\Support\Facades\Storage::disk('public')->exists($path);
     }
 
     public function resolvedCoverUrl(string $baseUrl): ?string
@@ -87,6 +143,16 @@ class LibraryBook extends Model
             self::CATEGORY_MAGAZINES,
             self::CATEGORY_MEDITATION,
             self::CATEGORY_LESSON,
+            self::CATEGORY_EGW,
+        ];
+    }
+
+    /** Categorias disponíveis no CRUD manual da igreja (sem EGW global). */
+    public static function churchManagedCategories(): array
+    {
+        return [
+            self::CATEGORY_BOOKS,
+            self::CATEGORY_MAGAZINES,
         ];
     }
 

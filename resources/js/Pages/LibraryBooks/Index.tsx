@@ -37,6 +37,9 @@ interface LibraryBookRow {
     published_at: string | null;
     created_at: string;
     author?: { name: string } | null;
+    is_global?: boolean;
+    source_pdf_url?: string | null;
+    pdf_cached_at?: string | null;
 }
 
 interface FormOldPayload {
@@ -50,6 +53,8 @@ interface FormOldPayload {
 
 interface Props {
     books: LibraryBookRow[];
+    egwBooks?: LibraryBookRow[];
+    libraryTab?: 'church' | 'egw';
     canManage: boolean;
     categories: CategoryOption[];
     formOld?: FormOldPayload;
@@ -92,6 +97,8 @@ function categoryLabel(categories: CategoryOption[], value: string): string {
 
 export default function LibraryBooksIndex({
     books,
+    egwBooks = [],
+    libraryTab = 'church',
     canManage,
     categories,
     formOld = {},
@@ -102,6 +109,10 @@ export default function LibraryBooksIndex({
         (page.props as { auth?: { canManageSettings?: boolean } }).auth?.canManageSettings === true;
     const pageErrors = (page.props as { errors?: Record<string, string> }).errors ?? {};
     const hasLibraryValidationErrors = LIBRARY_FORM_KEYS.some((k) => Boolean(pageErrors[k]));
+    const flash = (page.props as { flash?: { success?: string; error?: string } }).flash ?? {};
+
+    const [activeTab, setActiveTab] = useState<'church' | 'egw'>(libraryTab);
+    const [syncingEgw, setSyncingEgw] = useState(false);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
@@ -273,7 +284,20 @@ export default function LibraryBooksIndex({
         }
     };
 
-    const items = useMemo(() => books, [books]);
+    const items = useMemo(() => (activeTab === 'egw' ? egwBooks : books), [activeTab, books, egwBooks]);
+
+    const churchCategories = useMemo(
+        () => categories.filter((c) => c.value === 'books' || c.value === 'magazines'),
+        [categories],
+    );
+
+    const syncEgwCatalog = () => {
+        setSyncingEgw(true);
+        router.post(route('library-books.egw.sync'), {}, {
+            preserveScroll: true,
+            onFinish: () => setSyncingEgw(false),
+        });
+    };
 
     return (
         <AdminLayout>
@@ -306,9 +330,15 @@ export default function LibraryBooksIndex({
                                     Lição e meditação
                                 </Link>
                             ) : null}
-                            <AddButton variant="icon" onClick={openCreateModal} title="Nova publicação">
-                                Nova publicação
-                            </AddButton>
+                            {activeTab === 'egw' ? (
+                                <SecondaryButton type="button" onClick={syncEgwCatalog} disabled={syncingEgw}>
+                                    {syncingEgw ? 'Sincronizando…' : 'Sincronizar catálogo'}
+                                </SecondaryButton>
+                            ) : (
+                                <AddButton variant="icon" onClick={openCreateModal} title="Nova publicação">
+                                    Nova publicação
+                                </AddButton>
+                            )}
                         </div>
                     ) : undefined
                 }
@@ -322,6 +352,74 @@ export default function LibraryBooksIndex({
                     <p className="font-semibold">Biblioteca ainda não disponível</p>
                     <p className="mt-2 leading-relaxed">{librarySetupMessage}</p>
                 </div>
+            ) : null}
+
+            {!librarySetupMessage ? (
+                <div
+                    className="mb-5 flex gap-1 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    role="tablist"
+                    aria-label="Seções da biblioteca"
+                >
+                    <button
+                        type="button"
+                        role="tab"
+                        aria-selected={activeTab === 'church'}
+                        onClick={() => setActiveTab('church')}
+                        className={`shrink-0 cursor-pointer rounded-lg px-3.5 py-2 text-sm font-medium transition ${
+                            activeTab === 'church'
+                                ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900'
+                                : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100'
+                        }`}
+                    >
+                        Igreja
+                    </button>
+                    <button
+                        type="button"
+                        role="tab"
+                        aria-selected={activeTab === 'egw'}
+                        onClick={() => setActiveTab('egw')}
+                        className={`shrink-0 cursor-pointer rounded-lg px-3.5 py-2 text-sm font-medium transition ${
+                            activeTab === 'egw'
+                                ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900'
+                                : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100'
+                        }`}
+                    >
+                        Ellen G. White
+                    </button>
+                </div>
+            ) : null}
+
+            {flash.success ? (
+                <div
+                    role="status"
+                    className="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-100"
+                >
+                    {flash.success}
+                </div>
+            ) : null}
+
+            {flash.error ? (
+                <div
+                    role="alert"
+                    className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-950 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-100"
+                >
+                    {flash.error}
+                </div>
+            ) : null}
+
+            {activeTab === 'egw' ? (
+                <p className="mb-5 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                    Catálogo global de livros de Ellen G. White, sincronizado a partir do{' '}
+                    <a
+                        href="https://centrowhite.org.br/downloads/ebooks/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-primary-600 underline-offset-2 hover:underline dark:text-primary-400"
+                    >
+                        Centro White
+                    </a>
+                    . Use «Sincronizar catálogo» para importar ou atualizar títulos, capas e links dos PDFs.
+                </p>
             ) : null}
 
             {hasLibraryValidationErrors && libraryErrorMessages.length > 0 ? (
@@ -348,26 +446,47 @@ export default function LibraryBooksIndex({
                             <BookOpenIcon className="w-8 h-8 text-zinc-400 dark:text-zinc-500" />
                         </div>
                         <p className="text-zinc-600 dark:text-zinc-400 font-medium">
-                            {librarySetupMessage ? 'Configuração pendente' : 'Nenhuma publicação na biblioteca'}
+                            {librarySetupMessage
+                                ? 'Configuração pendente'
+                                : activeTab === 'egw'
+                                  ? 'Nenhum livro de Ellen G. White sincronizado'
+                                  : 'Nenhuma publicação na biblioteca'}
                         </p>
                         <p className="text-sm text-zinc-500 dark:text-zinc-500 mt-1 max-w-md mx-auto">
                             {librarySetupMessage
                                 ? librarySetupMessage
-                                : 'Adicione o nome, a capa e o conteúdo (PDF ou, em Meditação, um link externo). Os membros acedem em Mais → Biblioteca.'}
+                                : activeTab === 'egw'
+                                  ? 'Clique em «Sincronizar catálogo» para importar os livros do Centro White.'
+                                  : 'Adicione o nome, a capa e o conteúdo (PDF ou, em Meditação, um link externo). Os membros acedem em Mais → Biblioteca.'}
                         </p>
-                        {canManage && !librarySetupMessage && (
+                        {canManage && !librarySetupMessage && activeTab === 'egw' ? (
+                            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                                <SecondaryButton type="button" onClick={syncEgwCatalog} disabled={syncingEgw}>
+                                    {syncingEgw ? 'Sincronizando…' : 'Sincronizar catálogo'}
+                                </SecondaryButton>
+                            </div>
+                        ) : null}
+                        {canManage && !librarySetupMessage && activeTab === 'church' ? (
                             <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
                                 <AddButton variant="icon" onClick={openCreateModal} title="Nova publicação">
                                     Nova publicação
                                 </AddButton>
                             </div>
-                        )}
+                        ) : null}
                     </div>
                 ) : (
                     items.map((b) => {
-                        const publishedLabel = b.published_at ? formatPublicationMonthYear(b.published_at) : 'Rascunho';
+                        const publishedLabel = b.published_at ? formatPublicationMonthYear(b.published_at) : 'Publicado';
                         const openHref = b.pdf_url ?? b.external_url ?? null;
                         const openTitle = b.pdf_url ? 'Abrir PDF' : b.external_url ? 'Abrir link' : null;
+                        const cacheLabel =
+                            activeTab === 'egw'
+                                ? b.pdf_cached_at
+                                    ? 'PDF em cache local'
+                                    : b.source_pdf_url
+                                      ? 'PDF via CDN (cache sob demanda)'
+                                      : null
+                                : null;
                         return (
                             <div
                                 key={b.id}
@@ -402,6 +521,7 @@ export default function LibraryBooksIndex({
                                                 {categoryLabel(categories, b.category)}
                                             </span>
                                             <span>{publishedLabel}</span>
+                                            {cacheLabel ? <span>• {cacheLabel}</span> : null}
                                             {b.author?.name ? <span>• {b.author.name}</span> : null}
                                         </div>
                                         <h2 className="mt-2 text-lg font-bold text-zinc-900 dark:text-white leading-snug">{b.title}</h2>
@@ -500,7 +620,7 @@ export default function LibraryBooksIndex({
                                     onChange={(e) => setData('category', e.target.value)}
                                     className="mt-1 block h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-base text-zinc-900 shadow-sm focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900/20 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-white dark:focus:ring-white/20 sm:text-sm"
                                 >
-                                    {categories.map((c) => (
+                                    {categories.filter((c) => c.value !== 'egw' || activeTab === 'egw').map((c) => (
                                         <option key={c.value} value={c.value}>
                                             {c.label}
                                         </option>

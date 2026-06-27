@@ -120,7 +120,13 @@ export default function MobileLibrary({
             return '';
         }
         const inTab = books.filter((b) => b.category === tab);
-        if (inTab.length === 0) return 'Nenhuma publicação nesta categoria.';
+        if (inTab.length === 0) {
+            if (tab === 'egw') {
+                return 'Nenhum livro de Ellen G. White disponível ainda. Peça ao responsável para sincronizar o catálogo.';
+            }
+
+            return 'Nenhuma publicação nesta categoria.';
+        }
         if (filtered.length === 0) return 'Nenhum resultado para a pesquisa.';
         return '';
     }, [books, tab, filtered.length, librarySetupMessage, isConfiguredExternalTab, configuredUrl, isSunsetTab]);
@@ -526,6 +532,21 @@ export default function MobileLibrary({
                         })}
                     </ul>
                 )}
+
+                {tab === 'egw' && filtered.length > 0 ? (
+                    <p className="text-center text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+                        Conteúdo disponibilizado pelo{' '}
+                        <a
+                            href="https://centrowhite.org.br/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-primary-600 underline-offset-2 hover:underline dark:text-primary-400"
+                        >
+                            Centro White
+                        </a>
+                        .
+                    </p>
+                ) : null}
             </div>
 
             <Modal show={selectedDetails !== null} onClose={closeDetails} maxWidth="lg">

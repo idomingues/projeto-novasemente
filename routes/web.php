@@ -219,6 +219,9 @@ Route::get('/mobile/biblioteca/{libraryBook}/conteudo-externo', [LibraryBookExte
 Route::get('/mobile/biblioteca/{libraryBook}/download', [MobileController::class, 'bibliotecaPdfDownload'])
     ->middleware('throttle:60,1')
     ->name('mobile.biblioteca.pdf-download');
+Route::get('/mobile/biblioteca/{libraryBook}/pdf', [MobileController::class, 'bibliotecaPdfStream'])
+    ->middleware('throttle:60,1')
+    ->name('mobile.biblioteca.pdf-stream');
 Route::get('/mobile/biblioteca/{libraryBook}', [MobileController::class, 'bibliotecaShow'])->name('mobile.biblioteca.show');
 Route::middleware(['auth', 'throttle:60,1'])->group(function () {
     Route::get('/mobile/biblioteca/licao/anotacoes', [\App\Http\Controllers\LibraryLessonNoteController::class, 'index'])
@@ -795,6 +798,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/biblioteca', [LibraryBookController::class, 'store'])->name('library-books.store')->middleware('permission:library.manage');
     Route::put('/biblioteca/{libraryBook}', [LibraryBookController::class, 'update'])->name('library-books.update')->middleware('permission:library.manage');
     Route::delete('/biblioteca/{libraryBook}', [LibraryBookController::class, 'destroy'])->name('library-books.destroy')->middleware('permission:library.manage');
+    Route::post('/biblioteca/egw/sincronizar', [LibraryBookController::class, 'syncEgw'])->name('library-books.egw.sync')->middleware('permission:library.manage');
     Route::get('/caixa-promessa/versiculos', [VersiculoCaixinhaController::class, 'index'])->name('promise-box-verses.index')->middleware('permission:library.manage');
     Route::post('/caixa-promessa/versiculos', [VersiculoCaixinhaController::class, 'store'])->name('promise-box-verses.store')->middleware('permission:library.manage');
     Route::put('/caixa-promessa/versiculos/{versiculoCaixinha}', [VersiculoCaixinhaController::class, 'update'])->name('promise-box-verses.update')->middleware('permission:library.manage');

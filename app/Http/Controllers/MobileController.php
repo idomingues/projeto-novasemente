@@ -23,6 +23,7 @@ use App\Models\UserInboxNotification;
 use App\Models\Volunteer;
 use App\Services\DriveFolderCoverService;
 use App\Services\DriveFolderImagesService;
+use App\Services\LibraryEgwPdfService;
 use App\Services\LibraryExternalPageExtractService;
 use App\Services\SabbathSunsetService;
 use App\Services\ScheduleAssignmentPresenter;
@@ -955,6 +956,7 @@ class MobileController extends Controller
                 'categories' => [
                     ['value' => LibraryBook::CATEGORY_BOOKS, 'label' => 'Livros'],
                     ['value' => LibraryBook::CATEGORY_MAGAZINES, 'label' => 'Revistas'],
+                    ['value' => LibraryBook::CATEGORY_EGW, 'label' => 'Ellen G. White'],
                     ['value' => LibraryBook::CATEGORY_MEDITATION, 'label' => 'Meditação'],
                     ['value' => LibraryBook::CATEGORY_LESSON, 'label' => 'Lição'],
                     ['value' => 'sunset_meditation', 'label' => 'Meditação Por do Sol'],
@@ -964,23 +966,13 @@ class MobileController extends Controller
         }
 
         $books = LibraryBook::query()
-            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
-            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
+            ->forMobileLibrary($churchId)
             ->visibleInApp()
             ->orderByDesc('order')
             ->orderByDesc('published_at')
             ->orderBy('title')
             ->get()
-            ->map(fn (LibraryBook $b) => [
-                'id' => $b->id,
-                'title' => $b->title,
-                'subtitle' => $b->subtitle,
-                'description' => $b->description,
-                'category' => $b->category,
-                'cover_url' => $b->resolvedCoverUrl($baseUrl),
-                'pdf_url' => $b->resolvedPdfUrl($baseUrl),
-                'external_url' => $this->normalizedLibraryExternalUrl($b->external_url),
-            ])
+            ->map(fn (LibraryBook $b) => $this->mapLibraryBookForMobile($b, $baseUrl))
             ->values()
             ->all();
 
@@ -989,6 +981,7 @@ class MobileController extends Controller
             'categories' => [
                 ['value' => LibraryBook::CATEGORY_BOOKS, 'label' => 'Livros'],
                 ['value' => LibraryBook::CATEGORY_MAGAZINES, 'label' => 'Revistas'],
+                ['value' => LibraryBook::CATEGORY_EGW, 'label' => 'Ellen G. White'],
                 ['value' => LibraryBook::CATEGORY_MEDITATION, 'label' => 'Meditação'],
                 ['value' => LibraryBook::CATEGORY_LESSON, 'label' => 'Lição'],
                 ['value' => 'sunset_meditation', 'label' => 'Meditação Por do Sol'],
@@ -1002,44 +995,75 @@ class MobileController extends Controller
 
     public function bibliotecaShow(Request $request, LibraryBook $libraryBook): Response
     {
-        $churchId = $this->currentChurch()?->id;
-        if ($churchId === null || (int) $libraryBook->church_id !== (int) $churchId) {
-            abort(404);
-        }
-        if ($libraryBook->published_at !== null && $libraryBook->published_at->isFuture()) {
+        if (! $this->canAccessLibraryBook($libraryBook)) {
             abort(404);
         }
 
         $baseUrl = $request->getSchemeAndHttpHost();
 
         return Inertia::render('Mobile/LibraryShow', [
-            'book' => [
-                'id' => $libraryBook->id,
-                'title' => $libraryBook->title,
-                'subtitle' => $libraryBook->subtitle,
-                'description' => $libraryBook->description,
-                'category' => $libraryBook->category,
-                'cover_url' => $libraryBook->resolvedCoverUrl($baseUrl),
-                'pdf_url' => $libraryBook->resolvedPdfUrl($baseUrl),
-                'external_url' => $this->normalizedLibraryExternalUrl($libraryBook->external_url),
-                'published_at' => $libraryBook->published_at?->toIso8601String(),
-            ],
+            'book' => $this->mapLibraryBookForMobile($libraryBook, $baseUrl, includePublishedAt: true),
         ]);
     }
 
     /**
-     * Descarrega o PDF com Content-Disposition: attachment (evita abrir o visualizador como em «Ler»).
-     * Arquivos em disco: caminhos .pdf sob library/ (exceto library/covers/). URLs absolutas: redirecionamento (comportamento do browser).
+     * PDF inline para leitura no app (proxy/cache para catálogo EGW).
      *
-     * @return RedirectResponse|\Symfony\Component\HttpFoundation\StreamedResponse
+     * @return \Illuminate\Http\Response|\Symfony\Component\HttpFoundation\StreamedResponse
      */
-    public function bibliotecaPdfDownload(LibraryBook $libraryBook)
+    public function bibliotecaPdfStream(LibraryBook $libraryBook, LibraryEgwPdfService $pdfService)
     {
-        $churchId = $this->currentChurch()?->id;
-        if ($churchId === null || (int) $libraryBook->church_id !== (int) $churchId) {
+        if (! $this->canAccessLibraryBook($libraryBook)) {
             abort(404);
         }
-        if ($libraryBook->published_at !== null && $libraryBook->published_at->isFuture()) {
+
+        if (! $this->libraryBookHasReadablePdf($libraryBook)) {
+            abort(404);
+        }
+
+        if ($libraryBook->hasLocalPdf()) {
+            $response = $pdfService->streamLocalPdf($libraryBook, attachment: false);
+            if ($response !== null) {
+                return $response;
+            }
+        }
+
+        $response = $pdfService->streamPdf($libraryBook, attachment: false);
+        if ($response === null) {
+            abort(404);
+        }
+
+        return $response;
+    }
+
+    /**
+     * Descarrega o PDF com Content-Disposition: attachment (evita abrir o visualizador como em «Ler»).
+     *
+     * @return RedirectResponse|\Symfony\Component\HttpFoundation\StreamedResponse|\Illuminate\Http\Response
+     */
+    public function bibliotecaPdfDownload(LibraryBook $libraryBook, LibraryEgwPdfService $pdfService)
+    {
+        if (! $this->canAccessLibraryBook($libraryBook)) {
+            abort(404);
+        }
+
+        if (! $this->libraryBookHasReadablePdf($libraryBook)) {
+            abort(404);
+        }
+
+        if ($libraryBook->category === LibraryBook::CATEGORY_EGW || $libraryBook->resolvedSourcePdfUrl() !== null) {
+            if ($libraryBook->hasLocalPdf()) {
+                $response = $pdfService->streamLocalPdf($libraryBook, attachment: true);
+                if ($response !== null) {
+                    return $response;
+                }
+            }
+
+            $response = $pdfService->streamPdf($libraryBook, attachment: true);
+            if ($response !== null) {
+                return $response;
+            }
+
             abort(404);
         }
 
@@ -1067,6 +1091,72 @@ class MobileController extends Controller
         return Storage::disk('public')->download($path, $downloadName, [
             'Content-Type' => 'application/pdf',
         ]);
+    }
+
+    private function canAccessLibraryBook(LibraryBook $libraryBook): bool
+    {
+        if ($libraryBook->published_at !== null && $libraryBook->published_at->isFuture()) {
+            return false;
+        }
+
+        if ($libraryBook->isGlobalEgw()) {
+            return $this->currentChurch()?->id !== null;
+        }
+
+        $churchId = $this->currentChurch()?->id;
+
+        return $churchId !== null && (int) $libraryBook->church_id === (int) $churchId;
+    }
+
+    private function libraryBookHasReadablePdf(LibraryBook $libraryBook): bool
+    {
+        if ($libraryBook->hasLocalPdf()) {
+            return true;
+        }
+
+        if ($libraryBook->resolvedSourcePdfUrl() !== null) {
+            return true;
+        }
+
+        $rawPath = trim((string) ($libraryBook->pdf_path ?? ''));
+
+        return $rawPath !== '';
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function mapLibraryBookForMobile(LibraryBook $b, string $baseUrl, bool $includePublishedAt = false): array
+    {
+        $payload = [
+            'id' => $b->id,
+            'title' => $b->title,
+            'subtitle' => $b->subtitle,
+            'description' => $b->description,
+            'category' => $b->category,
+            'cover_url' => $b->resolvedCoverUrl($baseUrl),
+            'pdf_url' => $this->mobilePdfUrlFor($b, $baseUrl),
+            'external_url' => $this->normalizedLibraryExternalUrl($b->external_url),
+        ];
+
+        if ($includePublishedAt) {
+            $payload['published_at'] = $b->published_at?->toIso8601String();
+        }
+
+        return $payload;
+    }
+
+    private function mobilePdfUrlFor(LibraryBook $book, string $baseUrl): ?string
+    {
+        if ($book->hasLocalPdf()) {
+            return $book->resolvedPdfUrl($baseUrl);
+        }
+
+        if ($book->category === LibraryBook::CATEGORY_EGW && $book->resolvedSourcePdfUrl() !== null) {
+            return route('mobile.biblioteca.pdf-stream', ['libraryBook' => $book->id], absolute: false);
+        }
+
+        return $book->resolvedPdfUrl($baseUrl);
     }
 
     /**
