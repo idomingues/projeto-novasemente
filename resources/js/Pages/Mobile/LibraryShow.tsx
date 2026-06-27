@@ -129,18 +129,6 @@ export default function MobileLibraryShow({ book }: Props) {
                         Voltar à biblioteca
                     </Link>
 
-                    <header className="space-y-2">
-                        <p className="text-sm text-zinc-500 dark:text-zinc-400">{formatDate(book.published_at)}</p>
-                        <h1 className="text-2xl font-bold leading-tight tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
-                            {book.title}
-                        </h1>
-                        {book.subtitle ? (
-                            <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                                {book.subtitle}
-                            </p>
-                        ) : null}
-                    </header>
-
                     <MobilePdfReader url={pdf} title={book.title} />
 
                     <div className="flex justify-center">

@@ -99,18 +99,6 @@ export default function MobileNewsShow({ post, config }: Props) {
                         {`Voltar às ${listLabel}`}
                     </Link>
 
-                    <header className="space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                                {typeLabel(post.content_type)}
-                            </span>
-                            <p className="text-sm text-zinc-500 dark:text-zinc-400">{formatDate(post.published_at)}</p>
-                        </div>
-                        <h1 className="text-2xl font-bold leading-tight tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
-                            {post.title}
-                        </h1>
-                    </header>
-
                     <MobilePdfReader url={pdfUrl} title={post.title} />
                 </div>
             </MobileLayout>
