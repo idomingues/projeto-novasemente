@@ -6,6 +6,7 @@ use App\Http\Support\ListModalRedirect;
 use App\Models\Church;
 use App\Models\Musica;
 use App\Models\News;
+use App\Services\PublicationBroadcastNotifier;
 use App\Support\InstagramUrl;
 use App\Support\SearchTerm;
 use App\Support\StorageUrl;
@@ -18,6 +19,10 @@ use Inertia\Response;
 
 class NewsController extends Controller
 {
+    public function __construct(
+        private readonly PublicationBroadcastNotifier $publicationBroadcast,
+    ) {}
+
     private function currentChurchId(): ?int
     {
         return Church::resolveWorkingId(request());
@@ -319,6 +324,8 @@ class NewsController extends Controller
             'published_at' => $publishedAt,
             'created_by' => $request->user()?->id,
         ]);
+
+        $this->publicationBroadcast->notifyNews($news, $request->user()?->id);
 
         return ListModalRedirect::toIndexEdit('news.index', $news, 'Notícia criada com sucesso.');
     }

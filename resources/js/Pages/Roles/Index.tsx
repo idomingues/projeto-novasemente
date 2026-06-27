@@ -61,7 +61,7 @@ function groupTitle(group: string): string {
 
 function permissionLineLabel(perm: string): string {
     const custom: Record<string, string> = {
-        'music.manage': 'Gerenciar (acervo, músicas e playlists)',
+        'music.manage': 'Gerenciar (séries, músicas e playlists)',
         'photos.manage': 'Gerenciar (álbuns de fotos)',
         'library.manage': 'Gerenciar biblioteca (PDFs e capas no app)',
         'rooms.view': 'Ver salas (lista e cadastro no menu Salas)',

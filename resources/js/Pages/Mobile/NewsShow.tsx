@@ -90,16 +90,33 @@ export default function MobileNewsShow({ post, config }: Props) {
         return (
             <MobileLayout>
                 <Head title={post.title} />
-                <div className="space-y-4">
+                <div className="mx-auto w-full min-w-0 max-w-lg space-y-3">
                     <Link
                         href={route(listRoute)}
                         className="inline-flex items-center gap-2 text-sm font-medium text-primary-600 hover:underline dark:text-primary-400"
                     >
-                        <ArrowLeftIcon className="h-4 w-4" aria-hidden />
+                        <ArrowLeftIcon className="h-4 w-4 shrink-0" aria-hidden />
                         {`Voltar às ${listLabel}`}
                     </Link>
 
-                    <MobilePdfReader url={pdfUrl} title={post.title} />
+                    <article className="min-w-0 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                        <header className="border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
+                            <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                Documento PDF
+                            </span>
+                            <h1 className="mt-1 text-lg font-bold leading-snug text-zinc-900 dark:text-white">
+                                {post.title}
+                            </h1>
+                            {post.excerpt?.trim() ? (
+                                <p className="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+                                    {post.excerpt}
+                                </p>
+                            ) : null}
+                        </header>
+                        <div className="min-w-0 px-2 py-3 sm:px-3">
+                            <MobilePdfReader url={pdfUrl} title={post.title} />
+                        </div>
+                    </article>
                 </div>
             </MobileLayout>
         );
@@ -126,16 +143,16 @@ export default function MobileNewsShow({ post, config }: Props) {
     return (
         <MobileLayout>
             <Head title={post.title} />
-            <div className="space-y-4">
+            <div className="mx-auto w-full min-w-0 max-w-lg space-y-3">
                 <Link
                     href={route(listRoute)}
                     className="inline-flex items-center gap-2 text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline"
                 >
-                    <ArrowLeftIcon className="w-4 h-4" aria-hidden />
+                    <ArrowLeftIcon className="h-4 w-4 shrink-0" aria-hidden />
                     {`Voltar às ${listLabel}`}
                 </Link>
 
-                <article className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                <article className="min-w-0 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
                     {cover ? (
                         <NewsPostCover
                             imageSrc={imageSrc(cover, appUrl)}
@@ -178,18 +195,18 @@ export default function MobileNewsShow({ post, config }: Props) {
                         </div>
                     )}
 
-                    <div className="p-4 sm:p-6">
+                    <div className="min-w-0 p-4 sm:p-5">
                         <div className="mb-2 flex flex-wrap items-center gap-2">
-                            <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                            <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                                 {typeLabel(post.content_type)}
                             </span>
-                            <p className="text-sm text-zinc-500 dark:text-zinc-400">{formatDate(post.published_at)}</p>
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400">{formatDate(post.published_at)}</p>
                         </div>
-                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight leading-tight text-zinc-900 dark:text-white">
+                        <h1 className="text-xl font-bold leading-snug tracking-tight text-zinc-900 dark:text-white sm:text-2xl">
                             {post.title}
                         </h1>
                         {post.excerpt && (
-                            <p className="mt-3 border-l-4 border-primary-500 pl-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
+                            <p className="mt-3 border-l-4 border-primary-500 pl-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
                                 {post.excerpt}
                             </p>
                         )}
@@ -211,11 +228,11 @@ export default function MobileNewsShow({ post, config }: Props) {
                         {post.body?.trim() ? (
                             bodyLooksLikeHtml(post.body) ? (
                                 <div
-                                    className="mt-6 text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300 [&_a]:text-primary-600 dark:[&_a]:text-primary-400 [&_a]:underline [&_h2]:mb-2 [&_h2]:mt-6 [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:mb-2 [&_h3]:mt-4 [&_h3]:font-semibold [&_ol]:mb-4 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-4 [&_p:last-child]:mb-0 [&_ul]:mb-4 [&_ul]:list-disc [&_ul]:pl-5"
+                                    className="mt-5 max-w-full break-words text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 [&_*]:max-w-full [&_a]:text-primary-600 dark:[&_a]:text-primary-400 [&_a]:underline [&_h2]:mb-2 [&_h2]:mt-5 [&_h2]:text-base [&_h2]:font-semibold [&_h3]:mb-2 [&_h3]:mt-4 [&_h3]:text-sm [&_h3]:font-semibold [&_img]:h-auto [&_img]:max-w-full [&_ol]:mb-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-3 [&_p:last-child]:mb-0 [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-5"
                                     dangerouslySetInnerHTML={{ __html: post.body }}
                                 />
                             ) : (
-                                <div className="mt-6 whitespace-pre-wrap break-words text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">
+                                <div className="mt-5 whitespace-pre-wrap break-words text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
                                     {post.body}
                                 </div>
                             )

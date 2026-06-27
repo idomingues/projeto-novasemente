@@ -1293,7 +1293,7 @@ class MobileController extends Controller
         return Inertia::render('Mobile/AcervoShow', [
             'item' => [
                 'id' => $acervoItem->id,
-                'title' => $title !== '' ? $title : 'Acervo',
+                'title' => $title !== '' ? $title : 'Séries',
                 'url' => $url,
                 'embed_url' => $embedUrl,
                 'videoCount' => $acervoItem->video_count,

@@ -1,18 +1,30 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import MobileEventDetailModal from '@/Components/Events/MobileEventDetailModal';
 import MobileEventListGrid from '@/Components/Events/MobileEventListGrid';
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { CalendarDaysIcon } from '@heroicons/react/24/outline';
 import type { MobileEventListItem } from '@/utils/mobileEventDisplay';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 interface Props {
     events: MobileEventListItem[];
 }
 
 export default function MobileEvents({ events }: Props) {
+    const { url } = usePage();
     const [selected, setSelected] = useState<MobileEventListItem | null>(null);
     const closeModal = useCallback(() => setSelected(null), []);
+
+    useEffect(() => {
+        const eventId = new URL(url, window.location.origin).searchParams.get('event');
+        if (!eventId) {
+            return;
+        }
+        const match = events.find((ev) => String(ev.id) === eventId);
+        if (match) {
+            setSelected(match);
+        }
+    }, [events, url]);
 
     return (
         <MobileLayout>

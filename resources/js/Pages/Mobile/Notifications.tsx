@@ -106,7 +106,7 @@ export default function MobileNotifications({ notifications }: Props) {
                                     ? 'border-primary-200 dark:border-primary-900'
                                     : 'border-zinc-200 dark:border-zinc-800';
 
-                            if (n.kind === 'inbox' && n.href) {
+                            if (n.href) {
                                 return (
                                     <li key={n.id}>
                                         <div

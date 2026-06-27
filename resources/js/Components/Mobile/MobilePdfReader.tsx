@@ -11,14 +11,12 @@ type Props = {
     className?: string;
 };
 
-/** Escala mínima para leitura confortável no celular (páginas A4 costumam ficar pequenas só com fit-to-width). */
-const MIN_READING_SCALE = 2.85;
-
+/** Escala a página para caber na largura útil do celular (leitura vertical, sem zoom excessivo). */
 function resolveReadingScale(containerWidth: number, pageWidth: number): number {
-    const fitWidth = containerWidth / pageWidth;
-    const enlarged = (containerWidth * 3.4) / pageWidth;
+    const padding = 8;
+    const available = Math.max(containerWidth - padding, 260);
 
-    return Math.max(enlarged, MIN_READING_SCALE, fitWidth * 2.5);
+    return available / pageWidth;
 }
 
 export default function MobilePdfReader({ url, title, className = '' }: Props) {
@@ -47,7 +45,7 @@ export default function MobilePdfReader({ url, title, className = '' }: Props) {
                 }
 
                 setPageCount(pdf.numPages);
-                const containerWidth = Math.max(container.clientWidth, 320);
+                const containerWidth = Math.max(container.clientWidth, 260);
                 const pixelRatio = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
                 const fragment = document.createDocumentFragment();
 
@@ -58,17 +56,19 @@ export default function MobilePdfReader({ url, title, className = '' }: Props) {
 
                     const page = await pdf.getPage(pageNumber);
                     const baseViewport = page.getViewport({ scale: 1 });
-                    const scale = resolveReadingScale(containerWidth, baseViewport.width);
-                    const renderScale = scale * pixelRatio;
+                    const displayScale = resolveReadingScale(containerWidth, baseViewport.width);
+                    const renderScale = displayScale * pixelRatio;
                     const viewport = page.getViewport({ scale: renderScale });
+                    const displayWidth = Math.floor(viewport.width / pixelRatio);
+                    const displayHeight = Math.floor(viewport.height / pixelRatio);
 
                     const canvas = document.createElement('canvas');
                     canvas.width = Math.floor(viewport.width);
                     canvas.height = Math.floor(viewport.height);
                     canvas.className =
-                        'block max-w-none rounded-xl bg-white shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-700';
-                    canvas.style.width = `${Math.floor(viewport.width / pixelRatio)}px`;
-                    canvas.style.height = `${Math.floor(viewport.height / pixelRatio)}px`;
+                        'mx-auto block w-full max-w-full rounded-xl bg-white shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-700';
+                    canvas.style.width = `${displayWidth}px`;
+                    canvas.style.height = `${displayHeight}px`;
                     canvas.setAttribute('role', 'img');
                     canvas.setAttribute('aria-label', `${title} — página ${pageNumber} de ${pdf.numPages}`);
 
@@ -80,7 +80,7 @@ export default function MobilePdfReader({ url, title, className = '' }: Props) {
                     await page.render({ canvasContext: context, viewport }).promise;
 
                     const pageWrap = document.createElement('div');
-                    pageWrap.className = 'overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden';
+                    pageWrap.className = 'w-full min-w-0';
                     pageWrap.appendChild(canvas);
                     fragment.appendChild(pageWrap);
                 }
@@ -112,7 +112,7 @@ export default function MobilePdfReader({ url, title, className = '' }: Props) {
                     <iframe
                         title={title}
                         src={iframeUrl}
-                        className="min-h-[min(88dvh,960px)] w-full border-0"
+                        className="min-h-[min(70dvh,720px)] w-full border-0"
                     />
                 </div>
             </div>
@@ -120,18 +120,18 @@ export default function MobilePdfReader({ url, title, className = '' }: Props) {
     }
 
     return (
-        <div className={className}>
+        <div className={`min-w-0 ${className}`}>
             {status === 'loading' ? (
-                <p className="py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">Carregando leitura…</p>
+                <p className="py-6 text-center text-sm text-zinc-500 dark:text-zinc-400">Carregando documento…</p>
             ) : null}
             <div
                 ref={containerRef}
-                className={`space-y-6 ${status === 'loading' ? 'sr-only' : ''}`}
+                className={`w-full min-w-0 space-y-4 ${status === 'loading' ? 'sr-only' : ''}`}
                 aria-busy={status === 'loading'}
             />
             {status === 'ok' && pageCount > 0 ? (
-                <p className="mt-4 text-center text-xs text-zinc-500 dark:text-zinc-400">
-                    {pageCount} {pageCount === 1 ? 'página' : 'páginas'} · deslize horizontalmente se precisar
+                <p className="mt-3 text-center text-xs text-zinc-500 dark:text-zinc-400">
+                    {pageCount} {pageCount === 1 ? 'página' : 'páginas'} · role para ler
                 </p>
             ) : null}
         </div>

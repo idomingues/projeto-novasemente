@@ -30,7 +30,7 @@ return [
         ['name' => 'News', 'route' => 'news.index', 'icon' => 'newspaper'],
         ['name' => 'Saúde', 'route' => 'health.index', 'icon' => 'heart'],
         ['name' => 'Eventos', 'route' => 'events.index', 'icon' => 'calendar-days'],
-        ['name' => 'Acervo', 'route' => 'acervo.index', 'icon' => 'play-circle'],
+        ['name' => 'Séries', 'route' => 'acervo.index', 'icon' => 'play-circle'],
         ['name' => 'Música', 'route' => 'musica.index', 'icon' => 'musical-note'],
         ['name' => 'Fotos', 'route' => 'photo-albums.index', 'icon' => 'camera'],
         ['name' => 'Biblioteca', 'route' => 'library-books.index', 'icon' => 'book-open'],

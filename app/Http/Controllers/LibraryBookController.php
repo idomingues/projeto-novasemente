@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Church;
 use App\Models\LibraryBook;
+use App\Services\PublicationBroadcastNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
@@ -15,6 +16,10 @@ use Inertia\Response;
 
 class LibraryBookController extends Controller
 {
+    public function __construct(
+        private readonly PublicationBroadcastNotifier $publicationBroadcast,
+    ) {}
+
     /** Mesma lógica que o resto do painel: sessão, primeira ativa, ou primeira cadastrada (dev / igreja inativa). */
     private function currentChurchId(Request $request): ?int
     {
@@ -142,7 +147,7 @@ class LibraryBookController extends Controller
         $publishedAt = $this->publishedAtFromYearMonth($data['published_at'] ?? null);
         $maxOrder = LibraryBook::where('church_id', $churchId)->max('order') ?? 0;
 
-        LibraryBook::create([
+        $book = LibraryBook::create([
             'church_id' => $churchId,
             'title' => $data['title'],
             'subtitle' => $data['subtitle'] ?? null,
@@ -155,6 +160,8 @@ class LibraryBookController extends Controller
             'order' => $maxOrder + 1,
             'created_by' => $request->user()?->id,
         ]);
+
+        $this->publicationBroadcast->notifyLibraryBook($book, $request->user()?->id);
 
         return redirect()->route('library-books.index')->with('success', 'Publicação adicionada à biblioteca.');
     }

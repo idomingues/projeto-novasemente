@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Support\ListModalRedirect;
 use App\Models\AcervoItem;
+use App\Models\Church;
+use App\Services\PublicationBroadcastNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Inertia\Inertia;
@@ -11,6 +13,10 @@ use Inertia\Response;
 
 class AcervoController extends Controller
 {
+    public function __construct(
+        private readonly PublicationBroadcastNotifier $publicationBroadcast,
+    ) {}
+
     public function index(Request $request): Response
     {
         $items = AcervoItem::query()
@@ -41,7 +47,7 @@ class AcervoController extends Controller
 
         $normalizedUrl = $this->normalizeUrl($valid['url']);
         if (AcervoItem::where('url', $normalizedUrl)->exists()) {
-            return redirect()->back()->withErrors(['url' => 'Este link já está cadastrado no acervo.']);
+            return redirect()->back()->withErrors(['url' => 'Este link já está cadastrado nas séries.']);
         }
 
         $data = $this->fetchMetadata($valid['url']);
@@ -59,7 +65,13 @@ class AcervoController extends Controller
             'order' => $maxOrder + 1,
         ]);
 
-        return ListModalRedirect::toIndexEdit('acervo.index', $item, 'Item adicionado ao acervo.');
+        $this->publicationBroadcast->notifyAcervo(
+            $item,
+            Church::resolveWorkingId($request),
+            $request->user()?->id,
+        );
+
+        return ListModalRedirect::toIndexEdit('acervo.index', $item, 'Série adicionada.');
     }
 
     public function update(Request $request, AcervoItem $acervo)
@@ -70,7 +82,7 @@ class AcervoController extends Controller
 
         $normalizedUrl = $this->normalizeUrl($valid['url']);
         if (AcervoItem::where('url', $normalizedUrl)->where('id', '!=', $acervo->id)->exists()) {
-            return redirect()->back()->withErrors(['url' => 'Este link já está cadastrado no acervo.']);
+            return redirect()->back()->withErrors(['url' => 'Este link já está cadastrado nas séries.']);
         }
 
         $data = $this->fetchMetadata($valid['url']);

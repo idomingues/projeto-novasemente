@@ -13,6 +13,7 @@ class AppNotification extends Model
         'church_id',
         'title',
         'body',
+        'action_url',
         'created_by',
     ];
 
@@ -48,6 +49,7 @@ class AppNotification extends Model
                 'id' => $n->id,
                 'title' => $n->title,
                 'body' => $n->body,
+                'action_url' => $n->action_url,
                 'created_at' => $n->created_at->toIso8601String(),
                 'author' => $n->author ? ['name' => $n->author->name] : null,
             ]);

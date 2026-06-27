@@ -194,9 +194,9 @@ export default function VariosNotifications({
                                 );
                                 const wrapClass =
                                     'rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors block';
-                                if (n.kind === 'inbox' && n.href) {
+                                if (n.href) {
                                     const inboxId = n.inbox_notification_id;
-                                    const showMark = n.inbox_unread && typeof inboxId === 'number';
+                                    const showMark = n.kind === 'inbox' && n.inbox_unread && typeof inboxId === 'number';
                                     return (
                                         <li key={n.id}>
                                             <div className="flex overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm transition-colors hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700">

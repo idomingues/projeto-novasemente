@@ -253,7 +253,7 @@ export default function MobileAcervoIndex({ items, playlistsUrl, canManage }: Pr
                         </div>
                         <div className="flex-1 min-w-0">
                             <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
-                                Remover do acervo?
+                                Remover das séries?
                             </h3>
                             <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
                                 {deleteItem && (

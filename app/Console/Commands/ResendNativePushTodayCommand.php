@@ -53,12 +53,15 @@ class ResendNativePushTodayCommand extends Command
                 $notification->church_id !== null ? (int) $notification->church_id : null,
                 (string) $notification->title,
                 (string) $notification->body,
-                [
+                array_filter([
                     'type' => 'app_notification',
                     'id' => (string) $notification->id,
                     'title' => (string) $notification->title,
                     'body' => (string) $notification->body,
-                ],
+                    'href' => is_string($notification->action_url) && $notification->action_url !== ''
+                        ? $notification->action_url
+                        : null,
+                ]),
             );
         }
 

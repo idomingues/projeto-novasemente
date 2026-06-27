@@ -7,6 +7,7 @@ use App\Models\Church;
 use App\Models\DonationCampaign;
 use App\Models\DonationCampaignPhoto;
 use App\Models\User;
+use App\Services\PublicationBroadcastNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -14,6 +15,10 @@ use Inertia\Response;
 
 class DonationCampaignController extends Controller
 {
+    public function __construct(
+        private readonly PublicationBroadcastNotifier $publicationBroadcast,
+    ) {}
+
     private function assertCanManage(?User $user): void
     {
         if (! $user) {
@@ -104,7 +109,7 @@ class DonationCampaignController extends Controller
             $coverPath = $request->file('cover_image')->store('donations/campaign-covers', 'public');
         }
 
-        DonationCampaign::create([
+        $campaign = DonationCampaign::create([
             'church_id' => $churchId,
             'title' => $data['title'],
             'description' => $data['description'] ?? null,
@@ -115,6 +120,8 @@ class DonationCampaignController extends Controller
             'cover_image_path' => $coverPath,
             'created_by' => $request->user()?->id,
         ]);
+
+        $this->publicationBroadcast->notifyDonationCampaign($campaign, $request->user()?->id);
 
         return redirect()->route('donation-campaigns.index')->with('success', 'Campanha criada com sucesso.');
     }

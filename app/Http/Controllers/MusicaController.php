@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Support\ListModalRedirect;
 use App\Models\Church;
 use App\Models\Musica;
+use App\Services\PublicationBroadcastNotifier;
 use App\Services\YoutubePlaylistImportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,10 @@ use Inertia\Response;
 
 class MusicaController extends Controller
 {
+    public function __construct(
+        private readonly PublicationBroadcastNotifier $publicationBroadcast,
+    ) {}
+
     private function currentChurchId(): ?int
     {
         return Church::resolveWorkingId(request());
@@ -84,6 +89,8 @@ class MusicaController extends Controller
             'published_at' => $publishedAt,
             'created_by' => $request->user()?->id,
         ]);
+
+        $this->publicationBroadcast->notifyMusica($musica, $request->user()?->id);
 
         return ListModalRedirect::toIndexEdit('musica.index', $musica, 'Música adicionada com sucesso.');
     }

@@ -213,8 +213,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
                                         ) : (
                                             notifications.map((n) => {
                                                 const rawHref = n.href ?? route('varios.notifications');
-                                                const href =
-                                                    n.kind === 'inbox' ? notificationLinkHref(rawHref) : rawHref;
+                                                const href = notificationLinkHref(rawHref);
                                                 const Row = (
                                                     <>
                                                         <p className="font-medium text-zinc-900 dark:text-white text-sm line-clamp-1">

@@ -137,7 +137,7 @@ final class PageViewRouteLabels
         'pastors.weekly-schedule.update' => 'Escala semanal do pastor (atualizar)',
 
         // —— Redirecionamentos / varios ——
-        'varios.acervo' => 'Acervo (atalho web)',
+        'varios.acervo' => 'Séries (atalho web)',
         'volunteers.self-signup' => 'Auto-cadastro voluntário',
         'leaders.self-signup' => 'Auto-cadastro de líder',
 
@@ -168,7 +168,7 @@ final class PageViewRouteLabels
         'library-books.index' => 'Biblioteca (painel)',
         'promise-box-verses.index' => 'Caixa de Promessas (painel)',
         'culto.index' => 'Culto (painel)',
-        'acervo.index' => 'Acervo (painel)',
+        'acervo.index' => 'Séries (painel)',
         'settings.index' => 'Configurações',
         'settings.app-features.index' => 'Funcionalidades do app',
         'support.index' => 'Suporte APP',

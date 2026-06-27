@@ -2,8 +2,10 @@
 
 namespace App\Providers;
 
+use App\Models\AppNotification;
 use App\Models\User;
 use App\Models\UserInboxNotification;
+use App\Observers\AppNotificationObserver;
 use App\Observers\UserInboxNotificationObserver;
 use App\Support\BrandMail;
 use Illuminate\Auth\Notifications\ResetPassword;
@@ -66,6 +68,7 @@ class AppServiceProvider extends ServiceProvider
         $this->ensureSqliteDatabaseFileExists();
 
         UserInboxNotification::observe(UserInboxNotificationObserver::class);
+        AppNotification::observe(AppNotificationObserver::class);
 
         RedirectIfAuthenticated::redirectUsing(function (Request $request): string {
             $user = $request->user();

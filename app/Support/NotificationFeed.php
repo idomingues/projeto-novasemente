@@ -47,7 +47,9 @@ class NotificationFeed
                 'body' => $n['body'],
                 'created_at' => $n['created_at'],
                 'author' => $n['author'] ?? null,
-                'href' => route('varios.notifications'),
+                'href' => is_string($n['action_url'] ?? null) && ($n['action_url'] ?? '') !== ''
+                    ? self::inertiaHrefFromStoredUrl($request, (string) $n['action_url'])
+                    : route('varios.notifications'),
                 'kind' => 'app',
                 'app_notification_id' => (int) $n['id'],
                 'can_remove' => $user !== null,

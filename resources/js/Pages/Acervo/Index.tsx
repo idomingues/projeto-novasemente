@@ -154,9 +154,9 @@ export default function AcervoIndex({ items, canManage }: Props) {
                             type="search"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Buscar no acervo..."
+                            placeholder="Buscar em séries..."
                             className="w-full max-w-md rounded-xl border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 py-2.5 pl-10 pr-10 text-zinc-900 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 dark:focus:border-primary-400 dark:focus:ring-primary-400 transition-colors"
-                            aria-label="Buscar no acervo"
+                            aria-label="Buscar em séries"
                         />
                         {search && (
                             <button
@@ -253,7 +253,7 @@ export default function AcervoIndex({ items, canManage }: Props) {
                     <div className="rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-700 p-12 text-center">
                         <PlayCircleIcon className="w-16 h-16 text-zinc-400 mx-auto mb-4" />
                         <p className="text-zinc-600 dark:text-zinc-400 mb-4">
-                            Nenhum item no acervo. Adicione links de playlists do YouTube.
+                            Nenhuma série cadastrada. Adicione links de playlists do YouTube.
                         </p>
                         {canManage && (
                             <PrimaryButton
@@ -277,7 +277,7 @@ export default function AcervoIndex({ items, canManage }: Props) {
                         </div>
                         <div className="flex-1 min-w-0">
                             <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
-                                Remover do acervo?
+                                Remover das séries?
                             </h3>
                             <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
                                 {deleteItem && (

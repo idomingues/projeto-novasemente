@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Church;
 use App\Models\Event;
+use App\Services\PublicationBroadcastNotifier;
 use App\Support\EventFormSupport;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -11,6 +12,10 @@ use Inertia\Response;
 
 class EventController extends Controller
 {
+    public function __construct(
+        private readonly PublicationBroadcastNotifier $publicationBroadcast,
+    ) {}
+
     private function currentChurchId(): ?int
     {
         return Church::resolveWorkingId(request());
@@ -93,10 +98,12 @@ class EventController extends Controller
         if ($churchId === null) {
             return redirect()->route('events.index')->with('error', 'Nenhuma igreja ativa. Selecione uma igreja para trabalhar.');
         }
-        Event::create(array_merge($data, [
+        $event = Event::create(array_merge($data, [
             'church_id' => $churchId,
             'created_by' => $request->user()?->id,
         ]));
+
+        $this->publicationBroadcast->notifyEvent($event, $request->user()?->id);
 
         return redirect()->route('events.index')->with('success', 'Evento criado com sucesso.');
     }

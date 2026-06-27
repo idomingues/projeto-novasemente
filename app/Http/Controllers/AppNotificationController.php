@@ -6,17 +6,12 @@ use App\Models\AppNotification;
 use App\Models\Church;
 use App\Models\User;
 use App\Models\UserInboxNotification;
-use App\Services\NativePushNotifier;
 use App\Support\UserMessagingPreferences;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class AppNotificationController extends Controller
 {
-    public function __construct(
-        private readonly NativePushNotifier $nativePush,
-    ) {}
-
     private function currentChurchId(): ?int
     {
         return Church::resolveWorkingId(request());
@@ -50,18 +45,6 @@ class AppNotificationController extends Controller
             'body' => $data['body'],
             'created_by' => $request->user()?->id,
         ]);
-
-        $this->nativePush->notifyChurchBroadcast(
-            $churchId,
-            (string) $notification->title,
-            (string) $notification->body,
-            [
-                'type' => 'app_notification',
-                'id' => (string) $notification->id,
-                'title' => (string) $notification->title,
-                'body' => (string) $notification->body,
-            ],
-        );
 
         return redirect()->back()->with('success', 'Notificação enviada para todos os usuários do app.');
     }

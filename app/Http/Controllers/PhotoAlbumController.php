@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Church;
 use App\Models\PhotoAlbum;
 use App\Services\DriveFolderCoverService;
+use App\Services\PublicationBroadcastNotifier;
 use App\Support\StorageUrl;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -12,6 +13,10 @@ use Inertia\Response;
 
 class PhotoAlbumController extends Controller
 {
+    public function __construct(
+        private readonly PublicationBroadcastNotifier $publicationBroadcast,
+    ) {}
+
     private function currentChurchId(): ?int
     {
         return Church::resolveWorkingId(request());
@@ -95,7 +100,7 @@ class PhotoAlbumController extends Controller
             $coverUrl = StorageUrl::publicMediaUrl($path);
         }
 
-        PhotoAlbum::create([
+        $album = PhotoAlbum::create([
             'church_id' => $churchId,
             'title' => $data['title'],
             'photographer_name' => $data['photographer_name'] ?? null,
@@ -104,6 +109,8 @@ class PhotoAlbumController extends Controller
             'published_at' => $publishedAt,
             'created_by' => $request->user()?->id,
         ]);
+
+        $this->publicationBroadcast->notifyPhotoAlbum($album, $request->user()?->id);
 
         return redirect()->route('photo-albums.index')->with('success', 'Álbum publicado com sucesso.');
     }
