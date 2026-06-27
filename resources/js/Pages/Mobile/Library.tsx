@@ -6,6 +6,11 @@ import {
     ArrowTopRightOnSquareIcon,
     MagnifyingGlassIcon,
     XMarkIcon,
+    NewspaperIcon,
+    SparklesIcon,
+    MoonIcon,
+    ClipboardDocumentListIcon,
+    SunIcon,
 } from '@heroicons/react/24/outline';
 import Modal from '@/Components/Modal';
 import LibraryLessonDayNotes from '@/Components/Mobile/LibraryLessonDayNotes';
@@ -61,6 +66,47 @@ function GratisBadge({ className = '' }: { className?: string }) {
             Grátis
         </span>
     );
+}
+
+type CategoryIcon = typeof BookOpenIcon;
+
+interface CategoryPresentation {
+    icon: CategoryIcon;
+    line1: string;
+    line2?: string;
+}
+
+function libraryCategoryPresentation(value: string, label: string): CategoryPresentation {
+    switch (value) {
+        case 'books':
+            return { icon: BookOpenIcon, line1: 'Livros' };
+        case 'magazines':
+            return { icon: NewspaperIcon, line1: 'Revistas' };
+        case 'egw':
+            return { icon: SparklesIcon, line1: 'Ellen G.', line2: 'White' };
+        case 'meditation':
+            return { icon: MoonIcon, line1: 'Meditação' };
+        case 'lesson':
+            return { icon: ClipboardDocumentListIcon, line1: 'Lição' };
+        case 'sunset_meditation':
+            return { icon: SunIcon, line1: 'Meditação', line2: 'Por do Sol' };
+        default:
+            return { icon: BookOpenIcon, line1: label };
+    }
+}
+
+function compactDayLabel(label: string): string {
+    const short: Record<string, string> = {
+        Sábado: 'Sáb',
+        Domingo: 'Dom',
+        Segunda: 'Seg',
+        Terça: 'Ter',
+        Quarta: 'Qua',
+        Quinta: 'Qui',
+        Sexta: 'Sex',
+    };
+
+    return short[label] ?? label;
 }
 
 export default function MobileLibrary({
@@ -254,31 +300,49 @@ export default function MobileLibrary({
                     </div>
                 ) : null}
 
-                <div
-                    className="-mx-1 flex gap-1 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] px-1 [&::-webkit-scrollbar]:hidden"
+                <nav
                     role="tablist"
                     aria-label="Categorias"
+                    className="grid grid-cols-3 gap-2 sm:grid-cols-6"
                 >
                     {categories.map((c) => {
                         const active = tab === c.value;
+                        const meta = libraryCategoryPresentation(c.value, c.label);
+                        const Icon = meta.icon;
+
                         return (
                             <button
                                 key={c.value}
                                 type="button"
                                 role="tab"
                                 aria-selected={active}
+                                aria-label={c.label}
                                 onClick={() => setTab(c.value)}
-                                className={`shrink-0 rounded-lg px-3.5 py-2 text-sm font-medium transition ${
+                                className={`flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-3 text-center transition active:scale-[0.98] ${
                                     active
-                                        ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900'
-                                        : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100'
+                                        ? 'bg-zinc-900 text-white shadow-md ring-2 ring-zinc-900/15 dark:bg-white dark:text-zinc-900 dark:ring-white/20'
+                                        : 'border border-zinc-200/90 bg-white text-zinc-600 shadow-sm hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-800'
                                 }`}
                             >
-                                {c.label}
+                                <span
+                                    className={`inline-flex h-9 w-9 items-center justify-center rounded-xl ${
+                                        active
+                                            ? 'bg-white/15 text-white dark:bg-zinc-900/10 dark:text-zinc-900'
+                                            : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'
+                                    }`}
+                                >
+                                    <Icon className="h-5 w-5 shrink-0" aria-hidden />
+                                </span>
+                                <span className="flex min-w-0 flex-col leading-tight">
+                                    <span className="text-[11px] font-semibold tracking-tight">{meta.line1}</span>
+                                    {meta.line2 ? (
+                                        <span className="text-[10px] font-medium opacity-90">{meta.line2}</span>
+                                    ) : null}
+                                </span>
                             </button>
                         );
                     })}
-                </div>
+                </nav>
 
                 {isConfiguredExternalTab ? (
                     <div className="rounded-2xl border border-zinc-200/90 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:p-5">
@@ -306,14 +370,20 @@ export default function MobileLibrary({
                         ) : readerStatus === 'ok' ? (
                             <div className="space-y-4">
                                 {readerSegments && readerSegments.length > 1 ? (
-                                    <div
-                                        className="-mx-1 flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] px-1 [&::-webkit-scrollbar]:hidden"
+                                    <nav
+                                        className={
+                                            isSunsetTab
+                                                ? 'flex flex-wrap gap-1.5'
+                                                : 'grid grid-cols-4 gap-1.5 sm:grid-cols-7'
+                                        }
                                         role="tablist"
                                         aria-label={isSunsetTab ? 'Meditações semanais' : 'Dias da semana'}
                                     >
                                         {segmentTabs.map(({ segment, index }) => {
                                             const active = dayIdx === index;
                                             const hasNote = isLessonTab && lessonNoteSlugs.includes(segment.slug);
+                                            const tabLabel = isSunsetTab ? segment.label : compactDayLabel(segment.label);
+
                                             return (
                                                 <button
                                                     key={segment.slug}
@@ -321,30 +391,29 @@ export default function MobileLibrary({
                                                     role="tab"
                                                     aria-selected={active}
                                                     aria-current={active ? 'true' : undefined}
+                                                    aria-label={segment.label}
                                                     onClick={() => setDayIdx(index)}
-                                                    className={`relative shrink-0 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide transition sm:text-sm ${
+                                                    className={`relative cursor-pointer rounded-xl px-2 py-2 text-center text-[11px] font-semibold leading-tight transition sm:text-xs ${
+                                                        isSunsetTab ? 'min-w-[3.25rem]' : ''
+                                                    } ${
                                                         active
                                                             ? isSunsetTab
                                                                 ? 'bg-zinc-900 text-white shadow-md ring-2 ring-amber-400/80 dark:bg-white dark:text-zinc-900 dark:ring-amber-500/70'
-                                                                : 'border-b-2 border-primary-600 text-primary-700 dark:border-primary-400 dark:text-primary-300'
-                                                            : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100'
+                                                                : 'bg-primary-600 text-white shadow-sm ring-2 ring-primary-600/25 dark:bg-primary-500 dark:ring-primary-500/30'
+                                                            : 'border border-zinc-200/90 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-800'
                                                     }`}
                                                 >
-                                                    {segment.label}
+                                                    {tabLabel}
                                                     {hasNote ? (
                                                         <span
-                                                            className={`absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-teal-500 ${
-                                                                active && !isSunsetTab
-                                                                    ? 'ring-2 ring-white dark:ring-zinc-900'
-                                                                    : 'ring-2 ring-white dark:ring-zinc-900'
-                                                            }`}
+                                                            className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-teal-500 ring-2 ring-white dark:ring-zinc-900"
                                                             aria-label="Com anotação"
                                                         />
                                                     ) : null}
                                                 </button>
                                             );
                                         })}
-                                    </div>
+                                    </nav>
                                 ) : null}
                                 {isLessonTab && readerSourceUrl ? (
                                     <LibraryLessonDayNotes
