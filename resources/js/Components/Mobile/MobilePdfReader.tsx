@@ -11,16 +11,22 @@ type Props = {
     className?: string;
 };
 
-/** Escala a página para caber na largura útil do celular (leitura vertical, sem zoom excessivo). */
-function resolveReadingScale(containerWidth: number, pageWidth: number): number {
-    const padding = 8;
-    const available = Math.max(containerWidth - padding, 260);
+/** Largura mínima de exibição da página (px) — evita encolher demais o texto no celular. */
+const MIN_READABLE_PAGE_WIDTH = 540;
 
-    return available / pageWidth;
+/** Escala a página priorizando legibilidade; páginas mais largas rolam na horizontal. */
+function resolveReadingScale(containerWidth: number, pageWidth: number): number {
+    const padding = 16;
+    const available = Math.max(containerWidth - padding, 280);
+    const fitScale = available / pageWidth;
+    const readableScale = Math.max(available, MIN_READABLE_PAGE_WIDTH) / pageWidth;
+
+    return Math.max(fitScale, readableScale);
 }
 
 export default function MobilePdfReader({ url, title, className = '' }: Props) {
-    const containerRef = useRef<HTMLDivElement>(null);
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const pagesRef = useRef<HTMLDivElement>(null);
     const [status, setStatus] = useState<'loading' | 'ok' | 'error'>('loading');
     const [pageCount, setPageCount] = useState(0);
     const pdfViewerFragment = usePdfViewerFragment();
@@ -28,14 +34,15 @@ export default function MobilePdfReader({ url, title, className = '' }: Props) {
 
     useEffect(() => {
         let cancelled = false;
-        const container = containerRef.current;
-        if (!container) {
+        const scrollEl = scrollRef.current;
+        const pagesEl = pagesRef.current;
+        if (!scrollEl || !pagesEl) {
             return undefined;
         }
 
         setStatus('loading');
         setPageCount(0);
-        container.replaceChildren();
+        pagesEl.replaceChildren();
 
         const renderPdf = async () => {
             try {
@@ -45,7 +52,7 @@ export default function MobilePdfReader({ url, title, className = '' }: Props) {
                 }
 
                 setPageCount(pdf.numPages);
-                const containerWidth = Math.max(container.clientWidth, 260);
+                const containerWidth = Math.max(scrollEl.clientWidth, 260);
                 const pixelRatio = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
                 const fragment = document.createDocumentFragment();
 
@@ -66,7 +73,7 @@ export default function MobilePdfReader({ url, title, className = '' }: Props) {
                     canvas.width = Math.floor(viewport.width);
                     canvas.height = Math.floor(viewport.height);
                     canvas.className =
-                        'mx-auto block w-full max-w-full rounded-xl bg-white shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-700';
+                        'mx-auto block max-w-none rounded-xl bg-white shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-700';
                     canvas.style.width = `${displayWidth}px`;
                     canvas.style.height = `${displayHeight}px`;
                     canvas.setAttribute('role', 'img');
@@ -80,7 +87,7 @@ export default function MobilePdfReader({ url, title, className = '' }: Props) {
                     await page.render({ canvasContext: context, viewport }).promise;
 
                     const pageWrap = document.createElement('div');
-                    pageWrap.className = 'w-full min-w-0';
+                    pageWrap.className = 'flex min-w-0 justify-center';
                     pageWrap.appendChild(canvas);
                     fragment.appendChild(pageWrap);
                 }
@@ -89,7 +96,7 @@ export default function MobilePdfReader({ url, title, className = '' }: Props) {
                     return;
                 }
 
-                container.appendChild(fragment);
+                pagesEl.appendChild(fragment);
                 setStatus('ok');
             } catch {
                 if (!cancelled) {
@@ -121,14 +128,19 @@ export default function MobilePdfReader({ url, title, className = '' }: Props) {
 
     return (
         <div className={`min-w-0 ${className}`}>
-            {status === 'loading' ? (
-                <p className="py-6 text-center text-sm text-zinc-500 dark:text-zinc-400">Carregando documento…</p>
-            ) : null}
             <div
-                ref={containerRef}
-                className={`w-full min-w-0 space-y-4 ${status === 'loading' ? 'sr-only' : ''}`}
+                ref={scrollRef}
+                className="overflow-x-auto overscroll-x-contain"
                 aria-busy={status === 'loading'}
-            />
+            >
+                {status === 'loading' ? (
+                    <p className="py-6 text-center text-sm text-zinc-500 dark:text-zinc-400">Carregando documento…</p>
+                ) : null}
+                <div
+                    ref={pagesRef}
+                    className={`inline-block min-w-full space-y-4 ${status === 'loading' ? 'sr-only' : ''}`}
+                />
+            </div>
             {status === 'ok' && pageCount > 0 ? (
                 <p className="mt-3 text-center text-xs text-zinc-500 dark:text-zinc-400">
                     {pageCount} {pageCount === 1 ? 'página' : 'páginas'} · role para ler

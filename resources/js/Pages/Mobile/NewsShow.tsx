@@ -90,7 +90,7 @@ export default function MobileNewsShow({ post, config }: Props) {
         return (
             <MobileLayout>
                 <Head title={post.title} />
-                <div className="mx-auto w-full min-w-0 max-w-lg space-y-3">
+                <div className="mx-auto w-full min-w-0 max-w-lg space-y-4">
                     <Link
                         href={route(listRoute)}
                         className="inline-flex items-center gap-2 text-sm font-medium text-primary-600 hover:underline dark:text-primary-400"
@@ -99,24 +99,7 @@ export default function MobileNewsShow({ post, config }: Props) {
                         {`Voltar às ${listLabel}`}
                     </Link>
 
-                    <article className="min-w-0 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-                        <header className="border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
-                            <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                                Documento PDF
-                            </span>
-                            <h1 className="mt-1 text-lg font-bold leading-snug text-zinc-900 dark:text-white">
-                                {post.title}
-                            </h1>
-                            {post.excerpt?.trim() ? (
-                                <p className="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
-                                    {post.excerpt}
-                                </p>
-                            ) : null}
-                        </header>
-                        <div className="min-w-0 px-2 py-3 sm:px-3">
-                            <MobilePdfReader url={pdfUrl} title={post.title} />
-                        </div>
-                    </article>
+                    <MobilePdfReader url={pdfUrl} title={post.title} />
                 </div>
             </MobileLayout>
         );
