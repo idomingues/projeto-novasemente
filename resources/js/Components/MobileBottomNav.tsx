@@ -96,6 +96,8 @@ const navItems = [
             'mobile.events',
             'mobile.health',
             'mobile.health.show',
+            'mobile.revista-adventista',
+            'mobile.revista-adventista.show',
             'mobile.mission',
             'mobile.mission.home',
             'mobile.mission.events',

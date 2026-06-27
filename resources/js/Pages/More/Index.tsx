@@ -14,6 +14,7 @@ import {
     FilmIcon,
     HandRaisedIcon,
     LifebuoyIcon,
+    NewspaperIcon,
 } from '@heroicons/react/24/outline';
 import { PHOTOS_DRIVE_FOLDER_URL } from '@/constants/externalLinks';
 import { useAppFeatures } from '@/hooks/useAppFeatures';
@@ -45,6 +46,13 @@ const items: MoreMenuItem[] = [
         icon: PhotoIcon,
     },
     { name: 'Biblioteca', description: 'Livros e PDFs no app', route: 'mobile.biblioteca', featureKey: 'library', icon: BookOpenIcon },
+    {
+        name: 'Revista Adventista',
+        description: 'Artigos e colunas da Revista Adventista',
+        route: 'mobile.revista-adventista',
+        featureKey: 'revista_adventista',
+        icon: NewspaperIcon,
+    },
     { name: 'Localização', description: 'Endereço e mapa da igreja', route: 'mobile.location', featureKey: 'location', icon: MapPinIcon },
     { name: 'Nossos pastores', description: 'Conheça a equipe pastoral', route: 'mobile.pastors', featureKey: 'pastors', icon: UserCircleIcon },
     { name: 'Quem somos', description: 'História e significado do nome', route: 'mobile.quem-somos', featureKey: 'quem_somos', icon: UserGroupIcon },
@@ -114,7 +122,7 @@ export default function MoreIndex(_: Props) {
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {visibleItems.map((item) => {
                         const { name, description, icon: Icon } = item;
-                        const className = 'flex items-center gap-4 p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors';
+                        const className = 'flex cursor-pointer items-center gap-4 p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors';
                         const content = (
                             <>
                                 <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-zinc-100 dark:bg-zinc-800">

@@ -140,6 +140,11 @@ return [
             'group' => 'menu_mais',
             'routes' => ['mobile.biblioteca', 'mobile.biblioteca.*'],
         ],
+        'revista_adventista' => [
+            'label' => 'Revista Adventista',
+            'group' => 'menu_mais',
+            'routes' => ['mobile.revista-adventista', 'mobile.revista-adventista.*'],
+        ],
         'location' => [
             'label' => 'Localização',
             'group' => 'menu_mais',

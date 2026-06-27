@@ -45,6 +45,8 @@ final class PageViewRouteLabels
         'mobile.news.show' => 'Notícias — artigo',
         'mobile.health' => 'Saúde',
         'mobile.health.show' => 'Saúde — artigo',
+        'mobile.revista-adventista' => 'Revista Adventista',
+        'mobile.revista-adventista.show' => 'Revista Adventista — artigo',
         'mobile.mission' => 'Missão',
         'mobile.mission.home' => 'Missão Tailândia & Mianmar',
         'mobile.mission.trip-registration.create' => 'Inscrição — Missão Tailândia & Mianmar',
@@ -101,6 +103,7 @@ final class PageViewRouteLabels
         'more.index' => 'Mais (web /mais)',
         'musica.index' => 'Música (painel)',
         'health.index' => 'Saúde (painel)',
+        'revista-adventista.index' => 'Revista Adventista (painel)',
 
         // —— Ligações frequentes a partir de Mais / áreas relacionadas ——
         'varios.schedule' => 'Escala (web)',

@@ -42,7 +42,7 @@ export default function MobileLayout({
                         className={`min-h-0 flex-1 overscroll-y-contain [scrollbar-gutter:stable] sm:px-6 md:px-8 ${
                             modalOverlayOpen
                                 ? 'overflow-hidden p-0'
-                                : 'overflow-y-auto px-4 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] pt-[calc(5rem+env(safe-area-inset-top,0px))] md:pt-[calc(6rem+env(safe-area-inset-top,0px))]'
+                                : 'overflow-y-auto overflow-x-hidden px-4 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] pt-[calc(5rem+env(safe-area-inset-top,0px))] md:pt-[calc(6rem+env(safe-area-inset-top,0px))]'
                         }`}
                     >
                         <div className="max-w-7xl xl:max-w-[90rem] mx-auto w-full min-w-0 pt-6 pb-2">
@@ -64,7 +64,7 @@ export default function MobileLayout({
             <GuestAppBar />
 
             <main
-                className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] pt-[calc(3.5rem+env(safe-area-inset-top,0px)+1.5rem)] [scrollbar-gutter:stable] md:px-8 md:pt-[calc(4rem+env(safe-area-inset-top,0px)+1.5rem)] lg:pt-24"
+                className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] pt-[calc(3.5rem+env(safe-area-inset-top,0px)+1.5rem)] [scrollbar-gutter:stable] md:px-8 md:pt-[calc(4rem+env(safe-area-inset-top,0px)+1.5rem)] lg:pt-24"
             >
                 <div className="max-w-7xl lg:max-w-[90rem] mx-auto w-full pb-2">
                     {children}

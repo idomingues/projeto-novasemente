@@ -38,6 +38,7 @@ use App\Http\Controllers\MobileSupportController;
 use App\Http\Controllers\MusicaController;
 use App\Http\Controllers\MyMinistryVolunteersController;
 use App\Http\Controllers\NewsController;
+use App\Http\Controllers\RevistaAdventistaArticleController;
 use App\Http\Controllers\OperationsDashboardController;
 use App\Http\Controllers\PastoralAgendaController;
 use App\Http\Controllers\PastorController;
@@ -121,6 +122,9 @@ Route::get('/mobile/news', [MobileController::class, 'news'])->name('mobile.news
 Route::get('/mobile/news/{news:slug}', [MobileController::class, 'newsShow'])->name('mobile.news.show');
 Route::get('/mobile/saude', [MobileController::class, 'health'])->name('mobile.health');
 Route::get('/mobile/saude/{health:slug}', [MobileController::class, 'healthShow'])->name('mobile.health.show');
+Route::get('/mobile/revista-adventista', [MobileController::class, 'revistaAdventista'])->name('mobile.revista-adventista');
+Route::get('/mobile/revista-adventista/{revistaAdventistaArticle:slug}', [MobileController::class, 'revistaAdventistaShow'])
+    ->name('mobile.revista-adventista.show');
 Route::get('/mobile/events', [MobileController::class, 'events'])->name('mobile.events');
 Route::get('/mobile/schedule', [MobileController::class, 'schedule'])->name('mobile.schedule');
 Route::get('/mobile/schedule/full', [MobileController::class, 'scheduleFull'])->name('mobile.schedule.full');
@@ -579,6 +583,13 @@ Route::middleware('auth')->group(function () {
     Route::put('/saude/{health}', [HealthController::class, 'update'])->name('health.update')->middleware('permission:news.manage');
     Route::patch('/saude/{health}/active', [HealthController::class, 'setActive'])->name('health.active')->middleware('permission:news.manage');
     Route::delete('/saude/{health}', [HealthController::class, 'destroy'])->name('health.destroy')->middleware('permission:news.manage');
+    Route::get('/revista-adventista', [RevistaAdventistaArticleController::class, 'index'])->name('revista-adventista.index');
+    Route::patch('/revista-adventista/{revistaAdventistaArticle}/active', [RevistaAdventistaArticleController::class, 'setActive'])
+        ->name('revista-adventista.active')
+        ->middleware('permission:news.manage');
+    Route::post('/revista-adventista/sincronizar', [RevistaAdventistaArticleController::class, 'sync'])
+        ->name('revista-adventista.sync')
+        ->middleware('permission:news.manage');
 
     // Missão — rotas literais de conteúdo antes do wildcard {missionVolunteer}
     Route::get('/missao/gestao', [MissionVolunteerController::class, 'index'])->name('mission.index')->middleware('permission:mission.view|mission.manage');

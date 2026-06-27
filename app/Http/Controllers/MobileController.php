@@ -16,6 +16,7 @@ use App\Models\News;
 use App\Models\Pastor;
 use App\Models\PastoralAppointment;
 use App\Models\PhotoAlbum;
+use App\Models\RevistaAdventistaArticle;
 use App\Models\ScheduleCheckinDate;
 use App\Models\User;
 use App\Models\UserDismissedAppNotification;
@@ -602,6 +603,84 @@ class MobileController extends Controller
                 'cover_url' => $health->resolvedCoverUrl($baseUrl),
                 'published_at' => $health->published_at?->toIso8601String(),
                 'author' => $author,
+            ],
+        ]);
+    }
+
+    public function revistaAdventista(Request $request): Response
+    {
+        $section = trim((string) $request->query('section', ''));
+        $validSections = array_keys(RevistaAdventistaArticle::sectionLabels());
+        if ($section !== '' && ! in_array($section, $validSections, true)) {
+            $section = '';
+        }
+
+        $search = trim((string) $request->query('q', ''));
+        if (mb_strlen($search) > 0 && mb_strlen($search) < 2) {
+            $search = '';
+        }
+
+        $mapArticle = fn (RevistaAdventistaArticle $article): array => [
+            'id' => $article->id,
+            'title' => $article->title,
+            'slug' => $article->slug,
+            'excerpt' => $article->excerpt,
+            'section' => $article->section,
+            'section_label' => $article->sectionLabel(),
+            'author_name' => $article->author_name,
+            'image_url' => $article->image_url,
+            'cover_url' => $article->image_url,
+            'published_at' => $article->published_at?->toIso8601String(),
+        ];
+
+        $articles = RevistaAdventistaArticle::query()
+            ->when($section !== '', fn ($q) => $q->where('section', $section))
+            ->when($search !== '', fn ($q) => $q->search($search))
+            ->where('is_active', true)
+            ->whereNotNull('published_at')
+            ->where('published_at', '<=', now())
+            ->orderByDesc('published_at')
+            ->paginate(15)
+            ->withQueryString();
+
+        $articles->getCollection()->transform($mapArticle);
+
+        return Inertia::render('Mobile/RevistaAdventista', [
+            'articles' => $articles,
+            'sections' => collect(RevistaAdventistaArticle::sectionLabels())
+                ->map(fn (string $label, string $key) => ['value' => $key, 'label' => $label])
+                ->values()
+                ->all(),
+            'filters' => [
+                'section' => $section !== '' ? $section : null,
+                'q' => $search !== '' ? $search : null,
+            ],
+        ]);
+    }
+
+    public function revistaAdventistaShow(RevistaAdventistaArticle $revistaAdventistaArticle): Response
+    {
+        if (! $revistaAdventistaArticle->is_active) {
+            abort(404);
+        }
+        if ($revistaAdventistaArticle->published_at === null || $revistaAdventistaArticle->published_at->isFuture()) {
+            abort(404);
+        }
+
+        return Inertia::render('Mobile/RevistaAdventistaShow', [
+            'article' => [
+                'id' => $revistaAdventistaArticle->id,
+                'title' => $revistaAdventistaArticle->title,
+                'slug' => $revistaAdventistaArticle->slug,
+                'excerpt' => $revistaAdventistaArticle->excerpt,
+                'body' => $revistaAdventistaArticle->body,
+                'section' => $revistaAdventistaArticle->section,
+                'section_label' => $revistaAdventistaArticle->sectionLabel(),
+                'author_name' => $revistaAdventistaArticle->author_name,
+                'source_url' => $revistaAdventistaArticle->source_url,
+                'image_url' => $revistaAdventistaArticle->image_url,
+                'cover_url' => $revistaAdventistaArticle->image_url,
+                'published_at' => $revistaAdventistaArticle->published_at?->toIso8601String(),
             ],
         ]);
     }
