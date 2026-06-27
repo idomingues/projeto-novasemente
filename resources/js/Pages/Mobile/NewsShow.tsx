@@ -90,16 +90,18 @@ export default function MobileNewsShow({ post, config }: Props) {
         return (
             <MobileLayout>
                 <Head title={post.title} />
-                <div className="mx-auto w-full min-w-0 max-w-lg space-y-4">
-                    <Link
-                        href={route(listRoute)}
-                        className="inline-flex items-center gap-2 text-sm font-medium text-primary-600 hover:underline dark:text-primary-400"
-                    >
-                        <ArrowLeftIcon className="h-4 w-4 shrink-0" aria-hidden />
-                        {`Voltar às ${listLabel}`}
-                    </Link>
+                <div className="-mx-4 min-w-0 overflow-x-hidden sm:mx-0">
+                    <div className="mb-3 px-4 sm:px-0">
+                        <Link
+                            href={route(listRoute)}
+                            className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-primary-600 hover:underline dark:text-primary-400"
+                        >
+                            <ArrowLeftIcon className="h-4 w-4 shrink-0" aria-hidden />
+                            {`Voltar às ${listLabel}`}
+                        </Link>
+                    </div>
 
-                    <MobilePdfReader url={pdfUrl} title={post.title} />
+                    <MobilePdfReader url={pdfUrl} title={post.title} className="px-4 sm:px-0" />
                 </div>
             </MobileLayout>
         );

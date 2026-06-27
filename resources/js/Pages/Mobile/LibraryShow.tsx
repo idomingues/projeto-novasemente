@@ -120,21 +120,23 @@ export default function MobileLibraryShow({ book }: Props) {
             <MobileLayout>
                 <Head title={book.title} />
 
-                <div className="space-y-4">
-                    <Link
-                        href={route('mobile.biblioteca')}
-                        className="inline-flex items-center gap-2 text-sm font-medium text-primary-600 hover:underline dark:text-primary-400"
-                    >
-                        <ArrowLeftIcon className="h-4 w-4" aria-hidden />
-                        Voltar à biblioteca
-                    </Link>
+                <div className="-mx-4 min-w-0 overflow-x-hidden sm:mx-0">
+                    <div className="mb-3 px-4 sm:px-0">
+                        <Link
+                            href={route('mobile.biblioteca')}
+                            className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-primary-600 hover:underline dark:text-primary-400"
+                        >
+                            <ArrowLeftIcon className="h-4 w-4" aria-hidden />
+                            Voltar à biblioteca
+                        </Link>
+                    </div>
 
-                    <MobilePdfReader url={pdf} title={book.title} />
+                    <MobilePdfReader url={pdf} title={book.title} className="px-4 sm:px-0" />
 
-                    <div className="flex justify-center">
+                    <div className="mt-4 flex justify-center px-4 sm:px-0">
                         <a
                             href={route('mobile.biblioteca.pdf-download', book.id)}
-                            className="inline-flex touch-manipulation items-center justify-center gap-2 rounded-2xl border border-zinc-300 px-4 py-3 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                            className="inline-flex cursor-pointer touch-manipulation items-center justify-center gap-2 rounded-2xl border border-zinc-300 px-4 py-3 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
                         >
                             <ArrowDownTrayIcon className="h-5 w-5 shrink-0" />
                             Baixar PDF
@@ -142,7 +144,7 @@ export default function MobileLibraryShow({ book }: Props) {
                     </div>
 
                     {description ? (
-                        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-950">
+                        <div className="mx-4 mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-950 sm:mx-0">
                             <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
                                 {shortDescription}
                                 {hasMore ? (

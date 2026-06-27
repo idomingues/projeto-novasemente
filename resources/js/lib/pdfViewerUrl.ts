@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 /** Visualizador PDF do Chrome/Edge/WebView (fragmento na URL). Safari pode ignorar. */
-export const PDF_VIEW_PORTRAIT = '#zoom=140';
+export const PDF_VIEW_PORTRAIT = '#view=FitH';
 
 export const PDF_VIEW_LANDSCAPE = '#view=FitH';
 
