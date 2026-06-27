@@ -9,6 +9,7 @@ import {
     BanknotesIcon,
     BookOpenIcon,
     GlobeAltIcon,
+    HeartIcon,
     MusicalNoteIcon,
     PhotoIcon,
     SparklesIcon,
@@ -210,6 +211,14 @@ const quickActionDevocional: QuickAction = {
     icon: BookOpenIcon,
 };
 
+const quickActionSaude: QuickAction = {
+    label: 'Saúde',
+    subtitle: 'Conteúdos de saúde e bem-estar',
+    route: 'mobile.health',
+    featureKey: 'health',
+    icon: HeartIcon,
+};
+
 export default function MobileHome({
     latestNews,
     upcomingEvents,
@@ -243,7 +252,7 @@ export default function MobileHome({
     );
 
     const { isEnabled } = useAppFeatures();
-    const quickActions = [quickActionDevocional, caixaDePromessaAction, ...quickActionsExcludingDevocionalAndCaixa].filter(
+    const quickActions = [quickActionDevocional, quickActionSaude, caixaDePromessaAction, ...quickActionsExcludingDevocionalAndCaixa].filter(
         (action) => !action.featureKey || isEnabled(action.featureKey),
     );
 

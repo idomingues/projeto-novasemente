@@ -220,6 +220,12 @@ Route::get('/mobile/biblioteca/{libraryBook}/download', [MobileController::class
     ->middleware('throttle:60,1')
     ->name('mobile.biblioteca.pdf-download');
 Route::get('/mobile/biblioteca/{libraryBook}', [MobileController::class, 'bibliotecaShow'])->name('mobile.biblioteca.show');
+Route::middleware(['auth', 'throttle:60,1'])->group(function () {
+    Route::get('/mobile/biblioteca/licao/anotacoes', [\App\Http\Controllers\LibraryLessonNoteController::class, 'index'])
+        ->name('mobile.biblioteca.lesson-notes.index');
+    Route::put('/mobile/biblioteca/licao/anotacoes', [\App\Http\Controllers\LibraryLessonNoteController::class, 'upsert'])
+        ->name('mobile.biblioteca.lesson-notes.upsert');
+});
 Route::get('/mobile/localizacao', [MobileController::class, 'location'])->name('mobile.location');
 Route::get('/mobile/pastores', [MobileController::class, 'pastors'])->name('mobile.pastors');
 Route::get('/mobile/offerings', [MobileController::class, 'offerings'])->name('mobile.offerings');

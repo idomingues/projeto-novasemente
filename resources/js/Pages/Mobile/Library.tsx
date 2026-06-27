@@ -8,7 +8,8 @@ import {
     XMarkIcon,
 } from '@heroicons/react/24/outline';
 import Modal from '@/Components/Modal';
-import { useEffect, useMemo, useState } from 'react';
+import LibraryLessonDayNotes from '@/Components/Mobile/LibraryLessonDayNotes';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 function imageSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
@@ -85,6 +86,11 @@ export default function MobileLibrary({
     const [readerError, setReaderError] = useState<string | null>(null);
     const [readerSourceUrl, setReaderSourceUrl] = useState<string | null>(null);
     const [dayIdx, setDayIdx] = useState(0);
+    const [lessonNoteSlugs, setLessonNoteSlugs] = useState<string[]>([]);
+    const isLessonTab = tab === 'lesson';
+    const handleLessonNoteSlugsChange = useCallback((slugs: string[]) => {
+        setLessonNoteSlugs(slugs);
+    }, []);
 
     const meditationUrl = String(meditationUrlProp ?? '').trim();
     const lessonUrl = String(lessonUrlProp ?? '').trim();
@@ -129,6 +135,7 @@ export default function MobileLibrary({
             setReaderError(null);
             setReaderSourceUrl(null);
             setDayIdx(0);
+            setLessonNoteSlugs([]);
             return;
         }
 
@@ -139,6 +146,7 @@ export default function MobileLibrary({
         setReaderError(null);
         setReaderSourceUrl(null);
         setDayIdx(0);
+        setLessonNoteSlugs([]);
 
         fetch(route('mobile.biblioteca.config-external-content', tab), {
             headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
@@ -201,6 +209,9 @@ export default function MobileLibrary({
 
         return [...items.slice(selected), ...items.slice(0, selected)];
     }, [readerSegments, dayIdx, isSunsetTab]);
+
+    const readerContentClassName =
+        'rounded-xl border border-zinc-100 bg-zinc-50 p-4 text-sm leading-relaxed text-zinc-800 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 [&_a]:font-medium [&_a]:text-primary-600 [&_a]:underline dark:[&_a]:text-primary-400 [&_blockquote]:my-3 [&_blockquote]:rounded-xl [&_blockquote]:border [&_blockquote]:border-dashed [&_blockquote]:border-zinc-300 [&_blockquote]:bg-white/90 [&_blockquote]:px-3.5 [&_blockquote]:py-3 dark:[&_blockquote]:border-zinc-600 dark:[&_blockquote]:bg-zinc-900/50 [&_blockquote+p]:mt-4 [&_blockquote+h2]:mt-6 [&_blockquote+blockquote]:mt-3 [&_h2]:text-xl [&_h2]:font-bold [&_h2+p]:mt-3 [&_h2+p>em]:text-[15px] [&_h2+p>em]:leading-relaxed [&_h2+p>em]:text-zinc-700 dark:[&_h2+p>em]:text-zinc-300 [&_h3]:mt-2 [&_h3]:text-base [&_h3]:font-semibold [&_ol]:list-decimal [&_ol]:pl-5 [&_p:first-of-type]:text-[15px] [&_p+h2]:mt-6 [&_p+p]:mt-5 [&_p+p]:border-t [&_p+p]:border-zinc-200 [&_p+p]:pt-5 dark:[&_p+p]:border-zinc-700 [&_ul]:list-disc [&_ul]:pl-5';
 
     return (
         <MobileLayout>
@@ -296,6 +307,7 @@ export default function MobileLibrary({
                                     >
                                         {segmentTabs.map(({ segment, index }) => {
                                             const active = dayIdx === index;
+                                            const hasNote = isLessonTab && lessonNoteSlugs.includes(segment.slug);
                                             return (
                                                 <button
                                                     key={segment.slug}
@@ -304,7 +316,7 @@ export default function MobileLibrary({
                                                     aria-selected={active}
                                                     aria-current={active ? 'true' : undefined}
                                                     onClick={() => setDayIdx(index)}
-                                                    className={`shrink-0 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide transition sm:text-sm ${
+                                                    className={`relative shrink-0 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide transition sm:text-sm ${
                                                         active
                                                             ? isSunsetTab
                                                                 ? 'bg-zinc-900 text-white shadow-md ring-2 ring-amber-400/80 dark:bg-white dark:text-zinc-900 dark:ring-amber-500/70'
@@ -313,15 +325,37 @@ export default function MobileLibrary({
                                                     }`}
                                                 >
                                                     {segment.label}
+                                                    {hasNote ? (
+                                                        <span
+                                                            className={`absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-teal-500 ${
+                                                                active && !isSunsetTab
+                                                                    ? 'ring-2 ring-white dark:ring-zinc-900'
+                                                                    : 'ring-2 ring-white dark:ring-zinc-900'
+                                                            }`}
+                                                            aria-label="Com anotação"
+                                                        />
+                                                    ) : null}
                                                 </button>
                                             );
                                         })}
                                     </div>
                                 ) : null}
-                                <div
-                                    className="rounded-xl border border-zinc-100 bg-zinc-50 p-4 text-sm leading-relaxed text-zinc-800 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 [&_a]:font-medium [&_a]:text-primary-600 [&_a]:underline dark:[&_a]:text-primary-400 [&_blockquote]:my-3 [&_blockquote]:rounded-xl [&_blockquote]:border [&_blockquote]:border-dashed [&_blockquote]:border-zinc-300 [&_blockquote]:bg-white/90 [&_blockquote]:px-3.5 [&_blockquote]:py-3 dark:[&_blockquote]:border-zinc-600 dark:[&_blockquote]:bg-zinc-900/50 [&_blockquote+p]:mt-4 [&_blockquote+h2]:mt-6 [&_blockquote+blockquote]:mt-3 [&_h2]:text-xl [&_h2]:font-bold [&_h2+p]:mt-3 [&_h2+p>em]:text-[15px] [&_h2+p>em]:leading-relaxed [&_h2+p>em]:text-zinc-700 dark:[&_h2+p>em]:text-zinc-300 [&_h3]:mt-2 [&_h3]:text-base [&_h3]:font-semibold [&_ol]:list-decimal [&_ol]:pl-5 [&_p:first-of-type]:text-[15px] [&_p+h2]:mt-6 [&_p+p]:mt-5 [&_p+p]:border-t [&_p+p]:border-zinc-200 [&_p+p]:pt-5 dark:[&_p+p]:border-zinc-700 [&_ul]:list-disc [&_ul]:pl-5"
-                                    dangerouslySetInnerHTML={{ __html: readerDisplayHtml }}
-                                />
+                                {isLessonTab && readerSourceUrl ? (
+                                    <LibraryLessonDayNotes
+                                        lessonSourceUrl={readerSourceUrl}
+                                        segments={readerSegments}
+                                        dayIdx={dayIdx}
+                                        onDayIdxChange={setDayIdx}
+                                        readerHtml={readerDisplayHtml}
+                                        readerContentClassName={readerContentClassName}
+                                        onNoteSlugsChange={handleLessonNoteSlugsChange}
+                                    />
+                                ) : (
+                                    <div
+                                        className={readerContentClassName}
+                                        dangerouslySetInnerHTML={{ __html: readerDisplayHtml }}
+                                    />
+                                )}
                                 {readerSourceUrl ? (
                                     <p className="text-center text-xs text-zinc-500 dark:text-zinc-400">
                                         <a

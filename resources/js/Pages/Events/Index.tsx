@@ -490,14 +490,16 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
                         </Card>
                     ) : (
                         events.map((ev) => (
-                            <Card key={ev.id} className="p-4 flex flex-col sm:flex-row sm:items-center gap-3">
-                                <div
-                                    className="hidden sm:block w-14 h-14 rounded-lg flex-shrink-0 flex items-center justify-center text-white font-bold text-lg"
-                                    style={{
-                                        backgroundColor: ev.color || 'var(--primary-600, #2563eb)',
-                                    }}
-                                >
-                                    {new Date(ev.starts_at).getDate()}
+                            <Card key={ev.id} className="flex flex-row items-center gap-3 p-4">
+                                <div className="flex shrink-0 self-stretch items-center">
+                                    <div
+                                        className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-lg text-lg font-bold text-white"
+                                        style={{
+                                            backgroundColor: ev.color || 'var(--primary-600, #2563eb)',
+                                        }}
+                                    >
+                                        {new Date(ev.starts_at).getDate()}
+                                    </div>
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-start justify-between gap-3">
