@@ -123,40 +123,6 @@ const PAGE_TITLES = ['Dados pessoais', 'Nova Semente', 'Sobre o serviço'];
 
 const SIGNUP_COMPLETE_SUBMIT_HINT = 'Cadastro completo. Toque em Concluir cadastro para finalizar.';
 
-function resolveErrorPage(field: string): number {
-    const base = field.split('.')[0];
-    const page0 = new Set([
-        'photo_file',
-        'first_name',
-        'last_name',
-        'full_name',
-        'birth_date',
-        'has_whatsapp',
-        'email',
-        'current_password',
-        'password',
-        'password_confirmation',
-        'phone',
-        'has_social_networks',
-        'social_network_profiles',
-        'professional_area',
-    ]);
-    const page1 = new Set([
-        'attendance_duration',
-        'is_official_member',
-        'volunteer_phase',
-        'desired_ministry_ids',
-        'service_ease_areas',
-        'comfortable_with_digital_tools',
-    ]);
-    const page2 = new Set(['service_activity_types', 'service_greatest_strength', 'service_greatest_challenge', 'lgpd_data_consent']);
-
-    if (page0.has(base)) return 0;
-    if (page1.has(base)) return 1;
-    if (page2.has(base)) return 2;
-    return 2;
-}
-
 function stepIndexForPage(visibleSteps: number[], pageNum: number): number {
     const idx = visibleSteps.indexOf(pageNum);
     return idx >= 0 ? idx : 0;
@@ -212,21 +178,6 @@ function scrollToFirstError(errors: Record<string, string>) {
     if (!firstKey) return;
     const targetId = FIELD_SCROLL_TARGETS[firstKey] ?? `field-${firstKey}`;
     window.requestAnimationFrame(() => {
-        document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    });
-}
-
-function navigateToVolunteerSignupField(
-    fieldKey: string,
-    visiblePages: number[],
-    goToSlot: (slot: number) => void,
-) {
-    const pageNum = resolveVolunteerSignupFieldPage(fieldKey);
-    const slot = visiblePages.indexOf(pageNum);
-    goToSlot(slot >= 0 ? slot : 0);
-    window.requestAnimationFrame(() => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        const targetId = FIELD_SCROLL_TARGETS[fieldKey] ?? `field-${fieldKey}`;
         document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
 }
@@ -423,7 +374,7 @@ function FormNav({
     };
 
     return (
-        <div className="mt-8 border-t border-zinc-200/90 pt-5 dark:border-zinc-800">
+        <div className="relative sticky bottom-0 z-20 -mx-1 mt-8 border-t border-zinc-200/90 bg-white/95 px-1 pb-1 pt-4 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-900/95 sm:mx-0 sm:px-0">
             <div className="flex gap-3">
                 {page > 0 ? (
                     <SecondaryButton type="button" className="min-w-[7rem] flex-1 sm:flex-none" onClick={onBack}>
@@ -555,7 +506,12 @@ export default function PublicSignup({
     const [autosaveMessage, setAutosaveMessage] = useState<string | null>(null);
     const autosaveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const autosaveInFlightRef = useRef(false);
-    const pendingNavigateFieldRef = useRef<string | null>(null);
+    const autosaveInFlightPromiseRef = useRef<Promise<boolean> | null>(null);
+    const [pendingNavigateField, setPendingNavigateField] = useState<string | null>(null);
+
+    const queueNavigateToField = useCallback((fieldKey: string) => {
+        setPendingNavigateField(fieldKey);
+    }, []);
 
     useEffect(() => {
         savedInitialRef.current = initial;
@@ -683,25 +639,26 @@ export default function PublicSignup({
     }, [page]);
 
     useEffect(() => {
-        const fieldKey = pendingNavigateFieldRef.current;
-        if (!fieldKey || !focusMissingOnly) {
+        if (!pendingNavigateField) {
             return;
         }
 
+        const fieldKey = pendingNavigateField;
         const pageNum = resolveVolunteerSignupFieldPage(fieldKey);
         const slot = visiblePages.indexOf(pageNum);
         if (slot < 0) {
+            setPendingNavigateField(null);
             return;
         }
 
-        pendingNavigateFieldRef.current = null;
         goToPageSlot(slot);
+        setPendingNavigateField(null);
         window.requestAnimationFrame(() => {
             window.scrollTo({ top: 0, behavior: 'smooth' });
             const targetId = FIELD_SCROLL_TARGETS[fieldKey] ?? `field-${fieldKey}`;
             document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         });
-    }, [focusMissingOnly, goToPageSlot, visiblePages]);
+    }, [pendingNavigateField, goToPageSlot, visiblePages]);
 
     useEffect(() => {
         if (resumePage === null || resumePage === undefined) {
@@ -883,7 +840,7 @@ export default function PublicSignup({
                 const localPayload = dataRef.current as unknown as Record<string, unknown>;
                 const serverInitial = response.initial as unknown as Record<string, unknown>;
                 if (volunteerSignupMultiSelectDiffersOnPage(localPayload, serverInitial, activePageRef.current)) {
-                    setAutosaveMessage('Toque em Continuar para salvar todas as opções marcadas.');
+                    setAutosaveMessage('Toque em Avançar para salvar todas as opções marcadas.');
                     setAutosaveStatus('saved');
                     return;
                 }
@@ -917,69 +874,82 @@ export default function PublicSignup({
     const performAutosave = useCallback(
         async (fields: string[]): Promise<boolean> => {
             if (!isEdit || fields.length === 0) return true;
-            if (autosaveInFlightRef.current) return true;
-
-            const prepared = buildPreparedPayload(dataRef.current);
-            if (!prepared) {
-                if (!splitVolunteerFullName(dataRef.current.full_name)) {
-                    setClientErrors({ full_name: 'Informe o nome completo (nome e sobrenome).' });
-                    setStepBlocked(true);
-                    setShowSubmitErrors(true);
-                    navigateToVolunteerSignupField('full_name', visiblePages, goToPageSlot);
-                    setAutosaveMessage('Complete o nome (nome e sobrenome) antes de salvar as outras respostas.');
-                    setAutosaveStatus('error');
-                }
-                return false;
+            if (autosaveInFlightPromiseRef.current) {
+                return autosaveInFlightPromiseRef.current;
             }
 
-            autosaveInFlightRef.current = true;
-            setAutosaveStatus('saving');
-            setAutosaveMessage(null);
-
-            try {
-                const response = await postVolunteerSignupAutosave(prepared, fields);
-                applyAutosaveResponse(response, fields);
-                return true;
-            } catch (e) {
-                setAutosaveStatus('error');
-                if (axios.isAxiosError(e)) {
-                    const payload = e.response?.data as { message?: string; errors?: Record<string, string | string[]> };
-                    const serverMessage =
-                        typeof payload?.message === 'string' && payload.message.trim() !== ''
-                            ? payload.message.trim()
-                            : null;
-
-                    if (e.response?.status === 422) {
-                        const bag = payload?.errors ?? {};
-                        const mapped = mapVolunteerSignupServerErrors(bag);
-                        if (Object.keys(mapped).length > 0) {
-                            setClientErrors(mapped);
-                            setStepBlocked(true);
-                            setShowSubmitErrors(true);
-                            const firstKey = firstVolunteerSignupErrorKey(mapped);
-                            if (firstKey) navigateToVolunteerSignupField(firstKey, visiblePages, goToPageSlot);
-                        }
-                        setAutosaveMessage(
-                            serverMessage ?? 'Não foi possível salvar agora. Verifique o campo destacado.',
-                        );
-                    } else if (e.response?.status === 401) {
-                        setAutosaveMessage('Sua sessão expirou. Atualize a página e entre de novo.');
-                    } else if (e.response?.status === 419) {
-                        setAutosaveMessage('A página expirou. Atualize e tente novamente.');
-                    } else {
-                        setAutosaveMessage(
-                            serverMessage ?? 'Não foi possível salvar agora. Verifique sua conexão e tente de novo.',
-                        );
+            const run = async (): Promise<boolean> => {
+                const prepared = buildPreparedPayload(dataRef.current);
+                if (!prepared) {
+                    if (!splitVolunteerFullName(dataRef.current.full_name)) {
+                        setClientErrors({ full_name: 'Informe o nome completo (nome e sobrenome).' });
+                        setStepBlocked(true);
+                        setShowSubmitErrors(true);
+                        queueNavigateToField('full_name');
+                        setAutosaveMessage('Complete o nome (nome e sobrenome) antes de salvar as outras respostas.');
+                        setAutosaveStatus('error');
                     }
-                } else {
-                    setAutosaveMessage('Não foi possível salvar agora. Verifique sua conexão e tente de novo.');
+                    return false;
                 }
-                return false;
-            } finally {
-                autosaveInFlightRef.current = false;
-            }
+
+                autosaveInFlightRef.current = true;
+                setAutosaveStatus('saving');
+                setAutosaveMessage(null);
+
+                try {
+                    const response = await postVolunteerSignupAutosave(prepared, fields);
+                    applyAutosaveResponse(response, fields);
+                    return true;
+                } catch (e) {
+                    setAutosaveStatus('error');
+                    if (axios.isAxiosError(e)) {
+                        const payload = e.response?.data as { message?: string; errors?: Record<string, string | string[]> };
+                        const serverMessage =
+                            typeof payload?.message === 'string' && payload.message.trim() !== ''
+                                ? payload.message.trim()
+                                : null;
+
+                        if (e.response?.status === 422) {
+                            const bag = payload?.errors ?? {};
+                            const mapped = mapVolunteerSignupServerErrors(bag);
+                            if (Object.keys(mapped).length > 0) {
+                                setClientErrors(mapped);
+                                setStepBlocked(true);
+                                setShowSubmitErrors(true);
+                                const firstKey = firstVolunteerSignupErrorKey(mapped);
+                                if (firstKey) queueNavigateToField(firstKey);
+                            }
+                            setAutosaveMessage(
+                                serverMessage ?? 'Não foi possível salvar agora. Verifique o campo destacado.',
+                            );
+                        } else if (e.response?.status === 401) {
+                            setAutosaveMessage('Sua sessão expirou. Atualize a página e entre de novo.');
+                        } else if (e.response?.status === 419) {
+                            setAutosaveMessage('A página expirou. Atualize e tente novamente.');
+                        } else {
+                            setAutosaveMessage(
+                                serverMessage ?? 'Não foi possível salvar agora. Verifique sua conexão e tente de novo.',
+                            );
+                        }
+                    } else {
+                        setAutosaveMessage('Não foi possível salvar agora. Verifique sua conexão e tente de novo.');
+                    }
+                    return false;
+                } finally {
+                    autosaveInFlightRef.current = false;
+                }
+            };
+
+            const promise = run().finally(() => {
+                if (autosaveInFlightPromiseRef.current === promise) {
+                    autosaveInFlightPromiseRef.current = null;
+                }
+            });
+            autosaveInFlightPromiseRef.current = promise;
+
+            return promise;
         },
-        [applyAutosaveResponse, buildPreparedPayload, goToPageSlot, isEdit, visiblePages],
+        [applyAutosaveResponse, buildPreparedPayload, isEdit, queueNavigateToField],
     );
 
     const applyServerValidationErrors = useCallback(
@@ -993,12 +963,12 @@ export default function PublicSignup({
             setStepBlocked(true);
             const firstKey = firstVolunteerSignupErrorKey(mapped);
             if (firstKey) {
-                navigateToVolunteerSignupField(firstKey, visiblePages, goToPageSlot);
+                queueNavigateToField(firstKey);
             } else {
                 scrollToFirstError(mapped);
             }
         },
-        [goToPageSlot, visiblePages],
+        [goToPageSlot, queueNavigateToField],
     );
 
     const runDuplicateCheck = useCallback(async () => {
@@ -1144,7 +1114,7 @@ export default function PublicSignup({
             } else {
                 writeVolunteerSignupDraft(signupToken, { ...dataRef.current, photo_file: compressed }, {
                     page: activePageRef.current,
-                    photoPreview: draftPreview,
+                    ...(draftPreview ? { photoPreview: draftPreview } : {}),
                 });
             }
         } catch (e) {
@@ -1284,7 +1254,8 @@ export default function PublicSignup({
                 syncNameParts(data.full_name);
             }
 
-            const duplicateHints = page === 0 && !isEdit ? await runDuplicateCheck() : undefined;
+            const duplicateHints =
+                page === 0 ? { nameHint: null, emailHint: null, phoneHint: null } : undefined;
             if (!applyPageValidation(page, duplicateHints)) return;
 
             if (isEdit) {
@@ -1382,13 +1353,13 @@ export default function PublicSignup({
         setShowSubmitErrors(true);
         const firstPending = firstVolunteerSignupErrorKey(pendingErrors);
         if (firstPending) {
-            pendingNavigateFieldRef.current = firstPending;
+            queueNavigateToField(firstPending);
         }
-    }, []);
+    }, [queueNavigateToField]);
 
     const submitForm = async () => {
         syncNameParts(data.full_name);
-        const duplicateHints = isEdit ? { nameHint: null, emailHint: null, phoneHint: null } : await runDuplicateCheck();
+        const duplicateHints = { nameHint: null, emailHint: null, phoneHint: null };
 
         if (focusMissingOnly) {
             if (!applyPageValidation(page, duplicateHints)) {
@@ -1412,7 +1383,7 @@ export default function PublicSignup({
                 setClientErrors(nameErrors);
                 setStepBlocked(true);
                 setShowSubmitErrors(true);
-                pendingNavigateFieldRef.current = 'full_name';
+                queueNavigateToField('full_name');
                 setLiveMissingFields((current) =>
                     current.includes('full_name') ? current : [...current, 'full_name'],
                 );
@@ -1428,7 +1399,17 @@ export default function PublicSignup({
             setStepBlocked(false);
             setShowSubmitErrors(false);
             clearErrors();
-            router.visit(route(redirectAfterSave));
+
+            transform(() => prepared);
+
+            put(route('volunteers.self-signup.edit.update'), {
+                forceFormData: true,
+                preserveState: true,
+                preserveScroll: true,
+                onError: (serverErrors: Record<string, string>) => {
+                    applyServerValidationErrors(serverErrors);
+                },
+            });
             return;
         }
 
@@ -1439,8 +1420,13 @@ export default function PublicSignup({
                 setClientErrors(pageErrors);
                 setStepBlocked(true);
                 setShowSubmitErrors(true);
-                goToPageSlot(slot);
-                scrollToFirstError(pageErrors);
+                const firstKey = firstVolunteerSignupErrorKey(pageErrors);
+                if (firstKey) {
+                    queueNavigateToField(firstKey);
+                } else {
+                    goToPageSlot(slot);
+                    scrollToFirstError(pageErrors);
+                }
                 return;
             }
         }
@@ -1452,7 +1438,7 @@ export default function PublicSignup({
             goToPageSlot(0);
             setStepBlocked(true);
             setShowSubmitErrors(true);
-            navigateToVolunteerSignupField('full_name', visiblePages, goToPageSlot);
+            queueNavigateToField('full_name');
             return;
         }
 
@@ -1464,7 +1450,7 @@ export default function PublicSignup({
             setShowSubmitErrors(true);
             const firstPending = firstVolunteerSignupErrorKey(pendingErrors);
             if (firstPending) {
-                navigateToVolunteerSignupField(firstPending, visiblePages, goToPageSlot);
+                queueNavigateToField(firstPending);
             }
             return;
         }
@@ -2117,8 +2103,12 @@ export default function PublicSignup({
                                     fieldKey="desired_ministry_ids"
                                     number={qn('desired_ministry_ids')}
                                     label="Em quais departamentos você gostaria de servir?"
+                                    required={false}
                                     error={err('desired_ministry_ids')}
                                 >
+                                    <p className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">
+                                        Opcional — marque se já souber onde gostaria de servir.
+                                    </p>
                                     <MinistryCheckboxList
                                         ministries={ministries}
                                         selectedIds={data.desired_ministry_ids}

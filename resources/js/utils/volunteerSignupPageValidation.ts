@@ -130,7 +130,7 @@ export function computeVolunteerSignupPageErrors({
         }
         if (visible('full_name') && duplicateHints.nameHint) next.full_name = duplicateHints.nameHint;
         if (visible('email') && duplicateHints.emailHint) next.email = duplicateHints.emailHint;
-        if (duplicateHints.phoneHint) next.phone = duplicateHints.phoneHint;
+        if (visible('phone') && duplicateHints.phoneHint) next.phone = duplicateHints.phoneHint;
         if (!isEdit && !focusMissingOnly) {
             if (!data.password) next.password = 'Defina uma senha para acessar o aplicativo.';
             else if ((data.password ?? '').length < 6) next.password = 'A senha deve ter pelo menos 6 caracteres.';

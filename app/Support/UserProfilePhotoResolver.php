@@ -4,6 +4,7 @@ namespace App\Support;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Validation\ValidationException;
 
 final class UserProfilePhotoResolver
 {
@@ -26,6 +27,11 @@ final class UserProfilePhotoResolver
     public static function storeUploadedPhoto(UploadedFile $file): string
     {
         $path = $file->store('users/photos', 'public');
+        if (! is_string($path) || $path === '') {
+            throw ValidationException::withMessages([
+                'photo_file' => ['Não foi possível salvar a foto. Tente outra imagem ou entre em contato com a equipe.'],
+            ]);
+        }
 
         return StorageUrl::publicMediaUrl($path);
     }

@@ -1,6 +1,12 @@
 import type { VolunteerSignupInitial } from '@/Pages/Volunteers/PublicSignup';
 import { hasServiceActivityTypeSelection, hasServiceEaseAreaSelection, isValidVolunteerPhase } from '@/utils/volunteerSignupOptions';
 import { normalizeVolunteerFullName } from '@/utils/volunteerSignupPageValidation';
+import {
+    resolveVolunteerSignupFieldPage,
+    visiblePagesForMissingFields,
+} from '@/utils/volunteerSignupPageFields';
+
+export { resolveVolunteerSignupFieldPage, visiblePagesForMissingFields } from '@/utils/volunteerSignupPageFields';
 
 export type VolunteerSignupCompletion = {
     is_complete: boolean;
@@ -230,49 +236,6 @@ export function computeVolunteerSignupCompletion(initial: VolunteerSignupInitial
     };
 }
 
-export function resolveVolunteerSignupFieldPage(field: string): number {
-    const base = field.split('.')[0];
-    const page0 = new Set([
-        'photo_file',
-        'first_name',
-        'last_name',
-        'full_name',
-        'birth_date',
-        'has_whatsapp',
-        'email',
-        'phone',
-        'has_social_networks',
-        'social_network_profiles',
-        'professional_area',
-        'current_password',
-        'password',
-        'password_confirmation',
-    ]);
-    const page1 = new Set([
-        'attendance_duration',
-        'is_official_member',
-        'volunteer_phase',
-        'service_ease_areas',
-        'comfortable_with_digital_tools',
-    ]);
-    const page2 = new Set([
-        'service_activity_types',
-        'service_greatest_strength',
-        'service_greatest_challenge',
-        'lgpd_data_consent',
-    ]);
-
-    if (page0.has(base)) return 0;
-    if (page1.has(base)) return 1;
-    if (page2.has(base)) return 2;
-    return 2;
-}
-
-export function visiblePagesForMissingFields(missingFields: string[]): number[] {
-    const pages = new Set(missingFields.map((field) => resolveVolunteerSignupFieldPage(field)));
-    return [...pages].sort((a, b) => a - b);
-}
-
 export function shouldShowVolunteerSignupField(fieldKey: string, missingFields: string[]): boolean {
     return missingFields.includes(fieldKey);
 }
@@ -387,6 +350,7 @@ export function mergeVolunteerSignupWithInitial(
     keep('attendance_duration', initial.attendance_duration);
     keep('is_official_member', initial.is_official_member);
     keep('volunteer_phase', initial.volunteer_phase);
+    keep('desired_ministry_ids', initial.desired_ministry_ids);
     keep('service_ease_areas', initial.service_ease_areas);
     keep('comfortable_with_digital_tools', initial.comfortable_with_digital_tools);
     keep('service_activity_types', initial.service_activity_types);

@@ -1,6 +1,6 @@
 import type { VolunteerSignupFormSlice } from '@/utils/volunteerSignupPageValidation';
 import { normalizeSignupBool, shouldAskVolunteerWhatsapp } from '@/utils/volunteerSignupPageValidation';
-import { VOLUNTEER_SIGNUP_PAGE_FIELD_KEYS } from '@/utils/volunteerSignupAutosave';
+import { VOLUNTEER_SIGNUP_PAGE_FIELD_KEYS } from '@/utils/volunteerSignupPageFields';
 
 export type VolunteerSignupQuestionNumberContext = {
     visiblePages: number[];

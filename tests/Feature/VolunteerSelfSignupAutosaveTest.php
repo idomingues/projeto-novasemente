@@ -190,4 +190,38 @@ class VolunteerSelfSignupAutosaveTest extends TestCase
 
         $this->assertTrue($volunteer->fresh()->lgpd_data_consent);
     }
+
+    public function test_autosave_rejects_lgpd_consent_false(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+
+        $user = User::factory()->create([
+            'church_id' => $churchId,
+            'is_volunteer' => false,
+            'name' => 'Rafael Completa',
+            'email' => 'rafael.lgpd@example.com',
+            'photo_url' => 'https://example.com/photos/rafael.jpg',
+        ]);
+
+        $user->ensureVolunteerProfile();
+        $volunteer = $user->fresh()->volunteerProfile;
+        $this->assertNotNull($volunteer);
+
+        CompleteVolunteerSignup::apply($user, $volunteer);
+        $volunteer->forceFill(['lgpd_data_consent' => false])->save();
+
+        $this->actingAs($user)
+            ->postJson(route('volunteers.self-signup.autosave'), [
+                'autosave_fields' => ['lgpd_data_consent'],
+                'first_name' => 'Rafael',
+                'last_name' => 'Completa',
+                'lgpd_data_consent' => false,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['lgpd_data_consent']);
+
+        $this->assertFalse($volunteer->fresh()->lgpd_data_consent);
+    }
 }

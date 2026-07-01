@@ -242,6 +242,13 @@ final class VolunteerSignupAutosave
                 'service_activity_types' => ['Selecione pelo menos um tipo de atividade em que você rende melhor.'],
             ]);
         }
+
+        if (in_array('lgpd_data_consent', $autosaveFields, true)
+            && ($validated['lgpd_data_consent'] ?? null) !== true) {
+            throw ValidationException::withMessages([
+                'lgpd_data_consent' => ['Para continuar, é necessário autorizar o uso dos dados conforme a LGPD.'],
+            ]);
+        }
     }
 
     private function assertEmailAvailable(User $user, string $email): void

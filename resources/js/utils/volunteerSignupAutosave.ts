@@ -3,7 +3,13 @@ import type { VolunteerSignupCompletion } from '@/utils/volunteerSignupCompletio
 import type { VolunteerSignupFormSlice } from '@/utils/volunteerSignupPageValidation';
 import { normalizeSignupBool, splitVolunteerFullName } from '@/utils/volunteerSignupPageValidation';
 import { hasServiceActivityTypeSelection, hasServiceEaseAreaSelection } from '@/utils/volunteerSignupOptions';
+import {
+    resolveVolunteerSignupFieldPage,
+    VOLUNTEER_SIGNUP_PAGE_FIELD_KEYS,
+} from '@/utils/volunteerSignupPageFields';
 import axios from 'axios';
+
+export { resolveVolunteerSignupFieldPage, VOLUNTEER_SIGNUP_PAGE_FIELD_KEYS } from '@/utils/volunteerSignupPageFields';
 
 export type VolunteerSignupAutosaveResponse = {
     message: string;
@@ -19,9 +25,6 @@ export const VOLUNTEER_SIGNUP_MULTI_SELECT_FIELD_KEYS = [
     'service_ease_areas',
     'service_activity_types',
     'desired_ministry_ids',
-    'active_ministry_ids',
-    'previous_ministry_ids',
-    'other_ministry_ids',
 ] as const;
 
 export type VolunteerSignupMultiSelectFieldKey = (typeof VOLUNTEER_SIGNUP_MULTI_SELECT_FIELD_KEYS)[number];
@@ -37,31 +40,7 @@ export function volunteerSignupMultiSelectFieldsOnPage(page: number): string[] {
 }
 
 export const VOLUNTEER_SIGNUP_MULTI_SELECT_CONTINUE_HINT =
-    'Marque todas as opções que se aplicam. As respostas são salvas ao tocar em Continuar.';
-
-/** Campos por etapa do questionário (índice 0–2). */
-export const VOLUNTEER_SIGNUP_PAGE_FIELD_KEYS: Record<number, string[]> = {
-    0: [
-        'photo_file',
-        'full_name',
-        'birth_date',
-        'phone',
-        'has_whatsapp',
-        'email',
-        'has_social_networks',
-        'social_network_profiles',
-        'professional_area',
-    ],
-    1: [
-        'attendance_duration',
-        'is_official_member',
-        'volunteer_phase',
-        'desired_ministry_ids',
-        'service_ease_areas',
-        'comfortable_with_digital_tools',
-    ],
-    2: ['service_activity_types', 'service_greatest_strength', 'service_greatest_challenge', 'lgpd_data_consent'],
-};
+    'Marque todas as opções que se aplicam. As respostas são salvas ao tocar em Avançar.';
 
 export function collectVolunteerSignupAutosaveFields(
     page: number,
@@ -248,6 +227,8 @@ export function isVolunteerSignupFieldAnswered(fieldKey: string, data: Volunteer
             return data[fieldKey].trim() !== '';
         case 'photo_file':
             return data.photo_file !== null;
+        case 'desired_ministry_ids':
+            return (data.desired_ministry_ids?.length ?? 0) > 0;
         default:
             return normalizeSignupBool(data[fieldKey as keyof VolunteerSignupFormSlice] as boolean | null) !== null;
     }
