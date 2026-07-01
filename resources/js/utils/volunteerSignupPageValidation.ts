@@ -170,15 +170,15 @@ export function computeVolunteerSignupPageErrors({
         if (visible('service_ease_areas') && !hasServiceEaseAreaSelection(data.service_ease_areas)) {
             next.service_ease_areas = 'Marque pelo menos uma área em que você tem facilidade para servir.';
         }
-        if (visible('service_activity_types') && !hasServiceActivityTypeSelection(data.service_activity_types)) {
-            next.service_activity_types = 'Marque pelo menos um tipo de atividade em que você rende melhor.';
-        }
         if (visible('comfortable_with_digital_tools') && normalizeSignupBool(data.comfortable_with_digital_tools) === null) {
             next.comfortable_with_digital_tools = 'Selecione uma opção.';
         }
     }
 
     if (page === 2) {
+        if (visible('service_activity_types') && !hasServiceActivityTypeSelection(data.service_activity_types)) {
+            next.service_activity_types = 'Marque pelo menos um tipo de atividade em que você rende melhor.';
+        }
         if (visible('service_greatest_strength') && !data.service_greatest_strength.trim()) {
             next.service_greatest_strength = 'Descreva seu maior ponto forte no serviço.';
         }
