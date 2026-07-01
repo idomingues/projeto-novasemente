@@ -15,7 +15,6 @@ import {
     SparklesIcon,
 } from '@heroicons/react/24/outline';
 import type { ComponentType, SVGProps } from 'react';
-import CoverWithVideoLink from '@/Components/News/CoverWithVideoLink';
 import PromiseBoxModal from '@/Components/Mobile/PromiseBoxModal';
 import SabbathHomeBanner, { type SabbathHomeBannerData } from '@/Components/Mobile/SabbathHomeBanner';
 import { useAppFeatures } from '@/hooks/useAppFeatures';
@@ -374,8 +373,6 @@ export default function MobileHome({
                                     const snippet = cardSnippet(n);
                                     const whenLine = timeAgoPtBr(n.published_at) || formatNewsWhen(n.published_at);
                                     const typeLabel = cardTypeLabel(n);
-                                    const instagramVideoUrl = n.instagram_url?.trim() || '';
-                                    const hasInstagramVideo = Boolean(instagramVideoUrl && src);
                                     const textBlock = (
                                         <div className="min-w-0 flex-1">
                                             {typeLabel ? (
@@ -396,39 +393,21 @@ export default function MobileHome({
                                     );
                                     return (
                                         <li key={n.id}>
-                                            {hasInstagramVideo ? (
-                                                <div className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
-                                                    <CoverWithVideoLink
-                                                        videoHref={instagramVideoUrl}
-                                                        compactPlay
-                                                        className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800"
-                                                    >
+                                            <Link
+                                                href={route('mobile.news.show', n.slug)}
+                                                className="flex cursor-pointer items-center gap-3 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-zinc-200 transition hover:bg-zinc-50 dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60"
+                                            >
+                                                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
+                                                    {src ? (
                                                         <img src={src} alt="" className="h-full w-full object-cover" />
-                                                    </CoverWithVideoLink>
-                                                    <Link
-                                                        href={route('mobile.news.show', n.slug)}
-                                                        className="min-w-0 flex-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded-lg"
-                                                    >
-                                                        {textBlock}
-                                                    </Link>
+                                                    ) : (
+                                                        <div className="flex h-full w-full items-center justify-center text-[10px] font-medium text-zinc-400">
+                                                            Nova Semente
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            ) : (
-                                                <Link
-                                                    href={route('mobile.news.show', n.slug)}
-                                                    className="flex cursor-pointer items-center gap-3 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-zinc-200 transition hover:bg-zinc-50 dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60"
-                                                >
-                                                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
-                                                        {src ? (
-                                                            <img src={src} alt="" className="h-full w-full object-cover" />
-                                                        ) : (
-                                                            <div className="flex h-full w-full items-center justify-center text-[10px] font-medium text-zinc-400">
-                                                                Nova Semente
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    {textBlock}
-                                                </Link>
-                                            )}
+                                                {textBlock}
+                                            </Link>
                                         </li>
                                     );
                                 })}
