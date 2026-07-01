@@ -24,12 +24,15 @@ type Props = {
 };
 
 export default function AppFeatures({ churchName, groups, updateUrl }: Props) {
+    const formFeatureKeys = groups.flatMap((group) => group.features.map((feature) => feature.key));
+
     const initialEnabled = groups.flatMap((group) =>
         group.features.filter((feature) => feature.enabled).map((feature) => feature.key),
     );
 
     const form = useForm({
         enabled_features: initialEnabled,
+        form_feature_keys: formFeatureKeys,
     });
 
     const toggleFeature = (key: string, enabled: boolean) => {

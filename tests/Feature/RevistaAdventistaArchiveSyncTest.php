@@ -97,17 +97,17 @@ class RevistaAdventistaArchiveSyncTest extends TestCase
             'synced_at' => now(),
         ]);
 
-        $this->get(route('mobile.revista-adventista', ['ano' => 1906]))
+        $this->get(route('mobile.acervo-revista-adventista', ['ano' => 1906]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('Mobile/RevistaAdventista')
+                ->component('Mobile/RevistaAdventistaAcervo')
                 ->has('editions', 1)
                 ->where('selectedYear', 1906));
 
-        $this->get(route('mobile.revista-adventista.show', $edition))
+        $this->get(route('mobile.acervo-revista-adventista.show', $edition))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('Mobile/RevistaAdventistaShow')
+                ->component('Mobile/RevistaAdventistaAcervoShow')
                 ->where('edition.id', $edition->id)
                 ->where('edition.title', 'Janeiro de 1906'));
     }
@@ -130,12 +130,12 @@ class RevistaAdventistaArchiveSyncTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->patch(route('revista-adventista.edition.active', $edition), ['is_active' => false])
+            ->patch(route('revista-adventista-acervo.edition.active', $edition), ['is_active' => false])
             ->assertRedirect();
 
         $this->assertFalse($edition->fresh()->is_active);
 
-        $this->get(route('mobile.revista-adventista.show', $edition))
+        $this->get(route('mobile.acervo-revista-adventista.show', $edition))
             ->assertNotFound();
     }
 }

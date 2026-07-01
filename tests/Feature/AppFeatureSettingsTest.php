@@ -43,7 +43,7 @@ class AppFeatureSettingsTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Settings/AppFeatures')
-                ->has('groups', 3));
+                ->has('groups', 4));
 
         $enabled = ChurchAppFeatures::allKeys();
         $disabledKey = 'mission';
@@ -59,6 +59,29 @@ class AppFeatureSettingsTest extends TestCase
 
         $this->church->refresh();
         $this->assertContains($disabledKey, $this->church->disabled_app_features ?? []);
+    }
+
+    public function test_stale_form_save_does_not_disable_features_absent_from_form(): void
+    {
+        $allKeys = ChurchAppFeatures::allKeys();
+        $formKeys = array_values(array_diff($allKeys, ['revista_adventista']));
+
+        ChurchAppFeatures::syncEnabledKeys($this->church, $formKeys, $formKeys);
+
+        $this->church->refresh();
+        $disabled = $this->church->disabled_app_features ?? [];
+        $this->assertNotContains('revista_adventista', $disabled);
+    }
+
+    public function test_explicit_uncheck_on_form_disables_feature(): void
+    {
+        $allKeys = ChurchAppFeatures::allKeys();
+        $enabled = array_values(array_diff($allKeys, ['revista_adventista']));
+
+        ChurchAppFeatures::syncEnabledKeys($this->church, $enabled, $allKeys);
+
+        $this->church->refresh();
+        $this->assertContains('revista_adventista', $this->church->disabled_app_features ?? []);
     }
 
     public function test_disabled_feature_returns_404_for_member(): void

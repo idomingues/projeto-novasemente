@@ -11,6 +11,7 @@ return [
         'barra_inferior' => 'Barra inferior',
         'inicio' => 'Início (atalhos)',
         'menu_mais' => 'Menu Mais',
+        'biblioteca' => 'Biblioteca',
     ],
 
     'always_enabled_routes' => [
@@ -141,9 +142,14 @@ return [
             'routes' => ['mobile.biblioteca', 'mobile.biblioteca.*'],
         ],
         'revista_adventista' => [
-            'label' => 'Acervo Revista Adventista',
+            'label' => 'Revista Adventista',
             'group' => 'menu_mais',
-            'routes' => ['mobile.revista-adventista', 'mobile.revista-adventista.*'],
+            'routes' => ['mobile.revista-adventista', 'mobile.revista-adventista.show'],
+        ],
+        'revista_adventista_acervo' => [
+            'label' => 'Acervo Revista Adventista',
+            'group' => 'biblioteca',
+            'routes' => ['mobile.acervo-revista-adventista', 'mobile.acervo-revista-adventista.*'],
         ],
         'location' => [
             'label' => 'Localização',

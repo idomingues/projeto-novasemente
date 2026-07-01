@@ -16,6 +16,7 @@ use App\Models\News;
 use App\Models\Pastor;
 use App\Models\PastoralAppointment;
 use App\Models\PhotoAlbum;
+use App\Models\RevistaAdventistaArticle;
 use App\Models\RevistaAdventistaEdition;
 use App\Models\ScheduleCheckinDate;
 use App\Models\User;
@@ -31,6 +32,7 @@ use App\Services\SabbathSunsetService;
 use App\Services\ScheduleAssignmentPresenter;
 use App\Services\SolicitationChatNotifier;
 use App\Services\VolunteerScheduleOverview;
+use App\Support\ChurchAppFeatures;
 use App\Support\NotificationFeed;
 use App\Support\ScheduleBoardViewData;
 use App\Support\SolicitationAssignees;
@@ -610,6 +612,192 @@ class MobileController extends Controller
 
     public function revistaAdventista(Request $request): Response
     {
+        $section = trim((string) $request->query('section', ''));
+        $validSections = array_keys(RevistaAdventistaArticle::sectionLabels());
+        if ($section !== '' && ! in_array($section, $validSections, true)) {
+            $section = '';
+        }
+
+        $search = trim((string) $request->query('q', ''));
+        if (mb_strlen($search) > 0 && mb_strlen($search) < 2) {
+            $search = '';
+        }
+
+        $mapArticle = fn (RevistaAdventistaArticle $article): array => [
+            'id' => $article->id,
+            'title' => $article->title,
+            'slug' => $article->slug,
+            'excerpt' => $article->excerpt,
+            'section' => $article->section,
+            'section_label' => $article->sectionLabel(),
+            'author_name' => $article->author_name,
+            'image_url' => $article->image_url,
+            'cover_url' => $article->image_url,
+            'published_at' => $article->published_at?->toIso8601String(),
+        ];
+
+        $articles = RevistaAdventistaArticle::query()
+            ->when($section !== '', fn ($q) => $q->where('section', $section))
+            ->when($search !== '', fn ($q) => $q->search($search))
+            ->where('is_active', true)
+            ->whereNotNull('published_at')
+            ->where('published_at', '<=', now())
+            ->orderByDesc('published_at')
+            ->paginate(15)
+            ->withQueryString();
+
+        $articles->getCollection()->transform($mapArticle);
+
+        return Inertia::render('Mobile/RevistaAdventista', [
+            'articles' => $articles,
+            'sections' => collect(RevistaAdventistaArticle::sectionLabels())
+                ->map(fn (string $label, string $key) => ['value' => $key, 'label' => $label])
+                ->values()
+                ->all(),
+            'filters' => [
+                'section' => $section !== '' ? $section : null,
+                'q' => $search !== '' ? $search : null,
+            ],
+        ]);
+    }
+
+    public function revistaAdventistaShow(RevistaAdventistaArticle $revistaAdventistaArticle): Response
+    {
+        if (! $revistaAdventistaArticle->is_active) {
+            abort(404);
+        }
+        if ($revistaAdventistaArticle->published_at === null || $revistaAdventistaArticle->published_at->isFuture()) {
+            abort(404);
+        }
+
+        return Inertia::render('Mobile/RevistaAdventistaShow', [
+            'article' => [
+                'id' => $revistaAdventistaArticle->id,
+                'title' => $revistaAdventistaArticle->title,
+                'slug' => $revistaAdventistaArticle->slug,
+                'excerpt' => $revistaAdventistaArticle->excerpt,
+                'body' => $revistaAdventistaArticle->body,
+                'section' => $revistaAdventistaArticle->section,
+                'section_label' => $revistaAdventistaArticle->sectionLabel(),
+                'author_name' => $revistaAdventistaArticle->author_name,
+                'source_url' => $revistaAdventistaArticle->source_url,
+                'image_url' => $revistaAdventistaArticle->image_url,
+                'cover_url' => $revistaAdventistaArticle->image_url,
+                'published_at' => $revistaAdventistaArticle->published_at?->toIso8601String(),
+            ],
+        ]);
+    }
+
+    public function revistaAdventistaAcervo(Request $request): Response
+    {
+        return Inertia::render('Mobile/RevistaAdventistaAcervo', $this->revistaAdventistaAcervoPayload($request));
+    }
+
+    public function revistaAdventistaAcervoShow(Request $request, RevistaAdventistaEdition $revistaAdventistaEdition): Response
+    {
+        if (! $revistaAdventistaEdition->is_active) {
+            abort(404);
+        }
+
+        $baseUrl = $request->getSchemeAndHttpHost();
+        $pdfUrl = $this->mobileRevistaAdventistaPdfUrlFor($revistaAdventistaEdition);
+
+        if ($pdfUrl === null) {
+            abort(404);
+        }
+
+        return Inertia::render('Mobile/RevistaAdventistaAcervoShow', [
+            'edition' => array_merge(
+                $this->mapRevistaAdventistaEditionForMobile($revistaAdventistaEdition, $baseUrl),
+                [
+                    'pdf_url' => $pdfUrl,
+                    'source_pdf_url' => $revistaAdventistaEdition->resolvedSourcePdfUrl(),
+                ],
+            ),
+        ]);
+    }
+
+    /**
+     * @return \Illuminate\Http\Response|\Symfony\Component\HttpFoundation\StreamedResponse
+     */
+    public function revistaAdventistaAcervoPdfStream(
+        RevistaAdventistaEdition $revistaAdventistaEdition,
+        RevistaAdventistaEditionPdfService $pdfService,
+    ) {
+        if (! $revistaAdventistaEdition->is_active || ! $this->revistaAdventistaEditionHasReadablePdf($revistaAdventistaEdition)) {
+            abort(404);
+        }
+
+        if ($revistaAdventistaEdition->hasLocalPdf()) {
+            $response = $pdfService->streamLocalPdf($revistaAdventistaEdition, attachment: false);
+            if ($response !== null) {
+                return $response;
+            }
+        }
+
+        $response = $pdfService->streamPdf($revistaAdventistaEdition, attachment: false);
+        if ($response === null) {
+            abort(404);
+        }
+
+        return $response;
+    }
+
+    /**
+     * @return RedirectResponse|\Symfony\Component\HttpFoundation\StreamedResponse|\Illuminate\Http\Response
+     */
+    public function revistaAdventistaAcervoPdfDownload(
+        RevistaAdventistaEdition $revistaAdventistaEdition,
+        RevistaAdventistaEditionPdfService $pdfService,
+    ) {
+        if (! $revistaAdventistaEdition->is_active || ! $this->revistaAdventistaEditionHasReadablePdf($revistaAdventistaEdition)) {
+            abort(404);
+        }
+
+        if ($revistaAdventistaEdition->hasLocalPdf()) {
+            $response = $pdfService->streamLocalPdf($revistaAdventistaEdition, attachment: true);
+            if ($response !== null) {
+                return $response;
+            }
+        }
+
+        $response = $pdfService->streamPdf($revistaAdventistaEdition, attachment: true);
+        if ($response === null) {
+            abort(404);
+        }
+
+        return $response;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    /**
+     * @return list<array{value: string, label: string}>
+     */
+    private function libraryCategoriesForMobile(?Church $church): array
+    {
+        $categories = [
+            ['value' => LibraryBook::CATEGORY_MEDITATION, 'label' => 'Meditação Diária'],
+            ['value' => LibraryBook::CATEGORY_LESSON, 'label' => 'Lição'],
+            ['value' => 'sunset_meditation', 'label' => 'Meditação Por do Sol'],
+            ['value' => LibraryBook::CATEGORY_BOOKS, 'label' => 'Livros'],
+        ];
+
+        if ($church !== null && ChurchAppFeatures::isEnabled($church, 'revista_adventista_acervo')) {
+            $categories[] = ['value' => 'revista_adventista_acervo', 'label' => 'Acervo Revista'];
+        }
+
+        $categories[] = ['value' => LibraryBook::CATEGORY_EGW, 'label' => 'Ellen G. White'];
+
+        return $categories;
+    }
+
+    /**
+     * @return array{editions: list<array<string, mixed>>, availableYears: list<int>, selectedYear: int, decades: list<array{label: string, years: list<int>}>}
+     */
+    private function revistaAdventistaAcervoPayload(Request $request): array
+    {
         $baseUrl = $request->getSchemeAndHttpHost();
         $availableYears = RevistaAdventistaEdition::query()
             ->where('is_active', true)
@@ -636,94 +824,14 @@ class MobileController extends Controller
             ->values()
             ->all();
 
-
-        return Inertia::render('Mobile/RevistaAdventista', [
+        return [
             'editions' => $editions,
             'availableYears' => $availableYears,
             'selectedYear' => $selectedYear,
             'decades' => $this->revistaAdventistaDecades($availableYears),
-        ]);
+        ];
     }
 
-    public function revistaAdventistaShow(Request $request, RevistaAdventistaEdition $revistaAdventistaEdition): Response
-    {
-        if (! $revistaAdventistaEdition->is_active) {
-            abort(404);
-        }
-
-        $baseUrl = $request->getSchemeAndHttpHost();
-        $pdfUrl = $this->mobileRevistaAdventistaPdfUrlFor($revistaAdventistaEdition);
-
-        if ($pdfUrl === null) {
-            abort(404);
-        }
-
-        return Inertia::render('Mobile/RevistaAdventistaShow', [
-            'edition' => array_merge(
-                $this->mapRevistaAdventistaEditionForMobile($revistaAdventistaEdition, $baseUrl),
-                [
-                    'pdf_url' => $pdfUrl,
-                    'source_pdf_url' => $revistaAdventistaEdition->resolvedSourcePdfUrl(),
-                ],
-            ),
-        ]);
-    }
-
-    /**
-     * @return \Illuminate\Http\Response|\Symfony\Component\HttpFoundation\StreamedResponse
-     */
-    public function revistaAdventistaPdfStream(
-        RevistaAdventistaEdition $revistaAdventistaEdition,
-        RevistaAdventistaEditionPdfService $pdfService,
-    ) {
-        if (! $revistaAdventistaEdition->is_active || ! $this->revistaAdventistaEditionHasReadablePdf($revistaAdventistaEdition)) {
-            abort(404);
-        }
-
-        if ($revistaAdventistaEdition->hasLocalPdf()) {
-            $response = $pdfService->streamLocalPdf($revistaAdventistaEdition, attachment: false);
-            if ($response !== null) {
-                return $response;
-            }
-        }
-
-        $response = $pdfService->streamPdf($revistaAdventistaEdition, attachment: false);
-        if ($response === null) {
-            abort(404);
-        }
-
-        return $response;
-    }
-
-    /**
-     * @return RedirectResponse|\Symfony\Component\HttpFoundation\StreamedResponse|\Illuminate\Http\Response
-     */
-    public function revistaAdventistaPdfDownload(
-        RevistaAdventistaEdition $revistaAdventistaEdition,
-        RevistaAdventistaEditionPdfService $pdfService,
-    ) {
-        if (! $revistaAdventistaEdition->is_active || ! $this->revistaAdventistaEditionHasReadablePdf($revistaAdventistaEdition)) {
-            abort(404);
-        }
-
-        if ($revistaAdventistaEdition->hasLocalPdf()) {
-            $response = $pdfService->streamLocalPdf($revistaAdventistaEdition, attachment: true);
-            if ($response !== null) {
-                return $response;
-            }
-        }
-
-        $response = $pdfService->streamPdf($revistaAdventistaEdition, attachment: true);
-        if ($response === null) {
-            abort(404);
-        }
-
-        return $response;
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
     private function mapRevistaAdventistaEditionForMobile(RevistaAdventistaEdition $edition, string $baseUrl): array
     {
         return [
@@ -751,7 +859,7 @@ class MobileController extends Controller
             return $edition->resolvedPdfUrl('');
         }
 
-        return route('mobile.revista-adventista.pdf-stream', ['revistaAdventistaEdition' => $edition->id], absolute: false);
+        return route('mobile.acervo-revista-adventista.pdf-stream', ['revistaAdventistaEdition' => $edition->id], absolute: false);
     }
 
     private function revistaAdventistaEditionHasReadablePdf(RevistaAdventistaEdition $edition): bool
@@ -1135,18 +1243,14 @@ class MobileController extends Controller
         $churchId = $this->currentChurch()?->id;
         $church = $this->currentChurch();
         $baseUrl = $request->getSchemeAndHttpHost();
+        $categories = $this->libraryCategoriesForMobile($church);
+        $acervoEnabled = $church !== null && ChurchAppFeatures::isEnabled($church, 'revista_adventista_acervo');
 
         if (! Schema::hasTable('library_books')) {
             return Inertia::render('Mobile/Library', [
                 'books' => [],
-                'categories' => [
-                    ['value' => LibraryBook::CATEGORY_BOOKS, 'label' => 'Livros'],
-                    ['value' => LibraryBook::CATEGORY_MAGAZINES, 'label' => 'Revistas'],
-                    ['value' => LibraryBook::CATEGORY_EGW, 'label' => 'Ellen G. White'],
-                    ['value' => LibraryBook::CATEGORY_MEDITATION, 'label' => 'Meditação'],
-                    ['value' => LibraryBook::CATEGORY_LESSON, 'label' => 'Lição'],
-                    ['value' => 'sunset_meditation', 'label' => 'Meditação Por do Sol'],
-                ],
+                'categories' => $categories,
+                'revistaAdventistaAcervo' => $acervoEnabled ? $this->revistaAdventistaAcervoPayload($request) : null,
                 'librarySetupMessage' => 'A biblioteca ainda não está disponível. Peça ao responsável técnico para concluir a atualização da base de dados.',
             ]);
         }
@@ -1164,14 +1268,8 @@ class MobileController extends Controller
 
         return Inertia::render('Mobile/Library', [
             'books' => $books,
-            'categories' => [
-                ['value' => LibraryBook::CATEGORY_BOOKS, 'label' => 'Livros'],
-                ['value' => LibraryBook::CATEGORY_MAGAZINES, 'label' => 'Revistas'],
-                ['value' => LibraryBook::CATEGORY_EGW, 'label' => 'Ellen G. White'],
-                ['value' => LibraryBook::CATEGORY_MEDITATION, 'label' => 'Meditação'],
-                ['value' => LibraryBook::CATEGORY_LESSON, 'label' => 'Lição'],
-                ['value' => 'sunset_meditation', 'label' => 'Meditação Por do Sol'],
-            ],
+            'categories' => $categories,
+            'revistaAdventistaAcervo' => $acervoEnabled ? $this->revistaAdventistaAcervoPayload($request) : null,
             'meditationUrl' => $church !== null ? $church->resolvedLibraryMeditationUrl() : null,
             'lessonUrl' => $church !== null ? $church->resolvedLibraryLessonUrl() : null,
             'sunsetMeditationConfigured' => $church !== null && $church->hasLibrarySunsetMeditation(),

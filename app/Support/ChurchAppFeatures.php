@@ -198,14 +198,34 @@ final class ChurchAppFeatures
 
     /**
      * @param  list<string>  $enabledKeys
+     * @param  list<string>|null  $formKeys  Chaves renderizadas no formulário; ausentes preservam o estado atual.
      */
-    public static function syncEnabledKeys(Church $church, array $enabledKeys): void
+    public static function syncEnabledKeys(Church $church, array $enabledKeys, ?array $formKeys = null): void
     {
         $allKeys = self::allKeys();
         $enabledKeys = array_values(array_intersect($enabledKeys, $allKeys));
-        $disabled = array_values(array_diff($allKeys, $enabledKeys));
+        $formKeys = $formKeys !== null
+            ? array_values(array_intersect($formKeys, $allKeys))
+            : $allKeys;
 
-        $church->update(['disabled_app_features' => $disabled]);
+        $currentDisabled = self::disabledKeysForChurch($church);
+        $disabled = [];
+
+        foreach ($allKeys as $key) {
+            if (! in_array($key, $formKeys, true)) {
+                if (in_array($key, $currentDisabled, true)) {
+                    $disabled[] = $key;
+                }
+
+                continue;
+            }
+
+            if (! in_array($key, $enabledKeys, true)) {
+                $disabled[] = $key;
+            }
+        }
+
+        $church->update(['disabled_app_features' => array_values(array_unique($disabled))]);
     }
 
     private static function routeMatches(string $routeName, string $pattern): bool

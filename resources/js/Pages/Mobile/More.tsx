@@ -50,8 +50,8 @@ const items: MoreMenuItem[] = [
     },
     { name: 'Saúde', description: 'Conteúdos de saúde e bem-estar', route: 'mobile.health', featureKey: 'health', icon: HeartIcon },
     {
-        name: 'Acervo Revista Adventista',
-        description: 'Edições históricas da Revista Adventista (1906–hoje)',
+        name: 'Revista Adventista',
+        description: 'Artigos, editoriais e colunas da Revista Adventista',
         route: 'mobile.revista-adventista',
         featureKey: 'revista_adventista',
         icon: NewspaperIcon,

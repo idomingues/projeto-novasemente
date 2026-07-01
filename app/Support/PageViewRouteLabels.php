@@ -45,8 +45,10 @@ final class PageViewRouteLabels
         'mobile.news.show' => 'Notícias — artigo',
         'mobile.health' => 'Saúde',
         'mobile.health.show' => 'Saúde — artigo',
-        'mobile.revista-adventista' => 'Acervo Revista Adventista',
-        'mobile.revista-adventista.show' => 'Acervo Revista Adventista — edição',
+        'mobile.revista-adventista' => 'Revista Adventista',
+        'mobile.revista-adventista.show' => 'Revista Adventista — artigo',
+        'mobile.acervo-revista-adventista' => 'Acervo Revista Adventista',
+        'mobile.acervo-revista-adventista.show' => 'Acervo Revista Adventista — edição',
         'mobile.mission' => 'Missão',
         'mobile.mission.home' => 'Missão Tailândia & Mianmar',
         'mobile.mission.trip-registration.create' => 'Inscrição — Missão Tailândia & Mianmar',
@@ -103,7 +105,8 @@ final class PageViewRouteLabels
         'more.index' => 'Mais (web /mais)',
         'musica.index' => 'Música (painel)',
         'health.index' => 'Saúde (painel)',
-        'revista-adventista.index' => 'Acervo Revista Adventista (painel)',
+        'revista-adventista.index' => 'Revista Adventista (painel)',
+        'revista-adventista-acervo.index' => 'Acervo Revista Adventista (painel)',
 
         // —— Ligações frequentes a partir de Mais / áreas relacionadas ——
         'varios.schedule' => 'Escala (web)',

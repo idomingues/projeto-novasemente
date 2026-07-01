@@ -1,16 +1,17 @@
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Head, Link, usePage } from '@inertiajs/react';
+import RevistaAdventistaAcervoContent from '@/Components/Mobile/RevistaAdventistaAcervoContent';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     BookOpenIcon,
     ArrowDownTrayIcon,
     ArrowTopRightOnSquareIcon,
     MagnifyingGlassIcon,
     XMarkIcon,
-    NewspaperIcon,
     SparklesIcon,
     MoonIcon,
     ClipboardDocumentListIcon,
     SunIcon,
+    ArchiveBoxIcon,
 } from '@heroicons/react/24/outline';
 import Modal from '@/Components/Modal';
 import LibraryLessonDayNotes from '@/Components/Mobile/LibraryLessonDayNotes';
@@ -46,6 +47,20 @@ interface Props {
     lessonUrl?: string | null;
     sunsetMeditationConfigured?: boolean;
     librarySetupMessage?: string | null;
+    revistaAdventistaAcervo?: {
+        editions: Array<{
+            id: number;
+            title: string;
+            year: number;
+            month: number;
+            month_label: string;
+            cover_url: string | null;
+            has_pdf: boolean;
+        }>;
+        availableYears: number[];
+        selectedYear: number;
+        decades: Array<{ label: string; years: number[] }>;
+    } | null;
 }
 
 type PageProps = { appUrl?: string };
@@ -81,16 +96,16 @@ function libraryCategoryPresentation(value: string, label: string): CategoryPres
     switch (value) {
         case 'books':
             return { icon: BookOpenIcon, line1: 'Livros' };
-        case 'magazines':
-            return { icon: NewspaperIcon, line1: 'Revistas' };
         case 'egw':
             return { icon: SparklesIcon, line1: 'Ellen G.', line2: 'White' };
         case 'meditation':
-            return { icon: MoonIcon, line1: 'Meditação' };
+            return { icon: MoonIcon, line1: 'Meditação', line2: 'Diária' };
         case 'lesson':
             return { icon: ClipboardDocumentListIcon, line1: 'Lição' };
         case 'sunset_meditation':
             return { icon: SunIcon, line1: 'Meditação', line2: 'Por do Sol' };
+        case 'revista_adventista_acervo':
+            return { icon: ArchiveBoxIcon, line1: 'Acervo', line2: 'Revista' };
         default:
             return { icon: BookOpenIcon, line1: label };
     }
@@ -129,6 +144,7 @@ export default function MobileLibrary({
     lessonUrl: lessonUrlProp = null,
     sunsetMeditationConfigured = false,
     librarySetupMessage = null,
+    revistaAdventistaAcervo = null,
 }: Props) {
     const appUrl = (usePage().props as PageProps).appUrl ?? '';
     const initialTab = useMemo(() => {
@@ -136,7 +152,7 @@ export default function MobileLibrary({
         const t = new URL(window.location.href).searchParams.get('tab')?.trim().toLowerCase() ?? '';
         return categories.some((c) => c.value === t) ? t : '';
     }, [categories]);
-    const [tab, setTab] = useState<string>(initialTab || categories[0]?.value || 'books');
+    const [tab, setTab] = useState<string>(initialTab || categories[0]?.value || 'meditation');
     const [search, setSearch] = useState('');
     const [selectedDetails, setSelectedDetails] = useState<BookItem | null>(null);
     const [readerStatus, setReaderStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
@@ -154,6 +170,7 @@ export default function MobileLibrary({
     const meditationUrl = String(meditationUrlProp ?? '').trim();
     const lessonUrl = String(lessonUrlProp ?? '').trim();
     const isSunsetTab = tab === 'sunset_meditation';
+    const isAcervoTab = tab === 'revista_adventista_acervo';
     const isConfiguredExternalTab = tab === 'meditation' || tab === 'lesson' || isSunsetTab;
     const configuredUrl =
         tab === 'meditation' ? meditationUrl : tab === 'lesson' ? lessonUrl : isSunsetTab && sunsetMeditationConfigured ? 'pdf' : '';
@@ -167,6 +184,14 @@ export default function MobileLibrary({
             return t.includes(q);
         });
     }, [books, tab, search]);
+
+    const selectAcervoYear = (year: number) => {
+        router.get(
+            route('mobile.biblioteca'),
+            { tab: 'revista_adventista_acervo', ano: year },
+            { preserveState: true, preserveScroll: true, replace: true },
+        );
+    };
 
     const emptyMessage = useMemo(() => {
         if (librarySetupMessage) {
@@ -289,15 +314,19 @@ export default function MobileLibrary({
                         <GratisBadge className="translate-y-0.5" />
                     </div>
                     <div className="relative w-full sm:max-w-xs">
-                        <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-                        <input
-                            type="search"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Pesquisar…"
-                            className="w-full rounded-xl border border-zinc-200/90 bg-white py-2.5 pl-9 pr-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900/15 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:placeholder:text-zinc-500 dark:focus:border-zinc-300 dark:focus:ring-zinc-300/20"
-                            aria-label="Pesquisar na biblioteca"
-                        />
+                        {!isAcervoTab ? (
+                            <>
+                                <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+                                <input
+                                    type="search"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    placeholder="Pesquisar…"
+                                    className="w-full rounded-xl border border-zinc-200/90 bg-white py-2.5 pl-9 pr-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900/15 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:placeholder:text-zinc-500 dark:focus:border-zinc-300 dark:focus:ring-zinc-300/20"
+                                    aria-label="Pesquisar na biblioteca"
+                                />
+                            </>
+                        ) : null}
                     </div>
                 </header>
 
@@ -314,7 +343,7 @@ export default function MobileLibrary({
                 <nav
                     role="tablist"
                     aria-label="Categorias"
-                    className="grid grid-cols-3 gap-2 sm:grid-cols-6"
+                    className="grid grid-cols-3 gap-2 sm:grid-cols-3 lg:grid-cols-6"
                 >
                     {categories.map((c) => {
                         const active = tab === c.value;
@@ -328,7 +357,19 @@ export default function MobileLibrary({
                                 role="tab"
                                 aria-selected={active}
                                 aria-label={c.label}
-                                onClick={() => setTab(c.value)}
+                                onClick={() => {
+                                    setTab(c.value);
+                                    if (c.value === 'revista_adventista_acervo') {
+                                        router.get(
+                                            route('mobile.biblioteca'),
+                                            {
+                                                tab: c.value,
+                                                ano: revistaAdventistaAcervo?.selectedYear,
+                                            },
+                                            { preserveState: true, replace: true },
+                                        );
+                                    }
+                                }}
                                 className={`flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-3 text-center transition active:scale-[0.98] ${
                                     active
                                         ? 'bg-zinc-900 text-white shadow-md ring-2 ring-zinc-900/15 dark:bg-white dark:text-zinc-900 dark:ring-white/20'
@@ -355,7 +396,16 @@ export default function MobileLibrary({
                     })}
                 </nav>
 
-                {isConfiguredExternalTab ? (
+                {isAcervoTab && revistaAdventistaAcervo ? (
+                    <RevistaAdventistaAcervoContent
+                        editions={revistaAdventistaAcervo.editions}
+                        availableYears={revistaAdventistaAcervo.availableYears}
+                        selectedYear={revistaAdventistaAcervo.selectedYear}
+                        decades={revistaAdventistaAcervo.decades}
+                        onSelectYear={selectAcervoYear}
+                        showHeading={false}
+                    />
+                ) : isConfiguredExternalTab ? (
                     <div className="rounded-2xl border border-zinc-200/90 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:p-5">
                         {!configuredUrl ? (
                             <p className="text-center text-sm text-zinc-600 dark:text-zinc-400">{emptyMessage}</p>

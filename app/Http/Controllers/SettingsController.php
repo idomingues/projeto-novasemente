@@ -260,14 +260,23 @@ class SettingsController extends Controller
         $validated = $request->validate([
             'enabled_features' => ['present', 'array'],
             'enabled_features.*' => ['string'],
+            'form_feature_keys' => ['sometimes', 'array'],
+            'form_feature_keys.*' => ['string'],
         ]);
+
+        $definitions = ChurchAppFeatures::definitions();
 
         $enabled = array_values(array_filter(
             $validated['enabled_features'],
-            fn ($key) => is_string($key) && array_key_exists($key, ChurchAppFeatures::definitions()),
+            fn ($key) => is_string($key) && array_key_exists($key, $definitions),
         ));
 
-        ChurchAppFeatures::syncEnabledKeys($church, $enabled);
+        $formKeys = array_values(array_filter(
+            $validated['form_feature_keys'] ?? ChurchAppFeatures::allKeys(),
+            fn ($key) => is_string($key) && array_key_exists($key, $definitions),
+        ));
+
+        ChurchAppFeatures::syncEnabledKeys($church, $enabled, $formKeys);
 
         return redirect()
             ->route('settings.app-features.index')
