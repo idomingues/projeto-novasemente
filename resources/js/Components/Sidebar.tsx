@@ -110,7 +110,7 @@ const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'Oração', route: 'prayer.index', icon: PrayingHandsIcon },
     { name: 'News', route: 'news.index', icon: NewspaperIcon },
     { name: 'Saúde', route: 'health.index', icon: HeartIcon },
-    { name: 'Revista Adventista', route: 'revista-adventista.index', icon: NewspaperIcon },
+    { name: 'Acervo Revista Adventista', route: 'revista-adventista.index', icon: NewspaperIcon },
     { name: 'Eventos', route: 'events.index', icon: CalendarDaysIcon },
     { name: 'Séries', route: 'acervo.index', icon: PlayCircleIcon },
     { name: 'Música', route: 'musica.index', icon: MusicalNoteIcon },

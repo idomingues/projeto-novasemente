@@ -123,7 +123,13 @@ Route::get('/mobile/news/{news:slug}', [MobileController::class, 'newsShow'])->n
 Route::get('/mobile/saude', [MobileController::class, 'health'])->name('mobile.health');
 Route::get('/mobile/saude/{health:slug}', [MobileController::class, 'healthShow'])->name('mobile.health.show');
 Route::get('/mobile/revista-adventista', [MobileController::class, 'revistaAdventista'])->name('mobile.revista-adventista');
-Route::get('/mobile/revista-adventista/{revistaAdventistaArticle:slug}', [MobileController::class, 'revistaAdventistaShow'])
+Route::get('/mobile/revista-adventista/edicao/{revistaAdventistaEdition}/download', [MobileController::class, 'revistaAdventistaPdfDownload'])
+    ->middleware('throttle:60,1')
+    ->name('mobile.revista-adventista.pdf-download');
+Route::get('/mobile/revista-adventista/edicao/{revistaAdventistaEdition}/pdf', [MobileController::class, 'revistaAdventistaPdfStream'])
+    ->middleware('throttle:60,1')
+    ->name('mobile.revista-adventista.pdf-stream');
+Route::get('/mobile/revista-adventista/edicao/{revistaAdventistaEdition}', [MobileController::class, 'revistaAdventistaShow'])
     ->name('mobile.revista-adventista.show');
 Route::get('/mobile/events', [MobileController::class, 'events'])->name('mobile.events');
 Route::get('/mobile/schedule', [MobileController::class, 'schedule'])->name('mobile.schedule');
@@ -166,6 +172,9 @@ Route::get('/mobile/biblia/chapter', [MobileBibleController::class, 'chapter'])
 Route::get('/mobile/biblia/search', [MobileBibleController::class, 'search'])
     ->middleware('throttle:80,1')
     ->name('mobile.bible.search');
+Route::get('/mobile/biblia/referencia', [MobileBibleController::class, 'reference'])
+    ->middleware('throttle:80,1')
+    ->name('mobile.bible.reference');
 Route::get('/mobile/ano-biblico', [MobileAnoBiblicoController::class, 'index'])
     ->name('mobile.ano-biblico');
 Route::get('/mobile/ano-biblico/dia/{day}', [MobileAnoBiblicoController::class, 'day'])
@@ -584,11 +593,14 @@ Route::middleware('auth')->group(function () {
     Route::patch('/saude/{health}/active', [HealthController::class, 'setActive'])->name('health.active')->middleware('permission:news.manage');
     Route::delete('/saude/{health}', [HealthController::class, 'destroy'])->name('health.destroy')->middleware('permission:news.manage');
     Route::get('/revista-adventista', [RevistaAdventistaArticleController::class, 'index'])->name('revista-adventista.index');
-    Route::patch('/revista-adventista/{revistaAdventistaArticle}/active', [RevistaAdventistaArticleController::class, 'setActive'])
-        ->name('revista-adventista.active')
+    Route::patch('/revista-adventista/edicao/{revistaAdventistaEdition}/active', [RevistaAdventistaArticleController::class, 'setEditionActive'])
+        ->name('revista-adventista.edition.active')
         ->middleware('permission:news.manage');
-    Route::post('/revista-adventista/sincronizar', [RevistaAdventistaArticleController::class, 'sync'])
-        ->name('revista-adventista.sync')
+    Route::post('/revista-adventista/sincronizar-acervo', [RevistaAdventistaArticleController::class, 'syncArchive'])
+        ->name('revista-adventista.sync-archive')
+        ->middleware('permission:news.manage');
+    Route::post('/revista-adventista/sincronizar-artigos', [RevistaAdventistaArticleController::class, 'syncArticles'])
+        ->name('revista-adventista.sync-articles')
         ->middleware('permission:news.manage');
 
     // Missão — rotas literais de conteúdo antes do wildcard {missionVolunteer}

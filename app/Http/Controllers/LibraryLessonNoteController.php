@@ -33,7 +33,7 @@ class LibraryLessonNoteController extends Controller
             ->where('church_id', $churchId)
             ->where('lesson_source_hash', $urlHash)
             ->orderByDesc('updated_at')
-            ->get(['id', 'day_slug', 'body', 'updated_at']);
+            ->get(['id', 'day_slug', 'body', 'answer_body', 'updated_at']);
 
         return response()->json([
             'ok' => true,
@@ -50,6 +50,7 @@ class LibraryLessonNoteController extends Controller
             'lesson_source_url' => ['required', 'string', 'max:2048'],
             'day_slug' => ['required', 'string', 'max:64', 'regex:/^[a-z0-9_-]+$/'],
             'body' => ['nullable', 'string', 'max:10000'],
+            'answer_body' => ['nullable', 'string', 'max:10000'],
         ]);
 
         $churchId = Church::resolveWorkingId($request);
@@ -61,17 +62,29 @@ class LibraryLessonNoteController extends Controller
         }
 
         $daySlug = trim($data['day_slug']);
-        $body = trim((string) ($data['body'] ?? ''));
         $urlHash = LibraryLessonNote::hashSourceUrl($url);
 
-        $query = LibraryLessonNote::query()
+        $existing = LibraryLessonNote::query()
             ->where('user_id', $user->id)
             ->where('church_id', $churchId)
             ->where('lesson_source_hash', $urlHash)
-            ->where('day_slug', $daySlug);
+            ->where('day_slug', $daySlug)
+            ->first();
 
-        if ($body === '') {
-            $query->delete();
+        $body = array_key_exists('body', $data)
+            ? trim((string) ($data['body'] ?? ''))
+            : trim((string) ($existing?->body ?? ''));
+        $answerBody = array_key_exists('answer_body', $data)
+            ? trim((string) ($data['answer_body'] ?? ''))
+            : trim((string) ($existing?->answer_body ?? ''));
+
+        if ($body === '' && $answerBody === '') {
+            LibraryLessonNote::query()
+                ->where('user_id', $user->id)
+                ->where('church_id', $churchId)
+                ->where('lesson_source_hash', $urlHash)
+                ->where('day_slug', $daySlug)
+                ->delete();
 
             return response()->json([
                 'ok' => true,
@@ -89,6 +102,7 @@ class LibraryLessonNoteController extends Controller
             [
                 'lesson_source_url' => $url,
                 'body' => $body,
+                'answer_body' => $answerBody !== '' ? $answerBody : null,
             ],
         );
 
@@ -99,7 +113,7 @@ class LibraryLessonNoteController extends Controller
     }
 
     /**
-     * @return array{id: int, day_slug: string, body: string, updated_at: string|null}
+     * @return array{id: int, day_slug: string, body: string, answer_body: string|null, updated_at: string|null}
      */
     private function notePayload(LibraryLessonNote $note): array
     {
@@ -107,6 +121,7 @@ class LibraryLessonNoteController extends Controller
             'id' => $note->id,
             'day_slug' => $note->day_slug,
             'body' => $note->body,
+            'answer_body' => $note->answer_body,
             'updated_at' => $note->updated_at?->toIso8601String(),
         ];
     }

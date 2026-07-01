@@ -8,6 +8,10 @@ class LibraryExternalPageExtractService
 {
     private const MAX_BODY_BYTES = 2_500_000;
 
+    public function __construct(
+        private readonly BibleReferenceService $bibleReferences,
+    ) {}
+
     /**
      * Obtém HTML público do URL e devolve um fragmento sanitizado (melhor esforço).
      *
@@ -71,6 +75,7 @@ class LibraryExternalPageExtractService
                     $cleaned = $this->stripLessonHtmlNoise($block['html']);
                     $sanitized = $this->sanitizeHtml($cleaned);
                     $polished = $this->polishLibraryReaderHtml($sanitized, true);
+                    $polished = $this->bibleReferences->linkifyLessonHtml($polished);
                     if (trim(strip_tags($polished)) === '') {
                         continue;
                     }
@@ -78,6 +83,9 @@ class LibraryExternalPageExtractService
                         'slug' => $block['slug'].'-'.$i,
                         'label' => $block['label'],
                         'html' => $polished,
+                        'question' => isset($block['question']) && is_string($block['question']) && trim($block['question']) !== ''
+                            ? $this->linkifyLessonQuestion(trim($block['question']))
+                            : null,
                     ];
                 }
                 if (count($segments) >= 2) {
@@ -92,10 +100,14 @@ class LibraryExternalPageExtractService
         }
 
         $sanitized = $this->sanitizeHtml($fragment);
+        $html = $this->polishLibraryReaderHtml($sanitized, ! $meditationStructured);
+        if ($libraryKind === 'lesson') {
+            $html = $this->bibleReferences->linkifyLessonHtml($html);
+        }
 
         return [
             'ok' => true,
-            'html' => $this->polishLibraryReaderHtml($sanitized, ! $meditationStructured),
+            'html' => $html,
         ];
     }
 
@@ -262,10 +274,12 @@ class LibraryExternalPageExtractService
             }
             $label = $hits[$i]['label'];
             $slug = $this->asciiSlug($label).'-'.$i;
+            $split = $this->splitLessonHtmlAndQuestion($slice);
             $segments[] = [
                 'slug' => $slug,
                 'label' => $label,
-                'html' => $slice,
+                'html' => $split['html'],
+                'question' => $split['question'],
             ];
         }
 
@@ -304,7 +318,36 @@ class LibraryExternalPageExtractService
         $s = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $s) ?: $s;
         $s = strtolower(preg_replace('/[^a-z0-9]+/i', '-', $s) ?? $s);
 
-        return trim($s, '-') ?: 'dia';
+        return trim($s, '-');
+    }
+
+    /**
+     * @return array{html: string, question: string|null}
+     */
+    private function splitLessonHtmlAndQuestion(string $html): array
+    {
+        $html = trim($html);
+        if ($html === '') {
+            return ['html' => '', 'question' => null];
+        }
+
+        if (preg_match('/<blockquote>\s*<p>\s*<em>([\s\S]*?)<\/em>\s*<\/p>\s*<\/blockquote>\s*$/iu', $html, $m)) {
+            $question = trim(html_entity_decode(strip_tags((string) ($m[1] ?? '')), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+            $question = preg_replace('/\s+/u', ' ', $question) ?? $question;
+            $stripped = trim((string) preg_replace('/<blockquote>\s*<p>\s*<em>[\s\S]*?<\/em>\s*<\/p>\s*<\/blockquote>\s*$/iu', '', $html));
+            if ($question !== '') {
+                return ['html' => $stripped, 'question' => $question];
+            }
+        }
+
+        return ['html' => $html, 'question' => null];
+    }
+
+    private function linkifyLessonQuestion(string $question): string
+    {
+        $linked = $this->bibleReferences->linkifyPlainText($question);
+
+        return $linked !== '' ? $linked : '<p>'.htmlspecialchars($question, ENT_QUOTES | ENT_HTML5, 'UTF-8').'</p>';
     }
 
     /**
@@ -496,7 +539,9 @@ class LibraryExternalPageExtractService
                 continue;
             }
             $serialized = $this->serializeCpbLessonPanelToReaderHtml($dom, $panel);
-            $inner = trim($serialized) !== '' ? $serialized : $this->fallbackCpbLessonPanelInnerHtml($dom, $panel);
+            $inner = trim($serialized['html']) !== ''
+                ? $serialized['html']
+                : $this->fallbackCpbLessonPanelInnerHtml($dom, $panel);
             if ($inner === '') {
                 continue;
             }
@@ -504,6 +549,7 @@ class LibraryExternalPageExtractService
                 'slug' => $def['slug'],
                 'label' => $def['label'],
                 'html' => $inner,
+                'question' => $serialized['question'],
             ];
         }
 
@@ -525,8 +571,10 @@ class LibraryExternalPageExtractService
      *
      * Padrão alinhado ao layout CPB: Sábado = lição + datas + título do trimestre + meta (subtítulo + ano) + verso + leituras + texto;
      * demais dias = meta (data do dia + ano) + título do dia + texto (sem repetir o título do trimestre).
+     *
+     * @return array{html: string, question: string|null}
      */
-    private function serializeCpbLessonPanelToReaderHtml(\DOMDocument $dom, \DOMElement $panel): string
+    private function serializeCpbLessonPanelToReaderHtml(\DOMDocument $dom, \DOMElement $panel): array
     {
         $xp = new \DOMXPath($dom);
         $esc = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES | ENT_HTML5, 'UTF-8');
@@ -534,6 +582,7 @@ class LibraryExternalPageExtractService
         $t = fn (string $rel): string => $this->cpbXPathFirstText($xp, $panel, $rel);
 
         $html = '';
+        $question = null;
 
         $num = $t('.//*[contains(concat(" ", normalize-space(@class), " "), " numberLicao ")]');
         $dateRange = $t('.//*[contains(concat(" ", normalize-space(@class), " "), " dateLicao ")]');
@@ -597,11 +646,14 @@ class LibraryExternalPageExtractService
         if ($rodape instanceof \DOMElement) {
             $v = $this->normalizeCpbWhitespace($rodape->textContent ?? '');
             if ($v !== '') {
-                $html .= '<blockquote><p><em>'.$esc($v).'</em></p></blockquote>';
+                $question = $v;
             }
         }
 
-        return trim($html);
+        return [
+            'html' => trim($html),
+            'question' => $question,
+        ];
     }
 
     /**

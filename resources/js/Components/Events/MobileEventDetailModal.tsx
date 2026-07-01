@@ -52,7 +52,7 @@ export default function MobileEventDetailModal({
                                     imageSrc={selected.image_url}
                                     showYoutubePlayOverlay={eventHasYoutubeVideo(selected)}
                                     aspectClass="max-h-52 w-full sm:max-h-64"
-                                    imageClassName="max-h-52 w-full object-cover sm:max-h-64"
+                                    imageClassName="max-h-52 w-full object-cover object-top sm:max-h-64"
                                 />
                             )
                         ) : eventInstagramVideoUrl(selected) ? (

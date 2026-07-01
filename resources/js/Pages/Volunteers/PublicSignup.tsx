@@ -32,6 +32,8 @@ import {
 import {
     clearVolunteerSignupDraft,
     computeVolunteerSignupPageErrors,
+    draftPhotoPreviewToFile,
+    fileToDraftPhotoPreview,
     mapVolunteerSignupServerErrors,
     normalizeSignupBool,
     readVolunteerSignupDraft,
@@ -118,6 +120,8 @@ interface Props {
 }
 
 const PAGE_TITLES = ['Dados pessoais', 'Nova Semente', 'Sobre o serviço'];
+
+const SIGNUP_COMPLETE_SUBMIT_HINT = 'Cadastro completo. Toque em Concluir cadastro para finalizar.';
 
 function resolveErrorPage(field: string): number {
     const base = field.split('.')[0];
@@ -562,13 +566,6 @@ export default function PublicSignup({
         setLiveSignupCompletion(signupCompletion);
     }, [missingFieldsProp, signupCompletion]);
 
-    useEffect(() => {
-        if (!focusMissingOnly || !liveSignupCompletion?.is_complete) {
-            return;
-        }
-        router.visit(route(redirectAfterSave));
-    }, [focusMissingOnly, liveSignupCompletion?.is_complete, redirectAfterSave]);
-
     const missingFields = liveMissingFields;
     const visiblePages = useMemo(
         () => (focusMissingOnly ? visiblePagesForMissingFields(missingFields) : [0, 1, 2]),
@@ -894,8 +891,7 @@ export default function PublicSignup({
                 setClientErrors({});
                 setStepBlocked(false);
                 setAutosaveStatus('saved');
-                setAutosaveMessage(null);
-                router.visit(route(redirectAfterSave));
+                setAutosaveMessage(SIGNUP_COMPLETE_SUBMIT_HINT);
                 return;
             }
 
@@ -915,7 +911,7 @@ export default function PublicSignup({
             setAutosaveMessage(response.message);
             setAutosaveStatus('saved');
         },
-        [redirectAfterSave, setData],
+        [setData],
     );
 
     const performAutosave = useCallback(
@@ -1087,6 +1083,28 @@ export default function PublicSignup({
 
     useEffect(() => () => revokePhotoPreviewObjectUrl(), [revokePhotoPreviewObjectUrl]);
 
+    useEffect(() => {
+        if (isEdit) {
+            return;
+        }
+        const preview = guestDraftState?.photoPreview;
+        if (!preview?.startsWith('data:image/')) {
+            return;
+        }
+
+        let cancelled = false;
+        void draftPhotoPreviewToFile(preview).then((file) => {
+            if (!cancelled && file) {
+                setData('photo_file', file);
+            }
+        });
+
+        return () => {
+            cancelled = true;
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- restaurar foto do rascunho só na montagem
+    }, []);
+
     const handlePhotoFileChosen = async (raw: File | null) => {
         setPhotoReloadWarning(false);
         setPhotoClientError(null);
@@ -1097,6 +1115,12 @@ export default function PublicSignup({
             setPhotoPreview(isEdit ? initial?.photo_url ?? null : null);
             setPhotoPendingServerSave(false);
             clearPhotoPickPending();
+            if (!isEdit) {
+                writeVolunteerSignupDraft(signupToken, { ...dataRef.current, photo_file: null }, {
+                    page: activePageRef.current,
+                    photoPreview: null,
+                });
+            }
             return;
         }
         setPhotoPreparing(true);
@@ -1104,12 +1128,24 @@ export default function PublicSignup({
             const compressed = await compressImageForUpload(raw);
             setData('photo_file', compressed);
             revokePhotoPreviewObjectUrl();
-            const preview = URL.createObjectURL(compressed);
-            photoPreviewObjectUrlRef.current = preview;
+
+            const draftPreview = await fileToDraftPhotoPreview(compressed);
+            let preview: string;
+            if (draftPreview) {
+                preview = draftPreview;
+            } else {
+                preview = URL.createObjectURL(compressed);
+                photoPreviewObjectUrlRef.current = preview;
+            }
             setPhotoPreview(preview);
             clearPhotoPickPending();
             if (isEdit) {
                 setPhotoPendingServerSave(true);
+            } else {
+                writeVolunteerSignupDraft(signupToken, { ...dataRef.current, photo_file: compressed }, {
+                    page: activePageRef.current,
+                    photoPreview: draftPreview,
+                });
             }
         } catch (e) {
             const msg = e instanceof ImageCompressError ? e.message : 'Não foi possível preparar a foto.';
@@ -1132,6 +1168,12 @@ export default function PublicSignup({
         setPhotoPendingServerSave(false);
         clearClientError('photo_file');
         clearPhotoPickPending();
+        if (!isEdit) {
+            writeVolunteerSignupDraft(signupToken, { ...dataRef.current, photo_file: null }, {
+                page: activePageRef.current,
+                photoPreview: null,
+            });
+        }
     };
 
     const computePageErrors = useCallback(
@@ -1478,6 +1520,20 @@ export default function PublicSignup({
     const hasVisibleServerErrors = serverErrorKeys.length > 0;
     const hasStepErrors =
         stepBlocked && Object.keys(clientErrors).length > 0 && liveSignupCompletion?.is_complete !== true;
+    const signupReadyToFinish = Boolean(isEdit && liveSignupCompletion?.is_complete);
+
+    const submitLabel = useMemo(() => {
+        if (signupReadyToFinish) {
+            return 'Concluir cadastro';
+        }
+        if (focusMissingOnly) {
+            return 'Continuar';
+        }
+        if (isEdit) {
+            return 'Salvar cadastro';
+        }
+        return 'Concluir cadastro';
+    }, [focusMissingOnly, isEdit, signupReadyToFinish]);
 
     return (
         <MobileLayout>
@@ -1571,6 +1627,18 @@ export default function PublicSignup({
                         >
                             Ok
                         </button>
+                    </div>
+                ) : null}
+
+                {signupReadyToFinish ? (
+                    <div
+                        className="mb-4 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-950 dark:border-emerald-900/50 dark:bg-emerald-950/35 dark:text-emerald-100"
+                        role="status"
+                    >
+                        <p className="font-semibold">Cadastro completo</p>
+                        <p className="mt-1 leading-relaxed text-emerald-900/90 dark:text-emerald-100/90">
+                            {SIGNUP_COMPLETE_SUBMIT_HINT}
+                        </p>
                     </div>
                 ) : null}
 
@@ -2200,7 +2268,7 @@ export default function PublicSignup({
                             onAdvance={tryAdvancePage}
                             processing={processing}
                             advancing={advancing}
-                            submitLabel={focusMissingOnly ? 'Continuar' : isEdit ? 'Salvar cadastro' : 'Concluir cadastro'}
+                            submitLabel={submitLabel}
                         />
                     </div>
                 </form>

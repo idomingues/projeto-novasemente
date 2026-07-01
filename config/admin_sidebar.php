@@ -29,7 +29,7 @@ return [
         // Publicação
         ['name' => 'News', 'route' => 'news.index', 'icon' => 'newspaper'],
         ['name' => 'Saúde', 'route' => 'health.index', 'icon' => 'heart'],
-        ['name' => 'Revista Adventista', 'route' => 'revista-adventista.index', 'icon' => 'newspaper'],
+        ['name' => 'Acervo Revista Adventista', 'route' => 'revista-adventista.index', 'icon' => 'newspaper'],
         ['name' => 'Eventos', 'route' => 'events.index', 'icon' => 'calendar-days'],
         ['name' => 'Séries', 'route' => 'acervo.index', 'icon' => 'play-circle'],
         ['name' => 'Música', 'route' => 'musica.index', 'icon' => 'musical-note'],

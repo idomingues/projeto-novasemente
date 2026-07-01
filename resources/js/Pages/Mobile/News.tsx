@@ -229,7 +229,7 @@ export default function MobileNews({ posts, config }: Props) {
                                                             {snippet}
                                                         </p>
                                                     )}
-                                                    <span className="mt-3 inline-block text-sm font-semibold text-primary-600 dark:text-primary-400">
+                                                    <span className="mt-3 inline-block text-sm font-semibold text-brand-600 underline-offset-2 hover:underline dark:text-brand-400">
                                                         Ler publicação
                                                     </span>
                                                 </Link>

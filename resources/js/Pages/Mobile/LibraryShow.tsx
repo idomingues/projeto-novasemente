@@ -2,13 +2,12 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
 import {
     ArrowLeftIcon,
-    ArrowDownTrayIcon,
     ArrowTopRightOnSquareIcon,
     DocumentTextIcon,
     XMarkIcon,
 } from '@heroicons/react/24/outline';
 import Modal from '@/Components/Modal';
-import MobilePdfReader from '@/Components/Mobile/MobilePdfReader';
+import PdfTextReaderScreen from '@/Components/Mobile/PdfTextReaderScreen';
 import { useEffect, useMemo, useState } from 'react';
 
 function imageSrc(url: string | null, appUrl: string): string {
@@ -131,17 +130,14 @@ export default function MobileLibraryShow({ book }: Props) {
                         </Link>
                     </div>
 
-                    <MobilePdfReader url={pdf} title={book.title} className="px-4 sm:px-0" />
-
-                    <div className="mt-4 flex justify-center px-4 sm:px-0">
-                        <a
-                            href={route('mobile.biblioteca.pdf-download', book.id)}
-                            className="inline-flex cursor-pointer touch-manipulation items-center justify-center gap-2 rounded-2xl border border-zinc-300 px-4 py-3 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                        >
-                            <ArrowDownTrayIcon className="h-5 w-5 shrink-0" />
-                            Baixar PDF
-                        </a>
-                    </div>
+                    <PdfTextReaderScreen
+                        title={book.title}
+                        subtitle={book.subtitle}
+                        pdfUrl={pdf}
+                        downloadUrl={route('mobile.biblioteca.pdf-download', book.id)}
+                        contentKey={book.category === 'books' ? `library:book:${book.id}` : null}
+                        className="sm:px-0"
+                    />
 
                     {description ? (
                         <div className="mx-4 mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-950 sm:mx-0">

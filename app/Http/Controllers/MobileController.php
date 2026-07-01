@@ -16,7 +16,7 @@ use App\Models\News;
 use App\Models\Pastor;
 use App\Models\PastoralAppointment;
 use App\Models\PhotoAlbum;
-use App\Models\RevistaAdventistaArticle;
+use App\Models\RevistaAdventistaEdition;
 use App\Models\ScheduleCheckinDate;
 use App\Models\User;
 use App\Models\UserDismissedAppNotification;
@@ -25,6 +25,7 @@ use App\Models\Volunteer;
 use App\Services\DriveFolderCoverService;
 use App\Services\DriveFolderImagesService;
 use App\Services\LibraryEgwPdfService;
+use App\Services\RevistaAdventistaEditionPdfService;
 use App\Services\LibraryExternalPageExtractService;
 use App\Services\SabbathSunsetService;
 use App\Services\ScheduleAssignmentPresenter;
@@ -609,80 +610,186 @@ class MobileController extends Controller
 
     public function revistaAdventista(Request $request): Response
     {
-        $section = trim((string) $request->query('section', ''));
-        $validSections = array_keys(RevistaAdventistaArticle::sectionLabels());
-        if ($section !== '' && ! in_array($section, $validSections, true)) {
-            $section = '';
-        }
-
-        $search = trim((string) $request->query('q', ''));
-        if (mb_strlen($search) > 0 && mb_strlen($search) < 2) {
-            $search = '';
-        }
-
-        $mapArticle = fn (RevistaAdventistaArticle $article): array => [
-            'id' => $article->id,
-            'title' => $article->title,
-            'slug' => $article->slug,
-            'excerpt' => $article->excerpt,
-            'section' => $article->section,
-            'section_label' => $article->sectionLabel(),
-            'author_name' => $article->author_name,
-            'image_url' => $article->image_url,
-            'cover_url' => $article->image_url,
-            'published_at' => $article->published_at?->toIso8601String(),
-        ];
-
-        $articles = RevistaAdventistaArticle::query()
-            ->when($section !== '', fn ($q) => $q->where('section', $section))
-            ->when($search !== '', fn ($q) => $q->search($search))
+        $baseUrl = $request->getSchemeAndHttpHost();
+        $availableYears = RevistaAdventistaEdition::query()
             ->where('is_active', true)
-            ->whereNotNull('published_at')
-            ->where('published_at', '<=', now())
-            ->orderByDesc('published_at')
-            ->paginate(15)
-            ->withQueryString();
+            ->select('year')
+            ->distinct()
+            ->orderByDesc('year')
+            ->pluck('year')
+            ->map(fn ($year) => (int) $year)
+            ->values()
+            ->all();
 
-        $articles->getCollection()->transform($mapArticle);
+        $defaultYear = $availableYears[0] ?? (int) date('Y');
+        $selectedYear = (int) $request->query('ano', $defaultYear);
+        if (! in_array($selectedYear, $availableYears, true)) {
+            $selectedYear = $defaultYear;
+        }
+
+        $editions = RevistaAdventistaEdition::query()
+            ->where('is_active', true)
+            ->where('year', $selectedYear)
+            ->orderBy('month')
+            ->get()
+            ->map(fn (RevistaAdventistaEdition $edition) => $this->mapRevistaAdventistaEditionForMobile($edition, $baseUrl))
+            ->values()
+            ->all();
+
 
         return Inertia::render('Mobile/RevistaAdventista', [
-            'articles' => $articles,
-            'sections' => collect(RevistaAdventistaArticle::sectionLabels())
-                ->map(fn (string $label, string $key) => ['value' => $key, 'label' => $label])
-                ->values()
-                ->all(),
-            'filters' => [
-                'section' => $section !== '' ? $section : null,
-                'q' => $search !== '' ? $search : null,
-            ],
+            'editions' => $editions,
+            'availableYears' => $availableYears,
+            'selectedYear' => $selectedYear,
+            'decades' => $this->revistaAdventistaDecades($availableYears),
         ]);
     }
 
-    public function revistaAdventistaShow(RevistaAdventistaArticle $revistaAdventistaArticle): Response
+    public function revistaAdventistaShow(Request $request, RevistaAdventistaEdition $revistaAdventistaEdition): Response
     {
-        if (! $revistaAdventistaArticle->is_active) {
+        if (! $revistaAdventistaEdition->is_active) {
             abort(404);
         }
-        if ($revistaAdventistaArticle->published_at === null || $revistaAdventistaArticle->published_at->isFuture()) {
+
+        $baseUrl = $request->getSchemeAndHttpHost();
+        $pdfUrl = $this->mobileRevistaAdventistaPdfUrlFor($revistaAdventistaEdition);
+
+        if ($pdfUrl === null) {
             abort(404);
         }
 
         return Inertia::render('Mobile/RevistaAdventistaShow', [
-            'article' => [
-                'id' => $revistaAdventistaArticle->id,
-                'title' => $revistaAdventistaArticle->title,
-                'slug' => $revistaAdventistaArticle->slug,
-                'excerpt' => $revistaAdventistaArticle->excerpt,
-                'body' => $revistaAdventistaArticle->body,
-                'section' => $revistaAdventistaArticle->section,
-                'section_label' => $revistaAdventistaArticle->sectionLabel(),
-                'author_name' => $revistaAdventistaArticle->author_name,
-                'source_url' => $revistaAdventistaArticle->source_url,
-                'image_url' => $revistaAdventistaArticle->image_url,
-                'cover_url' => $revistaAdventistaArticle->image_url,
-                'published_at' => $revistaAdventistaArticle->published_at?->toIso8601String(),
-            ],
+            'edition' => array_merge(
+                $this->mapRevistaAdventistaEditionForMobile($revistaAdventistaEdition, $baseUrl),
+                [
+                    'pdf_url' => $pdfUrl,
+                    'source_pdf_url' => $revistaAdventistaEdition->resolvedSourcePdfUrl(),
+                ],
+            ),
         ]);
+    }
+
+    /**
+     * @return \Illuminate\Http\Response|\Symfony\Component\HttpFoundation\StreamedResponse
+     */
+    public function revistaAdventistaPdfStream(
+        RevistaAdventistaEdition $revistaAdventistaEdition,
+        RevistaAdventistaEditionPdfService $pdfService,
+    ) {
+        if (! $revistaAdventistaEdition->is_active || ! $this->revistaAdventistaEditionHasReadablePdf($revistaAdventistaEdition)) {
+            abort(404);
+        }
+
+        if ($revistaAdventistaEdition->hasLocalPdf()) {
+            $response = $pdfService->streamLocalPdf($revistaAdventistaEdition, attachment: false);
+            if ($response !== null) {
+                return $response;
+            }
+        }
+
+        $response = $pdfService->streamPdf($revistaAdventistaEdition, attachment: false);
+        if ($response === null) {
+            abort(404);
+        }
+
+        return $response;
+    }
+
+    /**
+     * @return RedirectResponse|\Symfony\Component\HttpFoundation\StreamedResponse|\Illuminate\Http\Response
+     */
+    public function revistaAdventistaPdfDownload(
+        RevistaAdventistaEdition $revistaAdventistaEdition,
+        RevistaAdventistaEditionPdfService $pdfService,
+    ) {
+        if (! $revistaAdventistaEdition->is_active || ! $this->revistaAdventistaEditionHasReadablePdf($revistaAdventistaEdition)) {
+            abort(404);
+        }
+
+        if ($revistaAdventistaEdition->hasLocalPdf()) {
+            $response = $pdfService->streamLocalPdf($revistaAdventistaEdition, attachment: true);
+            if ($response !== null) {
+                return $response;
+            }
+        }
+
+        $response = $pdfService->streamPdf($revistaAdventistaEdition, attachment: true);
+        if ($response === null) {
+            abort(404);
+        }
+
+        return $response;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function mapRevistaAdventistaEditionForMobile(RevistaAdventistaEdition $edition, string $baseUrl): array
+    {
+        return [
+            'id' => $edition->id,
+            'title' => $edition->title,
+            'year' => $edition->year,
+            'month' => $edition->month,
+            'month_code' => $edition->month_code,
+            'month_label' => $edition->monthLabel(),
+            'cpb_edition_id' => $edition->cpb_edition_id,
+            'cover_url' => $edition->resolvedCoverUrl($baseUrl),
+            'has_pdf' => $this->revistaAdventistaEditionHasReadablePdf($edition),
+            'pdf_cached' => $edition->hasLocalPdf(),
+            'cover_cached' => $edition->hasLocalCover(),
+        ];
+    }
+
+    private function mobileRevistaAdventistaPdfUrlFor(RevistaAdventistaEdition $edition): ?string
+    {
+        if (! $this->revistaAdventistaEditionHasReadablePdf($edition)) {
+            return null;
+        }
+
+        if ($edition->hasLocalPdf()) {
+            return $edition->resolvedPdfUrl('');
+        }
+
+        return route('mobile.revista-adventista.pdf-stream', ['revistaAdventistaEdition' => $edition->id], absolute: false);
+    }
+
+    private function revistaAdventistaEditionHasReadablePdf(RevistaAdventistaEdition $edition): bool
+    {
+        if ($edition->hasLocalPdf()) {
+            return true;
+        }
+
+        return $edition->resolvedSourcePdfUrl() !== null;
+    }
+
+    /**
+     * @param  list<int>  $years
+     * @return list<array{label: string, years: list<int>}>
+     */
+    private function revistaAdventistaDecades(array $years): array
+    {
+        if ($years === []) {
+            return [];
+        }
+
+        $grouped = [];
+        foreach ($years as $year) {
+            $decade = (int) (floor($year / 10) * 10);
+            $grouped[$decade][] = $year;
+        }
+
+        krsort($grouped);
+
+        return collect($grouped)
+            ->map(fn (array $decadeYears, int $decade) => [
+                'label' => $decade === (int) floor(((int) date('Y')) / 10) * 10
+                    ? 'Atual'
+                    : $decade.'–'.($decade + 9),
+                'years' => array_values($decadeYears),
+            ])
+            ->values()
+            ->all();
     }
 
     public function events(Request $request): Response
@@ -1227,12 +1334,12 @@ class MobileController extends Controller
 
     private function mobilePdfUrlFor(LibraryBook $book, string $baseUrl): ?string
     {
-        if ($book->hasLocalPdf()) {
-            return $book->resolvedPdfUrl($baseUrl);
+        if ($book->category === LibraryBook::CATEGORY_EGW && $this->libraryBookHasReadablePdf($book)) {
+            return route('mobile.biblioteca.pdf-stream', ['libraryBook' => $book->id], absolute: false);
         }
 
-        if ($book->category === LibraryBook::CATEGORY_EGW && $book->resolvedSourcePdfUrl() !== null) {
-            return route('mobile.biblioteca.pdf-stream', ['libraryBook' => $book->id], absolute: false);
+        if ($book->hasLocalPdf()) {
+            return $book->resolvedPdfUrl($baseUrl);
         }
 
         return $book->resolvedPdfUrl($baseUrl);

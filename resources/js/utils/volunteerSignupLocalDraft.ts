@@ -41,6 +41,39 @@ export function canStoreVolunteerSignupPhotoPreview(preview: string | null | und
     return preview.length <= DRAFT_MAX_PHOTO_PREVIEW_CHARS;
 }
 
+/** Converte arquivo comprimido em data URL para o rascunho local (cadastro convidado). */
+export function fileToDraftPhotoPreview(file: File): Promise<string | null> {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const result = typeof reader.result === 'string' ? reader.result : null;
+            resolve(result && canStoreVolunteerSignupPhotoPreview(result) ? result : null);
+        };
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(file);
+    });
+}
+
+/** Restaura arquivo de foto a partir do preview salvo no rascunho. */
+export async function draftPhotoPreviewToFile(preview: string): Promise<File | null> {
+    if (!preview.startsWith('data:image/')) {
+        return null;
+    }
+
+    try {
+        const res = await fetch(preview);
+        const blob = await res.blob();
+        if (!blob.size) {
+            return null;
+        }
+        const type = blob.type || 'image/jpeg';
+
+        return new File([blob], 'foto-cadastro.jpg', { type });
+    } catch {
+        return null;
+    }
+}
+
 function isDraftExpired(savedAt: string | undefined): boolean {
     if (!savedAt) {
         return true;

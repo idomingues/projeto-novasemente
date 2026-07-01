@@ -1,6 +1,6 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import InstagramFeedCard from '@/Components/News/InstagramFeedCard';
-import MobilePdfReader from '@/Components/Mobile/MobilePdfReader';
+import PdfTextReaderScreen from '@/Components/Mobile/PdfTextReaderScreen';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { ArrowLeftIcon, NewspaperIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import CoverWithVideoLink from '@/Components/News/CoverWithVideoLink';
@@ -101,7 +101,7 @@ export default function MobileNewsShow({ post, config }: Props) {
                         </Link>
                     </div>
 
-                    <MobilePdfReader url={pdfUrl} title={post.title} className="px-4 sm:px-0" />
+                    <PdfTextReaderScreen title={post.title} pdfUrl={pdfUrl} className="sm:px-0" />
                 </div>
             </MobileLayout>
         );

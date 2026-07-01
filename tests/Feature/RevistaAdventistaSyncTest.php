@@ -3,11 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\RevistaAdventistaArticle;
-use App\Models\User;
 use App\Services\RevistaAdventistaSyncService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
-use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 class RevistaAdventistaSyncTest extends TestCase
@@ -89,123 +87,5 @@ class RevistaAdventistaSyncTest extends TestCase
         $this->assertSame(0, $again['created']);
         $this->assertSame(1, $again['updated']);
         $this->assertSame('Intimidade sagrada (atualizado)', $article->fresh()->title);
-    }
-
-    public function test_mobile_list_and_show_render_imported_article(): void
-    {
-        $article = RevistaAdventistaArticle::query()->create([
-            'wp_post_id' => 999,
-            'title' => 'Artigo de teste',
-            'slug' => 'artigo-de-teste',
-            'excerpt' => 'Resumo curto.',
-            'body' => '<p>Corpo do artigo.</p>',
-            'author_name' => 'A Redação',
-            'source_url' => 'https://revistaadventista.com.br/artigo-de-teste/',
-            'image_url' => 'https://revistaadventista.com.br/cover.jpg',
-            'section' => RevistaAdventistaArticle::SECTION_ARTIGOS,
-            'published_at' => now()->subDay(),
-            'synced_at' => now(),
-        ]);
-
-        $this->get(route('mobile.revista-adventista'))
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page
-                ->component('Mobile/RevistaAdventista')
-                ->has('articles.data', 1)
-                ->where('articles.data.0.title', 'Artigo de teste'));
-
-        $this->get(route('mobile.revista-adventista.show', $article->slug))
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page
-                ->component('Mobile/RevistaAdventistaShow')
-                ->where('article.title', 'Artigo de teste')
-                ->where('article.body', '<p>Corpo do artigo.</p>'));
-    }
-
-    public function test_mobile_list_search_filters_by_title_excerpt_body_and_author(): void
-    {
-        RevistaAdventistaArticle::query()->create([
-            'wp_post_id' => 1001,
-            'title' => 'Vitaminas B',
-            'slug' => 'vitaminas-b',
-            'excerpt' => 'Saúde e bem-estar.',
-            'body' => '<p>Texto sobre nutrientes.</p>',
-            'author_name' => 'Débora Borges',
-            'source_url' => 'https://revistaadventista.com.br/vitaminas-b/',
-            'section' => RevistaAdventistaArticle::SECTION_ARTIGOS,
-            'published_at' => now()->subDay(),
-            'synced_at' => now(),
-        ]);
-
-        RevistaAdventistaArticle::query()->create([
-            'wp_post_id' => 1002,
-            'title' => 'Outro tema',
-            'slug' => 'outro-tema',
-            'excerpt' => 'Resumo diferente.',
-            'body' => '<p>Conteúdo sem relação.</p>',
-            'author_name' => 'A Redação',
-            'source_url' => 'https://revistaadventista.com.br/outro-tema/',
-            'section' => RevistaAdventistaArticle::SECTION_ARTIGOS,
-            'published_at' => now()->subDays(2),
-            'synced_at' => now(),
-        ]);
-
-        $this->get(route('mobile.revista-adventista', ['q' => 'vitaminas']))
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page
-                ->has('articles.data', 1)
-                ->where('articles.data.0.title', 'Vitaminas B')
-                ->where('filters.q', 'vitaminas'));
-
-        $this->get(route('mobile.revista-adventista', ['q' => 'Débora']))
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page->has('articles.data', 1));
-
-        $this->get(route('mobile.revista-adventista', ['q' => 'nutrientes']))
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page->has('articles.data', 1));
-    }
-
-    public function test_inactive_article_hidden_from_mobile_and_admin_can_toggle(): void
-    {
-        Permission::firstOrCreate(['name' => 'news.manage']);
-        Permission::firstOrCreate(['name' => 'news.view']);
-
-        $admin = User::factory()->create();
-        $admin->givePermissionTo(['news.manage', 'news.view']);
-
-        $article = RevistaAdventistaArticle::query()->create([
-            'wp_post_id' => 2001,
-            'title' => 'Artigo para desativar',
-            'slug' => 'artigo-para-desativar',
-            'excerpt' => 'Resumo.',
-            'body' => '<p>Corpo.</p>',
-            'author_name' => 'A Redação',
-            'source_url' => 'https://revistaadventista.com.br/artigo/',
-            'section' => RevistaAdventistaArticle::SECTION_ARTIGOS,
-            'published_at' => now()->subDay(),
-            'synced_at' => now(),
-            'is_active' => true,
-        ]);
-
-        $this->actingAs($admin)
-            ->get(route('revista-adventista.index'))
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page
-                ->component('RevistaAdventista/Index')
-                ->where('articles.data.0.is_active', true));
-
-        $this->actingAs($admin)
-            ->patch(route('revista-adventista.active', $article), ['is_active' => false])
-            ->assertRedirect();
-
-        $this->assertFalse($article->fresh()->is_active);
-
-        $this->get(route('mobile.revista-adventista'))
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page->has('articles.data', 0));
-
-        $this->get(route('mobile.revista-adventista.show', $article->slug))
-            ->assertNotFound();
     }
 }

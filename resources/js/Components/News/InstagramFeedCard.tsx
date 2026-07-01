@@ -75,7 +75,7 @@ function FeedMedia({
             <video
                 src={hostedVideoUrl}
                 poster={poster}
-                className="h-full w-full object-cover"
+                className="h-full w-full object-cover object-top"
                 controls={isDetail}
                 playsInline
                 muted={!isDetail}
@@ -116,7 +116,7 @@ function FeedMedia({
                 <img
                     src={poster}
                     alt=""
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-cover object-top"
                     loading="eager"
                     decoding="async"
                 />
@@ -129,7 +129,7 @@ function FeedMedia({
             href={showHref}
             className="relative block aspect-[4/5] w-full overflow-hidden bg-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500 dark:bg-zinc-800"
         >
-            <img src={poster} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
+            <img src={poster} alt="" className="h-full w-full object-cover object-top" loading="lazy" decoding="async" />
         </Link>
     );
 }
@@ -177,7 +177,10 @@ export default function InstagramFeedCard({
                     {caption ? (
                         <FeedCaptionBody caption={caption} clampLines={!isDetail} />
                     ) : !isDetail ? (
-                        <Link href={showHref} className="text-sm font-semibold text-primary-600 dark:text-primary-400">
+                        <Link
+                            href={showHref}
+                            className="text-sm font-semibold text-brand-600 underline-offset-2 hover:underline dark:text-brand-400"
+                        >
                             Ler publicação
                         </Link>
                     ) : null}

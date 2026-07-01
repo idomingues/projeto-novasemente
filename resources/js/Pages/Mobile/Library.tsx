@@ -54,6 +54,7 @@ interface ReaderSegment {
     slug: string;
     label: string;
     html: string;
+    question?: string | null;
 }
 
 import { normalizeForSearch } from '@/utils/searchText';
@@ -107,6 +108,18 @@ function compactDayLabel(label: string): string {
     };
 
     return short[label] ?? label;
+}
+
+function currentLessonDayIndex(segments: ReaderSegment[]): number {
+    const jsDay = new Date().getDay();
+    const todaySlugPrefix =
+        jsDay === 6 ? 'sabado' : (['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta'] as const)[jsDay];
+
+    const idx = segments.findIndex(
+        (segment) => segment.slug === todaySlugPrefix || segment.slug.startsWith(`${todaySlugPrefix}-`),
+    );
+
+    return idx >= 0 ? idx : 0;
 }
 
 export default function MobileLibrary({
@@ -219,7 +232,13 @@ export default function MobileLibrary({
                     const segs = Array.isArray(data.segments) ? data.segments : null;
                     setReaderSegments(segs && segs.length > 1 ? segs : null);
                     setReaderSourceUrl(typeof data.source_url === 'string' ? data.source_url : configuredUrl);
-                    setDayIdx(typeof data.default_index === 'number' ? data.default_index : 0);
+                    const defaultDayIdx =
+                        typeof data.default_index === 'number'
+                            ? data.default_index
+                            : tab === 'lesson' && segs && segs.length > 1
+                              ? currentLessonDayIndex(segs)
+                              : 0;
+                    setDayIdx(defaultDayIdx);
                     setReaderStatus('ok');
                 } else {
                     setReaderError(typeof data.error === 'string' ? data.error : 'Não foi possível carregar o texto.');
@@ -251,16 +270,8 @@ export default function MobileLibrary({
             return [];
         }
 
-        const items = readerSegments.map((segment, index) => ({ segment, index }));
-
-        if (!isSunsetTab) {
-            return items;
-        }
-
-        const selected = Math.min(Math.max(dayIdx, 0), readerSegments.length - 1);
-
-        return [...items.slice(selected), ...items.slice(0, selected)];
-    }, [readerSegments, dayIdx, isSunsetTab]);
+        return readerSegments.map((segment, index) => ({ segment, index }));
+    }, [readerSegments]);
 
     const readerContentClassName =
         'rounded-xl border border-zinc-100 bg-zinc-50 p-4 text-sm leading-relaxed text-zinc-800 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 [&_a]:font-medium [&_a]:text-primary-600 [&_a]:underline dark:[&_a]:text-primary-400 [&_blockquote]:my-3 [&_blockquote]:rounded-xl [&_blockquote]:border [&_blockquote]:border-dashed [&_blockquote]:border-zinc-300 [&_blockquote]:bg-white/90 [&_blockquote]:px-3.5 [&_blockquote]:py-3 dark:[&_blockquote]:border-zinc-600 dark:[&_blockquote]:bg-zinc-900/50 [&_blockquote+p]:mt-4 [&_blockquote+h2]:mt-6 [&_blockquote+blockquote]:mt-3 [&_h2]:text-xl [&_h2]:font-bold [&_h2+p]:mt-3 [&_h2+p>em]:text-[15px] [&_h2+p>em]:leading-relaxed [&_h2+p>em]:text-zinc-700 dark:[&_h2+p>em]:text-zinc-300 [&_h3]:mt-2 [&_h3]:text-base [&_h3]:font-semibold [&_ol]:list-decimal [&_ol]:pl-5 [&_p:first-of-type]:text-[15px] [&_p+h2]:mt-6 [&_p+p]:mt-5 [&_p+p]:border-t [&_p+p]:border-zinc-200 [&_p+p]:pt-5 dark:[&_p+p]:border-zinc-700 [&_ul]:list-disc [&_ul]:pl-5';
@@ -399,7 +410,7 @@ export default function MobileLibrary({
                                                         active
                                                             ? isSunsetTab
                                                                 ? 'bg-zinc-900 text-white shadow-md ring-2 ring-amber-400/80 dark:bg-white dark:text-zinc-900 dark:ring-amber-500/70'
-                                                                : 'bg-primary-600 text-white shadow-sm ring-2 ring-primary-600/25 dark:bg-primary-500 dark:ring-primary-500/30'
+                                                                : 'bg-zinc-900 text-white shadow-md ring-2 ring-zinc-900/15 dark:bg-zinc-900 dark:text-white dark:ring-white/20'
                                                             : 'border border-zinc-200/90 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-800'
                                                     }`}
                                                 >

@@ -66,7 +66,7 @@ class LibraryLessonNoteTest extends TestCase
         ]);
     }
 
-    public function test_empty_body_deletes_existing_note(): void
+    public function test_empty_body_deletes_existing_note_only_when_answer_is_also_empty(): void
     {
         $this->seed();
 
@@ -97,6 +97,65 @@ class LibraryLessonNoteTest extends TestCase
             'user_id' => $user->id,
             'day_slug' => 'terca',
         ]);
+    }
+
+    public function test_user_can_save_question_answer_without_notes_body(): void
+    {
+        $this->seed();
+
+        $church = Church::query()->firstOrFail();
+        $user = User::factory()->create(['church_id' => $church->id]);
+        $lessonUrl = 'https://mais.cpb.com.br/licao/teste/';
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->putJson(route('mobile.biblioteca.lesson-notes.upsert'), [
+                'lesson_source_url' => $lessonUrl,
+                'day_slug' => 'quinta',
+                'body' => '',
+                'answer_body' => 'Minha resposta à pergunta do dia.',
+            ])
+            ->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('note.day_slug', 'quinta')
+            ->assertJsonPath('note.answer_body', 'Minha resposta à pergunta do dia.');
+
+        $this->assertDatabaseHas('library_lesson_notes', [
+            'user_id' => $user->id,
+            'day_slug' => 'quinta',
+            'answer_body' => 'Minha resposta à pergunta do dia.',
+        ]);
+    }
+
+    public function test_clearing_answer_keeps_note_when_body_exists(): void
+    {
+        $this->seed();
+
+        $church = Church::query()->firstOrFail();
+        $user = User::factory()->create(['church_id' => $church->id]);
+        $lessonUrl = 'https://mais.cpb.com.br/licao/teste/';
+
+        LibraryLessonNote::query()->create([
+            'church_id' => $church->id,
+            'user_id' => $user->id,
+            'lesson_source_url' => $lessonUrl,
+            'lesson_source_hash' => LibraryLessonNote::hashSourceUrl($lessonUrl),
+            'day_slug' => 'sexta',
+            'body' => 'Anotação do dia.',
+            'answer_body' => 'Resposta antiga.',
+        ]);
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->putJson(route('mobile.biblioteca.lesson-notes.upsert'), [
+                'lesson_source_url' => $lessonUrl,
+                'day_slug' => 'sexta',
+                'body' => 'Anotação do dia.',
+                'answer_body' => '',
+            ])
+            ->assertOk()
+            ->assertJsonPath('note.body', 'Anotação do dia.')
+            ->assertJsonPath('note.answer_body', null);
     }
 
     public function test_user_cannot_see_other_users_notes(): void

@@ -29,7 +29,7 @@ export default function NewsPostCover({
     detailHref,
     aspectClass = 'aspect-[16/10]',
     wrapperClassName = '',
-    imageClassName = 'h-full w-full object-cover',
+    imageClassName = 'h-full w-full object-cover object-top',
     imageLoading = 'lazy',
     showYoutubePlayOverlay = false,
     onImageError,

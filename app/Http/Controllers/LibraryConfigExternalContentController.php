@@ -54,12 +54,44 @@ class LibraryConfigExternalContentController extends Controller
             }
         }
 
+        $defaultIndex = null;
+        if ($type === 'lesson' && is_array($segments) && count($segments) > 1) {
+            $defaultIndex = $this->resolveLessonDefaultIndex($segments);
+        }
+
         return response()->json([
             'ok' => true,
             'html' => $html,
             'segments' => $segments,
             'source_url' => $url,
+            'default_index' => $defaultIndex,
         ]);
+    }
+
+    /**
+     * @param  list<array{slug: string, label: string, html: string}>  $segments
+     */
+    private function resolveLessonDefaultIndex(array $segments): int
+    {
+        $todaySlug = match ((int) now()->dayOfWeek) {
+            6 => 'sabado',
+            0 => 'domingo',
+            1 => 'segunda',
+            2 => 'terca',
+            3 => 'quarta',
+            4 => 'quinta',
+            5 => 'sexta',
+            default => 'sabado',
+        };
+
+        foreach ($segments as $index => $segment) {
+            $slug = (string) ($segment['slug'] ?? '');
+            if ($slug === $todaySlug || str_starts_with($slug, $todaySlug.'-')) {
+                return $index;
+            }
+        }
+
+        return 0;
     }
 
     private function sunsetMeditationResponse(Church $church): JsonResponse
@@ -75,13 +107,15 @@ class LibraryConfigExternalContentController extends Controller
 
         /** @var SunsetMeditationPdfService $svc */
         $svc = app(SunsetMeditationPdfService::class);
-        $defaultIndex = $svc->resolveDefaultIndex($segments);
-        $html = (string) ($segments[$defaultIndex]['html'] ?? '');
+        $visible = $svc->resolveVisibleSegments($segments);
+        $visibleSegments = $visible['segments'];
+        $defaultIndex = $visible['default_index'];
+        $html = (string) ($visibleSegments[$defaultIndex]['html'] ?? '');
 
         return response()->json([
             'ok' => true,
             'html' => $html,
-            'segments' => $segments,
+            'segments' => $visibleSegments,
             'default_index' => $defaultIndex,
             'source_url' => $church->resolvedLibrarySunsetMeditationPdfUrl(),
         ]);

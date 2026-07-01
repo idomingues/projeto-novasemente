@@ -14,6 +14,7 @@ class LibraryLessonNote extends Model
         'lesson_source_hash',
         'day_slug',
         'body',
+        'answer_body',
     ];
 
     public static function hashSourceUrl(string $url): string

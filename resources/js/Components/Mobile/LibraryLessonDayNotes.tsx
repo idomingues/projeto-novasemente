@@ -1,4 +1,5 @@
 import Modal from '@/Components/Modal';
+import LibraryLessonReaderContent from '@/Components/Mobile/LibraryLessonReaderContent';
 import {
     BookOpenIcon,
     CalendarDaysIcon,
@@ -14,12 +15,14 @@ export interface LessonDaySegment {
     slug: string;
     label: string;
     html: string;
+    question?: string | null;
 }
 
 export interface LessonNoteItem {
     id: number;
     day_slug: string;
     body: string;
+    answer_body?: string | null;
     updated_at: string | null;
 }
 
@@ -65,6 +68,15 @@ function currentDayLabel(segments: LessonDaySegment[] | null, dayIdx: number): s
     return 'Lição';
 }
 
+function currentDayQuestion(segments: LessonDaySegment[] | null, dayIdx: number): string | null {
+    if (!segments || segments.length === 0) {
+        return null;
+    }
+    const question = segments[Math.min(Math.max(dayIdx, 0), segments.length - 1)]?.question;
+    const trimmed = typeof question === 'string' ? question.trim() : '';
+    return trimmed !== '' ? trimmed : null;
+}
+
 export default function LibraryLessonDayNotes({
     lessonSourceUrl,
     segments,
@@ -82,17 +94,21 @@ export default function LibraryLessonDayNotes({
     const [viewMode, setViewMode] = useState<ViewMode>('reading');
     const [notesBySlug, setNotesBySlug] = useState<Record<string, LessonNoteItem>>({});
     const [draftBody, setDraftBody] = useState('');
+    const [draftAnswer, setDraftAnswer] = useState('');
     const [saveState, setSaveState] = useState<SaveState>('idle');
+    const [answerSaveState, setAnswerSaveState] = useState<SaveState>('idle');
     const [loadError, setLoadError] = useState<string | null>(null);
     const [weekModalOpen, setWeekModalOpen] = useState(false);
     const [notesLoaded, setNotesLoaded] = useState(false);
 
-    const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const lastSavedBodyRef = useRef('');
+    const lastSavedAnswerRef = useRef('');
     const draftBodyRef = useRef('');
+    const draftAnswerRef = useRef('');
 
     const daySlug = currentDaySlug(segments, dayIdx);
     const dayLabel = currentDayLabel(segments, dayIdx);
+    const dayQuestion = currentDayQuestion(segments, dayIdx);
     const currentNote = notesBySlug[daySlug] ?? null;
 
     const noteSlugs = useMemo(
@@ -107,7 +123,7 @@ export default function LibraryLessonDayNotes({
     const syncNotesMap = useCallback((notes: LessonNoteItem[]) => {
         const map: Record<string, LessonNoteItem> = {};
         for (const note of notes) {
-            if (note.body.trim() !== '') {
+            if (note.body.trim() !== '' || (note.answer_body ?? '').trim() !== '') {
                 map[note.day_slug] = note;
             }
         }
@@ -166,17 +182,28 @@ export default function LibraryLessonDayNotes({
 
     useEffect(() => {
         const body = currentNote?.body ?? '';
+        const answer = currentNote?.answer_body ?? '';
         setDraftBody(body);
+        setDraftAnswer(answer);
         draftBodyRef.current = body;
+        draftAnswerRef.current = answer;
         lastSavedBodyRef.current = body;
+        lastSavedAnswerRef.current = answer;
         setSaveState('idle');
-    }, [daySlug, currentNote?.body, currentNote?.id]);
+        setAnswerSaveState('idle');
+    }, [daySlug, currentNote?.body, currentNote?.answer_body, currentNote?.id]);
 
     const persistNote = useCallback(
-        async (body: string) => {
+        async (body: string, answerBody: string, target: 'notes' | 'answer' | 'both' = 'both') => {
             if (!authUser?.id) return;
 
-            setSaveState('saving');
+            if (target === 'notes' || target === 'both') {
+                setSaveState('saving');
+            }
+            if (target === 'answer' || target === 'both') {
+                setAnswerSaveState('saving');
+            }
+
             try {
                 const response = await fetch(route('mobile.biblioteca.lesson-notes.upsert'), {
                     method: 'PUT',
@@ -191,73 +218,70 @@ export default function LibraryLessonDayNotes({
                         lesson_source_url: lessonSourceUrl,
                         day_slug: daySlug,
                         body,
+                        answer_body: answerBody,
                     }),
                 });
 
                 const data: { ok?: boolean; note?: LessonNoteItem | null; error?: string } = await response.json();
 
                 if (!response.ok || !data.ok) {
-                    setSaveState('error');
+                    if (target === 'notes' || target === 'both') setSaveState('error');
+                    if (target === 'answer' || target === 'both') setAnswerSaveState('error');
                     return;
                 }
 
                 lastSavedBodyRef.current = body;
+                lastSavedAnswerRef.current = answerBody;
                 setNotesBySlug((prev) => {
                     const next = { ...prev };
-                    if (data.note && data.note.body.trim() !== '') {
+                    if (data.note && (data.note.body.trim() !== '' || (data.note.answer_body ?? '').trim() !== '')) {
                         next[daySlug] = data.note;
                     } else {
                         delete next[daySlug];
                     }
                     return next;
                 });
-                setSaveState('saved');
+                if (target === 'notes' || target === 'both') setSaveState('saved');
+                if (target === 'answer' || target === 'both') setAnswerSaveState('saved');
             } catch {
-                setSaveState('error');
+                if (target === 'notes' || target === 'both') setSaveState('error');
+                if (target === 'answer' || target === 'both') setAnswerSaveState('error');
             }
         },
         [authUser?.id, csrf, daySlug, lessonSourceUrl],
     );
 
-    const scheduleSave = useCallback(
-        (body: string) => {
-            if (saveTimerRef.current) {
-                clearTimeout(saveTimerRef.current);
-            }
-            if (body === lastSavedBodyRef.current) {
-                setSaveState('idle');
-                return;
-            }
-            setSaveState('saving');
-            saveTimerRef.current = setTimeout(() => {
-                void persistNote(body);
-            }, 700);
-        },
-        [persistNote],
-    );
-
-    useEffect(() => {
-        return () => {
-            if (saveTimerRef.current) {
-                clearTimeout(saveTimerRef.current);
-            }
-        };
-    }, []);
+    const isNotesDirty = draftBody !== lastSavedBodyRef.current;
+    const isAnswerDirty = draftAnswer !== lastSavedAnswerRef.current;
 
     const handleDraftChange = (value: string) => {
         setDraftBody(value);
         draftBodyRef.current = value;
-        scheduleSave(value);
+        if (saveState === 'saved') {
+            setSaveState('idle');
+        }
     };
 
-    const handleBlur = () => {
-        if (saveTimerRef.current) {
-            clearTimeout(saveTimerRef.current);
-            saveTimerRef.current = null;
+    const handleAnswerChange = (value: string) => {
+        setDraftAnswer(value);
+        draftAnswerRef.current = value;
+        if (answerSaveState === 'saved') {
+            setAnswerSaveState('idle');
         }
-        if (draftBodyRef.current !== lastSavedBodyRef.current) {
-            void persistNote(draftBodyRef.current);
+    };
+
+    const handleSaveNotes = () => {
+        if (!isNotesDirty || saveState === 'saving') {
+            return;
         }
+        void persistNote(draftBodyRef.current, draftAnswerRef.current, 'notes');
+    };
+
+    const handleSaveAnswer = () => {
+        if (!isAnswerDirty || answerSaveState === 'saving') {
+            return;
+        }
+        void persistNote(draftBodyRef.current, draftAnswerRef.current, 'answer');
     };
 
     const weekNotes = useMemo(() => {
@@ -270,16 +294,34 @@ export default function LibraryLessonDayNotes({
             .filter((item) => item.note && item.note.body.trim() !== '');
     }, [segments, notesBySlug]);
 
-    const saveLabel =
+    const saveStatusLabel =
         saveState === 'saving'
             ? 'Salvando…'
             : saveState === 'saved'
               ? 'Salvo'
               : saveState === 'error'
                 ? 'Erro ao salvar'
-                : currentNote?.updated_at
-                  ? `Atualizado ${formatSavedAt(currentNote.updated_at)}`
-                  : 'Salva automaticamente';
+                : isNotesDirty
+                  ? 'Alterações não salvas'
+                  : currentNote?.updated_at
+                    ? `Salvo ${formatSavedAt(currentNote.updated_at)}`
+                    : '';
+
+    const answerStatusLabel =
+        answerSaveState === 'saving'
+            ? 'Salvando…'
+            : answerSaveState === 'saved'
+              ? 'Salvo'
+              : answerSaveState === 'error'
+                ? 'Erro ao salvar'
+                : isAnswerDirty
+                  ? 'Alterações não salvas'
+                  : currentNote?.updated_at && draftAnswer.trim() !== ''
+                    ? `Salvo ${formatSavedAt(currentNote.updated_at)}`
+                    : '';
+
+    const saveButtonClass =
+        'inline-flex cursor-pointer items-center justify-center rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100';
 
     return (
         <div className="space-y-3">
@@ -325,7 +367,85 @@ export default function LibraryLessonDayNotes({
             </div>
 
             {viewMode === 'reading' ? (
-                <div className={readerContentClassName} dangerouslySetInnerHTML={{ __html: readerHtml }} />
+                <div className="space-y-4">
+                    <LibraryLessonReaderContent html={readerHtml} className={readerContentClassName} />
+                    {dayQuestion ? (
+                        <div className="overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+                            <div className="border-b border-zinc-100 px-4 py-3 dark:border-zinc-800 sm:px-5">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                    Pergunta para reflexão
+                                </p>
+                                <LibraryLessonReaderContent
+                                    html={dayQuestion}
+                                    className="mt-2 text-[15px] leading-relaxed text-zinc-800 dark:text-zinc-100 [&_p]:m-0"
+                                />
+                            </div>
+                            <div className="p-4 sm:p-5">
+                                {!authUser?.id ? (
+                                    <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-5 text-center dark:border-zinc-600 dark:bg-zinc-950">
+                                        <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+                                            Entre na sua conta para registrar sua resposta. Ela ficará salva só para você.
+                                        </p>
+                                        <Link
+                                            href={loginHref}
+                                            className="mt-4 inline-flex cursor-pointer items-center justify-center rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+                                        >
+                                            Entrar para responder
+                                        </Link>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="mb-2 flex items-center justify-between gap-2">
+                                            <label
+                                                htmlFor={`lesson-answer-${daySlug}`}
+                                                className="text-sm font-semibold text-zinc-900 dark:text-white"
+                                            >
+                                                Sua resposta
+                                            </label>
+                                            {answerSaveState === 'saved' ? (
+                                                <span className="inline-flex items-center gap-1 text-xs font-medium text-teal-700 dark:text-teal-300">
+                                                    <CheckIcon className="h-3.5 w-3.5" aria-hidden />
+                                                    Salvo
+                                                </span>
+                                            ) : answerStatusLabel ? (
+                                                <span
+                                                    className={`text-xs font-medium ${
+                                                        answerSaveState === 'error'
+                                                            ? 'text-red-600 dark:text-red-400'
+                                                            : isAnswerDirty
+                                                              ? 'text-amber-700 dark:text-amber-300'
+                                                              : 'text-zinc-500 dark:text-zinc-400'
+                                                    }`}
+                                                >
+                                                    {answerStatusLabel}
+                                                </span>
+                                            ) : null}
+                                        </div>
+                                        <textarea
+                                            id={`lesson-answer-${daySlug}`}
+                                            value={draftAnswer}
+                                            onChange={(e) => handleAnswerChange(e.target.value)}
+                                            disabled={!notesLoaded}
+                                            rows={5}
+                                            placeholder="Escreva aqui sua reflexão ou resposta…"
+                                            className="w-full resize-y rounded-xl border border-zinc-200/90 bg-zinc-50 px-4 py-3.5 text-[15px] leading-relaxed text-zinc-800 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-300 dark:focus:ring-zinc-300/15"
+                                        />
+                                        <div className="mt-3 flex justify-end">
+                                            <button
+                                                type="button"
+                                                onClick={handleSaveAnswer}
+                                                disabled={!notesLoaded || !isAnswerDirty || answerSaveState === 'saving'}
+                                                className={saveButtonClass}
+                                            >
+                                                {answerSaveState === 'saving' ? 'Salvando…' : 'Salvar resposta'}
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    ) : null}
+                </div>
             ) : !authUser?.id ? (
                 <div className="rounded-2xl border border-dashed border-zinc-300 bg-gradient-to-br from-teal-50/80 via-white to-amber-50/50 p-6 text-center dark:border-zinc-600 dark:from-teal-950/20 dark:via-zinc-900 dark:to-amber-950/10 sm:p-8">
                     <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm dark:bg-zinc-800">
@@ -358,17 +478,19 @@ export default function LibraryLessonDayNotes({
                                     <CheckIcon className="h-3.5 w-3.5" aria-hidden />
                                     Salvo
                                 </span>
-                            ) : (
+                            ) : saveStatusLabel ? (
                                 <span
                                     className={`text-xs font-medium ${
                                         saveState === 'error'
                                             ? 'text-red-600 dark:text-red-400'
-                                            : 'text-zinc-500 dark:text-zinc-400'
+                                            : isNotesDirty
+                                              ? 'text-amber-700 dark:text-amber-300'
+                                              : 'text-zinc-500 dark:text-zinc-400'
                                     }`}
                                 >
-                                    {saveLabel}
+                                    {saveStatusLabel}
                                 </span>
-                            )}
+                            ) : null}
                         </div>
                     </div>
 
@@ -382,7 +504,6 @@ export default function LibraryLessonDayNotes({
                         <textarea
                             value={draftBody}
                             onChange={(e) => handleDraftChange(e.target.value)}
-                            onBlur={handleBlur}
                             disabled={!notesLoaded}
                             rows={8}
                             placeholder="Versículos que tocaram você, perguntas para o grupo, aplicações práticas…"
@@ -390,22 +511,32 @@ export default function LibraryLessonDayNotes({
                             aria-label={`Anotações de ${dayLabel}`}
                         />
 
-                        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                             <p className="text-xs text-zinc-500 dark:text-zinc-400">
                                 {draftBody.trim() === ''
-                                    ? 'Comece a escrever — salvamos automaticamente.'
+                                    ? 'Suas anotações ficam salvas só para você.'
                                     : `${draftBody.trim().split(/\s+/).filter(Boolean).length} palavras`}
                             </p>
-                            {weekNotes.length > 0 ? (
+                            <div className="flex flex-wrap items-center gap-2">
+                                {weekNotes.length > 0 ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => setWeekModalOpen(true)}
+                                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-teal-800 transition hover:bg-teal-100/80 dark:text-teal-200 dark:hover:bg-teal-950/50"
+                                    >
+                                        <CalendarDaysIcon className="h-4 w-4 shrink-0" aria-hidden />
+                                        Ver semana ({weekNotes.length})
+                                    </button>
+                                ) : null}
                                 <button
                                     type="button"
-                                    onClick={() => setWeekModalOpen(true)}
-                                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-teal-800 transition hover:bg-teal-100/80 dark:text-teal-200 dark:hover:bg-teal-950/50"
+                                    onClick={handleSaveNotes}
+                                    disabled={!notesLoaded || !isNotesDirty || saveState === 'saving'}
+                                    className={saveButtonClass}
                                 >
-                                    <CalendarDaysIcon className="h-4 w-4 shrink-0" aria-hidden />
-                                    Ver semana ({weekNotes.length})
+                                    {saveState === 'saving' ? 'Salvando…' : 'Salvar'}
                                 </button>
-                            ) : null}
+                            </div>
                         </div>
                     </div>
                 </div>

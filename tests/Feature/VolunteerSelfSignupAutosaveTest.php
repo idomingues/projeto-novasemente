@@ -154,4 +154,40 @@ class VolunteerSelfSignupAutosaveTest extends TestCase
         $this->assertTrue($volunteer->has_social_networks);
         $this->assertSame('active', $volunteer->volunteer_phase);
     }
+
+    public function test_autosave_marks_signup_complete_when_last_required_field_is_saved(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+
+        $user = User::factory()->create([
+            'church_id' => $churchId,
+            'is_volunteer' => false,
+            'name' => 'Lúcia Completa',
+            'email' => 'lucia.completa@example.com',
+            'photo_url' => 'https://example.com/photos/lucia.jpg',
+        ]);
+
+        $user->ensureVolunteerProfile();
+        $volunteer = $user->fresh()->volunteerProfile;
+        $this->assertNotNull($volunteer);
+
+        CompleteVolunteerSignup::apply($user, $volunteer);
+        $volunteer->forceFill(['lgpd_data_consent' => false])->save();
+        $user->forceFill(['is_volunteer' => false])->save();
+
+        $this->actingAs($user)
+            ->postJson(route('volunteers.self-signup.autosave'), [
+                'autosave_fields' => ['lgpd_data_consent'],
+                'first_name' => 'Lúcia',
+                'last_name' => 'Completa',
+                'lgpd_data_consent' => true,
+            ])
+            ->assertOk()
+            ->assertJsonPath('completion.is_complete', true)
+            ->assertJsonPath('message', 'Cadastro de voluntário concluído.');
+
+        $this->assertTrue($volunteer->fresh()->lgpd_data_consent);
+    }
 }

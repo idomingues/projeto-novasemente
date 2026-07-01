@@ -67,24 +67,121 @@ class SunsetMeditationPdfService
         }
 
         $now = ($now ?? now())->copy()->startOfDay();
-        $targetFriday = $now->isFriday()
-            ? $now->copy()
-            : $now->copy()->next(Carbon::FRIDAY);
+        $upcomingFriday = $this->resolveUpcomingFriday($now);
+        $idx = $this->findSegmentIndexByDate($segments, $upcomingFriday->toDateString());
+        if ($idx !== null) {
+            return $idx;
+        }
 
-        $targetKey = $targetFriday->toDateString();
+        return $this->findNearestSegmentOnOrAfter($segments, $upcomingFriday->toDateString())
+            ?? $this->findNearestSegmentBefore($segments, $upcomingFriday->toDateString())
+            ?? 0;
+    }
+
+    /**
+     * Mantém só a meditação anterior e a da próxima semana (sexta vindoura).
+     *
+     * @param  list<array{slug: string, label: string, date: string, html: string}>  $segments
+     * @return array{segments: list<array{slug: string, label: string, date: string, html: string}>, default_index: int}
+     */
+    public function resolveVisibleSegments(array $segments, ?Carbon $now = null): array
+    {
+        if ($segments === []) {
+            return ['segments' => [], 'default_index' => 0];
+        }
+
+        $now = ($now ?? now())->copy()->startOfDay();
+        $upcomingFriday = $this->resolveUpcomingFriday($now);
+        $previousFriday = $upcomingFriday->copy()->subWeek();
+
+        $previousIdx = $this->findSegmentIndexByDate($segments, $previousFriday->toDateString());
+        if ($previousIdx === null) {
+            $previousIdx = $this->findNearestSegmentBefore($segments, $upcomingFriday->toDateString());
+        }
+
+        $upcomingIdx = $this->findSegmentIndexByDate($segments, $upcomingFriday->toDateString());
+        if ($upcomingIdx === null) {
+            $upcomingIdx = $this->findNearestSegmentOnOrAfter($segments, $upcomingFriday->toDateString());
+        }
+
+        $visibleIndices = [];
+        if ($previousIdx !== null) {
+            $visibleIndices[] = $previousIdx;
+        }
+        if ($upcomingIdx !== null && ! in_array($upcomingIdx, $visibleIndices, true)) {
+            $visibleIndices[] = $upcomingIdx;
+        }
+
+        if ($visibleIndices === []) {
+            return ['segments' => $segments, 'default_index' => 0];
+        }
+
+        $visibleSegments = [];
+        foreach ($visibleIndices as $index) {
+            $visibleSegments[] = $segments[$index];
+        }
+
+        $defaultIndex = 0;
+        if ($upcomingIdx !== null) {
+            $upcomingPosition = array_search($upcomingIdx, $visibleIndices, true);
+            if ($upcomingPosition !== false) {
+                $defaultIndex = (int) $upcomingPosition;
+            }
+        }
+
+        return [
+            'segments' => $visibleSegments,
+            'default_index' => $defaultIndex,
+        ];
+    }
+
+    public function resolveUpcomingFriday(Carbon $now): Carbon
+    {
+        $now = $now->copy()->startOfDay();
+
+        return $now->isFriday() ? $now->copy() : $now->copy()->next(Carbon::FRIDAY);
+    }
+
+    /**
+     * @param  list<array{slug: string, label: string, date: string, html: string}>  $segments
+     */
+    private function findSegmentIndexByDate(array $segments, string $date): ?int
+    {
         foreach ($segments as $index => $segment) {
-            if (($segment['date'] ?? '') === $targetKey) {
+            if (($segment['date'] ?? '') === $date) {
                 return $index;
             }
         }
 
-        $fallback = 0;
+        return null;
+    }
+
+    /**
+     * @param  list<array{slug: string, label: string, date: string, html: string}>  $segments
+     */
+    private function findNearestSegmentOnOrAfter(array $segments, string $targetDate): ?int
+    {
         foreach ($segments as $index => $segment) {
             $date = $segment['date'] ?? '';
-            if ($date !== '' && $date >= $targetKey) {
+            if ($date !== '' && $date >= $targetDate) {
                 return $index;
             }
-            $fallback = $index;
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  list<array{slug: string, label: string, date: string, html: string}>  $segments
+     */
+    private function findNearestSegmentBefore(array $segments, string $targetDate): ?int
+    {
+        $fallback = null;
+        foreach ($segments as $index => $segment) {
+            $date = $segment['date'] ?? '';
+            if ($date !== '' && $date < $targetDate) {
+                $fallback = $index;
+            }
         }
 
         return $fallback;

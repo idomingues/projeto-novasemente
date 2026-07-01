@@ -199,6 +199,8 @@ export function computeVolunteerSignupPageErrors({
 export {
     canStoreVolunteerSignupPhotoPreview,
     clearVolunteerSignupDraft,
+    draftPhotoPreviewToFile,
+    fileToDraftPhotoPreview,
     readVolunteerSignupDraft,
     readVolunteerSignupDraftState,
     volunteerSignupDraftHasAnswers,

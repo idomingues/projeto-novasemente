@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\BibleBook;
 use App\Models\BibleVerse;
+use App\Services\BibleReferenceService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -164,6 +166,29 @@ class MobileBibleController extends Controller
         return response()->json([
             'ok' => true,
             'results' => $results,
+        ]);
+    }
+
+    public function reference(Request $request, BibleReferenceService $references): JsonResponse
+    {
+        $valid = $request->validate([
+            'ref' => ['required', 'string', 'min:2', 'max:120'],
+        ]);
+
+        $resolved = $references->resolveReferenceString((string) $valid['ref']);
+        if ($resolved === null) {
+            return response()->json([
+                'ok' => false,
+                'error' => 'Referência não encontrada na Bíblia.',
+            ], 422);
+        }
+
+        return response()->json([
+            'ok' => true,
+            'ref' => $resolved['ref'],
+            'book' => $resolved['book'],
+            'chapter' => $resolved['chapter'],
+            'verses' => $resolved['verses'],
         ]);
     }
 }

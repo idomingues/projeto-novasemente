@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Church;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -10,7 +11,7 @@ class MobileLibrarySunsetMeditationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_mobile_endpoint_returns_nearest_friday_segment(): void
+    public function test_mobile_endpoint_returns_previous_and_upcoming_segments(): void
     {
         $this->seed();
 
@@ -28,6 +29,12 @@ class MobileLibrarySunsetMeditationTest extends TestCase
                 'date' => '2026-06-26',
                 'html' => '<p>Meditação de 26 de junho.</p>',
             ],
+            [
+                'slug' => '2026-07-03',
+                'label' => '3 jul',
+                'date' => '2026-07-03',
+                'html' => '<p>Meditação de 3 de julho.</p>',
+            ],
         ];
 
         $church->update([
@@ -35,6 +42,8 @@ class MobileLibrarySunsetMeditationTest extends TestCase
             'library_sunset_meditation_segments' => $segments,
             'library_sunset_meditation_year' => 2026,
         ]);
+
+        Carbon::setTestNow(Carbon::parse('2026-07-01', 'America/Sao_Paulo'));
 
         $response = $this
             ->withSession(['working_church_id' => $church->id])
@@ -44,9 +53,13 @@ class MobileLibrarySunsetMeditationTest extends TestCase
         $response->assertJson([
             'ok' => true,
             'default_index' => 1,
-            'html' => '<p>Meditação de 26 de junho.</p>',
+            'html' => '<p>Meditação de 3 de julho.</p>',
         ]);
         $response->assertJsonCount(2, 'segments');
+        $response->assertJsonPath('segments.0.date', '2026-06-26');
+        $response->assertJsonPath('segments.1.date', '2026-07-03');
+
+        Carbon::setTestNow();
     }
 
     public function test_mobile_endpoint_requires_configured_pdf(): void

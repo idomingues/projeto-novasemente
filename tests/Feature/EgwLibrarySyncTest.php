@@ -192,6 +192,43 @@ HTML;
             );
     }
 
+    public function test_biblioteca_show_egw_uses_pdf_stream_route_even_with_local_cache(): void
+    {
+        $this->seed();
+        Storage::fake('public');
+        $churchId = (int) Church::query()->value('id');
+
+        $pdfPath = 'library/egw/pdfs/educacao.pdf';
+        Storage::disk('public')->put($pdfPath, '%PDF-1.4 cached');
+
+        $book = LibraryBook::query()->create([
+            'church_id' => null,
+            'title' => 'Educação',
+            'subtitle' => 'Ellen G. White',
+            'description' => null,
+            'category' => LibraryBook::CATEGORY_EGW,
+            'cover_path' => 'library/egw/covers/educacao.jpg',
+            'source_cover_url' => null,
+            'pdf_path' => $pdfPath,
+            'source_pdf_url' => 'https://cdn.example/educacao.pdf',
+            'pdf_cached_at' => now(),
+            'published_at' => null,
+            'order' => 1,
+            'created_by' => null,
+        ]);
+
+        $expectedUrl = route('mobile.biblioteca.pdf-stream', ['libraryBook' => $book->id], absolute: false);
+
+        $this
+            ->withSession(['working_church_id' => $churchId])
+            ->get(route('mobile.biblioteca.show', $book))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Mobile/LibraryShow')
+                ->where('book.pdf_url', $expectedUrl)
+            );
+    }
+
     public function test_biblioteca_show_returns_404_for_other_church_book(): void
     {
         $this->seed();
