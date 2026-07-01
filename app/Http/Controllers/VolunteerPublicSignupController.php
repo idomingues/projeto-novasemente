@@ -249,6 +249,7 @@ class VolunteerPublicSignupController extends Controller
             $validated,
             $name,
             $record,
+            $churchId,
             $emailNorm,
             $existingUser,
             $photoUrl,
