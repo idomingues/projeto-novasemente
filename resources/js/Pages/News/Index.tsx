@@ -501,13 +501,18 @@ export default function Index({ posts, filters, canManage, config }: Props) {
 
     const bodyLabel = data.content_type === 'article'
         ? 'Conteúdo'
-        : isInstagramFeed
+        : isInstagramFeed || isInstagramLink
           ? 'Legenda'
           : 'Texto complementar (opcional)';
 
-    const bodyRows = data.content_type === 'article' ? 10 : isInstagramFeed ? 6 : 4;
+    const bodyRows =
+        data.content_type === 'article' ? 10 : isInstagramFeed || isInstagramLink ? 6 : 4;
 
-    const showBodyField = data.content_type === 'article' || isInstagramFeed || data.content_type === 'image';
+    const showBodyField =
+        data.content_type === 'article' ||
+        isInstagramFeed ||
+        isInstagramLink ||
+        data.content_type === 'image';
 
     const previewCaptionBody = data.body?.trim()
         ? isInstagramFeed
@@ -814,6 +819,12 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                         <strong>1080×1920</strong> (9:16).
                                     </p>
                                 )}
+                                {isInstagramLink && (
+                                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                        Cole o link do post ou reel e use <strong>Legenda</strong> para o texto completo da
+                                        publicação (até 2.200 caracteres do Instagram).
+                                    </p>
+                                )}
                                 {isPdf && (
                                     <p className="mt-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs leading-relaxed text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-300">
                                         Envie o <strong>PDF</strong>, escolha uma <strong>capa</strong> para a lista (opcional) e,
@@ -894,9 +905,32 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                 </>
                             ) : (
                                 <>
+                            {isInstagramLink && (
+                                <div>
+                                    <InputLabel htmlFor="instagram_url" value="Link do Instagram" />
+                                    <TextInput
+                                        id="instagram_url"
+                                        value={data.instagram_url}
+                                        onChange={(e) => setData('instagram_url', e.target.value)}
+                                        className="mt-1 block w-full"
+                                        placeholder="https://www.instagram.com/p/… ou …/reel/…"
+                                    />
+                                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                        Cole o link do post, reel ou IGTV. Na app, aparecerá o botão «Ver vídeo».
+                                    </p>
+                                    <InputError message={errors.instagram_url} className="mt-1" />
+                                </div>
+                            )}
+
                             {!isInstagramFeed && (
                                 <div>
                                     <InputLabel htmlFor="excerpt" value="Resumo (opcional)" />
+                                    {isInstagramLink && (
+                                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                            Texto curto para listas e cards. Para a legenda completa, use o campo Legenda
+                                            abaixo.
+                                        </p>
+                                    )}
                                     <Textarea
                                         id="excerpt"
                                         value={data.excerpt}
@@ -918,23 +952,6 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                         </p>
                                     )}
                                     <InputError message={errors.excerpt} className="mt-1" />
-                                </div>
-                            )}
-
-                            {isInstagramLink && (
-                                <div>
-                                    <InputLabel htmlFor="instagram_url" value="Link do Instagram" />
-                                    <TextInput
-                                        id="instagram_url"
-                                        value={data.instagram_url}
-                                        onChange={(e) => setData('instagram_url', e.target.value)}
-                                        className="mt-1 block w-full"
-                                        placeholder="https://www.instagram.com/p/… ou …/reel/…"
-                                    />
-                                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                        Cole o link do post, reel ou IGTV. Na app, aparecerá o botão «Ver vídeo».
-                                    </p>
-                                    <InputError message={errors.instagram_url} className="mt-1" />
                                 </div>
                             )}
 
@@ -965,7 +982,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                     rows={bodyRows}
                                     className="mt-1 block w-full"
                                 />
-                                {isInstagramFeed && (
+                                {(isInstagramFeed || isInstagramLink) && (
                                     <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                                         Use <kbd className="rounded bg-zinc-100 px-1 dark:bg-zinc-800">Enter</kbd> para
                                         nova linha na legenda (o app respeita as quebras).
