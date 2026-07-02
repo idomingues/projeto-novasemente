@@ -690,6 +690,15 @@ class MobileController extends Controller
 
     public function revistaAdventistaAcervo(Request $request): Response
     {
+        if (! Schema::hasTable('revista_adventista_editions')) {
+            return Inertia::render('Mobile/RevistaAdventistaAcervo', [
+                'editions' => [],
+                'availableYears' => [],
+                'selectedYear' => (int) date('Y'),
+                'decades' => [],
+            ]);
+        }
+
         return Inertia::render('Mobile/RevistaAdventistaAcervo', $this->revistaAdventistaAcervoPayload($request));
     }
 
@@ -784,13 +793,22 @@ class MobileController extends Controller
             ['value' => LibraryBook::CATEGORY_BOOKS, 'label' => 'Livros'],
         ];
 
-        if ($church !== null && ChurchAppFeatures::isEnabled($church, 'revista_adventista_acervo')) {
+        if ($this->revistaAdventistaAcervoAvailable($church)) {
             $categories[] = ['value' => 'revista_adventista_acervo', 'label' => 'Acervo Revista'];
         }
 
         $categories[] = ['value' => LibraryBook::CATEGORY_EGW, 'label' => 'Ellen G. White'];
 
         return $categories;
+    }
+
+    private function revistaAdventistaAcervoAvailable(?Church $church): bool
+    {
+        if ($church === null || ! Schema::hasTable('revista_adventista_editions')) {
+            return false;
+        }
+
+        return ChurchAppFeatures::isEnabled($church, 'revista_adventista_acervo');
     }
 
     /**
@@ -1244,7 +1262,7 @@ class MobileController extends Controller
         $church = $this->currentChurch();
         $baseUrl = $request->getSchemeAndHttpHost();
         $categories = $this->libraryCategoriesForMobile($church);
-        $acervoEnabled = $church !== null && ChurchAppFeatures::isEnabled($church, 'revista_adventista_acervo');
+        $acervoEnabled = $this->revistaAdventistaAcervoAvailable($church);
 
         if (! Schema::hasTable('library_books')) {
             return Inertia::render('Mobile/Library', [
