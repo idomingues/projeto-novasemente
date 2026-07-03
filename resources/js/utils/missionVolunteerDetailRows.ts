@@ -23,6 +23,16 @@ export type MissionVolunteerDetail = {
     firstContactVia?: string | null;
     firstContactViaOther?: string | null;
     wantsBibleStudyPartner?: string | null;
+    spiritualJourney?: string | null;
+    comfortableEnvironment?: string | null;
+    groupProjectPreference?: string | null;
+    interestAreas?: string[] | null;
+    learningStyle?: string | null;
+    personalizedBibleStudyInterest?: string | null;
+    missionSocialProjectsInterest?: string | null;
+    startAreaPreference?: string | null;
+    talentsForGod?: string | null;
+    teamSupportNotes?: string | null;
     lgpdConsent?: boolean | null;
     phaseId?: number | null;
     phaseName?: string | null;
@@ -86,6 +96,16 @@ function submittedAtLabel(iso: string | null | undefined): string {
     }
 }
 
+function joinedList(values: string[] | null | undefined): string {
+    const items = (values ?? []).map((value) => value.trim()).filter(Boolean);
+
+    return items.length > 0 ? items.join(', ') : '—';
+}
+
+function textAnswer(value: string | null | undefined): string {
+    return value?.trim() || '—';
+}
+
 /** Seções alinhadas às perguntas do formulário Missão. */
 export function missionVolunteerDetailSections(v: MissionVolunteerDetail): MissionDetailSection[] {
     return [
@@ -142,6 +162,37 @@ export function missionVolunteerDetailSections(v: MissionVolunteerDetail): Missi
                     value: formatChoice(v.firstContactVia, v.firstContactViaOther),
                 },
                 { label: '16. Parceiro(a) de estudo bíblico?', value: v.wantsBibleStudyPartner?.trim() || '—' },
+            ],
+        },
+        {
+            title: 'Caminhada e convivência',
+            rows: [
+                { label: '17. Caminhada espiritual hoje', value: textAnswer(v.spiritualJourney) },
+                { label: '18. Ambiente em que se sente mais confortável', value: textAnswer(v.comfortableEnvironment) },
+                { label: '19. Preferência ao participar de grupo ou projeto', value: textAnswer(v.groupProjectPreference) },
+            ],
+        },
+        {
+            title: 'Interesses e aprendizado',
+            rows: [
+                { label: '20. Atividades que despertam mais interesse', value: joinedList(v.interestAreas) },
+                { label: '21. Como aprende melhor', value: textAnswer(v.learningStyle) },
+                {
+                    label: '22. Interesse em estudo bíblico personalizado',
+                    value: textAnswer(v.personalizedBibleStudyInterest),
+                },
+                {
+                    label: '23. Participação em projetos missionários ou ações sociais',
+                    value: textAnswer(v.missionSocialProjectsInterest),
+                },
+                { label: '24. Área para começar na Nova Semente', value: textAnswer(v.startAreaPreference) },
+            ],
+        },
+        {
+            title: 'Observações',
+            rows: [
+                { label: '25. Habilidades, experiências ou talentos', value: textAnswer(v.talentsForGod) },
+                { label: '26. O que a equipe deve saber ou como pode ajudar', value: textAnswer(v.teamSupportNotes) },
                 { label: 'Consentimento LGPD', value: yn(v.lgpdConsent) },
             ],
         },

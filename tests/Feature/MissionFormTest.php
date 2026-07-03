@@ -38,11 +38,48 @@ class MissionFormTest extends TestCase
             'first_time_nova_semente' => true,
             'first_contact_via' => 'Amigos',
             'wants_bible_study_partner' => 'Sim',
+            'spiritual_journey' => 'Tenho interesse em crescer espiritualmente.',
+            'comfortable_environment' => 'Pequenos grupos.',
+            'group_project_preference' => 'Trabalhar em equipe.',
+            'interest_areas' => ['Estudos Bíblicos', 'Projetos sociais', 'Voluntariado'],
+            'learning_style' => 'Um pouco de cada.',
+            'personalized_bible_study_interest' => 'Talvez futuramente.',
+            'mission_social_projects_interest' => 'Tenho curiosidade.',
+            'start_area_preference' => 'Fazer amizades.',
+            'talents_for_god' => 'Tenho experiência com música e organização de eventos.',
+            'team_support_notes' => 'Gostaria de conhecer grupos para novos participantes.',
             'lgpd_consent' => true,
         ];
     }
 
-    public function test_public_mission_form_accepts_sixteen_question_payload(): void
+    public function test_public_mission_form_renders_full_questionnaire_options(): void
+    {
+        $this->seed(ChurchSeeder::class);
+        $church = Church::query()->firstOrFail();
+
+        $this->withSession(['working_church_id' => $church->id])
+            ->get(route('mission.form'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Mission/Form')
+                ->where('churchName', $church->name)
+                ->where('formRevision', 13)
+                ->where('layout', 'default')
+                ->has('options.professions')
+                ->has('options.spiritual_journey', 5)
+                ->has('options.comfortable_environment', 4)
+                ->has('options.group_project_preference', 5)
+                ->has('options.interest_areas', 9)
+                ->has('options.learning_style', 5)
+                ->has('options.personalized_bible_study_interest', 3)
+                ->has('options.mission_social_projects_interest', 4)
+                ->has('options.start_area_preference', 6)
+                ->where('options.spiritual_journey.0', 'Estou conhecendo a fé cristã.')
+                ->where('options.interest_areas.0', 'Estudos Bíblicos')
+                ->where('options.interest_areas.8', 'Voluntariado'));
+    }
+
+    public function test_public_mission_form_accepts_extended_question_payload(): void
     {
         Storage::fake('public');
         $this->seed(ChurchSeeder::class);
@@ -63,6 +100,9 @@ class MissionFormTest extends TestCase
         $this->assertNotNull($volunteer);
         $this->assertSame('Enfermeiro(a)', $volunteer->profession);
         $this->assertEquals(['Música/Louvor'], $volunteer->seeks_in_community);
+        $this->assertSame('Tenho interesse em crescer espiritualmente.', $volunteer->spiritual_journey);
+        $this->assertEquals(['Estudos Bíblicos', 'Projetos sociais', 'Voluntariado'], $volunteer->interest_areas);
+        $this->assertSame('Gostaria de conhecer grupos para novos participantes.', $volunteer->team_support_notes);
         $this->assertNull($volunteer->nps_score);
         $this->assertNull($volunteer->profile_type);
         $this->assertNotNull($volunteer->photo_path);
@@ -142,5 +182,30 @@ class MissionFormTest extends TestCase
         $this->withSession(['working_church_id' => $church->id])
             ->post(route('mission.store'), $payload)
             ->assertRedirect(route('mission.form'));
+    }
+
+    public function test_mission_form_rejects_more_than_three_interest_areas(): void
+    {
+        Storage::fake('public');
+        $this->seed(ChurchSeeder::class);
+        $church = Church::query()->firstOrFail();
+
+        $payload = $this->validPayload();
+        $payload['interest_areas'] = [
+            'Estudos Bíblicos',
+            'Pequenos Grupos',
+            'Projetos sociais',
+            'Voluntariado',
+        ];
+
+        $response = $this->from(route('mission.form'))
+            ->withSession(['working_church_id' => $church->id])
+            ->post(route('mission.store'), $payload);
+
+        $response
+            ->assertRedirect(route('mission.form'))
+            ->assertSessionHasErrors(['interest_areas']);
+
+        $this->assertDatabaseCount('mission_volunteers', 0);
     }
 }

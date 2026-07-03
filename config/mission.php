@@ -87,6 +87,71 @@ return [
         'Não',
     ],
 
+    'spiritual_journey' => [
+        'Estou conhecendo a fé cristã.',
+        'Tenho interesse em crescer espiritualmente.',
+        'Já frequento uma igreja.',
+        'Estou retornando à vida cristã.',
+        'Prefiro não responder.',
+    ],
+
+    'comfortable_environment' => [
+        'Conversando individualmente.',
+        'Pequenos grupos.',
+        'Eventos maiores.',
+        'Depende da ocasião.',
+    ],
+
+    'group_project_preference' => [
+        'Organizar e liderar.',
+        'Trabalhar em equipe.',
+        'Ajudar nos bastidores.',
+        'Apoiar onde houver necessidade.',
+        'Ainda não sei.',
+    ],
+
+    'interest_areas' => [
+        'Estudos Bíblicos',
+        'Pequenos Grupos',
+        'Conviva',
+        'Projetos sociais',
+        'Missões urbanas',
+        'Missões internacionais',
+        'Coral ou música',
+        'Eventos da igreja',
+        'Voluntariado',
+    ],
+
+    'learning_style' => [
+        'Conversando.',
+        'Lendo.',
+        'Assistindo.',
+        'Participando de atividades.',
+        'Um pouco de cada.',
+    ],
+
+    'personalized_bible_study_interest' => [
+        'Sim.',
+        'Talvez futuramente.',
+        'Ainda não.',
+    ],
+
+    'mission_social_projects_interest' => [
+        'Gostaria muito de participar.',
+        'Tenho curiosidade.',
+        'Talvez no futuro.',
+        'Neste momento prefiro apenas conhecer a igreja.',
+    ],
+
+    'start_area_preference' => [
+        'Crescimento espiritual.',
+        'Estudo da Bíblia.',
+        'Fazer amizades.',
+        'Participar de projetos missionários.',
+        'Servir em ações sociais.',
+        'Conhecer melhor os ministérios.',
+    ],
+
     'message_moderation' => [
         'enabled' => env('MISSION_MESSAGE_MODERATION_ENABLED', true),
         'openai_api_key' => env('OPENAI_API_KEY'),

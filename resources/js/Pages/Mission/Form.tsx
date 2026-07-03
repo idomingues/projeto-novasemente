@@ -42,6 +42,16 @@ export function emptyMissionForm(): MissionFormData {
         first_contact_via: '',
         first_contact_via_other: '',
         wants_bible_study_partner: '',
+        spiritual_journey: '',
+        comfortable_environment: '',
+        group_project_preference: '',
+        interest_areas: [],
+        learning_style: '',
+        personalized_bible_study_interest: '',
+        mission_social_projects_interest: '',
+        start_area_preference: '',
+        talents_for_god: '',
+        team_support_notes: '',
         lgpd_consent: false,
     };
 }

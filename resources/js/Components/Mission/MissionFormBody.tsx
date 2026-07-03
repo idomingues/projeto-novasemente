@@ -1,7 +1,6 @@
 import Checkbox from '@/Components/Checkbox';
 import InputError from '@/Components/InputError';
 import ProfilePhotoPicker from '@/Components/ProfilePhotoPicker';
-import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import BrDateInput from '@/Components/BrDateInput';
@@ -24,6 +23,14 @@ export type MissionOptions = {
     studied_bible: string[];
     first_contact_via: string[];
     wants_bible_study_partner: string[];
+    spiritual_journey: string[];
+    comfortable_environment: string[];
+    group_project_preference: string[];
+    interest_areas: string[];
+    learning_style: string[];
+    personalized_bible_study_interest: string[];
+    mission_social_projects_interest: string[];
+    start_area_preference: string[];
 };
 
 export type MissionFormData = {
@@ -48,13 +55,36 @@ export type MissionFormData = {
     first_contact_via: string;
     first_contact_via_other: string;
     wants_bible_study_partner: string;
+    spiritual_journey: string;
+    comfortable_environment: string;
+    group_project_preference: string;
+    interest_areas: string[];
+    learning_style: string;
+    personalized_bible_study_interest: string;
+    mission_social_projects_interest: string;
+    start_area_preference: string;
+    talents_for_god: string;
+    team_support_notes: string;
     lgpd_consent: boolean;
 };
 
-/** Seis páginas: 5 = comunidade/bíblia (11–13); 6 = só Nova Semente (14–16). */
-const PAGE_TITLES = ['Dados pessoais', 'Profissão', 'Fé e crença', 'Religião', 'Comunidade e Bíblia', 'Nova Semente'];
-const COMMUNITY_PAGE_INDEX = PAGE_TITLES.length - 2;
-const LAST_PAGE_INDEX = PAGE_TITLES.length - 1;
+const PAGE_TITLES = [
+    'Dados pessoais',
+    'Profissão',
+    'Fé e crença',
+    'Religião',
+    'Comunidade e Bíblia',
+    'Nova Semente',
+    'Caminhada e convivência',
+    'Interesses',
+    'Compartilhe mais',
+] as const;
+const COMMUNITY_PAGE_INDEX = 4;
+const NOVA_SEMENTE_PAGE_INDEX = 5;
+const JOURNEY_PAGE_INDEX = 6;
+const INTERESTS_PAGE_INDEX = 7;
+const LAST_PAGE_INDEX = 8;
+const PAGE_FIRST_QUESTION_NUMBERS = [1, 5, 6, 9, 11, 14, 17, 20, 25] as const;
 
 interface Props {
     form: MissionFormReturn;
@@ -202,6 +232,73 @@ function RadioList({
     );
 }
 
+function CheckboxCardList({
+    name,
+    options,
+    values,
+    maxSelections,
+    onChange,
+}: {
+    name: string;
+    options: string[];
+    values: string[];
+    maxSelections?: number;
+    onChange: (values: string[]) => void;
+}) {
+    const safeOptions = options ?? [];
+    const selected = new Set(values);
+
+    const toggle = (option: string) => {
+        if (selected.has(option)) {
+            onChange(values.filter((value) => value !== option));
+            return;
+        }
+
+        if (maxSelections && values.length >= maxSelections) {
+            onChange([...values, option]);
+            return;
+        }
+
+        onChange([...values, option]);
+    };
+
+    return (
+        <div className="space-y-1.5" role="group" aria-label={name}>
+            {safeOptions.map((opt) => {
+                const isSelected = selected.has(opt);
+
+                return (
+                    <button
+                        key={`${name}-${opt}`}
+                        type="button"
+                        aria-pressed={isSelected}
+                        onClick={() => toggle(opt)}
+                        className={[
+                            'flex w-full cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition-colors sm:px-4 sm:py-3',
+                            isSelected
+                                ? 'border-teal-500/80 bg-teal-50/90 ring-1 ring-teal-500/30 dark:border-teal-500/50 dark:bg-teal-950/40'
+                                : 'border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50/80 dark:border-zinc-700 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/50',
+                        ].join(' ')}
+                    >
+                        <span
+                            className={[
+                                'flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-xs font-semibold',
+                                isSelected
+                                    ? 'border-teal-600 bg-teal-600 text-white dark:border-teal-400 dark:bg-teal-400 dark:text-zinc-950'
+                                    : 'border-zinc-300 text-zinc-400 dark:border-zinc-600 dark:text-zinc-500',
+                            ].join(' ')}
+                            aria-hidden
+                        >
+                            {isSelected ? '✓' : ''}
+                        </span>
+                        <span className="text-zinc-800 dark:text-zinc-100">{opt}</span>
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
+
 function YesNoRadio({
     name,
     value,
@@ -277,7 +374,7 @@ function NovaSementeQuestions({
 }) {
     return (
         <div className="space-y-4 sm:space-y-5">
-            <Question number={14} label="É primeira vez na nova semente?" error={errors.first_time_nova_semente}>
+            <Question number={14} label="É primeira vez na Nova Semente?" error={errors.first_time_nova_semente}>
                 <YesNoRadio
                     name="first_time_nova_semente"
                     value={data.first_time_nova_semente}
@@ -307,12 +404,195 @@ function NovaSementeQuestions({
                     error={errors.first_contact_via_other}
                 />
             </Question>
-            <Question number={16} label="Gostaria de ter alguém para estudar a bíblia com você?" error={errors.wants_bible_study_partner}>
+            <Question
+                number={16}
+                label="Gostaria de ter alguém para estudar a Bíblia com você?"
+                error={errors.wants_bible_study_partner}
+            >
                 <RadioList
                     name="wants_bible_study_partner"
                     options={safeOptions.wants_bible_study_partner}
                     value={data.wants_bible_study_partner}
                     onChange={(v) => setData('wants_bible_study_partner', v)}
+                />
+            </Question>
+        </div>
+    );
+}
+
+function JourneyAndGroupQuestions({
+    data,
+    errors,
+    safeOptions,
+    setData,
+}: {
+    data: MissionFormData;
+    errors: Partial<Record<keyof MissionFormData, string>>;
+    safeOptions: {
+        spiritual_journey: string[];
+        comfortable_environment: string[];
+        group_project_preference: string[];
+    };
+    setData: MissionFormReturn['setData'];
+}) {
+    return (
+        <div className="space-y-4 sm:space-y-5">
+            <Question number={17} label="Como você descreveria sua caminhada espiritual hoje?" error={errors.spiritual_journey}>
+                <RadioList
+                    name="spiritual_journey"
+                    options={safeOptions.spiritual_journey}
+                    value={data.spiritual_journey}
+                    onChange={(v) => setData('spiritual_journey', v)}
+                />
+            </Question>
+            <Question
+                number={18}
+                label="Em qual ambiente você normalmente se sente mais confortável?"
+                error={errors.comfortable_environment}
+            >
+                <RadioList
+                    name="comfortable_environment"
+                    options={safeOptions.comfortable_environment}
+                    value={data.comfortable_environment}
+                    onChange={(v) => setData('comfortable_environment', v)}
+                />
+            </Question>
+            <Question
+                number={19}
+                label="Quando participa de um grupo ou projeto, você normalmente prefere:"
+                error={errors.group_project_preference}
+            >
+                <RadioList
+                    name="group_project_preference"
+                    options={safeOptions.group_project_preference}
+                    value={data.group_project_preference}
+                    onChange={(v) => setData('group_project_preference', v)}
+                />
+            </Question>
+        </div>
+    );
+}
+
+function InterestsAndLearningQuestions({
+    data,
+    errors,
+    interestAreasClientError,
+    safeOptions,
+    onInterestAreasChange,
+    setData,
+}: {
+    data: MissionFormData;
+    errors: Partial<Record<keyof MissionFormData, string>>;
+    interestAreasClientError: string | null;
+    safeOptions: {
+        interest_areas: string[];
+        learning_style: string[];
+        personalized_bible_study_interest: string[];
+        mission_social_projects_interest: string[];
+        start_area_preference: string[];
+    };
+    onInterestAreasChange: (values: string[]) => void;
+    setData: MissionFormReturn['setData'];
+}) {
+    return (
+        <div className="space-y-4 sm:space-y-5">
+            <Question
+                number={20}
+                label="Quais destas atividades despertam mais seu interesse?"
+                error={errors.interest_areas ?? interestAreasClientError ?? undefined}
+            >
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">Pode escolher até três.</p>
+                <CheckboxCardList
+                    name="interest_areas"
+                    options={safeOptions.interest_areas}
+                    values={data.interest_areas}
+                    maxSelections={3}
+                    onChange={onInterestAreasChange}
+                />
+            </Question>
+            <Question number={21} label="Como você aprende melhor?" error={errors.learning_style}>
+                <RadioList
+                    name="learning_style"
+                    options={safeOptions.learning_style}
+                    value={data.learning_style}
+                    onChange={(v) => setData('learning_style', v)}
+                />
+            </Question>
+            <Question
+                number={22}
+                label="Caso houvesse oportunidade, você teria interesse em estudar a Bíblia de maneira personalizada?"
+                error={errors.personalized_bible_study_interest}
+            >
+                <RadioList
+                    name="personalized_bible_study_interest"
+                    options={safeOptions.personalized_bible_study_interest}
+                    value={data.personalized_bible_study_interest}
+                    onChange={(v) => setData('personalized_bible_study_interest', v)}
+                />
+            </Question>
+            <Question
+                number={23}
+                label="Como você se sente em relação à participação em projetos missionários ou ações sociais?"
+                error={errors.mission_social_projects_interest}
+            >
+                <RadioList
+                    name="mission_social_projects_interest"
+                    options={safeOptions.mission_social_projects_interest}
+                    value={data.mission_social_projects_interest}
+                    onChange={(v) => setData('mission_social_projects_interest', v)}
+                />
+            </Question>
+            <Question
+                number={24}
+                label="Se pudesse escolher uma área para começar sua caminhada na Nova Semente, qual seria?"
+                error={errors.start_area_preference}
+            >
+                <RadioList
+                    name="start_area_preference"
+                    options={safeOptions.start_area_preference}
+                    value={data.start_area_preference}
+                    onChange={(v) => setData('start_area_preference', v)}
+                />
+            </Question>
+        </div>
+    );
+}
+
+function FinalMissionQuestions({
+    data,
+    errors,
+    setData,
+}: {
+    data: MissionFormData;
+    errors: Partial<Record<keyof MissionFormData, string>>;
+    setData: MissionFormReturn['setData'];
+}) {
+    return (
+        <div className="space-y-4 sm:space-y-5">
+            <Question
+                number={25}
+                label="Existe alguma habilidade, experiência ou talento que você gostaria de colocar a serviço de Deus no futuro?"
+                required={false}
+                error={errors.talents_for_god}
+            >
+                <Textarea
+                    className="w-full"
+                    rows={4}
+                    value={data.talents_for_god}
+                    onChange={(e) => setData('talents_for_god', e.target.value)}
+                />
+            </Question>
+            <Question
+                number={26}
+                label="Existe algo que gostaria que nossa equipe soubesse sobre você ou alguma forma específica pela qual poderíamos ajudá-lo neste momento?"
+                required={false}
+                error={errors.team_support_notes}
+            >
+                <Textarea
+                    className="w-full"
+                    rows={4}
+                    value={data.team_support_notes}
+                    onChange={(e) => setData('team_support_notes', e.target.value)}
                 />
             </Question>
             <div className="rounded-2xl border border-zinc-200/90 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-900/40 sm:p-5">
@@ -338,6 +618,7 @@ export default function MissionFormBody({ form, options, onSubmit, processing, f
     const [photoPreparing, setPhotoPreparing] = useState(false);
     const [photoClientError, setPhotoClientError] = useState<string | null>(null);
     const [photoMissingOnAdvance, setPhotoMissingOnAdvance] = useState(false);
+    const [interestAreasClientError, setInterestAreasClientError] = useState<string | null>(null);
 
     const safeOptions = useMemo(
         () => ({
@@ -348,6 +629,14 @@ export default function MissionFormBody({ form, options, onSubmit, processing, f
             studied_bible: options.studied_bible ?? [],
             first_contact_via: options.first_contact_via ?? [],
             wants_bible_study_partner: options.wants_bible_study_partner ?? [],
+            spiritual_journey: options.spiritual_journey ?? [],
+            comfortable_environment: options.comfortable_environment ?? [],
+            group_project_preference: options.group_project_preference ?? [],
+            interest_areas: options.interest_areas ?? [],
+            learning_style: options.learning_style ?? [],
+            personalized_bible_study_interest: options.personalized_bible_study_interest ?? [],
+            mission_social_projects_interest: options.mission_social_projects_interest ?? [],
+            start_area_preference: options.start_area_preference ?? [],
         }),
         [options],
     );
@@ -441,8 +730,12 @@ export default function MissionFormBody({ form, options, onSubmit, processing, f
 
     useEffect(() => {
         const id = window.requestAnimationFrame(() => {
-            if (page === LAST_PAGE_INDEX) {
-                document.getElementById('mission-q-14')?.scrollIntoView({ block: 'start', behavior: 'auto' });
+            if (page > 0) {
+                const firstQuestionNumber = PAGE_FIRST_QUESTION_NUMBERS[page];
+                document.getElementById(`mission-q-${firstQuestionNumber}`)?.scrollIntoView({
+                    block: 'start',
+                    behavior: 'auto',
+                });
                 return;
             }
             pageTopRef.current?.scrollIntoView({ block: 'start', behavior: 'auto' });
@@ -457,6 +750,19 @@ export default function MissionFormBody({ form, options, onSubmit, processing, f
             setClientError(null);
         }
     }, [errors]);
+
+    const updateInterestAreas = useCallback(
+        (nextValues: string[]) => {
+            if (nextValues.length > 3) {
+                setInterestAreasClientError('Escolha no máximo três atividades.');
+                return;
+            }
+
+            setInterestAreasClientError(null);
+            setData('interest_areas', nextValues);
+        },
+        [setData],
+    );
 
     const showBeliefDetail = data.has_belief === true;
     const showReligionDetail = data.participates_religion === true;
@@ -693,7 +999,7 @@ export default function MissionFormBody({ form, options, onSubmit, processing, f
                     </>
                 )}
 
-                {page === LAST_PAGE_INDEX && (
+                {page === NOVA_SEMENTE_PAGE_INDEX && (
                     <NovaSementeQuestions
                         data={data}
                         errors={errors}
@@ -702,6 +1008,28 @@ export default function MissionFormBody({ form, options, onSubmit, processing, f
                         setData={setData}
                     />
                 )}
+
+                {page === JOURNEY_PAGE_INDEX && (
+                    <JourneyAndGroupQuestions
+                        data={data}
+                        errors={errors}
+                        safeOptions={safeOptions}
+                        setData={setData}
+                    />
+                )}
+
+                {page === INTERESTS_PAGE_INDEX && (
+                    <InterestsAndLearningQuestions
+                        data={data}
+                        errors={errors}
+                        interestAreasClientError={interestAreasClientError}
+                        safeOptions={safeOptions}
+                        onInterestAreasChange={updateInterestAreas}
+                        setData={setData}
+                    />
+                )}
+
+                {page === LAST_PAGE_INDEX && <FinalMissionQuestions data={data} errors={errors} setData={setData} />}
             </div>
 
             <FormNav page={page} goToPage={goToPage} processing={processing} total={PAGE_TITLES.length} />

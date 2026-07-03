@@ -69,6 +69,25 @@ final class MissionVolunteerPayload
                 'max:120',
             ],
             'wants_bible_study_partner' => ['required', 'string', Rule::in($cfg['wants_bible_study_partner'] ?? [])],
+            'spiritual_journey' => ['required', 'string', Rule::in($cfg['spiritual_journey'] ?? [])],
+            'comfortable_environment' => ['required', 'string', Rule::in($cfg['comfortable_environment'] ?? [])],
+            'group_project_preference' => ['required', 'string', Rule::in($cfg['group_project_preference'] ?? [])],
+            'interest_areas' => ['required', 'array', 'min:1', 'max:3'],
+            'interest_areas.*' => ['string', 'distinct', Rule::in($cfg['interest_areas'] ?? [])],
+            'learning_style' => ['required', 'string', Rule::in($cfg['learning_style'] ?? [])],
+            'personalized_bible_study_interest' => [
+                'required',
+                'string',
+                Rule::in($cfg['personalized_bible_study_interest'] ?? []),
+            ],
+            'mission_social_projects_interest' => [
+                'required',
+                'string',
+                Rule::in($cfg['mission_social_projects_interest'] ?? []),
+            ],
+            'start_area_preference' => ['required', 'string', Rule::in($cfg['start_area_preference'] ?? [])],
+            'talents_for_god' => ['nullable', 'string', 'max:2000'],
+            'team_support_notes' => ['nullable', 'string', 'max:2000'],
             'lgpd_consent' => ['accepted'],
         ];
     }
@@ -114,6 +133,16 @@ final class MissionVolunteerPayload
             'first_contact_via' => $firstContact['value'],
             'first_contact_via_other' => $firstContact['other'],
             'wants_bible_study_partner' => $valid['wants_bible_study_partner'],
+            'spiritual_journey' => $valid['spiritual_journey'],
+            'comfortable_environment' => $valid['comfortable_environment'],
+            'group_project_preference' => $valid['group_project_preference'],
+            'interest_areas' => self::resolveStringList($valid['interest_areas'] ?? []),
+            'learning_style' => $valid['learning_style'],
+            'personalized_bible_study_interest' => $valid['personalized_bible_study_interest'],
+            'mission_social_projects_interest' => $valid['mission_social_projects_interest'],
+            'start_area_preference' => $valid['start_area_preference'],
+            'talents_for_god' => self::trimNullableString($valid['talents_for_god'] ?? null),
+            'team_support_notes' => self::trimNullableString($valid['team_support_notes'] ?? null),
             'if_not_how_long' => null,
             'insight_duration' => null,
             'participated_groups' => [],
@@ -182,6 +211,30 @@ final class MissionVolunteerPayload
         return ['value' => $choice, 'other' => null];
     }
 
+    /**
+     * @param  mixed  $values
+     * @return array<int, string>
+     */
+    private static function resolveStringList(mixed $values): array
+    {
+        if (! is_array($values)) {
+            return [];
+        }
+
+        return collect($values)
+            ->map(fn ($value) => trim((string) $value))
+            ->filter(fn (string $value) => $value !== '')
+            ->values()
+            ->all();
+    }
+
+    private static function trimNullableString(mixed $value): ?string
+    {
+        $text = trim((string) ($value ?? ''));
+
+        return $text !== '' ? $text : null;
+    }
+
     /** @return array<string, mixed> */
     public static function serializeForFrontend(MissionVolunteer $v): array
     {
@@ -209,6 +262,16 @@ final class MissionVolunteerPayload
             'firstContactVia' => $v->first_contact_via,
             'firstContactViaOther' => $v->first_contact_via_other,
             'wantsBibleStudyPartner' => $v->wants_bible_study_partner,
+            'spiritualJourney' => $v->spiritual_journey,
+            'comfortableEnvironment' => $v->comfortable_environment,
+            'groupProjectPreference' => $v->group_project_preference,
+            'interestAreas' => $v->interest_areas ?? [],
+            'learningStyle' => $v->learning_style,
+            'personalizedBibleStudyInterest' => $v->personalized_bible_study_interest,
+            'missionSocialProjectsInterest' => $v->mission_social_projects_interest,
+            'startAreaPreference' => $v->start_area_preference,
+            'talentsForGod' => $v->talents_for_god,
+            'teamSupportNotes' => $v->team_support_notes,
             'lgpdConsent' => $v->lgpd_consent,
             'phaseId' => $v->mission_phase_id,
             'phaseName' => $v->phase?->name,
