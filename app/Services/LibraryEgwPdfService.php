@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\LibraryBook;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class LibraryEgwPdfService
@@ -22,7 +23,7 @@ class LibraryEgwPdfService
 
     public function cacheFromRemote(LibraryBook $book): bool
     {
-        $remoteUrl = $book->resolvedSourcePdfUrl();
+        $remoteUrl = $this->resolveRemotePdfUrl($book);
         if ($remoteUrl === null) {
             return false;
         }
@@ -58,7 +59,7 @@ class LibraryEgwPdfService
             return $this->streamLocalPdf($book, $attachment);
         }
 
-        $remoteUrl = $book->resolvedSourcePdfUrl();
+        $remoteUrl = $this->resolveRemotePdfUrl($book);
         if ($remoteUrl === null) {
             return null;
         }
@@ -124,5 +125,97 @@ class LibraryEgwPdfService
         $slug = $this->catalog->slugForTitle($book->title);
 
         return ($slug !== '' ? $slug : 'publicacao-'.$book->id).'.pdf';
+    }
+
+    private function resolveRemotePdfUrl(LibraryBook $book): ?string
+    {
+        $remoteUrl = $book->resolvedSourcePdfUrl();
+        if ($remoteUrl !== null) {
+            return $remoteUrl;
+        }
+
+        if ($book->category !== LibraryBook::CATEGORY_EGW) {
+            return null;
+        }
+
+        $discovered = $this->discoverRemotePdfUrlFromCatalog($book);
+        if ($discovered === null) {
+            return null;
+        }
+
+        $book->source_pdf_url = $discovered;
+        $book->save();
+
+        return $discovered;
+    }
+
+    private function discoverRemotePdfUrlFromCatalog(LibraryBook $book): ?string
+    {
+        $catalog = $this->catalog->fetchCatalog();
+        if (! ($catalog['ok'] ?? false)) {
+            return null;
+        }
+
+        $items = $catalog['items'] ?? [];
+        if (! is_array($items) || $items === []) {
+            return null;
+        }
+
+        $variants = $this->titleLookupVariants($book->title);
+        $variantSlugs = array_map(fn (string $title) => $this->catalog->slugForTitle($title), $variants);
+
+        foreach ($items as $item) {
+            $candidateTitle = trim((string) ($item['title'] ?? ''));
+            $candidatePdfUrl = trim((string) ($item['pdf_url'] ?? ''));
+            if ($candidateTitle === '' || $candidatePdfUrl === '') {
+                continue;
+            }
+
+            $candidateVariants = $this->titleLookupVariants($candidateTitle);
+            foreach ($candidateVariants as $candidateVariant) {
+                if (in_array($candidateVariant, $variants, true)) {
+                    return $candidatePdfUrl;
+                }
+            }
+
+            $candidateSlug = $this->catalog->slugForTitle($candidateTitle);
+            if (in_array($candidateSlug, $variantSlugs, true)) {
+                return $candidatePdfUrl;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function titleLookupVariants(string $title): array
+    {
+        $variants = [];
+        $push = function (string $value) use (&$variants): void {
+            $normalized = $this->normalizeLookupTitle($value);
+            if ($normalized !== '' && ! in_array($normalized, $variants, true)) {
+                $variants[] = $normalized;
+            }
+        };
+
+        $push($title);
+        $push(preg_replace('/\s*[\(\[].*?[\)\]]\s*/u', ' ', $title) ?? $title);
+
+        return $variants;
+    }
+
+    private function normalizeLookupTitle(string $title): string
+    {
+        $normalized = Str::of($title)
+            ->ascii()
+            ->lower()
+            ->replaceMatches('/[^a-z0-9\s]+/', ' ')
+            ->replaceMatches('/\s+/', ' ')
+            ->trim()
+            ->value();
+
+        return $normalized;
     }
 }

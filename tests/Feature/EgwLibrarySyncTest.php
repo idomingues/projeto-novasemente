@@ -129,6 +129,53 @@ HTML;
         Storage::disk('public')->assertExists((string) $book->fresh()->pdf_path);
     }
 
+    public function test_pdf_stream_recovers_remote_url_from_catalog_when_old_record_lost_source_url(): void
+    {
+        $this->seed();
+        Storage::fake('public');
+
+        $book = LibraryBook::query()->create([
+            'church_id' => null,
+            'title' => 'Caminho a Cristo (nova edição)',
+            'subtitle' => 'Ellen G. White',
+            'description' => null,
+            'category' => LibraryBook::CATEGORY_EGW,
+            'cover_path' => 'library/egw/covers/caminho-a-cristo.jpg',
+            'source_cover_url' => 'https://cdn.example/cover.jpg',
+            'pdf_path' => 'library/egw/pdfs/caminho-a-cristo.pdf',
+            'source_pdf_url' => null,
+            'published_at' => null,
+            'order' => 1,
+            'created_by' => null,
+        ]);
+
+        Http::fake([
+            CentroWhiteEgwCatalogService::CATALOG_URL => Http::response($this->sampleHtml(), 200),
+            'https://cdn.centrowhite.org.br/home/uploads/2022/11/Caminho-a-Cristo.pdf' => Http::response('%PDF-1.4 recovered-egw', 200, [
+                'Content-Type' => 'application/pdf',
+            ]),
+        ]);
+
+        $churchId = (int) Church::query()->value('id');
+
+        $response = $this
+            ->withSession(['working_church_id' => $churchId])
+            ->get(route('mobile.biblioteca.pdf-stream', $book));
+
+        $response->assertOk();
+        $response->assertHeader('content-type', 'application/pdf');
+        $this->assertStringContainsString('%PDF-1.4 recovered-egw', $response->getContent());
+
+        $book->refresh();
+        $this->assertSame(
+            'https://cdn.centrowhite.org.br/home/uploads/2022/11/Caminho-a-Cristo.pdf',
+            $book->source_pdf_url
+        );
+        $this->assertNotNull($book->pdf_cached_at);
+        $this->assertStringStartsWith('library/egw/pdfs/', (string) $book->pdf_path);
+        Storage::disk('public')->assertExists((string) $book->pdf_path);
+    }
+
     public function test_mobile_library_lists_global_egw_books(): void
     {
         $this->seed();

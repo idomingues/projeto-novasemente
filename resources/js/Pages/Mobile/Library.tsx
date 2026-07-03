@@ -16,6 +16,7 @@ import {
 import Modal from '@/Components/Modal';
 import LibraryLessonDayNotes from '@/Components/Mobile/LibraryLessonDayNotes';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { pdfUrlWithViewerParams, usePdfViewerFragment } from '@/lib/pdfViewerUrl';
 
 function imageSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
@@ -147,6 +148,7 @@ export default function MobileLibrary({
     revistaAdventistaAcervo = null,
 }: Props) {
     const appUrl = (usePage().props as PageProps).appUrl ?? '';
+    const viewerFragment = usePdfViewerFragment();
     const initialTab = useMemo(() => {
         if (typeof window === 'undefined') return '';
         const t = new URL(window.location.href).searchParams.get('tab')?.trim().toLowerCase() ?? '';
@@ -517,6 +519,7 @@ export default function MobileLibrary({
                         {filtered.map((b) => {
                             const cover = imageSrc(b.cover_url, appUrl);
                             const pdf = b.pdf_url ? imageSrc(b.pdf_url, appUrl) : '';
+                            const pdfReadUrl = pdf ? pdfUrlWithViewerParams(pdf, viewerFragment) : '';
                             const extRaw = (b.external_url ?? '').trim();
                             const ext = extRaw ? extRaw : '';
                             const showUrl = route('mobile.biblioteca.show', b.id);
@@ -544,14 +547,18 @@ export default function MobileLibrary({
                                         href={directOpen}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className={coverShellClass}
+                                        className={`${coverShellClass} cursor-pointer`}
                                         aria-label={`Abrir no site: ${b.title}`}
                                         title="Abrir no site"
                                     >
                                         {coverVisual}
                                     </a>
+                                ) : pdfReadUrl !== '' ? (
+                                    <a href={pdfReadUrl} className={`${coverShellClass} cursor-pointer`} aria-label={`Ler: ${b.title}`}>
+                                        {coverVisual}
+                                    </a>
                                 ) : (
-                                    <Link href={showUrl} className={coverShellClass} aria-label={`Ler: ${b.title}`}>
+                                    <Link href={showUrl} className={`${coverShellClass} cursor-pointer`} aria-label={`Ler: ${b.title}`}>
                                         {coverVisual}
                                     </Link>
                                 );
@@ -574,9 +581,9 @@ export default function MobileLibrary({
                                             ) : null}
                                             <div className="mt-4 flex flex-wrap items-stretch gap-2">
                                                 {pdf !== '' ? (
-                                                    <Link
-                                                        href={showUrl}
-                                                        className="inline-flex min-h-9 touch-manipulation items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+                                                    <a
+                                                        href={pdfReadUrl}
+                                                        className="inline-flex min-h-9 cursor-pointer touch-manipulation items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
                                                         aria-label={`Ler: ${b.title}`}
                                                     >
                                                         <BookOpenIcon
@@ -584,13 +591,13 @@ export default function MobileLibrary({
                                                             aria-hidden
                                                         />
                                                         Ler
-                                                    </Link>
+                                                    </a>
                                                 ) : ext !== '' ? (
                                                     <a
                                                         href={ext}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="inline-flex min-h-9 touch-manipulation items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+                                                        className="inline-flex min-h-9 cursor-pointer touch-manipulation items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
                                                         aria-label={`Ler: ${b.title}`}
                                                     >
                                                         <BookOpenIcon
@@ -602,7 +609,7 @@ export default function MobileLibrary({
                                                 ) : (
                                                     <Link
                                                         href={showUrl}
-                                                        className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+                                                        className="inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
                                                     >
                                                         <BookOpenIcon
                                                             className="h-4 w-4 shrink-0 text-white dark:text-zinc-900"
@@ -614,7 +621,7 @@ export default function MobileLibrary({
                                                 {pdf !== '' ? (
                                                     <a
                                                         href={route('mobile.biblioteca.pdf-download', b.id)}
-                                                        className="inline-flex min-h-9 touch-manipulation items-center gap-1.5 rounded-lg border border-zinc-900 bg-white px-3 py-2 text-xs font-medium text-zinc-900 transition hover:bg-zinc-50 dark:border-zinc-300 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                                                        className="inline-flex min-h-9 cursor-pointer touch-manipulation items-center gap-1.5 rounded-lg border border-zinc-900 bg-white px-3 py-2 text-xs font-medium text-zinc-900 transition hover:bg-zinc-50 dark:border-zinc-300 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
                                                     >
                                                         <ArrowDownTrayIcon
                                                             className="h-4 w-4 shrink-0 text-zinc-900 dark:text-zinc-100"
@@ -627,7 +634,7 @@ export default function MobileLibrary({
                                                         href={ext}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-zinc-900 bg-white px-3 py-2 text-xs font-medium text-zinc-900 transition hover:bg-zinc-50 dark:border-zinc-300 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                                                        className="inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-zinc-900 bg-white px-3 py-2 text-xs font-medium text-zinc-900 transition hover:bg-zinc-50 dark:border-zinc-300 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
                                                     >
                                                         <ArrowTopRightOnSquareIcon
                                                             className="h-4 w-4 shrink-0 text-zinc-900 dark:text-zinc-100"

@@ -110,6 +110,7 @@ export default function LibraryLessonDayNotes({
     const dayLabel = currentDayLabel(segments, dayIdx);
     const dayQuestion = currentDayQuestion(segments, dayIdx);
     const currentNote = notesBySlug[daySlug] ?? null;
+    const hasSourceOmissionMarkers = readerHtml.includes('[...]') || (dayQuestion?.includes('[...]') ?? false);
 
     const noteSlugs = useMemo(
         () => Object.keys(notesBySlug).filter((slug) => notesBySlug[slug]?.body.trim() !== ''),
@@ -368,6 +369,12 @@ export default function LibraryLessonDayNotes({
 
             {viewMode === 'reading' ? (
                 <div className="space-y-4">
+                    {hasSourceOmissionMarkers ? (
+                        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100">
+                            Os trechos com <strong>[...]</strong> já fazem parte do texto original publicado pela fonte e
+                            indicam uma omissão editorial na citação, não um corte feito pelo app.
+                        </div>
+                    ) : null}
                     <LibraryLessonReaderContent html={readerHtml} className={readerContentClassName} />
                     {dayQuestion ? (
                         <div className="overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900">

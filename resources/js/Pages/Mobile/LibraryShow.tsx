@@ -119,6 +119,14 @@ export default function MobileLibraryShow({ book }: Props) {
         };
     }, [tryExternalReader, book.id, book.category, pdf, ext]);
 
+    useEffect(() => {
+        if (!shouldUsePdfViewer || !pdfViewerUrl || typeof window === 'undefined') {
+            return;
+        }
+
+        window.location.replace(pdfViewerUrl);
+    }, [shouldUsePdfViewer, pdfViewerUrl]);
+
     if (shouldUsePdfViewer) {
         return (
             <MobileLayout>
@@ -135,7 +143,7 @@ export default function MobileLibraryShow({ book }: Props) {
                         </Link>
                     </div>
 
-                    <div className="mx-auto w-full max-w-5xl space-y-4 px-4 sm:px-0">
+                    <div className="mx-auto w-full max-w-2xl space-y-4 px-4 sm:px-0">
                         <header className="space-y-2">
                             <h1 className="text-2xl font-bold leading-snug tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
                                 {book.title}
@@ -166,17 +174,12 @@ export default function MobileLibraryShow({ book }: Props) {
                             </a>
                         </div>
 
-                        <section className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
-                            <iframe
-                                title={`PDF de ${book.title}`}
-                                src={pdfViewerUrl}
-                                className="h-[78vh] min-h-[32rem] w-full bg-zinc-100 dark:bg-zinc-950"
-                            />
-                        </section>
-
-                        <p className="text-center text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-                            Se o PDF não aparecer corretamente no seu aparelho, use «Abrir PDF em tela cheia».
-                        </p>
+                        <div className="rounded-3xl border border-zinc-200 bg-white px-5 py-8 text-center shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+                            <p className="text-base font-medium text-zinc-900 dark:text-white">Abrindo PDF…</p>
+                            <p className="mt-2 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
+                                Se o visualizador não abrir automaticamente, use um dos botões acima.
+                            </p>
+                        </div>
 
                         {description ? (
                             <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-950">
