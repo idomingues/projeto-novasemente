@@ -7,6 +7,7 @@ use App\Models\Ministry;
 use App\Models\User;
 use App\Models\Volunteer;
 use App\Models\VolunteerChurchPipeline;
+use App\Models\VolunteerLeaderNote;
 use App\Models\VolunteerPipelineStage;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -106,9 +107,19 @@ class VolunteerChurchRosterBuilder
         $volunteers = $q->paginate($perPage)->withQueryString();
 
         $volunteerIds = $volunteers->getCollection()->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
+        $volunteerIdsWithLeaderNotes = $volunteerIds === []
+            ? []
+            : VolunteerLeaderNote::query()
+                ->where('church_id', $churchId)
+                ->whereIn('volunteer_id', $volunteerIds)
+                ->distinct()
+                ->pluck('volunteer_id')
+                ->mapWithKeys(fn ($id) => [(int) $id => true])
+                ->all();
         $forwardedMinistryIdsByVolunteer = Schema::hasTable('volunteer_ministry_invitations')
             ? \App\Models\VolunteerMinistryInvitation::blockingMinistryIdsByVolunteerIds($churchId, $volunteerIds)
             : [];
+        $recentlyUpdatedCutoff = now()->subDays(15);
 
         $centerMode = $request->query('center_mode') === '1' || $request->input('center_mode') === '1';
 
@@ -170,7 +181,15 @@ class VolunteerChurchRosterBuilder
             ->keyBy('id');
 
         $volunteers->setCollection(
-            $volunteers->getCollection()->map(function (Volunteer $v) use ($user, $churchId, $alwaysShowFullContact, $forwardedMinistryIdsByVolunteer, $pipelineStagesById) {
+            $volunteers->getCollection()->map(function (Volunteer $v) use (
+                $user,
+                $churchId,
+                $alwaysShowFullContact,
+                $forwardedMinistryIdsByVolunteer,
+                $pipelineStagesById,
+                $recentlyUpdatedCutoff,
+                $volunteerIdsWithLeaderNotes,
+            ) {
                 $pipe = $v->churchPipelines->firstWhere('church_id', $churchId);
                 $stage = $pipe?->stage;
                 $mask = $alwaysShowFullContact
@@ -178,6 +197,8 @@ class VolunteerChurchRosterBuilder
                     : self::maskContactForUser($user, $v->email, $v->phone);
                 $signals = VolunteerRosterSignals::forVolunteer($v);
                 $hasPendingInvite = $v->ministryInvitations->contains(fn ($inv) => $inv->isPending());
+                $hasLeaderNotes = (bool) ($volunteerIdsWithLeaderNotes[(int) $v->id] ?? false);
+                $updatedAt = $v->updated_at?->toIso8601String();
                 $pendingInviteMinistryNames = $v->ministryInvitations
                     ->filter(fn ($inv) => $inv->isPending())
                     ->map(fn ($inv) => (string) ($inv->ministry?->name ?? ''))
@@ -214,6 +235,9 @@ class VolunteerChurchRosterBuilder
                     'phone' => $mask['phone'],
                     'active' => (bool) $v->active,
                     'createdAt' => $v->created_at?->toIso8601String(),
+                    'updatedAt' => $updatedAt,
+                    'hasLeaderNotes' => $hasLeaderNotes,
+                    'recentlyUpdated' => $v->updated_at !== null && $v->updated_at->greaterThanOrEqualTo($recentlyUpdatedCutoff),
                     'stageId' => $rosterStageId,
                     'stageName' => $rosterStageName,
                     'adminWorkflowStageId' => $adminWorkflowStageId,

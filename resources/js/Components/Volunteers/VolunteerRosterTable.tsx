@@ -19,6 +19,25 @@ type Props = {
     compact?: boolean;
 };
 
+function VolunteerRosterSignalDot({
+    label,
+    title,
+    toneClass,
+}: {
+    label: string;
+    title?: string;
+    toneClass: string;
+}) {
+    return (
+        <span
+            role="img"
+            aria-label={label}
+            title={title ?? label}
+            className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white dark:ring-zinc-950 ${toneClass}`}
+        />
+    );
+}
+
 export default function VolunteerRosterTable({
     volunteers,
     canVolunteerManage,
@@ -69,6 +88,20 @@ export default function VolunteerRosterTable({
                             </td>
                             <td className={`${cellY} pr-3 font-medium text-zinc-900 dark:text-white`}>
                                 <div className="flex flex-wrap items-center gap-1.5">
+                                    {v.hasLeaderNotes ? (
+                                        <VolunteerRosterSignalDot
+                                            label="Voluntário com anotação interna"
+                                            title="Voluntário com anotação interna"
+                                            toneClass="bg-amber-500 dark:bg-amber-400"
+                                        />
+                                    ) : null}
+                                    {v.recentlyUpdated ? (
+                                        <VolunteerRosterSignalDot
+                                            label="Cadastro atualizado recentemente"
+                                            title={`Cadastro atualizado em ${formatShortDate(v.updatedAt ?? null)}`}
+                                            toneClass="bg-emerald-500 dark:bg-emerald-400"
+                                        />
+                                    ) : null}
                                     <span>{v.name}</span>
                                     {v.hasUserAccount ? (
                                         <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-800 dark:bg-sky-950/50 dark:text-sky-200">

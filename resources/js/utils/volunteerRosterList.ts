@@ -9,6 +9,9 @@ export type VolunteerRosterListRow = {
     phone: string | null;
     active: boolean;
     createdAt: string | null;
+    updatedAt?: string | null;
+    hasLeaderNotes?: boolean;
+    recentlyUpdated?: boolean;
     stageId: number | undefined;
     stageName: string;
     adminWorkflowStageId?: number | null;

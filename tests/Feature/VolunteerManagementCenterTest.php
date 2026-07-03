@@ -260,6 +260,66 @@ class VolunteerManagementCenterTest extends TestCase
                 ->has('centralUrl'));
     }
 
+    public function test_management_center_includes_note_and_recent_update_indicators_in_roster(): void
+    {
+        $admin = $this->actingAsAdmin();
+        $church = Church::query()->firstOrFail();
+        $ministry = Ministry::query()->where('church_id', $church->id)->firstOrFail();
+
+        $this->actingAs($admin)->post('/volunteers', [
+            'name' => 'Voluntário Recente',
+            'email' => 'voluntario.recente@example.com',
+            'ministry_ids' => [$ministry->id],
+            'active' => '1',
+            'app_password' => 'secret123',
+            'app_password_confirmation' => 'secret123',
+        ])->assertRedirect();
+
+        $this->actingAs($admin)->post('/volunteers', [
+            'name' => 'Voluntário Antigo',
+            'email' => 'voluntario.antigo@example.com',
+            'ministry_ids' => [$ministry->id],
+            'active' => '1',
+            'app_password' => 'secret123',
+            'app_password_confirmation' => 'secret123',
+        ])->assertRedirect();
+
+        $recentVolunteer = \App\Models\Volunteer::query()
+            ->where('email', 'voluntario.recente@example.com')
+            ->firstOrFail();
+        $staleVolunteer = \App\Models\Volunteer::query()
+            ->where('email', 'voluntario.antigo@example.com')
+            ->firstOrFail();
+
+        $recentVolunteer->forceFill(['updated_at' => now()->subDays(3)])->saveQuietly();
+        $staleVolunteer->forceFill(['updated_at' => now()->subDays(20)])->saveQuietly();
+
+        \App\Models\VolunteerLeaderNote::query()->create([
+            'volunteer_id' => $recentVolunteer->id,
+            'church_id' => $church->id,
+            'user_id' => $admin->id,
+            'body' => 'Nota interna para conferência.',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('ministry-lead.volunteers.central', ['ministerio' => $ministry->id]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('MinistryLeadVolunteers/ManagementCenter')
+                ->where('volunteers.data', function ($rows) {
+                    $recent = collect($rows)->firstWhere('email', 'voluntario.recente@example.com');
+                    $stale = collect($rows)->firstWhere('email', 'voluntario.antigo@example.com');
+
+                    return is_array($recent)
+                        && is_array($stale)
+                        && ($recent['hasLeaderNotes'] ?? false) === true
+                        && ($recent['recentlyUpdated'] ?? false) === true
+                        && is_string($recent['updatedAt'] ?? null)
+                        && ($stale['hasLeaderNotes'] ?? false) === false
+                        && ($stale['recentlyUpdated'] ?? true) === false;
+                }));
+    }
+
     public function test_ministry_leader_can_view_volunteer_notes_in_management_center(): void
     {
         $this->seed();
