@@ -345,6 +345,7 @@ class LibraryExternalPageExtractService
 
     private function linkifyLessonQuestion(string $question): string
     {
+        $question = $this->normalizeReaderTextValue($question);
         $linked = $this->bibleReferences->linkifyPlainText($question);
 
         return $linked !== '' ? $linked : '<p>'.htmlspecialchars($question, ENT_QUOTES | ENT_HTML5, 'UTF-8').'</p>';
@@ -361,8 +362,76 @@ class LibraryExternalPageExtractService
         if ($applyLeadingDateEmphasis) {
             $html = $this->emphasizeWeekdayAndDateWithLineBreak($html);
         }
+        $html = $this->normalizeReaderTextArtifacts($html);
 
         return $html;
+    }
+
+    private function normalizeReaderTextArtifacts(string $html): string
+    {
+        $html = trim($html);
+        if ($html === '') {
+            return '';
+        }
+
+        $dom = new \DOMDocument();
+        libxml_use_internal_errors(true);
+        $wrapped = '<?xml encoding="utf-8" ?><div id="library-reader-root">'.$html.'</div>';
+        if (! @$dom->loadHTML($wrapped, LIBXML_NOWARNING | LIBXML_NOERROR)) {
+            libxml_clear_errors();
+
+            return $this->normalizeReaderTextValue($html);
+        }
+        libxml_clear_errors();
+
+        $root = $dom->getElementById('library-reader-root');
+        if (! $root instanceof \DOMElement) {
+            return $this->normalizeReaderTextValue($html);
+        }
+
+        $this->normalizeReaderTextNodes($root);
+
+        $normalized = '';
+        foreach ($root->childNodes as $child) {
+            $normalized .= $dom->saveHTML($child);
+        }
+
+        return trim($normalized);
+    }
+
+    private function normalizeReaderTextNodes(\DOMNode $node): void
+    {
+        foreach ($node->childNodes as $child) {
+            if ($child instanceof \DOMText) {
+                $child->nodeValue = $this->normalizeReaderTextValue($child->nodeValue ?? '');
+
+                continue;
+            }
+
+            $this->normalizeReaderTextNodes($child);
+        }
+    }
+
+    private function normalizeReaderTextValue(string $text): string
+    {
+        if ($text === '') {
+            return '';
+        }
+
+        $text = str_replace("\u{00AD}", '', $text);
+        $text = str_replace("\u{00A0}", ' ', $text);
+        $text = preg_replace('/\[\s*(?:\.{3}|…)\s*\]/u', ' ', $text) ?? $text;
+        $text = strtr($text, [
+            'cora-ção' => 'coração',
+            'pos-tura' => 'postura',
+            'sabe-mos' => 'sabemos',
+            'pre-parou' => 'preparou',
+        ]);
+        $text = preg_replace('/\s+([,.;:!?])/u', '$1', $text) ?? $text;
+        $text = preg_replace('/([(\["“‘])\s+/u', '$1', $text) ?? $text;
+        $text = preg_replace('/\s{2,}/u', ' ', $text) ?? $text;
+
+        return $text;
     }
 
     /**

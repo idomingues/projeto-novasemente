@@ -38,6 +38,25 @@ class DonationCampaignController extends Controller
         return Church::resolveWorkingId(request());
     }
 
+    private function normalizeMoneyInput(mixed $value): mixed
+    {
+        if (! is_string($value)) {
+            return $value;
+        }
+
+        $normalized = trim(str_replace('R$', '', $value));
+        if ($normalized === '') {
+            return $value;
+        }
+
+        if (str_contains($normalized, ',')) {
+            $normalized = str_replace('.', '', $normalized);
+            $normalized = str_replace(',', '.', $normalized);
+        }
+
+        return $normalized;
+    }
+
     public function index(Request $request): Response
     {
         $user = $request->user();
@@ -88,6 +107,9 @@ class DonationCampaignController extends Controller
     public function store(Request $request)
     {
         $this->assertCanManage($request->user());
+        $request->merge([
+            'goal_amount' => $this->normalizeMoneyInput($request->input('goal_amount')),
+        ]);
 
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
@@ -129,6 +151,9 @@ class DonationCampaignController extends Controller
     public function update(Request $request, DonationCampaign $donationCampaign)
     {
         $this->assertCanManage($request->user());
+        $request->merge([
+            'goal_amount' => $this->normalizeMoneyInput($request->input('goal_amount')),
+        ]);
 
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],

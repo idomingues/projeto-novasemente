@@ -15,6 +15,7 @@ import { Head, router, useForm } from '@inertiajs/react';
 import { BanknotesIcon, EyeIcon, PencilIcon, PencilSquareIcon, PhotoIcon, PlusIcon, TrashIcon, VideoCameraIcon } from '@heroicons/react/24/outline';
 import { FormEventHandler, useEffect, useMemo, useState } from 'react';
 import { DONATION_CAMPAIGN_COVER_SPECS } from '@/constants/mediaCoverSpecs';
+import { parseMoneyInput } from '@/lib/pixPayload';
 import { confirmAction } from '@/utils/confirmDialog';
 import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import { GALLERY_IMAGE_ACCEPT } from '@/utils/mobilePhotoPick';
@@ -93,7 +94,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
     const [adjustDonation, setAdjustDonation] = useState<DonationRow | null>(null);
     const [manualDonationOpen, setManualDonationOpen] = useState(false);
 
-    const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
+    const { data, setData, post, put, processing, errors, reset, clearErrors, transform } = useForm({
         title: '',
         description: '',
         goal_amount: '',
@@ -128,6 +129,15 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
 
     function formatBrl(value: number): string {
         return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function formatMoneyFieldValue(value: number): string {
+        return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function normalizeMoneyFieldValue(raw: string): string {
+        const parsed = parseMoneyInput(raw);
+        return parsed === null ? raw.trim() : parsed.toFixed(2);
     }
 
     const fetchDonations = async (campaignId: number) => {
@@ -177,7 +187,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
         setData({
             title: campaign.title,
             description: campaign.description ?? '',
-            goal_amount: String(campaign.goal_amount),
+            goal_amount: formatMoneyFieldValue(campaign.goal_amount),
             ends_at: campaign.ends_at ?? '',
             status: campaign.status,
             allow_over_goal: campaign.allow_over_goal,
@@ -195,11 +205,17 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
+        transform((current) => ({
+            ...current,
+            goal_amount: normalizeMoneyFieldValue(current.goal_amount),
+        }));
         if (isEditing && editingId) {
             put(route('donation-campaigns.update', editingId), { ...inertiaListModalSave, forceFormData: true,
+                onFinish: () => transform((current) => current),
             });
         } else {
             post(route('donation-campaigns.store'), { ...inertiaListModalSave, forceFormData: true,
+                onFinish: () => transform((current) => current),
             });
         }
     };
@@ -441,11 +457,17 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                             <InputLabel htmlFor="goal_amount" value="Meta (R$)" />
                             <TextInput
                                 id="goal_amount"
-                                type="number"
-                                step="0.01"
-                                min="1"
+                                type="text"
+                                inputMode="decimal"
+                                placeholder="Ex.: 4.733.262,14"
                                 value={data.goal_amount}
                                 onChange={(e) => setData('goal_amount', e.target.value)}
+                                onBlur={() => {
+                                    const parsed = parseMoneyInput(data.goal_amount);
+                                    if (parsed !== null) {
+                                        setData('goal_amount', formatMoneyFieldValue(parsed));
+                                    }
+                                }}
                                 className="mt-1 w-full"
                                 required
                             />

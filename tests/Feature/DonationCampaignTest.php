@@ -73,6 +73,59 @@ class DonationCampaignTest extends TestCase
         ]);
     }
 
+    public function test_admin_can_create_campaign_with_brazilian_formatted_goal_amount(): void
+    {
+        $this->ensureCampaignPermissions();
+        [$user, $church] = $this->adminWithChurch();
+
+        $response = $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->post(route('donation-campaigns.store'), [
+                'title' => 'Construção da igreja',
+                'description' => 'Meta em formato brasileiro',
+                'goal_amount' => '4.733.262,14',
+                'status' => 'active',
+                'allow_over_goal' => true,
+            ]);
+
+        $response->assertRedirect(route('donation-campaigns.index'));
+        $this->assertDatabaseHas('donation_campaigns', [
+            'title' => 'Construção da igreja',
+            'church_id' => $church->id,
+            'goal_amount' => 4733262.14,
+        ]);
+    }
+
+    public function test_admin_can_update_campaign_with_brazilian_formatted_goal_amount(): void
+    {
+        $this->ensureCampaignPermissions();
+        [$user, $church] = $this->adminWithChurch();
+
+        $campaign = DonationCampaign::create([
+            'church_id' => $church->id,
+            'title' => 'Construção da igreja',
+            'goal_amount' => 1000,
+            'status' => 'active',
+            'created_by' => $user->id,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->put(route('donation-campaigns.update', $campaign), [
+                'title' => 'Construção da igreja',
+                'description' => 'Meta atualizada',
+                'goal_amount' => '4.733.262,14',
+                'status' => 'active',
+                'allow_over_goal' => true,
+            ]);
+
+        $response->assertRedirect(route('donation-campaigns.index'));
+        $this->assertDatabaseHas('donation_campaigns', [
+            'id' => $campaign->id,
+            'goal_amount' => 4733262.14,
+        ]);
+    }
+
     public function test_donation_via_receipt_updates_campaign_progress(): void
     {
         Storage::fake('public');
