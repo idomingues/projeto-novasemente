@@ -83,6 +83,7 @@ class DonationCampaignController extends Controller
                 'remaining_amount' => $c->remainingAmount(),
                 'progress_percent' => $c->progressPercent(),
                 'status' => $c->status,
+                'starts_at' => $c->starts_at?->format('Y-m-d'),
                 'ends_at' => $c->ends_at?->format('Y-m-d'),
                 'cover_image_url' => $c->cover_image_url,
                 'allow_over_goal' => $c->allow_over_goal,
@@ -107,15 +108,18 @@ class DonationCampaignController extends Controller
     public function store(Request $request)
     {
         $this->assertCanManage($request->user());
+        $startsAt = $request->input('starts_at');
         $request->merge([
             'goal_amount' => $this->normalizeMoneyInput($request->input('goal_amount')),
+            'starts_at' => filled($startsAt) ? $startsAt : now()->toDateString(),
         ]);
 
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
             'goal_amount' => ['required', 'numeric', 'min:1', 'max:9999999.99'],
-            'ends_at' => ['nullable', 'date'],
+            'starts_at' => ['required', 'date'],
+            'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
             'status' => ['required', 'in:active,closed,archived'],
             'allow_over_goal' => ['boolean'],
             'cover_image' => ['nullable', 'image', 'max:5120'],
@@ -137,6 +141,7 @@ class DonationCampaignController extends Controller
             'description' => $data['description'] ?? null,
             'goal_amount' => $data['goal_amount'],
             'status' => $data['status'],
+            'starts_at' => $data['starts_at'],
             'ends_at' => $data['ends_at'] ?? null,
             'allow_over_goal' => $request->boolean('allow_over_goal', true),
             'cover_image_path' => $coverPath,
@@ -151,15 +156,20 @@ class DonationCampaignController extends Controller
     public function update(Request $request, DonationCampaign $donationCampaign)
     {
         $this->assertCanManage($request->user());
+        $startsAt = $request->input('starts_at');
         $request->merge([
             'goal_amount' => $this->normalizeMoneyInput($request->input('goal_amount')),
+            'starts_at' => filled($startsAt)
+                ? $startsAt
+                : ($donationCampaign->starts_at?->toDateString() ?? $donationCampaign->created_at?->toDateString() ?? now()->toDateString()),
         ]);
 
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
             'goal_amount' => ['required', 'numeric', 'min:1', 'max:9999999.99'],
-            'ends_at' => ['nullable', 'date'],
+            'starts_at' => ['required', 'date'],
+            'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
             'status' => ['required', 'in:active,closed,archived'],
             'allow_over_goal' => ['boolean'],
             'cover_image' => ['nullable', 'image', 'max:5120'],
@@ -170,6 +180,7 @@ class DonationCampaignController extends Controller
             'description' => $data['description'] ?? null,
             'goal_amount' => $data['goal_amount'],
             'status' => $data['status'],
+            'starts_at' => $data['starts_at'],
             'ends_at' => $data['ends_at'] ?? null,
             'allow_over_goal' => $request->boolean('allow_over_goal', true),
         ];

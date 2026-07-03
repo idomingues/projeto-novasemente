@@ -11,6 +11,7 @@ interface Campaign {
     remaining_amount: number;
     progress_percent: number;
     status: string;
+    starts_at: string | null;
     ends_at: string | null;
     cover_image_url: string | null;
     accepting_donations: boolean;
@@ -19,6 +20,37 @@ interface Campaign {
 
 interface Props {
     campaigns: Campaign[];
+}
+
+function formatCampaignDate(value: string): string {
+    return new Date(`${value}T12:00:00`).toLocaleDateString('pt-BR');
+}
+
+function campaignStartsInFuture(startsAt: string | null): boolean {
+    if (!startsAt) {
+        return false;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return new Date(`${startsAt}T12:00:00`).getTime() > today.getTime();
+}
+
+function campaignAvailabilityLabel(campaign: Campaign): string | null {
+    if (campaign.accepting_donations) {
+        return null;
+    }
+
+    if (campaign.status === 'active' && campaign.starts_at && campaignStartsInFuture(campaign.starts_at)) {
+        return `Começa em ${formatCampaignDate(campaign.starts_at)}`;
+    }
+
+    if (campaign.status === 'closed' || campaign.status === 'archived') {
+        return 'Campanha encerrada';
+    }
+
+    return 'Doações indisponíveis no momento';
 }
 
 export default function MobileDonationCampaignsIndex({ campaigns }: Props) {
@@ -42,12 +74,15 @@ export default function MobileDonationCampaignsIndex({ campaigns }: Props) {
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        {campaigns.map((campaign) => (
-                            <Link
-                                key={campaign.id}
-                                href={route('mobile.campaigns.show', campaign.id)}
-                                className="block rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:border-brand-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-brand-700"
-                            >
+                        {campaigns.map((campaign) => {
+                            const availabilityLabel = campaignAvailabilityLabel(campaign);
+
+                            return (
+                                <Link
+                                    key={campaign.id}
+                                    href={route('mobile.campaigns.show', campaign.id)}
+                                    className="block rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:border-brand-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-brand-700"
+                                >
                                 {campaign.cover_image_url && (
                                     <img
                                         src={campaign.cover_image_url}
@@ -56,6 +91,13 @@ export default function MobileDonationCampaignsIndex({ campaigns }: Props) {
                                     />
                                 )}
                                 <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">{campaign.title}</h2>
+                                {(campaign.starts_at || campaign.ends_at) && (
+                                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                        {campaign.starts_at ? `Início: ${formatCampaignDate(campaign.starts_at)}` : ''}
+                                        {campaign.starts_at && campaign.ends_at ? ' · ' : ''}
+                                        {campaign.ends_at ? `Prazo: ${formatCampaignDate(campaign.ends_at)}` : ''}
+                                    </p>
+                                )}
                                 <div className="mt-3">
                                     <DonationProgressBar
                                         raisedAmount={campaign.raised_amount}
@@ -65,9 +107,9 @@ export default function MobileDonationCampaignsIndex({ campaigns }: Props) {
                                         size="sm"
                                     />
                                 </div>
-                                {!campaign.accepting_donations && (
+                                {availabilityLabel && (
                                     <p className="mt-2 text-xs font-medium text-amber-600 dark:text-amber-400">
-                                        Campanha encerrada
+                                        {availabilityLabel}
                                     </p>
                                 )}
                                 {campaign.thanks_is_published && (
@@ -75,8 +117,9 @@ export default function MobileDonationCampaignsIndex({ campaigns }: Props) {
                                         Agradecimento publicado
                                     </p>
                                 )}
-                            </Link>
-                        ))}
+                                </Link>
+                            );
+                        })}
                     </div>
                 )}
             </div>

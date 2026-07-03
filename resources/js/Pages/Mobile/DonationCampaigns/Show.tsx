@@ -33,6 +33,7 @@ interface Campaign {
     remaining_amount: number;
     progress_percent: number;
     status: string;
+    starts_at: string | null;
     ends_at: string | null;
     cover_image_url: string | null;
     accepting_donations: boolean;
@@ -66,6 +67,21 @@ interface Props {
     };
 }
 
+function formatCampaignDate(value: string): string {
+    return new Date(`${value}T12:00:00`).toLocaleDateString('pt-BR');
+}
+
+function campaignStartsInFuture(startsAt: string | null): boolean {
+    if (!startsAt) {
+        return false;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return new Date(`${startsAt}T12:00:00`).getTime() > today.getTime();
+}
+
 export default function MobileDonationCampaignShow({ campaign, recentDonations, transparency, pix, localOffer }: Props) {
     const page = usePage();
     const csrf = (page.props as { csrf_token?: string }).csrf_token ?? '';
@@ -90,6 +106,11 @@ export default function MobileDonationCampaignShow({ campaign, recentDonations, 
     });
 
     const pixKeyForOffer = pix.pix_key?.trim() || localOffer.pixKey;
+    const availabilityMessage = !campaign.accepting_donations
+        ? campaign.status === 'active' && campaign.starts_at && campaignStartsInFuture(campaign.starts_at)
+            ? `Esta campanha começa em ${formatCampaignDate(campaign.starts_at)}.`
+            : 'Esta campanha não está aceitando doações no momento.'
+        : null;
 
     const generatePix = () => {
         setAmountError(null);
@@ -223,6 +244,13 @@ export default function MobileDonationCampaignShow({ campaign, recentDonations, 
 
                 <div>
                     <h1 className="text-2xl font-bold text-zinc-900 dark:text-white sm:text-3xl">{campaign.title}</h1>
+                    {(campaign.starts_at || campaign.ends_at) && (
+                        <p className="mt-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                            {campaign.starts_at ? `Início: ${formatCampaignDate(campaign.starts_at)}` : ''}
+                            {campaign.starts_at && campaign.ends_at ? ' · ' : ''}
+                            {campaign.ends_at ? `Prazo: ${formatCampaignDate(campaign.ends_at)}` : ''}
+                        </p>
+                    )}
                     {campaign.description && (
                         <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
                             {campaign.description}
@@ -272,6 +300,12 @@ export default function MobileDonationCampaignShow({ campaign, recentDonations, 
                         progressPercent={campaign.progress_percent}
                     />
                 </div>
+
+                {availabilityMessage && (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
+                        {availabilityMessage}
+                    </div>
+                )}
 
                 {campaign.accepting_donations && (
                     <>

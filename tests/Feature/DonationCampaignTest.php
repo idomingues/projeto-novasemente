@@ -61,6 +61,7 @@ class DonationCampaignTest extends TestCase
                 'title' => 'Viagem dos desbravadores',
                 'description' => 'Meta para viagem',
                 'goal_amount' => 20000,
+                'starts_at' => '2026-07-01',
                 'status' => 'active',
                 'allow_over_goal' => true,
             ]);
@@ -71,6 +72,8 @@ class DonationCampaignTest extends TestCase
             'church_id' => $church->id,
             'goal_amount' => 20000,
         ]);
+        $campaign = DonationCampaign::query()->where('title', 'Viagem dos desbravadores')->firstOrFail();
+        $this->assertSame('2026-07-01', $campaign->starts_at?->toDateString());
     }
 
     public function test_admin_can_create_campaign_with_brazilian_formatted_goal_amount(): void
@@ -84,6 +87,7 @@ class DonationCampaignTest extends TestCase
                 'title' => 'Construção da igreja',
                 'description' => 'Meta em formato brasileiro',
                 'goal_amount' => '4.733.262,14',
+                'starts_at' => '2026-07-02',
                 'status' => 'active',
                 'allow_over_goal' => true,
             ]);
@@ -94,6 +98,8 @@ class DonationCampaignTest extends TestCase
             'church_id' => $church->id,
             'goal_amount' => 4733262.14,
         ]);
+        $campaign = DonationCampaign::query()->where('title', 'Construção da igreja')->firstOrFail();
+        $this->assertSame('2026-07-02', $campaign->starts_at?->toDateString());
     }
 
     public function test_admin_can_update_campaign_with_brazilian_formatted_goal_amount(): void
@@ -115,6 +121,7 @@ class DonationCampaignTest extends TestCase
                 'title' => 'Construção da igreja',
                 'description' => 'Meta atualizada',
                 'goal_amount' => '4.733.262,14',
+                'starts_at' => '2026-08-15',
                 'status' => 'active',
                 'allow_over_goal' => true,
             ]);
@@ -124,6 +131,60 @@ class DonationCampaignTest extends TestCase
             'id' => $campaign->id,
             'goal_amount' => 4733262.14,
         ]);
+        $campaign->refresh();
+        $this->assertSame('2026-08-15', $campaign->starts_at?->toDateString());
+    }
+
+    public function test_admin_can_update_campaign_without_starts_at_from_older_form(): void
+    {
+        $this->ensureCampaignPermissions();
+        [$user, $church] = $this->adminWithChurch();
+
+        $campaign = DonationCampaign::create([
+            'church_id' => $church->id,
+            'title' => 'Campanha legado',
+            'goal_amount' => 1000,
+            'starts_at' => '2026-07-01',
+            'status' => 'active',
+            'created_by' => $user->id,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->put(route('donation-campaigns.update', $campaign), [
+                'title' => 'Campanha legado atualizada',
+                'description' => 'Campos antigos ainda salvam.',
+                'goal_amount' => '4.733.262,14',
+                'status' => 'closed',
+                'allow_over_goal' => false,
+            ]);
+
+        $response->assertRedirect(route('donation-campaigns.index'));
+
+        $campaign->refresh();
+        $this->assertSame('Campanha legado atualizada', $campaign->title);
+        $this->assertSame('Campos antigos ainda salvam.', $campaign->description);
+        $this->assertSame(4733262.14, (float) $campaign->goal_amount);
+        $this->assertSame('closed', $campaign->status);
+        $this->assertFalse($campaign->allow_over_goal);
+        $this->assertSame('2026-07-01', $campaign->starts_at?->toDateString());
+    }
+
+    public function test_future_campaign_is_not_accepting_donations_until_start_date(): void
+    {
+        $this->ensureCampaignPermissions();
+        [$admin, $church] = $this->adminWithChurch();
+
+        $campaign = DonationCampaign::create([
+            'church_id' => $church->id,
+            'title' => 'Campanha futura',
+            'goal_amount' => 1500,
+            'status' => 'active',
+            'starts_at' => now()->addDays(5)->toDateString(),
+            'created_by' => $admin->id,
+        ]);
+
+        $this->assertFalse($campaign->fresh()->isAcceptingDonations());
     }
 
     public function test_donation_via_receipt_updates_campaign_progress(): void
@@ -594,6 +655,7 @@ class DonationCampaignTest extends TestCase
             'title' => 'Campanha com mídia',
             'goal_amount' => 3000,
             'status' => 'closed',
+            'starts_at' => '2026-05-01',
             'story_video_url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
             'thanks_message' => 'Gratidão!',
             'thanks_published_at' => now(),
@@ -612,6 +674,7 @@ class DonationCampaignTest extends TestCase
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
             ->component('Mobile/DonationCampaigns/Show')
+            ->where('campaign.starts_at', '2026-05-01')
             ->where('campaign.story_youtube_embed_url', 'https://www.youtube.com/embed/dQw4w9WgXcQ')
             ->where('campaign.thanks_is_published', true)
             ->has('campaign.story_photos', 1)

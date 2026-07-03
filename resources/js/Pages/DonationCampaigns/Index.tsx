@@ -34,6 +34,7 @@ interface Campaign {
     remaining_amount: number;
     progress_percent: number;
     status: string;
+    starts_at: string | null;
     ends_at: string | null;
     cover_image_url: string | null;
     allow_over_goal: boolean;
@@ -98,6 +99,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
         title: '',
         description: '',
         goal_amount: '',
+        starts_at: '',
         ends_at: '',
         status: 'active',
         allow_over_goal: true,
@@ -129,6 +131,10 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
 
     function formatBrl(value: number): string {
         return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function formatCampaignDate(value: string): string {
+        return new Date(`${value}T12:00:00`).toLocaleDateString('pt-BR');
     }
 
     function formatMoneyFieldValue(value: number): string {
@@ -173,6 +179,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
             title: '',
             description: '',
             goal_amount: '',
+            starts_at: '',
             ends_at: '',
             status: 'active',
             allow_over_goal: true,
@@ -188,6 +195,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
             title: campaign.title,
             description: campaign.description ?? '',
             goal_amount: formatMoneyFieldValue(campaign.goal_amount),
+            starts_at: campaign.starts_at ?? '',
             ends_at: campaign.ends_at ?? '',
             status: campaign.status,
             allow_over_goal: campaign.allow_over_goal,
@@ -382,7 +390,8 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                                     />
                                     <p className="text-xs text-zinc-500">
                                         {campaign.donations_count} doação(ões)
-                                        {campaign.ends_at ? ` · Prazo: ${new Date(campaign.ends_at).toLocaleDateString('pt-BR')}` : ''}
+                                        {campaign.starts_at ? ` · Início: ${formatCampaignDate(campaign.starts_at)}` : ''}
+                                        {campaign.ends_at ? ` · Prazo: ${formatCampaignDate(campaign.ends_at)}` : ''}
                                     </p>
                                 </div>
                                 {campaign.cover_image_url && (
@@ -452,7 +461,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                         />
                         <InputError message={errors.description} className="mt-1" />
                     </div>
-                    <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-4 sm:grid-cols-3">
                         <div>
                             <InputLabel htmlFor="goal_amount" value="Meta (R$)" />
                             <TextInput
@@ -472,6 +481,18 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                                 required
                             />
                             <InputError message={errors.goal_amount} className="mt-1" />
+                        </div>
+                        <div>
+                            <InputLabel htmlFor="starts_at" value="Data de início" />
+                            <TextInput
+                                id="starts_at"
+                                type="date"
+                                value={data.starts_at}
+                                onChange={(e) => setData('starts_at', e.target.value)}
+                                className="mt-1 w-full"
+                                required
+                            />
+                            <InputError message={errors.starts_at} className="mt-1" />
                         </div>
                         <div>
                             <InputLabel htmlFor="ends_at" value="Data limite (opcional)" />

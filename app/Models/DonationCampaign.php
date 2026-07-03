@@ -23,6 +23,7 @@ class DonationCampaign extends Model
         'goal_amount',
         'raised_amount',
         'status',
+        'starts_at',
         'ends_at',
         'cover_image_path',
         'story_video_url',
@@ -36,6 +37,7 @@ class DonationCampaign extends Model
     protected $casts = [
         'goal_amount' => 'decimal:2',
         'raised_amount' => 'decimal:2',
+        'starts_at' => 'date',
         'ends_at' => 'date',
         'allow_over_goal' => 'boolean',
         'thanks_published_at' => 'datetime',
@@ -107,6 +109,10 @@ class DonationCampaign extends Model
             return false;
         }
 
+        if ($this->starts_at !== null && $this->starts_at->copy()->startOfDay()->isFuture()) {
+            return false;
+        }
+
         if ($this->ends_at !== null && $this->ends_at->copy()->endOfDay()->isPast()) {
             return false;
         }
@@ -163,6 +169,7 @@ class DonationCampaign extends Model
             'remaining_amount' => $this->remainingAmount(),
             'progress_percent' => $this->progressPercent(),
             'status' => $this->status,
+            'starts_at' => $this->starts_at?->format('Y-m-d'),
             'ends_at' => $this->ends_at?->format('Y-m-d'),
             'cover_image_url' => $this->cover_image_url,
             'accepting_donations' => $this->isAcceptingDonations(),
