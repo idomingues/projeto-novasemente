@@ -15,6 +15,8 @@ use Inertia\Response;
 
 class DonationCampaignController extends Controller
 {
+    private const MAX_GOAL_AMOUNT = 9999999999.99;
+
     public function __construct(
         private readonly PublicationBroadcastNotifier $publicationBroadcast,
     ) {}
@@ -117,7 +119,7 @@ class DonationCampaignController extends Controller
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
-            'goal_amount' => ['required', 'numeric', 'min:1', 'max:9999999.99'],
+            'goal_amount' => ['required', 'numeric', 'min:1', 'max:'.self::MAX_GOAL_AMOUNT],
             'starts_at' => ['required', 'date'],
             'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
             'status' => ['required', 'in:active,closed,archived'],
@@ -167,7 +169,7 @@ class DonationCampaignController extends Controller
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
-            'goal_amount' => ['required', 'numeric', 'min:1', 'max:9999999.99'],
+            'goal_amount' => ['required', 'numeric', 'min:1', 'max:'.self::MAX_GOAL_AMOUNT],
             'starts_at' => ['required', 'date'],
             'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
             'status' => ['required', 'in:active,closed,archived'],

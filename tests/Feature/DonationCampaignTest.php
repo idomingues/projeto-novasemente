@@ -170,6 +170,37 @@ class DonationCampaignTest extends TestCase
         $this->assertSame('2026-07-01', $campaign->starts_at?->toDateString());
     }
 
+    public function test_admin_can_update_campaign_with_goal_above_previous_validation_limit(): void
+    {
+        $this->ensureCampaignPermissions();
+        [$user, $church] = $this->adminWithChurch();
+
+        $campaign = DonationCampaign::create([
+            'church_id' => $church->id,
+            'title' => 'Campanha grande',
+            'goal_amount' => 4733262.14,
+            'starts_at' => '2026-07-03',
+            'status' => 'active',
+            'created_by' => $user->id,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->put(route('donation-campaigns.update', $campaign), [
+                'title' => 'Campanha grande',
+                'description' => 'Meta ampliada',
+                'goal_amount' => '10.600.000,00',
+                'starts_at' => '2026-07-03',
+                'status' => 'active',
+                'allow_over_goal' => true,
+            ]);
+
+        $response->assertRedirect(route('donation-campaigns.index'));
+
+        $campaign->refresh();
+        $this->assertSame(10600000.0, (float) $campaign->goal_amount);
+    }
+
     public function test_future_campaign_is_not_accepting_donations_until_start_date(): void
     {
         $this->ensureCampaignPermissions();
