@@ -2,12 +2,14 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
 import {
     ArrowLeftIcon,
+    ArrowDownTrayIcon,
     ArrowTopRightOnSquareIcon,
     DocumentTextIcon,
     XMarkIcon,
 } from '@heroicons/react/24/outline';
 import Modal from '@/Components/Modal';
 import PdfTextReaderScreen from '@/Components/Mobile/PdfTextReaderScreen';
+import { pdfUrlWithViewerParams, usePdfViewerFragment } from '@/lib/pdfViewerUrl';
 import { useEffect, useMemo, useState } from 'react';
 
 function imageSrc(url: string | null, appUrl: string): string {
@@ -54,6 +56,8 @@ export default function MobileLibraryShow({ book }: Props) {
     const appUrl = (usePage().props as PageProps).appUrl ?? '';
     const cover = imageSrc(book.cover_url, appUrl);
     const pdf = book.pdf_url ? imageSrc(book.pdf_url, appUrl) : '';
+    const viewerFragment = usePdfViewerFragment();
+    const pdfViewerUrl = pdf ? pdfUrlWithViewerParams(pdf, viewerFragment) : '';
     const extRaw = (book.external_url ?? '').trim();
     const ext = extRaw ? extRaw : '';
     const [detailsOpen, setDetailsOpen] = useState(false);
@@ -72,6 +76,7 @@ export default function MobileLibraryShow({ book }: Props) {
 
     const tryExternalReader =
         (book.category === 'lesson' || book.category === 'meditation') && !pdf && ext !== '';
+    const shouldUsePdfViewer = pdf !== '' && (book.category === 'books' || book.category === 'egw');
 
     useEffect(() => {
         if (!tryExternalReader) {
@@ -113,6 +118,128 @@ export default function MobileLibraryShow({ book }: Props) {
             cancelled = true;
         };
     }, [tryExternalReader, book.id, book.category, pdf, ext]);
+
+    if (shouldUsePdfViewer) {
+        return (
+            <MobileLayout>
+                <Head title={book.title} />
+
+                <div className="-mx-4 min-w-0 overflow-x-hidden sm:mx-0">
+                    <div className="mb-3 px-4 sm:px-0">
+                        <Link
+                            href={route('mobile.biblioteca')}
+                            className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-primary-600 hover:underline dark:text-primary-400"
+                        >
+                            <ArrowLeftIcon className="h-4 w-4" aria-hidden />
+                            Voltar à biblioteca
+                        </Link>
+                    </div>
+
+                    <div className="mx-auto w-full max-w-5xl space-y-4 px-4 sm:px-0">
+                        <header className="space-y-2">
+                            <h1 className="text-2xl font-bold leading-snug tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
+                                {book.title}
+                            </h1>
+                            {book.subtitle ? (
+                                <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                    {book.subtitle}
+                                </p>
+                            ) : null}
+                        </header>
+
+                        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                            <a
+                                href={pdfViewerUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-zinc-300 px-4 py-3 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                            >
+                                <ArrowTopRightOnSquareIcon className="h-5 w-5 shrink-0" aria-hidden />
+                                Abrir PDF em tela cheia
+                            </a>
+                            <a
+                                href={route('mobile.biblioteca.pdf-download', book.id)}
+                                className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-zinc-300 px-4 py-3 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                            >
+                                <ArrowDownTrayIcon className="h-5 w-5 shrink-0" aria-hidden />
+                                Baixar PDF
+                            </a>
+                        </div>
+
+                        <section className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+                            <iframe
+                                title={`PDF de ${book.title}`}
+                                src={pdfViewerUrl}
+                                className="h-[78vh] min-h-[32rem] w-full bg-zinc-100 dark:bg-zinc-950"
+                            />
+                        </section>
+
+                        <p className="text-center text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+                            Se o PDF não aparecer corretamente no seu aparelho, use «Abrir PDF em tela cheia».
+                        </p>
+
+                        {description ? (
+                            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-950">
+                                <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+                                    {shortDescription}
+                                    {hasMore ? (
+                                        <>
+                                            {' '}
+                                            <button
+                                                type="button"
+                                                onClick={() => setDetailsOpen(true)}
+                                                className="cursor-pointer font-semibold text-primary-700 underline-offset-2 hover:underline dark:text-primary-300"
+                                            >
+                                                .. e mais
+                                            </button>
+                                        </>
+                                    ) : null}
+                                </p>
+                            </div>
+                        ) : null}
+                    </div>
+                </div>
+
+                <Modal show={detailsOpen} onClose={() => setDetailsOpen(false)} maxWidth="lg">
+                    <div className="relative">
+                        {cover ? (
+                            <img src={cover} alt="" className="max-h-52 w-full object-cover sm:max-h-64" />
+                        ) : null}
+                        <button
+                            type="button"
+                            onClick={() => setDetailsOpen(false)}
+                            className="absolute right-3 top-3 cursor-pointer rounded-full bg-black/50 p-2 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
+                            aria-label="Fechar"
+                        >
+                            <XMarkIcon className="h-5 w-5" />
+                        </button>
+                    </div>
+                    <div className="space-y-3 p-5 sm:p-6">
+                        <div>
+                            <h2 className="text-xl font-bold text-zinc-900 dark:text-white sm:text-2xl">{book.title}</h2>
+                            {book.subtitle ? (
+                                <p className="mt-1 text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                    {book.subtitle}
+                                </p>
+                            ) : null}
+                        </div>
+                        <div className="border-t border-zinc-100 pt-4 dark:border-zinc-800">
+                            <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+                                {description}
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setDetailsOpen(false)}
+                            className="w-full cursor-pointer rounded-xl border border-zinc-200 bg-zinc-50 py-3 text-sm font-semibold text-zinc-800 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 sm:w-auto sm:px-8"
+                        >
+                            Fechar
+                        </button>
+                    </div>
+                </Modal>
+            </MobileLayout>
+        );
+    }
 
     if (pdf) {
         return (
@@ -280,7 +407,7 @@ export default function MobileLibraryShow({ book }: Props) {
                                                     <button
                                                         type="button"
                                                         onClick={() => setDetailsOpen(true)}
-                                                        className="font-semibold text-primary-700 underline-offset-2 hover:underline dark:text-primary-300"
+                                                        className="cursor-pointer font-semibold text-primary-700 underline-offset-2 hover:underline dark:text-primary-300"
                                                     >
                                                         .. e mais
                                                     </button>
@@ -311,7 +438,7 @@ export default function MobileLibraryShow({ book }: Props) {
                     <button
                         type="button"
                         onClick={() => setDetailsOpen(false)}
-                        className="absolute right-3 top-3 rounded-full bg-black/50 p-2 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
+                        className="absolute right-3 top-3 cursor-pointer rounded-full bg-black/50 p-2 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
                         aria-label="Fechar"
                     >
                         <XMarkIcon className="h-5 w-5" />
@@ -334,7 +461,7 @@ export default function MobileLibraryShow({ book }: Props) {
                     <button
                         type="button"
                         onClick={() => setDetailsOpen(false)}
-                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3 text-sm font-semibold text-zinc-800 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 sm:w-auto sm:px-8"
+                        className="w-full cursor-pointer rounded-xl border border-zinc-200 bg-zinc-50 py-3 text-sm font-semibold text-zinc-800 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 sm:w-auto sm:px-8"
                     >
                         Fechar
                     </button>
