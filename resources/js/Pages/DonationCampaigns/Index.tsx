@@ -13,7 +13,7 @@ import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
 import { Head, router, useForm } from '@inertiajs/react';
 import { BanknotesIcon, EyeIcon, PencilIcon, PencilSquareIcon, PhotoIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { FormEventHandler, useEffect, useMemo, useState } from 'react';
+import { FormEventHandler, useEffect, useMemo, useRef, useState } from 'react';
 import { DONATION_CAMPAIGN_COVER_SPECS } from '@/constants/mediaCoverSpecs';
 import { parseMoneyInput } from '@/lib/pixPayload';
 import { confirmAction } from '@/utils/confirmDialog';
@@ -94,6 +94,8 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
     const [mediaCampaign, setMediaCampaign] = useState<Campaign | null>(null);
     const [adjustDonation, setAdjustDonation] = useState<DonationRow | null>(null);
     const [manualDonationOpen, setManualDonationOpen] = useState(false);
+    const storyPhotosInputRef = useRef<HTMLInputElement | null>(null);
+    const thanksPhotosInputRef = useRef<HTMLInputElement | null>(null);
 
     const { data, setData, post, put, processing, errors, reset, clearErrors, transform } = useForm({
         title: '',
@@ -305,16 +307,20 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
     const submitStory: FormEventHandler = (e) => {
         e.preventDefault();
         if (!mediaCampaign) return;
-        storyForm.patch(route('donation-campaigns.story.update', mediaCampaign.id), { preserveScroll: true });
+        storyForm.patch(route('donation-campaigns.story.update', mediaCampaign.id), inertiaListModalSave);
     };
 
-    const uploadPhoto = (kind: 'story' | 'thanks', file: File) => {
+    const uploadPhotos = (kind: 'story' | 'thanks', files: FileList | File[]) => {
         if (!mediaCampaign) return;
+        const selectedFiles = Array.from(files);
+        if (selectedFiles.length === 0) return;
         const fd = new FormData();
         fd.append('kind', kind);
-        fd.append('photo', file);
+        selectedFiles.forEach((file) => {
+            fd.append('photos[]', file);
+        });
         router.post(route('donation-campaigns.photos.store', mediaCampaign.id), fd, {
-            preserveScroll: true,
+            ...inertiaListModalSave,
             forceFormData: true,
         });
     };
@@ -322,19 +328,19 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
     const removePhoto = (photoId: number) => {
         if (!mediaCampaign) return;
         router.delete(route('donation-campaigns.photos.destroy', [mediaCampaign.id, photoId]), {
-            preserveScroll: true,
+            ...inertiaListModalSave,
         });
     };
 
     const submitThanks: FormEventHandler = (e) => {
         e.preventDefault();
         if (!mediaCampaign) return;
-        thanksForm.post(route('donation-campaigns.thanks.publish', mediaCampaign.id), { preserveScroll: true });
+        thanksForm.post(route('donation-campaigns.thanks.publish', mediaCampaign.id), inertiaListModalSave);
     };
 
     const unpublishThanks = () => {
         if (!mediaCampaign) return;
-        router.post(route('donation-campaigns.thanks.unpublish', mediaCampaign.id), { preserveScroll: true });
+        router.post(route('donation-campaigns.thanks.unpublish', mediaCampaign.id), {}, inertiaListModalSave);
     };
 
     const campaignIsClosed = mediaCampaign?.status === 'closed' || mediaCampaign?.status === 'archived';
@@ -871,15 +877,30 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                             <input
                                 type="file"
                                 accept={GALLERY_IMAGE_ACCEPT}
-                                className="mt-3 block w-full text-sm"
+                                multiple
+                                ref={storyPhotosInputRef}
+                                className="sr-only"
                                 onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) uploadPhoto('story', file);
+                                    if (e.target.files?.length) uploadPhotos('story', e.target.files);
                                     e.target.value = '';
                                 }}
                             />
+                            <div className="mt-3 flex flex-wrap items-center gap-3">
+                                <PrimaryButton
+                                    type="button"
+                                    title="Escolher uma ou várias fotos do projeto"
+                                    onClick={() => storyPhotosInputRef.current?.click()}
+                                    className="inline-flex items-center gap-2"
+                                >
+                                    <PhotoIcon className="h-4 w-4" aria-hidden />
+                                    Escolher fotos
+                                </PrimaryButton>
+                                <span className="text-sm text-zinc-500 dark:text-zinc-400">
+                                    Selecione uma ou várias imagens de uma vez.
+                                </span>
+                            </div>
                             <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                                Use esta área para subir fotos do projeto que as pessoas poderão ver na campanha.
+                                Use esta área para subir uma ou várias fotos do projeto que as pessoas poderão ver na campanha.
                             </p>
                         </div>
                     </section>
@@ -966,13 +987,28 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                                 <input
                                     type="file"
                                     accept={GALLERY_IMAGE_ACCEPT}
-                                    className="mt-3 block w-full text-sm"
+                                    multiple
+                                    ref={thanksPhotosInputRef}
+                                    className="sr-only"
                                     onChange={(e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file) uploadPhoto('thanks', file);
+                                        if (e.target.files?.length) uploadPhotos('thanks', e.target.files);
                                         e.target.value = '';
                                     }}
                                 />
+                                <div className="mt-3 flex flex-wrap items-center gap-3">
+                                    <PrimaryButton
+                                        type="button"
+                                        title="Escolher uma ou várias fotos de agradecimento"
+                                        onClick={() => thanksPhotosInputRef.current?.click()}
+                                        className="inline-flex items-center gap-2"
+                                    >
+                                        <PhotoIcon className="h-4 w-4" aria-hidden />
+                                        Escolher fotos
+                                    </PrimaryButton>
+                                    <span className="text-sm text-zinc-500 dark:text-zinc-400">
+                                        Selecione uma ou várias imagens de uma vez.
+                                    </span>
+                                </div>
                             </div>
                         </section>
                     ) : (

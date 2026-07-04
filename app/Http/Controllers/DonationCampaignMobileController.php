@@ -58,6 +58,7 @@ class DonationCampaignMobileController extends Controller
         $church = $donationCampaign->church;
         $user = $request->user();
         $treasurerEmail = trim((string) ($church?->treasurer_notification_email ?? ''));
+        $donationUrl = $church?->donation_url ?: 'https://giving.7me.app/guest-donation/church/96ccdd6e-f537-49be-88dd-ffc112442cd9';
 
         $recentDonations = $donationCampaign->donations()
             ->with('user:id,name')
@@ -73,6 +74,7 @@ class DonationCampaignMobileController extends Controller
         return Inertia::render('Mobile/DonationCampaigns/Show', [
             'campaign' => $donationCampaign->toMobileArray(true),
             'recentDonations' => $recentDonations,
+            'donationUrl' => $donationUrl,
             'transparency' => [
                 'church_name' => $church?->name,
                 'treasurer_notifications_enabled' => $treasurerEmail !== '' && filter_var($treasurerEmail, FILTER_VALIDATE_EMAIL),

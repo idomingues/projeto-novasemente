@@ -654,6 +654,48 @@ class DonationCampaignTest extends TestCase
         $this->assertSame('Obrigado a todos que contribuíram!', $campaign->thanks_message);
     }
 
+    public function test_admin_can_upload_multiple_campaign_story_photos_at_once(): void
+    {
+        Storage::fake('public');
+        $this->ensureCampaignPermissions();
+        [$user, $church] = $this->adminWithChurch();
+
+        $campaign = DonationCampaign::create([
+            'church_id' => $church->id,
+            'title' => 'Campanha com galeria',
+            'goal_amount' => 1000,
+            'status' => 'active',
+            'created_by' => $user->id,
+        ]);
+
+        $photoA = UploadedFile::fake()->image('obra-1.jpg');
+        $photoB = UploadedFile::fake()->image('obra-2.jpg');
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->post(route('donation-campaigns.photos.store', $campaign), [
+                'kind' => DonationCampaignPhoto::KIND_STORY,
+                'photos' => [$photoA, $photoB],
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success', '2 fotos adicionadas.');
+
+        $campaign->refresh();
+
+        $this->assertSame(2, $campaign->photos()->where('kind', DonationCampaignPhoto::KIND_STORY)->count());
+
+        $storedPaths = $campaign->photos()
+            ->where('kind', DonationCampaignPhoto::KIND_STORY)
+            ->orderBy('sort_order')
+            ->pluck('image_path')
+            ->all();
+
+        $this->assertCount(2, $storedPaths);
+        foreach ($storedPaths as $path) {
+            Storage::disk('public')->assertExists($path);
+        }
+    }
+
     public function test_publishing_thanks_can_notify_donors_by_email_and_inbox(): void
     {
         Mail::fake();
@@ -751,6 +793,7 @@ class DonationCampaignTest extends TestCase
         $response->assertInertia(fn ($page) => $page
             ->component('Mobile/DonationCampaigns/Show')
             ->where('campaign.starts_at', '2026-05-01')
+            ->where('donationUrl', 'https://giving.7me.app/guest-donation/church/96ccdd6e-f537-49be-88dd-ffc112442cd9')
             ->where('campaign.story_youtube_embed_url', 'https://www.youtube.com/embed/dQw4w9WgXcQ')
             ->where('campaign.thanks_is_published', true)
             ->has('campaign.story_photos', 1)

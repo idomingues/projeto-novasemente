@@ -54,7 +54,9 @@ class DonationCampaignMediaController extends Controller
 
         $data = $request->validate([
             'kind' => ['required', 'in:story,thanks'],
-            'photo' => ['required', 'image', 'max:5120'],
+            'photo' => ['nullable', 'image', 'max:5120'],
+            'photos' => ['nullable', 'array', 'min:1'],
+            'photos.*' => ['image', 'max:5120'],
         ]);
 
         if ($data['kind'] === DonationCampaignPhoto::KIND_THANKS
@@ -62,20 +64,40 @@ class DonationCampaignMediaController extends Controller
             return redirect()->back()->with('error', 'Encerre a campanha antes de adicionar fotos de agradecimento.');
         }
 
+        $photos = [];
+        if ($request->hasFile('photos')) {
+            $photos = array_values(array_filter((array) $request->file('photos')));
+        } elseif ($request->hasFile('photo')) {
+            $photos = [$request->file('photo')];
+        }
+
+        if ($photos === []) {
+            return redirect()->back()->withErrors([
+                'photos' => 'Selecione pelo menos uma foto.',
+            ]);
+        }
+
         $maxOrder = (int) $donationCampaign->photos()
             ->where('kind', $data['kind'])
             ->max('sort_order');
 
-        $path = $request->file('photo')->store('donations/campaign-media', 'public');
+        foreach ($photos as $index => $photo) {
+            $path = $photo->store('donations/campaign-media', 'public');
 
-        DonationCampaignPhoto::create([
-            'campaign_id' => $donationCampaign->id,
-            'kind' => $data['kind'],
-            'image_path' => $path,
-            'sort_order' => $maxOrder + 1,
-        ]);
+            DonationCampaignPhoto::create([
+                'campaign_id' => $donationCampaign->id,
+                'kind' => $data['kind'],
+                'image_path' => $path,
+                'sort_order' => $maxOrder + $index + 1,
+            ]);
+        }
 
-        return redirect()->back()->with('success', 'Foto adicionada.');
+        $count = count($photos);
+
+        return redirect()->back()->with(
+            'success',
+            $count === 1 ? 'Foto adicionada.' : "{$count} fotos adicionadas."
+        );
     }
 
     public function destroyPhoto(Request $request, DonationCampaign $donationCampaign, DonationCampaignPhoto $photo): RedirectResponse

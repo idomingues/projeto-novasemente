@@ -13,6 +13,7 @@ import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { GALLERY_IMAGE_ACCEPT } from '@/utils/mobilePhotoPick';
 import {
     ArrowLeftIcon,
+    ArrowTopRightOnSquareIcon,
     BoltIcon,
     DocumentDuplicateIcon,
     PlayCircleIcon,
@@ -55,6 +56,7 @@ interface RecentDonation {
 interface Props {
     campaign: Campaign;
     recentDonations: RecentDonation[];
+    donationUrl: string | null;
     transparency: DonationTransparencyInfo;
     pix: {
         church_name: string | null;
@@ -65,6 +67,16 @@ interface Props {
         merchantName: string;
         merchantCity: string;
     };
+}
+
+const SEVENME_LOGO_SRC = '/images/7me-logo.png';
+
+function donationLinkHost(url: string): string {
+    try {
+        return new URL(url).host;
+    } catch {
+        return '';
+    }
 }
 
 function formatCampaignDate(value: string): string {
@@ -82,7 +94,7 @@ function campaignStartsInFuture(startsAt: string | null): boolean {
     return new Date(`${startsAt}T12:00:00`).getTime() > today.getTime();
 }
 
-export default function MobileDonationCampaignShow({ campaign, recentDonations, transparency, pix, localOffer }: Props) {
+export default function MobileDonationCampaignShow({ campaign, recentDonations, donationUrl, transparency, pix, localOffer }: Props) {
     const page = usePage();
     const csrf = (page.props as { csrf_token?: string }).csrf_token ?? '';
     const flash = (page.props as { flash?: { success?: string; error?: string } }).flash;
@@ -106,6 +118,8 @@ export default function MobileDonationCampaignShow({ campaign, recentDonations, 
     });
 
     const pixKeyForOffer = pix.pix_key?.trim() || localOffer.pixKey;
+    const donationHost = donationUrl ? donationLinkHost(donationUrl) : '';
+    const hasDonationUrl = Boolean(donationUrl);
     const availabilityMessage = !campaign.accepting_donations
         ? campaign.status === 'active' && campaign.starts_at && campaignStartsInFuture(campaign.starts_at)
             ? `Esta campanha começa em ${formatCampaignDate(campaign.starts_at)}.`
@@ -341,6 +355,46 @@ export default function MobileDonationCampaignShow({ campaign, recentDonations, 
                                 ))}
                             </div>
                         )}
+                    </section>
+                )}
+
+                {hasDonationUrl && donationUrl && (
+                    <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                        <div className="border-b border-zinc-100 bg-zinc-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-900/80 sm:p-5">
+                            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                                <div className="flex shrink-0 items-center justify-center sm:justify-start">
+                                    <img
+                                        src={SEVENME_LOGO_SRC}
+                                        alt="7me"
+                                        className="h-9 w-auto max-w-[160px] object-contain object-left"
+                                        width={160}
+                                        height={36}
+                                    />
+                                </div>
+                                <div className="min-w-0 flex-1 text-center sm:text-left">
+                                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Doar pelo 7me</h2>
+                                    <p className="mt-1 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                                        Se você já prefere usar o 7me, abra o link oficial abaixo para concluir sua doação.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="space-y-3 p-4 sm:p-5">
+                            <a
+                                href={donationUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-3.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-zinc-800 active:scale-[0.99] dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+                            >
+                                <span>Abrir 7me para doar</span>
+                                <ArrowTopRightOnSquareIcon className="h-4 w-4 opacity-80 group-hover:opacity-100" />
+                            </a>
+                            {donationHost && (
+                                <p className="text-center text-xs text-zinc-500 dark:text-zinc-500">
+                                    Destino: {donationHost} (nova aba)
+                                </p>
+                            )}
+                        </div>
                     </section>
                 )}
 
