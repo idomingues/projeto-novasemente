@@ -200,6 +200,19 @@ class RevistaAdventistaArticleController extends Controller
         );
     }
 
+    public function destroyEdition(RevistaAdventistaEdition $revistaAdventistaEdition): RedirectResponse
+    {
+        $this->authorize('news.manage');
+
+        $revistaAdventistaEdition->deleteLocalAssets();
+        $revistaAdventistaEdition->delete();
+
+        return back()->with(
+            'success',
+            'Edição excluída com sucesso. Sincronize o acervo para buscá-la novamente.'
+        );
+    }
+
     public function syncArchive(Request $request, RevistaAdventistaArchiveSyncService $syncService): RedirectResponse
     {
         $this->authorize('news.manage');

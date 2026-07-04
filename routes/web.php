@@ -606,6 +606,9 @@ Route::middleware('auth')->group(function () {
     Route::patch('/revista-adventista/acervo/edicao/{revistaAdventistaEdition}/active', [RevistaAdventistaArticleController::class, 'setEditionActive'])
         ->name('revista-adventista-acervo.edition.active')
         ->middleware('permission:news.manage');
+    Route::delete('/revista-adventista/acervo/edicao/{revistaAdventistaEdition}', [RevistaAdventistaArticleController::class, 'destroyEdition'])
+        ->name('revista-adventista-acervo.edition.destroy')
+        ->middleware('permission:news.manage');
     Route::post('/revista-adventista/acervo/sincronizar', [RevistaAdventistaArticleController::class, 'syncArchive'])
         ->name('revista-adventista-acervo.sync-archive')
         ->middleware('permission:news.manage');

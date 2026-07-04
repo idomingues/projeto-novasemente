@@ -296,4 +296,39 @@ class RevistaAdventistaArchiveSyncTest extends TestCase
         $this->get(route('mobile.acervo-revista-adventista.show', $edition))
             ->assertNotFound();
     }
+
+    public function test_admin_can_delete_edition_and_local_assets(): void
+    {
+        Storage::fake('public');
+
+        Permission::findOrCreate('news.manage');
+        $user = User::factory()->create();
+        $user->givePermissionTo('news.manage');
+
+        Storage::disk('public')->put('revista-adventista/covers/1906_M01.jpg', 'cover-bytes');
+        Storage::disk('public')->put('revista-adventista/pdfs/1906_M01.pdf', 'pdf-bytes');
+
+        $edition = RevistaAdventistaEdition::query()->create([
+            'source' => RevistaAdventistaEdition::SOURCE_CPB,
+            'source_edition_id' => '309',
+            'cpb_edition_id' => 309,
+            'year' => 1906,
+            'month_code' => 'M01',
+            'month' => 1,
+            'title' => 'Janeiro de 1906',
+            'cover_path' => 'revista-adventista/covers/1906_M01.jpg',
+            'pdf_path' => 'revista-adventista/pdfs/1906_M01.pdf',
+            'source_pdf_url' => RevistaAdventistaArchiveCatalogService::STORAGE_BASE.'1906_M01.pdf',
+            'is_active' => true,
+            'synced_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->delete(route('revista-adventista-acervo.edition.destroy', $edition))
+            ->assertRedirect();
+
+        $this->assertDatabaseMissing('revista_adventista_editions', ['id' => $edition->id]);
+        Storage::disk('public')->assertMissing('revista-adventista/covers/1906_M01.jpg');
+        Storage::disk('public')->assertMissing('revista-adventista/pdfs/1906_M01.pdf');
+    }
 }

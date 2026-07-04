@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Support\StorageUrl;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class RevistaAdventistaEdition extends Model
 {
@@ -96,6 +97,19 @@ class RevistaAdventistaEdition extends Model
         }
 
         return $this->resolvedSourcePdfUrl();
+    }
+
+    public function deleteLocalAssets(): void
+    {
+        $coverPath = trim(str_replace('\\', '/', (string) ($this->cover_path ?? '')), '/');
+        if ($coverPath !== '' && ! str_starts_with($coverPath, 'http')) {
+            Storage::disk('public')->delete($coverPath);
+        }
+
+        $pdfPath = trim(str_replace('\\', '/', (string) ($this->pdf_path ?? '')), '/');
+        if ($pdfPath !== '' && ! str_starts_with($pdfPath, 'http')) {
+            Storage::disk('public')->delete($pdfPath);
+        }
     }
 
     /**

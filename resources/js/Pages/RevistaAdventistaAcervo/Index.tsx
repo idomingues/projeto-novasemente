@@ -14,6 +14,7 @@ import {
     CalendarDaysIcon,
     PhotoIcon,
     PowerIcon,
+    TrashIcon,
 } from '@heroicons/react/24/outline';
 import { useState } from 'react';
 
@@ -95,6 +96,18 @@ export default function RevistaAdventistaAcervoIndex({ editions, canManage, avai
         if (!ok) return;
 
         router.patch(route('revista-adventista-acervo.edition.active', edition.id), { is_active: isActive }, { preserveScroll: true });
+    };
+
+    const deleteEdition = async (edition: Edition) => {
+        const ok = await confirmAction({
+            title: 'Excluir edição?',
+            text: 'A edição será removida do acervo e os arquivos locais serão apagados. Depois, você poderá sincronizar o acervo para buscá-la novamente.',
+            confirmButtonText: 'Excluir',
+            danger: true,
+        });
+        if (!ok) return;
+
+        router.delete(route('revista-adventista-acervo.edition.destroy', edition.id), { preserveScroll: true });
     };
 
     const syncArchive = (cachePdfs: boolean) => {
@@ -247,12 +260,20 @@ export default function RevistaAdventistaAcervoIndex({ editions, canManage, avai
                                     <ArrowTopRightOnSquareIcon className="h-4 w-4" />
                                 </Link>
                                 {canManage ? (
-                                    <ListCardIconActionButton
-                                        label={edition.is_active ? 'Desativar' : 'Ativar'}
-                                        icon={<PowerIcon className="h-5 w-5" />}
-                                        onClick={() => toggleActive(edition, !edition.is_active)}
-                                        tone={edition.is_active ? 'danger' : 'default'}
-                                    />
+                                    <div className="flex items-center gap-1">
+                                        <ListCardIconActionButton
+                                            label={edition.is_active ? 'Desativar' : 'Ativar'}
+                                            icon={<PowerIcon className="h-5 w-5" />}
+                                            onClick={() => toggleActive(edition, !edition.is_active)}
+                                            tone={edition.is_active ? 'danger' : 'default'}
+                                        />
+                                        <ListCardIconActionButton
+                                            label="Excluir"
+                                            icon={<TrashIcon className="h-5 w-5" />}
+                                            onClick={() => deleteEdition(edition)}
+                                            tone="danger"
+                                        />
+                                    </div>
                                 ) : null}
                             </ListCardActionRow>
                         </Card>
