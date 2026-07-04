@@ -26,6 +26,7 @@ export type VolunteerRosterListRow = {
 
 export type VolunteerRosterBoardFilters = {
     search: string;
+    has_leader_notes: string;
     has_user_account: string;
     has_whatsapp: string;
     has_social_networks: string;

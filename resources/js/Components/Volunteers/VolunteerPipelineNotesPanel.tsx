@@ -153,7 +153,11 @@ export default function VolunteerPipelineNotesPanel({
                         placeholder="Escreva uma nota visível à equipe de voluntariado…"
                     />
                     <InputError message={bodyError ?? undefined} />
-                    <PrimaryButton type="submit" disabled={saving || body.trim().length === 0}>
+                    <PrimaryButton
+                        type="submit"
+                        title="Adicionar uma nova anotação interna ao voluntário"
+                        disabled={saving || body.trim().length === 0}
+                    >
                         {saving ? 'Salvando…' : 'Adicionar nota'}
                     </PrimaryButton>
                 </form>

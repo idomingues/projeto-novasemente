@@ -320,6 +320,62 @@ class VolunteerManagementCenterTest extends TestCase
                 }));
     }
 
+    public function test_management_center_can_filter_roster_by_leader_notes(): void
+    {
+        $admin = $this->actingAsAdmin();
+        $church = Church::query()->firstOrFail();
+        $ministry = Ministry::query()->where('church_id', $church->id)->firstOrFail();
+
+        $this->actingAs($admin)->post('/volunteers', [
+            'name' => 'Voluntário Com Nota no Filtro',
+            'email' => 'voluntario.com.nota.filtro@example.com',
+            'ministry_ids' => [$ministry->id],
+            'active' => '1',
+            'app_password' => 'secret123',
+            'app_password_confirmation' => 'secret123',
+        ])->assertRedirect();
+
+        $this->actingAs($admin)->post('/volunteers', [
+            'name' => 'Voluntário Sem Nota no Filtro',
+            'email' => 'voluntario.sem.nota.filtro@example.com',
+            'ministry_ids' => [$ministry->id],
+            'active' => '1',
+            'app_password' => 'secret123',
+            'app_password_confirmation' => 'secret123',
+        ])->assertRedirect();
+
+        $volunteerWithNote = \App\Models\Volunteer::query()
+            ->where('email', 'voluntario.com.nota.filtro@example.com')
+            ->firstOrFail();
+
+        \App\Models\VolunteerLeaderNote::query()->create([
+            'volunteer_id' => $volunteerWithNote->id,
+            'church_id' => $church->id,
+            'user_id' => $admin->id,
+            'body' => 'Nota interna para o filtro rápido.',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('ministry-lead.volunteers.central', [
+                'ministerio' => $ministry->id,
+                'has_leader_notes' => '1',
+            ]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('MinistryLeadVolunteers/ManagementCenter')
+                ->where('boardFilters.has_leader_notes', '1')
+                ->where('volunteers.data', function ($rows) {
+                    $emails = collect($rows)
+                        ->pluck('email')
+                        ->filter(fn ($email) => is_string($email))
+                        ->values()
+                        ->all();
+
+                    return in_array('voluntario.com.nota.filtro@example.com', $emails, true)
+                        && ! in_array('voluntario.sem.nota.filtro@example.com', $emails, true);
+                }));
+    }
+
     public function test_ministry_leader_can_view_volunteer_notes_in_management_center(): void
     {
         $this->seed();

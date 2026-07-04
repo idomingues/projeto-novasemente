@@ -158,6 +158,7 @@ export default function MinistryLeaderStatusSection({
                                     (form.data.leader_status === 'denied' && form.data.leader_note.trim().length < 5)
                                 }
                                 onClick={submit}
+                                title="Salvar status deste voluntário no departamento"
                             >
                                 {saving ? 'Salvando…' : 'Salvar status'}
                             </PrimaryButton>

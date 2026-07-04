@@ -115,4 +115,4 @@ Artisan::command('app:release-notes', function () {
 
 Schedule::command('auth:prune-login-events')->weekly();
 Schedule::command('revista-adventista:sync-archive --cache-pdfs')->dailyAt('03:00');
-Schedule::command('revista-adventista:sync')->weekly();
+Schedule::command('revista-adventista:sync')->dailyAt('02:30');

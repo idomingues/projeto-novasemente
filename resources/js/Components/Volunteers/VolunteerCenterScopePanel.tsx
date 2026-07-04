@@ -94,6 +94,7 @@ export default function VolunteerCenterScopePanel({
                     role="tab"
                     aria-selected={!isPhaseGroup}
                     onClick={() => onGroupByChange('departamento')}
+                    title="Agrupar a lista por departamento"
                     className={`flex-1 cursor-pointer rounded-md px-2 ${tabText} font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60 ${
                         !isPhaseGroup
                             ? 'bg-emerald-600 text-white shadow-sm ring-1 ring-inset ring-emerald-700/30 dark:bg-emerald-600 dark:text-white'
@@ -107,6 +108,7 @@ export default function VolunteerCenterScopePanel({
                     role="tab"
                     aria-selected={isPhaseGroup}
                     onClick={() => onGroupByChange('fase')}
+                    title="Agrupar a lista por fase"
                     className={`flex-1 cursor-pointer rounded-md px-2 ${tabText} font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60 ${
                         isPhaseGroup
                             ? 'bg-emerald-600 text-white shadow-sm ring-1 ring-inset ring-emerald-700/30 dark:bg-emerald-600 dark:text-white'
@@ -124,6 +126,7 @@ export default function VolunteerCenterScopePanel({
                     value={sidebarSearch}
                     onChange={(e) => onSidebarSearchChange(e.target.value)}
                     placeholder={isPhaseGroup ? 'Buscar fase…' : 'Buscar departamento…'}
+                    title={isPhaseGroup ? 'Buscar fase na lista lateral' : 'Buscar departamento na lista lateral'}
                     className={`${compactInputClass} ${compact ? '!pl-7' : '!pl-8'}`}
                     autoComplete="off"
                 />
@@ -135,6 +138,7 @@ export default function VolunteerCenterScopePanel({
                         <button
                             type="button"
                             onClick={onSelectAllPhases}
+                            title={`Mostrar todas as fases (${allPhasesTotal} voluntários)`}
                             className={`${rowBtnBetween} ${
                                 selectedPhaseKey === null
                                     ? 'border-emerald-500 bg-emerald-50/90 dark:border-emerald-600 dark:bg-emerald-950/40'
@@ -155,7 +159,7 @@ export default function VolunteerCenterScopePanel({
                                     key={p.key}
                                     type="button"
                                     onClick={() => onSelectPhase(p.key)}
-                                    title={p.label}
+                                    title={`Filtrar pela fase ${p.label} (${p.volunteerCount} voluntários)`}
                                     className={`${rowBtnBetween} ${
                                         selected
                                             ? 'border-emerald-500 bg-emerald-50/90 dark:border-emerald-600 dark:bg-emerald-950/40'
@@ -180,6 +184,7 @@ export default function VolunteerCenterScopePanel({
                         <button
                             type="button"
                             onClick={onSelectAllDepartments}
+                            title={`Mostrar todos os departamentos (${allDepartmentsTotal} voluntários)`}
                             className={`${rowBtnBetween} ${
                                 selectedMinistryId === null
                                     ? 'border-emerald-500 bg-emerald-50/90 dark:border-emerald-600 dark:bg-emerald-950/40'
@@ -201,7 +206,7 @@ export default function VolunteerCenterScopePanel({
                                     key={d.id}
                                     type="button"
                                     onClick={() => onSelectDepartment(d.id)}
-                                    title={d.name}
+                                    title={`Filtrar pelo departamento ${d.name} (${d.volunteerCount} voluntários)`}
                                     className={`${rowBtnGap} ${
                                         selected
                                             ? 'border-emerald-500 bg-emerald-50/90 dark:border-emerald-600 dark:bg-emerald-950/40'
@@ -224,6 +229,7 @@ export default function VolunteerCenterScopePanel({
                             <button
                                 type="button"
                                 onClick={() => onSelectDepartment('none')}
+                                title={`Mostrar voluntários sem departamento (${withoutDepartmentCount})`}
                                 className={`${rowBtnBetween} ${
                                     selectedMinistryId === 0
                                         ? 'border-violet-500 bg-violet-50/90 dark:border-violet-600 dark:bg-violet-950/40'

@@ -60,6 +60,10 @@ class VolunteerLeadRosterFilters
             SearchTerm::whereAnyColumnLike($q, ['name', 'email', 'phone'], $search);
         }
 
+        if ($request->input('has_leader_notes') === '1') {
+            $q->whereHas('leaderNotes', fn ($notes) => $notes->where('church_id', $churchId));
+        }
+
         $hasUserAccount = $request->input('has_user_account');
         if ($hasUserAccount === '0' || $hasUserAccount === '1' || $hasUserAccount === 0 || $hasUserAccount === 1) {
             if ((bool) (int) $hasUserAccount) {
@@ -331,6 +335,7 @@ class VolunteerLeadRosterFilters
     {
         return [
             'search' => trim((string) $request->input('search', '')),
+            'has_leader_notes' => (string) $request->input('has_leader_notes', ''),
             'has_user_account' => (string) $request->input('has_user_account', ''),
             'has_whatsapp' => (string) $request->input('has_whatsapp', ''),
             'has_social_networks' => (string) $request->input('has_social_networks', ''),

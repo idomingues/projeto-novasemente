@@ -296,11 +296,16 @@ export default function VolunteerRosterFiltersForm({ filterForm, ministries, att
                                     </div>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
-                                    <PrimaryButton type="submit" className="inline-flex items-center gap-1" disabled={filterForm.processing}>
+                                    <PrimaryButton
+                                        type="submit"
+                                        title="Aplicar os filtros do cadastro"
+                                        className="inline-flex items-center gap-1"
+                                        disabled={filterForm.processing}
+                                    >
                                         <MagnifyingGlassIcon className="h-4 w-4" aria-hidden />
                                         Aplicar
                                     </PrimaryButton>
-                                    <SecondaryButton type="button" onClick={onClear}>
+                                    <SecondaryButton type="button" title="Limpar os filtros do cadastro" onClick={onClear}>
                                         Limpar
                                     </SecondaryButton>
                                 </div>

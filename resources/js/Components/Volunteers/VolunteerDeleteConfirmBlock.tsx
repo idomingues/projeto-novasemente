@@ -115,6 +115,7 @@ export default function VolunteerDeleteConfirmBlock({
                             type="button"
                             className="mt-3 inline-flex items-center gap-2 rounded-xl border border-red-300 bg-white px-4 py-2.5 text-sm font-semibold text-red-700 shadow-sm transition hover:bg-red-50 dark:border-red-800 dark:bg-zinc-900 dark:text-red-300 dark:hover:bg-red-950/40"
                             onClick={() => setArmed(true)}
+                            title="Iniciar exclusão deste voluntário"
                         >
                             <TrashIcon className="h-5 w-5 shrink-0" aria-hidden />
                             Excluir voluntário…
@@ -152,7 +153,7 @@ export default function VolunteerDeleteConfirmBlock({
                             </label>
                         ) : null}
                         <div className="flex flex-wrap gap-2">
-                            <SecondaryButton type="button" onClick={resetConfirm} disabled={processing}>
+                            <SecondaryButton type="button" title="Cancelar exclusão" onClick={resetConfirm} disabled={processing}>
                                 Cancelar
                             </SecondaryButton>
                             <PrimaryButton
@@ -160,6 +161,7 @@ export default function VolunteerDeleteConfirmBlock({
                                 className="!bg-red-600 hover:!bg-red-700 dark:!bg-red-600 dark:hover:!bg-red-700"
                                 disabled={processing}
                                 onClick={executeDelete}
+                                title="Confirmar exclusão definitiva do voluntário"
                             >
                                 {processing ? 'Excluindo…' : 'Confirmar exclusão'}
                             </PrimaryButton>
@@ -179,7 +181,12 @@ export default function VolunteerDeleteConfirmBlock({
                         {resultModal?.kind === 'success' ? 'Exclusão concluída' : 'Não foi possível excluir'}
                     </h3>
                     <p className="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">{resultModal?.message}</p>
-                    <PrimaryButton type="button" className="mt-6 w-full justify-center sm:w-auto" onClick={closeResultModal}>
+                    <PrimaryButton
+                        type="button"
+                        title="Fechar mensagem de resultado"
+                        className="mt-6 w-full justify-center sm:w-auto"
+                        onClick={closeResultModal}
+                    >
                         {resultModal?.kind === 'success' ? 'OK' : 'Fechar'}
                     </PrimaryButton>
                 </div>

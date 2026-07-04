@@ -16,7 +16,12 @@ import {
     type VolunteerRosterBoardFilters,
     type VolunteerRosterListRow,
 } from '@/utils/volunteerRosterList';
-import { AdjustmentsHorizontalIcon, ArrowsUpDownIcon, BuildingOffice2Icon } from '@heroicons/react/24/outline';
+import {
+    AdjustmentsHorizontalIcon,
+    ArrowsUpDownIcon,
+    BuildingOffice2Icon,
+    ChatBubbleLeftEllipsisIcon,
+} from '@heroicons/react/24/outline';
 import { Link, router, useForm } from '@inertiajs/react';
 import { FormEventHandler, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
@@ -156,11 +161,19 @@ export default function VolunteerCenterRosterPanel({
     const sortIsCustom = currentSortValue !== rosterSortSelectValue('name', 'asc');
     const currentSortLabel =
         sortOptions.find((o) => o.value === currentSortValue)?.label ?? 'Nome (A–Z)';
+    const leaderNotesFilterActive = boardFilters.has_leader_notes === '1';
 
     const activeFiltersCount = useMemo(() => {
         const entries = Object.entries(boardFilters) as [string, unknown][];
         return entries.filter(([k, v]) => {
-            if (k === 'pipeline_stage_id' || k === 'search' || k === 'arquivados' || k === 'sort' || k === 'sort_dir') {
+            if (
+                k === 'pipeline_stage_id' ||
+                k === 'search' ||
+                k === 'arquivados' ||
+                k === 'sort' ||
+                k === 'sort_dir' ||
+                k === 'has_leader_notes'
+            ) {
                 return false;
             }
             if (typeof v === 'boolean') {
@@ -182,7 +195,7 @@ export default function VolunteerCenterRosterPanel({
         lastAppliedSearchRef.current = '';
         setSearchQuery('');
         setFiltersModalOpen(false);
-        reload({ ...filterForm.data, search: '', pipeline_stage_id: '' }, '');
+        reload({ ...filterForm.data, search: '', pipeline_stage_id: '', has_leader_notes: '' }, '');
     };
 
     const selectSort = (combinedValue: string) => {
@@ -198,6 +211,26 @@ export default function VolunteerCenterRosterPanel({
             },
             resolvedSearch,
         );
+    };
+
+    const toggleLeaderNotesFilter = () => {
+        const resolvedSearch = serverSearchTerm(searchQuery) ?? '';
+        const nextValue = leaderNotesFilterActive ? '' : '1';
+        const nextFilters = {
+            ...filterForm.data,
+            has_leader_notes: nextValue,
+        };
+        lastAppliedSearchRef.current = resolvedSearch;
+        filterForm.setData('has_leader_notes', nextValue);
+        reload(nextFilters, resolvedSearch);
+    };
+
+    const paginationTitle = (label: string, active: boolean) => {
+        const plainLabel = label.replace(/<[^>]*>/g, '').replace(/&laquo;/g, '«').replace(/&raquo;/g, '»').trim();
+        if (active) {
+            return `Página atual: ${plainLabel}`;
+        }
+        return `Ir para ${plainLabel}`;
     };
 
     const encaminharMinistries = useMemo(() => {
@@ -273,6 +306,24 @@ export default function VolunteerCenterRosterPanel({
                         ) : null}
                         <button
                             type="button"
+                            onClick={toggleLeaderNotesFilter}
+                            title={
+                                leaderNotesFilterActive
+                                    ? 'Anotações internas: somente com notas'
+                                    : 'Anotações internas: todos os voluntários'
+                            }
+                            aria-pressed={leaderNotesFilterActive}
+                            aria-label={
+                                leaderNotesFilterActive
+                                    ? 'Filtro rápido de anotações internas ativo'
+                                    : 'Filtrar voluntários com anotação interna'
+                            }
+                            className={`${headerIconBtnClass} ${leaderNotesFilterActive ? headerIconBtnActiveClass : ''}`}
+                        >
+                            <ChatBubbleLeftEllipsisIcon className="h-4 w-4" aria-hidden />
+                        </button>
+                        <button
+                            type="button"
                             onClick={() => setFiltersModalOpen(true)}
                             title="Filtros do cadastro"
                             aria-label={
@@ -313,6 +364,7 @@ export default function VolunteerCenterRosterPanel({
                         role="tab"
                         aria-selected={centerVinculo === 'vinculados'}
                         onClick={() => onCenterVinculoChange?.('vinculados')}
+                        title="Mostrar voluntários já vinculados a este departamento"
                         className={vinculoTabClass(centerVinculo === 'vinculados')}
                     >
                         Vinculados{vinculadosCount != null ? ` (${vinculadosCount})` : ''}
@@ -322,6 +374,7 @@ export default function VolunteerCenterRosterPanel({
                         role="tab"
                         aria-selected={centerVinculo === 'encaminhados'}
                         onClick={() => onCenterVinculoChange?.('encaminhados')}
+                        title="Mostrar voluntários encaminhados para este departamento"
                         className={vinculoTabClass(centerVinculo === 'encaminhados')}
                     >
                         Encaminhados{encaminhadosCount != null ? ` (${encaminhadosCount})` : ''}
@@ -344,15 +397,17 @@ export default function VolunteerCenterRosterPanel({
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Buscar voluntário por nome, e-mail ou telefone…"
+                        title="Buscar voluntário por nome, e-mail ou telefone"
                         className="!h-8 !min-h-8 !rounded-lg !px-2.5 !py-1 !text-sm"
                         autoComplete="off"
                     />
-                    <SecondaryButton type="submit" className="!h-8 !px-3 !py-1 !text-xs">
+                    <SecondaryButton type="submit" title="Aplicar busca na lista" className="!h-8 !px-3 !py-1 !text-xs">
                         Buscar
                     </SecondaryButton>
                     {serverSearchTerm(searchQuery) ? (
                         <SecondaryButton
                             type="button"
+                            title="Limpar texto da busca"
                             className="!h-8 !px-3 !py-1 !text-xs"
                             onClick={() => {
                                 setSearchQuery('');
@@ -388,6 +443,7 @@ export default function VolunteerCenterRosterPanel({
                                 type="button"
                                 disabled={link.active}
                                 onClick={() => router.get(link.url!, {}, { preserveScroll: true })}
+                                title={paginationTitle(link.label, link.active)}
                                 className={`cursor-pointer rounded px-2 py-0.5 text-[10px] ${
                                     link.active
                                         ? 'bg-zinc-900 font-semibold text-white dark:bg-white dark:text-zinc-900'
@@ -437,10 +493,14 @@ export default function VolunteerCenterRosterPanel({
                         onChange={setInviteMinistryIds}
                     />
                     <div className="flex justify-end gap-2">
-                        <SecondaryButton type="button" onClick={() => setInviteOpen(false)}>
+                        <SecondaryButton type="button" title="Fechar sem encaminhar" onClick={() => setInviteOpen(false)}>
                             Cancelar
                         </SecondaryButton>
-                        <PrimaryButton type="submit" disabled={inviteMinistryIds.length === 0}>
+                        <PrimaryButton
+                            type="submit"
+                            title="Encaminhar voluntário para os departamentos selecionados"
+                            disabled={inviteMinistryIds.length === 0}
+                        >
                             Encaminhar
                         </PrimaryButton>
                     </div>

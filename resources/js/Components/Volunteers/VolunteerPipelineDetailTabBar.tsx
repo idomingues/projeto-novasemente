@@ -34,11 +34,21 @@ export default function VolunteerPipelineDetailTabBar({
 
     return (
         <div className="flex flex-wrap gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800 sm:flex-nowrap sm:overflow-x-auto sm:overscroll-x-contain sm:[-webkit-overflow-scrolling:touch]">
-            <button type="button" onClick={() => onSelectTab('ficha')} className={tabBtnClass(detailTab === 'ficha')}>
+            <button
+                type="button"
+                onClick={() => onSelectTab('ficha')}
+                title="Abrir a ficha completa do voluntário"
+                className={tabBtnClass(detailTab === 'ficha')}
+            >
                 Ficha
             </button>
             {canViewVolunteerNotes ? (
-                <button type="button" onClick={() => onSelectTab('notas')} className={tabBtnClass(detailTab === 'notas')}>
+                <button
+                    type="button"
+                    onClick={() => onSelectTab('notas')}
+                    title="Abrir as anotações internas do voluntário"
+                    className={tabBtnClass(detailTab === 'notas')}
+                >
                     Anotações
                     {notesBadge}
                 </button>
@@ -46,6 +56,7 @@ export default function VolunteerPipelineDetailTabBar({
             <button
                 type="button"
                 onClick={() => onSelectTab('departamentos')}
+                title="Abrir departamentos e vínculos do voluntário"
                 className={tabBtnClass(detailTab === 'departamentos')}
             >
                 Departamentos
@@ -53,12 +64,18 @@ export default function VolunteerPipelineDetailTabBar({
             <button
                 type="button"
                 onClick={() => onSelectTab('historico')}
+                title="Abrir histórico e status por departamento"
                 className={tabBtnClass(detailTab === 'historico')}
             >
                 Histórico e status
             </button>
             {canVolunteerManage && showUsuarioAppTab ? (
-                <button type="button" onClick={() => onSelectTab('usuario')} className={tabBtnClass(detailTab === 'usuario')}>
+                <button
+                    type="button"
+                    onClick={() => onSelectTab('usuario')}
+                    title="Abrir dados do usuário no app"
+                    className={tabBtnClass(detailTab === 'usuario')}
+                >
                     Usuário APP
                 </button>
             ) : null}

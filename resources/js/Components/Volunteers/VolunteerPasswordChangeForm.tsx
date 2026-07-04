@@ -97,7 +97,11 @@ export default function VolunteerPasswordChangeForm({ submitUrl, mode = 'update'
                     </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
-                    <PrimaryButton type="submit" disabled={processing || saving}>
+                    <PrimaryButton
+                        type="submit"
+                        title={isCreate ? 'Criar acesso ao app para este voluntário' : 'Salvar nova senha de acesso ao app'}
+                        disabled={processing || saving}
+                    >
                         {saving ? 'Salvando…' : isCreate ? 'Criar acesso' : 'Salvar senha'}
                     </PrimaryButton>
                     {saved ? (

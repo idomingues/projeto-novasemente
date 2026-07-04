@@ -82,6 +82,7 @@ export default function VolunteerRosterTable({
                             key={v.id}
                             className={`cursor-pointer border-b border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900/50 ${v.pendingInvite ? 'bg-amber-50/40 dark:bg-amber-950/10' : ''}`}
                             onClick={() => onOpenVolunteer(v.id)}
+                            title={`Abrir ficha de ${v.name ?? 'voluntário'}`}
                         >
                             <td className={`${cellY} pr-2`}>
                                 <UserListAvatar name={v.name} photoUrl={v.photoUrl} size="sm" previewOnClick={false} />
@@ -135,8 +136,8 @@ export default function VolunteerRosterTable({
                                         <button
                                             type="button"
                                             className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 cursor-pointer"
-                                            title="Ações"
-                                            aria-label="Ações"
+                                            title={`Abrir ações de ${v.name ?? 'voluntário'}`}
+                                            aria-label={`Abrir ações de ${v.name ?? 'voluntário'}`}
                                         >
                                             <EllipsisVerticalIcon className="h-5 w-5" aria-hidden />
                                         </button>
@@ -157,6 +158,7 @@ export default function VolunteerRosterTable({
                                                             onFinish: () => onInvitingChange(null),
                                                         });
                                                     }}
+                                                    title="Enviar convite para criar acesso ao app"
                                                     className="block w-full px-4 py-2 text-start text-sm leading-5 text-zinc-700 dark:text-zinc-300 transition duration-150 ease-in-out hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white focus:bg-zinc-100 dark:focus:bg-zinc-800 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
                                                 >
                                                     Enviar convite do app
@@ -172,6 +174,7 @@ export default function VolunteerRosterTable({
                                                         closeAnyDropdown();
                                                         onEncaminhar(v);
                                                     }}
+                                                    title="Escolher departamentos para encaminhar este voluntário"
                                                     className="block w-full px-4 py-2 text-start text-sm leading-5 text-zinc-700 dark:text-zinc-300 transition duration-150 ease-in-out hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white focus:bg-zinc-100 dark:focus:bg-zinc-800 focus:outline-none cursor-pointer"
                                                 >
                                                     Encaminhar

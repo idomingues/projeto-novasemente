@@ -604,9 +604,13 @@ export default function ManagementCenter({
 
                     <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
                         {canManageVolunteerRequests ? (
-                            <Link href={pedidosUrl} className="cursor-pointer">
+                            <Link href={pedidosUrl} className="cursor-pointer" title="Abrir pedidos de voluntariado">
                                 <span className="relative inline-flex">
-                                    <SecondaryButton type="button" className="!h-8 !px-2.5 !py-1 !text-xs">
+                                    <SecondaryButton
+                                        type="button"
+                                        title="Abrir pedidos de voluntariado"
+                                        className="!h-8 !px-2.5 !py-1 !text-xs"
+                                    >
                                         Pedidos
                                     </SecondaryButton>
                                     {openVolunteerRequestsCount > 0 ? (
@@ -742,7 +746,11 @@ export default function ManagementCenter({
                                                     ))}
                                                 </SelectInput>
                                             </div>
-                                            <PrimaryButton type="submit" disabled={stageSaving}>
+                                            <PrimaryButton
+                                                type="submit"
+                                                title={canVolunteerManage ? 'Salvar fase principal do voluntário' : 'Salvar fase do voluntário'}
+                                                disabled={stageSaving}
+                                            >
                                                 {stageSaving
                                                     ? 'Salvando…'
                                                     : canVolunteerManage
@@ -808,6 +816,7 @@ export default function ManagementCenter({
                                                 {detail.archiveVolunteerUrl ? (
                                                     <SecondaryButton
                                                         type="button"
+                                                        title="Arquivar este voluntário da lista ativa"
                                                         onClick={async () => {
                                                             const ok = await confirmAction({
                                                                 title: 'Arquivar voluntário?',
@@ -834,6 +843,7 @@ export default function ManagementCenter({
                                                 {detail.unarchiveVolunteerUrl ? (
                                                     <SecondaryButton
                                                         type="button"
+                                                        title="Restaurar este voluntário para a lista ativa"
                                                         onClick={async () => {
                                                             const ok = await confirmAction({
                                                                 title: 'Restaurar voluntário?',
@@ -928,7 +938,11 @@ export default function ManagementCenter({
                                             error={ministriesForm.errors.ministry_ids}
                                         />
                                         {detail.syncMinistriesUrl && canPipelineMutate ? (
-                                            <PrimaryButton type="submit" disabled={ministriesSaving}>
+                                            <PrimaryButton
+                                                type="submit"
+                                                title="Salvar os departamentos vinculados a este voluntário"
+                                                disabled={ministriesSaving}
+                                            >
                                                 {ministriesSaving ? 'Salvando…' : 'Salvar departamentos'}
                                             </PrimaryButton>
                                         ) : (
