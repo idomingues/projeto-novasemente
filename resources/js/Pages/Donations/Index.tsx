@@ -121,6 +121,8 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
+    const [hasHydrated, setHasHydrated] = useState(false);
+    const [brokenCoverIds, setBrokenCoverIds] = useState<number[]>([]);
     const [detailCampaign, setDetailCampaign] = useState<Campaign | null>(null);
     const [detailDonations, setDetailDonations] = useState<DonationRow[]>([]);
     const [loadingDonations, setLoadingDonations] = useState(false);
@@ -200,6 +202,10 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
         const json = await res.json();
         return (json.donations ?? []) as DonationRow[];
     };
+
+    useEffect(() => {
+        setHasHydrated(true);
+    }, []);
 
     useEffect(() => {
         if (!mediaCampaign) return;
@@ -458,13 +464,24 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
                                         {campaign.ends_at ? ` · Prazo: ${formatCampaignDate(campaign.ends_at)}` : ''}
                                     </p>
                                 </div>
-                                {campaign.cover_image_url && (
-                                    <img
-                                        src={campaign.cover_image_url}
-                                        alt=""
-                                        className="h-24 w-24 shrink-0 rounded-xl object-cover"
-                                    />
-                                )}
+                                {campaign.cover_image_url ? (
+                                    hasHydrated && !brokenCoverIds.includes(campaign.id) ? (
+                                        <img
+                                            src={campaign.cover_image_url}
+                                            alt=""
+                                            className="h-24 w-24 shrink-0 rounded-xl object-cover"
+                                            onError={() => {
+                                                setBrokenCoverIds((current) =>
+                                                    current.includes(campaign.id) ? current : [...current, campaign.id],
+                                                );
+                                            }}
+                                        />
+                                    ) : (
+                                        <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
+                                            <PhotoIcon className="h-8 w-8" aria-hidden />
+                                        </div>
+                                    )
+                                ) : null}
                             </div>
                             <ListCardActionRow className="mt-4">
                                 <ListCardTextActionButton

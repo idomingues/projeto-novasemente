@@ -16,9 +16,10 @@ import {
     ArrowTopRightOnSquareIcon,
     BoltIcon,
     DocumentDuplicateIcon,
+    PhotoIcon,
     PlayCircleIcon,
 } from '@heroicons/react/24/outline';
-import { FormEventHandler, useState } from 'react';
+import { FormEventHandler, useEffect, useState } from 'react';
 
 interface CampaignPhoto {
     id: number;
@@ -127,6 +128,8 @@ export default function MobileDonationShow({ campaign, recentDonations, donation
     const [confirmStep, setConfirmStep] = useState(false);
     const [suggestedAmount, setSuggestedAmount] = useState<number | null>(null);
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+    const [hasHydrated, setHasHydrated] = useState(false);
+    const [coverImageBroken, setCoverImageBroken] = useState(false);
 
     const { data, setData, post, processing, errors, reset } = useForm({
         amount: '',
@@ -258,6 +261,10 @@ export default function MobileDonationShow({ campaign, recentDonations, donation
         setDonateOpen(true);
     };
 
+    useEffect(() => {
+        setHasHydrated(true);
+    }, []);
+
     return (
         <MobileLayout>
             <Head title={campaign.title} />
@@ -294,9 +301,18 @@ export default function MobileDonationShow({ campaign, recentDonations, donation
                     </div>
                 )}
 
-                {campaign.cover_image_url && (
-                    <img src={campaign.cover_image_url} alt="" className="h-96 w-full rounded-2xl object-cover" />
-                )}
+                {campaign.cover_image_url && hasHydrated && !coverImageBroken ? (
+                    <img
+                        src={campaign.cover_image_url}
+                        alt=""
+                        className="h-96 w-full rounded-2xl object-cover"
+                        onError={() => setCoverImageBroken(true)}
+                    />
+                ) : campaign.cover_image_url ? (
+                    <div className="flex h-96 w-full items-center justify-center rounded-2xl bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
+                        <PhotoIcon className="h-12 w-12" />
+                    </div>
+                ) : null}
 
                 <div>
                     <h1 className="text-2xl font-bold text-zinc-900 dark:text-white sm:text-3xl">{campaign.title}</h1>
