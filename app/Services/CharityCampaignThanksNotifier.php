@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Mail\CharityCampaignThanksDonorMail;
 use App\Models\CharityCampaign;
 use App\Models\CharityDonation;
+use App\Models\CharityItemDonation;
 use App\Models\User;
 use App\Models\UserInboxNotification;
 use App\Support\UserMessagingPreferences;
@@ -25,8 +26,15 @@ class CharityCampaignThanksNotifier
         $userIds = CharityDonation::query()
             ->where('campaign_id', $campaign->id)
             ->whereNotNull('user_id')
-            ->distinct()
-            ->pluck('user_id');
+            ->pluck('user_id')
+            ->merge(
+                CharityItemDonation::query()
+                    ->where('campaign_id', $campaign->id)
+                    ->whereNotNull('user_id')
+                    ->pluck('user_id')
+            )
+            ->unique()
+            ->values();
 
         $usersNotified = 0;
         $emailsSent = 0;

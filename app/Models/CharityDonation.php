@@ -118,6 +118,7 @@ class CharityDonation extends Model
             'id' => $this->id,
             'campaign_id' => $this->campaign_id,
             'campaign_title' => $this->campaign?->title,
+            'entry_type' => 'money',
             'amount' => (float) $this->amount,
             'ocr_suggested_amount' => $this->ocr_suggested_amount !== null ? (float) $this->ocr_suggested_amount : null,
             'amount_before_adjustment' => $this->amount_before_adjustment !== null ? (float) $this->amount_before_adjustment : null,

@@ -14,24 +14,37 @@ interface Donation {
     id: number;
     campaign_id: number;
     campaign_title: string | null;
-    amount: number;
-    ocr_suggested_amount: number | null;
-    amount_before_adjustment: number | null;
-    confirmed_at: string;
-    receipt_url: string | null;
-    dispute_status: string | null;
-    dispute_message: string | null;
-    disputed_at: string | null;
-    dispute_resolution_note: string | null;
-    dispute_resolved_at: string | null;
-    adjustment_note: string | null;
-    adjusted_at: string | null;
+    entry_type: 'money' | 'item';
+    amount?: number;
+    ocr_suggested_amount?: number | null;
+    amount_before_adjustment?: number | null;
+    confirmed_at?: string;
+    receipt_url?: string | null;
+    dispute_status?: string | null;
+    dispute_message?: string | null;
+    disputed_at?: string | null;
+    dispute_resolution_note?: string | null;
+    dispute_resolved_at?: string | null;
+    adjustment_note?: string | null;
+    adjusted_at?: string | null;
     adjustment_history: {
         amount_before: number;
         amount_after: number;
         adjustment_note: string;
         created_at: string;
     }[];
+    item_description?: string;
+    quantity?: number;
+    unit_label?: string | null;
+    quantity_label?: string;
+    notes?: string | null;
+    staff_note?: string | null;
+    status?: string;
+    pledged_at?: string | null;
+    received_at?: string | null;
+    cancelled_at?: string | null;
+    quantity_before_adjustment?: number | null;
+    evidence_photo_url?: string | null;
     can_dispute: boolean;
 }
 
@@ -43,7 +56,11 @@ function formatBrl(value: number): string {
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-function disputeLabel(status: string | null): string | null {
+function formatQuantity(value: number, unitLabel?: string | null): string {
+    return unitLabel ? `${value} ${unitLabel}` : `${value}`;
+}
+
+function disputeLabel(status?: string | null): string | null {
     if (status === 'pending') return 'Em análise';
     if (status === 'resolved') return 'Resolvida';
     return null;
@@ -94,16 +111,16 @@ export default function MyDonations({ donations }: Props) {
                 <div>
                     <h1 className="text-2xl font-bold text-zinc-900 dark:text-white sm:text-3xl">Minhas doações</h1>
                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                        Acompanhe suas contribuições e solicite revisão se o valor registrado estiver incorreto.
+                        Acompanhe suas contribuições financeiras, promessas de itens e o andamento de cada entrega.
                     </p>
                 </div>
 
                 <div className="rounded-xl border border-sky-200 bg-sky-50/80 px-4 py-3 text-sm text-sky-950 dark:border-sky-900/50 dark:bg-sky-950/30 dark:text-sky-100">
                     <p className="font-medium">Transparência</p>
                     <p className="mt-1 text-sky-900/90 dark:text-sky-100/90">
-                        Guardamos valor, data e comprovante de cada doação. O comprovante fica acessível apenas à equipe
-                        financeira da igreja — não é publicado no app. Se algo estiver errado, use «Reportar problema» na
-                        doação correspondente.
+                        Guardamos valor, data e comprovante de cada doação financeira e também o item, a quantidade e o
+                        status das promessas de objetos. Se algo estiver errado em uma doação financeira, use «Solicitar
+                        revisão» no registro correspondente.
                     </p>
                 </div>
 
@@ -121,6 +138,9 @@ export default function MyDonations({ donations }: Props) {
                 {donations.length === 0 ? (
                     <div className="rounded-2xl border border-zinc-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
                         <p className="text-sm text-zinc-600 dark:text-zinc-400">Você ainda não registrou doações em campanhas.</p>
+                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                            Quando você doar ou prometer um item, o histórico aparecerá aqui.
+                        </p>
                         <Link
                             href={route('mobile.donations.index')}
                             className="mt-4 inline-block text-sm font-medium text-brand-600 dark:text-brand-400"
@@ -143,48 +163,86 @@ export default function MyDonations({ donations }: Props) {
                                                 {d.campaign_title ?? 'Campanha'}
                                             </h2>
                                             <p className="mt-1 text-sm text-zinc-500">
-                                                {new Date(d.confirmed_at).toLocaleString('pt-BR')}
+                                                {new Date((d.confirmed_at ?? d.received_at ?? d.pledged_at) as string).toLocaleString('pt-BR')}
                                             </p>
                                         </div>
-                                        <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
-                                            {formatBrl(d.amount)}
+                                        <p className="text-right text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                                            {d.entry_type === 'item'
+                                                ? formatQuantity(d.quantity ?? 0, d.unit_label)
+                                                : formatBrl(d.amount ?? 0)}
+                                            <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                                                {d.entry_type === 'item' ? 'Promessa de item' : 'Doação financeira'}
+                                            </span>
                                         </p>
                                     </div>
 
-                                    {d.amount_before_adjustment !== null && (
-                                        <p className="mt-2 text-xs text-zinc-500">
-                                            Valor original: {formatBrl(d.amount_before_adjustment)}
-                                            {d.adjusted_at && ` · Ajustado em ${new Date(d.adjusted_at).toLocaleDateString('pt-BR')}`}
-                                        </p>
-                                    )}
-                                    {d.ocr_suggested_amount !== null && (
-                                        <p className="mt-1 text-xs text-zinc-500">
-                                            Valor lido no comprovante: {formatBrl(d.ocr_suggested_amount)}
-                                        </p>
-                                    )}
-                                    {d.adjustment_history.length > 0 ? (
-                                        <div className="mt-2 space-y-2">
-                                            {d.adjustment_history.map((entry, idx) => (
-                                                <p
-                                                    key={`${entry.created_at}-${idx}`}
-                                                    className="rounded-lg bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
-                                                >
-                                                    <span className="font-medium">Ajuste registrado:</span>{' '}
-                                                    {formatBrl(entry.amount_before)} → {formatBrl(entry.amount_after)} ·{' '}
-                                                    {new Date(entry.created_at).toLocaleDateString('pt-BR')}
-                                                    <span className="mt-1 block">{entry.adjustment_note}</span>
+                                    {d.entry_type === 'item' ? (
+                                        <>
+                                            {d.item_description && (
+                                                <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">
+                                                    <span className="font-medium">Item:</span> {d.item_description}
                                                 </p>
-                                            ))}
-                                        </div>
+                                            )}
+                                            {d.notes && (
+                                                <p className="mt-2 rounded-lg bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                                                    <span className="font-medium">Sua observação:</span> {d.notes}
+                                                </p>
+                                            )}
+                                            {d.quantity_before_adjustment !== null && d.quantity_before_adjustment !== undefined && (
+                                                <p className="mt-2 text-xs text-zinc-500">
+                                                    Quantidade original: {formatQuantity(d.quantity_before_adjustment, d.unit_label)}
+                                                    {d.adjusted_at && ` · Ajustada em ${new Date(d.adjusted_at).toLocaleDateString('pt-BR')}`}
+                                                </p>
+                                            )}
+                                            {d.adjustment_note && (
+                                                <p className="mt-2 rounded-lg bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                                                    <span className="font-medium">Ajuste da equipe:</span> {d.adjustment_note}
+                                                </p>
+                                            )}
+                                            {d.staff_note && (
+                                                <p className="mt-2 rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-900 dark:bg-brand-950/40 dark:text-brand-100">
+                                                    <span className="font-medium">Observação da equipe:</span> {d.staff_note}
+                                                </p>
+                                            )}
+                                        </>
                                     ) : (
-                                        d.adjustment_note && (
-                                            <p className="mt-2 rounded-lg bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-                                                <span className="font-medium">Observação da equipe:</span> {d.adjustment_note}
-                                            </p>
-                                        )
+                                        <>
+                                            {d.amount_before_adjustment !== null && (
+                                                <p className="mt-2 text-xs text-zinc-500">
+                                                    Valor original: {formatBrl(d.amount_before_adjustment ?? 0)}
+                                                    {d.adjusted_at && ` · Ajustado em ${new Date(d.adjusted_at).toLocaleDateString('pt-BR')}`}
+                                                </p>
+                                            )}
+                                            {d.ocr_suggested_amount !== null && (
+                                                <p className="mt-1 text-xs text-zinc-500">
+                                                    Valor lido no comprovante: {formatBrl(d.ocr_suggested_amount ?? 0)}
+                                                </p>
+                                            )}
+                                            {d.adjustment_history.length > 0 ? (
+                                                <div className="mt-2 space-y-2">
+                                                    {d.adjustment_history.map((entry, idx) => (
+                                                        <p
+                                                            key={`${entry.created_at}-${idx}`}
+                                                            className="rounded-lg bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                                                        >
+                                                            <span className="font-medium">Ajuste registrado:</span>{' '}
+                                                            {formatBrl(entry.amount_before)} → {formatBrl(entry.amount_after)} ·{' '}
+                                                            {new Date(entry.created_at).toLocaleDateString('pt-BR')}
+                                                            <span className="mt-1 block">{entry.adjustment_note}</span>
+                                                        </p>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                d.adjustment_note && (
+                                                    <p className="mt-2 rounded-lg bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                                                        <span className="font-medium">Observação da equipe:</span> {d.adjustment_note}
+                                                    </p>
+                                                )
+                                            )}
+                                        </>
                                     )}
 
-                                    {disputeBadge && (
+                                    {d.entry_type === 'money' && disputeBadge && (
                                         <span
                                             className={`mt-3 inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
                                                 d.dispute_status === 'pending'
@@ -196,19 +254,37 @@ export default function MyDonations({ donations }: Props) {
                                         </span>
                                     )}
 
-                                    {d.dispute_message && (
+                                    {d.entry_type === 'money' && d.dispute_message && (
                                         <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
                                             <span className="font-medium">Sua mensagem:</span> {d.dispute_message}
                                         </p>
                                     )}
-                                    {d.dispute_resolution_note && (
+                                    {d.entry_type === 'money' && d.dispute_resolution_note && (
                                         <p className="mt-2 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-900 dark:bg-brand-950/40 dark:text-brand-100">
                                             <span className="font-medium">Resposta da equipe:</span> {d.dispute_resolution_note}
                                         </p>
                                     )}
 
+                                    {d.entry_type === 'item' && (
+                                        <span
+                                            className={`mt-3 inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                                d.status === 'received'
+                                                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
+                                                    : d.status === 'cancelled'
+                                                      ? 'bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
+                                                      : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200'
+                                            }`}
+                                        >
+                                            {d.status === 'received'
+                                                ? 'Recebido pela equipe'
+                                                : d.status === 'cancelled'
+                                                  ? 'Promessa cancelada'
+                                                  : 'Aguardando entrega'}
+                                        </span>
+                                    )}
+
                                     <ListCardActionRow className="mt-4">
-                                        {d.receipt_url && (
+                                        {d.entry_type === 'money' && d.receipt_url && (
                                             <a
                                                 href={d.receipt_url}
                                                 target="_blank"
@@ -218,7 +294,7 @@ export default function MyDonations({ donations }: Props) {
                                                 Ver comprovante
                                             </a>
                                         )}
-                                        {d.can_dispute && (
+                                        {d.entry_type === 'money' && d.can_dispute && (
                                             <ListCardTextActionButton
                                                 type="button"
                                                 icon={<ExclamationTriangleIcon className="h-4 w-4" />}

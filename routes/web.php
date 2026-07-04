@@ -8,6 +8,7 @@ use App\Http\Controllers\CharityCampaignController;
 use App\Http\Controllers\CharityCampaignMediaController;
 use App\Http\Controllers\CharityCampaignMobileController;
 use App\Http\Controllers\CharityDonationController;
+use App\Http\Controllers\CharityItemDonationController;
 use App\Http\Controllers\CharityTreasurerDashboardController;
 use App\Http\Controllers\ChurchController;
 use App\Http\Controllers\CommunicationRequestController;
@@ -682,6 +683,8 @@ Route::middleware('auth')->group(function () {
         ->name('mobile.donations.receipt');
     Route::post('/mobile/doacoes/{charityCampaign}/donate', [CharityCampaignMobileController::class, 'confirmDonation'])
         ->name('mobile.donations.donate');
+    Route::post('/mobile/doacoes/{charityCampaign}/itens/promessa', [CharityCampaignMobileController::class, 'pledgeItemDonation'])
+        ->name('mobile.donations.items.pledge');
     Route::get('/mobile/doacoes/minhas', [CharityCampaignMobileController::class, 'myDonations'])
         ->name('mobile.donations.my-donations');
     Route::post('/mobile/doacoes/minhas/{charityDonation}/reclamacao', [CharityCampaignMobileController::class, 'submitDispute'])
@@ -739,6 +742,15 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:donations.view|donations.manage|finance.view');
     Route::post('/doacoes/{charityCampaign}/registros/manual', [CharityDonationController::class, 'storeManual'])
         ->name('charity-campaigns.donations.manual')
+        ->middleware('permission:donations.manage|finance.view');
+    Route::patch('/doacoes/itens/{charityItemDonation}', [CharityItemDonationController::class, 'update'])
+        ->name('charity-campaigns.items.update')
+        ->middleware('permission:donations.manage|finance.view');
+    Route::post('/doacoes/itens/{charityItemDonation}/receber', [CharityItemDonationController::class, 'receive'])
+        ->name('charity-campaigns.items.receive')
+        ->middleware('permission:donations.manage|finance.view');
+    Route::post('/doacoes/itens/{charityItemDonation}/cancelar', [CharityItemDonationController::class, 'cancel'])
+        ->name('charity-campaigns.items.cancel')
         ->middleware('permission:donations.manage|finance.view');
     Route::patch('/doacoes/{charityCampaign}/historia', [CharityCampaignMediaController::class, 'updateStory'])
         ->name('charity-campaigns.story.update')

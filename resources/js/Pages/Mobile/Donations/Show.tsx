@@ -29,9 +29,15 @@ interface Campaign {
     id: number;
     title: string;
     description: string | null;
+    type: 'money' | 'items';
     goal_amount: number;
     raised_amount: number;
     remaining_amount: number;
+    goal_quantity: number | null;
+    pledged_quantity: number;
+    collected_quantity: number;
+    remaining_quantity: number;
+    unit_label: string | null;
     progress_percent: number;
     status: string;
     starts_at: string | null;
@@ -49,7 +55,12 @@ interface Campaign {
 
 interface RecentDonation {
     donor_name: string;
-    amount: number;
+    entry_type?: 'money' | 'item';
+    amount?: number;
+    item_description?: string;
+    quantity?: number;
+    unit_label?: string | null;
+    status?: string;
     confirmed_at: string;
 }
 
@@ -81,6 +92,10 @@ function donationLinkHost(url: string): string {
 
 function formatCampaignDate(value: string): string {
     return new Date(`${value}T12:00:00`).toLocaleDateString('pt-BR');
+}
+
+function formatQuantity(value: number, unitLabel?: string | null): string {
+    return unitLabel ? `${value} ${unitLabel}` : `${value}`;
 }
 
 function campaignStartsInFuture(startsAt: string | null): boolean {
@@ -119,13 +134,22 @@ export default function MobileDonationShow({ campaign, recentDonations, donation
         send_email_confirmation: false,
     });
 
+    const itemForm = useForm({
+        item_description: '',
+        quantity: '1',
+        notes: '',
+        is_anonymous: false,
+    });
+
     const pixKeyForOffer = pix.pix_key?.trim() || localOffer.pixKey;
     const donationHost = donationUrl ? donationLinkHost(donationUrl) : '';
-    const hasDonationUrl = Boolean(donationUrl);
+    const hasDonationUrl = campaign.type === 'money' && Boolean(donationUrl);
     const availabilityMessage = !campaign.accepting_donations
         ? campaign.status === 'active' && campaign.starts_at && campaignStartsInFuture(campaign.starts_at)
             ? `Esta campanha começa em ${formatCampaignDate(campaign.starts_at)}.`
-            : 'Esta campanha não está aceitando doações no momento.'
+            : campaign.type === 'items'
+              ? 'Esta campanha não está aceitando novas promessas no momento.'
+              : 'Esta campanha não está aceitando doações no momento.'
         : null;
 
     const generatePix = () => {
@@ -212,8 +236,19 @@ export default function MobileDonationShow({ campaign, recentDonations, donation
         });
     };
 
+    const submitItemPledge: FormEventHandler = (e) => {
+        e.preventDefault();
+        itemForm.post(route('mobile.donations.items.pledge', campaign.id), {
+            onSuccess: () => {
+                setDonateOpen(false);
+                itemForm.reset();
+            },
+        });
+    };
+
     const openDonateModal = () => {
         reset();
+        itemForm.reset();
         setConfirmStep(false);
         setReceiptPreview(null);
         setSuggestedAmount(null);
@@ -318,12 +353,29 @@ export default function MobileDonationShow({ campaign, recentDonations, donation
 
                 <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
                     <DonationProgressBar
-                        raisedAmount={campaign.raised_amount}
-                        goalAmount={campaign.goal_amount}
-                        remainingAmount={campaign.remaining_amount}
+                        raisedAmount={campaign.type === 'items' ? campaign.collected_quantity : campaign.raised_amount}
+                        goalAmount={campaign.type === 'items' ? campaign.goal_quantity ?? 0 : campaign.goal_amount}
+                        remainingAmount={campaign.type === 'items' ? campaign.remaining_quantity : campaign.remaining_amount}
                         progressPercent={campaign.progress_percent}
+                        valueMode={campaign.type === 'items' ? 'quantity' : 'currency'}
+                        unitLabel={campaign.unit_label}
+                        pendingAmount={campaign.type === 'items' ? Math.max(0, campaign.pledged_quantity - campaign.collected_quantity) : null}
                     />
                 </div>
+
+                {campaign.type === 'items' && (
+                    <section className="rounded-2xl border border-sky-200 bg-sky-50/80 p-4 dark:border-sky-900/40 dark:bg-sky-950/30">
+                        <h2 className="font-semibold text-zinc-900 dark:text-white">Como funciona a doação de objetos</h2>
+                        <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">
+                            Registre aqui o item e a quantidade que você pretende doar. Quando a entrega acontecer, a equipe
+                            confirma o recebimento e o progresso da campanha é atualizado.
+                        </p>
+                        <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-400">
+                            Prometidos: {formatQuantity(campaign.pledged_quantity, campaign.unit_label)} · Recebidos:{' '}
+                            {formatQuantity(campaign.collected_quantity, campaign.unit_label)}
+                        </p>
+                    </section>
+                )}
 
                 {availabilityMessage && (
                     <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
@@ -333,9 +385,9 @@ export default function MobileDonationShow({ campaign, recentDonations, donation
 
                 {campaign.accepting_donations && (
                     <>
-                        <DonationTransparencyNotice info={transparency} variant="compact" />
+                        {campaign.type === 'money' && <DonationTransparencyNotice info={transparency} variant="compact" />}
                         <PrimaryButton type="button" onClick={openDonateModal} className="w-full">
-                            Fazer doação
+                            {campaign.type === 'items' ? 'Registrar promessa de doação' : 'Fazer doação'}
                         </PrimaryButton>
                     </>
                 )}
@@ -365,7 +417,7 @@ export default function MobileDonationShow({ campaign, recentDonations, donation
                     </section>
                 )}
 
-                {hasDonationUrl && donationUrl && (
+                {campaign.type === 'money' && hasDonationUrl && donationUrl && (
                     <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
                         <div className="border-b border-zinc-100 bg-zinc-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-900/80 sm:p-5">
                             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -405,7 +457,8 @@ export default function MobileDonationShow({ campaign, recentDonations, donation
                     </section>
                 )}
 
-                <div className="rounded-2xl border border-brand-200/90 bg-gradient-to-br from-brand-50 to-white p-4 dark:border-brand-900/55 dark:from-brand-950/45 dark:to-zinc-900">
+                {campaign.type === 'money' && (
+                    <div className="rounded-2xl border border-brand-200/90 bg-gradient-to-br from-brand-50 to-white p-4 dark:border-brand-900/55 dark:from-brand-950/45 dark:to-zinc-900">
                     <h2 className="mb-2 flex items-center gap-2 font-semibold text-zinc-900 dark:text-white">
                         <BoltIcon className="h-5 w-5 text-brand-600" />
                         PIX para doação
@@ -456,17 +509,29 @@ export default function MobileDonationShow({ campaign, recentDonations, donation
                             </div>
                         )}
                     </div>
-                </div>
+                    </div>
+                )}
 
                 {recentDonations.length > 0 && (
                     <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-                        <h2 className="mb-3 font-semibold text-zinc-900 dark:text-white">Doações recentes</h2>
+                        <h2 className="mb-3 font-semibold text-zinc-900 dark:text-white">
+                            {campaign.type === 'items' ? 'Promessas recentes' : 'Doações recentes'}
+                        </h2>
                         <ul className="space-y-2">
                             {recentDonations.map((d, i) => (
                                 <li key={`${d.confirmed_at}-${i}`} className="flex items-center justify-between text-sm">
-                                    <span className="text-zinc-700 dark:text-zinc-300">{d.donor_name}</span>
+                                    <span className="text-zinc-700 dark:text-zinc-300">
+                                        {d.donor_name}
+                                        {d.item_description ? (
+                                            <span className="mt-0.5 block text-xs text-zinc-500 dark:text-zinc-400">
+                                                {d.item_description}
+                                            </span>
+                                        ) : null}
+                                    </span>
                                     <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                                        {d.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                        {d.entry_type === 'item' && d.quantity !== undefined
+                                            ? formatQuantity(d.quantity, d.unit_label)
+                                            : (d.amount ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                     </span>
                                 </li>
                             ))}
@@ -476,118 +541,185 @@ export default function MobileDonationShow({ campaign, recentDonations, donation
             </div>
 
             <Modal show={donateOpen} onClose={() => setDonateOpen(false)} maxWidth="md">
-                <form onSubmit={submitDonation} className="space-y-4 p-6">
-                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Confirmar doação</h3>
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                        1. Faça o PIX · 2. Envie o comprovante · 3. Confirme o valor
-                    </p>
+                {campaign.type === 'money' ? (
+                    <form onSubmit={submitDonation} className="space-y-4 p-6">
+                        <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Confirmar doação</h3>
+                        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                            1. Faça o PIX · 2. Envie o comprovante · 3. Confirme o valor
+                        </p>
 
-                    {!confirmStep ? (
-                        <div className="space-y-3">
-                            <DonationTransparencyNotice info={transparency} variant="compact" />
-                            <InputLabel value="Comprovante (foto)" />
-                            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                Envie uma foto nítida do comprovante PIX. Ela será guardada apenas para conferência pela
-                                equipe financeira — não aparece publicamente no app.
-                            </p>
-                            <input
-                                type="file"
-                                accept={GALLERY_IMAGE_ACCEPT}
-                                disabled={uploading}
-                                onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) void handleReceiptUpload(file);
-                                }}
-                                className="block w-full text-sm"
-                            />
-                            {uploading && <p className="text-sm text-zinc-500">Lendo comprovante...</p>}
-                            {uploadError && <p className="text-sm text-red-600">{uploadError}</p>}
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            <DonationTransparencyNotice
-                                info={transparency}
-                                isAnonymous={data.is_anonymous}
-                                sendEmailConfirmation={data.send_email_confirmation}
-                            />
-                            {receiptPreview && (
-                                <img src={receiptPreview} alt="Comprovante" className="max-h-48 rounded-xl border object-contain" />
-                            )}
-                            {suggestedAmount !== null ? (
-                                <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                                    Valor detectado no comprovante:{' '}
-                                    <strong className="text-zinc-900 dark:text-white">
-                                        {suggestedAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                    </strong>
-                                    . Confirme ou ajuste abaixo.
+                        {!confirmStep ? (
+                            <div className="space-y-3">
+                                <DonationTransparencyNotice info={transparency} variant="compact" />
+                                <InputLabel value="Comprovante (foto)" />
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                    Envie uma foto nítida do comprovante PIX. Ela será guardada apenas para conferência pela
+                                    equipe financeira — não aparece publicamente no app.
                                 </p>
-                            ) : (
-                                <p className="text-sm text-amber-700 dark:text-amber-300">
-                                    Não foi possível ler o valor automaticamente. Informe o valor manualmente.
-                                </p>
-                            )}
-                            <div>
-                                <InputLabel htmlFor="donation_amount" value="Valor da doação (R$)" />
-                                <TextInput
-                                    id="donation_amount"
-                                    type="number"
-                                    step="0.01"
-                                    min="0.01"
-                                    value={data.amount}
-                                    onChange={(e) => setData('amount', e.target.value)}
-                                    className="mt-1 w-full"
-                                    required
+                                <input
+                                    type="file"
+                                    accept={GALLERY_IMAGE_ACCEPT}
+                                    disabled={uploading}
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) void handleReceiptUpload(file);
+                                    }}
+                                    className="block w-full text-sm"
                                 />
-                                <InputError message={errors.amount} />
+                                {uploading && <p className="text-sm text-zinc-500">Lendo comprovante...</p>}
+                                {uploadError && <p className="text-sm text-red-600">{uploadError}</p>}
                             </div>
-                            <div className="space-y-1">
-                                <label className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-                                    <input
-                                        type="checkbox"
-                                        className="mt-0.5"
-                                        checked={data.is_anonymous}
-                                        onChange={(e) => setData('is_anonymous', e.target.checked)}
+                        ) : (
+                            <div className="space-y-4">
+                                <DonationTransparencyNotice
+                                    info={transparency}
+                                    isAnonymous={data.is_anonymous}
+                                    sendEmailConfirmation={data.send_email_confirmation}
+                                />
+                                {receiptPreview && (
+                                    <img src={receiptPreview} alt="Comprovante" className="max-h-48 rounded-xl border object-contain" />
+                                )}
+                                {suggestedAmount !== null ? (
+                                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                                        Valor detectado no comprovante:{' '}
+                                        <strong className="text-zinc-900 dark:text-white">
+                                            {suggestedAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                        </strong>
+                                        . Confirme ou ajuste abaixo.
+                                    </p>
+                                ) : (
+                                    <p className="text-sm text-amber-700 dark:text-amber-300">
+                                        Não foi possível ler o valor automaticamente. Informe o valor manualmente.
+                                    </p>
+                                )}
+                                <div>
+                                    <InputLabel htmlFor="donation_amount" value="Valor da doação (R$)" />
+                                    <TextInput
+                                        id="donation_amount"
+                                        type="number"
+                                        step="0.01"
+                                        min="0.01"
+                                        value={data.amount}
+                                        onChange={(e) => setData('amount', e.target.value)}
+                                        className="mt-1 w-full"
+                                        required
                                     />
-                                    <span>
-                                        <span className="font-medium">Não exibir meu nome na lista pública</span>
-                                        <span className="mt-0.5 block text-xs text-zinc-500 dark:text-zinc-400">
-                                            Aparecerá como «Anônimo» na campanha. A equipe financeira ainda identifica
-                                            sua doação internamente.
-                                        </span>
-                                    </span>
-                                </label>
-                            </div>
-                            {transparency.donor_email && (
+                                    <InputError message={errors.amount} />
+                                </div>
                                 <div className="space-y-1">
                                     <label className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
                                         <input
                                             type="checkbox"
                                             className="mt-0.5"
-                                            checked={data.send_email_confirmation}
-                                            onChange={(e) => setData('send_email_confirmation', e.target.checked)}
+                                            checked={data.is_anonymous}
+                                            onChange={(e) => setData('is_anonymous', e.target.checked)}
                                         />
                                         <span>
-                                            <span className="font-medium">Quero receber confirmação por e-mail</span>
+                                            <span className="font-medium">Não exibir meu nome na lista pública</span>
                                             <span className="mt-0.5 block text-xs text-zinc-500 dark:text-zinc-400">
-                                                Enviaremos um resumo para{' '}
-                                                <span className="font-medium text-zinc-700 dark:text-zinc-300">
-                                                    {transparency.donor_email}
-                                                </span>{' '}
-                                                somente se você marcar esta opção.
+                                                Aparecerá como «Anônimo» na campanha. A equipe financeira ainda identifica
+                                                sua doação internamente.
                                             </span>
                                         </span>
                                     </label>
                                 </div>
-                            )}
-                            <div className="flex justify-end gap-2">
-                                <SecondaryButton type="button" onClick={() => setConfirmStep(false)}>
-                                    Trocar comprovante
-                                </SecondaryButton>
-                                <PrimaryButton disabled={processing}>Confirmar doação</PrimaryButton>
+                                {transparency.donor_email && (
+                                    <div className="space-y-1">
+                                        <label className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                                            <input
+                                                type="checkbox"
+                                                className="mt-0.5"
+                                                checked={data.send_email_confirmation}
+                                                onChange={(e) => setData('send_email_confirmation', e.target.checked)}
+                                            />
+                                            <span>
+                                                <span className="font-medium">Quero receber confirmação por e-mail</span>
+                                                <span className="mt-0.5 block text-xs text-zinc-500 dark:text-zinc-400">
+                                                    Enviaremos um resumo para{' '}
+                                                    <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                                                        {transparency.donor_email}
+                                                    </span>{' '}
+                                                    somente se você marcar esta opção.
+                                                </span>
+                                            </span>
+                                        </label>
+                                    </div>
+                                )}
+                                <div className="flex justify-end gap-2">
+                                    <SecondaryButton type="button" onClick={() => setConfirmStep(false)}>
+                                        Trocar comprovante
+                                    </SecondaryButton>
+                                    <PrimaryButton disabled={processing}>Confirmar doação</PrimaryButton>
+                                </div>
                             </div>
+                        )}
+                    </form>
+                ) : (
+                    <form onSubmit={submitItemPledge} className="space-y-4 p-6">
+                        <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Registrar promessa de doação</h3>
+                        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                            Conte qual item você pretende entregar e em qual quantidade. A equipe confirmará depois o recebimento.
+                        </p>
+                        <div>
+                            <InputLabel htmlFor="item_description" value="Item que você vai doar" />
+                            <TextInput
+                                id="item_description"
+                                value={itemForm.data.item_description}
+                                onChange={(e) => itemForm.setData('item_description', e.target.value)}
+                                className="mt-1 w-full"
+                                placeholder={campaign.title}
+                                required
+                            />
+                            <InputError message={itemForm.errors.item_description} />
                         </div>
-                    )}
-                </form>
+                        <div>
+                            <InputLabel htmlFor="item_quantity" value={`Quantidade${campaign.unit_label ? ` (${campaign.unit_label})` : ''}`} />
+                            <TextInput
+                                id="item_quantity"
+                                type="number"
+                                min="1"
+                                step="1"
+                                value={itemForm.data.quantity}
+                                onChange={(e) => itemForm.setData('quantity', e.target.value)}
+                                className="mt-1 w-full"
+                                required
+                            />
+                            <InputError message={itemForm.errors.quantity} />
+                        </div>
+                        <div>
+                            <InputLabel htmlFor="item_notes" value="Observações (opcional)" />
+                            <textarea
+                                id="item_notes"
+                                value={itemForm.data.notes}
+                                onChange={(e) => itemForm.setData('notes', e.target.value)}
+                                rows={4}
+                                className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-white"
+                                placeholder="Ex.: consigo entregar no sábado à tarde."
+                            />
+                            <InputError message={itemForm.errors.notes} />
+                        </div>
+                        <label className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                            <input
+                                type="checkbox"
+                                className="mt-0.5"
+                                checked={itemForm.data.is_anonymous}
+                                onChange={(e) => itemForm.setData('is_anonymous', e.target.checked)}
+                            />
+                            <span>
+                                <span className="font-medium">Não exibir meu nome na lista pública</span>
+                                <span className="mt-0.5 block text-xs text-zinc-500 dark:text-zinc-400">
+                                    Sua promessa pode aparecer como «Anônimo» para outras pessoas, mas a equipe verá quem fará a entrega.
+                                </span>
+                            </span>
+                        </label>
+                        <div className="flex justify-end gap-2">
+                            <SecondaryButton type="button" onClick={() => setDonateOpen(false)}>
+                                Cancelar
+                            </SecondaryButton>
+                            <PrimaryButton disabled={itemForm.processing}>Registrar promessa</PrimaryButton>
+                        </div>
+                    </form>
+                )}
             </Modal>
 
             {lightboxUrl && (

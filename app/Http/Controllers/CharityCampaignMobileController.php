@@ -6,8 +6,10 @@ use App\Actions\Donations\NotifyDonorOfCharityDonation;
 use App\Actions\Donations\NotifyTreasurerOfCharityDonation;
 use App\Models\CharityCampaign;
 use App\Models\CharityDonation;
+use App\Models\CharityItemDonation;
 use App\Models\Church;
 use App\Services\CharityDonationNotifier;
+use App\Services\CharityItemDonationNotifier;
 use App\Services\ReceiptOcrService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -58,18 +60,37 @@ class CharityCampaignMobileController extends Controller
         $church = $charityCampaign->church;
         $user = $request->user();
         $treasurerEmail = trim((string) ($church?->treasurer_notification_email ?? ''));
-        $donationUrl = $church?->donation_url ?: 'https://giving.7me.app/guest-donation/church/96ccdd6e-f537-49be-88dd-ffc112442cd9';
+        $donationUrl = $charityCampaign->isMoneyCampaign()
+            ? ($church?->donation_url ?: 'https://giving.7me.app/guest-donation/church/96ccdd6e-f537-49be-88dd-ffc112442cd9')
+            : null;
 
-        $recentDonations = $charityCampaign->donations()
-            ->with('user:id,name')
-            ->orderByDesc('confirmed_at')
-            ->limit(10)
-            ->get()
-            ->map(fn (CharityDonation $d) => [
-                'donor_name' => $d->donorDisplayName(),
-                'amount' => (float) $d->amount,
-                'confirmed_at' => $d->confirmed_at->toIso8601String(),
-            ]);
+        $recentDonations = $charityCampaign->isItemCampaign()
+            ? $charityCampaign->itemDonations()
+                ->with('user:id,name')
+                ->whereIn('status', [CharityItemDonation::STATUS_PLEDGED, CharityItemDonation::STATUS_RECEIVED])
+                ->orderByDesc('pledged_at')
+                ->limit(10)
+                ->get()
+                ->map(fn (CharityItemDonation $d) => [
+                    'entry_type' => 'item',
+                    'donor_name' => $d->donorDisplayName(),
+                    'item_description' => $d->item_description,
+                    'quantity' => $d->quantity,
+                    'unit_label' => $d->unit_label ?: $charityCampaign->unit_label,
+                    'status' => $d->status,
+                    'confirmed_at' => ($d->received_at ?? $d->pledged_at)?->toIso8601String(),
+                ])
+            : $charityCampaign->donations()
+                ->with('user:id,name')
+                ->orderByDesc('confirmed_at')
+                ->limit(10)
+                ->get()
+                ->map(fn (CharityDonation $d) => [
+                    'entry_type' => 'money',
+                    'donor_name' => $d->donorDisplayName(),
+                    'amount' => (float) $d->amount,
+                    'confirmed_at' => $d->confirmed_at->toIso8601String(),
+                ]);
 
         return Inertia::render('Mobile/Donations/Show', [
             'campaign' => $charityCampaign->toMobileArray(true),
@@ -95,6 +116,10 @@ class CharityCampaignMobileController extends Controller
 
     public function uploadReceipt(Request $request, CharityCampaign $charityCampaign, ReceiptOcrService $ocr): JsonResponse
     {
+        if ($charityCampaign->isItemCampaign()) {
+            return response()->json(['message' => 'Campanhas de objetos não usam comprovante PIX.'], 422);
+        }
+
         if (! $charityCampaign->isAcceptingDonations()) {
             return response()->json(['message' => 'Esta campanha não está aceitando doações no momento.'], 422);
         }
@@ -132,6 +157,10 @@ class CharityCampaignMobileController extends Controller
 
     public function confirmDonation(Request $request, CharityCampaign $charityCampaign): RedirectResponse
     {
+        if ($charityCampaign->isItemCampaign()) {
+            return redirect()->back()->with('error', 'Esta campanha recebe objetos. Registre a promessa do item em vez de enviar comprovante.');
+        }
+
         if (! $charityCampaign->isAcceptingDonations()) {
             return redirect()->back()->with('error', 'Esta campanha não está aceitando doações no momento.');
         }
@@ -191,9 +220,54 @@ class CharityCampaignMobileController extends Controller
             ->with('success', 'Doação registrada com sucesso! Obrigado pela contribuição. Você pode acompanhar em Minhas doações.');
     }
 
+    public function pledgeItemDonation(Request $request, CharityCampaign $charityCampaign): RedirectResponse
+    {
+        if (! $charityCampaign->isItemCampaign()) {
+            return redirect()->back()->with('error', 'Esta campanha recebe doações financeiras.');
+        }
+
+        if (! $charityCampaign->isAcceptingDonations()) {
+            return redirect()->back()->with('error', 'Esta campanha não está aceitando doações no momento.');
+        }
+
+        $data = $request->validate([
+            'item_description' => ['required', 'string', 'max:255'],
+            'quantity' => ['required', 'integer', 'min:1', 'max:999999'],
+            'notes' => ['nullable', 'string', 'max:2000'],
+            'is_anonymous' => ['boolean'],
+        ]);
+
+        $pledge = DB::transaction(function () use ($request, $charityCampaign, $data) {
+            $campaign = CharityCampaign::query()->lockForUpdate()->findOrFail($charityCampaign->id);
+
+            $pledge = CharityItemDonation::create([
+                'campaign_id' => $campaign->id,
+                'source' => CharityItemDonation::SOURCE_APP,
+                'user_id' => $request->user()->id,
+                'item_description' => trim($data['item_description']),
+                'quantity' => (int) $data['quantity'],
+                'unit_label' => $campaign->unit_label,
+                'notes' => $data['notes'] ?? null,
+                'status' => CharityItemDonation::STATUS_PLEDGED,
+                'is_anonymous' => $request->boolean('is_anonymous'),
+                'pledged_at' => now(),
+            ]);
+
+            $campaign->recalculateItemProgress();
+
+            return $pledge;
+        });
+
+        app(CharityItemDonationNotifier::class)->notifyStakeholdersOfNewPledge($pledge);
+
+        return redirect()
+            ->route('mobile.donations.show', $charityCampaign)
+            ->with('success', 'Promessa de doação registrada com sucesso! A equipe confirmará o recebimento quando o item for entregue.');
+    }
+
     public function myDonations(Request $request): Response
     {
-        $donations = CharityDonation::query()
+        $moneyDonations = CharityDonation::query()
             ->with([
                 'campaign:id,title',
                 'adjustments' => fn ($q) => $q->orderByDesc('created_at'),
@@ -201,7 +275,28 @@ class CharityCampaignMobileController extends Controller
             ->where('user_id', $request->user()->id)
             ->orderByDesc('confirmed_at')
             ->get()
-            ->map(fn (CharityDonation $d) => $d->toMobileArray());
+            ->map(fn (CharityDonation $d) => array_merge($d->toMobileArray(), [
+                'sort_at' => $d->confirmed_at?->timestamp ?? 0,
+            ]));
+
+        $itemDonations = CharityItemDonation::query()
+            ->with('campaign:id,title,unit_label')
+            ->where('user_id', $request->user()->id)
+            ->orderByDesc('pledged_at')
+            ->get()
+            ->map(fn (CharityItemDonation $d) => array_merge($d->toMobileArray(), [
+                'sort_at' => ($d->received_at ?? $d->pledged_at)?->timestamp ?? 0,
+            ]));
+
+        $donations = $moneyDonations
+            ->concat($itemDonations)
+            ->sortByDesc('sort_at')
+            ->values()
+            ->map(function (array $entry) {
+                unset($entry['sort_at']);
+
+                return $entry;
+            });
 
         return Inertia::render('Mobile/Donations/MyDonations', [
             'donations' => $donations,

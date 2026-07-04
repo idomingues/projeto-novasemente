@@ -29,9 +29,20 @@ interface Campaign {
     id: number;
     title: string;
     description: string | null;
+    type: 'money' | 'items';
+    progress_mode: 'money' | 'quantity';
     goal_amount: number;
     raised_amount: number;
     remaining_amount: number;
+    goal_quantity: number | null;
+    pledged_quantity: number;
+    collected_quantity: number;
+    remaining_quantity: number;
+    unit_label: string | null;
+    progress_value: number;
+    progress_goal: number;
+    progress_remaining: number;
+    progress_pending: number | null;
     progress_percent: number;
     status: string;
     starts_at: string | null;
@@ -50,6 +61,7 @@ interface Campaign {
 
 interface DonationRow {
     id: number;
+    entry_type: 'money' | 'item';
     donor_name: string;
     amount: number;
     source?: string;
@@ -69,6 +81,22 @@ interface DonationRow {
         adjusted_by_name: string | null;
         created_at: string;
     }[];
+    item_description?: string;
+    quantity?: number;
+    quantity_before_adjustment?: number | null;
+    quantity_label?: string;
+    unit_label?: string | null;
+    status?: string;
+    notes?: string | null;
+    staff_note?: string | null;
+    adjusted_by_name?: string | null;
+    adjusted_at?: string | null;
+    pledged_at?: string | null;
+    received_at?: string | null;
+    received_by_name?: string | null;
+    evidence_photo_url?: string | null;
+    can_mark_received?: boolean;
+    can_cancel?: boolean;
 }
 
 interface Props {
@@ -82,6 +110,11 @@ const statusLabels: Record<string, string> = {
     active: 'Ativa',
     closed: 'Encerrada',
     archived: 'Arquivada',
+};
+
+const campaignTypeLabels: Record<Campaign['type'], string> = {
+    money: 'Financeira',
+    items: 'Objetos',
 };
 
 export default function DonationsIndex({ campaigns, canManage, canManageMedia, canManageDonations = canManageMedia }: Props) {
@@ -98,9 +131,12 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
     const thanksPhotosInputRef = useRef<HTMLInputElement | null>(null);
 
     const { data, setData, post, put, processing, errors, reset, clearErrors, transform } = useForm({
+        type: 'money' as Campaign['type'],
         title: '',
         description: '',
         goal_amount: '',
+        goal_quantity: '',
+        unit_label: '',
         starts_at: '',
         ends_at: '',
         status: 'active',
@@ -143,9 +179,17 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
         return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
+    function formatQuantity(value: number, unitLabel?: string | null): string {
+        return unitLabel ? `${value} ${unitLabel}` : `${value}`;
+    }
+
     function normalizeMoneyFieldValue(raw: string): string {
         const parsed = parseMoneyInput(raw);
         return parsed === null ? raw.trim() : parsed.toFixed(2);
+    }
+
+    function isItemCampaign(campaign: Campaign | null | undefined): campaign is Campaign {
+        return Boolean(campaign && campaign.type === 'items');
     }
 
     const fetchDonations = async (campaignId: number) => {
@@ -178,9 +222,12 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
         reset();
         clearErrors();
         setData({
+            type: 'money',
             title: '',
             description: '',
             goal_amount: '',
+            goal_quantity: '',
+            unit_label: '',
             starts_at: '',
             ends_at: '',
             status: 'active',
@@ -194,9 +241,12 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
         setIsEditing(true);
         setEditingId(campaign.id);
         setData({
+            type: campaign.type,
             title: campaign.title,
             description: campaign.description ?? '',
-            goal_amount: formatMoneyFieldValue(campaign.goal_amount),
+            goal_amount: campaign.type === 'money' ? formatMoneyFieldValue(campaign.goal_amount) : '',
+            goal_quantity: campaign.type === 'items' && campaign.goal_quantity !== null ? String(campaign.goal_quantity) : '',
+            unit_label: campaign.unit_label ?? '',
             starts_at: campaign.starts_at ?? '',
             ends_at: campaign.ends_at ?? '',
             status: campaign.status,
@@ -217,7 +267,7 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
         e.preventDefault();
         transform((current) => ({
             ...current,
-            goal_amount: normalizeMoneyFieldValue(current.goal_amount),
+            goal_amount: current.type === 'money' ? normalizeMoneyFieldValue(current.goal_amount) : '',
         }));
         if (isEditing && editingId) {
             put(route('charity-campaigns.update', editingId), { ...inertiaListModalSave, forceFormData: true,
@@ -344,6 +394,7 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
     };
 
     const campaignIsClosed = mediaCampaign?.status === 'closed' || mediaCampaign?.status === 'archived';
+    const detailIsItemCampaign = isItemCampaign(detailCampaign);
 
     return (
         <AdminLayout>
@@ -384,18 +435,24 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
                                         <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
                                             {statusLabels[campaign.status] ?? campaign.status}
                                         </span>
+                                        <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-700 dark:bg-brand-950/40 dark:text-brand-200">
+                                            {campaignTypeLabels[campaign.type]}
+                                        </span>
                                     </div>
                                     {campaign.description && (
                                         <p className="text-sm text-zinc-600 dark:text-zinc-400 line-clamp-2">{campaign.description}</p>
                                     )}
                                     <DonationProgressBar
-                                        raisedAmount={campaign.raised_amount}
-                                        goalAmount={campaign.goal_amount}
-                                        remainingAmount={campaign.remaining_amount}
+                                        raisedAmount={campaign.type === 'items' ? campaign.collected_quantity : campaign.raised_amount}
+                                        goalAmount={campaign.type === 'items' ? campaign.goal_quantity ?? 0 : campaign.goal_amount}
+                                        remainingAmount={campaign.type === 'items' ? campaign.remaining_quantity : campaign.remaining_amount}
                                         progressPercent={campaign.progress_percent}
+                                        valueMode={campaign.type === 'items' ? 'quantity' : 'currency'}
+                                        unitLabel={campaign.unit_label}
+                                        pendingAmount={campaign.type === 'items' ? campaign.progress_pending : null}
                                     />
                                     <p className="text-xs text-zinc-500">
-                                        {campaign.donations_count} doação(ões)
+                                        {campaign.donations_count} {campaign.type === 'items' ? 'promessa(s)' : 'doação(ões)'}
                                         {campaign.story_photos.length > 0 ? ` · ${campaign.story_photos.length} foto(s) do projeto` : ''}
                                         {campaign.starts_at ? ` · Início: ${formatCampaignDate(campaign.starts_at)}` : ''}
                                         {campaign.ends_at ? ` · Prazo: ${formatCampaignDate(campaign.ends_at)}` : ''}
@@ -415,7 +472,7 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
                                     icon={<EyeIcon className="h-4 w-4" />}
                                     onClick={() => openDonations(campaign)}
                                 >
-                                    Doações
+                                    Registros
                                 </ListCardTextActionButton>
                                 {canManageMedia && (
                                     <ListCardTextActionButton
@@ -453,6 +510,19 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
                         {isEditing ? 'Editar campanha' : 'Nova campanha'}
                     </h3>
                     <div>
+                        <InputLabel htmlFor="type" value="Tipo de campanha" />
+                        <select
+                            id="type"
+                            value={data.type}
+                            onChange={(e) => setData('type', e.target.value as Campaign['type'])}
+                            className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-white"
+                        >
+                            <option value="money">Financeira</option>
+                            <option value="items">Objetos</option>
+                        </select>
+                        <InputError message={errors.type} className="mt-1" />
+                    </div>
+                    <div>
                         <InputLabel htmlFor="title" value="Título" />
                         <TextInput id="title" value={data.title} onChange={(e) => setData('title', e.target.value)} className="mt-1 w-full" required />
                         <InputError message={errors.title} className="mt-1" />
@@ -469,26 +539,57 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
                         <InputError message={errors.description} className="mt-1" />
                     </div>
                     <div className="grid gap-4 sm:grid-cols-3">
-                        <div>
-                            <InputLabel htmlFor="goal_amount" value="Meta (R$)" />
-                            <TextInput
-                                id="goal_amount"
-                                type="text"
-                                inputMode="decimal"
-                                placeholder="Ex.: 4.733.262,14"
-                                value={data.goal_amount}
-                                onChange={(e) => setData('goal_amount', e.target.value)}
-                                onBlur={() => {
-                                    const parsed = parseMoneyInput(data.goal_amount);
-                                    if (parsed !== null) {
-                                        setData('goal_amount', formatMoneyFieldValue(parsed));
-                                    }
-                                }}
-                                className="mt-1 w-full"
-                                required
-                            />
-                            <InputError message={errors.goal_amount} className="mt-1" />
-                        </div>
+                        {data.type === 'money' ? (
+                            <div>
+                                <InputLabel htmlFor="goal_amount" value="Meta (R$)" />
+                                <TextInput
+                                    id="goal_amount"
+                                    type="text"
+                                    inputMode="decimal"
+                                    placeholder="Ex.: 4.733.262,14"
+                                    value={data.goal_amount}
+                                    onChange={(e) => setData('goal_amount', e.target.value)}
+                                    onBlur={() => {
+                                        const parsed = parseMoneyInput(data.goal_amount);
+                                        if (parsed !== null) {
+                                            setData('goal_amount', formatMoneyFieldValue(parsed));
+                                        }
+                                    }}
+                                    className="mt-1 w-full"
+                                    required
+                                />
+                                <InputError message={errors.goal_amount} className="mt-1" />
+                            </div>
+                        ) : (
+                            <>
+                                <div>
+                                    <InputLabel htmlFor="goal_quantity" value="Meta de itens" />
+                                    <TextInput
+                                        id="goal_quantity"
+                                        type="number"
+                                        min="1"
+                                        step="1"
+                                        value={data.goal_quantity}
+                                        onChange={(e) => setData('goal_quantity', e.target.value)}
+                                        className="mt-1 w-full"
+                                        required
+                                    />
+                                    <InputError message={errors.goal_quantity} className="mt-1" />
+                                </div>
+                                <div>
+                                    <InputLabel htmlFor="unit_label" value="Unidade" />
+                                    <TextInput
+                                        id="unit_label"
+                                        value={data.unit_label}
+                                        onChange={(e) => setData('unit_label', e.target.value)}
+                                        className="mt-1 w-full"
+                                        placeholder="Ex.: monitores, cestas, cobertores"
+                                        required
+                                    />
+                                    <InputError message={errors.unit_label} className="mt-1" />
+                                </div>
+                            </>
+                        )}
                         <div>
                             <InputLabel htmlFor="starts_at" value="Data de início" />
                             <TextInput
@@ -527,14 +628,16 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
                         </select>
                         <InputError message={errors.status} className="mt-1" />
                     </div>
-                    <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-                        <input
-                            type="checkbox"
-                            checked={data.allow_over_goal}
-                            onChange={(e) => setData('allow_over_goal', e.target.checked)}
-                        />
-                        Permitir doações acima da meta
-                    </label>
+                    {data.type === 'money' && (
+                        <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                            <input
+                                type="checkbox"
+                                checked={data.allow_over_goal}
+                                onChange={(e) => setData('allow_over_goal', e.target.checked)}
+                            />
+                            Permitir doações acima da meta
+                        </label>
+                    )}
                     <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/80 p-4 dark:border-zinc-600 dark:bg-zinc-800/40">
                         <InputLabel htmlFor="cover_image" value="Imagem de capa (opcional)" />
                         <p
@@ -582,9 +685,9 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
                 <div className="p-6">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
-                            Doações — {detailCampaign?.title}
+                            {detailIsItemCampaign ? 'Promessas e entregas' : 'Doações'} — {detailCampaign?.title}
                         </h3>
-                        {canManageDonations && detailCampaign?.status !== 'archived' && (
+                        {canManageDonations && detailCampaign?.status !== 'archived' && !detailIsItemCampaign && (
                             <SecondaryButton type="button" onClick={openManualDonation}>
                                 <PlusIcon className="mr-1.5 h-4 w-4" />
                                 Registrar doação manual
@@ -595,75 +698,131 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
                         <p className="mt-4 text-sm text-zinc-500">Carregando...</p>
                     ) : detailDonations.length === 0 ? (
                         <p className="mt-4 text-sm text-zinc-500">
-                            Nenhuma doação registrada ainda.
-                            {canManageDonations && detailCampaign?.status !== 'archived' && (
+                            {detailIsItemCampaign ? 'Nenhuma promessa registrada ainda.' : 'Nenhuma doação registrada ainda.'}
+                            {canManageDonations && detailCampaign?.status !== 'archived' && !detailIsItemCampaign && (
                                 <span> Use «Registrar doação manual» para incluir valores recebidos fora do app.</span>
                             )}
                         </p>
                     ) : (
                         <div className="mt-4 max-h-96 overflow-y-auto">
-                            <table className="min-w-full text-sm">
-                                <thead>
-                                    <tr className="border-b border-zinc-200 text-left text-zinc-500 dark:border-zinc-700">
-                                        <th className="py-2 pr-3">Doador</th>
-                                        <th className="py-2 pr-3">Valor</th>
-                                        <th className="py-2 pr-3">Data</th>
-                                        <th className="py-2 pr-3">Comprovante</th>
-                                        {canManageDonations && <th className="py-2">Ações</th>}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {detailDonations.map((d) => (
-                                        <tr key={d.id} className="border-b border-zinc-100 dark:border-zinc-800">
-                                            <td className="py-2 pr-3">
-                                                <span>{d.donor_name}</span>
-                                                {d.is_manual && (
-                                                    <span className="ml-1.5 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                                                        Manual
-                                                    </span>
-                                                )}
-                                                {d.manual_registration_note && (
-                                                    <span className="mt-0.5 block text-xs text-zinc-500 line-clamp-2" title={d.manual_registration_note}>
-                                                        {d.manual_registration_note}
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="py-2 pr-3">
-                                                <span className="font-medium">{formatBrl(d.amount)}</span>
-                                                {d.amount_before_adjustment !== null && (
-                                                    <span className="block text-xs text-zinc-500">
-                                                        Antes: {formatBrl(d.amount_before_adjustment)}
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="py-2 pr-3">
-                                                {new Date(d.confirmed_at).toLocaleString('pt-BR')}
-                                            </td>
-                                            <td className="py-2 pr-3">
-                                                {d.receipt_url ? (
-                                                    <a href={d.receipt_url} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:underline">
-                                                        Ver
-                                                    </a>
-                                                ) : (
-                                                    <span className="text-zinc-400">—</span>
-                                                )}
-                                            </td>
-                                            {canManageDonations && (
-                                                <td className="py-2">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => openAdjust(d)}
-                                                        className="inline-flex items-center text-xs font-medium text-zinc-700 hover:text-zinc-900 dark:text-zinc-300"
-                                                    >
-                                                        <PencilSquareIcon className="mr-1 h-3.5 w-3.5" />
-                                                        Ajustar valor
-                                                    </button>
-                                                </td>
-                                            )}
+                            {detailIsItemCampaign ? (
+                                <table className="min-w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b border-zinc-200 text-left text-zinc-500 dark:border-zinc-700">
+                                            <th className="py-2 pr-3">Doador</th>
+                                            <th className="py-2 pr-3">Item</th>
+                                            <th className="py-2 pr-3">Quantidade</th>
+                                            <th className="py-2 pr-3">Status</th>
+                                            <th className="py-2 pr-3">Data</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        {detailDonations.map((d) => (
+                                            <tr key={d.id} className="border-b border-zinc-100 dark:border-zinc-800">
+                                                <td className="py-2 pr-3">
+                                                    <span>{d.donor_name}</span>
+                                                    {d.notes && (
+                                                        <span className="mt-0.5 block text-xs text-zinc-500 line-clamp-2" title={d.notes}>
+                                                            {d.notes}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="py-2 pr-3">{d.item_description ?? '—'}</td>
+                                                <td className="py-2 pr-3">
+                                                    <span className="font-medium">
+                                                        {formatQuantity(d.quantity ?? 0, d.unit_label)}
+                                                    </span>
+                                                    {d.quantity_before_adjustment ? (
+                                                        <span className="block text-xs text-zinc-500">
+                                                            Antes: {formatQuantity(d.quantity_before_adjustment, d.unit_label)}
+                                                        </span>
+                                                    ) : null}
+                                                </td>
+                                                <td className="py-2 pr-3">
+                                                    <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                                                        {d.status === 'received'
+                                                            ? 'Recebido'
+                                                            : d.status === 'cancelled'
+                                                              ? 'Cancelado'
+                                                              : 'Prometido'}
+                                                    </span>
+                                                    {d.staff_note && (
+                                                        <span className="mt-0.5 block text-xs text-zinc-500 line-clamp-2" title={d.staff_note}>
+                                                            {d.staff_note}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="py-2 pr-3">
+                                                    {new Date((d.received_at ?? d.pledged_at) as string).toLocaleString('pt-BR')}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <table className="min-w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b border-zinc-200 text-left text-zinc-500 dark:border-zinc-700">
+                                            <th className="py-2 pr-3">Doador</th>
+                                            <th className="py-2 pr-3">Valor</th>
+                                            <th className="py-2 pr-3">Data</th>
+                                            <th className="py-2 pr-3">Comprovante</th>
+                                            {canManageDonations && <th className="py-2">Ações</th>}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {detailDonations.map((d) => (
+                                            <tr key={d.id} className="border-b border-zinc-100 dark:border-zinc-800">
+                                                <td className="py-2 pr-3">
+                                                    <span>{d.donor_name}</span>
+                                                    {d.is_manual && (
+                                                        <span className="ml-1.5 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                                                            Manual
+                                                        </span>
+                                                    )}
+                                                    {d.manual_registration_note && (
+                                                        <span className="mt-0.5 block text-xs text-zinc-500 line-clamp-2" title={d.manual_registration_note}>
+                                                            {d.manual_registration_note}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="py-2 pr-3">
+                                                    <span className="font-medium">{formatBrl(d.amount)}</span>
+                                                    {d.amount_before_adjustment !== null && (
+                                                        <span className="block text-xs text-zinc-500">
+                                                            Antes: {formatBrl(d.amount_before_adjustment)}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="py-2 pr-3">
+                                                    {new Date(d.confirmed_at).toLocaleString('pt-BR')}
+                                                </td>
+                                                <td className="py-2 pr-3">
+                                                    {d.receipt_url ? (
+                                                        <a href={d.receipt_url} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:underline">
+                                                            Ver
+                                                        </a>
+                                                    ) : (
+                                                        <span className="text-zinc-400">—</span>
+                                                    )}
+                                                </td>
+                                                {canManageDonations && (
+                                                    <td className="py-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => openAdjust(d)}
+                                                            className="inline-flex items-center text-xs font-medium text-zinc-700 hover:text-zinc-900 dark:text-zinc-300"
+                                                        >
+                                                            <PencilSquareIcon className="mr-1 h-3.5 w-3.5" />
+                                                            Ajustar valor
+                                                        </button>
+                                                    </td>
+                                                )}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
                         </div>
                     )}
                 </div>

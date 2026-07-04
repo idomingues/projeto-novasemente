@@ -106,6 +106,12 @@ export default function NativeAppUpdateGate({
             return false;
         }
 
+        // Hotfix: nao bloqueia iOS por versao do app enquanto a release pode
+        // estar pendente na App Store. Mantemos o bloqueio por versao no Android.
+        if (Capacitor.getPlatform() === 'ios') {
+            return false;
+        }
+
         return compareVersions(nativeInfo.version, appVersion) < 0;
     }, [appVersion, nativeInfo, ready]);
 

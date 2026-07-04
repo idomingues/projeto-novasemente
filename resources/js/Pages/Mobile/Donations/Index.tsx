@@ -6,9 +6,15 @@ import { BanknotesIcon } from '@heroicons/react/24/outline';
 interface Campaign {
     id: number;
     title: string;
+    type: 'money' | 'items';
     goal_amount: number;
     raised_amount: number;
     remaining_amount: number;
+    goal_quantity: number | null;
+    pledged_quantity: number;
+    collected_quantity: number;
+    remaining_quantity: number;
+    unit_label: string | null;
     progress_percent: number;
     status: string;
     starts_at: string | null;
@@ -17,6 +23,11 @@ interface Campaign {
     accepting_donations: boolean;
     thanks_is_published?: boolean;
 }
+
+const typeLabels: Record<Campaign['type'], string> = {
+    money: 'Financeira',
+    items: 'Objetos',
+};
 
 interface Props {
     campaigns: Campaign[];
@@ -63,7 +74,7 @@ export default function MobileDonationsIndex({ campaigns }: Props) {
                         Doação
                     </h1>
                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                        Cada contribuição é um abraço à missão. Participe com o coração e veja o impacto da sua generosidade.
+                        Campanhas financeiras e de objetos no mesmo lugar para você apoiar com recursos, itens e cuidado.
                     </p>
                 </div>
 
@@ -90,7 +101,12 @@ export default function MobileDonationsIndex({ campaigns }: Props) {
                                             className="mb-3 h-[13.5rem] w-full rounded-xl object-cover"
                                         />
                                     )}
-                                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">{campaign.title}</h2>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">{campaign.title}</h2>
+                                        <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700 dark:bg-brand-950/40 dark:text-brand-200">
+                                            {typeLabels[campaign.type]}
+                                        </span>
+                                    </div>
                                     {(campaign.starts_at || campaign.ends_at) && (
                                         <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                                             {campaign.starts_at ? `Início: ${formatCampaignDate(campaign.starts_at)}` : ''}
@@ -100,10 +116,13 @@ export default function MobileDonationsIndex({ campaigns }: Props) {
                                     )}
                                     <div className="mt-3">
                                         <DonationProgressBar
-                                            raisedAmount={campaign.raised_amount}
-                                            goalAmount={campaign.goal_amount}
-                                            remainingAmount={campaign.remaining_amount}
+                                            raisedAmount={campaign.type === 'items' ? campaign.collected_quantity : campaign.raised_amount}
+                                            goalAmount={campaign.type === 'items' ? campaign.goal_quantity ?? 0 : campaign.goal_amount}
+                                            remainingAmount={campaign.type === 'items' ? campaign.remaining_quantity : campaign.remaining_amount}
                                             progressPercent={campaign.progress_percent}
+                                            valueMode={campaign.type === 'items' ? 'quantity' : 'currency'}
+                                            unitLabel={campaign.unit_label}
+                                            pendingAmount={campaign.type === 'items' ? Math.max(0, campaign.pledged_quantity - campaign.collected_quantity) : null}
                                             size="sm"
                                         />
                                     </div>

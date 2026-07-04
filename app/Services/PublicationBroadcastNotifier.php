@@ -172,7 +172,7 @@ class PublicationBroadcastNotifier
 
         return $this->create(
             churchId: $campaign->church_id,
-            prefix: 'Nova campanha de doação: ',
+            prefix: $campaign->isItemCampaign() ? 'Nova campanha de doação de objetos: ' : 'Nova campanha de doação: ',
             title: $campaign->title,
             body: $this->bodyFromText($campaign->description),
             actionUrl: route('mobile.donations.show', ['charityCampaign' => $campaign->id], absolute: true),
