@@ -910,7 +910,7 @@ class MobileController extends Controller
         return collect($grouped)
             ->map(fn (array $decadeYears, int $decade) => [
                 'label' => $decade === (int) floor(((int) date('Y')) / 10) * 10
-                    ? 'Atual'
+                    ? 'Recentes'
                     : $decade.'–'.($decade + 9),
                 'years' => array_values($decadeYears),
             ])
