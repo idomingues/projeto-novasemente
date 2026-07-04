@@ -12,7 +12,7 @@ import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
 import { Head, router, useForm } from '@inertiajs/react';
-import { BanknotesIcon, EyeIcon, PencilIcon, PencilSquareIcon, PhotoIcon, PlusIcon, TrashIcon, VideoCameraIcon } from '@heroicons/react/24/outline';
+import { BanknotesIcon, EyeIcon, PencilIcon, PencilSquareIcon, PhotoIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { FormEventHandler, useEffect, useMemo, useState } from 'react';
 import { DONATION_CAMPAIGN_COVER_SPECS } from '@/constants/mediaCoverSpecs';
 import { parseMoneyInput } from '@/lib/pixPayload';
@@ -390,6 +390,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                                     />
                                     <p className="text-xs text-zinc-500">
                                         {campaign.donations_count} doação(ões)
+                                        {campaign.story_photos.length > 0 ? ` · ${campaign.story_photos.length} foto(s) do projeto` : ''}
                                         {campaign.starts_at ? ` · Início: ${formatCampaignDate(campaign.starts_at)}` : ''}
                                         {campaign.ends_at ? ` · Prazo: ${formatCampaignDate(campaign.ends_at)}` : ''}
                                     </p>
@@ -413,10 +414,10 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                                 {canManageMedia && (
                                     <ListCardTextActionButton
                                         type="button"
-                                        icon={<VideoCameraIcon className="h-4 w-4" />}
+                                        icon={<PhotoIcon className="h-4 w-4" />}
                                         onClick={() => openMediaModal(campaign)}
                                     >
-                                        Conteúdo
+                                        Fotos do projeto
                                     </ListCardTextActionButton>
                                 )}
                                 {canManage && (
@@ -826,13 +827,13 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
             <Modal show={mediaCampaign !== null} onClose={() => setMediaCampaign(null)} maxWidth="2xl">
                 <div className="max-h-[85vh] overflow-y-auto p-6 space-y-8">
                     <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
-                        Conteúdo — {mediaCampaign?.title}
+                        Fotos e vídeo do projeto — {mediaCampaign?.title}
                     </h3>
 
                     <section className="space-y-4">
-                        <h4 className="font-medium text-zinc-900 dark:text-white">História da campanha (app)</h4>
+                        <h4 className="font-medium text-zinc-900 dark:text-white">Fotos do projeto (app)</h4>
                         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                            Vídeo e fotos sobre a doação, visíveis no app enquanto a campanha estiver ativa ou encerrada.
+                            Publique fotos e um vídeo opcional do andamento do projeto. Esse conteúdo fica visível no app enquanto a campanha estiver ativa ou encerrada.
                         </p>
                         <form onSubmit={submitStory} className="space-y-3">
                             <div>
@@ -851,7 +852,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                             </PrimaryButton>
                         </form>
                         <div>
-                            <InputLabel value="Fotos da história" />
+                            <InputLabel value="Galeria do projeto" />
                             <div className="mt-2 flex flex-wrap gap-2">
                                 {mediaCampaign?.story_photos.map((photo) => (
                                     <div key={photo.id} className="relative">
@@ -877,6 +878,9 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                                     e.target.value = '';
                                 }}
                             />
+                            <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                                Use esta área para subir fotos do projeto que as pessoas poderão ver na campanha.
+                            </p>
                         </div>
                     </section>
 

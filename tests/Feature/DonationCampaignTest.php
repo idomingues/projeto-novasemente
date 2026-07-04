@@ -346,6 +346,51 @@ class DonationCampaignTest extends TestCase
         );
     }
 
+    public function test_treasurer_dashboard_uses_larger_pagination_size(): void
+    {
+        $this->ensureCampaignPermissions();
+
+        [$admin, $church] = $this->adminWithChurch();
+        $donor = User::factory()->create(['name' => 'Maria Doadora', 'church_id' => $church->id]);
+
+        $financeRole = Role::firstOrCreate(['name' => 'financeiro']);
+        $financeRole->givePermissionTo(Permission::firstOrCreate(['name' => 'finance.view', 'guard_name' => config('auth.defaults.guard')]));
+        $treasurer = User::factory()->create(['church_id' => $church->id]);
+        $treasurer->assignRole($financeRole);
+
+        $campaign = DonationCampaign::create([
+            'church_id' => $church->id,
+            'title' => 'Construção da igreja',
+            'goal_amount' => 500000,
+            'raised_amount' => 0,
+            'status' => 'active',
+            'created_by' => $admin->id,
+        ]);
+
+        for ($i = 1; $i <= 120; $i++) {
+            CampaignDonation::create([
+                'campaign_id' => $campaign->id,
+                'user_id' => $donor->id,
+                'amount' => 10 + $i,
+                'receipt_path' => "donations/receipts/{$i}.jpg",
+                'receipt_hash' => hash('sha256', 'receipt-'.$i),
+                'confirmed_at' => now()->subMinutes($i),
+            ]);
+        }
+
+        $response = $this->actingAs($treasurer)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('finance.treasurer'));
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Finance/TreasurerDashboard')
+            ->has('donations.data', 100)
+            ->where('donations.current_page', 1)
+            ->where('donations.last_page', 2)
+        );
+    }
+
     public function test_donor_can_submit_dispute(): void
     {
         $this->ensureCampaignPermissions();

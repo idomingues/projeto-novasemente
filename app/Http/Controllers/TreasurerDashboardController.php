@@ -14,6 +14,8 @@ use Inertia\Response;
 
 class TreasurerDashboardController extends Controller
 {
+    private const DONATIONS_PER_PAGE = 100;
+
     private function assertCanView(?User $user): void
     {
         if (! $user) {
@@ -105,7 +107,7 @@ class TreasurerDashboardController extends Controller
 
         $donations = $filteredQuery
             ->orderByDesc('confirmed_at')
-            ->paginate(20)
+            ->paginate(self::DONATIONS_PER_PAGE)
             ->withQueryString()
             ->through(fn (CampaignDonation $d) => [
                 'id' => $d->id,

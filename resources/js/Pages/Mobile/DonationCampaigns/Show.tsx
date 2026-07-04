@@ -262,8 +262,11 @@ export default function MobileDonationCampaignShow({ campaign, recentDonations, 
                     <section className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
                         <h2 className="mb-3 flex items-center gap-2 font-semibold text-zinc-900 dark:text-white">
                             <PlayCircleIcon className="h-5 w-5 text-brand-600" />
-                            Sobre esta campanha
+                            {campaign.story_youtube_embed_url ? 'Fotos e vídeo do projeto' : 'Fotos do projeto'}
                         </h2>
+                        <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
+                            Acompanhe registros visuais deste projeto e compartilhe com outras pessoas o que está acontecendo.
+                        </p>
                         {campaign.story_youtube_embed_url && (
                             <div className="aspect-video w-full overflow-hidden rounded-xl bg-black">
                                 <iframe

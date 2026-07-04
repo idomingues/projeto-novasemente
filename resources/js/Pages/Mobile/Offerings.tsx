@@ -48,22 +48,20 @@ export default function MobileOfferings({ donation, localOffer }: Props) {
     const [pixPayload, setPixPayload] = useState<string | null>(null);
     const [payloadCopied, setPayloadCopied] = useState(false);
     const [amountError, setAmountError] = useState<string | null>(null);
+    const donationUrl = donation?.donation_url ?? null;
+    const donationHost = donationUrl ? donationLinkHost(donationUrl) : '';
+    const pixKeyForOffer = donation.pix_key?.trim() || localOffer.pixKey;
+    const hasUrl = Boolean(donationUrl);
+    const hasPix = Boolean(pixKeyForOffer);
+    const hasOtherMethods = hasPix || hasUrl;
 
     const copyPix = () => {
-        if (!donation?.pix_key) return;
-        navigator.clipboard.writeText(donation.pix_key).then(() => {
+        if (!pixKeyForOffer) return;
+        navigator.clipboard.writeText(pixKeyForOffer).then(() => {
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         });
     };
-
-    const donationUrl = donation?.donation_url ?? null;
-    const donationHost = donationUrl ? donationLinkHost(donationUrl) : '';
-    const hasUrl = Boolean(donationUrl);
-    const hasPix = Boolean(donation?.pix_key);
-    const hasOtherMethods = hasPix || hasUrl;
-    /** Mesma chave do painel (ofertas) para copiar chave e gerar PIX Copia e Cola. */
-    const pixKeyForOffer = donation.pix_key?.trim() || localOffer.pixKey;
 
     const generateLocalPix = () => {
         setAmountError(null);
@@ -105,9 +103,49 @@ export default function MobileOfferings({ donation, localOffer }: Props) {
                 <div>
                     <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Dízimos e Ofertas</h1>
                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                        Faça sua doação pelo 7me ou pelo atalho PIX abaixo.
+                        Sua forma de doação continua a mesma. Se preferir, você também pode abrir o 7me para doar.
                     </p>
                 </div>
+
+                {hasUrl && donationUrl && (
+                    <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900 overflow-hidden">
+                        <div className="border-b border-zinc-100 bg-zinc-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-900/80 sm:p-5">
+                            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                                <div className="flex shrink-0 items-center justify-center sm:justify-start">
+                                    <img
+                                        src={SEVENME_LOGO_SRC}
+                                        alt="7me"
+                                        className="h-9 w-auto max-w-[160px] object-contain object-left"
+                                        width={160}
+                                        height={36}
+                                    />
+                                </div>
+                                <div className="min-w-0 flex-1 text-center sm:text-left">
+                                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Doar pelo 7me</h2>
+                                    <p className="mt-1 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                                        Se você já prefere usar o 7me, abra o link oficial abaixo para concluir sua doação.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="space-y-3 p-4 sm:p-5">
+                            <a
+                                href={donationUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-3.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-zinc-800 active:scale-[0.99] dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+                            >
+                                <span>Abrir 7me para doar</span>
+                                <ArrowTopRightOnSquareIcon className="h-4 w-4 opacity-80 group-hover:opacity-100" />
+                            </a>
+                            {donationHost && (
+                                <p className="text-center text-xs text-zinc-500 dark:text-zinc-500">
+                                    Destino: {donationHost} (nova aba)
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 <div
                     className="rounded-2xl border border-brand-200/90 bg-gradient-to-br from-brand-50 to-white dark:from-brand-950/45 dark:to-zinc-900 dark:border-brand-900/55 p-4 sm:p-5 shadow-sm"
@@ -193,7 +231,7 @@ export default function MobileOfferings({ donation, localOffer }: Props) {
                                     Chave PIX
                                 </h2>
                                 <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-3 break-all">
-                                    {donation.pix_key}
+                                    {pixKeyForOffer}
                                 </p>
                                 <button
                                     type="button"
@@ -206,51 +244,9 @@ export default function MobileOfferings({ donation, localOffer }: Props) {
                             </div>
                         )}
 
-                    {hasUrl && donationUrl && (
-                            <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">
-                                <div className="p-4 sm:p-5 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/80">
-                                    <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                                        <div className="flex shrink-0 items-center justify-center sm:justify-start">
-                                            <img
-                                                src={SEVENME_LOGO_SRC}
-                                                alt="7me"
-                                                className="h-9 w-auto max-w-[160px] object-contain object-left"
-                                                width={160}
-                                                height={36}
-                                            />
-                                        </div>
-                                        <div className="min-w-0 flex-1 text-center sm:text-left">
-                                            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
-                                                Doar pelo 7me
-                                            </h2>
-                                            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                                                O link abaixo abre o site oficial do 7me em uma nova aba.
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="p-4 sm:p-5">
-                                    <a
-                                        href={donationUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="group flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-3.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-zinc-800 active:scale-[0.99] dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
-                                    >
-                                        <span>Abrir 7me para doar</span>
-                                        <ArrowTopRightOnSquareIcon className="h-4 w-4 opacity-80 group-hover:opacity-100" />
-                                    </a>
-                                    {donationHost && (
-                                        <p className="mt-3 text-center text-xs text-zinc-500 dark:text-zinc-500">
-                                            Destino: {donationHost} (nova aba)
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
                     {!hasOtherMethods && (
                             <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center py-2">
-                                Outras formas de doação (chave PIX da igreja ou 7me) podem ser configuradas no painel da
+                                As formas de doação (chave PIX da igreja e link do 7me) podem ser configuradas no painel da
                                 igreja.
                             </p>
                         )}
