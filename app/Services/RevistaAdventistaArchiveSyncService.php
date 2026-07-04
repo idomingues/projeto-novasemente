@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\Storage;
 class RevistaAdventistaArchiveSyncService
 {
     public function __construct(
-        private readonly RevistaAdventistaArchiveCatalogService $catalog,
+        private readonly RevistaAdventistaArchiveCatalogService $cpbCatalog,
+        private readonly RevistaAdventistaAcesArchiveCatalogService $acesCatalog,
         private readonly RevistaAdventistaEditionPdfService $pdfService,
     ) {}
 
@@ -19,9 +20,12 @@ class RevistaAdventistaArchiveSyncService
      */
     public function sync(?array $years = null, bool $cachePdfs = false, bool $forceCovers = false): array
     {
+        $cpbAvailableYears = null;
+        $acesAvailableYears = null;
+
         if ($years === null || $years === []) {
-            $fetchedYears = $this->catalog->fetchAvailableYears();
-            if (! ($fetchedYears['ok'] ?? false)) {
+            $fetchedCpbYears = $this->cpbCatalog->fetchAvailableYears();
+            if (! ($fetchedCpbYears['ok'] ?? false)) {
                 return [
                     'ok' => false,
                     'created' => 0,
@@ -29,10 +33,29 @@ class RevistaAdventistaArchiveSyncService
                     'skipped' => 0,
                     'covers_downloaded' => 0,
                     'pdfs_downloaded' => 0,
-                    'error' => $fetchedYears['error'] ?? 'Falha ao buscar anos disponíveis.',
+                    'error' => $fetchedCpbYears['error'] ?? 'Falha ao buscar anos disponíveis.',
                 ];
             }
-            $years = $fetchedYears['years'] ?? [];
+
+            $cpbAvailableYears = $fetchedCpbYears['years'] ?? [];
+            $fetchedAcesYears = $this->acesCatalog->fetchAvailableYears();
+            if (! ($fetchedAcesYears['ok'] ?? false)) {
+                return [
+                    'ok' => false,
+                    'created' => 0,
+                    'updated' => 0,
+                    'skipped' => 0,
+                    'covers_downloaded' => 0,
+                    'pdfs_downloaded' => 0,
+                    'error' => $fetchedAcesYears['error'] ?? 'Falha ao buscar anos disponíveis.',
+                ];
+            }
+
+            $acesAvailableYears = $fetchedAcesYears['years'] ?? [];
+            $years = array_merge(
+                $cpbAvailableYears,
+                $acesAvailableYears,
+            );
         }
 
         $years = array_values(array_unique(array_filter($years, fn ($y) => is_int($y) && $y >= 1900 && $y <= 2100)));
@@ -57,68 +80,46 @@ class RevistaAdventistaArchiveSyncService
         $pdfsDownloaded = 0;
 
         foreach ($years as $year) {
-            $fetched = $this->catalog->fetchEditionsForYear($year);
-            if (! ($fetched['ok'] ?? false)) {
-                return [
-                    'ok' => false,
-                    'created' => $created,
-                    'updated' => $updated,
-                    'skipped' => $skipped,
-                    'covers_downloaded' => $coversDownloaded,
-                    'pdfs_downloaded' => $pdfsDownloaded,
-                    'error' => $fetched['error'] ?? 'Falha ao buscar edições.',
-                ];
+            if ($cpbAvailableYears === null || in_array($year, $cpbAvailableYears, true)) {
+                $cpbResult = $this->syncProvider($this->cpbCatalog, $year, $cachePdfs, $forceCovers);
+                if (! ($cpbResult['ok'] ?? false)) {
+                    return [
+                        'ok' => false,
+                        'created' => $created + $cpbResult['created'],
+                        'updated' => $updated + $cpbResult['updated'],
+                        'skipped' => $skipped + $cpbResult['skipped'],
+                        'covers_downloaded' => $coversDownloaded + $cpbResult['covers_downloaded'],
+                        'pdfs_downloaded' => $pdfsDownloaded + $cpbResult['pdfs_downloaded'],
+                        'error' => $cpbResult['error'] ?? 'Falha ao buscar edições.',
+                    ];
+                }
+
+                $created += $cpbResult['created'];
+                $updated += $cpbResult['updated'];
+                $skipped += $cpbResult['skipped'];
+                $coversDownloaded += $cpbResult['covers_downloaded'];
+                $pdfsDownloaded += $cpbResult['pdfs_downloaded'];
             }
 
-            foreach ($fetched['editions'] ?? [] as $item) {
-                $mapped = $this->mapEdition($item);
-                if ($mapped === null) {
-                    $skipped++;
-
-                    continue;
+            if ($acesAvailableYears === null || in_array($year, $acesAvailableYears, true)) {
+                $acesResult = $this->syncProvider($this->acesCatalog, $year, $cachePdfs, $forceCovers);
+                if (! ($acesResult['ok'] ?? false)) {
+                    return [
+                        'ok' => false,
+                        'created' => $created + $acesResult['created'],
+                        'updated' => $updated + $acesResult['updated'],
+                        'skipped' => $skipped + $acesResult['skipped'],
+                        'covers_downloaded' => $coversDownloaded + $acesResult['covers_downloaded'],
+                        'pdfs_downloaded' => $pdfsDownloaded + $acesResult['pdfs_downloaded'],
+                        'error' => $acesResult['error'] ?? 'Falha ao buscar edições.',
+                    ];
                 }
 
-                $cpbId = (int) $mapped['cpb_edition_id'];
-                $edition = RevistaAdventistaEdition::query()->where('cpb_edition_id', $cpbId)->first();
-                $isNew = $edition === null;
-
-                if ($isNew) {
-                    $edition = new RevistaAdventistaEdition($mapped);
-                } else {
-                    $edition->fill($mapped);
-                }
-
-                $shouldDownloadCover = $forceCovers
-                    || $isNew
-                    || ! $edition->hasLocalCover();
-
-                if ($shouldDownloadCover && is_string($mapped['source_cover_url'] ?? null)) {
-                    $coverPath = $this->downloadCover((string) $mapped['source_cover_url'], (int) $mapped['year'], (int) $mapped['month']);
-                    if ($coverPath !== null) {
-                        if (! $isNew && $edition->hasLocalCover() && $edition->cover_path !== $coverPath) {
-                            Storage::disk('public')->delete((string) $edition->cover_path);
-                        }
-                        $edition->cover_path = $coverPath;
-                        $edition->cover_cached_at = now();
-                        $coversDownloaded++;
-                    }
-                }
-
-                $edition->save();
-
-                if ($isNew) {
-                    $created++;
-                } elseif ($edition->wasChanged()) {
-                    $updated++;
-                } else {
-                    $skipped++;
-                }
-
-                if ($cachePdfs && ! $edition->hasLocalPdf()) {
-                    if ($this->pdfService->cacheFromRemote($edition)) {
-                        $pdfsDownloaded++;
-                    }
-                }
+                $created += $acesResult['created'];
+                $updated += $acesResult['updated'];
+                $skipped += $acesResult['skipped'];
+                $coversDownloaded += $acesResult['covers_downloaded'];
+                $pdfsDownloaded += $acesResult['pdfs_downloaded'];
             }
         }
 
@@ -138,31 +139,148 @@ class RevistaAdventistaArchiveSyncService
      */
     public function mapEdition(array $item): ?array
     {
-        $cpbId = (int) ($item['id_edicao'] ?? 0);
-        $year = (int) ($item['ano'] ?? 0);
-        $monthCode = trim((string) ($item['mes'] ?? ''));
-        $month = $this->catalog->parseMonth($monthCode);
+        return $this->cpbCatalog->normalizeEdition($item);
+    }
 
-        if ($cpbId <= 0 || $year <= 0 || $month === null) {
-            return null;
+    /**
+     * @return array{ok: bool, created: int, updated: int, skipped: int, covers_downloaded: int, pdfs_downloaded: int, error?: string}
+     */
+    private function syncProvider(
+        RevistaAdventistaArchiveProvider $provider,
+        int $year,
+        bool $cachePdfs,
+        bool $forceCovers,
+    ): array {
+        $created = 0;
+        $updated = 0;
+        $skipped = 0;
+        $coversDownloaded = 0;
+        $pdfsDownloaded = 0;
+
+        $fetched = $provider->fetchEditionsForYear($year);
+        if (! ($fetched['ok'] ?? false)) {
+            return [
+                'ok' => false,
+                'created' => 0,
+                'updated' => 0,
+                'skipped' => 0,
+                'covers_downloaded' => 0,
+                'pdfs_downloaded' => 0,
+                'error' => $fetched['error'] ?? 'Falha ao buscar edições.',
+            ];
         }
 
-        if (($item['ativo'] ?? true) === false) {
-            return null;
-        }
+        foreach ($fetched['editions'] ?? [] as $mapped) {
+            if (! is_array($mapped)) {
+                $skipped++;
 
-        $coverFile = trim((string) ($item['capa'] ?? ''));
-        $pdfFile = trim((string) ($item['arquivo'] ?? ''));
+                continue;
+            }
+
+            $source = trim((string) ($mapped['source'] ?? ''));
+            $sourceEditionId = trim((string) ($mapped['source_edition_id'] ?? ''));
+            $mappedYear = (int) ($mapped['year'] ?? 0);
+            $mappedMonth = (int) ($mapped['month'] ?? 0);
+
+            if ($source === '' || $sourceEditionId === '' || $mappedYear <= 0 || $mappedMonth <= 0) {
+                $skipped++;
+
+                continue;
+            }
+
+            $edition = RevistaAdventistaEdition::query()
+                ->where('source', $source)
+                ->where('source_edition_id', $sourceEditionId)
+                ->first();
+
+            if ($edition === null) {
+                $existingByMonth = RevistaAdventistaEdition::query()
+                    ->where('year', $mappedYear)
+                    ->where('month', $mappedMonth)
+                    ->first();
+
+                if (
+                    $existingByMonth !== null
+                    && $provider->sourceKey() !== RevistaAdventistaEdition::SOURCE_CPB
+                    && $existingByMonth->source !== $provider->sourceKey()
+                ) {
+                    $skipped++;
+
+                    continue;
+                }
+
+                if ($existingByMonth !== null) {
+                    $edition = $existingByMonth;
+                }
+            }
+
+            $isNew = $edition === null;
+            if ($isNew) {
+                $edition = new RevistaAdventistaEdition();
+            }
+
+            $isReplacingSource = $edition->exists && $edition->source !== $source;
+            $previousCoverPath = (string) ($edition->cover_path ?? '');
+            $previousPdfPath = (string) ($edition->pdf_path ?? '');
+
+            if ($isReplacingSource) {
+                if ($edition->hasLocalCover()) {
+                    Storage::disk('public')->delete($previousCoverPath);
+                }
+
+                if ($edition->hasLocalPdf()) {
+                    Storage::disk('public')->delete($previousPdfPath);
+                }
+
+                $edition->cover_path = null;
+                $edition->cover_cached_at = null;
+                $edition->pdf_path = null;
+                $edition->pdf_cached_at = null;
+            }
+
+            $edition->fill($mapped);
+
+            $shouldDownloadCover = $forceCovers
+                || $isNew
+                || $isReplacingSource
+                || ! $edition->hasLocalCover();
+
+            if ($shouldDownloadCover && is_string($mapped['source_cover_url'] ?? null)) {
+                $coverPath = $this->downloadCover((string) $mapped['source_cover_url'], $mappedYear, $mappedMonth);
+                if ($coverPath !== null) {
+                    if (! $isNew && $previousCoverPath !== '' && $previousCoverPath !== $coverPath) {
+                        Storage::disk('public')->delete($previousCoverPath);
+                    }
+
+                    $edition->cover_path = $coverPath;
+                    $edition->cover_cached_at = now();
+                    $coversDownloaded++;
+                }
+            }
+
+            $edition->save();
+
+            if ($isNew) {
+                $created++;
+            } elseif ($edition->wasChanged()) {
+                $updated++;
+            } else {
+                $skipped++;
+            }
+
+            $shouldCachePdf = $cachePdfs && ($isReplacingSource || ! $edition->hasLocalPdf());
+            if ($shouldCachePdf && $this->pdfService->cacheFromRemote($edition)) {
+                $pdfsDownloaded++;
+            }
+        }
 
         return [
-            'cpb_edition_id' => $cpbId,
-            'year' => $year,
-            'month_code' => strtoupper($monthCode),
-            'month' => $month,
-            'title' => $this->catalog->editionTitle($year, $month),
-            'source_cover_url' => $coverFile !== '' ? $this->catalog->buildCoverUrl($coverFile) : null,
-            'source_pdf_url' => $pdfFile !== '' ? $this->catalog->buildPdfUrl($pdfFile) : null,
-            'synced_at' => now(),
+            'ok' => true,
+            'created' => $created,
+            'updated' => $updated,
+            'skipped' => $skipped,
+            'covers_downloaded' => $coversDownloaded,
+            'pdfs_downloaded' => $pdfsDownloaded,
         ];
     }
 
@@ -178,7 +296,7 @@ class RevistaAdventistaArchiveSyncService
             }
 
             $extension = $this->guessImageExtension($url, (string) $response->header('Content-Type'));
-            $filename = $this->catalog->storageFilename($year, $month, $extension);
+            $filename = RevistaAdventistaEdition::storageFilename($year, $month, $extension);
             $path = 'revista-adventista/covers/'.$filename;
 
             Storage::disk('public')->put($path, $response->body());

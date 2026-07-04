@@ -124,7 +124,7 @@ export default function RevistaAdventistaAcervoIndex({ editions, canManage, avai
 
             <PageHeader
                 title="Acervo Revista Adventista"
-                subtitle="Edições históricas importadas do acervo CPB (1906 até hoje), com capas e PDFs."
+                subtitle="Edições históricas da Revista Adventista, complementadas pelos acervos da CPB e da ACES."
                 actions={
                     canManage ? (
                         <div className="flex flex-wrap gap-2">
@@ -193,7 +193,7 @@ export default function RevistaAdventistaAcervoIndex({ editions, canManage, avai
                     </p>
                     {canManage ? (
                         <p className="mt-1 text-sm text-zinc-500">
-                            Use &quot;Sincronizar acervo&quot; para importar edições do acervo CPB.
+                            Use &quot;Sincronizar acervo&quot; para importar e complementar as edições disponíveis.
                         </p>
                     ) : null}
                 </Card>

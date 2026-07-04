@@ -61,7 +61,7 @@ export default function RevistaAdventistaAcervoContent({
                         Acervo Revista Adventista
                     </h2>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                        Edições históricas da Revista Adventista (1906 até hoje), com capas e PDFs do acervo CPB.
+                        Edições históricas da Revista Adventista, reunidas a partir dos acervos da CPB e da ACES.
                     </p>
                 </div>
             ) : null}
@@ -137,7 +137,7 @@ export default function RevistaAdventistaAcervoContent({
                     </p>
                     <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">
                         {availableYears.length === 0
-                            ? 'Peça ao responsável técnico para sincronizar o acervo CPB.'
+                            ? 'Peça ao responsável técnico para sincronizar o acervo histórico.'
                             : 'Alguns anos não possuem todas as edições mensais.'}
                     </p>
                 </div>

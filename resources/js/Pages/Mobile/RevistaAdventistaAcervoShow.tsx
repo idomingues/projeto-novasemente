@@ -53,7 +53,7 @@ export default function MobileRevistaAdventistaAcervoShow({ edition }: Props) {
                             {edition.title}
                         </h1>
                         <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                            {`Acervo histórico CPB — Revista Adventista · ${edition.month_label} ${edition.year}`}
+                            {`Acervo histórico da Revista Adventista · ${edition.month_label} ${edition.year}`}
                         </p>
                     </header>
 
@@ -85,7 +85,7 @@ export default function MobileRevistaAdventistaAcervoShow({ edition }: Props) {
                 </div>
 
                 <p className="mt-6 px-4 text-center text-xs text-zinc-500 dark:text-zinc-500 sm:px-0">
-                    Conteúdo © Casa Publicadora Brasileira / Revista Adventista
+                    Conteúdo © Revista Adventista / detentores dos acervos de origem
                 </p>
             </div>
         </MobileLayout>

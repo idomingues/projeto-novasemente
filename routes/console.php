@@ -114,5 +114,5 @@ Artisan::command('app:release-notes', function () {
     ->addOption('file', null, \Symfony\Component\Console\Input\InputOption::VALUE_OPTIONAL, 'Caminho do arquivo de notas');
 
 Schedule::command('auth:prune-login-events')->weekly();
-Schedule::command('revista-adventista:sync-archive')->dailyAt('03:00');
+Schedule::command('revista-adventista:sync-archive --cache-pdfs')->dailyAt('03:00');
 Schedule::command('revista-adventista:sync')->weekly();

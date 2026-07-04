@@ -8,13 +8,9 @@ use Illuminate\Support\Facades\Storage;
 
 class RevistaAdventistaEditionPdfService
 {
-    public function __construct(
-        private readonly RevistaAdventistaArchiveCatalogService $catalog,
-    ) {}
-
     public function localCachePath(RevistaAdventistaEdition $edition): string
     {
-        return 'revista-adventista/pdfs/'.$this->catalog->storageFilename((int) $edition->year, (int) $edition->month, 'pdf');
+        return 'revista-adventista/pdfs/'.RevistaAdventistaEdition::storageFilename((int) $edition->year, (int) $edition->month, 'pdf');
     }
 
     public function cacheFromRemote(RevistaAdventistaEdition $edition): bool
@@ -118,6 +114,6 @@ class RevistaAdventistaEditionPdfService
 
     private function downloadFilename(RevistaAdventistaEdition $edition): string
     {
-        return $this->catalog->storageFilename((int) $edition->year, (int) $edition->month, 'pdf');
+        return RevistaAdventistaEdition::storageFilename((int) $edition->year, (int) $edition->month, 'pdf');
     }
 }

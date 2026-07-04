@@ -7,7 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 
 class RevistaAdventistaEdition extends Model
 {
+    public const SOURCE_CPB = 'cpb';
+
+    public const SOURCE_ACES = 'aces';
+
     protected $fillable = [
+        'source',
+        'source_edition_id',
         'cpb_edition_id',
         'year',
         'month_code',
@@ -28,6 +34,10 @@ class RevistaAdventistaEdition extends Model
         'cover_cached_at' => 'datetime',
         'synced_at' => 'datetime',
         'is_active' => 'boolean',
+    ];
+
+    protected $attributes = [
+        'source' => self::SOURCE_CPB,
     ];
 
     public function resolvedSourcePdfUrl(): ?string
@@ -107,6 +117,18 @@ class RevistaAdventistaEdition extends Model
             11 => 'Novembro',
             12 => 'Dezembro',
         ];
+    }
+
+    public static function buildTitle(int $year, int $month): string
+    {
+        $label = self::monthLabels()[$month] ?? 'Mês '.$month;
+
+        return $label.' de '.$year;
+    }
+
+    public static function storageFilename(int $year, int $month, string $extension): string
+    {
+        return sprintf('%d_M%02d.%s', $year, $month, ltrim($extension, '.'));
     }
 
     public function monthLabel(): string

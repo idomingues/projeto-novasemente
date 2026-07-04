@@ -5,13 +5,20 @@ namespace App\Services;
 use App\Models\RevistaAdventistaEdition;
 use Illuminate\Support\Facades\Http;
 
-class RevistaAdventistaArchiveCatalogService
+class RevistaAdventistaArchiveCatalogService implements RevistaAdventistaArchiveProvider
 {
+    public const SOURCE = RevistaAdventistaEdition::SOURCE_CPB;
+
     public const API_BASE = 'https://acervopyapi.cpb.com.br/api/v1/acervo';
 
     public const STORAGE_BASE = 'https://imagens.cpb.com.br/acervos/ra/';
 
     public const PERIODICO_ID = 1;
+
+    public function sourceKey(): string
+    {
+        return self::SOURCE;
+    }
 
     /**
      * @return array{ok: bool, years?: list<int>, error?: string}
@@ -48,6 +55,32 @@ class RevistaAdventistaArchiveCatalogService
      */
     public function fetchEditionsForYear(int $year): array
     {
+        $fetched = $this->fetchRawEditionsForYear($year);
+        if (! ($fetched['ok'] ?? false)) {
+            return $fetched;
+        }
+
+        $editions = [];
+
+        foreach ($fetched['editions'] ?? [] as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+
+            $normalized = $this->normalizeEdition($item);
+            if ($normalized !== null) {
+                $editions[] = $normalized;
+            }
+        }
+
+        return ['ok' => true, 'editions' => $editions];
+    }
+
+    /**
+     * @return array{ok: bool, editions?: list<array<string, mixed>>, error?: string}
+     */
+    public function fetchRawEditionsForYear(int $year): array
+    {
         try {
             $response = Http::timeout(45)
                 ->withHeaders(['User-Agent' => 'NovaSemente/1.0 (revista-adventista archive)'])
@@ -69,6 +102,42 @@ class RevistaAdventistaArchiveCatalogService
         } catch (\Throwable $e) {
             return ['ok' => false, 'error' => 'Erro ao buscar edições de '.$year.': '.$e->getMessage()];
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     * @return array<string, mixed>|null
+     */
+    public function normalizeEdition(array $item): ?array
+    {
+        $cpbId = (int) ($item['id_edicao'] ?? 0);
+        $year = (int) ($item['ano'] ?? 0);
+        $monthCode = trim((string) ($item['mes'] ?? ''));
+        $month = $this->parseMonth($monthCode);
+
+        if ($cpbId <= 0 || $year <= 0 || $month === null) {
+            return null;
+        }
+
+        if (($item['ativo'] ?? true) === false) {
+            return null;
+        }
+
+        $coverFile = trim((string) ($item['capa'] ?? ''));
+        $pdfFile = trim((string) ($item['arquivo'] ?? ''));
+
+        return [
+            'source' => self::SOURCE,
+            'source_edition_id' => (string) $cpbId,
+            'cpb_edition_id' => $cpbId,
+            'year' => $year,
+            'month_code' => strtoupper($monthCode),
+            'month' => $month,
+            'title' => $this->editionTitle($year, $month),
+            'source_cover_url' => $coverFile !== '' ? $this->buildCoverUrl($coverFile) : null,
+            'source_pdf_url' => $pdfFile !== '' ? $this->buildPdfUrl($pdfFile) : null,
+            'synced_at' => now(),
+        ];
     }
 
     public function buildCoverUrl(string $filename): string
@@ -94,13 +163,11 @@ class RevistaAdventistaArchiveCatalogService
 
     public function editionTitle(int $year, int $month): string
     {
-        $label = RevistaAdventistaEdition::monthLabels()[$month] ?? 'Mês '.$month;
-
-        return $label.' de '.$year;
+        return RevistaAdventistaEdition::buildTitle($year, $month);
     }
 
     public function storageFilename(int $year, int $month, string $extension): string
     {
-        return sprintf('%d_M%02d.%s', $year, $month, ltrim($extension, '.'));
+        return RevistaAdventistaEdition::storageFilename($year, $month, $extension);
     }
 }

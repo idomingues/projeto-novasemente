@@ -8,11 +8,11 @@ use Illuminate\Console\Command;
 class SyncRevistaAdventistaArchiveCommand extends Command
 {
     protected $signature = 'revista-adventista:sync-archive
-                            {--year=* : Anos específicos (padrão: todos os anos disponíveis no acervo CPB)}
+                            {--year=* : Anos específicos (padrão: todos os anos disponíveis nos acervos integrados)}
                             {--cache-pdfs : Baixa e armazena localmente todos os PDFs}
                             {--force-covers : Rebaixa todas as capas mesmo que já existam localmente}';
 
-    protected $description = 'Importa o acervo histórico da Revista Adventista (CPB) com capas e PDFs';
+    protected $description = 'Importa o acervo histórico da Revista Adventista a partir da CPB e da ACES';
 
     public function handle(RevistaAdventistaArchiveSyncService $syncService): int
     {
