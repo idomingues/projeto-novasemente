@@ -2,18 +2,18 @@
 
 namespace App\Mail;
 
-use App\Models\CampaignDonation;
+use App\Models\CharityDonation;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 
-class CampaignDonationTreasurerMail extends Mailable implements ShouldQueue
+class CharityDonationDonorMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
     public function __construct(
-        public CampaignDonation $donation,
+        public CharityDonation $donation,
     ) {}
 
     public function build(): self
@@ -21,10 +21,10 @@ class CampaignDonationTreasurerMail extends Mailable implements ShouldQueue
         $campaign = $this->donation->campaign;
         $amount = number_format((float) $this->donation->amount, 2, ',', '.');
 
-        return $this->subject("Nova contribuição: R$ {$amount} — {$campaign?->title}")
-            ->markdown('emails.campaign-donation-treasurer', [
+        return $this->subject("Doação confirmada: R$ {$amount} — {$campaign?->title}")
+            ->markdown('emails.charity-campaign-donation-donor', [
                 'donation' => $this->donation,
-                'dashboardUrl' => route('finance.treasurer', absolute: true),
+                'myDonationsUrl' => route('mobile.donations.my-donations', absolute: true),
             ]);
     }
 }

@@ -273,6 +273,8 @@ class HandleInertiaRequests extends Middleware
             'csrf_token' => fn () => csrf_token(),
             'appVersion' => $appVersionShared,
             'appVersionHistory' => $appVersionHistory,
+            'iosAppStoreUrl' => config('services.ios_app_store_url'),
+            'nativeIosMinimumVersion' => config('services.native_ios_minimum_version'),
             'appUrl' => $request->getSchemeAndHttpHost(),
             /** URL raiz desta instalação (scheme + host + path base), para tela «Sobre o APP». */
             'appRootUrl' => rtrim($request->root(), '/'),

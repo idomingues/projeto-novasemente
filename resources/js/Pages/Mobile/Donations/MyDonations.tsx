@@ -73,7 +73,7 @@ export default function MyDonations({ donations }: Props) {
     const submitDispute: FormEventHandler = (e) => {
         e.preventDefault();
         if (!disputeDonation) return;
-        post(route('mobile.campaigns.dispute', disputeDonation.id), {
+        post(route('mobile.donations.dispute', disputeDonation.id), {
             ...inertiaListModalSave,
             onSuccess: () => reset(),
         });
@@ -81,10 +81,10 @@ export default function MyDonations({ donations }: Props) {
 
     return (
         <MobileLayout>
-            <Head title="Minhas contribuições" />
+            <Head title="Minhas doações" />
             <div className="mx-auto max-w-3xl space-y-6">
                 <Link
-                    href={route('mobile.campaigns.index')}
+                    href={route('mobile.donations.index')}
                     className="inline-flex items-center gap-1 text-sm font-medium text-brand-600 dark:text-brand-400"
                 >
                     <ArrowLeftIcon className="h-4 w-4" />
@@ -92,7 +92,7 @@ export default function MyDonations({ donations }: Props) {
                 </Link>
 
                 <div>
-                    <h1 className="text-2xl font-bold text-zinc-900 dark:text-white sm:text-3xl">Minhas contribuições</h1>
+                    <h1 className="text-2xl font-bold text-zinc-900 dark:text-white sm:text-3xl">Minhas doações</h1>
                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                         Acompanhe suas contribuições e solicite revisão se o valor registrado estiver incorreto.
                     </p>
@@ -101,9 +101,9 @@ export default function MyDonations({ donations }: Props) {
                 <div className="rounded-xl border border-sky-200 bg-sky-50/80 px-4 py-3 text-sm text-sky-950 dark:border-sky-900/50 dark:bg-sky-950/30 dark:text-sky-100">
                     <p className="font-medium">Transparência</p>
                     <p className="mt-1 text-sky-900/90 dark:text-sky-100/90">
-                        Guardamos valor, data e comprovante de cada contribuição. O comprovante fica acessível apenas à
-                        equipe financeira da igreja — não é publicado no app. Se algo estiver errado, use «Reportar
-                        problema» no registro correspondente.
+                        Guardamos valor, data e comprovante de cada doação. O comprovante fica acessível apenas à equipe
+                        financeira da igreja — não é publicado no app. Se algo estiver errado, use «Reportar problema» na
+                        doação correspondente.
                     </p>
                 </div>
 
@@ -120,9 +120,9 @@ export default function MyDonations({ donations }: Props) {
 
                 {donations.length === 0 ? (
                     <div className="rounded-2xl border border-zinc-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
-                        <p className="text-sm text-zinc-600 dark:text-zinc-400">Você ainda não registrou contribuições em campanhas.</p>
+                        <p className="text-sm text-zinc-600 dark:text-zinc-400">Você ainda não registrou doações em campanhas.</p>
                         <Link
-                            href={route('mobile.campaigns.index')}
+                            href={route('mobile.donations.index')}
                             className="mt-4 inline-block text-sm font-medium text-brand-600 dark:text-brand-400"
                         >
                             Ver campanhas ativas

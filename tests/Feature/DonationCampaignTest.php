@@ -47,6 +47,13 @@ class DonationCampaignTest extends TestCase
         foreach (['campaigns.view', 'campaigns.manage', 'finance.view'] as $name) {
             Permission::firstOrCreate(['name' => $name, 'guard_name' => $guard]);
         }
+
+        $adminRole = Role::firstOrCreate(['name' => 'admin', 'guard_name' => $guard]);
+        $adminRole->givePermissionTo(['campaigns.view', 'campaigns.manage', 'finance.view']);
+
+        $financeRole = Role::firstOrCreate(['name' => 'financeiro', 'guard_name' => $guard]);
+        $financeRole->givePermissionTo(['finance.view']);
+
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 
@@ -450,7 +457,7 @@ class DonationCampaignTest extends TestCase
 
         $this->actingAs($admin)
             ->withSession(['working_church_id' => $church->id])
-            ->patch(route('finance.donations.update', $donation), [
+            ->patch(route('finance.donations.update', $donation->getKey()), [
                 'amount' => 500,
                 'adjustment_note' => 'Correção após análise do comprovante.',
             ])
@@ -496,7 +503,7 @@ class DonationCampaignTest extends TestCase
 
         $this->actingAs($admin)
             ->withSession(['working_church_id' => $church->id])
-            ->patch(route('finance.donations.update', $donation), [
+            ->patch(route('finance.donations.update', $donation->getKey()), [
                 'amount' => 500,
                 'adjustment_note' => 'curto',
             ])
@@ -755,11 +762,11 @@ class DonationCampaignTest extends TestCase
 
         $this->assertDatabaseHas('user_inbox_notifications', [
             'user_id' => $donorWithEmail->id,
-            'title' => 'Agradecimento pela sua doação',
+            'title' => 'Agradecimento pela sua contribuição',
         ]);
         $this->assertDatabaseHas('user_inbox_notifications', [
             'user_id' => $donorInboxOnly->id,
-            'title' => 'Agradecimento pela sua doação',
+            'title' => 'Agradecimento pela sua contribuição',
         ]);
     }
 
@@ -793,7 +800,7 @@ class DonationCampaignTest extends TestCase
         $response->assertInertia(fn ($page) => $page
             ->component('Mobile/DonationCampaigns/Show')
             ->where('campaign.starts_at', '2026-05-01')
-            ->where('donationUrl', 'https://giving.7me.app/guest-donation/church/96ccdd6e-f537-49be-88dd-ffc112442cd9')
+            ->where('donationUrl', 'https://7me.app/71/y8nzix')
             ->where('campaign.story_youtube_embed_url', 'https://www.youtube.com/embed/dQw4w9WgXcQ')
             ->where('campaign.thanks_is_published', true)
             ->has('campaign.story_photos', 1)
@@ -848,12 +855,12 @@ class DonationCampaignTest extends TestCase
 
         $this->assertDatabaseHas('user_inbox_notifications', [
             'user_id' => $treasurer->id,
-            'title' => 'Nova doação registrada',
+            'title' => 'Nova contribuição registrada',
         ]);
 
         $this->assertDatabaseHas('user_inbox_notifications', [
             'user_id' => $creator->id,
-            'title' => 'Doação na sua campanha',
+            'title' => 'Contribuição na sua campanha',
         ]);
 
         $treasurerNotification = UserInboxNotification::query()

@@ -82,7 +82,7 @@ return [
             'routes' => ['mobile.fotos', 'mobile.fotos.*'],
         ],
         'offerings' => [
-            'label' => 'Oferta / Dízimos e ofertas',
+            'label' => 'Dízimos e Pacto',
             'group' => 'inicio',
             'routes' => ['mobile.offerings'],
         ],
@@ -117,9 +117,14 @@ return [
             'routes' => ['mobile.communities'],
         ],
         'donation_campaigns' => [
-            'label' => 'Doação',
+            'label' => 'Oferta Nova Semente',
             'group' => 'menu_mais',
             'routes' => ['mobile.campaigns', 'mobile.campaigns.*', 'mobile.item-campaigns', 'mobile.item-campaigns.*'],
+        ],
+        'charity_donations' => [
+            'label' => 'Doação',
+            'group' => 'menu_mais',
+            'routes' => ['mobile.donations', 'mobile.donations.*'],
         ],
         'talents' => [
             'label' => 'Central de Serviços',

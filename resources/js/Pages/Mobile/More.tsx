@@ -40,7 +40,7 @@ interface Props {
 const items: MoreMenuItem[] = [
     { name: 'Bíblia', description: 'Leitura e busca de versículos', route: 'mobile.bible', featureKey: 'bible', icon: BookOpenIcon },
     { name: 'Eventos', description: 'Agenda de eventos da igreja', route: 'mobile.events', featureKey: 'events', icon: CalendarDaysIcon },
-    { name: 'Dízimos e Ofertas', description: 'Contribuições e ofertas', route: 'mobile.offerings', featureKey: 'offerings', icon: HandRaisedIcon },
+    { name: 'Dízimos e Pacto', description: 'Contribuições e pacto', route: 'mobile.offerings', featureKey: 'offerings', icon: HandRaisedIcon },
     {
         name: 'Ano Bíblico',
         description: 'Escolha um plano de leitura e acompanhe o seu progresso.',
@@ -65,7 +65,8 @@ const items: MoreMenuItem[] = [
         icon: UserGroupIcon,
     },
     { name: 'Oração', description: 'Pedidos de oração', route: 'mobile.prayer', featureKey: 'prayer', icon: PrayingHandsIcon },
-    { name: 'Doação', description: 'Seu gesto de amor pode transformar vidas e renovar esperanças', route: 'mobile.campaigns.index', featureKey: 'donation_campaigns', icon: BanknotesIcon },
+    { name: 'Oferta Nova Semente', description: 'Contribuições para causas que transformam vidas', route: 'mobile.campaigns.index', featureKey: 'donation_campaigns', icon: BanknotesIcon },
+    { name: 'Doação', description: 'Seu gesto de amor pode transformar vidas e renovar esperanças', route: 'mobile.donations.index', featureKey: 'charity_donations', icon: BanknotesIcon },
     {
         name: 'Central de Serviços',
         description: 'Serviços, habilidades e apoio mútuo entre membros',

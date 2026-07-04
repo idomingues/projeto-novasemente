@@ -4,6 +4,11 @@ use App\Http\Controllers\AcervoController;
 use App\Http\Controllers\AppNotificationController;
 use App\Http\Controllers\AppVersionController;
 use App\Http\Controllers\CampaignDonationController;
+use App\Http\Controllers\CharityCampaignController;
+use App\Http\Controllers\CharityCampaignMediaController;
+use App\Http\Controllers\CharityCampaignMobileController;
+use App\Http\Controllers\CharityDonationController;
+use App\Http\Controllers\CharityTreasurerDashboardController;
 use App\Http\Controllers\ChurchController;
 use App\Http\Controllers\CommunicationRequestController;
 use App\Http\Controllers\CommunityController;
@@ -248,6 +253,10 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
 Route::get('/mobile/localizacao', [MobileController::class, 'location'])->name('mobile.location');
 Route::get('/mobile/pastores', [MobileController::class, 'pastors'])->name('mobile.pastors');
 Route::get('/mobile/offerings', [MobileController::class, 'offerings'])->name('mobile.offerings');
+Route::get('/mobile/doacoes', [CharityCampaignMobileController::class, 'index'])->name('mobile.donations.index');
+Route::get('/mobile/doacoes/{charityCampaign}', [CharityCampaignMobileController::class, 'show'])
+    ->whereNumber('charityCampaign')
+    ->name('mobile.donations.show');
 Route::get('/mobile/caixa-promessa/random', [MobilePromiseBoxController::class, 'random'])
     ->middleware('throttle:80,1')
     ->name('mobile.promise-box.random');
@@ -669,6 +678,14 @@ Route::middleware('auth')->group(function () {
         ->name('mobile.campaigns.my-donations');
     Route::post('/mobile/minhas-doacoes/{campaignDonation}/reclamacao', [DonationCampaignMobileController::class, 'submitDispute'])
         ->name('mobile.campaigns.dispute');
+    Route::post('/mobile/doacoes/{charityCampaign}/receipt', [CharityCampaignMobileController::class, 'uploadReceipt'])
+        ->name('mobile.donations.receipt');
+    Route::post('/mobile/doacoes/{charityCampaign}/donate', [CharityCampaignMobileController::class, 'confirmDonation'])
+        ->name('mobile.donations.donate');
+    Route::get('/mobile/doacoes/minhas', [CharityCampaignMobileController::class, 'myDonations'])
+        ->name('mobile.donations.my-donations');
+    Route::post('/mobile/doacoes/minhas/{charityDonation}/reclamacao', [CharityCampaignMobileController::class, 'submitDispute'])
+        ->name('mobile.donations.dispute');
 
     Route::get('/campanhas', [DonationCampaignController::class, 'index'])
         ->name('donation-campaigns.index')
@@ -705,6 +722,40 @@ Route::middleware('auth')->group(function () {
         ->name('donation-campaigns.thanks.unpublish')
         ->middleware('permission:campaigns.manage|finance.view');
 
+    Route::get('/doacoes', [CharityCampaignController::class, 'index'])
+        ->name('charity-campaigns.index')
+        ->middleware('permission:donations.view|donations.manage|finance.view');
+    Route::post('/doacoes', [CharityCampaignController::class, 'store'])
+        ->name('charity-campaigns.store')
+        ->middleware('permission:donations.manage');
+    Route::put('/doacoes/{charityCampaign}', [CharityCampaignController::class, 'update'])
+        ->name('charity-campaigns.update')
+        ->middleware('permission:donations.manage');
+    Route::delete('/doacoes/{charityCampaign}', [CharityCampaignController::class, 'destroy'])
+        ->name('charity-campaigns.destroy')
+        ->middleware('permission:donations.manage');
+    Route::get('/doacoes/{charityCampaign}/registros', [CharityCampaignController::class, 'donationsJson'])
+        ->name('charity-campaigns.donations')
+        ->middleware('permission:donations.view|donations.manage|finance.view');
+    Route::post('/doacoes/{charityCampaign}/registros/manual', [CharityDonationController::class, 'storeManual'])
+        ->name('charity-campaigns.donations.manual')
+        ->middleware('permission:donations.manage|finance.view');
+    Route::patch('/doacoes/{charityCampaign}/historia', [CharityCampaignMediaController::class, 'updateStory'])
+        ->name('charity-campaigns.story.update')
+        ->middleware('permission:donations.manage|finance.view');
+    Route::post('/doacoes/{charityCampaign}/fotos', [CharityCampaignMediaController::class, 'storePhoto'])
+        ->name('charity-campaigns.photos.store')
+        ->middleware('permission:donations.manage|finance.view');
+    Route::delete('/doacoes/{charityCampaign}/fotos/{photo}', [CharityCampaignMediaController::class, 'destroyPhoto'])
+        ->name('charity-campaigns.photos.destroy')
+        ->middleware('permission:donations.manage|finance.view');
+    Route::post('/doacoes/{charityCampaign}/agradecimento/publicar', [CharityCampaignMediaController::class, 'publishThanks'])
+        ->name('charity-campaigns.thanks.publish')
+        ->middleware('permission:donations.manage|finance.view');
+    Route::post('/doacoes/{charityCampaign}/agradecimento/ocultar', [CharityCampaignMediaController::class, 'unpublishThanks'])
+        ->name('charity-campaigns.thanks.unpublish')
+        ->middleware('permission:donations.manage|finance.view');
+
     Route::get('/campanhas-itens', [DonationItemCampaignController::class, 'index'])
         ->name('donation-item-campaigns.index')
         ->middleware('permission:campaigns.view|campaigns.manage');
@@ -721,6 +772,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/financeiro', [TreasurerDashboardController::class, 'index'])
         ->name('finance.treasurer')
         ->middleware('permission:finance.view');
+    Route::get('/financeiro/doacao', [CharityTreasurerDashboardController::class, 'index'])
+        ->name('finance.charity-donations.index')
+        ->middleware('permission:finance.view');
+    Route::patch('/financeiro/doacao/{charityDonation}', [CharityDonationController::class, 'updateAmount'])
+        ->name('finance.charity-donations.update')
+        ->middleware('permission:finance.view|donations.manage');
+    Route::post('/financeiro/doacao/{charityDonation}/resolver-reclamacao', [CharityDonationController::class, 'resolveDispute'])
+        ->name('finance.charity-donations.resolve-dispute')
+        ->middleware('permission:finance.view|donations.manage');
 
     Route::get('/conexao-talentos', [TalentConnectionAdminController::class, 'dashboard'])
         ->name('talents.admin.dashboard')

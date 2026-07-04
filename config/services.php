@@ -51,6 +51,9 @@ return [
         'drive_api_key' => env('GOOGLE_DRIVE_API_KEY'),
     ],
 
+    'ios_app_store_url' => env('IOS_APP_STORE_URL'),
+    'native_ios_minimum_version' => env('NATIVE_IOS_MINIMUM_VERSION', '15.0'),
+
     /**
      * Firebase Cloud Messaging (HTTP v1) — push nativo iOS/Android via tokens FCM.
      *

@@ -187,8 +187,8 @@ const quickActionsGuest: QuickAction[] = [
         icon: PhotoIcon,
     },
     {
-        label: 'Oferta',
-        subtitle: 'Faça sua oferta de forma simples',
+        label: 'Dízimos e Pacto',
+        subtitle: 'Contribua com dízimos e pacto de forma simples',
         route: 'mobile.offerings',
         featureKey: 'offerings',
         icon: BanknotesIcon,

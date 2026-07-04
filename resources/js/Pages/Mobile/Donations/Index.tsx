@@ -53,14 +53,14 @@ function campaignAvailabilityLabel(campaign: Campaign): string | null {
     return 'Doações indisponíveis no momento';
 }
 
-export default function MobileDonationCampaignsIndex({ campaigns }: Props) {
+export default function MobileDonationsIndex({ campaigns }: Props) {
     return (
         <MobileLayout>
-            <Head title="Oferta Nova Semente" />
+            <Head title="Doação" />
             <div className="mx-auto max-w-3xl space-y-6">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
-                        Oferta Nova Semente
+                        Doação
                     </h1>
                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                         Cada contribuição é um abraço à missão. Participe com o coração e veja o impacto da sua generosidade.
@@ -80,43 +80,43 @@ export default function MobileDonationCampaignsIndex({ campaigns }: Props) {
                             return (
                                 <Link
                                     key={campaign.id}
-                                    href={route('mobile.campaigns.show', campaign.id)}
+                                    href={route('mobile.donations.show', campaign.id)}
                                     className="block rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:border-brand-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-brand-700"
                                 >
-                                {campaign.cover_image_url && (
-                                    <img
-                                        src={campaign.cover_image_url}
-                                        alt=""
-                                        className="mb-3 h-[13.5rem] w-full rounded-xl object-cover"
-                                    />
-                                )}
-                                <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">{campaign.title}</h2>
-                                {(campaign.starts_at || campaign.ends_at) && (
-                                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                        {campaign.starts_at ? `Início: ${formatCampaignDate(campaign.starts_at)}` : ''}
-                                        {campaign.starts_at && campaign.ends_at ? ' · ' : ''}
-                                        {campaign.ends_at ? `Prazo: ${formatCampaignDate(campaign.ends_at)}` : ''}
-                                    </p>
-                                )}
-                                <div className="mt-3">
-                                    <DonationProgressBar
-                                        raisedAmount={campaign.raised_amount}
-                                        goalAmount={campaign.goal_amount}
-                                        remainingAmount={campaign.remaining_amount}
-                                        progressPercent={campaign.progress_percent}
-                                        size="sm"
-                                    />
-                                </div>
-                                {availabilityLabel && (
-                                    <p className="mt-2 text-xs font-medium text-amber-600 dark:text-amber-400">
-                                        {availabilityLabel}
-                                    </p>
-                                )}
-                                {campaign.thanks_is_published && (
-                                    <p className="mt-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                                        Agradecimento publicado
-                                    </p>
-                                )}
+                                    {campaign.cover_image_url && (
+                                        <img
+                                            src={campaign.cover_image_url}
+                                            alt=""
+                                            className="mb-3 h-[13.5rem] w-full rounded-xl object-cover"
+                                        />
+                                    )}
+                                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">{campaign.title}</h2>
+                                    {(campaign.starts_at || campaign.ends_at) && (
+                                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                            {campaign.starts_at ? `Início: ${formatCampaignDate(campaign.starts_at)}` : ''}
+                                            {campaign.starts_at && campaign.ends_at ? ' · ' : ''}
+                                            {campaign.ends_at ? `Prazo: ${formatCampaignDate(campaign.ends_at)}` : ''}
+                                        </p>
+                                    )}
+                                    <div className="mt-3">
+                                        <DonationProgressBar
+                                            raisedAmount={campaign.raised_amount}
+                                            goalAmount={campaign.goal_amount}
+                                            remainingAmount={campaign.remaining_amount}
+                                            progressPercent={campaign.progress_percent}
+                                            size="sm"
+                                        />
+                                    </div>
+                                    {availabilityLabel && (
+                                        <p className="mt-2 text-xs font-medium text-amber-600 dark:text-amber-400">
+                                            {availabilityLabel}
+                                        </p>
+                                    )}
+                                    {campaign.thanks_is_published && (
+                                        <p className="mt-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                                            Agradecimento publicado
+                                        </p>
+                                    )}
                                 </Link>
                             );
                         })}

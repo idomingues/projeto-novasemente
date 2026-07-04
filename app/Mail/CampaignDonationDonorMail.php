@@ -21,7 +21,7 @@ class CampaignDonationDonorMail extends Mailable implements ShouldQueue
         $campaign = $this->donation->campaign;
         $amount = number_format((float) $this->donation->amount, 2, ',', '.');
 
-        return $this->subject("Doação confirmada: R$ {$amount} — {$campaign?->title}")
+        return $this->subject("Contribuição confirmada: R$ {$amount} — {$campaign?->title}")
             ->markdown('emails.campaign-donation-donor', [
                 'donation' => $this->donation,
                 'myDonationsUrl' => route('mobile.campaigns.my-donations', absolute: true),

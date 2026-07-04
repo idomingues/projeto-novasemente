@@ -84,7 +84,7 @@ const statusLabels: Record<string, string> = {
     archived: 'Arquivada',
 };
 
-export default function DonationCampaignsIndex({ campaigns, canManage, canManageMedia, canManageDonations = canManageMedia }: Props) {
+export default function DonationsIndex({ campaigns, canManage, canManageMedia, canManageDonations = canManageMedia }: Props) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
@@ -149,7 +149,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
     }
 
     const fetchDonations = async (campaignId: number) => {
-        const res = await fetch(route('donation-campaigns.donations', campaignId), {
+        const res = await fetch(route('charity-campaigns.donations', campaignId), {
             headers: { Accept: 'application/json' },
             credentials: 'same-origin',
         });
@@ -220,11 +220,11 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
             goal_amount: normalizeMoneyFieldValue(current.goal_amount),
         }));
         if (isEditing && editingId) {
-            put(route('donation-campaigns.update', editingId), { ...inertiaListModalSave, forceFormData: true,
+            put(route('charity-campaigns.update', editingId), { ...inertiaListModalSave, forceFormData: true,
                 onFinish: () => transform((current) => current),
             });
         } else {
-            post(route('donation-campaigns.store'), { ...inertiaListModalSave, forceFormData: true,
+            post(route('charity-campaigns.store'), { ...inertiaListModalSave, forceFormData: true,
                 onFinish: () => transform((current) => current),
             });
         }
@@ -233,13 +233,13 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
     const handleDelete = async (id: number) => {
         const ok = await confirmAction({
             title: 'Remover campanha?',
-            text: 'A campanha e todas as contribuições associadas serão excluídas.',
+            text: 'A campanha e todas as doações associadas serão excluídas.',
             confirmButtonText: 'Remover',
             danger: true,
             icon: 'warning',
         });
         if (ok) {
-            router.delete(route('donation-campaigns.destroy', id));
+            router.delete(route('charity-campaigns.destroy', id));
         }
     };
 
@@ -265,7 +265,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
     const submitAdjust: FormEventHandler = (e) => {
         e.preventDefault();
         if (!adjustDonation || !detailCampaign) return;
-        adjustForm.patch(route('finance.donations.update', adjustDonation.id), {
+        adjustForm.patch(route('finance.charity-donations.update', adjustDonation.id), {
             preserveScroll: true,
             onSuccess: async () => {
                 setAdjustDonation(null);
@@ -286,7 +286,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
         e.preventDefault();
         if (!detailCampaign) return;
 
-        manualForm.post(route('donation-campaigns.donations.manual', detailCampaign.id), {
+        manualForm.post(route('charity-campaigns.donations.manual', detailCampaign.id), {
             preserveScroll: true,
             forceFormData: true,
             onSuccess: async () => {
@@ -307,7 +307,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
     const submitStory: FormEventHandler = (e) => {
         e.preventDefault();
         if (!mediaCampaign) return;
-        storyForm.patch(route('donation-campaigns.story.update', mediaCampaign.id), inertiaListModalSave);
+        storyForm.patch(route('charity-campaigns.story.update', mediaCampaign.id), inertiaListModalSave);
     };
 
     const uploadPhotos = (kind: 'story' | 'thanks', files: FileList | File[]) => {
@@ -319,7 +319,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
         selectedFiles.forEach((file) => {
             fd.append('photos[]', file);
         });
-        router.post(route('donation-campaigns.photos.store', mediaCampaign.id), fd, {
+        router.post(route('charity-campaigns.photos.store', mediaCampaign.id), fd, {
             ...inertiaListModalSave,
             forceFormData: true,
         });
@@ -327,7 +327,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
 
     const removePhoto = (photoId: number) => {
         if (!mediaCampaign) return;
-        router.delete(route('donation-campaigns.photos.destroy', [mediaCampaign.id, photoId]), {
+        router.delete(route('charity-campaigns.photos.destroy', [mediaCampaign.id, photoId]), {
             ...inertiaListModalSave,
         });
     };
@@ -335,21 +335,21 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
     const submitThanks: FormEventHandler = (e) => {
         e.preventDefault();
         if (!mediaCampaign) return;
-        thanksForm.post(route('donation-campaigns.thanks.publish', mediaCampaign.id), inertiaListModalSave);
+        thanksForm.post(route('charity-campaigns.thanks.publish', mediaCampaign.id), inertiaListModalSave);
     };
 
     const unpublishThanks = () => {
         if (!mediaCampaign) return;
-        router.post(route('donation-campaigns.thanks.unpublish', mediaCampaign.id), {}, inertiaListModalSave);
+        router.post(route('charity-campaigns.thanks.unpublish', mediaCampaign.id), {}, inertiaListModalSave);
     };
 
     const campaignIsClosed = mediaCampaign?.status === 'closed' || mediaCampaign?.status === 'archived';
 
     return (
         <AdminLayout>
-            <Head title="Oferta Nova Semente" />
+            <Head title="Doação" />
             <PageHeader
-                title="Oferta Nova Semente"
+                title="Doação"
                 subtitle="Mobilize a igreja com causas que tocam o coração e transformam vidas."
                 actions={
                     canManage ? (
@@ -395,7 +395,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                                         progressPercent={campaign.progress_percent}
                                     />
                                     <p className="text-xs text-zinc-500">
-                                        {campaign.donations_count} contribuição(ões)
+                                        {campaign.donations_count} doação(ões)
                                         {campaign.story_photos.length > 0 ? ` · ${campaign.story_photos.length} foto(s) do projeto` : ''}
                                         {campaign.starts_at ? ` · Início: ${formatCampaignDate(campaign.starts_at)}` : ''}
                                         {campaign.ends_at ? ` · Prazo: ${formatCampaignDate(campaign.ends_at)}` : ''}
@@ -415,7 +415,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                                     icon={<EyeIcon className="h-4 w-4" />}
                                     onClick={() => openDonations(campaign)}
                                 >
-                                    Contribuições
+                                    Doações
                                 </ListCardTextActionButton>
                                 {canManageMedia && (
                                     <ListCardTextActionButton
@@ -533,7 +533,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                             checked={data.allow_over_goal}
                             onChange={(e) => setData('allow_over_goal', e.target.checked)}
                         />
-                        Permitir contribuições acima da meta
+                        Permitir doações acima da meta
                     </label>
                     <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/80 p-4 dark:border-zinc-600 dark:bg-zinc-800/40">
                         <InputLabel htmlFor="cover_image" value="Imagem de capa (opcional)" />
@@ -582,12 +582,12 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                 <div className="p-6">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
-                            Contribuições — {detailCampaign?.title}
+                            Doações — {detailCampaign?.title}
                         </h3>
                         {canManageDonations && detailCampaign?.status !== 'archived' && (
                             <SecondaryButton type="button" onClick={openManualDonation}>
                                 <PlusIcon className="mr-1.5 h-4 w-4" />
-                                Registrar contribuição manual
+                                Registrar doação manual
                             </SecondaryButton>
                         )}
                     </div>
@@ -595,9 +595,9 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                         <p className="mt-4 text-sm text-zinc-500">Carregando...</p>
                     ) : detailDonations.length === 0 ? (
                         <p className="mt-4 text-sm text-zinc-500">
-                            Nenhuma contribuição registrada ainda.
+                            Nenhuma doação registrada ainda.
                             {canManageDonations && detailCampaign?.status !== 'archived' && (
-                                <span> Use «Registrar contribuição manual» para incluir valores recebidos fora do app.</span>
+                                <span> Use «Registrar doação manual» para incluir valores recebidos fora do app.</span>
                             )}
                         </p>
                     ) : (
@@ -671,7 +671,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
 
             <Modal show={manualDonationOpen} onClose={() => setManualDonationOpen(false)} maxWidth="md">
                 <form onSubmit={submitManualDonation} className="space-y-4 p-6">
-                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Registrar contribuição manual</h3>
+                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Registrar doação manual</h3>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400">
                         Use quando o valor foi recebido fora do app (dinheiro, PIX direto, transferência, etc.) e precisa
                         constar no progresso da campanha.
@@ -738,7 +738,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                             checked={manualForm.data.is_anonymous}
                             onChange={(e) => manualForm.setData('is_anonymous', e.target.checked)}
                         />
-                        Contribuição anônima na listagem pública
+                        Doação anônima na listagem pública
                     </label>
                     <div>
                         <InputLabel htmlFor="manual_receipt" value="Comprovante (opcional)" />
@@ -754,14 +754,14 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                         <SecondaryButton type="button" onClick={() => setManualDonationOpen(false)}>
                             Cancelar
                         </SecondaryButton>
-                        <PrimaryButton disabled={manualForm.processing}>Registrar contribuição</PrimaryButton>
+                        <PrimaryButton disabled={manualForm.processing}>Registrar doação</PrimaryButton>
                     </div>
                 </form>
             </Modal>
 
             <Modal show={adjustDonation !== null} onClose={() => setAdjustDonation(null)} maxWidth="md">
                 <form onSubmit={submitAdjust} className="space-y-4 p-6">
-                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Ajustar valor da contribuição</h3>
+                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Ajustar valor da doação</h3>
                     {adjustDonation && detailCampaign && (
                         <p className="text-sm text-zinc-600 dark:text-zinc-400">
                             {adjustDonation.donor_name} · {detailCampaign.title} · Atual: {formatBrl(adjustDonation.amount)}
@@ -796,7 +796,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                             required
                         />
                         <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                            A justificativa fica registrada no histórico e o doador pode ver em Minhas contribuições.
+                            A justificativa fica registrada no histórico e o doador pode ver em Minhas doações.
                         </p>
                         {adjustForm.errors.adjustment_note && (
                             <p className="mt-1 text-sm text-red-600">{adjustForm.errors.adjustment_note}</p>

@@ -98,12 +98,12 @@ export default function MobileOfferings({ donation, localOffer }: Props) {
 
     return (
         <MobileLayout>
-            <Head title="Dízimos e Ofertas" />
+            <Head title="Dízimos e Pacto" />
             <div className="space-y-6 max-w-3xl mx-auto">
                 <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Dízimos e Ofertas</h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Dízimos e Pacto</h1>
                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                        Sua forma de doação continua a mesma. Se preferir, você também pode abrir o 7me para doar.
+                        Sua forma de contribuição continua a mesma. Se preferir, você também pode abrir o 7me para doar.
                     </p>
                 </div>
 
@@ -158,7 +158,7 @@ export default function MobileOfferings({ donation, localOffer }: Props) {
                         <div className="min-w-0 space-y-2">
                             <p className="text-sm font-semibold text-zinc-900 dark:text-white">Igreja local</p>
                             <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">
-                                Valores com centavos &quot;,20&quot; (ex.: R$ 50,20) indicam que sua oferta será destinada à
+                                Valores com centavos &quot;,20&quot; (ex.: R$ 50,20) indicam que seu pacto será destinado à
                                 igreja local.
                             </p>
                         </div>
@@ -171,14 +171,14 @@ export default function MobileOfferings({ donation, localOffer }: Props) {
                         ATALHO PIX
                     </h2>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4 leading-relaxed">
-                        Informe o valor da sua oferta. Geramos o código <strong className="font-medium text-zinc-800 dark:text-zinc-200">PIX Copia e Cola</strong> para você colar no app do banco.
+                        Informe o valor do seu pacto. Geramos o código <strong className="font-medium text-zinc-800 dark:text-zinc-200">PIX Copia e Cola</strong> para você colar no app do banco.
                     </p>
                     <p className="text-xs text-zinc-500 dark:text-zinc-500 mb-3 break-all">
                         Chave PIX: <span className="font-mono text-zinc-700 dark:text-zinc-300">{pixKeyForOffer}</span>
                     </p>
                     <div className="space-y-3">
                         <div>
-                            <InputLabel htmlFor="local_offer_amount" value="Valor da oferta (R$)" />
+                            <InputLabel htmlFor="local_offer_amount" value="Valor do pacto (R$)" />
                             <TextInput
                                 id="local_offer_amount"
                                 type="text"
@@ -246,7 +246,7 @@ export default function MobileOfferings({ donation, localOffer }: Props) {
 
                     {!hasOtherMethods && (
                             <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center py-2">
-                                As formas de doação (chave PIX da igreja e link do 7me) podem ser configuradas no painel da
+                                As formas de contribuição (chave PIX da igreja e link do 7me) podem ser configuradas no painel da
                                 igreja.
                             </p>
                         )}

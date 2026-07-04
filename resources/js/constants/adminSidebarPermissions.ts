@@ -135,6 +135,7 @@ export const adminSidebarRoutePermissions: Record<string, string[]> = {
     /** Mesma permissão de gestão de músicas / inserir itens no acervo */
     'acervo.index': ['music.manage'],
     'donation-campaigns.index': ['campaigns.view', 'campaigns.manage', 'finance.view'],
+    'charity-campaigns.index': ['donations.view', 'donations.manage', 'finance.view'],
     'donation-item-campaigns.index': ['campaigns.view', 'campaigns.manage'],
     'talents.admin.dashboard': ['talents.treasurer', 'talents.moderate', 'finance.view'],
     'talents.admin.listings': ['talents.moderate'],
@@ -153,6 +154,9 @@ export const adminSidebarRoutePermissions: Record<string, string[]> = {
     'finance.treasurer': ['finance.view'],
     'finance.donations.update': ['finance.view', 'campaigns.manage'],
     'finance.donations.resolve-dispute': ['finance.view', 'campaigns.manage'],
+    'finance.charity-donations.index': ['finance.view'],
+    'finance.charity-donations.update': ['finance.view', 'donations.manage'],
+    'finance.charity-donations.resolve-dispute': ['finance.view', 'donations.manage'],
     'varios.contact': [],
     'varios.notifications': [],
 };

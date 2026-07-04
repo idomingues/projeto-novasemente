@@ -34,7 +34,7 @@ interface Props {
 const PASTORAL_ROUTE = 'mobile.pastoral-appointments.request' as const;
 
 const items: MoreMenuItem[] = [
-    { name: 'Dízimos e Ofertas', description: 'Contribuições e ofertas', route: 'mobile.offerings', featureKey: 'offerings', icon: HandRaisedIcon },
+    { name: 'Dízimos e Pacto', description: 'Contribuições e pacto', route: 'mobile.offerings', featureKey: 'offerings', icon: HandRaisedIcon },
     { name: 'Culto', description: 'Vídeos do culto online', route: 'mobile.culto', featureKey: 'culto', icon: FilmIcon },
     { name: 'Música', description: 'Cante conosco', route: 'musica.index', featureKey: 'musica', icon: MusicalNoteIcon },
     { name: 'Cultos e horários', description: 'Dias e horários dos cultos', route: 'mobile.services', featureKey: 'services', icon: ClockIcon },

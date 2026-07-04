@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AcervoItem;
 use App\Models\AppNotification;
+use App\Models\CharityCampaign;
 use App\Models\Culto;
 use App\Models\DonationCampaign;
 use App\Models\Event;
@@ -153,10 +154,28 @@ class PublicationBroadcastNotifier
 
         return $this->create(
             churchId: $campaign->church_id,
-            prefix: 'Nova campanha de doação: ',
+            prefix: 'Nova campanha da Oferta Nova Semente: ',
             title: $campaign->title,
             body: $this->bodyFromText($campaign->description),
             actionUrl: route('mobile.campaigns.show', ['donationCampaign' => $campaign->id], absolute: true),
+            createdByUserId: $createdByUserId,
+        );
+    }
+
+    public function notifyCharityCampaign(CharityCampaign $campaign, ?int $createdByUserId = null): ?AppNotification
+    {
+        $campaign->refresh();
+
+        if ($campaign->status === CharityCampaign::STATUS_ARCHIVED) {
+            return null;
+        }
+
+        return $this->create(
+            churchId: $campaign->church_id,
+            prefix: 'Nova campanha de doação: ',
+            title: $campaign->title,
+            body: $this->bodyFromText($campaign->description),
+            actionUrl: route('mobile.donations.show', ['charityCampaign' => $campaign->id], absolute: true),
             createdByUserId: $createdByUserId,
         );
     }

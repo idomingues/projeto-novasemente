@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
-use App\Models\CampaignDonation;
+use App\Models\CharityCampaign;
+use App\Models\CharityDonation;
 use App\Models\Church;
-use App\Models\DonationCampaign;
 use App\Models\User;
 use App\Models\UserInboxNotification;
 use App\Support\SafeSpatieUsersByPermission;
@@ -12,9 +12,9 @@ use App\Support\UserMessagingPreferences;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
 
-class CampaignDonationNotifier
+class CharityDonationNotifier
 {
-    public function notifyStakeholdersOfNewDonation(CampaignDonation $donation): void
+    public function notifyStakeholdersOfNewDonation(CharityDonation $donation): void
     {
         if (! Schema::hasTable('user_inbox_notifications')) {
             return;
@@ -23,7 +23,7 @@ class CampaignDonationNotifier
         $donation->loadMissing(['campaign.church', 'campaign.author', 'user']);
 
         $campaign = $donation->campaign;
-        if (! $campaign instanceof DonationCampaign) {
+        if (! $campaign instanceof CharityCampaign) {
             return;
         }
 
@@ -121,13 +121,13 @@ class CampaignDonationNotifier
     private function buildTitle(bool $treasurer, bool $creator): string
     {
         if ($treasurer && $creator) {
-            return 'Nova contribuição na campanha';
+            return 'Nova doação na campanha';
         }
         if ($treasurer) {
-            return 'Nova contribuição registrada';
+            return 'Nova doação registrada';
         }
 
-        return 'Contribuição na sua campanha';
+        return 'Doação na sua campanha';
     }
 
     private function buildBody(
@@ -144,12 +144,12 @@ class CampaignDonationNotifier
             return 'R$ '.$amount.' na campanha «'.$campaignTitle.'» ('.$donorName.'). Toque para ver no painel do tesoureiro.';
         }
 
-        return 'R$ '.$amount.' na campanha «'.$campaignTitle.'» que você criou ('.$donorName.'). Toque para acompanhar as contribuições.';
+        return 'R$ '.$amount.' na campanha «'.$campaignTitle.'» que você criou ('.$donorName.'). Toque para acompanhar as doações.';
     }
 
     private function resolveRouteName(bool $treasurer): string
     {
-        return $treasurer ? 'finance.treasurer' : 'donation-campaigns.index';
+        return $treasurer ? 'finance.charity-donations.index' : 'charity-campaigns.index';
     }
 
     private function pushInbox(User $user, string $title, string $body, string $routeName): void

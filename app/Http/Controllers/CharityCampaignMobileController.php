@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Actions\Donations\NotifyDonorOfCampaignDonation;
-use App\Actions\Donations\NotifyTreasurerOfCampaignDonation;
-use App\Models\CampaignDonation;
+use App\Actions\Donations\NotifyDonorOfCharityDonation;
+use App\Actions\Donations\NotifyTreasurerOfCharityDonation;
+use App\Models\CharityCampaign;
+use App\Models\CharityDonation;
 use App\Models\Church;
-use App\Models\DonationCampaign;
-use App\Services\CampaignDonationNotifier;
+use App\Services\CharityDonationNotifier;
 use App\Services\ReceiptOcrService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -17,11 +17,11 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class DonationCampaignMobileController extends Controller
+class CharityCampaignMobileController extends Controller
 {
     private function sessionKey(int $campaignId): string
     {
-        return 'pending_campaign_donation_'.$campaignId;
+        return 'pending_charity_donation_'.$campaignId;
     }
 
     private function resolveChurchId(): ?int
@@ -34,45 +34,45 @@ class DonationCampaignMobileController extends Controller
     {
         $churchId = $this->resolveChurchId();
 
-        $campaigns = DonationCampaign::query()
+        $campaigns = CharityCampaign::query()
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->where(function ($q) {
                 $q->where(function ($active) {
-                    $active->where('status', DonationCampaign::STATUS_ACTIVE)
+                    $active->where('status', CharityCampaign::STATUS_ACTIVE)
                         ->where(function ($dates) {
                             $dates->whereNull('ends_at')->orWhereDate('ends_at', '>=', now()->toDateString());
                         });
-                })->orWhere('status', DonationCampaign::STATUS_CLOSED);
+                })->orWhere('status', CharityCampaign::STATUS_CLOSED);
             })
             ->orderByDesc('created_at')
             ->get()
-            ->map(fn (DonationCampaign $c) => $c->toMobileArray());
+            ->map(fn (CharityCampaign $c) => $c->toMobileArray());
 
-        return Inertia::render('Mobile/DonationCampaigns/Index', [
+        return Inertia::render('Mobile/Donations/Index', [
             'campaigns' => $campaigns,
         ]);
     }
 
-    public function show(Request $request, DonationCampaign $donationCampaign): Response
+    public function show(Request $request, CharityCampaign $charityCampaign): Response
     {
-        $church = $donationCampaign->church;
+        $church = $charityCampaign->church;
         $user = $request->user();
         $treasurerEmail = trim((string) ($church?->treasurer_notification_email ?? ''));
-        $donationUrl = 'https://7me.app/71/y8nzix';
+        $donationUrl = $church?->donation_url ?: 'https://giving.7me.app/guest-donation/church/96ccdd6e-f537-49be-88dd-ffc112442cd9';
 
-        $recentDonations = $donationCampaign->donations()
+        $recentDonations = $charityCampaign->donations()
             ->with('user:id,name')
             ->orderByDesc('confirmed_at')
             ->limit(10)
             ->get()
-            ->map(fn (CampaignDonation $d) => [
+            ->map(fn (CharityDonation $d) => [
                 'donor_name' => $d->donorDisplayName(),
                 'amount' => (float) $d->amount,
                 'confirmed_at' => $d->confirmed_at->toIso8601String(),
             ]);
 
-        return Inertia::render('Mobile/DonationCampaigns/Show', [
-            'campaign' => $donationCampaign->toMobileArray(true),
+        return Inertia::render('Mobile/Donations/Show', [
+            'campaign' => $charityCampaign->toMobileArray(true),
             'recentDonations' => $recentDonations,
             'donationUrl' => $donationUrl,
             'transparency' => [
@@ -93,29 +93,29 @@ class DonationCampaignMobileController extends Controller
         ]);
     }
 
-    public function uploadReceipt(Request $request, DonationCampaign $donationCampaign, ReceiptOcrService $ocr): JsonResponse
+    public function uploadReceipt(Request $request, CharityCampaign $charityCampaign, ReceiptOcrService $ocr): JsonResponse
     {
-        if (! $donationCampaign->isAcceptingDonations()) {
-            return response()->json(['message' => 'Esta campanha não está aceitando contribuições no momento.'], 422);
+        if (! $charityCampaign->isAcceptingDonations()) {
+            return response()->json(['message' => 'Esta campanha não está aceitando doações no momento.'], 422);
         }
 
-        $validated = $request->validate([
+        $request->validate([
             'receipt' => ['required', 'image', 'max:8192'],
         ]);
 
         $file = $request->file('receipt');
         $hash = hash_file('sha256', $file->getRealPath());
 
-        if (CampaignDonation::query()->where('receipt_hash', $hash)->exists()) {
-            return response()->json(['message' => 'Este comprovante já foi utilizado em outra contribuição.'], 422);
+        if (CharityDonation::query()->where('receipt_hash', $hash)->exists()) {
+            return response()->json(['message' => 'Este comprovante já foi utilizado em outra doação.'], 422);
         }
 
-        $path = $file->store('donations/receipts/pending', 'public');
+        $path = $file->store('charity/receipts/pending', 'public');
         $absolutePath = Storage::disk('public')->path($path);
 
         $ocrResult = $ocr->extractAmount($absolutePath);
 
-        $request->session()->put($this->sessionKey($donationCampaign->id), [
+        $request->session()->put($this->sessionKey($charityCampaign->id), [
             'receipt_path' => $path,
             'receipt_hash' => $hash,
             'ocr_suggested_amount' => $ocrResult['suggested_amount'],
@@ -130,15 +130,15 @@ class DonationCampaignMobileController extends Controller
         ]);
     }
 
-    public function confirmDonation(Request $request, DonationCampaign $donationCampaign): RedirectResponse
+    public function confirmDonation(Request $request, CharityCampaign $charityCampaign): RedirectResponse
     {
-        if (! $donationCampaign->isAcceptingDonations()) {
-            return redirect()->back()->with('error', 'Esta campanha não está aceitando contribuições no momento.');
+        if (! $charityCampaign->isAcceptingDonations()) {
+            return redirect()->back()->with('error', 'Esta campanha não está aceitando doações no momento.');
         }
 
-        $pending = $request->session()->get($this->sessionKey($donationCampaign->id));
+        $pending = $request->session()->get($this->sessionKey($charityCampaign->id));
         if (! is_array($pending) || empty($pending['receipt_path']) || empty($pending['receipt_hash'])) {
-            return redirect()->back()->with('error', 'Envie o comprovante antes de confirmar a contribuição.');
+            return redirect()->back()->with('error', 'Envie o comprovante antes de confirmar a doação.');
         }
 
         $data = $request->validate([
@@ -147,23 +147,23 @@ class DonationCampaignMobileController extends Controller
             'send_email_confirmation' => ['boolean'],
         ]);
 
-        if (CampaignDonation::query()->where('receipt_hash', $pending['receipt_hash'])->exists()) {
-            $request->session()->forget($this->sessionKey($donationCampaign->id));
+        if (CharityDonation::query()->where('receipt_hash', $pending['receipt_hash'])->exists()) {
+            $request->session()->forget($this->sessionKey($charityCampaign->id));
 
-            return redirect()->back()->with('error', 'Este comprovante já foi utilizado em outra contribuição.');
+            return redirect()->back()->with('error', 'Este comprovante já foi utilizado em outra doação.');
         }
 
         $pendingPath = $pending['receipt_path'];
-        $finalPath = 'donations/receipts/'.basename($pendingPath);
+        $finalPath = 'charity/receipts/'.basename($pendingPath);
 
         if ($pendingPath !== $finalPath && Storage::disk('public')->exists($pendingPath)) {
             Storage::disk('public')->move($pendingPath, $finalPath);
         }
 
-        $donation = DB::transaction(function () use ($request, $donationCampaign, $pending, $data, $finalPath) {
-            $campaign = DonationCampaign::query()->lockForUpdate()->findOrFail($donationCampaign->id);
+        $donation = DB::transaction(function () use ($request, $charityCampaign, $pending, $data, $finalPath) {
+            $campaign = CharityCampaign::query()->lockForUpdate()->findOrFail($charityCampaign->id);
 
-            $donation = CampaignDonation::create([
+            $donation = CharityDonation::create([
                 'campaign_id' => $campaign->id,
                 'user_id' => $request->user()->id,
                 'amount' => $data['amount'],
@@ -180,20 +180,20 @@ class DonationCampaignMobileController extends Controller
             return $donation;
         });
 
-        app(NotifyTreasurerOfCampaignDonation::class)->handle($donation);
-        app(NotifyDonorOfCampaignDonation::class)->handle($donation);
-        app(CampaignDonationNotifier::class)->notifyStakeholdersOfNewDonation($donation);
+        app(NotifyTreasurerOfCharityDonation::class)->handle($donation);
+        app(NotifyDonorOfCharityDonation::class)->handle($donation);
+        app(CharityDonationNotifier::class)->notifyStakeholdersOfNewDonation($donation);
 
-        $request->session()->forget($this->sessionKey($donationCampaign->id));
+        $request->session()->forget($this->sessionKey($charityCampaign->id));
 
         return redirect()
-            ->route('mobile.campaigns.show', $donationCampaign)
-            ->with('success', 'Contribuição registrada com sucesso! Obrigado. Você pode acompanhar em Minhas contribuições.');
+            ->route('mobile.donations.show', $charityCampaign)
+            ->with('success', 'Doação registrada com sucesso! Obrigado pela contribuição. Você pode acompanhar em Minhas doações.');
     }
 
     public function myDonations(Request $request): Response
     {
-        $donations = CampaignDonation::query()
+        $donations = CharityDonation::query()
             ->with([
                 'campaign:id,title',
                 'adjustments' => fn ($q) => $q->orderByDesc('created_at'),
@@ -201,20 +201,20 @@ class DonationCampaignMobileController extends Controller
             ->where('user_id', $request->user()->id)
             ->orderByDesc('confirmed_at')
             ->get()
-            ->map(fn (CampaignDonation $d) => $d->toMobileArray());
+            ->map(fn (CharityDonation $d) => $d->toMobileArray());
 
-        return Inertia::render('Mobile/DonationCampaigns/MyDonations', [
+        return Inertia::render('Mobile/Donations/MyDonations', [
             'donations' => $donations,
         ]);
     }
 
-    public function submitDispute(Request $request, CampaignDonation $campaignDonation): RedirectResponse
+    public function submitDispute(Request $request, CharityDonation $charityDonation): RedirectResponse
     {
-        if ($campaignDonation->user_id !== $request->user()->id) {
+        if ($charityDonation->user_id !== $request->user()->id) {
             abort(403);
         }
 
-        if ($campaignDonation->dispute_status === CampaignDonation::DISPUTE_PENDING) {
+        if ($charityDonation->dispute_status === CharityDonation::DISPUTE_PENDING) {
             return redirect()->back()->with('error', 'Sua reclamação já está em análise.');
         }
 
@@ -222,16 +222,16 @@ class DonationCampaignMobileController extends Controller
             'dispute_message' => ['required', 'string', 'min:10', 'max:2000'],
         ]);
 
-        $campaignDonation->update([
+        $charityDonation->update([
             'dispute_message' => $data['dispute_message'],
-            'dispute_status' => CampaignDonation::DISPUTE_PENDING,
+            'dispute_status' => CharityDonation::DISPUTE_PENDING,
             'disputed_at' => now(),
             'dispute_resolution_note' => null,
             'dispute_resolved_at' => null,
         ]);
 
         return redirect()
-            ->route('mobile.campaigns.my-donations')
+            ->route('mobile.donations.my-donations')
             ->with('success', 'Reclamação enviada. A equipe financeira irá analisar.');
     }
 }

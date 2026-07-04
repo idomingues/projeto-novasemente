@@ -10,6 +10,7 @@ import { createRoot } from 'react-dom/client';
 import BiometricOptInGate from './Components/Auth/BiometricOptInGate';
 import AppHead from './Components/AppHead';
 import OfflineBanner from './Components/OfflineBanner';
+import NativeAppUpdateGate from './Components/NativeAppUpdateGate';
 import PushNotificationsSync from './Components/PushNotificationsSync';
 import ProgressIndicator from './Components/ProgressIndicator';
 import { ThemeProvider } from './Contexts/ThemeContext';
@@ -23,6 +24,9 @@ const defaultAppName = import.meta.env.VITE_APP_NAME || '';
 type SharedPageProps = {
     csrf_token?: string;
     appName?: string;
+    appVersion?: string | null;
+    iosAppStoreUrl?: string | null;
+    nativeIosMinimumVersion?: string | null;
     auth?: { user?: { id?: number } | null };
 };
 
@@ -129,6 +133,11 @@ createInertiaApp({
         root.render(
             <ThemeProvider>
                 <BiometricOptInGate />
+                <NativeAppUpdateGate
+                    appVersion={inertiaProps.initialPage.props.appVersion}
+                    iosAppStoreUrl={inertiaProps.initialPage.props.iosAppStoreUrl}
+                    nativeIosMinimumVersion={inertiaProps.initialPage.props.nativeIosMinimumVersion}
+                />
                 <OfflineBanner />
                 <PushNotificationsSync initialUserId={inertiaProps.initialPage.props.auth?.user?.id ?? null} />
                 <ProgressIndicator />
