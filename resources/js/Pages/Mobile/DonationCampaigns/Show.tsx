@@ -98,6 +98,8 @@ export default function MobileDonationCampaignShow({ campaign, recentDonations, 
     const page = usePage();
     const csrf = (page.props as { csrf_token?: string }).csrf_token ?? '';
     const flash = (page.props as { flash?: { success?: string; error?: string } }).flash;
+    const auth = (page.props as { auth?: { user?: { name: string } | null } }).auth;
+    const isLoggedIn = Boolean(auth?.user);
 
     const [donateOpen, setDonateOpen] = useState(false);
     const [amountRaw, setAmountRaw] = useState('');
@@ -225,35 +227,40 @@ export default function MobileDonationCampaignShow({ campaign, recentDonations, 
         <MobileLayout>
             <Head title={campaign.title} />
             <div className="mx-auto max-w-3xl space-y-6">
-                <Link
-                    href={route('mobile.campaigns.index')}
-                    className="inline-flex items-center gap-1 text-sm font-medium text-brand-600 dark:text-brand-400"
-                >
-                    <ArrowLeftIcon className="h-4 w-4" />
-                    Voltar às campanhas
-                </Link>
+                <div className="flex items-start justify-between gap-3">
+                    <Link
+                        href={route('mobile.campaigns.index')}
+                        className="inline-flex min-w-0 flex-1 items-center gap-1 text-sm font-medium text-brand-600 dark:text-brand-400"
+                    >
+                        <ArrowLeftIcon className="h-4 w-4 shrink-0" />
+                        <span className="truncate">Voltar às campanhas</span>
+                    </Link>
+                    {isLoggedIn ? (
+                        <Link
+                            href={route('mobile.campaigns.my-donations')}
+                            className="inline-flex shrink-0 whitespace-nowrap text-right text-sm font-medium text-zinc-600 underline dark:text-zinc-400"
+                        >
+                            Minhas doações
+                        </Link>
+                    ) : null}
+                </div>
 
                 {flash?.success && (
                     <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
                         {flash.success}
-                        <Link
-                            href={route('mobile.campaigns.my-donations')}
-                            className="mt-2 block font-medium text-emerald-900 underline dark:text-emerald-100"
-                        >
-                            Ver em Minhas doações
-                        </Link>
+                        {isLoggedIn ? (
+                            <Link
+                                href={route('mobile.campaigns.my-donations')}
+                                className="mt-2 block font-medium text-emerald-900 underline dark:text-emerald-100"
+                            >
+                                Ver em Minhas doações
+                            </Link>
+                        ) : null}
                     </div>
                 )}
 
-                <Link
-                    href={route('mobile.campaigns.my-donations')}
-                    className="inline-flex text-sm font-medium text-zinc-600 underline dark:text-zinc-400"
-                >
-                    Minhas doações
-                </Link>
-
                 {campaign.cover_image_url && (
-                    <img src={campaign.cover_image_url} alt="" className="h-48 w-full rounded-2xl object-cover" />
+                    <img src={campaign.cover_image_url} alt="" className="h-96 w-full rounded-2xl object-cover" />
                 )}
 
                 <div>
