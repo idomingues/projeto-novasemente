@@ -161,9 +161,9 @@ export default function TreasurerDashboard({
 
     return (
         <AdminLayout>
-            <Head title="Painel do tesoureiro" />
+            <Head title="Tesouraria" />
             <PageHeader
-                title="Painel do tesoureiro"
+                title="Tesouraria"
                 subtitle="Histórico de doações, ajuste de valores e reclamações dos doadores."
             />
 

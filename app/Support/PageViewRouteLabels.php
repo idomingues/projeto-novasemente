@@ -81,7 +81,7 @@ final class PageViewRouteLabels
         'talents.admin.listings' => 'Central de Serviços — publicações',
         'talents.admin.reports' => 'Central de Serviços — denúncias',
         'donation-campaigns.index' => 'Doação (painel)',
-        'finance.treasurer' => 'Painel do tesoureiro',
+        'finance.treasurer' => 'Tesouraria',
         'mobile.musica' => 'Música',
         'mobile.musica.show' => 'Música — vídeo',
         'mobile.services' => 'Cultos e horários',
