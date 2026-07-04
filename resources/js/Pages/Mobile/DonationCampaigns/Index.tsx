@@ -87,7 +87,7 @@ export default function MobileDonationCampaignsIndex({ campaigns }: Props) {
                                     <img
                                         src={campaign.cover_image_url}
                                         alt=""
-                                        className="mb-3 h-36 w-full rounded-xl object-cover"
+                                        className="mb-3 h-[13.5rem] w-full rounded-xl object-cover"
                                     />
                                 )}
                                 <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">{campaign.title}</h2>
