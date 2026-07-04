@@ -121,8 +121,7 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
-    const [hasHydrated, setHasHydrated] = useState(false);
-    const [brokenCoverIds, setBrokenCoverIds] = useState<number[]>([]);
+    const [coverPreviewBroken, setCoverPreviewBroken] = useState(false);
     const [detailCampaign, setDetailCampaign] = useState<Campaign | null>(null);
     const [detailDonations, setDetailDonations] = useState<DonationRow[]>([]);
     const [loadingDonations, setLoadingDonations] = useState(false);
@@ -204,10 +203,6 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
     };
 
     useEffect(() => {
-        setHasHydrated(true);
-    }, []);
-
-    useEffect(() => {
         if (!mediaCampaign) return;
         const updated = campaigns.find((c) => c.id === mediaCampaign.id);
         if (updated) setMediaCampaign(updated);
@@ -221,6 +216,10 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
         }
         return editingCampaign?.cover_image_url ?? null;
     }, [data.cover_image, editingCampaign?.cover_image_url]);
+
+    useEffect(() => {
+        setCoverPreviewBroken(false);
+    }, [coverPreviewUrl]);
 
     const openCreateModal = () => {
         setIsEditing(false);
@@ -464,24 +463,13 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
                                         {campaign.ends_at ? ` · Prazo: ${formatCampaignDate(campaign.ends_at)}` : ''}
                                     </p>
                                 </div>
-                                {campaign.cover_image_url ? (
-                                    hasHydrated && !brokenCoverIds.includes(campaign.id) ? (
-                                        <img
-                                            src={campaign.cover_image_url}
-                                            alt=""
-                                            className="h-24 w-24 shrink-0 rounded-xl object-cover"
-                                            onError={() => {
-                                                setBrokenCoverIds((current) =>
-                                                    current.includes(campaign.id) ? current : [...current, campaign.id],
-                                                );
-                                            }}
-                                        />
-                                    ) : (
-                                        <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
-                                            <PhotoIcon className="h-8 w-8" aria-hidden />
-                                        </div>
-                                    )
-                                ) : null}
+                                {campaign.cover_image_url && (
+                                    <img
+                                        src={campaign.cover_image_url}
+                                        alt=""
+                                        className="h-24 w-24 shrink-0 rounded-xl object-cover"
+                                    />
+                                )}
                             </div>
                             <ListCardActionRow className="mt-4">
                                 <ListCardTextActionButton
@@ -665,8 +653,13 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
                         </p>
                         <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start">
                             <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900">
-                                {coverPreviewUrl ? (
-                                    <img src={coverPreviewUrl} alt="" className="h-full w-full object-cover" />
+                                {coverPreviewUrl && !coverPreviewBroken ? (
+                                    <img
+                                        src={coverPreviewUrl}
+                                        alt=""
+                                        className="h-full w-full object-cover"
+                                        onError={() => setCoverPreviewBroken(true)}
+                                    />
                                 ) : (
                                     <PhotoIcon className="h-8 w-8 text-zinc-400 dark:text-zinc-500" aria-hidden />
                                 )}

@@ -26,6 +26,18 @@ class PublicDiskMediaTest extends TestCase
         $this->get(route('media.public', ['path' => 'donations/campaign-covers/cover.png']))
             ->assertOk();
 
+        Storage::disk('public')->put('charity/campaign-covers/cover.png', 'fake-charity-cover');
+        $this->get(route('media.public', ['path' => 'charity/campaign-covers/cover.png']))
+            ->assertOk();
+
+        Storage::disk('public')->put('charity/campaign-media/story.jpg', 'fake-charity-photo');
+        $this->get(route('media.public', ['path' => 'charity/campaign-media/story.jpg']))
+            ->assertOk();
+
+        Storage::disk('public')->put('charity/receipts/comprovante.jpg', 'fake-charity-receipt');
+        $this->get(route('media.public', ['path' => 'charity/receipts/comprovante.jpg']))
+            ->assertOk();
+
         Storage::disk('public')->put('talents/demo/exemplo.png', 'fake-png-bytes');
         $this->get(route('media.public', ['path' => 'talents/demo/exemplo.png']))
             ->assertOk();

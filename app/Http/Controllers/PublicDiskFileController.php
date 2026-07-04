@@ -20,6 +20,7 @@ class PublicDiskFileController extends Controller
         'photos/',
         'library/',
         'donations/',
+        'charity/',
         'talents/',
         'shared-talents/',
         'communities/',

@@ -1,8 +1,7 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import DonationProgressBar from '@/Components/Donations/DonationProgressBar';
 import { Head, Link } from '@inertiajs/react';
-import { BanknotesIcon, PhotoIcon } from '@heroicons/react/24/outline';
-import { useEffect, useState } from 'react';
+import { BanknotesIcon } from '@heroicons/react/24/outline';
 
 interface Campaign {
     id: number;
@@ -66,13 +65,6 @@ function campaignAvailabilityLabel(campaign: Campaign): string | null {
 }
 
 export default function MobileDonationsIndex({ campaigns }: Props) {
-    const [hasHydrated, setHasHydrated] = useState(false);
-    const [brokenCoverIds, setBrokenCoverIds] = useState<number[]>([]);
-
-    useEffect(() => {
-        setHasHydrated(true);
-    }, []);
-
     return (
         <MobileLayout>
             <Head title="Doação" />
@@ -102,22 +94,13 @@ export default function MobileDonationsIndex({ campaigns }: Props) {
                                     href={route('mobile.donations.show', campaign.id)}
                                     className="block rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:border-brand-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-brand-700"
                                 >
-                                    {campaign.cover_image_url && hasHydrated && !brokenCoverIds.includes(campaign.id) ? (
+                                    {campaign.cover_image_url && (
                                         <img
                                             src={campaign.cover_image_url}
                                             alt=""
                                             className="mb-3 h-[13.5rem] w-full rounded-xl object-cover"
-                                            onError={() => {
-                                                setBrokenCoverIds((current) =>
-                                                    current.includes(campaign.id) ? current : [...current, campaign.id],
-                                                );
-                                            }}
                                         />
-                                    ) : campaign.cover_image_url ? (
-                                        <div className="mb-3 flex h-[13.5rem] w-full items-center justify-center rounded-xl bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
-                                            <PhotoIcon className="h-10 w-10" />
-                                        </div>
-                                    ) : null}
+                                    )}
                                     <div className="flex flex-wrap items-center gap-2">
                                         <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">{campaign.title}</h2>
                                         <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700 dark:bg-brand-950/40 dark:text-brand-200">
