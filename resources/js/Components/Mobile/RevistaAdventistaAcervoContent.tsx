@@ -1,6 +1,7 @@
 import { Link } from '@inertiajs/react';
 import { BookOpenIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { useMemo, useRef, useState } from 'react';
+import { pdfUrlWithViewerParams, usePdfViewerFragment } from '@/lib/pdfViewerUrl';
 
 export interface RevistaAdventistaAcervoEdition {
     id: number;
@@ -35,6 +36,7 @@ export default function RevistaAdventistaAcervoContent({
     showHeading = true,
 }: Props) {
     const yearsRef = useRef<HTMLDivElement>(null);
+    const viewerFragment = usePdfViewerFragment();
     const [activeDecadeLabel, setActiveDecadeLabel] = useState<string>(() => {
         const match = decades.find((decade) => decade.years.includes(selectedYear));
         return match?.label ?? decades[0]?.label ?? '';
@@ -141,12 +143,17 @@ export default function RevistaAdventistaAcervoContent({
                 </div>
             ) : (
                 <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                    {editions.map((edition) => (
-                        <li key={edition.id}>
-                            <Link
-                                href={route('mobile.acervo-revista-adventista.show', edition.id)}
-                                className="group flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
-                            >
+                    {editions.map((edition) => {
+                        const showUrl = route('mobile.acervo-revista-adventista.show', edition.id);
+                        const pdfReadUrl = edition.has_pdf
+                            ? pdfUrlWithViewerParams(route('mobile.acervo-revista-adventista.pdf-stream', edition.id), viewerFragment)
+                            : '';
+
+                        const cardClassName =
+                            'group flex flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700';
+
+                        const coverBlock = (
+                            <>
                                 <div className="relative aspect-[3/4] overflow-hidden bg-zinc-100 dark:bg-zinc-800">
                                     {edition.cover_url ? (
                                         <img
@@ -169,9 +176,25 @@ export default function RevistaAdventistaAcervoContent({
                                         <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">PDF indisponível</p>
                                     ) : null}
                                 </div>
-                            </Link>
-                        </li>
-                    ))}
+                            </>
+                        );
+
+                        return (
+                            <li key={edition.id}>
+                                {pdfReadUrl ? (
+                                    <a href={pdfReadUrl} className={`${cardClassName} cursor-pointer`} aria-label={`Ler ${edition.title}`}>
+                                        {coverBlock}
+                                    </a>
+                                ) : edition.has_pdf ? (
+                                    <Link href={showUrl} className={`${cardClassName} cursor-pointer`}>
+                                        {coverBlock}
+                                    </Link>
+                                ) : (
+                                    <div className={cardClassName}>{coverBlock}</div>
+                                )}
+                            </li>
+                        );
+                    })}
                 </ul>
             )}
         </div>

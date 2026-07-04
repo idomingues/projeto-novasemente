@@ -12,6 +12,7 @@ class PublicDiskFileController extends Controller
         'users/photos/',
         'news/',
         'health/',
+        'revista-adventista/',
         'pastors/',
         'mission/volunteers/',
         'inventory/photos/',
