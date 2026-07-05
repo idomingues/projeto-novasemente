@@ -127,7 +127,7 @@ function PrayerCover({
                     onError={onError}
                 />
             ) : (
-                <PrayingHandsIcon className="h-12 w-12 text-white/70" aria-hidden strokeWidth={1.5} />
+                <PrayingHandsIcon className="h-12 w-12 text-white/70" aria-hidden />
             )}
             <p className="text-center text-sm font-medium text-white/85">{PRAYER_COVER_TAGLINE}</p>
         </div>
