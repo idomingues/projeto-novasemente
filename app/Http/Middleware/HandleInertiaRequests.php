@@ -12,6 +12,7 @@ use App\Models\Pastor;
 use App\Support\ChurchAppFeatures;
 use App\Support\MobileProjectVersionHint;
 use App\Support\NotificationFeed;
+use App\Support\PublicationsFeedAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Schema;
@@ -314,6 +315,8 @@ class HandleInertiaRequests extends Middleware
                     ? ($request->user()->can('mission.view') || $request->user()->can('mission.manage'))
                     : false,
                 'canManageMission' => $request->user()?->can('mission.manage') ?? false,
+                /** Feed unificado de publicações (preview por e-mail enquanto `publications_feed.preview_only`). */
+                'canAccessPublicationsFeed' => PublicationsFeedAccess::canAccess($request->user()),
             ],
             'missionTripRegistrationsCount' => function () use ($request) {
                 $user = $request->user();

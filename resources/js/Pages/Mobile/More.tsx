@@ -1,6 +1,6 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import SobreOAppNavItem from '@/Components/Mobile/SobreOAppNavItem';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import {
     CalendarDaysIcon,
     ClockIcon,
@@ -116,6 +116,8 @@ const items: MoreMenuItem[] = [
 
 export default function MobileMore(_: Props) {
     const { isEnabled } = useAppFeatures();
+    const canAccessPublicationsFeed =
+        (usePage().props as { auth?: { canAccessPublicationsFeed?: boolean } }).auth?.canAccessPublicationsFeed === true;
     const visibleItems = items.filter((item) => {
         if ('featureKey' in item && item.featureKey) {
             return isEnabled(item.featureKey);
@@ -141,6 +143,22 @@ export default function MobileMore(_: Props) {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-4">
+                    {canAccessPublicationsFeed ? (
+                        <Link
+                            href={route('mobile.publications-feed')}
+                            className="flex cursor-pointer items-center gap-4 p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-teal-200 dark:border-teal-900/50 hover:border-teal-300 dark:hover:border-teal-800 active:bg-teal-50/50 dark:active:bg-teal-950/20 transition-colors"
+                        >
+                            <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-teal-100 dark:bg-teal-950/40">
+                                <SparklesIcon className="w-6 h-6 text-teal-700 dark:text-teal-300" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <span className="font-semibold text-zinc-900 dark:text-white block">Publicações</span>
+                                <span className="text-sm text-zinc-500 dark:text-zinc-400">
+                                    Tudo que a igreja publicou, em um só lugar
+                                </span>
+                            </div>
+                        </Link>
+                    ) : null}
                     {visibleItems.map((item) => {
                         const { name, description, icon: Icon } = item;
                         const className = 'flex cursor-pointer items-center gap-4 p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 active:bg-zinc-50 dark:active:bg-zinc-800 transition-colors';

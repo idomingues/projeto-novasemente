@@ -144,6 +144,7 @@ Route::get('/mobile/events', [MobileController::class, 'events'])->name('mobile.
 Route::get('/mobile/schedule', [MobileController::class, 'schedule'])->name('mobile.schedule');
 Route::get('/mobile/schedule/full', [MobileController::class, 'scheduleFull'])->name('mobile.schedule.full');
 Route::get('/mobile/more', [MobileController::class, 'more'])->name('mobile.more');
+Route::get('/mobile/publicacoes', [MobileController::class, 'publicationsFeed'])->name('mobile.publications-feed');
 Route::get('/mobile/comunidade', [CommunityController::class, 'mobile'])->name('mobile.communities');
 Route::get('/mobile/missao', [\App\Http\Controllers\MissionHubController::class, 'index'])->name('mobile.mission');
 Route::get('/mobile/missao/home', [\App\Http\Controllers\MissionHubController::class, 'home'])->name('mobile.mission.home');

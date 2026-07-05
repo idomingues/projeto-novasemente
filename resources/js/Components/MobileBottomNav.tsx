@@ -52,6 +52,7 @@ const navItems = [
         route: 'mobile.more' as const,
         activeRoutes: [
             'mobile.more',
+            'mobile.publications-feed',
             'mobile.sobre-o-app',
             'mobile.settings',
             'more.index',

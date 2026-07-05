@@ -34,6 +34,8 @@ use App\Services\SolicitationChatNotifier;
 use App\Services\VolunteerScheduleOverview;
 use App\Support\ChurchAppFeatures;
 use App\Support\NotificationFeed;
+use App\Support\PublicationFeed;
+use App\Support\PublicationsFeedAccess;
 use App\Support\ScheduleBoardViewData;
 use App\Support\SolicitationAssignees;
 use App\Support\VolunteerSignupCompletion;
@@ -1168,6 +1170,20 @@ class MobileController extends Controller
         $data = app(MoreController::class)->getLatestItems();
 
         return Inertia::render('Mobile/More', $data);
+    }
+
+    public function publicationsFeed(Request $request): Response
+    {
+        PublicationsFeedAccess::assertCanAccess($request->user());
+
+        $churchId = $this->currentChurch()?->id;
+        $payload = PublicationFeed::paginatedForRequest($request, $churchId);
+
+        return Inertia::render('Mobile/PublicationsFeed', [
+            'items' => $payload['items'],
+            'typeOptions' => $payload['typeOptions'],
+            'filters' => $payload['filters'],
+        ]);
     }
 
     public function sobreOApp(Request $request): Response

@@ -23,6 +23,7 @@ return [
         'mobile.sobre-o-app',
         'mobile.profile',
         'mobile.profile.edit',
+        'mobile.publications-feed',
         'login',
         'register',
         'password.request',
