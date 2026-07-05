@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Support\ListModalRedirect;
 use App\Models\Church;
 use App\Models\TalentAuditLog;
 use App\Models\TalentCategory;
@@ -75,7 +76,7 @@ class TalentConnectionAdminController extends Controller
         $canModerate = $request->user()?->can('talents.moderate')
             || $request->user()?->hasAnyRole(['super_admin', 'admin']);
 
-        return Inertia::render('TalentConnection/Admin/Dashboard', [
+        $payload = [
             'metrics' => [
                 'listings_total' => (clone $listingQuery)->count(),
                 'listings_pending' => (clone $listingQuery)->where('status', TalentListing::STATUS_PENDING)->count(),
@@ -95,17 +96,47 @@ class TalentConnectionAdminController extends Controller
                     ->count(),
             ],
             'canModerate' => $canModerate,
-        ]);
+        ];
+
+        if ($canModerate) {
+            $status = $request->input('status', 'all');
+            $payload = array_merge($payload, $this->listingsPagePayload($churchId, $status));
+        }
+
+        return Inertia::render('TalentConnection/Admin/Dashboard', $payload);
     }
 
     public function listings(Request $request): Response
     {
         $this->assertCanModerate($request);
         $churchId = $this->currentChurchId();
+        $status = $request->input('status', 'all');
 
-        $status = $request->input('status', TalentListing::STATUS_PENDING);
+        return Inertia::render('TalentConnection/Admin/Listings', $this->listingsPagePayload($churchId, $status));
+    }
 
-        $listings = TalentListing::query()
+    /** @return array<string, mixed> */
+    private function listingsPagePayload(?int $churchId, string $status): array
+    {
+        return [
+            'listings' => $this->mappedListings($churchId, $status),
+            'statusFilter' => $status,
+            'categories' => $this->talents->categoriesForChurch($churchId),
+            'typeOptions' => $this->talents->typeOptions(),
+            'publisherOptions' => $churchId !== null ? $this->talents->publisherOptionsForChurch($churchId) : [],
+            'statusOptions' => [
+                ['value' => TalentListing::STATUS_PENDING, 'label' => TalentListing::statusLabel(TalentListing::STATUS_PENDING)],
+                ['value' => TalentListing::STATUS_APPROVED, 'label' => TalentListing::statusLabel(TalentListing::STATUS_APPROVED)],
+                ['value' => TalentListing::STATUS_REJECTED, 'label' => TalentListing::statusLabel(TalentListing::STATUS_REJECTED)],
+                ['value' => 'all', 'label' => 'Todas'],
+            ],
+        ];
+    }
+
+    /** @return \Illuminate\Support\Collection<int, array<string, mixed>> */
+    private function mappedListings(?int $churchId, string $status)
+    {
+        return TalentListing::query()
             ->with(['author:id,name', 'category:id,name'])
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
@@ -138,20 +169,6 @@ class TalentConnectionAdminController extends Controller
                 'created_at' => $l->created_at?->format('d/m/Y H:i'),
                 'rejection_reason' => $l->rejection_reason,
             ]);
-
-        return Inertia::render('TalentConnection/Admin/Listings', [
-            'listings' => $listings,
-            'statusFilter' => $status,
-            'categories' => $this->talents->categoriesForChurch($churchId),
-            'typeOptions' => $this->talents->typeOptions(),
-            'publisherOptions' => $churchId !== null ? $this->talents->publisherOptionsForChurch($churchId) : [],
-            'statusOptions' => [
-                ['value' => TalentListing::STATUS_PENDING, 'label' => TalentListing::statusLabel(TalentListing::STATUS_PENDING)],
-                ['value' => TalentListing::STATUS_APPROVED, 'label' => TalentListing::statusLabel(TalentListing::STATUS_APPROVED)],
-                ['value' => TalentListing::STATUS_REJECTED, 'label' => TalentListing::statusLabel(TalentListing::STATUS_REJECTED)],
-                ['value' => 'all', 'label' => 'Todas'],
-            ],
-        ]);
     }
 
     public function storeListing(Request $request): RedirectResponse
@@ -209,11 +226,13 @@ class TalentConnectionAdminController extends Controller
             $this->notifier->notifyPublisherOfListingModeration($listing, 'approved');
         }
 
-        return redirect()
-            ->route('talents.admin.listings', ['status' => $status])
-            ->with('success', $autoApprove
+        return ListModalRedirect::toIndexEdit(
+            'talents.admin.dashboard',
+            $listing,
+            $autoApprove
                 ? 'Publicação cadastrada e publicada com sucesso.'
-                : 'Publicação cadastrada e enviada para análise.');
+                : 'Publicação cadastrada e enviada para análise.',
+        );
     }
 
     public function updateListing(Request $request, TalentListing $talentListing): RedirectResponse
@@ -278,9 +297,11 @@ class TalentConnectionAdminController extends Controller
             }
         }
 
-        return redirect()
-            ->route('talents.admin.listings', ['status' => $newStatus])
-            ->with('success', 'Publicação atualizada.');
+        return ListModalRedirect::toIndexEdit(
+            'talents.admin.dashboard',
+            $talentListing->fresh(),
+            'Publicação atualizada.',
+        );
     }
 
     public function moderateListing(Request $request, TalentListing $talentListing): RedirectResponse
