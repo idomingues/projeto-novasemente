@@ -11,7 +11,7 @@ import type { MissionFormData, MissionOptions } from '@/Components/Mission/Missi
 import type { MissionVolunteerDetail } from '@/utils/missionVolunteerDetailRows';
 import { compressImageForUpload, ImageCompressError } from '@/utils/compressImageForUpload';
 import { markPhotoPickStarted } from '@/utils/mobilePhotoPick';
-import { todayIsoLocal } from '@/utils/brDate';
+import { resolveBrDateDisplayForSubmit, todayIsoLocal } from '@/utils/brDate';
 import {
     buildMissionVolunteerUpdateFormData,
     mapMissionVolunteerUpdateErrors,
@@ -142,7 +142,7 @@ export default function MissionVolunteerDetailEditForm({ volunteer, options, upd
         setPhotoPreviewUrl(volunteer.photoUrl ?? null);
         setErrors({});
         setSavedMessage(null);
-    }, [volunteer.id, volunteer.fullName, volunteer.phone, volunteer.birthDate, volunteer.photoUrl]);
+    }, [volunteer.id]);
 
     const safeOptions = useMemo(
         () => ({
@@ -218,15 +218,26 @@ export default function MissionVolunteerDetailEditForm({ volunteer, options, upd
         event.preventDefault();
         if (interestAreasError) return;
 
+        const birthDateEl = document.getElementById('mission_admin_birth_date') as HTMLInputElement | null;
+        const birthDate = resolveBrDateDisplayForSubmit(
+            birthDateEl?.value ?? '',
+            data.birth_date,
+            undefined,
+            todayIsoLocal(),
+        );
+        const payload: MissionFormData = { ...data, birth_date: birthDate };
+
         setProcessing(true);
         setErrors({});
         setSavedMessage(null);
 
         try {
-            const formData = buildMissionVolunteerUpdateFormData(data);
+            const formData = buildMissionVolunteerUpdateFormData(payload);
             const { data: response } = await axios.patch<{ volunteer: MissionVolunteerDetail; message: string }>(updateUrl, formData, {
                 headers: { Accept: 'application/json' },
             });
+            setData(missionVolunteerDetailToFormData(response.volunteer));
+            setPhotoPreviewUrl(response.volunteer.photoUrl ?? null);
             onSaved(response.volunteer);
             setSavedMessage(response.message);
         } catch (error) {
@@ -267,6 +278,7 @@ export default function MissionVolunteerDetailEditForm({ volunteer, options, upd
                 </Field>
                 <Field label="Data de nascimento" error={errors.birth_date}>
                     <BrDateInput
+                        id="mission_admin_birth_date"
                         className="w-full"
                         value={data.birth_date}
                         max={todayIsoLocal()}

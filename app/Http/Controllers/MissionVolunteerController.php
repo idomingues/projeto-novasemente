@@ -71,13 +71,14 @@ class MissionVolunteerController extends Controller
 
         $volunteers = $filtered->map(function (MissionVolunteer $v) use ($user) {
                 $sla = MissionSla::metricsForVolunteer($v);
+                $resolvedEmail = MissionVolunteerAccountResolver::emailForVolunteer($v);
 
                 return [
                     'model' => $v,
                     'row' => [
                         'id' => $v->id,
                         'fullName' => $v->full_name,
-                        'email' => $v->email,
+                        'email' => $resolvedEmail,
                         'phone' => $v->phone,
                         'photoUrl' => $v->photo_url,
                         'phaseId' => $v->mission_phase_id,
@@ -85,7 +86,7 @@ class MissionVolunteerController extends Controller
                         'profileType' => $v->profile_type,
                         'ministryPreference' => $v->ministry_preference,
                         'engagementLevel' => $v->engagement_level,
-                        'hasEmail' => $v->display_email !== null,
+                        'hasEmail' => $resolvedEmail !== null,
                         'lastInviteSentAt' => $v->last_invite_sent_at?->format('d/m/Y H:i'),
                         'createdAt' => $v->created_at?->format('d/m/Y'),
                         'daysInPhase' => $sla['daysInPhase'],

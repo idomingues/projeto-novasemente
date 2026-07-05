@@ -188,10 +188,10 @@ async function submitVolunteerModalFormData(
     url: string,
     formData: FormData,
     csrf: string,
-    method?: 'PUT',
+    method?: 'PUT' | 'PATCH',
 ): Promise<VolunteerModalSaveResult> {
-    if (method === 'PUT') {
-        formData.append('_method', 'PUT');
+    if (method === 'PUT' || method === 'PATCH') {
+        formData.append('_method', method);
     }
 
     const res = await fetch(url, {
@@ -222,6 +222,14 @@ export async function submitVolunteerModalFormDataPost(
     csrf: string,
 ): Promise<VolunteerModalSaveResult> {
     return submitVolunteerModalFormData(url, formData, csrf);
+}
+
+export async function submitVolunteerModalFormDataPatch(
+    url: string,
+    formData: FormData,
+    csrf: string,
+): Promise<VolunteerModalSaveResult> {
+    return submitVolunteerModalFormData(url, formData, csrf, 'PATCH');
 }
 
 async function parseSuccessBody(res: Response): Promise<{ note?: VolunteerLeaderNoteJson }> {

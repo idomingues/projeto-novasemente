@@ -97,6 +97,48 @@ class MissionVolunteerUpdateTest extends TestCase
             ->assertJsonPath('updateUrl', route('mission.volunteers.update', $this->volunteer));
     }
 
+    public function test_admin_can_update_mission_volunteer_birth_date(): void
+    {
+        $payload = $this->validPayload();
+        $payload['birth_date'] = '1987-08-02';
+
+        $this->withSession(['working_church_id' => $this->church->id])
+            ->actingAs($this->admin)
+            ->patchJson(route('mission.volunteers.update', $this->volunteer), $payload)
+            ->assertOk()
+            ->assertJsonPath('volunteer.birthDate', '1987-08-02');
+
+        $this->assertSame('1987-08-02', $this->volunteer->fresh()->birth_date?->format('Y-m-d'));
+    }
+
+    public function test_admin_can_update_mission_volunteer_registration_with_multipart_form(): void
+    {
+        $payload = $this->validPayload();
+        $payload['birth_date'] = '1987-08-02';
+        $payload['full_name'] = 'Pamela Pereira Alves';
+
+        $this->withSession(['working_church_id' => $this->church->id])
+            ->actingAs($this->admin)
+            ->call(
+                'POST',
+                route('mission.volunteers.update', $this->volunteer),
+                $payload,
+                [],
+                [],
+                $this->transformHeadersToServerVars([
+                    'Accept' => 'application/json',
+                    'X-HTTP-Method-Override' => 'PATCH',
+                ]),
+            )
+            ->assertOk()
+            ->assertJsonPath('volunteer.birthDate', '1987-08-02')
+            ->assertJsonPath('volunteer.fullName', 'Pamela Pereira Alves');
+
+        $fresh = $this->volunteer->fresh();
+        $this->assertSame('1987-08-02', $fresh->birth_date?->format('Y-m-d'));
+        $this->assertSame('Pamela Pereira Alves', $fresh->full_name);
+    }
+
     public function test_admin_can_update_mission_volunteer_registration(): void
     {
         $payload = [

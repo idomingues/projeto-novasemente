@@ -60,3 +60,21 @@ export function isIsoDateInRange(iso: string, min?: string, max?: string): boole
     }
     return true;
 }
+
+/** Lê o texto `DD/MM/AAAA` do campo antes de enviar (evita estado React desatualizado após blur). */
+export function resolveBrDateDisplayForSubmit(
+    display: string,
+    fallbackIso: string,
+    min?: string,
+    max?: string,
+): string {
+    const trimmed = display.trim();
+    if (trimmed === '') {
+        return '';
+    }
+    const iso = brDateToIso(trimmed);
+    if (iso && isIsoDateInRange(iso, min, max)) {
+        return iso;
+    }
+    return fallbackIso;
+}
