@@ -85,6 +85,7 @@ export default function PublicationFeedCard({ item, appUrl }: Props) {
     const [coverBroken, setCoverBroken] = useState(false);
     const showCover = Boolean(src) && !coverBroken;
     const when = formatWhen(item.published_at);
+    const isPrayerLogo = item.type === 'prayer' && showCover;
 
     return (
         <li>
@@ -92,7 +93,18 @@ export default function PublicationFeedCard({ item, appUrl }: Props) {
                 href={item.href}
                 className="group block cursor-pointer overflow-hidden rounded-2xl border border-zinc-200 bg-white transition hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
             >
-                {showCover ? (
+                {isPrayerLogo ? (
+                    <div className="flex aspect-[16/9] items-center justify-center bg-zinc-100 px-6 dark:bg-zinc-800">
+                        <img
+                            src={src}
+                            alt=""
+                            className="max-h-16 max-w-[45%] object-contain"
+                            loading="lazy"
+                            decoding="async"
+                            onError={() => setCoverBroken(true)}
+                        />
+                    </div>
+                ) : showCover ? (
                     <div className="relative aspect-[16/9] overflow-hidden bg-zinc-100 dark:bg-zinc-800">
                         <img
                             src={src}

@@ -18,12 +18,13 @@ use App\Models\TalentListing;
 use App\Services\DriveFolderCoverService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class PublicationFeed
 {
+    public const PER_PAGE = 10;
+
     /** @var array<string, array{label: string, feature: string, description: string, action: string}> */
     public const TYPE_DEFINITIONS = [
         'news' => [
@@ -128,13 +129,20 @@ class PublicationFeed
 
     /**
      * @return array{
-     *     items: LengthAwarePaginator<int, array<string, mixed>>,
+     *     items: array{
+     *         data: list<array<string, mixed>>,
+     *         current_page: int,
+     *         has_more: bool,
+     *         next_page: int|null
+     *     },
      *     typeOptions: list<array{value: string, label: string}>,
      *     filters: array{type: string|null, sort: string}
      * }
      */
-    public static function paginatedForRequest(Request $request, ?int $churchId, int $perPage = 20): array
+    public static function paginatedForRequest(Request $request, ?int $churchId, ?int $perPage = null): array
     {
+        $perPage = $perPage ?? self::PER_PAGE;
+        $page = max(1, (int) $request->query('page', 1));
         $church = $churchId !== null ? Church::query()->find($churchId) : null;
         $typeFilter = trim((string) $request->query('type', ''));
         if ($typeFilter !== '' && ! array_key_exists($typeFilter, self::TYPE_DEFINITIONS)) {
@@ -150,20 +158,17 @@ class PublicationFeed
         $items = self::collectItems($church, $churchId, $typeFilter, $baseUrl, $driveCover);
         $items = self::sortItems($items, $sort);
 
-        $page = max(1, (int) $request->query('page', 1));
         $total = $items->count();
-        $slice = $items->slice(($page - 1) * $perPage, $perPage)->values();
-
-        $paginator = new LengthAwarePaginator(
-            $slice,
-            $total,
-            $perPage,
-            $page,
-            ['path' => $request->url(), 'query' => $request->query()],
-        );
+        $slice = $items->slice(($page - 1) * $perPage, $perPage)->values()->all();
+        $hasMore = $page * $perPage < $total;
 
         return [
-            'items' => $paginator,
+            'items' => [
+                'data' => $slice,
+                'current_page' => $page,
+                'has_more' => $hasMore,
+                'next_page' => $hasMore ? $page + 1 : null,
+            ],
             'typeOptions' => self::typeOptionsForChurch($church),
             'filters' => [
                 'type' => $typeFilter !== '' ? $typeFilter : null,

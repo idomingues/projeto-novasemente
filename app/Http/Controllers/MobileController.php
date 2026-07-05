@@ -1172,12 +1172,16 @@ class MobileController extends Controller
         return Inertia::render('Mobile/More', $data);
     }
 
-    public function publicationsFeed(Request $request): Response
+    public function publicationsFeed(Request $request): Response|\Illuminate\Http\JsonResponse
     {
         PublicationsFeedAccess::assertCanAccess($request->user());
 
         $churchId = $this->currentChurch()?->id;
         $payload = PublicationFeed::paginatedForRequest($request, $churchId);
+
+        if ($request->expectsJson()) {
+            return response()->json($payload['items']);
+        }
 
         return Inertia::render('Mobile/PublicationsFeed', [
             'items' => $payload['items'],

@@ -80,7 +80,8 @@ class PublicationsFeedTest extends TestCase
         $response->assertOk();
         $response->assertInertia(fn (Assert $page) => $page
             ->component('Mobile/PublicationsFeed')
-            ->where('items.data', fn ($items) => count($items) >= 10));
+            ->where('items.data', fn ($items) => count($items) === 10)
+            ->where('items.has_more', true));
 
         $this->actingAs($user)
             ->withSession(['working_church_id' => $church->id])
@@ -89,6 +90,38 @@ class PublicationsFeedTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->where('filters.type', 'news')
                 ->where('items.data', fn ($items) => collect($items)->every(fn ($item) => $item['type'] === 'news')));
+    }
+
+    public function test_feed_loads_next_page_via_json(): void
+    {
+        $this->seed(ChurchSeeder::class);
+        $church = Church::query()->firstOrFail();
+
+        $user = User::factory()->create([
+            'church_id' => $church->id,
+            'email' => 'admin@example.com',
+        ]);
+
+        $this->artisan('app:seed-publications-feed-demo', ['--church' => $church->slug])
+            ->assertSuccessful();
+
+        $firstPage = $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->getJson(route('mobile.publications-feed', ['page' => 1]));
+
+        $firstPage->assertOk()
+            ->assertJsonPath('current_page', 1)
+            ->assertJsonPath('has_more', true)
+            ->assertJsonCount(10, 'data');
+
+        $secondPage = $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->getJson(route('mobile.publications-feed', ['page' => 2]));
+
+        $secondPage->assertOk()
+            ->assertJsonPath('current_page', 2)
+            ->assertJsonPath('has_more', false)
+            ->assertJsonCount(3, 'data');
     }
 
     public function test_news_item_links_to_detail_page(): void

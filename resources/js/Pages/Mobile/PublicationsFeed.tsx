@@ -5,25 +5,21 @@ import PageHeader from '@/Components/PageHeader';
 import SecondaryButton from '@/Components/SecondaryButton';
 import PrimaryButton from '@/Components/PrimaryButton';
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { AdjustmentsHorizontalIcon, ArrowsUpDownIcon, NewspaperIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type TypeOption = { value: string; label: string; description?: string };
 
-type PaginationLink = {
-    url: string | null;
-    label: string;
-    active: boolean;
+type FeedItemsPayload = {
+    data: PublicationFeedItem[];
+    current_page: number;
+    has_more: boolean;
+    next_page: number | null;
 };
 
 interface Props {
-    items: {
-        data: PublicationFeedItem[];
-        links: PaginationLink[];
-        current_page: number;
-        last_page: number;
-    };
+    items: FeedItemsPayload;
     typeOptions: TypeOption[];
     filters: {
         type: string | null;
@@ -50,17 +46,36 @@ function optionLabel(options: TypeOption[], value: string): string | null {
     return options.find((o) => o.value === value)?.label ?? null;
 }
 
+function feedQueryParams(filters: Props['filters'], page?: number): Record<string, string> {
+    const params: Record<string, string> = {};
+    if (filters.type) params.type = filters.type;
+    if (filters.sort !== 'recent') params.sort = filters.sort;
+    if (page !== undefined && page > 1) params.page = String(page);
+    return params;
+}
+
 export default function PublicationsFeed({ items, typeOptions, filters }: Props) {
     const appUrl = ((usePage().props as PageProps).appUrl ?? '') as string;
     const [filterOpen, setFilterOpen] = useState(false);
     const [sortOpen, setSortOpen] = useState(false);
     const [draftType, setDraftType] = useState(filters.type ?? '');
+    const [feedItems, setFeedItems] = useState(items.data);
+    const [hasMore, setHasMore] = useState(items.has_more);
+    const [nextPage, setNextPage] = useState(items.next_page);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const sentinelRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (filterOpen) {
             setDraftType(filters.type ?? '');
         }
     }, [filterOpen, filters.type]);
+
+    useEffect(() => {
+        setFeedItems(items.data);
+        setHasMore(items.has_more);
+        setNextPage(items.next_page);
+    }, [items]);
 
     const activeFilterCount = filters.type ? 1 : 0;
     const sortIsDefault = filters.sort === 'recent';
@@ -70,15 +85,60 @@ export default function PublicationsFeed({ items, typeOptions, filters }: Props)
         [filters.sort],
     );
 
-    const applyFilters = () => {
-        router.get(
-            route('mobile.publications-feed'),
-            {
-                type: draftType || undefined,
-                sort: filters.sort !== 'recent' ? filters.sort : undefined,
+    const loadMore = useCallback(async () => {
+        if (loadingMore || !hasMore || nextPage === null) {
+            return;
+        }
+
+        setLoadingMore(true);
+        try {
+            const params = new URLSearchParams(feedQueryParams(filters, nextPage));
+            const response = await fetch(`${route('mobile.publications-feed')}?${params.toString()}`, {
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            });
+
+            if (!response.ok) {
+                return;
+            }
+
+            const payload = (await response.json()) as FeedItemsPayload;
+            setFeedItems((current) => [...current, ...payload.data]);
+            setHasMore(payload.has_more);
+            setNextPage(payload.next_page);
+        } finally {
+            setLoadingMore(false);
+        }
+    }, [filters, hasMore, loadingMore, nextPage]);
+
+    useEffect(() => {
+        const sentinel = sentinelRef.current;
+        if (!sentinel || !hasMore) {
+            return undefined;
+        }
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries.some((entry) => entry.isIntersecting)) {
+                    void loadMore();
+                }
             },
-            { preserveState: true, preserveScroll: true },
+            { rootMargin: '240px' },
         );
+
+        observer.observe(sentinel);
+
+        return () => observer.disconnect();
+    }, [hasMore, loadMore]);
+
+    const applyFilters = () => {
+        router.get(route('mobile.publications-feed'), feedQueryParams({ type: draftType || null, sort: filters.sort }), {
+            preserveState: true,
+            preserveScroll: true,
+        });
         setFilterOpen(false);
     };
 
@@ -86,7 +146,7 @@ export default function PublicationsFeed({ items, typeOptions, filters }: Props)
         setDraftType('');
         router.get(
             route('mobile.publications-feed'),
-            { sort: filters.sort !== 'recent' ? filters.sort : undefined },
+            feedQueryParams({ type: null, sort: filters.sort }),
             { preserveState: true, preserveScroll: true },
         );
         setFilterOpen(false);
@@ -95,10 +155,7 @@ export default function PublicationsFeed({ items, typeOptions, filters }: Props)
     const applySort = (value: string) => {
         router.get(
             route('mobile.publications-feed'),
-            {
-                type: filters.type || undefined,
-                sort: value !== 'recent' ? value : undefined,
-            },
+            feedQueryParams({ type: filters.type, sort: value }),
             { preserveState: true, preserveScroll: true },
         );
         setSortOpen(false);
@@ -107,7 +164,7 @@ export default function PublicationsFeed({ items, typeOptions, filters }: Props)
     const removeTypeFilter = () => {
         router.get(
             route('mobile.publications-feed'),
-            { sort: filters.sort !== 'recent' ? filters.sort : undefined },
+            feedQueryParams({ type: null, sort: filters.sort }),
             { preserveState: true, preserveScroll: true },
         );
     };
@@ -159,7 +216,7 @@ export default function PublicationsFeed({ items, typeOptions, filters }: Props)
                     </div>
                 ) : null}
 
-                {items.data.length === 0 ? (
+                {feedItems.length === 0 ? (
                     <div className="py-12 text-center">
                         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-100 dark:bg-zinc-800">
                             <NewspaperIcon className="h-8 w-8 text-zinc-400 dark:text-zinc-500" aria-hidden />
@@ -174,38 +231,23 @@ export default function PublicationsFeed({ items, typeOptions, filters }: Props)
                 ) : (
                     <>
                         <ul className="space-y-4">
-                            {items.data.map((item) => (
+                            {feedItems.map((item) => (
                                 <PublicationFeedCard key={item.id} item={item} appUrl={appUrl} />
                             ))}
                         </ul>
 
-                        {items.last_page > 1 ? (
-                            <nav className="flex flex-wrap items-center justify-center gap-2 pt-2" aria-label="Paginação">
-                                {items.links.map((link, index) => {
-                                    if (!link.url) {
-                                        return (
-                                            <span
-                                                key={`${link.label}-${index}`}
-                                                className="rounded-lg px-3 py-2 text-sm text-zinc-400"
-                                                dangerouslySetInnerHTML={{ __html: link.label }}
-                                            />
-                                        );
-                                    }
-                                    return (
-                                        <Link
-                                            key={`${link.label}-${index}`}
-                                            href={link.url}
-                                            preserveScroll
-                                            className={`cursor-pointer rounded-lg px-3 py-2 text-sm font-medium transition ${
-                                                link.active
-                                                    ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900'
-                                                    : 'border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800'
-                                            }`}
-                                            dangerouslySetInnerHTML={{ __html: link.label }}
-                                        />
-                                    );
-                                })}
-                            </nav>
+                        {hasMore ? (
+                            <div
+                                ref={sentinelRef}
+                                className="flex items-center justify-center py-4"
+                                aria-hidden={!loadingMore}
+                            >
+                                {loadingMore ? (
+                                    <p className="text-sm text-zinc-500 dark:text-zinc-400">Carregando…</p>
+                                ) : (
+                                    <span className="h-1 w-1 opacity-0">.</span>
+                                )}
+                            </div>
                         ) : null}
                     </>
                 )}
