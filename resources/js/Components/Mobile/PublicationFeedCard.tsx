@@ -50,7 +50,25 @@ const TYPE_ICONS: Record<string, MenuIcon> = {
     donation_campaign: BanknotesIcon,
 };
 
+const TYPE_TAG_STYLES: Record<string, string> = {
+    news: 'bg-teal-50 text-teal-800 dark:bg-teal-950/50 dark:text-teal-200',
+    culto: 'bg-violet-50 text-violet-800 dark:bg-violet-950/50 dark:text-violet-200',
+    prayer: 'bg-sky-50 text-sky-800 dark:bg-sky-950/50 dark:text-sky-200',
+    health: 'bg-rose-50 text-rose-800 dark:bg-rose-950/50 dark:text-rose-200',
+    charity_donation: 'bg-amber-50 text-amber-900 dark:bg-amber-950/50 dark:text-amber-200',
+    library: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200',
+    photos: 'bg-fuchsia-50 text-fuchsia-800 dark:bg-fuchsia-950/50 dark:text-fuchsia-200',
+    events: 'bg-orange-50 text-orange-800 dark:bg-orange-950/50 dark:text-orange-200',
+    revista: 'bg-blue-50 text-blue-800 dark:bg-blue-950/50 dark:text-blue-200',
+    talents: 'bg-cyan-50 text-cyan-800 dark:bg-cyan-950/50 dark:text-cyan-200',
+    acervo: 'bg-indigo-50 text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-200',
+    musica: 'bg-purple-50 text-purple-800 dark:bg-purple-950/50 dark:text-purple-200',
+    donation_campaign: 'bg-lime-50 text-lime-900 dark:bg-lime-950/50 dark:text-lime-200',
+};
+
+const DEFAULT_TAG_STYLE = 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300';
 const DEFAULT_ICON = SparklesIcon;
+const PRAYER_COVER_TAGLINE = 'Alguém precisa da sua oração';
 
 function imageSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
@@ -73,6 +91,49 @@ function formatWhen(iso: string | null): string {
     return d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+function PublicationFeedTypeTag({ type, label }: { type: string; label: string }) {
+    const Icon = TYPE_ICONS[type] ?? DEFAULT_ICON;
+    const tone = TYPE_TAG_STYLES[type] ?? DEFAULT_TAG_STYLE;
+
+    return (
+        <span
+            className={`inline-flex max-w-full items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none ${tone}`}
+            aria-label={`Tipo: ${label}`}
+        >
+            <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden strokeWidth={2} />
+            <span className="truncate">{label}</span>
+        </span>
+    );
+}
+
+function PrayerCover({
+    src,
+    onError,
+    showLogo,
+}: {
+    src: string;
+    onError: () => void;
+    showLogo: boolean;
+}) {
+    return (
+        <div className="flex aspect-[16/9] flex-col items-center justify-center gap-3 bg-black px-6">
+            {showLogo ? (
+                <img
+                    src={src}
+                    alt=""
+                    className="max-h-20 max-w-[55%] object-contain"
+                    loading="lazy"
+                    decoding="async"
+                    onError={onError}
+                />
+            ) : (
+                <PrayingHandsIcon className="h-12 w-12 text-white/70" aria-hidden strokeWidth={1.5} />
+            )}
+            <p className="text-center text-sm font-medium text-white/85">{PRAYER_COVER_TAGLINE}</p>
+        </div>
+    );
+}
+
 type Props = {
     item: PublicationFeedItem;
     appUrl: string;
@@ -85,7 +146,7 @@ export default function PublicationFeedCard({ item, appUrl }: Props) {
     const [coverBroken, setCoverBroken] = useState(false);
     const showCover = Boolean(src) && !coverBroken;
     const when = formatWhen(item.published_at);
-    const isPrayerLogo = item.type === 'prayer' && showCover;
+    const isPrayer = item.type === 'prayer';
 
     return (
         <li>
@@ -93,17 +154,8 @@ export default function PublicationFeedCard({ item, appUrl }: Props) {
                 href={item.href}
                 className="group block cursor-pointer overflow-hidden rounded-2xl border border-zinc-200 bg-white transition hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
             >
-                {isPrayerLogo ? (
-                    <div className="flex aspect-[16/9] items-center justify-center bg-zinc-100 px-6 dark:bg-zinc-800">
-                        <img
-                            src={src}
-                            alt=""
-                            className="max-h-16 max-w-[45%] object-contain"
-                            loading="lazy"
-                            decoding="async"
-                            onError={() => setCoverBroken(true)}
-                        />
-                    </div>
+                {isPrayer ? (
+                    <PrayerCover src={src} showLogo={showCover} onError={() => setCoverBroken(true)} />
                 ) : showCover ? (
                     <div className="relative aspect-[16/9] overflow-hidden bg-zinc-100 dark:bg-zinc-800">
                         <img
@@ -124,7 +176,7 @@ export default function PublicationFeedCard({ item, appUrl }: Props) {
 
                 <div className="space-y-2 p-4">
                     <div className="flex items-center justify-between gap-2">
-                        <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{item.type_label}</p>
+                        <PublicationFeedTypeTag type={item.type} label={item.type_label} />
                         {when ? (
                             <p className="shrink-0 text-xs text-zinc-400 dark:text-zinc-500">{when}</p>
                         ) : null}
