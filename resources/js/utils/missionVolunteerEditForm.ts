@@ -40,6 +40,10 @@ export function missionVolunteerDetailToFormData(v: MissionVolunteerDetail): Mis
         talents_for_god: v.talentsForGod?.trim() ?? '',
         team_support_notes: v.teamSupportNotes?.trim() ?? '',
         lgpd_consent: v.lgpdConsent ?? false,
+        wants_app_account: null,
+        app_email: '',
+        app_password: '',
+        app_password_confirmation: '',
     };
 }
 

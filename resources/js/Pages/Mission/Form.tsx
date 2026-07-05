@@ -7,7 +7,7 @@ import MissionHubBackLink from '@/Components/Mission/MissionHubBackLink';
 import MobileLayout from '@/Layouts/MobileLayout';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { FormEventHandler, useMemo, useState } from 'react';
+import { FormEvent, FormEventHandler, useMemo, useState } from 'react';
 
 type MissionDraft = {
     id: number;
