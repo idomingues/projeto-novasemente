@@ -10,6 +10,7 @@ export function missionVolunteerDetailToFormData(v: MissionVolunteerDetail): Mis
         photo: null,
         full_name: v.fullName?.trim() ?? '',
         birth_date: v.birthDate ?? '',
+        email: v.email?.trim() ?? '',
         phone: v.phone?.trim() ?? '',
         full_address: v.fullAddress?.trim() ?? '',
         profession: v.profession?.trim() ?? '',
@@ -56,6 +57,7 @@ export function buildMissionVolunteerUpdateFormData(data: MissionFormData): Form
 
     formData.append('full_name', data.full_name);
     formData.append('birth_date', data.birth_date);
+    formData.append('email', data.email.trim());
     formData.append('phone', data.phone);
     formData.append('full_address', data.full_address);
     formData.append('profession', data.profession);

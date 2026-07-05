@@ -92,7 +92,7 @@ class MissionFormController extends Controller
         return Inertia::render($isMobile ? 'Mobile/Mission' : 'Mission/Form', [
             'churchName' => $church?->name ?? config('app.name'),
             'options' => $this->missionOptions(),
-            'formRevision' => 13,
+            'formRevision' => 14,
             'storeUrl' => $isMobile ? route('mobile.mission.store') : route('mission.store'),
             'saveStepUrl' => $isMobile ? route('mobile.mission.step') : route('mission.step'),
             'appAccountStoreUrl' => $isMobile ? route('mobile.mission.app-account.store') : route('mission.app-account.store'),

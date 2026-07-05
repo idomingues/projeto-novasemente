@@ -58,6 +58,11 @@ class StoreMissionVolunteerRequest extends FormRequest
                 ]);
             }
         }
+
+        $registrationEmail = strtolower(trim((string) $this->input('email', '')));
+        if ($registrationEmail !== '' && trim((string) $this->input('app_email', '')) === '') {
+            $this->merge(['app_email' => $registrationEmail]);
+        }
     }
 
     /** @return array<string, mixed> */
@@ -80,7 +85,7 @@ class StoreMissionVolunteerRequest extends FormRequest
             $status = MissionAppAccount::statusForRegistration(
                 $churchId !== null ? (int) $churchId : null,
                 (string) $this->input('phone', ''),
-                (string) $this->input('app_email', ''),
+                (string) ($this->input('app_email') ?: $this->input('email', '')),
                 null,
             );
 

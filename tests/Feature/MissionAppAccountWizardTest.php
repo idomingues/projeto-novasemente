@@ -21,6 +21,7 @@ class MissionAppAccountWizardTest extends TestCase
             'photo' => UploadedFile::fake()->image('face.jpg', 400, 400),
             'full_name' => 'João Pereira',
             'birth_date' => '1990-03-15',
+            'email' => 'joao.missao@example.com',
             'phone' => '11977776666',
             'full_address' => 'Rua das Flores, 100',
             'profession' => 'Enfermeiro(a)',
@@ -57,7 +58,6 @@ class MissionAppAccountWizardTest extends TestCase
 
         $payload = array_merge($this->missionPayload(), [
             'wants_app_account' => true,
-            'app_email' => 'joao.missao@example.com',
             'app_password' => 'SenhaSegura1!',
             'app_password_confirmation' => 'SenhaSegura1!',
         ]);

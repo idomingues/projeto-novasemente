@@ -25,6 +25,7 @@ class MissionFormTest extends TestCase
             'photo' => UploadedFile::fake()->image('face.jpg', 400, 400),
             'full_name' => 'Maria Silva',
             'birth_date' => '1990-03-15',
+            'email' => 'maria.missao@example.com',
             'phone' => '11999998888',
             'full_address' => 'Rua das Flores, 100',
             'profession' => 'Enfermeiro(a)',
@@ -64,7 +65,7 @@ class MissionFormTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->component('Mission/Form')
                 ->where('churchName', $church->name)
-                ->where('formRevision', 13)
+                ->where('formRevision', 14)
                 ->where('layout', 'default')
                 ->has('options.professions')
                 ->has('options.spiritual_journey', 5)
@@ -313,7 +314,7 @@ class MissionFormTest extends TestCase
         $volunteer->refresh();
         $this->assertSame($originalPhaseId, $volunteer->mission_phase_id);
         $this->assertNotNull($volunteer->registration_completed_at);
-        Mail::assertNothingSent();
+        Mail::assertSent(\App\Mail\MissionVolunteerInstructionsMail::class);
     }
 
     public function test_editing_registration_keeps_advanced_step_after_save(): void
@@ -331,7 +332,8 @@ class MissionFormTest extends TestCase
 
         $steps = [
             ['step' => 'full_name', 'payload' => ['full_name' => 'Maria Santos'], 'next' => 'birth_date'],
-            ['step' => 'birth_date', 'payload' => ['birth_date' => '1991-04-20'], 'next' => 'phone'],
+            ['step' => 'birth_date', 'payload' => ['birth_date' => '1991-04-20'], 'next' => 'email'],
+            ['step' => 'email', 'payload' => ['email' => 'maria.missao@example.com'], 'next' => 'phone'],
             ['step' => 'phone', 'payload' => ['phone' => '11988887777'], 'next' => 'full_address'],
             ['step' => 'full_address', 'payload' => ['full_address' => 'Rua Nova, 200'], 'next' => 'profession'],
         ];

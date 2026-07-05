@@ -316,23 +316,17 @@ class PublicationFeed
             ->limit(100)
             ->get()
             ->map(function (PrayerRequest $prayer) use ($church, $baseUrl) {
-                $meta = $prayer->is_anonymous
-                    ? ['Pedido anônimo']
-                    : ['Por '.($prayer->name_or_nickname ?: 'Membro da igreja')];
-                if ($prayer->prayer_amen_count > 0) {
-                    $meta[] = $prayer->prayer_amen_count.' '.($prayer->prayer_amen_count === 1 ? 'oração' : 'orações');
-                }
-
                 return self::entry(
                     type: 'prayer',
                     typeLabel: self::TYPE_DEFINITIONS['prayer']['label'],
                     pk: $prayer->id,
-                    title: Str::limit(self::plainText($prayer->request), 80) ?: 'Pedido de oração',
-                    excerpt: self::plainText($prayer->request),
+                    title: 'Alguém precisa da sua oração',
+                    excerpt: '',
                     imageUrl: PublicationFeedCoverResolver::forPrayer($church, $baseUrl),
                     publishedAt: $prayer->created_at,
                     href: route('mobile.prayer', absolute: false),
-                    meta: $meta,
+                    meta: [],
+                    allowExcerptFallback: false,
                 );
             });
     }
@@ -694,6 +688,7 @@ class PublicationFeed
         string $href,
         array $meta = [],
         bool $coverPlayOverlay = false,
+        bool $allowExcerptFallback = true,
     ): array {
         $definition = self::TYPE_DEFINITIONS[$type] ?? null;
 
@@ -704,7 +699,9 @@ class PublicationFeed
             'type_description' => $definition['description'] ?? '',
             'action_label' => $definition['action'] ?? 'Abrir',
             'title' => $title,
-            'excerpt' => $excerpt !== '' ? $excerpt : ($definition['description'] ?? 'Toque para abrir na app.'),
+            'excerpt' => $excerpt !== '' ? $excerpt : (
+                $allowExcerptFallback ? ($definition['description'] ?? 'Toque para abrir na app.') : ''
+            ),
             'image_url' => $imageUrl,
             'cover_play_overlay' => $coverPlayOverlay,
             'published_at' => $publishedAt?->format(\DateTimeInterface::ATOM),

@@ -30,6 +30,7 @@ class MissionVolunteerUpdateTest extends TestCase
         return [
             'full_name' => 'Maria Silva',
             'birth_date' => '1990-03-15',
+            'email' => 'maria.missao@example.com',
             'phone' => '11999998888',
             'full_address' => 'Rua das Flores, 100',
             'profession' => 'Enfermeiro(a)',
@@ -144,6 +145,7 @@ class MissionVolunteerUpdateTest extends TestCase
         $payload = [
             'full_name' => 'Ana Caroline Alves da Silva',
             'birth_date' => '1990-03-15',
+            'email' => 'ana.missao@example.com',
             'phone' => '11968980088',
             'full_address' => 'Rua Oliveira Golveia, 26',
             'profession' => 'Contador(a)',
@@ -190,6 +192,7 @@ class MissionVolunteerUpdateTest extends TestCase
         $payload = [
             'full_name' => $this->volunteer->full_name,
             'birth_date' => $this->volunteer->birth_date?->format('Y-m-d'),
+            'email' => $this->volunteer->display_email ?? 'maria.missao@example.com',
             'phone' => $this->volunteer->phone,
             'full_address' => $this->volunteer->full_address,
             'profession' => $this->volunteer->profession,

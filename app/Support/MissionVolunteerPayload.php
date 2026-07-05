@@ -24,6 +24,7 @@ final class MissionVolunteerPayload
             ],
             'full_name' => ['required', 'string', 'max:255'],
             'birth_date' => ['required', 'date', 'before:today'],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255'],
             'phone' => ['required', 'string', 'max:40'],
             'full_address' => ['required', 'string', 'max:2000'],
             'profession' => ['required', 'string', Rule::in($cfg['professions'] ?? [])],
@@ -132,7 +133,6 @@ final class MissionVolunteerPayload
     {
         return array_merge(self::mapQuestionnaireAttributes($valid), [
             'photo_path' => $photoPath,
-            'email' => null,
             'if_not_how_long' => null,
             'insight_duration' => null,
             'participated_groups' => [],
@@ -185,6 +185,7 @@ final class MissionVolunteerPayload
         return [
             'full_name' => $valid['full_name'],
             'birth_date' => $valid['birth_date'],
+            'email' => self::trimNullableEmail($valid['email'] ?? null),
             'phone' => $valid['phone'],
             'full_address' => $valid['full_address'],
             'profession' => $profession['value'],
@@ -284,6 +285,13 @@ final class MissionVolunteerPayload
         return $text !== '' ? $text : null;
     }
 
+    private static function trimNullableEmail(mixed $value): ?string
+    {
+        $text = strtolower(trim((string) ($value ?? '')));
+
+        return $text !== '' ? $text : null;
+    }
+
     /** @return array<string, mixed> */
     public static function serializeForFrontend(MissionVolunteer $v): array
     {
@@ -291,7 +299,7 @@ final class MissionVolunteerPayload
             'id' => $v->id,
             'photoUrl' => $v->photo_url,
             'fullName' => $v->full_name,
-            'email' => $v->email,
+            'email' => $v->display_email,
             'birthDate' => $v->birth_date?->format('Y-m-d'),
             'phone' => $v->phone,
             'fullAddress' => $v->full_address,

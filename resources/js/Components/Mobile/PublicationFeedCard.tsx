@@ -69,6 +69,8 @@ const TYPE_TAG_STYLES: Record<string, string> = {
 const DEFAULT_TAG_STYLE = 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300';
 const DEFAULT_ICON = SparklesIcon;
 const PRAYER_COVER_TAGLINE = 'Alguém precisa da sua oração';
+/** Mesmo tom do quadrado da logo Nova Semente (logo-ns.png). */
+const PRAYER_COVER_BG = '#1c1c1c';
 
 function imageSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
@@ -116,7 +118,10 @@ function PrayerCover({
     showLogo: boolean;
 }) {
     return (
-        <div className="flex aspect-[16/9] flex-col items-center justify-center gap-3 bg-black px-6">
+        <div
+            className="flex aspect-[16/9] flex-col items-center justify-center gap-3 px-6"
+            style={{ backgroundColor: PRAYER_COVER_BG }}
+        >
             {showLogo ? (
                 <img
                     src={src}
@@ -182,19 +187,27 @@ export default function PublicationFeedCard({ item, appUrl }: Props) {
                         ) : null}
                     </div>
 
-                    <h2 className="line-clamp-2 text-base font-semibold leading-snug text-zinc-900 dark:text-white">
-                        {item.title}
-                    </h2>
-
-                    {item.excerpt ? (
-                        <p className="line-clamp-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                            {item.excerpt}
+                    {isPrayer ? (
+                        <p className="text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
+                            Toque para abrir na área de oração e ler o pedido.
                         </p>
-                    ) : null}
+                    ) : (
+                        <>
+                            <h2 className="line-clamp-2 text-base font-semibold leading-snug text-zinc-900 dark:text-white">
+                                {item.title}
+                            </h2>
 
-                    {meta.length > 0 ? (
-                        <p className="text-xs text-zinc-500 dark:text-zinc-500">{meta.join(' · ')}</p>
-                    ) : null}
+                            {item.excerpt ? (
+                                <p className="line-clamp-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                                    {item.excerpt}
+                                </p>
+                            ) : null}
+
+                            {meta.length > 0 ? (
+                                <p className="text-xs text-zinc-500 dark:text-zinc-500">{meta.join(' · ')}</p>
+                            ) : null}
+                        </>
+                    )}
 
                     <div className="flex items-center justify-end pt-1">
                         <span className="inline-flex items-center gap-0.5 text-sm text-zinc-500 transition group-hover:text-zinc-700 dark:text-zinc-400 dark:group-hover:text-zinc-200">

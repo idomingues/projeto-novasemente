@@ -285,6 +285,15 @@ export default function MissionVolunteerDetailEditForm({ volunteer, options, upd
                         onChange={(iso) => patch({ birth_date: iso })}
                     />
                 </Field>
+                <Field label="E-mail" error={errors.email}>
+                    <TextInput
+                        type="email"
+                        className="w-full"
+                        value={data.email}
+                        onChange={(e) => patch({ email: e.target.value })}
+                        autoComplete="email"
+                    />
+                </Field>
                 <Field label="Telefone" error={errors.phone}>
                     <TextInput className="w-full" value={data.phone} onChange={(e) => patch({ phone: e.target.value })} />
                 </Field>

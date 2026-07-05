@@ -124,6 +124,36 @@ class PublicationsFeedTest extends TestCase
             ->assertJsonCount(3, 'data');
     }
 
+    public function test_prayer_item_does_not_expose_request_content_in_feed(): void
+    {
+        $this->seed(ChurchSeeder::class);
+        $church = Church::query()->firstOrFail();
+
+        $user = User::factory()->create([
+            'church_id' => $church->id,
+            'email' => 'admin@example.com',
+        ]);
+
+        \App\Models\PrayerRequest::query()->create([
+            'church_id' => $church->id,
+            'user_id' => $user->id,
+            'request' => 'Texto secreto do pedido de oração',
+            'name_or_nickname' => 'Jhimmy',
+            'is_anonymous' => false,
+            'active' => true,
+            'needs_review' => false,
+        ]);
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.publications-feed', ['type' => 'prayer']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('items.data.0.title', 'Alguém precisa da sua oração')
+                ->where('items.data.0.excerpt', '')
+                ->where('items.data.0.meta', []));
+    }
+
     public function test_news_item_links_to_detail_page(): void
     {
         $this->seed(ChurchSeeder::class);

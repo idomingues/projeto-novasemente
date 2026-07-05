@@ -37,6 +37,7 @@ export function emptyMissionForm(): MissionFormData {
         photo: null,
         full_name: '',
         birth_date: '',
+        email: '',
         phone: '',
         full_address: '',
         profession: '',
@@ -112,8 +113,9 @@ export default function MissionForm({
         form.transform((d) => ({
             ...d,
             seeks_in_community: d.seeks_in_community ? [d.seeks_in_community] : [],
+            email: d.email.trim(),
             wants_app_account: skipAppAccount ? false : d.wants_app_account,
-            app_email: skipAppAccount ? '' : d.app_email,
+            app_email: skipAppAccount ? '' : (d.app_email.trim() || d.email.trim()),
             app_password: skipAppAccount ? '' : d.app_password,
             app_password_confirmation: skipAppAccount ? '' : d.app_password_confirmation,
         }));

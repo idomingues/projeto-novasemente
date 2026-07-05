@@ -4,6 +4,7 @@ export type MissionStepId =
     | 'photo'
     | 'full_name'
     | 'birth_date'
+    | 'email'
     | 'phone'
     | 'full_address'
     | 'profession'
@@ -36,6 +37,7 @@ export const MISSION_STEP_ORDER: MissionStepId[] = [
     'photo',
     'full_name',
     'birth_date',
+    'email',
     'phone',
     'full_address',
     'profession',
@@ -101,6 +103,7 @@ export function missionStepSectionTitle(step: MissionStepId): string {
         case 'photo':
         case 'full_name':
         case 'birth_date':
+        case 'email':
         case 'phone':
         case 'full_address':
             return 'Dados pessoais';
@@ -144,33 +147,34 @@ export function missionStepQuestionNumber(step: MissionStepId): number {
         photo: 0,
         full_name: 1,
         birth_date: 2,
-        phone: 3,
-        full_address: 4,
-        profession: 5,
-        has_belief: 6,
-        belief_which: 7,
-        participates_religion: 8,
-        religion_which: 9,
-        baptized: 10,
-        seeks_in_community: 11,
-        studied_bible: 12,
-        studied_bible_structured: 13,
-        first_time_nova_semente: 14,
-        first_contact_via: 15,
-        wants_bible_study_partner: 16,
-        spiritual_journey: 17,
-        comfortable_environment: 18,
-        group_project_preference: 19,
-        interest_areas: 20,
-        learning_style: 21,
-        personalized_bible_study_interest: 22,
-        mission_social_projects_interest: 23,
-        start_area_preference: 24,
-        talents_for_god: 25,
-        team_support_notes: 26,
-        lgpd_consent: 27,
-        app_account_choice: 28,
-        app_account_credentials: 29,
+        email: 3,
+        phone: 4,
+        full_address: 5,
+        profession: 6,
+        has_belief: 7,
+        belief_which: 8,
+        participates_religion: 9,
+        religion_which: 10,
+        baptized: 11,
+        seeks_in_community: 12,
+        studied_bible: 13,
+        studied_bible_structured: 14,
+        first_time_nova_semente: 15,
+        first_contact_via: 16,
+        wants_bible_study_partner: 17,
+        spiritual_journey: 18,
+        comfortable_environment: 19,
+        group_project_preference: 20,
+        interest_areas: 21,
+        learning_style: 22,
+        personalized_bible_study_interest: 23,
+        mission_social_projects_interest: 24,
+        start_area_preference: 25,
+        talents_for_god: 26,
+        team_support_notes: 27,
+        lgpd_consent: 28,
+        app_account_choice: 29,
+        app_account_credentials: 30,
     };
 
     return map[step];
@@ -192,6 +196,10 @@ export function validateMissionStep(step: MissionStepId, data: MissionFormData):
             return data.full_name.trim() ? null : 'Informe o nome completo.';
         case 'birth_date':
             return data.birth_date ? null : 'Informe a data de nascimento.';
+        case 'email':
+            if (!data.email.trim()) return 'Informe seu e-mail.';
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) return 'Informe um e-mail válido.';
+            return null;
         case 'phone':
             return data.phone.trim() ? null : 'Informe o telefone.';
         case 'full_address':
@@ -268,12 +276,14 @@ export function validateMissionStep(step: MissionStepId, data: MissionFormData):
             return data.lgpd_consent ? null : 'Aceite o uso dos dados (LGPD) para enviar.';
         case 'app_account_choice':
             return data.wants_app_account === null ? 'Responda se deseja criar conta no aplicativo.' : null;
-        case 'app_account_credentials':
-            if (!data.app_email.trim()) return 'Informe seu e-mail.';
-            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.app_email.trim())) return 'Informe um e-mail válido.';
+        case 'app_account_credentials': {
+            const appEmail = data.app_email.trim() || data.email.trim();
+            if (!appEmail) return 'Informe seu e-mail.';
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(appEmail)) return 'Informe um e-mail válido.';
             if (!data.app_password) return 'Informe uma senha.';
             if (data.app_password !== data.app_password_confirmation) return 'As senhas não conferem.';
             return null;
+        }
         default:
             return null;
     }
@@ -288,6 +298,7 @@ export function missionStepIndexForField(
         photo: 'photo',
         full_name: 'full_name',
         birth_date: 'birth_date',
+        email: 'email',
         phone: 'phone',
         full_address: 'full_address',
         profession: 'profession',
@@ -364,6 +375,9 @@ export function buildMissionStepPayload(step: MissionStepId, data: MissionFormDa
             break;
         case 'birth_date':
             append('birth_date', data.birth_date);
+            break;
+        case 'email':
+            append('email', data.email.trim());
             break;
         case 'phone':
             append('phone', data.phone);

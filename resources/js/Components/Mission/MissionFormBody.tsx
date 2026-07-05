@@ -47,6 +47,7 @@ export type MissionFormData = {
     photo: File | null;
     full_name: string;
     birth_date: string;
+    email: string;
     phone: string;
     full_address: string;
     profession: string;
@@ -745,6 +746,18 @@ export default function MissionFormBody({
                         />
                     </Question>
                 );
+            case 'email':
+                return (
+                    <Question number={q} label="E-mail" error={errors.email}>
+                        <TextInput
+                            type="email"
+                            className="w-full"
+                            value={data.email}
+                            onChange={(e) => setData('email', e.target.value)}
+                            autoComplete="email"
+                        />
+                    </Question>
+                );
             case 'phone':
                 return (
                     <Question number={q} label="Número de telefone" error={errors.phone}>
@@ -1159,7 +1172,7 @@ export default function MissionFormBody({
                     >
                         <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
                             Com a conta você acompanha cultos, avisos e outros recursos da igreja no celular. Usaremos
-                            seu nome e telefone já informados no cadastro.
+                            seu nome, e-mail e telefone já informados no cadastro.
                         </p>
                         <YesNoRadio
                             name="wants_app_account"
@@ -1168,7 +1181,9 @@ export default function MissionFormBody({
                                 patchData({
                                     wants_app_account: next,
                                     ...(next
-                                        ? {}
+                                        ? {
+                                              app_email: data.app_email.trim() || data.email.trim(),
+                                          }
                                         : {
                                               app_email: '',
                                               app_password: '',
@@ -1179,27 +1194,40 @@ export default function MissionFormBody({
                         />
                     </Question>
                 );
-            case 'app_account_credentials':
+            case 'app_account_credentials': {
+                const registrationEmail = data.email.trim();
+                const appEmail = data.app_email.trim() || registrationEmail;
+
                 return (
                     <Question number={q} label="Conta no aplicativo" error={errors.app_email || errors.app_password}>
                         <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
-                            Informe e-mail e senha para acessar o app. Seu nome ({data.full_name || 'cadastro'}) e
-                            telefone ({data.phone || 'informado'}) serão usados automaticamente. Se preferir, você
-                            pode enviar o cadastro missionário sem criar conta no app agora.
+                            Defina uma senha para acessar o app. Seu nome ({data.full_name || 'cadastro'}), e-mail (
+                            {appEmail || 'informado'}) e telefone ({data.phone || 'informado'}) serão usados
+                            automaticamente. Se preferir, você pode enviar o cadastro missionário sem criar conta no app
+                            agora.
                         </p>
                         <div className="space-y-4">
                             <div>
                                 <label htmlFor="mission_app_email" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
                                     E-mail
                                 </label>
-                                <TextInput
-                                    id="mission_app_email"
-                                    type="email"
-                                    className="mt-1 w-full"
-                                    value={data.app_email}
-                                    onChange={(e) => setData('app_email', e.target.value)}
-                                    autoComplete="email"
-                                />
+                                {registrationEmail ? (
+                                    <p
+                                        id="mission_app_email"
+                                        className="mt-1 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                                    >
+                                        {registrationEmail}
+                                    </p>
+                                ) : (
+                                    <TextInput
+                                        id="mission_app_email"
+                                        type="email"
+                                        className="mt-1 w-full"
+                                        value={data.app_email}
+                                        onChange={(e) => setData('app_email', e.target.value)}
+                                        autoComplete="email"
+                                    />
+                                )}
                                 <InputError message={errors.app_email} className="mt-1" />
                             </div>
                             <div>
@@ -1236,6 +1264,7 @@ export default function MissionFormBody({
                         </div>
                     </Question>
                 );
+            }
             default:
                 return null;
         }
