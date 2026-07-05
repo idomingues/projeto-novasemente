@@ -1,10 +1,6 @@
-import InputError from '@/Components/InputError';
-import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
-import TextInput from '@/Components/TextInput';
-import { Link, useForm } from '@inertiajs/react';
-import { FormEventHandler, useState } from 'react';
+import { Link } from '@inertiajs/react';
 
 export type MissionSubmissionResult = {
     volunteerId: number;
@@ -12,6 +8,7 @@ export type MissionSubmissionResult = {
     alreadyInApp: boolean;
     alreadyInAppReason?: string | null;
     appAccountCreated?: boolean;
+    appAccountResolved?: boolean;
     message: string;
     instructions?: string[];
     instructionsEmailSent?: boolean;
@@ -20,7 +17,6 @@ export type MissionSubmissionResult = {
 
 type Props = {
     submission: MissionSubmissionResult;
-    appAccountStoreUrl: string;
     enterAppHref: string;
     onNewRegistration: () => void;
 };
@@ -53,28 +49,9 @@ function InstructionsBlock({
     );
 }
 
-export default function MissionSubmissionSuccess({
-    submission,
-    appAccountStoreUrl,
-    enterAppHref,
-    onNewRegistration,
-}: Props) {
-    const [wantsAppAccount, setWantsAppAccount] = useState<boolean | null>(null);
-    const appForm = useForm({
-        email: '',
-        password: '',
-        password_confirmation: '',
-    });
-
+export default function MissionSubmissionSuccess({ submission, enterAppHref, onNewRegistration }: Props) {
     const instructions = submission.instructions ?? [];
-    const canEnterApp = submission.alreadyInApp || submission.appAccountCreated === true;
-    const showAppForm =
-        !submission.alreadyInApp && !submission.appAccountCreated && wantsAppAccount === true;
-
-    const emailNoticeForPendingAccount =
-        wantsAppAccount === true && !submission.appAccountCreated
-            ? 'As mesmas informações acima serão enviadas para o e-mail que você cadastrar abaixo.'
-            : null;
+    const showLoggedInAppLink = submission.alreadyInApp && submission.appAccountResolved !== false;
 
     const emailNoticeAfterSend =
         submission.instructionsEmailSent && submission.instructionsEmail
@@ -82,14 +59,6 @@ export default function MissionSubmissionSuccess({
             : submission.instructionsEmailSent
               ? 'Enviamos as mesmas informações para o e-mail cadastrado.'
               : null;
-
-    const submitAppAccount: FormEventHandler = (e) => {
-        e.preventDefault();
-        appForm.post(appAccountStoreUrl, {
-            preserveScroll: true,
-            onFinish: () => appForm.reset('password', 'password_confirmation'),
-        });
-    };
 
     return (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 p-5 shadow-sm dark:border-emerald-900/60 dark:bg-emerald-950/30 sm:p-6">
@@ -111,90 +80,13 @@ export default function MissionSubmissionSuccess({
                 </div>
             </div>
 
-            <InstructionsBlock
-                instructions={instructions}
-                emailNotice={
-                    submission.appAccountCreated || submission.alreadyInApp
-                        ? emailNoticeAfterSend
-                        : emailNoticeForPendingAccount ?? emailNoticeAfterSend
-                }
-            />
-
-            {!canEnterApp && wantsAppAccount === null ? (
-                <div className="mt-5 space-y-3 border-t border-emerald-200/80 pt-5 dark:border-emerald-800/50">
-                    <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
-                        Deseja criar uma conta no aplicativo agora?
-                    </p>
-                    <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                        Com a conta você acompanha cultos, avisos e outros recursos da igreja no celular.
-                    </p>
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                        <PrimaryButton type="button" className="flex-1 justify-center" onClick={() => setWantsAppAccount(true)}>
-                            Sim, criar conta
-                        </PrimaryButton>
-                        <SecondaryButton type="button" className="flex-1 justify-center" onClick={() => setWantsAppAccount(false)}>
-                            Agora não
-                        </SecondaryButton>
-                    </div>
-                </div>
-            ) : !canEnterApp && wantsAppAccount === false ? (
-                <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">
-                    Tudo certo. Nossa equipe missionária entrará em contato pelo telefone informado.
-                </p>
-            ) : null}
-
-            {showAppForm ? (
-                <form onSubmit={submitAppAccount} className="mt-5 space-y-4 border-t border-emerald-200/80 pt-5 dark:border-emerald-800/50">
-                    <p className="text-sm text-zinc-700 dark:text-zinc-300">Informe e-mail e senha para acessar o app:</p>
-                    <div>
-                        <InputLabel htmlFor="mission_app_email" value="E-mail" />
-                        <TextInput
-                            id="mission_app_email"
-                            type="email"
-                            className="mt-1 block w-full"
-                            value={appForm.data.email}
-                            onChange={(e) => appForm.setData('email', e.target.value)}
-                            autoComplete="email"
-                            required
-                        />
-                        <InputError message={appForm.errors.email} className="mt-1" />
-                    </div>
-                    <div>
-                        <InputLabel htmlFor="mission_app_password" value="Senha" />
-                        <TextInput
-                            id="mission_app_password"
-                            type="password"
-                            className="mt-1 block w-full"
-                            value={appForm.data.password}
-                            onChange={(e) => appForm.setData('password', e.target.value)}
-                            autoComplete="new-password"
-                            required
-                        />
-                        <InputError message={appForm.errors.password} className="mt-1" />
-                    </div>
-                    <div>
-                        <InputLabel htmlFor="mission_app_password_confirmation" value="Confirmar senha" />
-                        <TextInput
-                            id="mission_app_password_confirmation"
-                            type="password"
-                            className="mt-1 block w-full"
-                            value={appForm.data.password_confirmation}
-                            onChange={(e) => appForm.setData('password_confirmation', e.target.value)}
-                            autoComplete="new-password"
-                            required
-                        />
-                    </div>
-                    <PrimaryButton type="submit" className="w-full justify-center" disabled={appForm.processing}>
-                        {appForm.processing ? 'Criando conta…' : 'Criar conta no app'}
-                    </PrimaryButton>
-                </form>
-            ) : null}
+            <InstructionsBlock instructions={instructions} emailNotice={emailNoticeAfterSend} />
 
             <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                {canEnterApp ? (
+                {showLoggedInAppLink ? (
                     <Link href={enterAppHref} className="inline-flex w-full sm:w-auto">
                         <PrimaryButton type="button" className="w-full justify-center sm:min-w-[14rem]">
-                            Entrar no aplicativo
+                            Ir para o início
                         </PrimaryButton>
                     </Link>
                 ) : null}

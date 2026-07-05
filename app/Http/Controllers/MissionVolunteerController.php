@@ -10,6 +10,7 @@ use App\Models\MissionVolunteerPhaseHistory;
 use App\Models\MissionPhase;
 use App\Models\MissionVolunteer;
 use App\Models\User;
+use App\Http\Requests\UpdateMissionVolunteerRequest;
 use App\Support\MissionPhaseBootstrap;
 use App\Support\MissionPhaseLeaders;
 use App\Support\MissionSla;
@@ -18,8 +19,10 @@ use App\Support\MissionVolunteerAccountResolver;
 use App\Support\MissionVolunteerFilteredRoster;
 use App\Support\MissionVolunteerPayload;
 use App\Support\MissionVolunteerRosterFilters;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -59,6 +62,7 @@ class MissionVolunteerController extends Controller
         $phaseVolunteers = MissionVolunteer::query()
             ->with('phase:id,name,sort_order,sla_days')
             ->where('church_id', $churchId)
+            ->registrationComplete()
             ->get();
 
         MissionSla::warmPhaseEntryCache($phaseVolunteers);
@@ -288,6 +292,8 @@ class MissionVolunteerController extends Controller
             'canEditPhase' => $canEditPhase,
             'canAddNote' => $canManage || $canEditPhase,
             'updatePhaseUrl' => $canEditPhase ? route('mission.volunteers.phase', $missionVolunteer) : null,
+            'updateUrl' => $canEditPhase ? route('mission.volunteers.update', $missionVolunteer) : null,
+            'canEditRegistration' => $canEditPhase,
             'storeNoteUrl' => route('mission.volunteers.notes.store', $missionVolunteer),
             'destroyUrl' => $canManage ? route('mission.volunteers.destroy', $missionVolunteer) : null,
             'whatsappDefaultMessage' => trim((string) ($church?->mission_whatsapp_default_message ?? '')),
@@ -336,6 +342,47 @@ class MissionVolunteerController extends Controller
         }
 
         return back()->with('success', 'Fase atualizada.');
+    }
+
+    public function update(UpdateMissionVolunteerRequest $request, MissionVolunteer $missionVolunteer): JsonResponse
+    {
+        $this->canView($request);
+        $churchId = $this->churchId($request);
+        abort_unless($churchId && (int) $missionVolunteer->church_id === (int) $churchId, 404);
+
+        $user = $request->user();
+        abort_unless($user, 401);
+
+        abort_unless(
+            MissionTeamAccess::canOperateVolunteer($user, $missionVolunteer->mission_phase_id),
+            403,
+            'Você só pode alterar cadastros na sua fase.',
+        );
+
+        $valid = $request->validated();
+
+        $photoPath = null;
+        if ($request->hasFile('photo')) {
+            if ($missionVolunteer->photo_path) {
+                Storage::disk('public')->delete($missionVolunteer->photo_path);
+            }
+            /** @var UploadedFile $photoFile */
+            $photoFile = $request->file('photo');
+            $photoPath = $photoFile->store('mission/volunteers', 'public');
+        }
+
+        $missionVolunteer->forceFill(
+            MissionVolunteerPayload::registrationAttributes($valid, $photoPath),
+        )->save();
+
+        $missionVolunteer->load('phase');
+        $volunteerPayload = MissionVolunteerPayload::serializeForFrontend($missionVolunteer);
+        $volunteerPayload['sla'] = MissionSla::metricsForVolunteer($missionVolunteer);
+
+        return response()->json([
+            'volunteer' => $volunteerPayload,
+            'message' => 'Cadastro atualizado.',
+        ]);
     }
 
     public function storeNote(Request $request, MissionVolunteer $missionVolunteer): RedirectResponse

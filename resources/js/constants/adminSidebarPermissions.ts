@@ -83,6 +83,7 @@ export const adminSidebarRoutePermissions: Record<string, string[]> = {
     'mission.phases.update': ['mission.manage'],
     'mission.phases.destroy': ['mission.manage'],
     'mission.volunteers.phase': ['mission.view', 'mission.manage'],
+    'mission.volunteers.update': ['mission.view', 'mission.manage'],
     'mission.volunteers.notes.store': ['mission.view', 'mission.manage'],
     'mission.broadcast.store': ['mission.manage'],
     'mission.volunteers.destroy': ['mission.manage'],

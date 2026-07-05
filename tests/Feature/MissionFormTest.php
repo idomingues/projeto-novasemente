@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Church;
 use App\Models\MissionVolunteer;
 use App\Models\User;
+use App\Support\MissionVolunteerRegistration;
 use Database\Seeders\ChurchSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -107,6 +108,7 @@ class MissionFormTest extends TestCase
         $this->assertNull($volunteer->profile_type);
         $this->assertNotNull($volunteer->photo_path);
         Storage::disk('public')->assertExists($volunteer->photo_path);
+        $this->assertNotNull($volunteer->registration_completed_at);
     }
 
     public function test_mission_submission_detects_existing_app_user_by_phone(): void
@@ -155,12 +157,9 @@ class MissionFormTest extends TestCase
             'password_confirmation' => 'SenhaSegura1!',
         ]);
 
-        $response->assertRedirect(route('mission.form'));
-        $response->assertSessionHas('mission_submission');
-        $submission = session('mission_submission');
-        $this->assertTrue($submission['appAccountCreated']);
-        $this->assertTrue($submission['instructionsEmailSent']);
-        $this->assertNotEmpty($submission['instructions']);
+        $response->assertRedirect(route('mobile.home'));
+        $response->assertSessionHas('registration_success', true);
+        $response->assertSessionHas('success');
         $this->assertAuthenticated();
         $this->assertDatabaseHas('users', ['email' => 'maria.missao@example.com']);
 
@@ -207,5 +206,202 @@ class MissionFormTest extends TestCase
             ->assertSessionHasErrors(['interest_areas']);
 
         $this->assertDatabaseCount('mission_volunteers', 0);
+    }
+
+    public function test_mission_form_requires_profession_other_when_outra(): void
+    {
+        Storage::fake('public');
+        $this->seed(ChurchSeeder::class);
+        $church = Church::query()->firstOrFail();
+
+        $payload = $this->validPayload();
+        $payload['profession'] = 'Outra';
+        $payload['profession_other'] = '';
+
+        $response = $this->from(route('mission.form'))
+            ->withSession(['working_church_id' => $church->id])
+            ->post(route('mission.store'), $payload);
+
+        $response
+            ->assertRedirect(route('mission.form'))
+            ->assertSessionHasErrors(['profession_other']);
+
+        $this->assertDatabaseCount('mission_volunteers', 0);
+    }
+
+    public function test_mission_form_accepts_outra_profession_with_text(): void
+    {
+        Storage::fake('public');
+        $this->seed(ChurchSeeder::class);
+        $church = Church::query()->firstOrFail();
+
+        $payload = $this->validPayload();
+        $payload['profession'] = 'Outra';
+        $payload['profession_other'] = 'Designer gráfico';
+
+        $this->withSession(['working_church_id' => $church->id])
+            ->post(route('mission.store'), $payload)
+            ->assertRedirect(route('mission.form'));
+
+        $volunteer = MissionVolunteer::query()->where('full_name', 'Maria Silva')->first();
+        $this->assertNotNull($volunteer);
+        $this->assertSame('Outra', $volunteer->profession);
+        $this->assertSame('Designer gráfico', $volunteer->profession_other);
+    }
+
+    public function test_logged_in_user_with_completed_registration_sees_editable_form(): void
+    {
+        Storage::fake('public');
+        $this->seed(ChurchSeeder::class);
+        $church = Church::query()->firstOrFail();
+        $user = User::factory()->create(['church_id' => $church->id]);
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->post(route('mission.store'), $this->validPayload());
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('mission.form'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Mission/Form')
+                ->where('isEditing', true)
+                ->where('canResume', false)
+                ->has('draft.fields.full_name')
+                ->where('draft.fields.full_name', 'Maria Silva')
+                ->where('draft.stepIndex', 0));
+    }
+
+    public function test_logged_in_user_can_update_completed_registration_via_save_step(): void
+    {
+        Storage::fake('public');
+        Mail::fake();
+        $this->seed(ChurchSeeder::class);
+        $church = Church::query()->firstOrFail();
+        $user = User::factory()->create(['church_id' => $church->id]);
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->post(route('mission.store'), $this->validPayload());
+
+        $volunteer = MissionVolunteer::query()->where('submitted_by_user_id', $user->id)->firstOrFail();
+        $originalPhaseId = $volunteer->mission_phase_id;
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->post(route('mission.step'), [
+                'step' => 'full_name',
+                'full_name' => 'Maria Santos',
+            ])
+            ->assertRedirect(route('mission.form'))
+            ->assertSessionHas('success');
+
+        $volunteer->refresh();
+        $this->assertSame('Maria Santos', $volunteer->full_name);
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->post(route('mission.step'), [
+                'step' => 'lgpd_consent',
+                'lgpd_consent' => true,
+            ])
+            ->assertRedirect(route('mission.form'))
+            ->assertSessionHas('success', 'Cadastro atualizado com sucesso.')
+            ->assertSessionMissing('mission_submission');
+
+        $volunteer->refresh();
+        $this->assertSame($originalPhaseId, $volunteer->mission_phase_id);
+        $this->assertNotNull($volunteer->registration_completed_at);
+        Mail::assertNothingSent();
+    }
+
+    public function test_editing_registration_keeps_advanced_step_after_save(): void
+    {
+        Storage::fake('public');
+        $this->seed(ChurchSeeder::class);
+        $church = Church::query()->firstOrFail();
+        $user = User::factory()->create(['church_id' => $church->id]);
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->post(route('mission.store'), $this->validPayload());
+
+        $volunteer = MissionVolunteer::query()->where('submitted_by_user_id', $user->id)->firstOrFail();
+
+        $steps = [
+            ['step' => 'full_name', 'payload' => ['full_name' => 'Maria Santos'], 'next' => 'birth_date'],
+            ['step' => 'birth_date', 'payload' => ['birth_date' => '1991-04-20'], 'next' => 'phone'],
+            ['step' => 'phone', 'payload' => ['phone' => '11988887777'], 'next' => 'full_address'],
+            ['step' => 'full_address', 'payload' => ['full_address' => 'Rua Nova, 200'], 'next' => 'profession'],
+        ];
+
+        foreach ($steps as $case) {
+            $this->actingAs($user)
+                ->withSession(['working_church_id' => $church->id])
+                ->post(route('mission.step'), array_merge(['step' => $case['step']], $case['payload']))
+                ->assertRedirect(route('mission.form'))
+                ->assertSessionHas('success');
+
+            $volunteer->refresh();
+            $this->assertSame($case['next'], $volunteer->registration_step);
+
+            $answers = MissionVolunteerRegistration::answersFromVolunteer($volunteer);
+            $expectedIndex = MissionVolunteerRegistration::formStepIndex($volunteer, $answers);
+
+            $this->actingAs($user)
+                ->withSession(['working_church_id' => $church->id])
+                ->get(route('mission.form'))
+                ->assertOk()
+                ->assertInertia(fn ($page) => $page
+                    ->where('isEditing', true)
+                    ->where('draft.stepIndex', $expectedIndex)
+                    ->where('draft.stepId', $case['next']));
+        }
+    }
+
+    public function test_draft_registration_keeps_advanced_step_after_save(): void
+    {
+        Storage::fake('public');
+        $this->seed(ChurchSeeder::class);
+        $church = Church::query()->firstOrFail();
+        $user = User::factory()->create(['church_id' => $church->id]);
+
+        $photoPath = UploadedFile::fake()->image('face.jpg', 400, 400)->store('mission/volunteers', 'public');
+
+        $volunteer = MissionVolunteer::create([
+            'church_id' => $church->id,
+            'submitted_by_user_id' => $user->id,
+            'photo_path' => $photoPath,
+            'full_name' => '',
+            'registration_step' => 'full_name',
+        ]);
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->post(route('mission.step'), [
+                'step' => 'full_name',
+                'full_name' => 'João Pereira',
+            ])
+            ->assertRedirect(route('mission.form'))
+            ->assertSessionHas('success');
+
+        $volunteer->refresh();
+        $this->assertSame('birth_date', $volunteer->registration_step);
+        $this->assertNull($volunteer->registration_completed_at);
+
+        $answers = MissionVolunteerRegistration::answersFromVolunteer($volunteer);
+        $expectedIndex = MissionVolunteerRegistration::formStepIndex($volunteer, $answers);
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('mission.form'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('isEditing', false)
+                ->where('canResume', true)
+                ->where('draft.stepIndex', $expectedIndex)
+                ->where('draft.stepId', 'birth_date')
+                ->where('draft.fields.full_name', 'João Pereira'));
     }
 }

@@ -15,7 +15,8 @@ final class MissionVolunteerFilteredRoster
     {
         $query = MissionVolunteer::query()
             ->with('phase:id,name,sort_order,sla_days')
-            ->where('church_id', $churchId);
+            ->where('church_id', $churchId)
+            ->registrationComplete();
 
         MissionVolunteerRosterFilters::apply($request, $query);
 

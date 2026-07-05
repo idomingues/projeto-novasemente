@@ -8,6 +8,7 @@ export type MissionVolunteerDetail = {
     phone?: string | null;
     fullAddress?: string | null;
     profession?: string | null;
+    professionOther?: string | null;
     hasBelief?: boolean | null;
     beliefWhich?: string | null;
     beliefWhichOther?: string | null;
@@ -121,7 +122,7 @@ export function missionVolunteerDetailSections(v: MissionVolunteerDetail): Missi
         },
         {
             title: 'Profissão',
-            rows: [{ label: '5. Profissão', value: v.profession?.trim() || '—' }],
+            rows: [{ label: '5. Profissão', value: formatChoice(v.profession, v.professionOther) }],
         },
         {
             title: 'Fé e crença',

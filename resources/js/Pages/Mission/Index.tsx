@@ -18,6 +18,8 @@ import { confirmAction } from '@/utils/confirmDialog';
 import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import RecordDetailHeader from '@/Components/RecordDetail/RecordDetailHeader';
 import UserListAvatar from '@/Components/UserListAvatar';
+import MissionVolunteerDetailEditForm from '@/Components/Mission/MissionVolunteerDetailEditForm';
+import type { MissionOptions } from '@/Components/Mission/MissionFormBody';
 import {
     missionVolunteerDetailSections,
     type MissionVolunteerDetail,
@@ -106,8 +108,10 @@ type DetailJson = {
     phaseHistory: DetailPhaseHistory[];
     canManage: boolean;
     canEditPhase: boolean;
+    canEditRegistration: boolean;
     canAddNote: boolean;
     updatePhaseUrl: string | null;
+    updateUrl: string | null;
     storeNoteUrl: string;
     destroyUrl: string | null;
     whatsappDefaultMessage: string;
@@ -122,19 +126,24 @@ interface Paginated<T> {
     per_page?: number;
 }
 
-type MissionOptions = {
-    professions: string[];
-    beliefs: string[];
-    religions: string[];
-    studied_bible: string[];
-    wants_bible_study_partner: string[];
+type MissionOptionsProp = MissionOptions & {
+    seeks_in_community?: string[];
+    first_contact_via?: string[];
+    spiritual_journey?: string[];
+    comfortable_environment?: string[];
+    group_project_preference?: string[];
+    interest_areas?: string[];
+    learning_style?: string[];
+    personalized_bible_study_interest?: string[];
+    mission_social_projects_interest?: string[];
+    start_area_preference?: string[];
 };
 
 interface Props {
     volunteers: Paginated<VolunteerRow>;
     phases: PhaseRow[];
     filters: MissionRosterFilters;
-    options: MissionOptions;
+    options: MissionOptionsProp;
     overdueTotal: number;
     canManage: boolean;
     operablePhaseIds: number[] | null;
@@ -1031,6 +1040,10 @@ export default function MissionIndex({
                             onSavePhase={saveDetailPhase}
                             onNoteSaved={() => void openDetail(detail.volunteer.id, 'notas')}
                             onClose={closeDetail}
+                            missionOptions={options}
+                            onVolunteerUpdated={(volunteer) =>
+                                setDetail((current) => (current ? { ...current, volunteer } : current))
+                            }
                         />
                     ) : null}
                 </div>
@@ -1097,6 +1110,8 @@ function DetailPanel({
     onSavePhase,
     onNoteSaved,
     onClose,
+    missionOptions,
+    onVolunteerUpdated,
 }: {
     detail: DetailJson;
     detailTab: DetailTab;
@@ -1106,6 +1121,8 @@ function DetailPanel({
     onSavePhase: () => void;
     onNoteSaved: () => void;
     onClose: () => void;
+    missionOptions: MissionOptionsProp;
+    onVolunteerUpdated: (volunteer: DetailVolunteer) => void;
 }) {
     const v = detail.volunteer;
     const sections = missionVolunteerDetailSections(v);
@@ -1183,23 +1200,32 @@ function DetailPanel({
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-6 pt-4">
                 {detailTab === 'ficha' ? (
                     <div className="space-y-4">
-                        <div className="space-y-3">
-                            {sections.map((section) => (
-                                <section
-                                    key={section.title}
-                                    className="overflow-hidden rounded-2xl border border-zinc-200/90 bg-zinc-50/50 shadow-sm dark:border-zinc-700/80 dark:bg-zinc-900/40"
-                                >
-                                    <h3 className="border-b border-zinc-200/90 bg-teal-600/10 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-teal-900 dark:border-zinc-700 dark:bg-teal-500/10 dark:text-teal-200">
-                                        {section.title}
-                                    </h3>
-                                    <dl className="grid gap-2 p-3 sm:grid-cols-2 sm:gap-2.5">
-                                        {section.rows.map((row) => (
-                                            <DetailRow key={`${section.title}-${row.label}`} label={row.label} value={row.value} />
-                                        ))}
-                                    </dl>
-                                </section>
-                            ))}
-                        </div>
+                        {detail.canEditRegistration && detail.updateUrl ? (
+                            <MissionVolunteerDetailEditForm
+                                volunteer={v}
+                                options={missionOptions}
+                                updateUrl={detail.updateUrl}
+                                onSaved={onVolunteerUpdated}
+                            />
+                        ) : (
+                            <div className="space-y-3">
+                                {sections.map((section) => (
+                                    <section
+                                        key={section.title}
+                                        className="overflow-hidden rounded-2xl border border-zinc-200/90 bg-zinc-50/50 shadow-sm dark:border-zinc-700/80 dark:bg-zinc-900/40"
+                                    >
+                                        <h3 className="border-b border-zinc-200/90 bg-teal-600/10 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-teal-900 dark:border-zinc-700 dark:bg-teal-500/10 dark:text-teal-200">
+                                            {section.title}
+                                        </h3>
+                                        <dl className="grid gap-2 p-3 sm:grid-cols-2 sm:gap-2.5">
+                                            {section.rows.map((row) => (
+                                                <DetailRow key={`${section.title}-${row.label}`} label={row.label} value={row.value} />
+                                            ))}
+                                        </dl>
+                                    </section>
+                                ))}
+                            </div>
+                        )}
                         {v.sla && (
                             <p className="text-sm text-zinc-600 dark:text-zinc-400">
                                 {v.sla.phaseEnteredAtLabel ? (

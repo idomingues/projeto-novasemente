@@ -92,15 +92,18 @@ export default function MobileDonationsIndex({ campaigns }: Props) {
                                 <Link
                                     key={campaign.id}
                                     href={route('mobile.donations.show', campaign.id)}
-                                    className="block rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:border-brand-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-brand-700"
+                                    className="block rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:border-brand-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-brand-700 sm:flex sm:items-start sm:gap-5 sm:p-5"
                                 >
                                     {campaign.cover_image_url && (
-                                        <img
-                                            src={campaign.cover_image_url}
-                                            alt=""
-                                            className="mb-3 h-[13.5rem] w-full rounded-xl object-cover"
-                                        />
+                                        <div className="mb-3 overflow-hidden rounded-xl bg-zinc-100 sm:mb-0 sm:w-2/5 sm:max-w-sm sm:shrink-0 dark:bg-zinc-800">
+                                            <img
+                                                src={campaign.cover_image_url}
+                                                alt=""
+                                                className="aspect-video w-full object-cover sm:aspect-auto sm:max-h-56 sm:object-contain md:max-h-64"
+                                            />
+                                        </div>
                                     )}
+                                    <div className="min-w-0 flex-1">
                                     <div className="flex flex-wrap items-center gap-2">
                                         <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">{campaign.title}</h2>
                                         <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700 dark:bg-brand-950/40 dark:text-brand-200">
@@ -136,6 +139,7 @@ export default function MobileDonationsIndex({ campaigns }: Props) {
                                             Agradecimento publicado
                                         </p>
                                     )}
+                                    </div>
                                 </Link>
                             );
                         })}

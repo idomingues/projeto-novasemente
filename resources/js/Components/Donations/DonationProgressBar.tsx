@@ -66,7 +66,7 @@ export default function DonationProgressBar({
                     Meta: {formatValue(goalAmount)} · {missingLabel} {formatValue(remaining)}
                 </p>
                 {pendingAmount !== null && pendingAmount !== undefined && pendingAmount > 0 && (
-                    <p>Prometidos: {formatValue(pendingAmount)}</p>
+                    <p>Comprometidos: {formatValue(pendingAmount)}</p>
                 )}
             </div>
         </div>

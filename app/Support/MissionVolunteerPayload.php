@@ -17,12 +17,22 @@ final class MissionVolunteerPayload
         )));
 
         return [
-            'photo' => ['required', 'image', 'max:4096'],
+            'photo' => [
+                ($existing !== null && filled($existing->photo_path)) ? 'nullable' : 'required',
+                'image',
+                'max:4096',
+            ],
             'full_name' => ['required', 'string', 'max:255'],
             'birth_date' => ['required', 'date', 'before:today'],
             'phone' => ['required', 'string', 'max:40'],
             'full_address' => ['required', 'string', 'max:2000'],
             'profession' => ['required', 'string', Rule::in($cfg['professions'] ?? [])],
+            'profession_other' => [
+                'nullable',
+                'required_if:profession,Outra',
+                'string',
+                'max:120',
+            ],
             'has_belief' => ['required', 'boolean'],
             'belief_which' => [
                 'nullable',
@@ -92,8 +102,67 @@ final class MissionVolunteerPayload
         ];
     }
 
+    /** @return array<string, mixed> */
+    public static function adminUpdateRules(?MissionVolunteer $existing = null): array
+    {
+        $rules = self::validationRules($existing);
+        unset($rules['lgpd_consent']);
+
+        return $rules;
+    }
+
+    /**
+     * Campos do questionário Missão (sem metadados legados nem e-mail).
+     *
+     * @param  array<string, mixed>  $valid
+     * @return array<string, mixed>
+     */
+    public static function registrationAttributes(array $valid, ?string $photoPath = null): array
+    {
+        $attrs = self::mapQuestionnaireAttributes($valid);
+        if ($photoPath !== null) {
+            $attrs['photo_path'] = $photoPath;
+        }
+
+        return $attrs;
+    }
+
     /** @param  array<string, mixed>  $valid */
     public static function toModelAttributes(array $valid, ?string $photoPath = null): array
+    {
+        return array_merge(self::mapQuestionnaireAttributes($valid), [
+            'photo_path' => $photoPath,
+            'email' => null,
+            'if_not_how_long' => null,
+            'insight_duration' => null,
+            'participated_groups' => [],
+            'participated_groups_other' => null,
+            'engagement_level' => null,
+            'closer_to_god_text' => null,
+            'belonging_people' => null,
+            'belonging_location' => null,
+            'belonging_availability' => null,
+            'belonging_spirituality' => null,
+            'social_actions_interest' => null,
+            'profile_type' => null,
+            'ministry_preference' => null,
+            'social_action_type' => null,
+            'weekday_availability' => null,
+            'time_per_week' => null,
+            'work_preference' => null,
+            'can_contact_week' => null,
+            'contact_period' => null,
+            'contact_format' => null,
+            'nps_score' => null,
+            'lgpd_consent' => true,
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $valid
+     * @return array<string, mixed>
+     */
+    private static function mapQuestionnaireAttributes(array $valid): array
     {
         $beliefWhich = self::resolveChoiceWithOther(
             $valid['belief_which'] ?? null,
@@ -108,16 +177,18 @@ final class MissionVolunteerPayload
             $valid['first_contact_via'] ?? null,
             $valid['first_contact_via_other'] ?? null,
         );
+        $profession = self::resolveChoiceWithOther(
+            $valid['profession'] ?? null,
+            $valid['profession_other'] ?? null,
+        );
 
         return [
-            'photo_path' => $photoPath,
             'full_name' => $valid['full_name'],
-            'email' => null,
             'birth_date' => $valid['birth_date'],
             'phone' => $valid['phone'],
             'full_address' => $valid['full_address'],
-            'profession' => $valid['profession'],
-            'profession_other' => null,
+            'profession' => $profession['value'],
+            'profession_other' => $profession['other'],
             'has_belief' => (bool) $valid['has_belief'],
             'belief_which' => $beliefWhich['value'],
             'belief_which_other' => $beliefWhich['other'],
@@ -143,28 +214,6 @@ final class MissionVolunteerPayload
             'start_area_preference' => $valid['start_area_preference'],
             'talents_for_god' => self::trimNullableString($valid['talents_for_god'] ?? null),
             'team_support_notes' => self::trimNullableString($valid['team_support_notes'] ?? null),
-            'if_not_how_long' => null,
-            'insight_duration' => null,
-            'participated_groups' => [],
-            'participated_groups_other' => null,
-            'engagement_level' => null,
-            'closer_to_god_text' => null,
-            'belonging_people' => null,
-            'belonging_location' => null,
-            'belonging_availability' => null,
-            'belonging_spirituality' => null,
-            'social_actions_interest' => null,
-            'profile_type' => null,
-            'ministry_preference' => null,
-            'social_action_type' => null,
-            'weekday_availability' => null,
-            'time_per_week' => null,
-            'work_preference' => null,
-            'can_contact_week' => null,
-            'contact_period' => null,
-            'contact_format' => null,
-            'nps_score' => null,
-            'lgpd_consent' => true,
         ];
     }
 
@@ -247,6 +296,7 @@ final class MissionVolunteerPayload
             'phone' => $v->phone,
             'fullAddress' => $v->full_address,
             'profession' => $v->profession,
+            'professionOther' => $v->profession_other,
             'hasBelief' => $v->has_belief,
             'beliefWhich' => $v->belief_which,
             'beliefWhichOther' => $v->belief_which_other,

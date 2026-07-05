@@ -2,7 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Church;
+use App\Support\MissionAppAccount;
 use App\Support\MissionVolunteerPayload;
+use App\Support\MissionVolunteerRegistration;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreMissionVolunteerRequest extends FormRequest
@@ -44,11 +47,58 @@ class StoreMissionVolunteerRequest extends FormRequest
                 $this->merge(['lgpd_consent' => true]);
             }
         }
+
+        if ($this->has('wants_app_account')) {
+            $wants = $this->input('wants_app_account');
+            if ($wants === '' || $wants === null) {
+                $this->merge(['wants_app_account' => null]);
+            } else {
+                $this->merge([
+                    'wants_app_account' => filter_var($wants, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? $wants,
+                ]);
+            }
+        }
     }
 
     /** @return array<string, mixed> */
     public function rules(): array
     {
-        return MissionVolunteerPayload::validationRules();
+        $existing = null;
+        $user = $this->user();
+        $churchId = Church::resolveWorkingId($this);
+        if ($user !== null && $churchId !== null) {
+            $existing = MissionVolunteerRegistration::findCompletedForUser((int) $churchId, $user);
+        }
+
+        $rules = MissionVolunteerPayload::validationRules($existing);
+
+        if ($this->user() === null) {
+            $rules['wants_app_account'] = ['nullable', 'boolean'];
+        }
+
+        if ($this->user() === null && $this->boolean('wants_app_account')) {
+            $status = MissionAppAccount::statusForRegistration(
+                $churchId !== null ? (int) $churchId : null,
+                (string) $this->input('phone', ''),
+                (string) $this->input('app_email', ''),
+                null,
+            );
+
+            if (! $status['already_in_app']) {
+                $rules = array_merge($rules, MissionAppAccount::wizardValidationRules());
+            }
+        }
+
+        return $rules;
+    }
+
+    /** @return array<string, string> */
+    public function messages(): array
+    {
+        return [
+            'profession.required' => 'Selecione sua profissão.',
+            'profession.in' => 'Selecione uma profissão válida.',
+            'profession_other.required' => 'Especifique sua profissão.',
+        ];
     }
 }

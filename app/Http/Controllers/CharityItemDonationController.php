@@ -30,7 +30,7 @@ class CharityItemDonationController extends Controller
         $this->assertCanManageDonation($request->user());
 
         if ($charityItemDonation->status !== CharityItemDonation::STATUS_PLEDGED) {
-            return redirect()->back()->with('error', 'Somente promessas pendentes podem ser marcadas como recebidas.');
+            return redirect()->back()->with('error', 'Somente compromissos pendentes podem ser marcados como recebidos.');
         }
 
         $data = $request->validate([
@@ -95,7 +95,7 @@ class CharityItemDonationController extends Controller
         $this->assertCanManageDonation($request->user());
 
         if ($charityItemDonation->status !== CharityItemDonation::STATUS_PLEDGED) {
-            return redirect()->back()->with('error', 'Apenas promessas pendentes podem ser canceladas.');
+            return redirect()->back()->with('error', 'Apenas compromissos pendentes podem ser cancelados.');
         }
 
         $data = $request->validate([
@@ -115,6 +115,6 @@ class CharityItemDonationController extends Controller
             $campaign->recalculateItemProgress();
         });
 
-        return redirect()->back()->with('success', 'Promessa de doação cancelada.');
+        return redirect()->back()->with('success', 'Compromisso de doação cancelada.');
     }
 }

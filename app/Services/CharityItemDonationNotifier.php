@@ -98,25 +98,25 @@ class CharityItemDonationNotifier
     private function buildTitle(bool $treasurer, bool $creator): string
     {
         if ($treasurer && $creator) {
-            return 'Nova promessa de doação';
+            return 'Novo compromisso de doação';
         }
         if ($treasurer) {
-            return 'Nova promessa registrada';
+            return 'Novo compromisso registrado';
         }
 
-        return 'Promessa na sua campanha';
+        return 'Compromisso na sua campanha';
     }
 
     private function buildBody(bool $treasurer, bool $creator, string $quantityLabel, string $donorName, string $campaignTitle): string
     {
         if ($treasurer && $creator) {
-            return $quantityLabel.' prometidos na campanha «'.$campaignTitle.'» ('.$donorName.'). Você criou esta campanha e pode acompanhar o recebimento no painel.';
+            return $quantityLabel.' comprometidos na campanha «'.$campaignTitle.'» ('.$donorName.'). Você criou esta campanha e pode acompanhar o recebimento no painel.';
         }
         if ($treasurer) {
-            return $quantityLabel.' prometidos na campanha «'.$campaignTitle.'» ('.$donorName.'). Toque para acompanhar o recebimento.';
+            return $quantityLabel.' comprometidos na campanha «'.$campaignTitle.'» ('.$donorName.'). Toque para acompanhar o recebimento.';
         }
 
-        return $quantityLabel.' prometidos na campanha «'.$campaignTitle.'» que você criou ('.$donorName.').';
+        return $quantityLabel.' comprometidos na campanha «'.$campaignTitle.'» que você criou ('.$donorName.').';
     }
 
     private function pushInbox(User $user, string $title, string $body, string $routeName): void

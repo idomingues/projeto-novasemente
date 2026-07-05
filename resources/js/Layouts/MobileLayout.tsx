@@ -61,17 +61,21 @@ export default function MobileLayout({
 
     return (
         <div className="flex h-[100dvh] max-h-[100dvh] min-h-0 flex-col overflow-hidden bg-zinc-100 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans">
-            <GuestAppBar />
+            {!modalOverlayOpen ? <GuestAppBar /> : null}
 
             <main
-                className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] pt-[calc(3.5rem+env(safe-area-inset-top,0px)+1.5rem)] [scrollbar-gutter:stable] md:px-8 md:pt-[calc(4rem+env(safe-area-inset-top,0px)+1.5rem)] lg:pt-24"
+                className={`min-h-0 flex-1 overscroll-y-contain [scrollbar-gutter:stable] md:px-8 ${
+                    modalOverlayOpen
+                        ? 'overflow-hidden p-0'
+                        : 'overflow-y-auto overflow-x-hidden px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] pt-[calc(3.5rem+env(safe-area-inset-top,0px)+1.5rem)] md:pt-[calc(4rem+env(safe-area-inset-top,0px)+1.5rem)] lg:pt-24'
+                }`}
             >
-                <div className="max-w-7xl lg:max-w-[90rem] mx-auto w-full pb-2">
+                <div className={`max-w-7xl lg:max-w-[90rem] mx-auto w-full ${modalOverlayOpen ? 'min-h-0 h-full' : 'pb-2'}`}>
                     {children}
                 </div>
             </main>
 
-            <MobileBottomNav />
+            {!modalOverlayOpen ? <MobileBottomNav /> : null}
 
             <FlashMessages />
         </div>

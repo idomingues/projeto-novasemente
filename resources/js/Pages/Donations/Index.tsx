@@ -457,7 +457,7 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
                                         pendingAmount={campaign.type === 'items' ? campaign.progress_pending : null}
                                     />
                                     <p className="text-xs text-zinc-500">
-                                        {campaign.donations_count} {campaign.type === 'items' ? 'promessa(s)' : 'doação(ões)'}
+                                        {campaign.donations_count} {campaign.type === 'items' ? 'compromisso(s)' : 'doação(ões)'}
                                         {campaign.story_photos.length > 0 ? ` · ${campaign.story_photos.length} foto(s) do projeto` : ''}
                                         {campaign.starts_at ? ` · Início: ${formatCampaignDate(campaign.starts_at)}` : ''}
                                         {campaign.ends_at ? ` · Prazo: ${formatCampaignDate(campaign.ends_at)}` : ''}
@@ -695,7 +695,7 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
                 <div className="p-6">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
-                            {detailIsItemCampaign ? 'Promessas e entregas' : 'Doações'} — {detailCampaign?.title}
+                            {detailIsItemCampaign ? 'Compromissos e entregas' : 'Doações'} — {detailCampaign?.title}
                         </h3>
                         {canManageDonations && detailCampaign?.status !== 'archived' && !detailIsItemCampaign && (
                             <SecondaryButton type="button" onClick={openManualDonation}>
@@ -708,7 +708,7 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
                         <p className="mt-4 text-sm text-zinc-500">Carregando...</p>
                     ) : detailDonations.length === 0 ? (
                         <p className="mt-4 text-sm text-zinc-500">
-                            {detailIsItemCampaign ? 'Nenhuma promessa registrada ainda.' : 'Nenhuma doação registrada ainda.'}
+                            {detailIsItemCampaign ? 'Nenhum compromisso registrado ainda.' : 'Nenhuma doação registrada ainda.'}
                             {canManageDonations && detailCampaign?.status !== 'archived' && !detailIsItemCampaign && (
                                 <span> Use «Registrar doação manual» para incluir valores recebidos fora do app.</span>
                             )}
@@ -754,7 +754,7 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
                                                             ? 'Recebido'
                                                             : d.status === 'cancelled'
                                                               ? 'Cancelado'
-                                                              : 'Prometido'}
+                                                              : 'Comprometido'}
                                                     </span>
                                                     {d.staff_note && (
                                                         <span className="mt-0.5 block text-xs text-zinc-500 line-clamp-2" title={d.staff_note}>

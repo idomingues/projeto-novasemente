@@ -14,6 +14,8 @@ class MissionVolunteer extends Model
         'mission_phase_id',
         'phase_entered_at',
         'submitted_by_user_id',
+        'registration_completed_at',
+        'registration_step',
         'photo_path',
         'full_name',
         'email',
@@ -87,6 +89,7 @@ class MissionVolunteer extends Model
         'nps_score' => 'integer',
         'last_invite_sent_at' => 'datetime',
         'phase_entered_at' => 'datetime',
+        'registration_completed_at' => 'datetime',
     ];
 
     public function church(): BelongsTo
@@ -117,6 +120,11 @@ class MissionVolunteer extends Model
     public function phaseHistories(): HasMany
     {
         return $this->hasMany(MissionVolunteerPhaseHistory::class)->orderByDesc('created_at');
+    }
+
+    public function scopeRegistrationComplete($query)
+    {
+        return $query->whereNotNull('registration_completed_at');
     }
 
     public function getPhotoUrlAttribute(): ?string

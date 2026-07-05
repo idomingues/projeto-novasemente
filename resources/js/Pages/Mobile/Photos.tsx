@@ -75,7 +75,7 @@ export default function MobilePhotos({
     };
 
     return (
-        <MobileLayout>
+        <MobileLayout modalOverlayOpen={open}>
             <Head title={title} />
 
             <div className="space-y-3">
@@ -132,11 +132,11 @@ export default function MobilePhotos({
 
                         {open && current ? (
                             <div className="fixed inset-0 z-[100] bg-black/90">
-                                <div className="absolute inset-x-0 top-0 z-30 p-4 flex items-center justify-between gap-3 pointer-events-none">
+                                <div className="absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-3 px-4 pb-2 pt-[max(1rem,env(safe-area-inset-top,0px))] pointer-events-none">
                                     <button
                                         type="button"
                                         onClick={() => setOpen(false)}
-                                        className="pointer-events-auto inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/10 text-white hover:bg-white/15"
+                                        className="pointer-events-auto inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/15"
                                         aria-label="Fechar"
                                     >
                                         <XMarkIcon className="w-6 h-6" />
@@ -146,7 +146,7 @@ export default function MobilePhotos({
                                         href={current.download_url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="pointer-events-auto inline-flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 text-white hover:bg-white/15 text-sm font-semibold"
+                                        className="pointer-events-auto inline-flex cursor-pointer items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-sm font-semibold text-white hover:bg-white/15"
                                         title="Download"
                                     >
                                         <ArrowDownTrayIcon className="w-5 h-5" />
@@ -155,7 +155,7 @@ export default function MobilePhotos({
                                 </div>
 
                                 <div
-                                    className="absolute inset-0 z-10 pt-16 pb-16 px-3 sm:px-4 flex items-center justify-center"
+                                    className="absolute inset-x-0 z-10 flex items-center justify-center px-3 sm:px-4 top-[calc(3.5rem+env(safe-area-inset-top,0px))] bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))]"
                                     onTouchStart={(e) => (touchStartX.current = e.touches[0]?.clientX ?? null)}
                                     onTouchEnd={(e) => {
                                         const start = touchStartX.current;
@@ -169,7 +169,7 @@ export default function MobilePhotos({
                                     }}
                                 >
                                     <div
-                                        className={`w-[calc(100vw-1.5rem)] sm:w-[calc(100vw-2rem)] max-w-[1100px] h-[calc(100dvh-8.5rem)] max-h-[calc(100dvh-8.5rem)] ${
+                                        className={`h-full w-full max-w-[1100px] ${
                                             zoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'
                                         }`}
                                         onClick={() => setZoomed((v) => !v)}
@@ -189,11 +189,11 @@ export default function MobilePhotos({
                                     </div>
                                 </div>
 
-                                <div className="absolute inset-x-0 bottom-0 z-30 p-4 flex items-center justify-between gap-3 pointer-events-none">
+                                <div className="absolute inset-x-0 bottom-0 z-30 flex items-center justify-between gap-3 px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom,0px))] pointer-events-none">
                                     <button
                                         type="button"
                                         onClick={prev}
-                                        className="pointer-events-auto inline-flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 text-white hover:bg-white/15 text-sm font-semibold"
+                                        className="pointer-events-auto inline-flex cursor-pointer items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-sm font-semibold text-white hover:bg-white/15"
                                     >
                                         <ChevronLeftIcon className="w-5 h-5" />
                                         Anterior
@@ -204,7 +204,7 @@ export default function MobilePhotos({
                                     <button
                                         type="button"
                                         onClick={next}
-                                        className="pointer-events-auto inline-flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 text-white hover:bg-white/15 text-sm font-semibold"
+                                        className="pointer-events-auto inline-flex cursor-pointer items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-sm font-semibold text-white hover:bg-white/15"
                                     >
                                         Próxima
                                         <ChevronRightIcon className="w-5 h-5" />

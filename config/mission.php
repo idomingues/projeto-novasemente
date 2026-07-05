@@ -29,6 +29,7 @@ return [
         'Assistente Social',
         'Nutricionista',
         'Analista de Sistemas (TI)',
+        'Outra',
     ],
 
     'beliefs' => [

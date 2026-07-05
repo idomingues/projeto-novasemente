@@ -164,6 +164,9 @@ Route::get('/mobile/missao/cadastro', [MissionFormController::class, 'create'])-
 Route::post('/mobile/missao/cadastro', [MissionFormController::class, 'store'])
     ->middleware('throttle:20,1')
     ->name('mobile.mission.store');
+Route::post('/mobile/missao/cadastro/etapa', [MissionFormController::class, 'saveStep'])
+    ->middleware(['auth', 'throttle:60,1'])
+    ->name('mobile.mission.step');
 Route::post('/mobile/missao/cadastro/conta-app', [\App\Http\Controllers\MissionAppAccountController::class, 'store'])
     ->middleware('throttle:10,1')
     ->name('mobile.mission.app-account.store');
@@ -171,6 +174,9 @@ Route::get('/missao', [MissionFormController::class, 'create'])->name('mission.f
 Route::post('/missao', [MissionFormController::class, 'store'])
     ->middleware('throttle:20,1')
     ->name('mission.store');
+Route::post('/missao/etapa', [MissionFormController::class, 'saveStep'])
+    ->middleware(['auth', 'throttle:60,1'])
+    ->name('mission.step');
 Route::post('/missao/conta-app', [\App\Http\Controllers\MissionAppAccountController::class, 'store'])
     ->middleware('throttle:10,1')
     ->name('mission.app-account.store');
@@ -658,6 +664,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/missao/gestao/{missionVolunteer}', [MissionVolunteerController::class, 'show'])->name('mission.show')->middleware('permission:mission.view|mission.manage');
     Route::get('/missao/gestao/{missionVolunteer}/detalhe', [MissionVolunteerController::class, 'detail'])->name('mission.volunteers.detail')->middleware('permission:mission.view|mission.manage');
     Route::patch('/missao/gestao/{missionVolunteer}/fase', [MissionVolunteerController::class, 'updatePhase'])->name('mission.volunteers.phase')->middleware('permission:mission.view|mission.manage');
+    Route::patch('/missao/gestao/{missionVolunteer}', [MissionVolunteerController::class, 'update'])->name('mission.volunteers.update')->middleware('permission:mission.view|mission.manage');
     Route::post('/missao/gestao/{missionVolunteer}/notas', [MissionVolunteerController::class, 'storeNote'])->name('mission.volunteers.notes.store')->middleware('permission:mission.view|mission.manage');
     Route::delete('/missao/gestao/{missionVolunteer}', [MissionVolunteerController::class, 'destroy'])->name('mission.volunteers.destroy')->middleware('permission:mission.manage');
     Route::post('/missao/fases', [MissionVolunteerController::class, 'storeStage'])->name('mission.phases.store')->middleware('permission:mission.manage');

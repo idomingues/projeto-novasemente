@@ -148,7 +148,7 @@ export default function MobileDonationShow({ campaign, recentDonations, donation
         ? campaign.status === 'active' && campaign.starts_at && campaignStartsInFuture(campaign.starts_at)
             ? `Esta campanha começa em ${formatCampaignDate(campaign.starts_at)}.`
             : campaign.type === 'items'
-              ? 'Esta campanha não está aceitando novas promessas no momento.'
+              ? 'Esta campanha não está aceitando novos compromissos no momento.'
               : 'Esta campanha não está aceitando doações no momento.'
         : null;
 
@@ -296,11 +296,13 @@ export default function MobileDonationShow({ campaign, recentDonations, donation
                 )}
 
                 {campaign.cover_image_url && (
-                    <img
-                        src={campaign.cover_image_url}
-                        alt=""
-                        className="h-96 w-full rounded-2xl object-cover"
-                    />
+                    <div className="overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800">
+                        <img
+                            src={campaign.cover_image_url}
+                            alt=""
+                            className="mx-auto w-full max-h-64 object-contain sm:max-h-[28rem] lg:max-h-[32rem]"
+                        />
+                    </div>
                 )}
 
                 <div>
@@ -376,7 +378,7 @@ export default function MobileDonationShow({ campaign, recentDonations, donation
                             confirma o recebimento e o progresso da campanha é atualizado.
                         </p>
                         <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-400">
-                            Prometidos: {formatQuantity(campaign.pledged_quantity, campaign.unit_label)} · Recebidos:{' '}
+                            Comprometidos: {formatQuantity(campaign.pledged_quantity, campaign.unit_label)} · Recebidos:{' '}
                             {formatQuantity(campaign.collected_quantity, campaign.unit_label)}
                         </p>
                     </section>
@@ -392,7 +394,7 @@ export default function MobileDonationShow({ campaign, recentDonations, donation
                     <>
                         {campaign.type === 'money' && <DonationTransparencyNotice info={transparency} variant="compact" />}
                         <PrimaryButton type="button" onClick={openDonateModal} className="w-full">
-                            {campaign.type === 'items' ? 'Registrar promessa de doação' : 'Fazer doação'}
+                            {campaign.type === 'items' ? 'Registrar compromisso de doação' : 'Fazer doação'}
                         </PrimaryButton>
                     </>
                 )}
@@ -520,7 +522,7 @@ export default function MobileDonationShow({ campaign, recentDonations, donation
                 {recentDonations.length > 0 && (
                     <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
                         <h2 className="mb-3 font-semibold text-zinc-900 dark:text-white">
-                            {campaign.type === 'items' ? 'Promessas recentes' : 'Doações recentes'}
+                            {campaign.type === 'items' ? 'Compromissos recentes' : 'Doações recentes'}
                         </h2>
                         <ul className="space-y-2">
                             {recentDonations.map((d, i) => (
@@ -661,7 +663,7 @@ export default function MobileDonationShow({ campaign, recentDonations, donation
                     </form>
                 ) : (
                     <form onSubmit={submitItemPledge} className="space-y-4 p-6">
-                        <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Registrar promessa de doação</h3>
+                        <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Registrar compromisso de doação</h3>
                         <p className="text-sm text-zinc-600 dark:text-zinc-400">
                             Conte qual item você pretende entregar e em qual quantidade. A equipe confirmará depois o recebimento.
                         </p>
@@ -713,7 +715,7 @@ export default function MobileDonationShow({ campaign, recentDonations, donation
                             <span>
                                 <span className="font-medium">Não exibir meu nome na lista pública</span>
                                 <span className="mt-0.5 block text-xs text-zinc-500 dark:text-zinc-400">
-                                    Sua promessa pode aparecer como «Anônimo» para outras pessoas, mas a equipe verá quem fará a entrega.
+                                    Seu compromisso pode aparecer como «Anônimo» para outras pessoas, mas a equipe verá quem fará a entrega.
                                 </span>
                             </span>
                         </label>
@@ -721,7 +723,7 @@ export default function MobileDonationShow({ campaign, recentDonations, donation
                             <SecondaryButton type="button" onClick={() => setDonateOpen(false)}>
                                 Cancelar
                             </SecondaryButton>
-                            <PrimaryButton disabled={itemForm.processing}>Registrar promessa</PrimaryButton>
+                            <PrimaryButton disabled={itemForm.processing}>Registrar compromisso</PrimaryButton>
                         </div>
                     </form>
                 )}

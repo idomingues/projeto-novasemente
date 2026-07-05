@@ -244,7 +244,7 @@ export default function MissionKanban({ phases, volunteers, operablePhaseIds, on
                     return (
                         <div
                             key={String(col.key)}
-                            className="flex w-[min(100%,20.5rem)] shrink-0 snap-start flex-col"
+                            className="flex max-h-[calc(100dvh-17rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] w-[min(100%,20.5rem)] shrink-0 snap-start flex-col md:max-h-[calc(100dvh-13rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))]"
                             onDragOver={(e) => {
                                 if (!dropEnabled || draggingId === null) return;
                                 e.preventDefault();
@@ -259,7 +259,7 @@ export default function MissionKanban({ phases, volunteers, operablePhaseIds, on
                             }}
                         >
                             <div
-                                className={`mb-3 overflow-hidden rounded-xl border bg-white shadow-sm dark:bg-zinc-900 ${
+                                className={`mb-3 shrink-0 overflow-hidden rounded-xl border bg-white shadow-sm dark:bg-zinc-900 ${
                                     hasOverdue
                                         ? 'border-red-200/90 dark:border-red-900/50'
                                         : 'border-zinc-200 dark:border-zinc-700'
@@ -295,14 +295,14 @@ export default function MissionKanban({ phases, volunteers, operablePhaseIds, on
                             </div>
 
                             <div
-                                className={`flex min-h-[14rem] flex-1 flex-col gap-2.5 rounded-xl border p-2 transition-all ${
+                                className={`flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto overscroll-y-contain rounded-xl border p-2 transition-all [scrollbar-gutter:stable] ${
                                     isDropActive
                                         ? 'border-teal-500 bg-teal-50/60 ring-2 ring-teal-400/40 dark:border-teal-400 dark:bg-teal-950/40'
                                         : 'border-dashed border-zinc-200 bg-zinc-50/50 dark:border-zinc-700 dark:bg-zinc-900/30'
                                 }`}
                             >
                                 {cards.length === 0 ? (
-                                    <div className="flex flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-zinc-200/80 px-3 py-8 text-center dark:border-zinc-700">
+                                    <div className="flex min-h-[14rem] flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-zinc-200/80 px-3 py-8 text-center dark:border-zinc-700">
                                         <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Nenhum cadastro</p>
                                         <p className="mt-1 text-[10px] text-zinc-400 dark:text-zinc-500">
                                             Arraste um card para esta fase

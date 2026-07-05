@@ -192,7 +192,7 @@ export default function DonationTreasurerDashboard({
     };
 
     const cancelItem = (d: DonationRow) => {
-        if (!window.confirm('Cancelar esta promessa de doação?')) return;
+        if (!window.confirm('Cancelar este compromisso de doação?')) return;
         router.post(route('charity-campaigns.items.cancel', d.id), {}, inertiaListModalSave);
     };
 
@@ -223,7 +223,7 @@ export default function DonationTreasurerDashboard({
                 title="Tesouraria - Doação"
                 subtitle={
                     campaignType === 'items'
-                        ? 'Promessas e recebimentos de objetos, com conferência logística e ajustes de quantidade.'
+                        ? 'Compromissos e recebimentos de objetos, com conferência logística e ajustes de quantidade.'
                         : 'Histórico de doações, ajuste de valores e reclamações dos doadores.'
                 }
             />
@@ -231,7 +231,7 @@ export default function DonationTreasurerDashboard({
             <div className="mb-6 grid gap-4 sm:grid-cols-3">
                 <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-900 dark:bg-emerald-950/30">
                     <p className="text-sm font-medium text-emerald-800 dark:text-emerald-200">
-                        {campaignType === 'items' ? 'Itens prometidos no mês' : 'Total do mês'}
+                        {campaignType === 'items' ? 'Itens comprometidos no mês' : 'Total do mês'}
                     </p>
                     <p className="mt-1 text-2xl font-bold text-emerald-900 dark:text-emerald-100">{formatSummaryValue(monthTotal)}</p>
                     <p className="mt-1 text-xs text-emerald-700 dark:text-emerald-300">{monthDiffLabel}</p>
@@ -242,7 +242,7 @@ export default function DonationTreasurerDashboard({
                 </div>
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950/30">
                     <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                        {campaignType === 'items' ? 'Promessas pendentes' : 'Reclamações pendentes'}
+                        {campaignType === 'items' ? 'Compromissos pendentes' : 'Reclamações pendentes'}
                     </p>
                     <p className="mt-1 text-2xl font-bold text-amber-900 dark:text-amber-100">{pendingDisputesCount}</p>
                 </div>
@@ -312,7 +312,7 @@ export default function DonationTreasurerDashboard({
                             checked={disputesOnly}
                             onChange={(e) => setDisputesOnly(e.target.checked)}
                         />
-                        {campaignType === 'items' ? 'Somente promessas pendentes' : 'Somente reclamações pendentes'}
+                        {campaignType === 'items' ? 'Somente compromissos pendentes' : 'Somente reclamações pendentes'}
                     </label>
                     <SecondaryButton type="submit">Filtrar</SecondaryButton>
                 </div>
@@ -323,7 +323,7 @@ export default function DonationTreasurerDashboard({
                     <BanknotesIcon className="mx-auto mb-3 h-10 w-10 text-zinc-400" />
                     <p className="text-sm text-zinc-600 dark:text-zinc-400">
                         {campaignType === 'items'
-                            ? 'Nenhuma promessa de item encontrada com os filtros atuais.'
+                            ? 'Nenhum compromisso de item encontrado com os filtros atuais.'
                             : 'Nenhuma doação encontrada com os filtros atuais.'}
                     </p>
                 </div>
@@ -424,7 +424,7 @@ export default function DonationTreasurerDashboard({
                                                                   className="inline-flex items-center text-xs font-medium text-zinc-700 hover:text-zinc-900 dark:text-zinc-300"
                                                               >
                                                                   <PencilSquareIcon className="mr-1 h-3.5 w-3.5" />
-                                                                  Ajustar promessa
+                                                                  Ajustar compromisso
                                                               </button>
                                                               {d.status === 'pledged' && (
                                                                   <button
@@ -432,7 +432,7 @@ export default function DonationTreasurerDashboard({
                                                                       onClick={() => cancelItem(d)}
                                                                       className="text-left text-xs font-medium text-amber-700 hover:underline dark:text-amber-300"
                                                                   >
-                                                                      Cancelar promessa
+                                                                      Cancelar compromisso
                                                                   </button>
                                                               )}
                                                           </>
@@ -656,7 +656,7 @@ export default function DonationTreasurerDashboard({
 
             <Modal show={adjustItemDonation !== null} onClose={() => setAdjustItemDonation(null)} maxWidth="md">
                 <form onSubmit={submitAdjustItem} className="space-y-4 p-6">
-                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Ajustar promessa de item</h3>
+                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Ajustar compromisso de item</h3>
                     {adjustItemDonation && (
                         <p className="text-sm text-zinc-600 dark:text-zinc-400">
                             {adjustItemDonation.donor_name} · {adjustItemDonation.campaign_title}

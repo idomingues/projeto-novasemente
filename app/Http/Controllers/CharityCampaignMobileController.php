@@ -158,7 +158,7 @@ class CharityCampaignMobileController extends Controller
     public function confirmDonation(Request $request, CharityCampaign $charityCampaign): RedirectResponse
     {
         if ($charityCampaign->isItemCampaign()) {
-            return redirect()->back()->with('error', 'Esta campanha recebe objetos. Registre a promessa do item em vez de enviar comprovante.');
+            return redirect()->back()->with('error', 'Esta campanha recebe objetos. Registre o compromisso do item em vez de enviar comprovante.');
         }
 
         if (! $charityCampaign->isAcceptingDonations()) {
@@ -262,7 +262,7 @@ class CharityCampaignMobileController extends Controller
 
         return redirect()
             ->route('mobile.donations.show', $charityCampaign)
-            ->with('success', 'Promessa de doação registrada com sucesso! A equipe confirmará o recebimento quando o item for entregue.');
+            ->with('success', 'Compromisso de doação registrado com sucesso! A equipe confirmará o recebimento quando o item for entregue.');
     }
 
     public function myDonations(Request $request): Response

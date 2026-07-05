@@ -111,7 +111,7 @@ export default function MyDonations({ donations }: Props) {
                 <div>
                     <h1 className="text-2xl font-bold text-zinc-900 dark:text-white sm:text-3xl">Minhas doações</h1>
                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                        Acompanhe suas contribuições financeiras, promessas de itens e o andamento de cada entrega.
+                        Acompanhe suas contribuições financeiras, compromissos de itens e o andamento de cada entrega.
                     </p>
                 </div>
 
@@ -119,7 +119,7 @@ export default function MyDonations({ donations }: Props) {
                     <p className="font-medium">Transparência</p>
                     <p className="mt-1 text-sky-900/90 dark:text-sky-100/90">
                         Guardamos valor, data e comprovante de cada doação financeira e também o item, a quantidade e o
-                        status das promessas de objetos. Se algo estiver errado em uma doação financeira, use «Solicitar
+                        status dos compromissos de objetos. Se algo estiver errado em uma doação financeira, use «Solicitar
                         revisão» no registro correspondente.
                     </p>
                 </div>
@@ -139,7 +139,7 @@ export default function MyDonations({ donations }: Props) {
                     <div className="rounded-2xl border border-zinc-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
                         <p className="text-sm text-zinc-600 dark:text-zinc-400">Você ainda não registrou doações em campanhas.</p>
                         <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                            Quando você doar ou prometer um item, o histórico aparecerá aqui.
+                            Quando você doar ou registrar um compromisso de item, o histórico aparecerá aqui.
                         </p>
                         <Link
                             href={route('mobile.donations.index')}
@@ -171,7 +171,7 @@ export default function MyDonations({ donations }: Props) {
                                                 ? formatQuantity(d.quantity ?? 0, d.unit_label)
                                                 : formatBrl(d.amount ?? 0)}
                                             <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                                                {d.entry_type === 'item' ? 'Promessa de item' : 'Doação financeira'}
+                                                {d.entry_type === 'item' ? 'Compromisso de item' : 'Doação financeira'}
                                             </span>
                                         </p>
                                     </div>
@@ -278,7 +278,7 @@ export default function MyDonations({ donations }: Props) {
                                             {d.status === 'received'
                                                 ? 'Recebido pela equipe'
                                                 : d.status === 'cancelled'
-                                                  ? 'Promessa cancelada'
+                                                  ? 'Compromisso cancelado'
                                                   : 'Aguardando entrega'}
                                         </span>
                                     )}
