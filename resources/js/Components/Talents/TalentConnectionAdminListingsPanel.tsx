@@ -122,8 +122,7 @@ export default function TalentConnectionAdminListingsPanel({
     reloadOnly,
     showSectionHeader = true,
 }: Props) {
-    const page = usePage<{ csrf_token?: string }>();
-    const csrf = page.props.csrf_token ?? '';
+    const csrf = (usePage().props as { csrf_token?: string }).csrf_token ?? '';
 
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState<TalentConnectionAdminListing | null>(null);
