@@ -134,8 +134,6 @@ createInertiaApp({
             <ThemeProvider>
                 <BiometricOptInGate />
                 <NativeAppUpdateGate
-                    appVersion={inertiaProps.initialPage.props.appVersion}
-                    iosAppStoreUrl={inertiaProps.initialPage.props.iosAppStoreUrl}
                     nativeIosMinimumVersion={inertiaProps.initialPage.props.nativeIosMinimumVersion}
                 />
                 <OfflineBanner />
