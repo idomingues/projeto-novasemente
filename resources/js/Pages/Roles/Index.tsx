@@ -1,20 +1,20 @@
 import AdminLayout from '@/Layouts/AdminLayout';
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import PageHeader from '@/Components/PageHeader';
 import AddButton from '@/Components/AddButton';
-import Card from '@/Components/Card';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import Modal from '@/Components/Modal';
 import InputError from '@/Components/InputError';
-import { FormEventHandler, useEffect, useMemo, useState } from 'react';
+import { FormEventHandler, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
 import { useListModalSubmit } from '@/hooks/useListModalSubmit';
+import { submitListModalPost } from '@/utils/listModalFetchSave';
 import { textIncludesSearch } from '@/utils/searchText';
 import { appRoleLabel } from '@/lib/appRoleLabels';
-import { TrashIcon } from '@heroicons/react/24/outline';
+import { TrashIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 
 interface RoleRow {
     id: number;
@@ -53,6 +53,7 @@ const GROUP_LABELS: Record<string, string> = {
     pastors: 'Pastores',
     pastoral_appointments: 'Agenda pastoral',
     solicitations: 'Solicitações',
+    mission: 'Missão',
 };
 
 function groupTitle(group: string): string {
@@ -84,13 +85,87 @@ function permissionLineLabel(perm: string): string {
     return perm;
 }
 
+function PermissionGroupAccordion({
+    groupKey,
+    title,
+    perms,
+    rolePermissions,
+    forceOpen,
+    onTogglePermission,
+    saving,
+}: {
+    groupKey: string;
+    title: string;
+    perms: string[];
+    rolePermissions: string[];
+    forceOpen: boolean;
+    onTogglePermission: (perm: string) => void;
+    saving?: boolean;
+}) {
+    const activeCount = perms.filter((p) => rolePermissions.includes(p)).length;
+    const [open, setOpen] = useState(() => activeCount > 0);
+    const isOpen = forceOpen || open;
+
+    return (
+        <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">
+            <button
+                type="button"
+                id={`perm-group-${groupKey}`}
+                onClick={() => {
+                    if (!forceOpen) {
+                        setOpen((value) => !value);
+                    }
+                }}
+                className="flex w-full cursor-pointer items-center justify-between gap-2 bg-zinc-50 px-3 py-2.5 text-left text-sm font-semibold text-zinc-800 hover:bg-zinc-100 dark:bg-zinc-800/60 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                aria-expanded={isOpen}
+                aria-controls={`perm-group-panel-${groupKey}`}
+            >
+                <span>{title}</span>
+                <span className="text-[10px] font-medium uppercase tracking-wide text-zinc-400">
+                    {activeCount}/{perms.length}
+                </span>
+            </button>
+            {isOpen ? (
+                <div
+                    id={`perm-group-panel-${groupKey}`}
+                    className="space-y-2 border-t border-zinc-100 bg-white px-3 py-3 dark:border-zinc-800 dark:bg-zinc-900/40"
+                >
+                    {perms.map((perm) => {
+                        const checked = rolePermissions.includes(perm);
+                        return (
+                            <label
+                                key={perm}
+                                className="flex cursor-pointer items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300"
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    disabled={saving}
+                                    onChange={() => onTogglePermission(perm)}
+                                    className="mt-0.5 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-600"
+                                />
+                                <span>{permissionLineLabel(perm)}</span>
+                            </label>
+                        );
+                    })}
+                </div>
+            ) : null}
+        </div>
+    );
+}
+
 export default function RolesIndex({ roles, permissions }: Props) {
+    const csrf = (usePage().props as { csrf_token?: string }).csrf_token ?? '';
     const [createOpen, setCreateOpen] = useState(false);
     const [createSaveMessage, setCreateSaveMessage] = useState<string | null>(null);
     const [roleSearch, setRoleSearch] = useState('');
     const [permSearch, setPermSearch] = useState('');
+    const [expandedRoles, setExpandedRoles] = useState<Record<string, boolean>>({});
+    const [savingRoles, setSavingRoles] = useState<Record<string, boolean>>({});
+    const [savedRoles, setSavedRoles] = useState<Record<string, boolean>>({});
+    const saveSeqRef = useRef<Record<string, number>>({});
 
-    const { data, setData, post, processing } = useForm({
+    const { data, setData } = useForm({
         roles: roles.map((r) => ({
             name: r.name,
             permissions: r.permissions,
@@ -198,6 +273,10 @@ export default function RolesIndex({ roles, permissions }: Props) {
         if (!highlightRoleId) {
             return;
         }
+        const highlighted = roles.find((r) => r.id === highlightRoleId);
+        if (highlighted) {
+            setExpandedRoles((prev) => ({ ...prev, [highlighted.name]: true }));
+        }
         const timer = window.setTimeout(() => {
             document.getElementById(`role-card-${highlightRoleId}`)?.scrollIntoView({
                 behavior: 'smooth',
@@ -227,25 +306,69 @@ export default function RolesIndex({ roles, permissions }: Props) {
             .filter((g) => g.perms.length > 0);
     }, [displayPermissionGroups, q]);
 
+    const saveRolePermissions = useCallback(
+        async (roleName: string, permissionsForRole: string[], previousPermissions: string[]) => {
+            const seq = (saveSeqRef.current[roleName] ?? 0) + 1;
+            saveSeqRef.current[roleName] = seq;
+            setSavingRoles((prev) => ({ ...prev, [roleName]: true }));
+            setSavedRoles((prev) => ({ ...prev, [roleName]: false }));
+
+            try {
+                const result = await submitListModalPost(
+                    route('roles.update'),
+                    {
+                        roles: [{ name: roleName, permissions: permissionsForRole }],
+                    },
+                    csrf,
+                );
+
+                if (saveSeqRef.current[roleName] !== seq) {
+                    return;
+                }
+
+                if (!result.ok) {
+                    setData(
+                        'roles',
+                        data.roles.map((r) =>
+                            r.name === roleName ? { ...r, permissions: previousPermissions } : r,
+                        ),
+                    );
+                    window.alert(result.message ?? 'Não foi possível salvar as permissões. Tente novamente.');
+                    return;
+                }
+
+                setSavedRoles((prev) => ({ ...prev, [roleName]: true }));
+                window.setTimeout(() => {
+                    setSavedRoles((prev) => ({ ...prev, [roleName]: false }));
+                }, 2000);
+            } finally {
+                if (saveSeqRef.current[roleName] === seq) {
+                    setSavingRoles((prev) => ({ ...prev, [roleName]: false }));
+                }
+            }
+        },
+        [csrf, data.roles, setData],
+    );
+
     const togglePermission = (roleIndex: number, perm: string) => {
+        const roleName = data.roles[roleIndex].name;
         const current = data.roles[roleIndex].permissions;
         const has = current.includes(perm);
+        const nextPermissions = has ? current.filter((p) => p !== perm) : [...current, perm];
+
         setData({
             ...data,
             roles: data.roles.map((r, i) =>
                 i === roleIndex
                     ? {
                           ...r,
-                          permissions: has ? current.filter((p) => p !== perm) : [...current, perm],
+                          permissions: nextPermissions,
                       }
                     : r,
             ),
         });
-    };
 
-    const submit: FormEventHandler = (e) => {
-        e.preventDefault();
-        post(route('roles.update'));
+        void saveRolePermissions(roleName, nextPermissions, current);
     };
 
     const submitCreate: FormEventHandler = (e) => {
@@ -263,9 +386,19 @@ export default function RolesIndex({ roles, permissions }: Props) {
             }
             createForm.reset();
             createForm.clearErrors();
-            setCreateSaveMessage('Perfil criado. Marque as permissões na grade e clique em «Salvar perfis».');
+            setCreateSaveMessage('Perfil criado. Marque as permissões na grade — cada alteração é salva na hora.');
             window.setTimeout(() => setCreateSaveMessage(null), 8000);
         })();
+    };
+
+    const toggleRoleExpanded = (roleName: string) => {
+        if (q) {
+            return;
+        }
+        setExpandedRoles((prev) => ({
+            ...prev,
+            [roleName]: !(prev[roleName] ?? false),
+        }));
     };
 
     const handleDeleteRole = async (role: RoleRow) => {
@@ -341,7 +474,7 @@ export default function RolesIndex({ roles, permissions }: Props) {
                         <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Novo perfil</h2>
                         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                             Escolha um nome para o perfil (ex.: Missão, Financeiro). O card aparece nesta página — não no
-                            painel Missão → gestão. Depois marque as permissões na grade e salve.
+                            painel Missão → gestão. Depois marque as permissões; cada check salva automaticamente.
                         </p>
                         {createSaveMessage ? (
                             <p className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-100">
@@ -372,7 +505,7 @@ export default function RolesIndex({ roles, permissions }: Props) {
                 </form>
             </Modal>
 
-            <form onSubmit={submit} className="space-y-6">
+            <div className="space-y-6">
                 <div className="grid gap-4 md:grid-cols-2">
                     {displayedRoles.length === 0 ? (
                         <p className="col-span-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-400">
@@ -385,84 +518,96 @@ export default function RolesIndex({ roles, permissions }: Props) {
                         const systemRole = meta?.system_role ?? false;
                         const canDelete = meta && !systemRole && usersCount === 0;
                         const highlighted = meta?.id === highlightRoleId;
+                        const roleExpanded = !!q || (expandedRoles[role.name] ?? false);
+                        const activePermCount = role.permissions.length;
+                        const roleSaving = savingRoles[role.name] ?? false;
+                        const roleSaved = savedRoles[role.name] ?? false;
 
                         return (
-                            <Card
+                            <div
                                 key={role.name}
                                 id={meta ? `role-card-${meta.id}` : undefined}
-                                className={`space-y-4 ${highlighted ? 'ring-2 ring-emerald-500 dark:ring-emerald-400' : ''}`}
+                                className={`rounded-3xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900 ${
+                                    highlighted ? 'ring-2 ring-emerald-500 dark:ring-emerald-400' : ''
+                                }`}
                             >
-                                <div className="flex items-start justify-between gap-2">
-                                    <div className="min-w-0">
-                                        <h2 className="font-semibold text-zinc-900 dark:text-white">{appRoleLabel(role.name)}</h2>
-                                        <p className="text-xs text-zinc-500 dark:text-zinc-400 font-mono mt-0.5">{role.name}</p>
-                                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                                            {usersCount === 0
-                                                ? 'Nenhum usuário com este perfil.'
-                                                : `${usersCount} usuário(es) com este perfil.`}
-                                        </p>
-                                    </div>
-                                    <div className="flex shrink-0 flex-col items-end gap-2">
-                                        {systemRole && (
-                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-zinc-900 text-white dark:bg-white dark:text-black uppercase tracking-wide">
-                                                Sistema
-                                            </span>
-                                        )}
-                                        {canDelete && meta ? (
-                                            <button
-                                                type="button"
-                                                onClick={() => handleDeleteRole(meta)}
-                                                className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-xs font-semibold text-red-800 hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200 dark:hover:bg-red-950/70"
-                                            >
-                                                <TrashIcon className="h-3.5 w-3.5" aria-hidden />
-                                                Excluir
-                                            </button>
-                                        ) : null}
-                                    </div>
+                                <div className="flex items-start justify-between gap-3 p-6 sm:p-8">
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleRoleExpanded(role.name)}
+                                        className="flex min-w-0 flex-1 cursor-pointer items-start justify-between gap-3 text-left"
+                                        aria-expanded={roleExpanded}
+                                    >
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <h2 className="font-semibold text-zinc-900 dark:text-white">{appRoleLabel(role.name)}</h2>
+                                                {systemRole ? (
+                                                    <span className="rounded-full bg-zinc-900 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white dark:bg-white dark:text-black">
+                                                        Sistema
+                                                    </span>
+                                                ) : null}
+                                            </div>
+                                            <p className="mt-0.5 font-mono text-xs text-zinc-500 dark:text-zinc-400">{role.name}</p>
+                                            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                                {usersCount === 0
+                                                    ? 'Nenhum usuário com este perfil.'
+                                                    : `${usersCount} usuário(es) com este perfil.`}
+                                                {roleSaving ? (
+                                                    <span className="text-teal-600 dark:text-teal-400"> · Salvando…</span>
+                                                ) : roleSaved ? (
+                                                    <span className="text-emerald-600 dark:text-emerald-400"> · Salvo</span>
+                                                ) : null}
+                                                {!roleExpanded ? (
+                                                    <span className="text-zinc-400">
+                                                        {' '}
+                                                        ·{' '}
+                                                        {activePermCount === 1
+                                                            ? '1 permissão ativa'
+                                                            : `${activePermCount} permissões ativas`}
+                                                    </span>
+                                                ) : null}
+                                            </p>
+                                        </div>
+                                        <ChevronDownIcon
+                                            className={`mt-0.5 h-5 w-5 shrink-0 text-zinc-400 transition-transform ${roleExpanded ? 'rotate-180' : ''}`}
+                                            aria-hidden
+                                        />
+                                    </button>
+                                    {canDelete && meta ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => void handleDeleteRole(meta)}
+                                            className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-xs font-semibold text-red-800 hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200 dark:hover:bg-red-950/70"
+                                        >
+                                            <TrashIcon className="h-3.5 w-3.5" aria-hidden />
+                                            Excluir
+                                        </button>
+                                    ) : null}
                                 </div>
 
-                                <div className="space-y-2">
+                                {roleExpanded ? (
+                                <div className="space-y-2 border-t border-zinc-100 px-6 pb-6 pt-4 dark:border-zinc-800 sm:px-8 sm:pb-8">
                                     {filteredPermissionGroups.length === 0 ? (
-                                        <p className="text-sm text-zinc-500 dark:text-zinc-400 py-4 text-center">
+                                        <p className="py-4 text-center text-sm text-zinc-500 dark:text-zinc-400">
                                             Nenhuma permissão corresponde à pesquisa.
                                         </p>
                                     ) : (
                                         filteredPermissionGroups.map(({ key, title, perms }) => (
-                                            <details
+                                            <PermissionGroupAccordion
                                                 key={key}
-                                                open={!!q}
-                                                className="group border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden"
-                                            >
-                                                <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-semibold text-zinc-800 dark:text-zinc-200 bg-zinc-50 dark:bg-zinc-800/60 hover:bg-zinc-100 dark:hover:bg-zinc-800 [&::-webkit-details-marker]:hidden flex items-center justify-between gap-2">
-                                                    <span>{title}</span>
-                                                    <span className="text-[10px] font-medium uppercase tracking-wide text-zinc-400">
-                                                        {perms.filter((p) => role.permissions.includes(p)).length}/{perms.length}
-                                                    </span>
-                                                </summary>
-                                                <div className="px-3 py-3 space-y-2 border-t border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/40">
-                                                    {perms.map((perm) => {
-                                                        const checked = role.permissions.includes(perm);
-                                                        return (
-                                                            <label
-                                                                key={perm}
-                                                                className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300 cursor-pointer"
-                                                            >
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={checked}
-                                                                    onChange={() => togglePermission(index, perm)}
-                                                                    className="mt-0.5 rounded border-zinc-300 dark:border-zinc-600 text-zinc-900 focus:ring-zinc-500"
-                                                                />
-                                                                <span>{permissionLineLabel(perm)}</span>
-                                                            </label>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </details>
+                                                groupKey={key}
+                                                title={title}
+                                                perms={perms}
+                                                rolePermissions={role.permissions}
+                                                forceOpen={!!q}
+                                                onTogglePermission={(perm) => togglePermission(index, perm)}
+                                                saving={roleSaving}
+                                            />
                                         ))
                                     )}
                                 </div>
-                            </Card>
+                                ) : null}
+                            </div>
                         );
                     })
                     )}
@@ -473,16 +618,7 @@ export default function RolesIndex({ roles, permissions }: Props) {
                     <strong className="font-medium text-zinc-800 dark:text-zinc-200">Agendamento de salas</strong> são blocos
                     separados: o agendamento corresponde ao menu «Agendamento de salas» na barra lateral.
                 </div>
-
-                <div className="flex justify-end gap-2">
-                    <SecondaryButton type="button" onClick={() => window.history.back()}>
-                        Cancelar
-                    </SecondaryButton>
-                    <PrimaryButton type="submit" disabled={processing}>
-                        Salvar perfis
-                    </PrimaryButton>
-                </div>
-            </form>
+            </div>
         </AdminLayout>
     );
 }

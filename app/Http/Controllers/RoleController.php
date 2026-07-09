@@ -73,7 +73,7 @@ class RoleController extends Controller
             app(PermissionRegistrar::class)->forgetCachedPermissions();
 
             $message = $existing->name === $name
-                ? 'Este perfil já existe nesta lista. Marque as permissões abaixo e clique em «Salvar perfis».'
+                ? 'Este perfil já existe nesta lista. Marque as permissões abaixo.'
                 : 'Já existe o perfil «'.$existing->name.'» (mesmo nome com outra grafia). Marque as permissões abaixo.';
 
             return ListModalRedirect::toIndexEdit('roles.index', $existing, $message);
@@ -89,7 +89,7 @@ class RoleController extends Controller
         return ListModalRedirect::toIndexEdit(
             'roles.index',
             $role,
-            'Perfil criado. Marque as permissões e clique em «Salvar perfis».',
+            'Perfil criado. Marque as permissões na grade.',
         );
     }
 
@@ -106,7 +106,7 @@ class RoleController extends Controller
             ->first();
     }
 
-    public function update(Request $request): RedirectResponse
+    public function update(Request $request): RedirectResponse|JsonResponse
     {
         $data = $request->validate([
             'roles' => ['required', 'array'],
@@ -131,6 +131,10 @@ class RoleController extends Controller
         }
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Permissões salvas.']);
+        }
 
         return redirect()->route('roles.index')->with('success', 'Perfis atualizados com sucesso.');
     }

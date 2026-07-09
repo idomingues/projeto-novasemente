@@ -173,4 +173,25 @@ class RoleManagementTest extends TestCase
             Role::query()->whereRaw('LOWER(name) = ?', ['missão'])->count(),
         );
     }
+
+    public function test_role_permissions_auto_save_via_json_returns_ok(): void
+    {
+        $this->seed();
+
+        $admin = User::query()->where('email', 'ivan@iresult.com.br')->first();
+        $this->actingAs($admin);
+
+        $role = Role::findByName('financeiro');
+        $permission = Permission::query()->where('name', 'mission.view')->first();
+        $this->assertNotNull($permission);
+
+        $this->postJson(route('roles.update'), [
+            'roles' => [
+                ['name' => $role->name, 'permissions' => [$permission->name]],
+            ],
+        ])->assertOk()->assertJson(['message' => 'Permissões salvas.']);
+
+        $role->refresh();
+        $this->assertTrue($role->hasPermissionTo('mission.view'));
+    }
 }
