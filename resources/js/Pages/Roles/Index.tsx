@@ -9,9 +9,9 @@ import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import Modal from '@/Components/Modal';
 import InputError from '@/Components/InputError';
-import { FormEventHandler, useMemo, useState } from 'react';
+import { FormEventHandler, useEffect, useMemo, useState } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
-import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
+import { useListModalSubmit } from '@/hooks/useListModalSubmit';
 import { textIncludesSearch } from '@/utils/searchText';
 import { appRoleLabel } from '@/lib/appRoleLabels';
 import { TrashIcon } from '@heroicons/react/24/outline';
@@ -86,6 +86,8 @@ function permissionLineLabel(perm: string): string {
 
 export default function RolesIndex({ roles, permissions }: Props) {
     const [createOpen, setCreateOpen] = useState(false);
+    const [createSaveMessage, setCreateSaveMessage] = useState<string | null>(null);
+    const [roleSearch, setRoleSearch] = useState('');
     const [permSearch, setPermSearch] = useState('');
 
     const { data, setData, post, processing } = useForm({
@@ -98,6 +100,22 @@ export default function RolesIndex({ roles, permissions }: Props) {
     const createForm = useForm({
         name: '',
     });
+
+    const { saving: creating, save: saveCreate } = useListModalSubmit({
+        reloadOnly: ['roles'],
+        setError: createForm.setError,
+        clearErrors: createForm.clearErrors,
+    });
+
+    useEffect(() => {
+        setData(
+            'roles',
+            roles.map((r) => ({
+                name: r.name,
+                permissions: r.permissions,
+            })),
+        );
+    }, [roles, setData]);
 
     const roleMetaByName = useMemo(() => {
         const m = new Map<string, RoleRow>();
@@ -153,6 +171,41 @@ export default function RolesIndex({ roles, permissions }: Props) {
     }, [groupedPermissions]);
 
     const q = permSearch.trim();
+    const roleQuery = roleSearch.trim();
+
+    const displayedRoles = useMemo(() => {
+        return data.roles
+            .map((role, index) => ({ role, index }))
+            .filter(({ role }) => {
+                if (!roleQuery) {
+                    return true;
+                }
+                const label = appRoleLabel(role.name);
+                return textIncludesSearch(role.name, roleQuery) || textIncludesSearch(label, roleQuery);
+            });
+    }, [data.roles, roleQuery]);
+
+    const highlightRoleId = useMemo(() => {
+        if (typeof window === 'undefined') {
+            return null;
+        }
+        const params = new URLSearchParams(window.location.search);
+        const id = Number(params.get('id'));
+        return Number.isFinite(id) && id > 0 ? id : null;
+    }, [roles]);
+
+    useEffect(() => {
+        if (!highlightRoleId) {
+            return;
+        }
+        const timer = window.setTimeout(() => {
+            document.getElementById(`role-card-${highlightRoleId}`)?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest',
+            });
+        }, 120);
+        return () => window.clearTimeout(timer);
+    }, [highlightRoleId, roles]);
 
     const filteredPermissionGroups = useMemo(() => {
         if (!q) {
@@ -197,13 +250,22 @@ export default function RolesIndex({ roles, permissions }: Props) {
 
     const submitCreate: FormEventHandler = (e) => {
         e.preventDefault();
-        createForm.post(route('roles.store'), {
-            ...inertiaListModalSave,
-            onSuccess: () => {
-                createForm.reset();
-                createForm.clearErrors();
-            },
-        });
+        void (async () => {
+            const outcome = await saveCreate(
+                false,
+                null,
+                { name: createForm.data.name },
+                route('roles.store'),
+                () => '',
+            );
+            if (!outcome.ok) {
+                return;
+            }
+            createForm.reset();
+            createForm.clearErrors();
+            setCreateSaveMessage('Perfil criado. Marque as permissões na grade e clique em «Salvar perfis».');
+            window.setTimeout(() => setCreateSaveMessage(null), 8000);
+        })();
     };
 
     const handleDeleteRole = async (role: RoleRow) => {
@@ -237,32 +299,55 @@ export default function RolesIndex({ roles, permissions }: Props) {
                     </>
                 }
                 actions={
-                    <AddButton variant="icon" onClick={() => setCreateOpen(true)} title="Novo perfil">
+                    <AddButton
+                        variant="icon"
+                        onClick={() => {
+                            setCreateSaveMessage(null);
+                            setCreateOpen(true);
+                        }}
+                        title="Novo perfil"
+                    >
                         Novo perfil
                     </AddButton>
                 }
             />
 
-            <div className="mb-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/40 p-4">
-                <InputLabel htmlFor="perm_search_roles" value="Procurar permissão ou área" className="!mb-1" />
-                <TextInput
-                    id="perm_search_roles"
-                    value={permSearch}
-                    onChange={(e) => setPermSearch(e.target.value)}
-                    placeholder="Ex.: notícias, escalas, salas…"
-                    className="block w-full max-w-md"
-                />
+            <div className="mb-6 grid gap-4 md:grid-cols-2">
+                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/40 p-4">
+                    <InputLabel htmlFor="role_search_roles" value="Procurar perfil" className="!mb-1" />
+                    <TextInput
+                        id="role_search_roles"
+                        value={roleSearch}
+                        onChange={(e) => setRoleSearch(e.target.value)}
+                        placeholder="Ex.: Missão, Financeiro…"
+                        className="block w-full"
+                    />
+                </div>
+                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/40 p-4">
+                    <InputLabel htmlFor="perm_search_roles" value="Procurar permissão ou área" className="!mb-1" />
+                    <TextInput
+                        id="perm_search_roles"
+                        value={permSearch}
+                        onChange={(e) => setPermSearch(e.target.value)}
+                        placeholder="Ex.: notícias, escalas, salas…"
+                        className="block w-full"
+                    />
+                </div>
             </div>
 
-            <Modal show={createOpen} onClose={() => !createForm.processing && setCreateOpen(false)} maxWidth="md">
+            <Modal show={createOpen} onClose={() => !creating && setCreateOpen(false)} maxWidth="md">
                 <form onSubmit={submitCreate} className="p-6 space-y-4">
                     <div>
                         <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Novo perfil</h2>
                         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                            Identificador interno: letras minúsculas, números e sublinhado (ex.:{' '}
-                            <code className="text-xs">coordenador_eventos</code>). Depois escolha as permissões na grade e
-                            salve.
+                            Escolha um nome para o perfil (ex.: Missão, Financeiro). O card aparece nesta página — não no
+                            painel Missão → gestão. Depois marque as permissões na grade e salve.
                         </p>
+                        {createSaveMessage ? (
+                            <p className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-100">
+                                {createSaveMessage}
+                            </p>
+                        ) : null}
                     </div>
                     <div>
                         <InputLabel htmlFor="new_role_name" value="Nome do perfil" />
@@ -271,16 +356,16 @@ export default function RolesIndex({ roles, permissions }: Props) {
                             value={createForm.data.name}
                             onChange={(e) => createForm.setData('name', e.target.value)}
                             className="mt-1 block w-full"
-                            placeholder="ex.: coordenador_eventos"
+                            placeholder="ex.: Financeiro"
                             autoComplete="off"
                         />
                         <InputError message={createForm.errors.name} className="mt-1" />
                     </div>
                     <div className="flex justify-end gap-2 pt-2">
-                        <SecondaryButton type="button" disabled={createForm.processing} onClick={() => setCreateOpen(false)}>
+                        <SecondaryButton type="button" disabled={creating} onClick={() => setCreateOpen(false)}>
                             Cancelar
                         </SecondaryButton>
-                        <PrimaryButton type="submit" disabled={createForm.processing}>
+                        <PrimaryButton type="submit" disabled={creating}>
                             Criar perfil
                         </PrimaryButton>
                     </div>
@@ -289,14 +374,24 @@ export default function RolesIndex({ roles, permissions }: Props) {
 
             <form onSubmit={submit} className="space-y-6">
                 <div className="grid gap-4 md:grid-cols-2">
-                    {data.roles.map((role, index) => {
+                    {displayedRoles.length === 0 ? (
+                        <p className="col-span-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-400">
+                            Nenhum perfil corresponde à pesquisa.
+                        </p>
+                    ) : (
+                        displayedRoles.map(({ role, index }) => {
                         const meta = roleMetaByName.get(role.name);
                         const usersCount = meta?.users_count ?? 0;
                         const systemRole = meta?.system_role ?? false;
                         const canDelete = meta && !systemRole && usersCount === 0;
+                        const highlighted = meta?.id === highlightRoleId;
 
                         return (
-                            <Card key={role.name} className="space-y-4">
+                            <Card
+                                key={role.name}
+                                id={meta ? `role-card-${meta.id}` : undefined}
+                                className={`space-y-4 ${highlighted ? 'ring-2 ring-emerald-500 dark:ring-emerald-400' : ''}`}
+                            >
                                 <div className="flex items-start justify-between gap-2">
                                     <div className="min-w-0">
                                         <h2 className="font-semibold text-zinc-900 dark:text-white">{appRoleLabel(role.name)}</h2>
@@ -369,7 +464,8 @@ export default function RolesIndex({ roles, permissions }: Props) {
                                 </div>
                             </Card>
                         );
-                    })}
+                    })
+                    )}
                 </div>
 
                 <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30 p-4 text-sm text-zinc-600 dark:text-zinc-400">

@@ -29,7 +29,10 @@ class RoleManagementTest extends TestCase
         $this->actingAs($admin);
 
         $this->post(route('roles.store'), ['name' => 'coordenador_teste'])
-            ->assertRedirect(route('roles.index'))
+            ->assertRedirect(route('roles.index', [
+                'modal' => 'edit',
+                'id' => Role::findByName('coordenador_teste')->id,
+            ]))
             ->assertSessionHas('success');
 
         $this->assertDatabaseHas('roles', ['name' => 'coordenador_teste']);
@@ -131,14 +134,43 @@ class RoleManagementTest extends TestCase
         $this->assertSame($beforeNames, $super->permissions()->pluck('name')->sort()->values()->all());
     }
 
-    public function test_role_name_must_match_slug_pattern(): void
+    public function test_role_name_accepts_friendly_labels(): void
     {
         $this->seed();
 
         $admin = User::query()->where('email', 'ivan@iresult.com.br')->first();
         $this->actingAs($admin);
 
-        $this->post(route('roles.store'), ['name' => 'Nome Inválido'])
-            ->assertSessionHasErrors('name');
+        $this->post(route('roles.store'), ['name' => 'Coordenador de Eventos'])
+            ->assertRedirect(route('roles.index', [
+                'modal' => 'edit',
+                'id' => Role::findByName('Coordenador de Eventos')->id,
+            ]))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('roles', ['name' => 'Coordenador de Eventos']);
+    }
+
+    public function test_store_reuses_existing_role_when_name_matches_case_insensitive(): void
+    {
+        $this->seed();
+
+        $admin = User::query()->where('email', 'ivan@iresult.com.br')->first();
+        $this->actingAs($admin);
+
+        $guard = (string) config('auth.defaults.guard');
+        $existing = Role::query()->create(['name' => 'Missão', 'guard_name' => $guard]);
+
+        $this->post(route('roles.store'), ['name' => 'missão'])
+            ->assertRedirect(route('roles.index', [
+                'modal' => 'edit',
+                'id' => $existing->id,
+            ]))
+            ->assertSessionHas('success');
+
+        $this->assertSame(
+            1,
+            Role::query()->whereRaw('LOWER(name) = ?', ['missão'])->count(),
+        );
     }
 }

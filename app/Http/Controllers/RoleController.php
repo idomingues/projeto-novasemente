@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Support\ListModalRedirect;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Permission;
@@ -57,30 +58,52 @@ class RoleController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse|JsonResponse
     {
         $guard = (string) config('auth.defaults.guard');
 
         $validated = $request->validate([
-            'name' => [
-                'required',
-                'string',
-                'max:80',
-                'regex:/^[a-z][a-z0-9_]*$/',
-                Rule::unique('roles', 'name')->where(fn ($q) => $q->where('guard_name', $guard)),
-            ],
-        ], [
-            'name.regex' => 'Use apenas letras minúsculas, números e sublinhado, começando por letra (ex.: coordenador_som).',
+            'name' => ['required', 'string', 'max:80'],
         ]);
 
-        Role::query()->create([
-            'name' => $validated['name'],
+        $name = trim($validated['name']);
+
+        $existing = self::findRoleByInsensitiveName($guard, $name);
+        if ($existing) {
+            app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+            $message = $existing->name === $name
+                ? 'Este perfil já existe nesta lista. Marque as permissões abaixo e clique em «Salvar perfis».'
+                : 'Já existe o perfil «'.$existing->name.'» (mesmo nome com outra grafia). Marque as permissões abaixo.';
+
+            return ListModalRedirect::toIndexEdit('roles.index', $existing, $message);
+        }
+
+        $role = Role::query()->create([
+            'name' => $name,
             'guard_name' => $guard,
         ]);
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        return redirect()->route('roles.index')->with('success', 'Perfil criado. Marque as permissões e clique em «Salvar perfis».');
+        return ListModalRedirect::toIndexEdit(
+            'roles.index',
+            $role,
+            'Perfil criado. Marque as permissões e clique em «Salvar perfis».',
+        );
+    }
+
+    private static function findRoleByInsensitiveName(string $guard, string $name): ?Role
+    {
+        $trimmed = trim($name);
+        if ($trimmed === '') {
+            return null;
+        }
+
+        return Role::query()
+            ->where('guard_name', $guard)
+            ->whereRaw('LOWER(name) = ?', [mb_strtolower($trimmed)])
+            ->first();
     }
 
     public function update(Request $request): RedirectResponse
