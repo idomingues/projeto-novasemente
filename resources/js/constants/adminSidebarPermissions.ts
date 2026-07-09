@@ -44,7 +44,7 @@ export const adminSidebarRoutePermissions: Record<string, string[]> = {
     'volunteer-requests.staff.unarchive': ['solicitations.manage'],
     'ministry-lead.volunteers.pipeline.archive': ['volunteers.manage'],
     'ministry-lead.volunteers.pipeline.unarchive': ['volunteers.manage'],
-    'communication-requests.index': [],
+    'communication-requests.index': ['solicitations.view', 'solicitations.manage'],
     'communication-requests.store': [],
     'communication-requests.panel': [],
     'communication-requests.messages.store.leader': [],
@@ -124,8 +124,8 @@ export const adminSidebarRoutePermissions: Record<string, string[]> = {
     'support.index': ['support.view', 'support.manage'],
     'solicitations.index': ['solicitations.view', 'solicitations.manage'],
     'pastors.index': ['pastors.view', 'pastors.manage'],
-    /** Visibilidade no Sidebar: `auth.pastoralAgendaMenuVisible` (pastor ligado, admin, gestão de pastores, etc.). */
-    'pastoral-agenda.index': [],
+    /** Visibilidade no Sidebar: `showPastoralAgendaInSidebar` (pastor ligado, admin, gestão de pastores, etc.). */
+    'pastoral-agenda.index': ['pastors.view', 'pastors.manage', 'pastoral_appointments.manage'],
     'app-versions.index': ['notifications.manage'],
     'notifications.manage': ['notifications.manage'],
     'more.index': [],

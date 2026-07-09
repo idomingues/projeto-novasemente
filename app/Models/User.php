@@ -96,14 +96,21 @@ class User extends Authenticatable
     }
 
     /**
-     * Painel web com menu lateral (admin, super admin, pastor, secretaria).
-     * Exclui `membro`, `lider_ministerio` e contas sem papéis de equipe.
+     * Painel web com menu lateral.
+     * Perfis de equipe fixos, perfis personalizados (ex.: Missão) com permissões Spatie,
+     * e exclusão de `membro` (só app) e `lider_ministerio` (barra inferior no mobile).
      */
     public function canAccessAdminMenu(): bool
     {
-        $adminRoles = ['admin', 'super_admin', 'pastor', 'secretaria'];
+        if ($this->hasAnyRole(['admin', 'super_admin', 'pastor', 'secretaria'])) {
+            return true;
+        }
 
-        return ! empty(array_intersect($this->getRoleNames()->map(fn ($n) => (string) $n)->all(), $adminRoles));
+        if ($this->hasRole('lider_ministerio')) {
+            return false;
+        }
+
+        return $this->getAllPermissions()->isNotEmpty();
     }
 
     /**

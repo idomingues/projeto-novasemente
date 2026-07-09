@@ -299,6 +299,8 @@ class HandleInertiaRequests extends Middleware
                 'adminSidebarUnrestricted' => $request->user()?->hasAnyRole(['admin', 'super_admin']) ?? false,
                 'roleLabel' => $roleLabel,
                 'canAccessAdminMenu' => $canAccessAdminMenu,
+                /** Papéis com painel completo (Dashboard no menu lateral). */
+                'hasCorePanelRole' => $request->user()?->hasAnyRole(['admin', 'super_admin', 'pastor', 'secretaria']) ?? false,
                 'canManageSettings' => $canManageSettings,
                 'canManageAppFeatures' => $canManageAppFeatures,
                 /** Pastor com registro ligado à conta na igreja em contexto (para menu «Minha disponibilidade»). */

@@ -167,6 +167,8 @@ export default function Sidebar({
         isSuperAdmin?: boolean;
         adminSidebarUnrestricted?: boolean;
         canAccessAdminMenu?: boolean;
+        hasCorePanelRole?: boolean;
+        isMinistryLeaderAccount?: boolean;
         linkedPastor?: { id: number } | null;
         pastoralAgendaMenuVisible?: boolean;
         openSolicitationsCount?: number;
@@ -279,18 +281,26 @@ export default function Sidebar({
             return true;
         }
         const perms = requiredPerms(route);
-        if (perms.length === 0) return true;
+        if (perms.length === 0) {
+            return false;
+        }
         return perms.some((p) => permissions.includes(p));
     };
 
     const canManageSettings = auth?.canManageSettings === true;
     const canManageAppFeatures = auth?.canManageAppFeatures === true;
     const canAccessAdminMenu = auth?.canAccessAdminMenu === true;
+    const hasCorePanelRole = auth?.hasCorePanelRole === true;
+    const isMinistryLeaderAccount = auth?.isMinistryLeaderAccount === true;
     const pastoralAgendaMenuVisible = auth?.pastoralAgendaMenuVisible === true;
-    /** Equipe do painel (secretaria, pastor, líder…) ou permissões de pastores / agendamentos pastorais. */
+    const showDashboardInSidebar = hasCorePanelRole || auth?.adminSidebarUnrestricted === true;
+    const showCommunicationInSidebar =
+        auth?.adminSidebarUnrestricted === true ||
+        isMinistryLeaderAccount ||
+        canAccess('solicitations.index');
+    /** Pastor ligado, delegado, gestão de pastores ou agendamentos pastorais. */
     const showPastoralAgendaInSidebar =
         pastoralAgendaMenuVisible ||
-        canAccessAdminMenu ||
         canAccess('pastors.index') ||
         permissions.includes('pastoral_appointments.manage');
 
@@ -299,6 +309,12 @@ export default function Sidebar({
         : !canAccessAdminMenu
           ? []
           : allMenuItems.filter((item) => {
+                if (item.route === 'dashboard' && !showDashboardInSidebar) {
+                    return false;
+                }
+                if (item.route === 'communication-requests.index' && !showCommunicationInSidebar) {
+                    return false;
+                }
                 if (item.route === 'settings.index' && !canManageSettings) {
                     return false;
                 }
@@ -308,9 +324,8 @@ export default function Sidebar({
                 if (item.route === 'pastoral-agenda.index' && !showPastoralAgendaInSidebar) {
                     return false;
                 }
-                /** Usuários (igreja): operação + permissões members/users. */
                 if (item.route === 'users.index') {
-                    return canAccessAdminMenu || canAccess('users.index');
+                    return canAccess('users.index');
                 }
                 /** Igrejas: só no bloco ADM e alinhado à rota `role:super_admin`. */
                 if (item.route === 'churches.index' || item.route === 'operations.index') {
