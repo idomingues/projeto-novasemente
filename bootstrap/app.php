@@ -18,6 +18,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        /*
+         * Produção atrás de Cloudflare/Nginx (TLS no proxy): sem isto o Laravel ignora
+         * X-Forwarded-Proto e trata o pedido como HTTP — cookie de sessão/CSRF fica
+         * inconsistente e a navegação “cai” de volta na home de forma intermitente.
+         */
+        $middleware->trustProxies(at: '*');
+
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,

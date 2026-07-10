@@ -17,6 +17,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
@@ -46,6 +47,11 @@ class AppServiceProvider extends ServiceProvider
 
         // Interface do produto é pt_BR; evita chaves cruas (ex.: auth.user) quando APP_LOCALE=en no .env.
         app()->setLocale(config('app.locale', 'pt_BR') === 'en' ? 'pt_BR' : (string) config('app.locale', 'pt_BR'));
+
+        // Produção atrás de proxy TLS: URLs geradas (redirects, assets) devem ser https.
+        if ($this->app->environment('production')) {
+            URL::forceScheme('https');
+        }
 
         Vite::prefetch(concurrency: 3);
 

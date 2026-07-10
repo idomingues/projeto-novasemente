@@ -285,7 +285,11 @@ function YesNoRadio({
                         type="button"
                         role="radio"
                         aria-checked={isSelected}
-                        onClick={() => onChange(opt === 'Sim')}
+                        onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            onChange(opt === 'Sim');
+                        }}
                         className={[
                             'flex w-full cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition-colors sm:px-4 sm:py-3',
                             isSelected
@@ -355,6 +359,7 @@ function FormNav({
     onAdvance,
     processing,
     advancing,
+    autosaving = false,
     submitLabel = 'Concluir cadastro',
 }: {
     page: number;
@@ -363,21 +368,25 @@ function FormNav({
     onAdvance: () => void | Promise<void>;
     processing: boolean;
     advancing: boolean;
+    /** Autosave em curso — evita toque acidental em Continuar/Concluir durante «Salvando resposta…». */
+    autosaving?: boolean;
     submitLabel?: string;
 }) {
     const showAdvance = page < lastPageIndex;
+    const busy = processing || advancing || autosaving;
 
     const handleAdvance = (event: MouseEvent<HTMLButtonElement>) => {
         event.preventDefault();
         event.stopPropagation();
+        if (busy) return;
         void onAdvance();
     };
 
     return (
-        <div className="relative sticky bottom-0 z-20 -mx-1 mt-8 border-t border-zinc-200/90 bg-white/95 px-1 pb-1 pt-4 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-900/95 sm:mx-0 sm:px-0">
+        <div className="relative sticky bottom-0 z-20 -mx-1 mt-8 border-t border-zinc-200/90 bg-white/95 px-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-4 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-900/95 sm:mx-0 sm:px-0">
             <div className="flex gap-3">
                 {page > 0 ? (
-                    <SecondaryButton type="button" className="min-w-[7rem] flex-1 sm:flex-none" onClick={onBack}>
+                    <SecondaryButton type="button" className="min-w-[7rem] flex-1 sm:flex-none" onClick={onBack} disabled={busy}>
                         Voltar
                     </SecondaryButton>
                 ) : (
@@ -390,11 +399,11 @@ function FormNav({
                         showAdvance ? '' : 'pointer-events-none invisible absolute w-0 overflow-hidden p-0 opacity-0',
                     ].join(' ')}
                     onClick={handleAdvance}
-                    disabled={advancing}
+                    disabled={busy}
                     tabIndex={showAdvance ? 0 : -1}
                     aria-hidden={!showAdvance}
                 >
-                    {advancing ? 'Verificando…' : 'Avançar'}
+                    {advancing ? 'Verificando…' : autosaving ? 'Salvando…' : 'Avançar'}
                 </PrimaryButton>
                 <PrimaryButton
                     type="submit"
@@ -402,11 +411,11 @@ function FormNav({
                         'flex-1 sm:min-w-[7rem] sm:flex-none',
                         showAdvance ? 'pointer-events-none invisible absolute w-0 overflow-hidden p-0 opacity-0' : '',
                     ].join(' ')}
-                    disabled={processing || advancing || showAdvance}
+                    disabled={busy || showAdvance}
                     tabIndex={showAdvance ? -1 : 0}
                     aria-hidden={showAdvance}
                 >
-                    {processing ? 'Salvando…' : submitLabel}
+                    {processing || autosaving ? 'Salvando…' : submitLabel}
                 </PrimaryButton>
             </div>
         </div>
@@ -1492,6 +1501,11 @@ export default function PublicSignup({
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
+        // Não concluir enquanto o autosave grava — no celular o rodapé sticky
+        // fica sobre as opções e um toque em Sim/Não acabava disparando Continuar/Concluir.
+        if (autosaveStatus === 'saving' || autosaveInFlightRef.current || advancing) {
+            return;
+        }
         void submitForm();
     };
 
@@ -1716,7 +1730,8 @@ export default function PublicSignup({
                         <ProgressBar value={progress} />
                     </div>
 
-                    <div className="space-y-4 sm:space-y-5">
+                    {/* pb evita que as últimas opções fiquem sob o FormNav sticky + barra inferior do app */}
+                    <div className="space-y-4 pb-28 sm:space-y-5 sm:pb-8">
                         {page === 0 ? (
                             <>
                                 {showField('photo_file') ? (
@@ -2267,6 +2282,7 @@ export default function PublicSignup({
                             onAdvance={tryAdvancePage}
                             processing={processing}
                             advancing={advancing}
+                            autosaving={autosaveStatus === 'saving'}
                             submitLabel={submitLabel}
                         />
                     </div>
