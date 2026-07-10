@@ -829,6 +829,14 @@ export default function PublicSignup({
                 ) {
                     delete patch.has_social_networks;
                 }
+                // Evita o autosave “desmarcar” Sim/Não se a resposta do servidor vier atrasada/stale.
+                if (
+                    saved.has('has_whatsapp') &&
+                    normalizeSignupBool(current.has_whatsapp) !== null &&
+                    normalizeSignupBool(patch.has_whatsapp as BoolLike) === null
+                ) {
+                    delete patch.has_whatsapp;
+                }
                 return {
                     ...current,
                     ...patch,
@@ -1909,7 +1917,8 @@ export default function PublicSignup({
                                         onChange={(v) => {
                                             setData('has_whatsapp', v);
                                             clearClientError('has_whatsapp');
-                                            persistFieldAnswer('has_whatsapp');
+                                            // Grava o telefone junto: evita rascunho apagado e normalizador zerando o WhatsApp.
+                                            persistFieldAnswer('has_whatsapp', ['phone']);
                                         }}
                                     />
                                 </Question>

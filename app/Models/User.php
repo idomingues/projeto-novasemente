@@ -179,10 +179,13 @@ class User extends Authenticatable
             return false;
         }
 
+        if (filled($volunteer->phone)) {
+            return false;
+        }
+
         foreach ([
             'birth_date',
             'attendance_duration',
-            'is_official_member',
             'member_record_at_nova_semente',
             'has_previous_ministry_volunteer_experience',
             'ministry_involvement',
@@ -203,7 +206,13 @@ class User extends Authenticatable
             }
         }
 
-        if ($volunteer->has_social_networks === true || $volunteer->comfortable_with_digital_tools !== null) {
+        // Booleanos do questionário: qualquer resposta (Sim/Não) já é rascunho, não espelho vazio.
+        if (
+            $volunteer->has_whatsapp !== null
+            || $volunteer->has_social_networks !== null
+            || $volunteer->comfortable_with_digital_tools !== null
+            || $volunteer->is_official_member !== null
+        ) {
             return false;
         }
 

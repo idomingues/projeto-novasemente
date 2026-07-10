@@ -115,6 +115,119 @@ class VolunteerSelfSignupAutosaveTest extends TestCase
         $this->assertSame(['music', 'reception'], \App\Support\VolunteerSignupServiceEaseAreas::decode($volunteer->service_ease_areas));
     }
 
+    public function test_autosave_has_whatsapp_when_phone_only_on_client_form(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+
+        $user = User::factory()->create([
+            'church_id' => $churchId,
+            'is_volunteer' => false,
+            'name' => 'Simone Ribeiro',
+            'email' => 'simone.whatsapp@example.com',
+            'photo_url' => 'https://example.com/photos/simone.jpg',
+        ]);
+
+        $user->ensureVolunteerProfile();
+        $volunteer = $user->fresh()->volunteerProfile;
+        $this->assertNotNull($volunteer);
+        $volunteer->forceFill([
+            'phone' => null,
+            'has_whatsapp' => null,
+        ])->save();
+
+        // Telefone ainda só no formulário (não gravado); vai no body do autosave do WhatsApp.
+        $this->actingAs($user)
+            ->post(route('volunteers.self-signup.autosave'), [
+                'autosave_fields' => json_encode(['has_whatsapp', 'phone', 'first_name', 'last_name']),
+                'first_name' => 'Simone',
+                'last_name' => 'Ribeiro',
+                'has_whatsapp' => '1',
+                'phone' => '11971592583',
+            ])
+            ->assertOk()
+            ->assertJsonPath('initial.has_whatsapp', true)
+            ->assertJsonPath('initial.phone', '11971592583');
+
+        $volunteer->refresh();
+        $this->assertTrue($volunteer->has_whatsapp);
+        $this->assertSame('11971592583', $volunteer->phone);
+        $this->assertTrue($user->fresh()->hasVolunteerSignupInProgress());
+    }
+
+    public function test_autosave_has_whatsapp_without_phone_in_request_keeps_selection_when_phone_on_server(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+
+        $user = User::factory()->create([
+            'church_id' => $churchId,
+            'is_volunteer' => false,
+            'name' => 'Simone Ribeiro',
+            'email' => 'simone.whatsapp2@example.com',
+            'photo_url' => 'https://example.com/photos/simone2.jpg',
+        ]);
+
+        $user->ensureVolunteerProfile();
+        $volunteer = $user->fresh()->volunteerProfile;
+        $this->assertNotNull($volunteer);
+        $volunteer->forceFill([
+            'phone' => '11971592583',
+            'has_whatsapp' => null,
+        ])->save();
+
+        $this->actingAs($user)
+            ->post(route('volunteers.self-signup.autosave'), [
+                'autosave_fields' => json_encode(['has_whatsapp', 'first_name', 'last_name']),
+                'first_name' => 'Simone',
+                'last_name' => 'Ribeiro',
+                'has_whatsapp' => '1',
+            ])
+            ->assertOk()
+            ->assertJsonPath('initial.has_whatsapp', true);
+
+        $this->assertTrue($volunteer->fresh()->has_whatsapp);
+        $this->assertTrue($user->fresh()->hasVolunteerSignupInProgress());
+    }
+
+    public function test_autosave_has_whatsapp_false_is_kept_as_signup_draft(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+
+        $user = User::factory()->create([
+            'church_id' => $churchId,
+            'is_volunteer' => false,
+            'name' => 'Simone Ribeiro',
+            'email' => 'simone.whatsapp3@example.com',
+            'photo_url' => 'https://example.com/photos/simone3.jpg',
+        ]);
+
+        $user->ensureVolunteerProfile();
+        $volunteer = $user->fresh()->volunteerProfile;
+        $this->assertNotNull($volunteer);
+        $volunteer->forceFill([
+            'phone' => '11971592583',
+            'has_whatsapp' => null,
+        ])->save();
+
+        $this->actingAs($user)
+            ->post(route('volunteers.self-signup.autosave'), [
+                'autosave_fields' => json_encode(['has_whatsapp', 'first_name', 'last_name']),
+                'first_name' => 'Simone',
+                'last_name' => 'Ribeiro',
+                'has_whatsapp' => '0',
+            ])
+            ->assertOk()
+            ->assertJsonPath('initial.has_whatsapp', false);
+
+        $this->assertFalse($volunteer->fresh()->has_whatsapp);
+        $this->assertTrue($user->fresh()->hasVolunteerSignupInProgress());
+    }
+
     public function test_partial_autosave_does_not_clear_existing_birth_date(): void
     {
         $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
