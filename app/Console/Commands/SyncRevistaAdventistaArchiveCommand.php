@@ -8,14 +8,26 @@ use Illuminate\Console\Command;
 class SyncRevistaAdventistaArchiveCommand extends Command
 {
     protected $signature = 'revista-adventista:sync-archive
-                            {--year=* : Anos específicos (padrão: todos os anos disponíveis nos acervos integrados)}
-                            {--cache-pdfs : Baixa e armazena localmente todos os PDFs}
-                            {--force-covers : Rebaixa todas as capas mesmo que já existam localmente}';
+                            {--year=* : Anos específicos (padrão: todos os anos disponíveis no acervo CPB)}
+                            {--purge : Apaga todas as edições e arquivos locais antes de sincronizar}
+                            {--cache-pdfs : Baixa e armazena localmente todos os PDFs (opcional; o app usa a URL da CPB)}
+                            {--force-covers : Baixa capas localmente (opcional; o app usa a URL da CPB)}';
 
-    protected $description = 'Importa o acervo histórico da Revista Adventista a partir da CPB e da ACES';
+    protected $description = 'Importa metadados do acervo CPB (capa e PDF remotos em acervo.cpb.com.br/ra)';
 
     public function handle(RevistaAdventistaArchiveSyncService $syncService): int
     {
+        if ((bool) $this->option('purge')) {
+            $this->warn('Apagando acervo local da Revista Adventista…');
+            $purged = $syncService->purge();
+            $this->info(sprintf(
+                'Base limpa: %d edições, %d capas e %d PDFs removidos.',
+                $purged['deleted'],
+                $purged['covers_deleted'],
+                $purged['pdfs_deleted'],
+            ));
+        }
+
         $years = $this->option('year');
         if (! is_array($years) || $years === []) {
             $years = null;
@@ -27,7 +39,7 @@ class SyncRevistaAdventistaArchiveCommand extends Command
         $forceCovers = (bool) $this->option('force-covers');
 
         $label = $years === null
-            ? 'todos os anos disponíveis'
+            ? 'todos os anos disponíveis na CPB'
             : 'anos: '.implode(', ', $years);
 
         $this->info('Sincronizando acervo Revista Adventista ('.$label.')…');

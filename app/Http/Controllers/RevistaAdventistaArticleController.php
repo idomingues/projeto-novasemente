@@ -140,7 +140,10 @@ class RevistaAdventistaArticleController extends Controller
             ->all();
 
         if ($year <= 0) {
-            $year = $availableYears[0] ?? (int) date('Y');
+            $preferredDefaultYear = 2010;
+            $year = in_array($preferredDefaultYear, $availableYears, true)
+                ? $preferredDefaultYear
+                : ($availableYears[0] ?? $preferredDefaultYear);
         }
 
         $status = trim((string) $request->query('status', 'all'));

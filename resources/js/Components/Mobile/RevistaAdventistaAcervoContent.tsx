@@ -52,7 +52,7 @@ export default function RevistaAdventistaAcervoContent({
                         Acervo Revista Adventista
                     </h2>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                        Edições históricas da Revista Adventista, reunidas a partir dos acervos da CPB e da ACES.
+                        Edições históricas da Revista Adventista a partir do acervo da CPB.
                     </p>
                 </div>
             ) : null}

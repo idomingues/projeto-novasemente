@@ -10,8 +10,6 @@ class RevistaAdventistaEdition extends Model
 {
     public const SOURCE_CPB = 'cpb';
 
-    public const SOURCE_ACES = 'aces';
-
     protected $fillable = [
         'source',
         'source_edition_id',

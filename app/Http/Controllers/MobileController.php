@@ -755,7 +755,7 @@ class MobileController extends Controller
             return Inertia::render('Mobile/RevistaAdventistaAcervo', [
                 'editions' => [],
                 'availableYears' => [],
-                'selectedYear' => (int) date('Y'),
+                'selectedYear' => 2010,
                 'decades' => [],
             ]);
         }
@@ -852,7 +852,7 @@ class MobileController extends Controller
         ];
 
         if ($this->revistaAdventistaAcervoAvailable($church)) {
-            $categories[] = ['value' => 'revista_adventista_acervo', 'label' => 'Acervo'];
+            $categories[] = ['value' => 'revista_adventista_acervo', 'label' => 'Acervo Revista Adventista'];
         }
 
         $categories[] = ['value' => LibraryBook::CATEGORY_EGW, 'label' => 'Ellen G. White'];
@@ -888,9 +888,12 @@ class MobileController extends Controller
             ->values()
             ->all();
 
-        $defaultYear = $availableYears[0] ?? (int) date('Y');
+        $preferredDefaultYear = 2010;
+        $defaultYear = in_array($preferredDefaultYear, $availableYears, true)
+            ? $preferredDefaultYear
+            : ($availableYears[0] ?? $preferredDefaultYear);
         $selectedYear = (int) $request->query('ano', $defaultYear);
-        if (! in_array($selectedYear, $availableYears, true)) {
+        if ($availableYears !== [] && ! in_array($selectedYear, $availableYears, true)) {
             $selectedYear = $defaultYear;
         }
 

@@ -106,7 +106,7 @@ function libraryCategoryPresentation(value: string, label: string): CategoryPres
         case 'sunset_meditation':
             return { icon: SunIcon, line1: 'Meditação', line2: 'Por do Sol' };
         case 'revista_adventista_acervo':
-            return { icon: ArchiveBoxIcon, line1: 'Acervo' };
+            return { icon: ArchiveBoxIcon, line1: 'Acervo', line2: 'Revista Adventista' };
         default:
             return { icon: BookOpenIcon, line1: label };
     }

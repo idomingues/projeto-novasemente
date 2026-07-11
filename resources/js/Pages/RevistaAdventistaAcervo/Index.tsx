@@ -137,7 +137,7 @@ export default function RevistaAdventistaAcervoIndex({ editions, canManage, avai
 
             <PageHeader
                 title="Acervo Revista Adventista"
-                subtitle="Edições históricas da Revista Adventista, complementadas pelos acervos da CPB e da ACES."
+                subtitle="Edições históricas da Revista Adventista a partir do acervo da CPB (capa e PDF)."
                 actions={
                     canManage ? (
                         <div className="flex flex-wrap gap-2">
