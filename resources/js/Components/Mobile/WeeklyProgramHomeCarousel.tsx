@@ -18,14 +18,14 @@ export default function WeeklyProgramHomeCarousel({ cards, appUrl = '' }: Props)
         }
 
         const updateActive = () => {
-            const children = Array.from(el.children) as HTMLElement[];
-            if (children.length === 0) {
+            const slides = Array.from(el.querySelectorAll<HTMLElement>('[data-program-slide]'));
+            if (slides.length === 0) {
                 return;
             }
             const mid = el.scrollLeft + el.clientWidth / 2;
             let best = 0;
             let bestDist = Number.POSITIVE_INFINITY;
-            children.forEach((child, index) => {
+            slides.forEach((child, index) => {
                 const center = child.offsetLeft + child.offsetWidth / 2;
                 const dist = Math.abs(center - mid);
                 if (dist < bestDist) {
@@ -38,7 +38,11 @@ export default function WeeklyProgramHomeCarousel({ cards, appUrl = '' }: Props)
 
         updateActive();
         el.addEventListener('scroll', updateActive, { passive: true });
-        return () => el.removeEventListener('scroll', updateActive);
+        window.addEventListener('resize', updateActive);
+        return () => {
+            el.removeEventListener('scroll', updateActive);
+            window.removeEventListener('resize', updateActive);
+        };
     }, [cards.length]);
 
     if (cards.length === 0) {
@@ -48,7 +52,7 @@ export default function WeeklyProgramHomeCarousel({ cards, appUrl = '' }: Props)
     const showCarouselChrome = cards.length > 1;
 
     return (
-        <section aria-label="Programação semanal" className="space-y-2.5">
+        <section aria-label="Programação semanal" className="min-w-0 space-y-2.5">
             {showCarouselChrome ? (
                 <div className="flex items-center justify-between gap-3 px-0.5">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-400">
@@ -65,16 +69,17 @@ export default function WeeklyProgramHomeCarousel({ cards, appUrl = '' }: Props)
                 ref={scrollerRef}
                 className={
                     showCarouselChrome
-                        ? '-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-0 sm:px-0'
-                        : ''
+                        ? 'flex min-w-0 flex-nowrap gap-3 overflow-x-auto overscroll-x-contain scroll-smooth snap-x snap-mandatory pb-1 touch-pan-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+                        : 'min-w-0'
                 }
             >
                 {cards.map((card, index) => (
                     <div
                         key={card.id}
+                        data-program-slide
                         className={
                             showCarouselChrome
-                                ? 'w-[min(100%,22.5rem)] shrink-0 snap-center sm:w-[min(100%,26rem)] lg:w-[min(100%,28rem)]'
+                                ? 'w-[calc(100%-1.25rem)] max-w-full shrink-0 grow-0 basis-[calc(100%-1.25rem)] snap-start snap-always'
                                 : 'w-full'
                         }
                     >
@@ -85,7 +90,6 @@ export default function WeeklyProgramHomeCarousel({ cards, appUrl = '' }: Props)
                         />
                     </div>
                 ))}
-                {showCarouselChrome ? <div className="w-2 shrink-0 snap-end" aria-hidden /> : null}
             </div>
 
             {showCarouselChrome ? (
