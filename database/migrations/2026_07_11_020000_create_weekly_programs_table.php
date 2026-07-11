@@ -67,7 +67,7 @@ return new class extends Migration
             [
                 'day_of_week' => 6,
                 'when_label' => 'SÁB 9H30',
-                'title' => 'CULTO',
+                'title' => 'Primeiro Culto',
                 'body' => 'Um momento de pausa, reflexão e conexão com Deus. Com música, mensagem e um ambiente preparado pra você viver uma experiência real com Deus.',
                 'lines' => null,
                 'time_mode' => 'fixed',
@@ -97,7 +97,7 @@ return new class extends Migration
             [
                 'day_of_week' => 6,
                 'when_label' => 'SÁB 12H',
-                'title' => 'CULTO',
+                'title' => 'Segundo Culto',
                 'body' => 'Um momento de pausa, reflexão e conexão com Deus. Com música, mensagem e um ambiente preparado pra você viver uma experiência real com Deus.',
                 'lines' => null,
                 'time_mode' => 'fixed',
