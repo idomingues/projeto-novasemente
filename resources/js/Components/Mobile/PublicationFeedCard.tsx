@@ -4,6 +4,7 @@ import {
     BookOpenIcon,
     CalendarDaysIcon,
     ChevronDownIcon,
+    ChevronUpIcon,
     FilmIcon,
     HeartIcon,
     MusicalNoteIcon,
@@ -13,6 +14,7 @@ import {
     SparklesIcon,
 } from '@heroicons/react/24/outline';
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
+import InstagramViewLink from '@/Components/News/InstagramViewLink';
 import VideoPlayOverlay from '@/Components/News/VideoPlayOverlay';
 import type { ComponentType, SVGProps } from 'react';
 import { useEffect, useRef, useState } from 'react';
@@ -28,6 +30,7 @@ export type PublicationFeedItem = {
     body?: string | null;
     body_is_html?: boolean;
     requires_open?: boolean;
+    instagram_url?: string | null;
     image_url: string | null;
     cover_play_overlay?: boolean;
     published_at: string | null;
@@ -139,6 +142,13 @@ function PrayerCover({
     );
 }
 
+function stripHtml(text: string): string {
+    return text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+/** Tipos com leitura inline no feed; os demais só navegam (sem ícone de expandir). */
+const EXPANDABLE_TYPES = new Set(['news', 'health', 'revista', 'prayer']);
+
 type Props = {
     item: PublicationFeedItem;
     appUrl: string;
@@ -157,22 +167,36 @@ export default function PublicationFeedCard({ item, appUrl, expanded, onToggle }
     const cardRef = useRef<HTMLLIElement>(null);
     const fullText = (item.body ?? item.excerpt ?? '').trim();
     const previewText = (item.excerpt || fullText).trim();
-    const showOpenCta = Boolean(item.requires_open && item.href);
+    const fullPlain = stripHtml(fullText);
+    const previewPlain = stripHtml(previewText);
+    const instagramUrl = item.instagram_url?.trim() || '';
+    const showInstagram = Boolean(instagramUrl);
+    const showOpenCta = Boolean(item.requires_open && item.href) && !showInstagram;
     const actionLabel = item.action_label || 'Abrir';
+    const canExpand =
+        EXPANDABLE_TYPES.has(item.type) &&
+        (showInstagram || showOpenCta || fullPlain.length > 0);
+    const isExpanded = canExpand && expanded;
+    const navigateHref = !canExpand && item.href ? item.href : null;
 
     useEffect(() => {
-        if (!expanded || !cardRef.current) {
+        if (!isExpanded || !cardRef.current) {
             return;
         }
         const id = window.setTimeout(() => {
             cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }, 80);
         return () => window.clearTimeout(id);
-    }, [expanded]);
+    }, [isExpanded]);
 
-    return (
-        <li ref={cardRef}>
-            <article className="overflow-hidden rounded-2xl border border-zinc-200 bg-white transition dark:border-zinc-800 dark:bg-zinc-900">
+    const body = (
+            <article
+                className={`overflow-hidden rounded-2xl border border-zinc-200 bg-white transition dark:border-zinc-800 dark:bg-zinc-900 ${
+                    navigateHref
+                        ? 'cursor-pointer hover:border-zinc-300 dark:hover:border-zinc-700'
+                        : ''
+                }`}
+            >
                 {isPrayer ? (
                     <PrayerCover src={src} showLogo={showCover} onError={() => setCoverBroken(true)} />
                 ) : showCover ? (
@@ -208,9 +232,11 @@ export default function PublicationFeedCard({ item, appUrl, expanded, onToggle }
 
                     {isPrayer ? (
                         <p className="text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-                            {expanded
+                            {isExpanded
                                 ? 'Pedido de oração da comunidade.'
-                                : 'Toque no ícone para ler o pedido.'}
+                                : canExpand
+                                  ? 'Toque no ícone para ler o pedido.'
+                                  : 'Pedido de oração da comunidade.'}
                         </p>
                     ) : (
                         <h2 className="line-clamp-2 text-base font-semibold leading-snug text-zinc-900 dark:text-white">
@@ -218,83 +244,96 @@ export default function PublicationFeedCard({ item, appUrl, expanded, onToggle }
                         </h2>
                     )}
 
-                    {!expanded && previewText && !isPrayer ? (
+                    {!isExpanded && previewText && !isPrayer ? (
                         <p className="line-clamp-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                            {previewText.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()}
+                            {previewPlain}
                         </p>
                     ) : null}
 
-                    {!expanded && meta.length > 0 && !isPrayer ? (
+                    {!isExpanded && meta.length > 0 && !isPrayer ? (
                         <p className="text-xs text-zinc-500 dark:text-zinc-500">{meta.join(' · ')}</p>
                     ) : null}
 
-                    <div
-                        className={`grid transition-[grid-template-rows] duration-300 ease-out ${
-                            expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
-                        }`}
-                    >
-                        <div className="min-h-0 overflow-hidden">
-                            <div className="space-y-3 border-t border-zinc-100 pt-3 dark:border-zinc-800">
-                                {fullText ? (
-                                    item.body_is_html ? (
-                                        <div
-                                            className="max-w-full break-words text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 [&_*]:max-w-full [&_a]:text-primary-600 dark:[&_a]:text-primary-400 [&_a]:underline [&_p]:mb-3 [&_p:last-child]:mb-0"
-                                            dangerouslySetInnerHTML={{ __html: fullText }}
-                                        />
-                                    ) : (
-                                        <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
-                                            {fullText}
-                                        </p>
-                                    )
-                                ) : (
-                                    <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                                        Sem texto adicional nesta publicação.
-                                    </p>
-                                )}
-
-                                {meta.length > 0 ? (
-                                    <p className="text-xs text-zinc-500 dark:text-zinc-500">{meta.join(' · ')}</p>
-                                ) : null}
-
-                                {showOpenCta ? (
-                                    <Link
-                                        href={item.href}
-                                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-sm font-semibold text-zinc-800 transition hover:border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:border-zinc-600 dark:hover:bg-zinc-700"
-                                    >
-                                        {actionLabel}
-                                        <ChevronDownIcon className="h-4 w-4 -rotate-90" aria-hidden />
-                                    </Link>
-                                ) : null}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center justify-end pt-1">
-                        <button
-                            type="button"
-                            onClick={onToggle}
-                            aria-expanded={expanded}
-                            aria-label={expanded ? 'Recolher publicação' : item.action_label || 'Ler publicação'}
-                            title={expanded ? 'Recolher' : item.action_label || 'Ler publicação'}
-                            className={`inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full transition ${
-                                expanded
-                                    ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900'
-                                    : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100'
+                    {canExpand ? (
+                        <div
+                            className={`publication-feed-leaf-stage grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none ${
+                                isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
                             }`}
                         >
-                            {expanded ? (
-                                <ChevronDownIcon
-                                    className="h-5 w-5 rotate-180 transition-transform duration-300"
-                                    aria-hidden
-                                    strokeWidth={1.75}
-                                />
-                            ) : (
-                                <BookOpenIcon className="h-5 w-5" aria-hidden strokeWidth={1.75} />
-                            )}
-                        </button>
-                    </div>
+                            <div className="min-h-0 overflow-hidden">
+                                <div
+                                    className={`publication-feed-leaf space-y-3 border-t border-zinc-100 pt-3 dark:border-zinc-800 ${
+                                        isExpanded ? 'is-open' : ''
+                                    }`}
+                                >
+                                    {fullText ? (
+                                        item.body_is_html ? (
+                                            <div
+                                                className="max-w-full break-words text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 [&_*]:max-w-full [&_a]:text-primary-600 dark:[&_a]:text-primary-400 [&_a]:underline [&_p]:mb-3 [&_p:last-child]:mb-0"
+                                                dangerouslySetInnerHTML={{ __html: fullText }}
+                                            />
+                                        ) : (
+                                            <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+                                                {fullText}
+                                            </p>
+                                        )
+                                    ) : (
+                                        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                                            Sem texto adicional nesta publicação.
+                                        </p>
+                                    )}
+
+                                    {meta.length > 0 ? (
+                                        <p className="text-xs text-zinc-500 dark:text-zinc-500">{meta.join(' · ')}</p>
+                                    ) : null}
+
+                                    {showInstagram ? <InstagramViewLink href={instagramUrl} /> : null}
+
+                                    {showOpenCta ? (
+                                        <Link
+                                            href={item.href}
+                                            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-sm font-semibold text-zinc-800 transition hover:border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:border-zinc-600 dark:hover:bg-zinc-700"
+                                        >
+                                            {actionLabel}
+                                            <ChevronDownIcon className="h-4 w-4 -rotate-90" aria-hidden />
+                                        </Link>
+                                    ) : null}
+                                </div>
+                            </div>
+                        </div>
+                    ) : null}
+
+                    {canExpand ? (
+                        <div className="flex items-center justify-end pt-1">
+                            <button
+                                type="button"
+                                onClick={onToggle}
+                                aria-expanded={isExpanded}
+                                aria-label={isExpanded ? 'Recolher publicação' : 'Expandir publicação'}
+                                title={isExpanded ? 'Recolher' : 'Expandir'}
+                                className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-zinc-900 text-white shadow-sm ring-1 ring-inset ring-white/10 transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+                            >
+                                {isExpanded ? (
+                                    <ChevronUpIcon className="h-5 w-5" aria-hidden strokeWidth={2.2} />
+                                ) : (
+                                    <ChevronDownIcon className="h-5 w-5" aria-hidden strokeWidth={2.2} />
+                                )}
+                            </button>
+                        </div>
+                    ) : null}
                 </div>
             </article>
+    );
+
+    return (
+        <li ref={cardRef}>
+            {navigateHref ? (
+                <Link href={navigateHref} className="block cursor-pointer">
+                    {body}
+                </Link>
+            ) : (
+                body
+            )}
         </li>
     );
 }

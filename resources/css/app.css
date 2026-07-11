@@ -129,3 +129,34 @@ html.dark .swal2-popup.swal-app-popup {
     text-transform: uppercase;
     cursor: pointer;
 }
+
+/* Feed de publicações: sanfona com sensação de folha abaixando */
+.publication-feed-leaf-stage {
+    perspective: 900px;
+}
+
+.publication-feed-leaf {
+    transform-origin: top center;
+    transform: rotateX(-78deg);
+    opacity: 0;
+    transition:
+        transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 0.28s ease-out;
+    will-change: transform, opacity;
+}
+
+.publication-feed-leaf.is-open {
+    transform: rotateX(0deg);
+    opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .publication-feed-leaf {
+        transform: none;
+        transition: opacity 0.2s ease-out;
+    }
+
+    .publication-feed-leaf.is-open {
+        transform: none;
+    }
+}

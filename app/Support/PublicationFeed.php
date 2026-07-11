@@ -281,6 +281,8 @@ class PublicationFeed
                     ? PublicationFeedCoverResolver::forHealth($post, $baseUrl, $church)
                     : PublicationFeedCoverResolver::forNews($post, $baseUrl, $church);
 
+                $instagramUrl = trim((string) ($post->instagram_url ?? ''));
+
                 return self::entry(
                     type: $typeKey,
                     typeLabel: self::TYPE_DEFINITIONS[$typeKey]['label'],
@@ -297,8 +299,8 @@ class PublicationFeed
                     requiresOpen: in_array($post->content_type, [
                         News::TYPE_PDF,
                         News::TYPE_YOUTUBE,
-                        News::TYPE_INSTAGRAM_LINK,
                     ], true),
+                    instagramUrl: $instagramUrl !== '' ? $instagramUrl : null,
                 );
             });
     }
@@ -673,6 +675,7 @@ class PublicationFeed
         ?string $body = null,
         bool $bodyIsHtml = false,
         bool $requiresOpen = false,
+        ?string $instagramUrl = null,
     ): array {
         $definition = self::TYPE_DEFINITIONS[$type] ?? null;
         $resolvedExcerpt = $excerpt !== '' ? $excerpt : (
@@ -682,6 +685,7 @@ class PublicationFeed
         if ($resolvedBody === '') {
             $resolvedBody = $resolvedExcerpt;
         }
+        $resolvedInstagram = trim((string) ($instagramUrl ?? ''));
 
         return [
             'id' => $type.'-'.$pk,
@@ -694,6 +698,7 @@ class PublicationFeed
             'body' => $resolvedBody,
             'body_is_html' => $bodyIsHtml,
             'requires_open' => $requiresOpen,
+            'instagram_url' => $resolvedInstagram !== '' ? $resolvedInstagram : null,
             'image_url' => $imageUrl,
             'cover_play_overlay' => $coverPlayOverlay,
             'published_at' => $publishedAt?->format(\DateTimeInterface::ATOM),
