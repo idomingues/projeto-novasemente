@@ -80,7 +80,7 @@ return new class extends Migration
             [
                 'day_of_week' => 6,
                 'when_label' => 'SÁB 11H',
-                'title' => null,
+                'title' => 'Estudo',
                 'body' => null,
                 'lines' => json_encode([
                     'SEMENTINHA 0 a 16 anos',

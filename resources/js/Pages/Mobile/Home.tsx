@@ -434,7 +434,7 @@ export default function MobileHome({
     return (
         <MobileLayout>
             <Head title="Home" />
-            <div className="mx-auto w-full max-w-lg -mt-2 space-y-7 pb-4 sm:max-w-xl md:max-w-2xl lg:-mt-1 lg:max-w-none">
+            <div className="mx-auto w-full max-w-lg -mt-5 space-y-7 pb-4 sm:max-w-xl md:max-w-2xl lg:-mt-3 lg:max-w-none">
                 {showPostRegistrationBanner ? (
                     <div
                         className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-50"
