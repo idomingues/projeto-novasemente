@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronRightIcon } from '@heroicons/react/24/outline';
 import WeeklyProgramHomeCard, { type WeeklyProgramHomeCardData } from '@/Components/Mobile/WeeklyProgramHomeCard';
 
 type Props = {
@@ -54,13 +53,9 @@ export default function WeeklyProgramHomeCarousel({ cards, appUrl = '' }: Props)
     return (
         <section aria-label="Programação semanal" className="min-w-0 space-y-2.5">
             {showCarouselChrome ? (
-                <div className="flex items-center justify-between gap-3 px-0.5">
+                <div className="px-0.5">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-400">
                         Programação
-                    </p>
-                    <p className="inline-flex items-center gap-0.5 text-[11px] font-medium text-zinc-400 dark:text-zinc-500">
-                        Deslize
-                        <ChevronRightIcon className="h-3.5 w-3.5" aria-hidden strokeWidth={2.2} />
                     </p>
                 </div>
             ) : null}

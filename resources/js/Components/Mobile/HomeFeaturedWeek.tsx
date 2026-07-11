@@ -4,7 +4,6 @@ import {
     BanknotesIcon,
     BookOpenIcon,
     CalendarDaysIcon,
-    ChevronRightIcon,
     ClipboardDocumentListIcon,
     ClockIcon,
     FilmIcon,
@@ -75,20 +74,12 @@ export default function HomeFeaturedWeek({ items }: Props) {
         return null;
     }
 
-    const showMoreHint = items.length > 1;
-
     return (
         <section aria-label="Mais visualizados" className="space-y-2.5">
-            <div className="flex items-center justify-between gap-3 px-0.5">
+            <div className="px-0.5">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-400">
                     Mais visualizados
                 </p>
-                {showMoreHint ? (
-                    <p className="inline-flex items-center gap-0.5 text-[11px] font-medium text-zinc-400 dark:text-zinc-500">
-                        Deslize
-                        <ChevronRightIcon className="h-3.5 w-3.5" aria-hidden strokeWidth={2.2} />
-                    </p>
-                ) : null}
             </div>
 
             <div className="-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 pr-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
