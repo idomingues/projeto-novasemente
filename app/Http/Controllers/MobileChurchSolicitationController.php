@@ -217,20 +217,6 @@ class MobileChurchSolicitationController extends Controller
             ]);
         }
 
-        if (
-            $request->query('membro') !== '1'
-            && ($user->hasAnyRole(['super_admin', 'admin']) || $user->can('solicitations.manage'))
-        ) {
-            $adminParams = [];
-            $solicitacao = $request->query('solicitacao');
-            if (is_string($solicitacao) && $solicitacao !== '' && ctype_digit($solicitacao)) {
-                $adminParams['modal_kind'] = 'solicitation';
-                $adminParams['modal_id'] = $solicitacao;
-            }
-
-            return redirect()->route('baptism-requests.index', $adminParams);
-        }
-
         $types = [
             ['type' => 'baptism', 'label' => self::typeLabel('baptism')],
         ];
@@ -267,11 +253,6 @@ class MobileChurchSolicitationController extends Controller
             ->values()
             ->all();
 
-        $staffBaptismManageUrl = null;
-        if ($user->hasAnyRole(['super_admin', 'admin']) || $user->can('solicitations.manage')) {
-            $staffBaptismManageUrl = route('baptism-requests.index');
-        }
-
         return Inertia::render('Mobile/Solicitations/Hub', [
             'types' => $types,
             'mineUrl' => $hubUrl,
@@ -283,7 +264,7 @@ class MobileChurchSolicitationController extends Controller
             'pageSubtitle' => 'Toque num pedido para editar ou conversar com a igreja.',
             'singleBaptismType' => true,
             'hideConversationReturnTo' => 'baptism_hub',
-            'staffBaptismManageUrl' => $staffBaptismManageUrl,
+            'staffBaptismManageUrl' => null,
         ]);
     }
 

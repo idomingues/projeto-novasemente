@@ -128,7 +128,7 @@ class BaptismRequestArchiveTest extends TestCase
         $this->assertSame(BaptismSolicitationStatus::PENDING, $solicitation->status);
     }
 
-    public function test_staff_is_redirected_from_mobile_baptism_hub_to_admin_index(): void
+    public function test_staff_sees_member_baptism_hub_from_mobile_card(): void
     {
         $admin = $this->actingAsAdmin();
         $church = Church::query()->firstOrFail();
@@ -138,22 +138,25 @@ class BaptismRequestArchiveTest extends TestCase
             'user_id' => $admin->id,
             'type' => 'baptism',
             'status' => BaptismSolicitationStatus::PENDING,
-            'subject' => 'Redirect',
+            'subject' => 'Pedido membro',
             'message' => 'Teste',
         ]);
 
         $this->actingAs($admin)
             ->withSession(['working_church_id' => $church->id])
-            ->get(route('mobile.baptism', ['novo' => 1, 'solicitacao' => $solicitation->id]))
-            ->assertRedirect(route('baptism-requests.index', [
-                'modal_kind' => 'solicitation',
-                'modal_id' => (string) $solicitation->id,
-            ]));
+            ->get(route('mobile.baptism', ['solicitacao' => $solicitation->id]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Mobile/Solicitations/Hub')
+                ->where('pageTitle', 'Batismo')
+                ->where('staffBaptismManageUrl', null)
+                ->has('mySolicitations', 1)
+            );
 
         $this->actingAs($admin)
             ->withSession(['working_church_id' => $church->id])
-            ->get(route('mobile.baptism', ['membro' => 1]))
+            ->get(route('baptism-requests.index'))
             ->assertOk()
-            ->assertInertia(fn ($page) => $page->component('Mobile/Solicitations/Hub'));
+            ->assertInertia(fn ($page) => $page->component('BaptismRequests/Index'));
     }
 }
