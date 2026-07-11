@@ -136,7 +136,7 @@ class WeeklyProgramTest extends TestCase
                 ->where('weeklyProgramCards.0.time_display', '17:36')
             );
 
-        // Sábado — só o culto.
+        // Sábado 08h — culto das 09:30 ainda futuro.
         Carbon::setTestNow(Carbon::parse('2026-07-11 08:00:00', 'America/Sao_Paulo'));
         $this->withSession(['working_church_id' => $church->id])
             ->get(route('mobile.home'))
@@ -146,6 +146,16 @@ class WeeklyProgramTest extends TestCase
                 ->has('weeklyProgramCards', 1)
                 ->where('weeklyProgramCards.0.title', '1º CULTO')
                 ->where('weeklyProgramCards.0.is_next', true)
+            );
+
+        // Sábado 10h — culto das 09:30 já ocorreu; some do carrossel.
+        Carbon::setTestNow(Carbon::parse('2026-07-11 10:00:00', 'America/Sao_Paulo'));
+        $this->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.home'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Mobile/Home')
+                ->has('weeklyProgramCards', 0)
             );
 
         Carbon::setTestNow();

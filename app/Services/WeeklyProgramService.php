@@ -32,7 +32,7 @@ class WeeklyProgramService
     }
 
     /**
-     * Cards da home: só itens do dia de hoje (carrossel na sequência do horário).
+     * Cards da home: só itens de hoje que ainda não ocorreram (carrossel).
      *
      * @return list<array<string, mixed>>
      */
@@ -50,31 +50,24 @@ class WeeklyProgramService
             return [];
         }
 
-        $ordered = $candidates
+        $upcoming = $candidates
             ->map(fn (WeeklyProgram $item) => [
                 'item' => $item,
                 'at' => $this->occurrenceOnDate($item, $now->copy()->startOfDay(), $timezone),
             ])
-            ->filter(fn (array $row) => $row['at'] instanceof Carbon)
+            ->filter(fn (array $row) => $row['at'] instanceof Carbon && $row['at']->gt($now))
             ->sortBy(fn (array $row) => $row['at']->getTimestamp())
             ->values();
 
-        $nextIndex = $ordered->search(
-            fn (array $row) => $row['at']->gt($now)
-        );
-        if ($nextIndex === false) {
-            $nextIndex = 0;
-        }
-
         $cards = [];
-        foreach ($ordered as $index => $row) {
+        foreach ($upcoming as $index => $row) {
             /** @var WeeklyProgram $item */
             $item = $row['item'];
             $card = $this->toHomeCard($item);
             if ($card === null) {
                 continue;
             }
-            $card['is_next'] = $index === (int) $nextIndex;
+            $card['is_next'] = $index === 0;
             $cards[] = $card;
         }
 
