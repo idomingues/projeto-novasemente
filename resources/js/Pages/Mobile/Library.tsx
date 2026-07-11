@@ -100,13 +100,13 @@ function libraryCategoryPresentation(value: string, label: string): CategoryPres
         case 'egw':
             return { icon: SparklesIcon, line1: 'Ellen G.', line2: 'White' };
         case 'meditation':
-            return { icon: MoonIcon, line1: 'Meditação', line2: 'Diária' };
+            return { icon: MoonIcon, line1: 'Meditação' };
         case 'lesson':
             return { icon: ClipboardDocumentListIcon, line1: 'Lição' };
         case 'sunset_meditation':
             return { icon: SunIcon, line1: 'Meditação', line2: 'Por do Sol' };
         case 'revista_adventista_acervo':
-            return { icon: ArchiveBoxIcon, line1: 'Acervo', line2: 'Revista' };
+            return { icon: ArchiveBoxIcon, line1: 'Acervo' };
         default:
             return { icon: BookOpenIcon, line1: label };
     }
@@ -154,7 +154,7 @@ export default function MobileLibrary({
         const t = new URL(window.location.href).searchParams.get('tab')?.trim().toLowerCase() ?? '';
         return categories.some((c) => c.value === t) ? t : '';
     }, [categories]);
-    const [tab, setTab] = useState<string>(initialTab || categories[0]?.value || 'meditation');
+    const [tab, setTab] = useState<string>(initialTab || categories[0]?.value || 'books');
     const [search, setSearch] = useState('');
     const [selectedDetails, setSelectedDetails] = useState<BookItem | null>(null);
     const [readerStatus, setReaderStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');

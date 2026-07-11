@@ -3,6 +3,7 @@ import {
     BanknotesIcon,
     BookOpenIcon,
     CalendarDaysIcon,
+    ChevronDownIcon,
     FilmIcon,
     HeartIcon,
     MusicalNoteIcon,
@@ -14,7 +15,7 @@ import {
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 import VideoPlayOverlay from '@/Components/News/VideoPlayOverlay';
 import type { ComponentType, SVGProps } from 'react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export type PublicationFeedItem = {
     id: string;
@@ -24,6 +25,9 @@ export type PublicationFeedItem = {
     action_label: string;
     title: string;
     excerpt: string;
+    body?: string | null;
+    body_is_html?: boolean;
+    requires_open?: boolean;
     image_url: string | null;
     cover_play_overlay?: boolean;
     published_at: string | null;
@@ -66,7 +70,6 @@ const TYPE_TAG_STYLES: Record<string, string> = {
 const DEFAULT_TAG_STYLE = 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300';
 const DEFAULT_ICON = SparklesIcon;
 const PRAYER_COVER_TAGLINE = 'Alguém precisa da sua oração';
-/** Mesmo tom do quadrado da logo Nova Semente (logo-ns.png). */
 const PRAYER_COVER_BG = '#1c1c1c';
 
 function imageSrc(url: string | null, appUrl: string): string {
@@ -139,23 +142,37 @@ function PrayerCover({
 type Props = {
     item: PublicationFeedItem;
     appUrl: string;
+    expanded: boolean;
+    onToggle: () => void;
 };
 
-export default function PublicationFeedCard({ item, appUrl }: Props) {
+export default function PublicationFeedCard({ item, appUrl, expanded, onToggle }: Props) {
     const Icon = TYPE_ICONS[item.type] ?? DEFAULT_ICON;
     const src = imageSrc(item.image_url, appUrl);
     const meta = item.meta ?? [];
     const [coverBroken, setCoverBroken] = useState(false);
     const showCover = Boolean(src) && !coverBroken;
     const isPrayer = item.type === 'prayer';
-    const isNews = item.type === 'news';
+    const isNews = item.type === 'news' || item.type === 'health';
+    const cardRef = useRef<HTMLLIElement>(null);
+    const fullText = (item.body ?? item.excerpt ?? '').trim();
+    const previewText = (item.excerpt || fullText).trim();
+    const showOpenCta = Boolean(item.requires_open && item.href);
+    const actionLabel = item.action_label || 'Abrir';
+
+    useEffect(() => {
+        if (!expanded || !cardRef.current) {
+            return;
+        }
+        const id = window.setTimeout(() => {
+            cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 80);
+        return () => window.clearTimeout(id);
+    }, [expanded]);
 
     return (
-        <li>
-            <Link
-                href={item.href}
-                className="group block cursor-pointer overflow-hidden rounded-2xl border border-zinc-200 bg-white transition hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
-            >
+        <li ref={cardRef}>
+            <article className="overflow-hidden rounded-2xl border border-zinc-200 bg-white transition dark:border-zinc-800 dark:bg-zinc-900">
                 {isPrayer ? (
                     <PrayerCover src={src} showLogo={showCover} onError={() => setCoverBroken(true)} />
                 ) : showCover ? (
@@ -191,37 +208,93 @@ export default function PublicationFeedCard({ item, appUrl }: Props) {
 
                     {isPrayer ? (
                         <p className="text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-                            Toque para abrir na área de oração e ler o pedido.
+                            {expanded
+                                ? 'Pedido de oração da comunidade.'
+                                : 'Toque no ícone para ler o pedido.'}
                         </p>
                     ) : (
-                        <>
-                            <h2 className="line-clamp-2 text-base font-semibold leading-snug text-zinc-900 dark:text-white">
-                                {item.title}
-                            </h2>
-
-                            {item.excerpt ? (
-                                <p className="line-clamp-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                                    {item.excerpt}
-                                </p>
-                            ) : null}
-
-                            {meta.length > 0 ? (
-                                <p className="text-xs text-zinc-500 dark:text-zinc-500">{meta.join(' · ')}</p>
-                            ) : null}
-                        </>
+                        <h2 className="line-clamp-2 text-base font-semibold leading-snug text-zinc-900 dark:text-white">
+                            {item.title}
+                        </h2>
                     )}
 
+                    {!expanded && previewText && !isPrayer ? (
+                        <p className="line-clamp-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                            {previewText.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()}
+                        </p>
+                    ) : null}
+
+                    {!expanded && meta.length > 0 && !isPrayer ? (
+                        <p className="text-xs text-zinc-500 dark:text-zinc-500">{meta.join(' · ')}</p>
+                    ) : null}
+
+                    <div
+                        className={`grid transition-[grid-template-rows] duration-300 ease-out ${
+                            expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+                        }`}
+                    >
+                        <div className="min-h-0 overflow-hidden">
+                            <div className="space-y-3 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+                                {fullText ? (
+                                    item.body_is_html ? (
+                                        <div
+                                            className="max-w-full break-words text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 [&_*]:max-w-full [&_a]:text-primary-600 dark:[&_a]:text-primary-400 [&_a]:underline [&_p]:mb-3 [&_p:last-child]:mb-0"
+                                            dangerouslySetInnerHTML={{ __html: fullText }}
+                                        />
+                                    ) : (
+                                        <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+                                            {fullText}
+                                        </p>
+                                    )
+                                ) : (
+                                    <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                                        Sem texto adicional nesta publicação.
+                                    </p>
+                                )}
+
+                                {meta.length > 0 ? (
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-500">{meta.join(' · ')}</p>
+                                ) : null}
+
+                                {showOpenCta ? (
+                                    <Link
+                                        href={item.href}
+                                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-sm font-semibold text-zinc-800 transition hover:border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:border-zinc-600 dark:hover:bg-zinc-700"
+                                    >
+                                        {actionLabel}
+                                        <ChevronDownIcon className="h-4 w-4 -rotate-90" aria-hidden />
+                                    </Link>
+                                ) : null}
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="flex items-center justify-end pt-1">
-                        <span
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-zinc-500 transition group-hover:bg-zinc-100 group-hover:text-zinc-800 dark:text-zinc-400 dark:group-hover:bg-zinc-800 dark:group-hover:text-zinc-100"
-                            aria-label={item.action_label || 'Ler publicação'}
-                            title={item.action_label || 'Ler publicação'}
+                        <button
+                            type="button"
+                            onClick={onToggle}
+                            aria-expanded={expanded}
+                            aria-label={expanded ? 'Recolher publicação' : item.action_label || 'Ler publicação'}
+                            title={expanded ? 'Recolher' : item.action_label || 'Ler publicação'}
+                            className={`inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full transition ${
+                                expanded
+                                    ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900'
+                                    : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100'
+                            }`}
                         >
-                            <BookOpenIcon className="h-5 w-5" aria-hidden strokeWidth={1.75} />
-                        </span>
+                            {expanded ? (
+                                <ChevronDownIcon
+                                    className="h-5 w-5 rotate-180 transition-transform duration-300"
+                                    aria-hidden
+                                    strokeWidth={1.75}
+                                />
+                            ) : (
+                                <BookOpenIcon className="h-5 w-5" aria-hidden strokeWidth={1.75} />
+                            )}
+                        </button>
                     </div>
                 </div>
-            </Link>
+            </article>
         </li>
     );
 }

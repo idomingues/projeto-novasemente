@@ -292,6 +292,13 @@ class PublicationFeed
                     href: route($showRoute, [$param => $post->slug], absolute: false),
                     meta: $meta,
                     coverPlayOverlay: PublicationFeedCoverResolver::newsShowsPlayOverlay($post),
+                    body: self::fullContent($post->body, $post->excerpt),
+                    bodyIsHtml: self::looksLikeHtml((string) ($post->body ?? '')),
+                    requiresOpen: in_array($post->content_type, [
+                        News::TYPE_PDF,
+                        News::TYPE_YOUTUBE,
+                        News::TYPE_INSTAGRAM_LINK,
+                    ], true),
                 );
             });
     }
@@ -323,6 +330,8 @@ class PublicationFeed
                 href: route('mobile.culto.show', ['culto' => $culto->id], absolute: false),
                 meta: ['Vídeo no YouTube', 'Culto online'],
                 coverPlayOverlay: PublicationFeedCoverResolver::cultoShowsPlayOverlay($culto),
+                body: 'Assista à gravação ou transmissão deste culto quando quiser.',
+                requiresOpen: true,
             ));
     }
 
@@ -354,6 +363,8 @@ class PublicationFeed
                     href: route('mobile.prayer', absolute: false),
                     meta: [],
                     allowExcerptFallback: false,
+                    body: trim((string) ($prayer->request ?? '')),
+                    requiresOpen: true,
                 );
             });
     }
@@ -398,6 +409,8 @@ class PublicationFeed
                     href: route('mobile.donations.show', ['charityCampaign' => $campaign->id], absolute: false),
                     meta: $meta,
                     coverPlayOverlay: PublicationFeedCoverResolver::charityShowsPlayOverlay($campaign),
+                    body: self::fullContent($campaign->description),
+                    requiresOpen: true,
                 );
             });
     }
@@ -430,6 +443,8 @@ class PublicationFeed
                     publishedAt: $book->published_at ?? $book->created_at,
                     href: route('mobile.biblioteca.show', ['libraryBook' => $book->id], absolute: false),
                     meta: $meta,
+                    body: self::fullContent($book->description) ?: 'Material disponível para leitura ou download.',
+                    requiresOpen: true,
                 );
             });
     }
@@ -472,6 +487,10 @@ class PublicationFeed
                     publishedAt: $album->published_at ?? $album->created_at,
                     href: route('mobile.fotos.show', ['album' => $album->id], absolute: false),
                     meta: $meta,
+                    body: filled($album->photographer_name)
+                        ? 'Registros fotográficos por '.$album->photographer_name.'.'
+                        : 'Confira as fotos deste momento da igreja.',
+                    requiresOpen: true,
                 );
             });
     }
@@ -515,6 +534,8 @@ class PublicationFeed
                     href: route('mobile.events', absolute: false).'?event='.$event->id,
                     meta: $meta,
                     coverPlayOverlay: PublicationFeedCoverResolver::eventShowsPlayOverlay($event),
+                    body: self::fullContent($event->description),
+                    requiresOpen: true,
                 );
             });
     }
@@ -547,6 +568,8 @@ class PublicationFeed
                     publishedAt: $article->published_at,
                     href: route('mobile.revista-adventista.show', ['revistaAdventistaArticle' => $article->slug], absolute: false),
                     meta: $meta,
+                    body: self::fullContent($article->body, $article->excerpt),
+                    bodyIsHtml: self::looksLikeHtml((string) ($article->body ?? '')),
                 );
             });
     }
@@ -578,6 +601,8 @@ class PublicationFeed
                 href: route('mobile.musica.show', ['musica' => $musica->id], absolute: false),
                 meta: ['Vídeo no YouTube', 'Louvor'],
                 coverPlayOverlay: PublicationFeedCoverResolver::musicaShowsPlayOverlay($musica),
+                body: 'Música de louvor para acompanhar e cantar conosco.',
+                requiresOpen: true,
             ));
     }
 
@@ -623,6 +648,8 @@ class PublicationFeed
                     href: route('mobile.campaigns.show', ['donationCampaign' => $campaign->id], absolute: false),
                     meta: $meta,
                     coverPlayOverlay: PublicationFeedCoverResolver::donationShowsPlayOverlay($campaign),
+                    body: self::fullContent($campaign->description),
+                    requiresOpen: true,
                 );
             });
     }
@@ -643,8 +670,18 @@ class PublicationFeed
         array $meta = [],
         bool $coverPlayOverlay = false,
         bool $allowExcerptFallback = true,
+        ?string $body = null,
+        bool $bodyIsHtml = false,
+        bool $requiresOpen = false,
     ): array {
         $definition = self::TYPE_DEFINITIONS[$type] ?? null;
+        $resolvedExcerpt = $excerpt !== '' ? $excerpt : (
+            $allowExcerptFallback ? ($definition['description'] ?? 'Toque para abrir na app.') : ''
+        );
+        $resolvedBody = trim((string) ($body ?? ''));
+        if ($resolvedBody === '') {
+            $resolvedBody = $resolvedExcerpt;
+        }
 
         return [
             'id' => $type.'-'.$pk,
@@ -653,9 +690,10 @@ class PublicationFeed
             'type_description' => $definition['description'] ?? '',
             'action_label' => $definition['action'] ?? 'Abrir',
             'title' => $title,
-            'excerpt' => $excerpt !== '' ? $excerpt : (
-                $allowExcerptFallback ? ($definition['description'] ?? 'Toque para abrir na app.') : ''
-            ),
+            'excerpt' => $resolvedExcerpt,
+            'body' => $resolvedBody,
+            'body_is_html' => $bodyIsHtml,
+            'requires_open' => $requiresOpen,
             'image_url' => $imageUrl,
             'cover_play_overlay' => $coverPlayOverlay,
             'published_at' => $publishedAt?->format(\DateTimeInterface::ATOM),
@@ -725,5 +763,25 @@ class PublicationFeed
         }
 
         return $text !== '' ? Str::limit($text, 240) : '';
+    }
+
+    private static function fullContent(?string $primary, ?string $fallback = null): string
+    {
+        $text = trim((string) ($primary ?? ''));
+        if ($text !== '') {
+            return $text;
+        }
+
+        return trim((string) ($fallback ?? ''));
+    }
+
+    private static function looksLikeHtml(string $text): bool
+    {
+        $t = trim($text);
+        if ($t === '') {
+            return false;
+        }
+
+        return (bool) preg_match('/<\/?[a-z][a-z0-9]*\b/i', $t);
     }
 }

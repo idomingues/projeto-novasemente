@@ -22,22 +22,22 @@ interface Props {
 
 type PageProps = {
     appUrl?: string;
-    defaultBrandLogoUrl?: string;
 };
 
 export default function PublicationsFeed({ items }: Props) {
     const pageProps = usePage().props as PageProps;
     const appUrl = (pageProps.appUrl ?? '') as string;
-    const brandLogo = pageProps.defaultBrandLogoUrl ?? '/logo-ns.png';
     const [feedItems, setFeedItems] = useState(items.data);
     const [hasMore, setHasMore] = useState(items.has_more);
     const [nextPage, setNextPage] = useState(items.next_page);
     const [loadingMore, setLoadingMore] = useState(false);
+    const [expandedId, setExpandedId] = useState<string | null>(null);
 
     useEffect(() => {
         setFeedItems(items.data);
         setHasMore(items.has_more);
         setNextPage(items.next_page);
+        setExpandedId(null);
     }, [items]);
 
     const loadMore = async () => {
@@ -73,14 +73,6 @@ export default function PublicationsFeed({ items }: Props) {
         <MobileLayout>
             <Head title="Publicações" />
             <div className="mx-auto w-full max-w-lg space-y-5 sm:max-w-xl md:max-w-2xl lg:max-w-3xl">
-                <div className="flex justify-center pt-1">
-                    <img
-                        src={brandLogo}
-                        alt="Nova Semente"
-                        className="h-12 w-12 rounded-full object-cover object-center dark:invert"
-                    />
-                </div>
-
                 {feedItems.length === 0 ? (
                     <div className="py-16 text-center">
                         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
@@ -95,7 +87,15 @@ export default function PublicationsFeed({ items }: Props) {
                     <>
                         <ul className="space-y-4">
                             {feedItems.map((item) => (
-                                <PublicationFeedCard key={item.id} item={item} appUrl={appUrl} />
+                                <PublicationFeedCard
+                                    key={item.id}
+                                    item={item}
+                                    appUrl={appUrl}
+                                    expanded={expandedId === item.id}
+                                    onToggle={() =>
+                                        setExpandedId((current) => (current === item.id ? null : item.id))
+                                    }
+                                />
                             ))}
                         </ul>
 

@@ -793,17 +793,17 @@ class MobileController extends Controller
     private function libraryCategoriesForMobile(?Church $church): array
     {
         $categories = [
-            ['value' => LibraryBook::CATEGORY_MEDITATION, 'label' => 'Meditação Diária'],
-            ['value' => LibraryBook::CATEGORY_LESSON, 'label' => 'Lição'],
-            ['value' => 'sunset_meditation', 'label' => 'Meditação Por do Sol'],
             ['value' => LibraryBook::CATEGORY_BOOKS, 'label' => 'Livros'],
         ];
 
         if ($this->revistaAdventistaAcervoAvailable($church)) {
-            $categories[] = ['value' => 'revista_adventista_acervo', 'label' => 'Acervo Revista'];
+            $categories[] = ['value' => 'revista_adventista_acervo', 'label' => 'Acervo'];
         }
 
         $categories[] = ['value' => LibraryBook::CATEGORY_EGW, 'label' => 'Ellen G. White'];
+        $categories[] = ['value' => LibraryBook::CATEGORY_MEDITATION, 'label' => 'Meditação'];
+        $categories[] = ['value' => 'sunset_meditation', 'label' => 'Meditação Por do Sol'];
+        $categories[] = ['value' => LibraryBook::CATEGORY_LESSON, 'label' => 'Lição'];
 
         return $categories;
     }

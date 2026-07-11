@@ -1,11 +1,11 @@
 import { Link } from '@inertiajs/react';
 import { useAppFeatures } from '@/hooks/useAppFeatures';
 import {
-    HomeIcon as HomeIconSolid,
-    HandRaisedIcon as HandRaisedIconSolid,
-    PlayCircleIcon as PlayCircleIconSolid,
-    BookOpenIcon as BookOpenIconSolid,
-} from '@heroicons/react/24/solid';
+    HomeIcon,
+    HandRaisedIcon,
+    PlayCircleIcon,
+    BookOpenIcon,
+} from '@heroicons/react/24/outline';
 import type { ComponentType, SVGProps } from 'react';
 
 type NavIcon = ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
@@ -98,16 +98,16 @@ const navItems: NavItem[] = [
             'mobile.campaigns.index',
             'mobile.donations.index',
         ],
-        icon: HomeIconSolid,
-        iconActive: HomeIconSolid,
+        icon: HomeIcon,
+        iconActive: HomeIcon,
     },
     {
         name: 'Culto',
         route: 'mobile.culto',
         featureKey: 'culto',
         activeRoutes: ['mobile.culto', 'mobile.culto.show'],
-        icon: PlayCircleIconSolid,
-        iconActive: PlayCircleIconSolid,
+        icon: PlayCircleIcon,
+        iconActive: PlayCircleIcon,
     },
     {
         name: 'Publicações',
@@ -120,16 +120,16 @@ const navItems: NavItem[] = [
         route: 'mobile.prayer',
         featureKey: 'prayer',
         activeRoutes: ['mobile.prayer', 'prayer.index'],
-        icon: HandRaisedIconSolid,
-        iconActive: HandRaisedIconSolid,
+        icon: HandRaisedIcon,
+        iconActive: HandRaisedIcon,
     },
     {
         name: 'Bíblia',
         route: 'mobile.bible',
         featureKey: 'bible',
         activeRoutes: ['mobile.bible', 'mobile.bible.chapter', 'mobile.bible.search', 'mobile.bible.reference'],
-        icon: BookOpenIconSolid,
-        iconActive: BookOpenIconSolid,
+        icon: BookOpenIcon,
+        iconActive: BookOpenIcon,
     },
 ];
 
@@ -188,6 +188,7 @@ export default function MobileBottomNav() {
                                                     : 'h-6 w-6 text-zinc-900 dark:text-zinc-100'
                                             }`}
                                             aria-hidden
+                                            strokeWidth={1.75}
                                         />
                                     ) : null}
                                     <span

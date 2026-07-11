@@ -19,6 +19,7 @@ import {
     NewspaperIcon,
     PhotoIcon,
     PlayCircleIcon,
+    ClipboardDocumentListIcon,
     SparklesIcon,
     UserCircleIcon,
     UserGroupIcon,
@@ -54,6 +55,7 @@ type QuickAction = {
     label: string;
     subtitle: string;
     route?: string;
+    routeParams?: Record<string, string | number>;
     featureKey?: string;
     onClick?: () => void;
     icon: MenuIcon;
@@ -150,6 +152,14 @@ const homeQuickActions: QuickAction[] = [
         route: 'mobile.meditacao-diaria',
         featureKey: 'devotional',
         icon: BookOpenIcon,
+    },
+    {
+        label: 'Lição',
+        subtitle: 'Estudo da lição da escola sabatina',
+        route: 'mobile.biblioteca',
+        routeParams: { tab: 'lesson' },
+        featureKey: 'library',
+        icon: ClipboardDocumentListIcon,
     },
     {
         label: 'Dízimos e Pacto',
@@ -356,7 +366,7 @@ export default function MobileHome({
                                 return <SobreOAppNavItem key="sobre-o-app" variant="home" />;
                             }
 
-                            const { label, subtitle, route: routeName, onClick, icon } = item.action;
+                            const { label, subtitle, route: routeName, routeParams, onClick, icon } = item.action;
                             const content = (
                                 <>
                                     <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200/70 dark:bg-emerald-950/45 dark:text-emerald-200 dark:ring-emerald-800/60">
@@ -382,7 +392,11 @@ export default function MobileHome({
                             if (!routeName) return null;
 
                             return (
-                                <Link key={routeName} href={route(routeName)} className={homeCardClass}>
+                                <Link
+                                    key={label}
+                                    href={route(routeName, routeParams ?? {})}
+                                    className={homeCardClass}
+                                >
                                     {content}
                                 </Link>
                             );
