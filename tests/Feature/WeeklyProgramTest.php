@@ -89,7 +89,7 @@ class WeeklyProgramTest extends TestCase
             'church_id' => $church->id,
             'day_of_week' => 6,
             'when_label' => 'SÁB 9H30',
-            'title' => 'Primeiro Culto',
+            'title' => '1º CULTO',
             'body' => 'Culto semanal',
             'time_mode' => 'fixed',
             'start_time' => '09:30:00',
@@ -144,7 +144,7 @@ class WeeklyProgramTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Mobile/Home')
                 ->has('weeklyProgramCards', 1)
-                ->where('weeklyProgramCards.0.title', 'Primeiro Culto')
+                ->where('weeklyProgramCards.0.title', '1º CULTO')
                 ->where('weeklyProgramCards.0.is_next', true)
             );
 

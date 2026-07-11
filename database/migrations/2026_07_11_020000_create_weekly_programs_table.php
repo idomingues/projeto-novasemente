@@ -67,7 +67,7 @@ return new class extends Migration
             [
                 'day_of_week' => 6,
                 'when_label' => 'SÁB 9H30',
-                'title' => 'Primeiro Culto',
+                'title' => '1º CULTO',
                 'body' => 'Um momento de pausa, reflexão e conexão com Deus. Com música, mensagem e um ambiente preparado pra você viver uma experiência real com Deus.',
                 'lines' => null,
                 'time_mode' => 'fixed',
@@ -80,7 +80,7 @@ return new class extends Migration
             [
                 'day_of_week' => 6,
                 'when_label' => 'SÁB 11H',
-                'title' => 'Estudo',
+                'title' => 'ESTUDO',
                 'body' => null,
                 'lines' => json_encode([
                     'SEMENTINHA 0 a 16 anos',
@@ -97,7 +97,7 @@ return new class extends Migration
             [
                 'day_of_week' => 6,
                 'when_label' => 'SÁB 12H',
-                'title' => 'Segundo Culto',
+                'title' => '2º CULTO',
                 'body' => 'Um momento de pausa, reflexão e conexão com Deus. Com música, mensagem e um ambiente preparado pra você viver uma experiência real com Deus.',
                 'lines' => null,
                 'time_mode' => 'fixed',

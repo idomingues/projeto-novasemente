@@ -28,7 +28,7 @@ return new class extends Migration
         foreach ($combined as $row) {
             DB::table('weekly_programs')->where('id', $row->id)->update([
                 'when_label' => 'SÁB 9H30',
-                'title' => 'Primeiro Culto',
+                'title' => '1º CULTO',
                 'start_time' => '09:30:00',
                 'display_time' => '09:30',
                 'sort_order' => min((int) $row->sort_order, 30),
@@ -41,6 +41,7 @@ return new class extends Migration
                 ->where(function ($q) {
                     $q->where('start_time', '12:00:00')
                         ->orWhere('when_label', 'SÁB 12H')
+                        ->orWhere('title', '2º CULTO')
                         ->orWhere('title', 'Segundo Culto');
                 })
                 ->exists();
@@ -50,7 +51,7 @@ return new class extends Migration
                     'church_id' => $row->church_id,
                     'day_of_week' => 6,
                     'when_label' => 'SÁB 12H',
-                    'title' => 'Segundo Culto',
+                    'title' => '2º CULTO',
                     'body' => $row->body,
                     'lines' => null,
                     'time_mode' => 'fixed',
@@ -74,7 +75,7 @@ return new class extends Migration
             ->where('title', 'CULTO')
             ->where('start_time', '09:30:00')
             ->update([
-                'title' => 'Primeiro Culto',
+                'title' => '1º CULTO',
                 'when_label' => 'SÁB 9H30',
                 'display_time' => '09:30',
                 'updated_at' => $now,
@@ -85,7 +86,7 @@ return new class extends Migration
             ->where('title', 'CULTO')
             ->where('start_time', '12:00:00')
             ->update([
-                'title' => 'Segundo Culto',
+                'title' => '2º CULTO',
                 'when_label' => 'SÁB 12H',
                 'display_time' => '12:00',
                 'updated_at' => $now,

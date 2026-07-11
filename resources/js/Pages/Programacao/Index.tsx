@@ -297,7 +297,7 @@ export default function Index({ items, dayOptions, timeModes, canManage = false 
                                         {item.when_label}
                                         {item.time_mode === 'sunset' ? ' · Pôr do sol' : ''}
                                     </p>
-                                    <h3 className="mt-0.5 font-semibold text-zinc-900 dark:text-white">
+                                    <h3 className="mt-0.5 font-semibold uppercase text-zinc-900 dark:text-white">
                                         {item.title || (item.lines[0] ?? 'Sem título')}
                                     </h3>
                                     <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">

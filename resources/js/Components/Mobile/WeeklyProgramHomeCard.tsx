@@ -113,7 +113,7 @@ export default function WeeklyProgramHomeCard({ card, appUrl = '', isNext = fals
                         }`}
                     >
                         <div className="min-w-0">
-                            <h2 className="text-lg font-bold leading-tight tracking-tight text-emerald-950 dark:text-emerald-50 sm:text-xl">
+                            <h2 className="text-lg font-bold uppercase leading-tight tracking-tight text-emerald-950 dark:text-emerald-50 sm:text-xl">
                                 {card.title}
                             </h2>
 
