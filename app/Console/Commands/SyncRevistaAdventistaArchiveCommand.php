@@ -53,10 +53,11 @@ class SyncRevistaAdventistaArchiveCommand extends Command
         }
 
         $this->info(sprintf(
-            'Concluído: %d criadas, %d atualizadas, %d ignoradas, %d capas baixadas, %d PDFs baixados.',
+            'Concluído: %d criadas, %d atualizadas, %d ignoradas, %d removidas (sem capa/PDF), %d capas baixadas, %d PDFs baixados.',
             $result['created'],
             $result['updated'],
             $result['skipped'],
+            $result['removed'] ?? 0,
             $result['covers_downloaded'],
             $result['pdfs_downloaded'],
         ));

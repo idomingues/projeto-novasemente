@@ -56,7 +56,7 @@ class RevistaAdventistaArchiveSyncService
 
     /**
      * @param  list<int>|null  $years
-     * @return array{ok: bool, created: int, updated: int, skipped: int, covers_downloaded: int, pdfs_downloaded: int, error?: string}
+     * @return array{ok: bool, created: int, updated: int, skipped: int, removed: int, covers_downloaded: int, pdfs_downloaded: int, error?: string}
      */
     public function sync(?array $years = null, bool $cachePdfs = false, bool $forceCovers = false): array
     {
@@ -68,6 +68,7 @@ class RevistaAdventistaArchiveSyncService
                     'created' => 0,
                     'updated' => 0,
                     'skipped' => 0,
+                    'removed' => 0,
                     'covers_downloaded' => 0,
                     'pdfs_downloaded' => 0,
                     'error' => $fetchedYears['error'] ?? 'Falha ao buscar anos disponíveis.',
@@ -85,6 +86,7 @@ class RevistaAdventistaArchiveSyncService
                 'created' => 0,
                 'updated' => 0,
                 'skipped' => 0,
+                'removed' => 0,
                 'covers_downloaded' => 0,
                 'pdfs_downloaded' => 0,
                 'error' => 'Informe ao menos um ano válido.',
@@ -94,6 +96,7 @@ class RevistaAdventistaArchiveSyncService
         $created = 0;
         $updated = 0;
         $skipped = 0;
+        $removed = 0;
         $coversDownloaded = 0;
         $pdfsDownloaded = 0;
 
@@ -105,6 +108,7 @@ class RevistaAdventistaArchiveSyncService
                     'created' => $created,
                     'updated' => $updated,
                     'skipped' => $skipped,
+                    'removed' => $removed,
                     'covers_downloaded' => $coversDownloaded,
                     'pdfs_downloaded' => $pdfsDownloaded,
                     'error' => $fetched['error'] ?? 'Falha ao buscar edições.',
@@ -136,6 +140,19 @@ class RevistaAdventistaArchiveSyncService
 
                 if ($edition === null) {
                     $edition = RevistaAdventistaEdition::query()->where('cpb_edition_id', $cpbId)->first();
+                }
+
+                // Qualquer ano: não importa (e remove) edições com capa/PDF 404 na CPB.
+                if (! $this->remoteAssetsAvailable($mapped)) {
+                    if ($edition !== null) {
+                        $edition->deleteLocalAssets();
+                        $edition->delete();
+                        $removed++;
+                    } else {
+                        $skipped++;
+                    }
+
+                    continue;
                 }
 
                 $isNew = $edition === null;
@@ -177,14 +194,50 @@ class RevistaAdventistaArchiveSyncService
             }
         }
 
+        // Segunda passagem: remove edições já gravadas (qualquer ano) com assets 404.
+        $removed += $this->pruneUnavailableEditions($years);
+
         return [
             'ok' => true,
             'created' => $created,
             'updated' => $updated,
             'skipped' => $skipped,
+            'removed' => $removed,
             'covers_downloaded' => $coversDownloaded,
             'pdfs_downloaded' => $pdfsDownloaded,
         ];
+    }
+
+    /**
+     * Remove edições já gravadas cuja capa ou PDF remoto responde 404.
+     *
+     * @param  list<int>|null  $years
+     */
+    public function pruneUnavailableEditions(?array $years = null): int
+    {
+        $removed = 0;
+
+        $query = RevistaAdventistaEdition::query()->orderBy('id');
+        if ($years !== null && $years !== []) {
+            $query->whereIn('year', $years);
+        }
+
+        $query->chunkById(50, function ($editions) use (&$removed): void {
+            foreach ($editions as $edition) {
+                if ($this->remoteAssetsAvailable([
+                    'source_cover_url' => $edition->source_cover_url,
+                    'source_pdf_url' => $edition->source_pdf_url,
+                ])) {
+                    continue;
+                }
+
+                $edition->deleteLocalAssets();
+                $edition->delete();
+                $removed++;
+            }
+        });
+
+        return $removed;
     }
 
     /**
@@ -194,6 +247,46 @@ class RevistaAdventistaArchiveSyncService
     public function mapEdition(array $item): ?array
     {
         return $this->catalog->normalizeEdition($item);
+    }
+
+    /**
+     * @param  array<string, mixed>  $mapped
+     */
+    private function remoteAssetsAvailable(array $mapped): bool
+    {
+        $coverUrl = trim((string) ($mapped['source_cover_url'] ?? ''));
+        $pdfUrl = trim((string) ($mapped['source_pdf_url'] ?? ''));
+
+        if ($coverUrl === '' || $pdfUrl === '') {
+            return false;
+        }
+
+        return $this->remoteUrlExists($coverUrl) && $this->remoteUrlExists($pdfUrl);
+    }
+
+    private function remoteUrlExists(string $url): bool
+    {
+        try {
+            $head = Http::timeout(20)
+                ->withHeaders(['User-Agent' => 'NovaSemente/1.0 (revista-adventista archive)'])
+                ->head($url);
+
+            if ($head->successful()) {
+                return true;
+            }
+
+            // Alguns CDNs respondem mal a HEAD; confirma com GET curto.
+            $get = Http::timeout(20)
+                ->withHeaders([
+                    'User-Agent' => 'NovaSemente/1.0 (revista-adventista archive)',
+                    'Range' => 'bytes=0-0',
+                ])
+                ->get($url);
+
+            return $get->successful() || $get->status() === 206;
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     private function downloadCover(string $url, int $year, int $month): ?string

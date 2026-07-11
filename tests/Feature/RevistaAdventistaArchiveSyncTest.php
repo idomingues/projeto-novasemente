@@ -69,6 +69,7 @@ class RevistaAdventistaArchiveSyncTest extends TestCase
 
         Http::fake([
             RevistaAdventistaArchiveCatalogService::API_BASE.'/edicao*' => Http::response($this->sampleEditions1906(), 200),
+            RevistaAdventistaArchiveCatalogService::STORAGE_BASE.'*' => Http::response('', 200),
         ]);
 
         $result = app(RevistaAdventistaArchiveSyncService::class)->sync([1906]);
@@ -95,13 +96,71 @@ class RevistaAdventistaArchiveSyncTest extends TestCase
         );
     }
 
+    public function test_sync_skips_editions_with_missing_remote_assets(): void
+    {
+        Storage::fake('public');
+
+        Http::fake(function (\Illuminate\Http\Client\Request $request) {
+            $url = $request->url();
+
+            if (str_contains($url, '/edicao')) {
+                return Http::response([
+                    [
+                        'id_edicao' => 1760,
+                        'ano' => 2026,
+                        'mes' => 'M01',
+                        'capa' => '2026_M01_web.jpg',
+                        'arquivo' => '2026_M01.pdf',
+                        'ativo' => true,
+                    ],
+                    [
+                        'id_edicao' => 1761,
+                        'ano' => 2026,
+                        'mes' => 'M02',
+                        'capa' => '2026_M02.jpg',
+                        'arquivo' => '2026_M02.pdf',
+                        'ativo' => true,
+                    ],
+                ], 200);
+            }
+
+            if (str_contains($url, '2026_M01')) {
+                return Http::response('', 200);
+            }
+
+            return Http::response('', 404);
+        });
+
+        $orphan = RevistaAdventistaEdition::query()->create([
+            'source' => RevistaAdventistaEdition::SOURCE_CPB,
+            'source_edition_id' => '1761',
+            'cpb_edition_id' => 1761,
+            'year' => 2026,
+            'month_code' => 'M02',
+            'month' => 2,
+            'title' => 'Fevereiro de 2026',
+            'source_cover_url' => RevistaAdventistaArchiveCatalogService::STORAGE_BASE.'2026_M02.jpg',
+            'source_pdf_url' => RevistaAdventistaArchiveCatalogService::STORAGE_BASE.'2026_M02.pdf',
+            'is_active' => true,
+            'synced_at' => now(),
+        ]);
+
+        $result = app(RevistaAdventistaArchiveSyncService::class)->sync([2026]);
+
+        $this->assertTrue($result['ok']);
+        $this->assertSame(1, $result['created']);
+        $this->assertSame(1, $result['removed']);
+        $this->assertDatabaseHas('revista_adventista_editions', ['cpb_edition_id' => 1760]);
+        $this->assertDatabaseMissing('revista_adventista_editions', ['id' => $orphan->id]);
+    }
+
     public function test_sync_downloads_covers_only_when_forced(): void
     {
         Storage::fake('public');
 
         Http::fake([
             RevistaAdventistaArchiveCatalogService::API_BASE.'/edicao*' => Http::response([$this->sampleEditions1906()[0]], 200),
-            RevistaAdventistaArchiveCatalogService::STORAGE_BASE.'1906_M01_web.jpg' => Http::response('cover-bytes', 200, ['Content-Type' => 'image/jpeg']),
+            RevistaAdventistaArchiveCatalogService::STORAGE_BASE.'*' => Http::response('cover-bytes', 200, ['Content-Type' => 'image/jpeg']),
         ]);
 
         $result = app(RevistaAdventistaArchiveSyncService::class)->sync([1906], forceCovers: true);

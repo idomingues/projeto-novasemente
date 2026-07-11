@@ -239,10 +239,11 @@ class RevistaAdventistaArticleController extends Controller
         return back()->with(
             'success',
             sprintf(
-                'Acervo sincronizado: %d novas, %d atualizadas, %d ignoradas, %d capas baixadas, %d PDFs baixados.',
+                'Acervo sincronizado: %d novas, %d atualizadas, %d ignoradas, %d removidas (sem capa/PDF), %d capas baixadas, %d PDFs baixados.',
                 $result['created'],
                 $result['updated'],
                 $result['skipped'],
+                $result['removed'] ?? 0,
                 $result['covers_downloaded'],
                 $result['pdfs_downloaded'],
             ),

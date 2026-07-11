@@ -880,6 +880,10 @@ class MobileController extends Controller
         $baseUrl = $request->getSchemeAndHttpHost();
         $availableYears = RevistaAdventistaEdition::query()
             ->where('is_active', true)
+            ->whereNotNull('source_cover_url')
+            ->where('source_cover_url', '!=', '')
+            ->whereNotNull('source_pdf_url')
+            ->where('source_pdf_url', '!=', '')
             ->select('year')
             ->distinct()
             ->orderByDesc('year')
@@ -900,9 +904,14 @@ class MobileController extends Controller
         $editions = RevistaAdventistaEdition::query()
             ->where('is_active', true)
             ->where('year', $selectedYear)
+            ->whereNotNull('source_cover_url')
+            ->where('source_cover_url', '!=', '')
+            ->whereNotNull('source_pdf_url')
+            ->where('source_pdf_url', '!=', '')
             ->orderBy('month')
             ->get()
             ->map(fn (RevistaAdventistaEdition $edition) => $this->mapRevistaAdventistaEditionForMobile($edition, $baseUrl))
+            ->filter(fn (array $edition) => filled($edition['cover_url'] ?? null) && ($edition['has_pdf'] ?? false))
             ->values()
             ->all();
 
