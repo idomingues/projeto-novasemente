@@ -392,7 +392,7 @@ export default function Index({ items, dayOptions, timeModes, canManage = false 
                             value={data.when_label}
                             onChange={(e) => setData('when_label', e.target.value)}
                             className="mt-1 block w-full"
-                            placeholder="SÁB 9H30 e 12H"
+                            placeholder="SÁB 9H30"
                         />
                         <InputError message={errors.when_label} className="mt-1" />
                     </div>
@@ -465,7 +465,7 @@ export default function Index({ items, dayOptions, timeModes, canManage = false 
                                     value={data.display_time}
                                     onChange={(e) => setData('display_time', e.target.value)}
                                     className="mt-1 block w-full"
-                                    placeholder="9h30 / 12h"
+                                    placeholder="09:30"
                                 />
                                 <InputError message={errors.display_time} className="mt-1" />
                             </div>
