@@ -17,7 +17,7 @@ import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 import InstagramViewLink from '@/Components/News/InstagramViewLink';
 import VideoPlayOverlay from '@/Components/News/VideoPlayOverlay';
 import type { ComponentType, SVGProps } from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 
 export type PublicationFeedItem = {
     id: string;
@@ -164,7 +164,6 @@ export default function PublicationFeedCard({ item, appUrl, expanded, onToggle }
     const showCover = Boolean(src) && !coverBroken;
     const isPrayer = item.type === 'prayer';
     const isNews = item.type === 'news' || item.type === 'health';
-    const cardRef = useRef<HTMLLIElement>(null);
     const fullText = (item.body ?? item.excerpt ?? '').trim();
     const previewText = (item.excerpt || fullText).trim();
     const fullPlain = stripHtml(fullText);
@@ -178,16 +177,6 @@ export default function PublicationFeedCard({ item, appUrl, expanded, onToggle }
         (showInstagram || showOpenCta || fullPlain.length > 0);
     const isExpanded = canExpand && expanded;
     const navigateHref = !canExpand && item.href ? item.href : null;
-
-    useEffect(() => {
-        if (!isExpanded || !cardRef.current) {
-            return;
-        }
-        const id = window.setTimeout(() => {
-            cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }, 80);
-        return () => window.clearTimeout(id);
-    }, [isExpanded]);
 
     const body = (
             <article
@@ -326,7 +315,7 @@ export default function PublicationFeedCard({ item, appUrl, expanded, onToggle }
     );
 
     return (
-        <li ref={cardRef}>
+        <li>
             {navigateHref ? (
                 <Link href={navigateHref} className="block cursor-pointer">
                     {body}
