@@ -32,30 +32,39 @@ class WeeklyProgramService
     }
 
     /**
-     * Cards da home em sequência a partir do próximo (carrossel).
+     * Cards da home: só itens do dia de hoje (carrossel na sequência do horário).
      *
      * @return list<array<string, mixed>>
      */
     public function homeCards(?Church $church): array
     {
+        $timezone = (string) config('sabbath.timezone', 'America/Sao_Paulo');
+        $now = Carbon::now($timezone);
+        $todayDow = (int) $now->dayOfWeek;
+
         $candidates = $this->activeForChurch($church)
-            ->filter(fn (WeeklyProgram $item) => $item->show_on_home);
+            ->filter(fn (WeeklyProgram $item) => $item->show_on_home)
+            ->filter(fn (WeeklyProgram $item) => (int) $item->day_of_week === $todayDow);
 
         if ($candidates->isEmpty()) {
             return [];
         }
 
-        $timezone = (string) config('sabbath.timezone', 'America/Sao_Paulo');
-        $now = Carbon::now($timezone);
-
         $ordered = $candidates
             ->map(fn (WeeklyProgram $item) => [
                 'item' => $item,
-                'at' => $this->nextOccurrenceAt($item, $now, $timezone),
+                'at' => $this->occurrenceOnDate($item, $now->copy()->startOfDay(), $timezone),
             ])
             ->filter(fn (array $row) => $row['at'] instanceof Carbon)
             ->sortBy(fn (array $row) => $row['at']->getTimestamp())
             ->values();
+
+        $nextIndex = $ordered->search(
+            fn (array $row) => $row['at']->gt($now)
+        );
+        if ($nextIndex === false) {
+            $nextIndex = 0;
+        }
 
         $cards = [];
         foreach ($ordered as $index => $row) {
@@ -65,7 +74,7 @@ class WeeklyProgramService
             if ($card === null) {
                 continue;
             }
-            $card['is_next'] = $index === 0;
+            $card['is_next'] = $index === (int) $nextIndex;
             $cards[] = $card;
         }
 
@@ -88,24 +97,6 @@ class WeeklyProgramService
             ->orderBy('day_of_week')
             ->orderBy('id')
             ->get();
-    }
-
-    private function nextOccurrenceAt(WeeklyProgram $item, Carbon $now, string $timezone): ?Carbon
-    {
-        $weekStart = $now->copy()->startOfWeek(Carbon::SUNDAY);
-        $thisWeekDate = $weekStart->copy()->addDays((int) $item->day_of_week);
-
-        $occurrence = $this->occurrenceOnDate($item, $thisWeekDate, $timezone);
-        if ($occurrence === null) {
-            return null;
-        }
-
-        if ($occurrence->lte($now)) {
-            $nextWeekDate = $thisWeekDate->copy()->addWeek();
-            $occurrence = $this->occurrenceOnDate($item, $nextWeekDate, $timezone);
-        }
-
-        return $occurrence;
     }
 
     private function occurrenceOnDate(WeeklyProgram $item, Carbon $date, string $timezone): ?Carbon

@@ -65,16 +65,13 @@ class WeeklyProgramTest extends TestCase
         ]);
     }
 
-    public function test_home_includes_weekly_program_carousel_from_next(): void
+    public function test_home_shows_weekly_program_only_on_event_day(): void
     {
         config([
             'sabbath.latitude' => -23.574389,
             'sabbath.longitude' => -46.644722,
             'sabbath.timezone' => 'America/Sao_Paulo',
         ]);
-
-        // Quinta 10h — próximo é sexta (pôr do sol), depois o culto de sábado.
-        Carbon::setTestNow(Carbon::parse('2026-07-09 10:00:00', 'America/Sao_Paulo'));
 
         Http::fake([
             'api.sunrise-sunset.org/*' => Http::response([
@@ -116,18 +113,39 @@ class WeeklyProgramTest extends TestCase
             'sort_order' => 2,
         ]);
 
+        // Quinta — nenhum item do dia.
+        Carbon::setTestNow(Carbon::parse('2026-07-09 10:00:00', 'America/Sao_Paulo'));
         $this->withSession(['working_church_id' => $church->id])
             ->get(route('mobile.home'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Mobile/Home')
-                ->has('weeklyProgramCards', 2)
+                ->has('weeklyProgramCards', 0)
+            );
+
+        // Sexta — só o pôr do sol.
+        Carbon::setTestNow(Carbon::parse('2026-07-10 10:00:00', 'America/Sao_Paulo'));
+        $this->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.home'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Mobile/Home')
+                ->has('weeklyProgramCards', 1)
                 ->where('weeklyProgramCards.0.title', 'INÍCIO DO SÁBADO')
                 ->where('weeklyProgramCards.0.is_next', true)
-                ->where('weeklyProgramCards.0.variant', 'sunset')
                 ->where('weeklyProgramCards.0.time_display', '17:36')
-                ->where('weeklyProgramCards.1.title', 'CULTO')
-                ->where('weeklyProgramCards.1.is_next', false)
+            );
+
+        // Sábado — só o culto.
+        Carbon::setTestNow(Carbon::parse('2026-07-11 08:00:00', 'America/Sao_Paulo'));
+        $this->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.home'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Mobile/Home')
+                ->has('weeklyProgramCards', 1)
+                ->where('weeklyProgramCards.0.title', 'CULTO')
+                ->where('weeklyProgramCards.0.is_next', true)
             );
 
         Carbon::setTestNow();
