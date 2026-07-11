@@ -13,7 +13,6 @@ import {
     PlayCircleIcon,
     SparklesIcon,
 } from '@heroicons/react/24/outline';
-import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 import InstagramViewLink from '@/Components/News/InstagramViewLink';
 import VideoPlayOverlay from '@/Components/News/VideoPlayOverlay';
 import type { ComponentType, SVGProps } from 'react';
@@ -43,7 +42,6 @@ type MenuIcon = ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
 const TYPE_ICONS: Record<string, MenuIcon> = {
     news: NewspaperIcon,
     culto: FilmIcon,
-    prayer: PrayingHandsIcon,
     health: HeartIcon,
     charity_donation: BanknotesIcon,
     library: BookOpenIcon,
@@ -58,7 +56,6 @@ const TYPE_ICONS: Record<string, MenuIcon> = {
 const TYPE_TAG_STYLES: Record<string, string> = {
     news: 'bg-teal-50 text-teal-800 dark:bg-teal-950/50 dark:text-teal-200',
     culto: 'bg-violet-50 text-violet-800 dark:bg-violet-950/50 dark:text-violet-200',
-    prayer: 'bg-sky-50 text-sky-800 dark:bg-sky-950/50 dark:text-sky-200',
     health: 'bg-rose-50 text-rose-800 dark:bg-rose-950/50 dark:text-rose-200',
     charity_donation: 'bg-amber-50 text-amber-900 dark:bg-amber-950/50 dark:text-amber-200',
     library: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200',
@@ -72,8 +69,6 @@ const TYPE_TAG_STYLES: Record<string, string> = {
 
 const DEFAULT_TAG_STYLE = 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300';
 const DEFAULT_ICON = SparklesIcon;
-const PRAYER_COVER_TAGLINE = 'Alguém precisa da sua oração';
-const PRAYER_COVER_BG = '#1c1c1c';
 
 function imageSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
@@ -111,43 +106,12 @@ function PublicationFeedTypeTag({ type, label }: { type: string; label: string }
     );
 }
 
-function PrayerCover({
-    src,
-    onError,
-    showLogo,
-}: {
-    src: string;
-    onError: () => void;
-    showLogo: boolean;
-}) {
-    return (
-        <div
-            className="flex aspect-[16/9] flex-col items-center justify-center gap-3 px-6"
-            style={{ backgroundColor: PRAYER_COVER_BG }}
-        >
-            {showLogo ? (
-                <img
-                    src={src}
-                    alt=""
-                    className="max-h-20 max-w-[55%] object-contain"
-                    loading="lazy"
-                    decoding="async"
-                    onError={onError}
-                />
-            ) : (
-                <PrayingHandsIcon className="h-12 w-12 text-white/70" aria-hidden />
-            )}
-            <p className="text-center text-sm font-medium text-white/85">{PRAYER_COVER_TAGLINE}</p>
-        </div>
-    );
-}
-
 function stripHtml(text: string): string {
     return text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 /** Tipos com leitura inline no feed; os demais só navegam (sem ícone de expandir). */
-const EXPANDABLE_TYPES = new Set(['news', 'health', 'revista', 'prayer']);
+const EXPANDABLE_TYPES = new Set(['news', 'health', 'revista']);
 
 type Props = {
     item: PublicationFeedItem;
@@ -162,7 +126,6 @@ export default function PublicationFeedCard({ item, appUrl, expanded, onToggle }
     const meta = item.meta ?? [];
     const [coverBroken, setCoverBroken] = useState(false);
     const showCover = Boolean(src) && !coverBroken;
-    const isPrayer = item.type === 'prayer';
     const isNews = item.type === 'news' || item.type === 'health';
     const fullText = (item.body ?? item.excerpt ?? '').trim();
     const previewText = (item.excerpt || fullText).trim();
@@ -186,9 +149,7 @@ export default function PublicationFeedCard({ item, appUrl, expanded, onToggle }
                         : ''
                 }`}
             >
-                {isPrayer ? (
-                    <PrayerCover src={src} showLogo={showCover} onError={() => setCoverBroken(true)} />
-                ) : showCover ? (
+                {showCover ? (
                     <div
                         className={`relative overflow-hidden bg-zinc-100 dark:bg-zinc-800 ${
                             isNews ? '' : 'aspect-[16/9]'
@@ -219,27 +180,17 @@ export default function PublicationFeedCard({ item, appUrl, expanded, onToggle }
                         <PublicationFeedTypeTag type={item.type} label={item.type_label} />
                     </div>
 
-                    {isPrayer ? (
-                        <p className="text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-                            {isExpanded
-                                ? 'Pedido de oração da comunidade.'
-                                : canExpand
-                                  ? 'Toque no ícone para ler o pedido.'
-                                  : 'Pedido de oração da comunidade.'}
-                        </p>
-                    ) : (
-                        <h2 className="line-clamp-2 text-base font-semibold leading-snug text-zinc-900 dark:text-white">
-                            {item.title}
-                        </h2>
-                    )}
+                    <h2 className="line-clamp-2 text-base font-semibold leading-snug text-zinc-900 dark:text-white">
+                        {item.title}
+                    </h2>
 
-                    {!isExpanded && previewText && !isPrayer ? (
+                    {!isExpanded && previewText ? (
                         <p className="line-clamp-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
                             {previewPlain}
                         </p>
                     ) : null}
 
-                    {!isExpanded && meta.length > 0 && !isPrayer ? (
+                    {!isExpanded && meta.length > 0 ? (
                         <p className="text-xs text-zinc-500 dark:text-zinc-500">{meta.join(' · ')}</p>
                     ) : null}
 

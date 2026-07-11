@@ -147,14 +147,16 @@ export default function MobileLibrary({
     librarySetupMessage = null,
     revistaAdventistaAcervo = null,
 }: Props) {
-    const appUrl = (usePage().props as PageProps).appUrl ?? '';
+    const page = usePage();
+    const appUrl = (page.props as PageProps).appUrl ?? '';
     const viewerFragment = usePdfViewerFragment();
-    const initialTab = useMemo(() => {
-        if (typeof window === 'undefined') return '';
-        const t = new URL(window.location.href).searchParams.get('tab')?.trim().toLowerCase() ?? '';
+    const tabFromUrl = useMemo(() => {
+        const raw = String(page.url ?? '');
+        const qs = raw.includes('?') ? raw.slice(raw.indexOf('?') + 1) : '';
+        const t = new URLSearchParams(qs).get('tab')?.trim().toLowerCase() ?? '';
         return categories.some((c) => c.value === t) ? t : '';
-    }, [categories]);
-    const [tab, setTab] = useState<string>(initialTab || categories[0]?.value || 'books');
+    }, [page.url, categories]);
+    const [tab, setTab] = useState<string>(() => tabFromUrl || categories[0]?.value || 'books');
     const [search, setSearch] = useState('');
     const [selectedDetails, setSelectedDetails] = useState<BookItem | null>(null);
     const [readerStatus, setReaderStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
@@ -168,6 +170,12 @@ export default function MobileLibrary({
     const handleLessonNoteSlugsChange = useCallback((slugs: string[]) => {
         setLessonNoteSlugs(slugs);
     }, []);
+
+    useEffect(() => {
+        if (tabFromUrl) {
+            setTab(tabFromUrl);
+        }
+    }, [tabFromUrl]);
 
     const meditationUrl = String(meditationUrlProp ?? '').trim();
     const lessonUrl = String(lessonUrlProp ?? '').trim();
@@ -361,16 +369,16 @@ export default function MobileLibrary({
                                 aria-label={c.label}
                                 onClick={() => {
                                     setTab(c.value);
-                                    if (c.value === 'revista_adventista_acervo') {
-                                        router.get(
-                                            route('mobile.biblioteca'),
-                                            {
-                                                tab: c.value,
-                                                ano: revistaAdventistaAcervo?.selectedYear,
-                                            },
-                                            { preserveState: true, replace: true },
-                                        );
-                                    }
+                                    router.get(
+                                        route('mobile.biblioteca'),
+                                        c.value === 'revista_adventista_acervo'
+                                            ? {
+                                                  tab: c.value,
+                                                  ano: revistaAdventistaAcervo?.selectedYear,
+                                              }
+                                            : { tab: c.value },
+                                        { preserveState: true, replace: true },
+                                    );
                                 }}
                                 className={`flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-3 text-center transition active:scale-[0.98] ${
                                     active

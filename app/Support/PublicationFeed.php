@@ -11,7 +11,6 @@ use App\Models\LibraryBook;
 use App\Models\Musica;
 use App\Models\News;
 use App\Models\PhotoAlbum;
-use App\Models\PrayerRequest;
 use App\Models\RevistaAdventistaArticle;
 use App\Services\DriveFolderCoverService;
 use Carbon\Carbon;
@@ -36,12 +35,6 @@ class PublicationFeed
             'feature' => 'culto',
             'description' => 'Gravação ou transmissão de culto para assistir no app.',
             'action' => 'Assistir culto',
-        ],
-        'prayer' => [
-            'label' => 'Pedido de Oração',
-            'feature' => 'prayer',
-            'description' => 'Pedido da comunidade para orarmos juntos.',
-            'action' => 'Ver pedido',
         ],
         'health' => [
             'label' => 'Saúde',
@@ -230,7 +223,6 @@ class PublicationFeed
                 'news' => self::collectNews($church, $churchId, News::SECTION_NEWS, 'news', $baseUrl),
                 'health' => self::collectNews($church, $churchId, News::SECTION_HEALTH, 'health', $baseUrl),
                 'culto' => self::collectCultos($church, $churchId, $baseUrl),
-                'prayer' => self::collectPrayerRequests($church, $churchId, $baseUrl),
                 'charity_donation' => self::collectCharityCampaigns($church, $churchId, $baseUrl),
                 'library' => self::collectLibraryBooks($church, $churchId, $baseUrl),
                 'photos' => self::collectPhotoAlbums($church, $churchId, $driveCover, $baseUrl),
@@ -335,40 +327,6 @@ class PublicationFeed
                 body: 'Assista à gravação ou transmissão deste culto quando quiser.',
                 requiresOpen: true,
             ));
-    }
-
-    /**
-     * @return Collection<int, array<string, mixed>>
-     */
-    private static function collectPrayerRequests(?Church $church, ?int $churchId, string $baseUrl): Collection
-    {
-        if ($churchId === null) {
-            return collect();
-        }
-
-        return PrayerRequest::query()
-            ->where('church_id', $churchId)
-            ->where('active', true)
-            ->where('needs_review', false)
-            ->orderByDesc('created_at')
-            ->limit(100)
-            ->get()
-            ->map(function (PrayerRequest $prayer) use ($church, $baseUrl) {
-                return self::entry(
-                    type: 'prayer',
-                    typeLabel: self::TYPE_DEFINITIONS['prayer']['label'],
-                    pk: $prayer->id,
-                    title: 'Alguém precisa da sua oração',
-                    excerpt: '',
-                    imageUrl: PublicationFeedCoverResolver::forPrayer($church, $baseUrl),
-                    publishedAt: $prayer->created_at,
-                    href: route('mobile.prayer', absolute: false),
-                    meta: [],
-                    allowExcerptFallback: false,
-                    body: trim((string) ($prayer->request ?? '')),
-                    requiresOpen: true,
-                );
-            });
     }
 
     /**

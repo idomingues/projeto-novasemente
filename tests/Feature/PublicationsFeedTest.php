@@ -187,7 +187,7 @@ class PublicationsFeedTest extends TestCase
             ->assertJsonCount(7, 'data');
     }
 
-    public function test_prayer_item_does_not_expose_request_content_in_feed(): void
+    public function test_prayer_items_are_not_included_in_feed(): void
     {
         config(['publications_feed.preview_only' => false]);
 
@@ -211,12 +211,15 @@ class PublicationsFeedTest extends TestCase
 
         $this->actingAs($user)
             ->withSession(['working_church_id' => $church->id])
-            ->get(route('mobile.publications-feed', ['type' => 'prayer']))
+            ->get(route('mobile.publications-feed'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('items.data.0.title', 'Alguém precisa da sua oração')
-                ->where('items.data.0.excerpt', '')
-                ->where('items.data.0.meta', []));
+                ->where('items.data', fn ($items) => collect($items)->every(
+                    fn ($item) => ($item['type'] ?? null) !== 'prayer'
+                ))
+                ->where('typeOptions', fn ($options) => collect($options)->every(
+                    fn ($option) => ($option['value'] ?? null) !== 'prayer'
+                )));
     }
 
     public function test_news_item_links_to_detail_page(): void

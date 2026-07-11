@@ -394,7 +394,11 @@ export default function MobileHome({
                             return (
                                 <Link
                                     key={label}
-                                    href={route(routeName, routeParams ?? {})}
+                                    href={
+                                        routeParams
+                                            ? route(routeName, routeParams)
+                                            : route(routeName)
+                                    }
                                     className={homeCardClass}
                                 >
                                     {content}
