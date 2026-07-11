@@ -121,8 +121,8 @@ export default function MobileCulto({ cultos, liveCulto = null, showPostRegistra
         <MobileLayout>
             <Head title="Culto" />
             <div className="space-y-6">
-                <Link href={route('mobile.more')} className="text-sm text-zinc-500 underline dark:text-zinc-400">
-                    ← Mais
+                <Link href={route('mobile.home')} className="text-sm text-zinc-500 underline dark:text-zinc-400">
+                    ← Início
                 </Link>
                 {showPostRegistrationBanner ? (
                     <div

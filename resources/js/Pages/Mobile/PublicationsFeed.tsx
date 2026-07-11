@@ -7,7 +7,7 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, router, usePage } from '@inertiajs/react';
 import { AdjustmentsHorizontalIcon, ArrowsUpDownIcon, NewspaperIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 type TypeOption = { value: string; label: string; description?: string };
 
@@ -63,7 +63,6 @@ export default function PublicationsFeed({ items, typeOptions, filters }: Props)
     const [hasMore, setHasMore] = useState(items.has_more);
     const [nextPage, setNextPage] = useState(items.next_page);
     const [loadingMore, setLoadingMore] = useState(false);
-    const sentinelRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (filterOpen) {
@@ -85,7 +84,7 @@ export default function PublicationsFeed({ items, typeOptions, filters }: Props)
         [filters.sort],
     );
 
-    const loadMore = useCallback(async () => {
+    const loadMore = async () => {
         if (loadingMore || !hasMore || nextPage === null) {
             return;
         }
@@ -112,27 +111,7 @@ export default function PublicationsFeed({ items, typeOptions, filters }: Props)
         } finally {
             setLoadingMore(false);
         }
-    }, [filters, hasMore, loadingMore, nextPage]);
-
-    useEffect(() => {
-        const sentinel = sentinelRef.current;
-        if (!sentinel || !hasMore) {
-            return undefined;
-        }
-
-        const observer = new IntersectionObserver(
-            (entries) => {
-                if (entries.some((entry) => entry.isIntersecting)) {
-                    void loadMore();
-                }
-            },
-            { rootMargin: '240px' },
-        );
-
-        observer.observe(sentinel);
-
-        return () => observer.disconnect();
-    }, [hasMore, loadMore]);
+    };
 
     const applyFilters = () => {
         router.get(route('mobile.publications-feed'), feedQueryParams({ type: draftType || null, sort: filters.sort }), {
@@ -200,7 +179,7 @@ export default function PublicationsFeed({ items, typeOptions, filters }: Props)
     return (
         <MobileLayout>
             <Head title="Publicações" />
-            <div className="mx-auto w-full max-w-lg space-y-6 sm:max-w-xl md:max-w-2xl lg:max-w-3xl">
+            <div className="mx-auto w-full max-w-lg space-y-5 sm:max-w-xl md:max-w-2xl lg:max-w-3xl">
                 <PageHeader title="Publicações" actions={listControls} />
 
                 {filters.type ? (
@@ -217,9 +196,9 @@ export default function PublicationsFeed({ items, typeOptions, filters }: Props)
                 ) : null}
 
                 {feedItems.length === 0 ? (
-                    <div className="py-12 text-center">
-                        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-100 dark:bg-zinc-800">
-                            <NewspaperIcon className="h-8 w-8 text-zinc-400 dark:text-zinc-500" aria-hidden />
+                    <div className="py-16 text-center">
+                        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+                            <NewspaperIcon className="h-7 w-7 text-zinc-400 dark:text-zinc-500" aria-hidden />
                         </div>
                         <p className="font-medium text-zinc-600 dark:text-zinc-400">Nenhuma publicação</p>
                         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">
@@ -237,18 +216,21 @@ export default function PublicationsFeed({ items, typeOptions, filters }: Props)
                         </ul>
 
                         {hasMore ? (
-                            <div
-                                ref={sentinelRef}
-                                className="flex items-center justify-center py-4"
-                                aria-hidden={!loadingMore}
-                            >
-                                {loadingMore ? (
-                                    <p className="text-sm text-zinc-500 dark:text-zinc-400">Carregando…</p>
-                                ) : (
-                                    <span className="h-1 w-1 opacity-0">.</span>
-                                )}
+                            <div className="flex justify-center pt-2 pb-6">
+                                <button
+                                    type="button"
+                                    onClick={() => void loadMore()}
+                                    disabled={loadingMore}
+                                    className="cursor-pointer rounded-full border border-zinc-200 bg-white px-6 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
+                                >
+                                    {loadingMore ? 'Carregando…' : 'Mais'}
+                                </button>
                             </div>
-                        ) : null}
+                        ) : (
+                            <p className="pb-6 pt-1 text-center text-xs text-zinc-400 dark:text-zinc-500">
+                                Você viu tudo por aqui
+                            </p>
+                        )}
                     </>
                 )}
             </div>

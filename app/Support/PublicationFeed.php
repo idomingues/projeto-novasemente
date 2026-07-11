@@ -14,7 +14,6 @@ use App\Models\News;
 use App\Models\PhotoAlbum;
 use App\Models\PrayerRequest;
 use App\Models\RevistaAdventistaArticle;
-use App\Models\TalentListing;
 use App\Services\DriveFolderCoverService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -81,12 +80,6 @@ class PublicationFeed
             'description' => 'Artigo da Revista Adventista para ler no app.',
             'action' => 'Ler artigo',
         ],
-        'talents' => [
-            'label' => 'Central de Serviços',
-            'feature' => 'talents',
-            'description' => 'Anúncio de serviço, habilidade ou apoio entre membros.',
-            'action' => 'Ver anúncio',
-        ],
         'acervo' => [
             'label' => 'Novas Séries',
             'feature' => 'acervo',
@@ -141,7 +134,6 @@ class PublicationFeed
      */
     public static function paginatedForRequest(Request $request, ?int $churchId, ?int $perPage = null): array
     {
-        $perPage = $perPage ?? self::PER_PAGE;
         $page = max(1, (int) $request->query('page', 1));
         $church = $churchId !== null ? Church::query()->find($churchId) : null;
         $typeFilter = trim((string) $request->query('type', ''));
@@ -158,16 +150,15 @@ class PublicationFeed
         $items = self::collectItems($church, $churchId, $typeFilter, $baseUrl, $driveCover);
         $items = self::sortItems($items, $sort);
 
-        $total = $items->count();
-        $slice = $items->slice(($page - 1) * $perPage, $perPage)->values()->all();
-        $hasMore = $page * $perPage < $total;
+        // Página 1: todos do mês atual (mín. 10). Demais páginas: +10.
+        [$slice, $hasMore, $nextPage] = self::paginateForFeed($items, $page, $sort);
 
         return [
             'items' => [
                 'data' => $slice,
                 'current_page' => $page,
                 'has_more' => $hasMore,
-                'next_page' => $hasMore ? $page + 1 : null,
+                'next_page' => $nextPage,
             ],
             'typeOptions' => self::typeOptionsForChurch($church),
             'filters' => [
@@ -175,6 +166,51 @@ class PublicationFeed
                 'sort' => $sort,
             ],
         ];
+    }
+
+    /**
+     * @param  Collection<int, array<string, mixed>>  $items
+     * @return array{0: list<array<string, mixed>>, 1: bool, 2: int|null}
+     */
+    private static function paginateForFeed(Collection $items, int $page, string $sort): array
+    {
+        $total = $items->count();
+        if ($total === 0) {
+            return [[], false, null];
+        }
+
+        $firstPageSize = self::PER_PAGE;
+        if ($sort === 'recent') {
+            $monthStart = Carbon::now('America/Sao_Paulo')->startOfMonth();
+            $monthCount = $items->filter(function (array $item) use ($monthStart) {
+                $at = $item['published_at'] ?? null;
+                if (! is_string($at) || $at === '') {
+                    return false;
+                }
+
+                try {
+                    return Carbon::parse($at)->timezone('America/Sao_Paulo')->gte($monthStart);
+                } catch (\Throwable) {
+                    return false;
+                }
+            })->count();
+
+            // Todos do mês, ou pelo menos as 10 mais recentes.
+            $firstPageSize = max(self::PER_PAGE, $monthCount);
+        }
+
+        if ($page <= 1) {
+            $slice = $items->take($firstPageSize)->values()->all();
+            $hasMore = $total > $firstPageSize;
+
+            return [$slice, $hasMore, $hasMore ? 2 : null];
+        }
+
+        $offset = $firstPageSize + ($page - 2) * self::PER_PAGE;
+        $slice = $items->slice($offset, self::PER_PAGE)->values()->all();
+        $hasMore = $offset + self::PER_PAGE < $total;
+
+        return [$slice, $hasMore, $hasMore ? $page + 1 : null];
     }
 
     /**
@@ -207,7 +243,6 @@ class PublicationFeed
                 'photos' => self::collectPhotoAlbums($church, $churchId, $driveCover, $baseUrl),
                 'events' => self::collectEvents($church, $churchId, $baseUrl),
                 'revista' => self::collectRevistaArticles($church, $baseUrl),
-                'talents' => self::collectTalentListings($church, $churchId, $baseUrl),
                 'acervo' => self::collectAcervoItems($church, $baseUrl),
                 'musica' => self::collectMusicas($church, $churchId, $baseUrl),
                 'donation_campaign' => self::collectDonationCampaigns($church, $churchId, $baseUrl),
@@ -295,7 +330,7 @@ class PublicationFeed
                 publishedAt: $culto->published_at,
                 href: route('mobile.culto.show', ['culto' => $culto->id], absolute: false),
                 meta: ['Vídeo no YouTube', 'Culto online'],
-                coverPlayOverlay: true,
+                coverPlayOverlay: PublicationFeedCoverResolver::cultoShowsPlayOverlay($culto),
             ));
     }
 
@@ -527,46 +562,6 @@ class PublicationFeed
     /**
      * @return Collection<int, array<string, mixed>>
      */
-    private static function collectTalentListings(?Church $church, ?int $churchId, string $baseUrl): Collection
-    {
-        if ($churchId === null) {
-            return collect();
-        }
-
-        return TalentListing::query()
-            ->with('category')
-            ->where('church_id', $churchId)
-            ->where('status', TalentListing::STATUS_APPROVED)
-            ->orderByDesc('moderated_at')
-            ->orderByDesc('created_at')
-            ->limit(100)
-            ->get()
-            ->map(function (TalentListing $listing) use ($church, $baseUrl) {
-                $meta = [TalentListing::typeLabel((string) $listing->type)];
-                if ($listing->category?->name) {
-                    $meta[] = $listing->category->name;
-                }
-                if (filled($listing->locality)) {
-                    $meta[] = (string) $listing->locality;
-                }
-
-                return self::entry(
-                    type: 'talents',
-                    typeLabel: self::TYPE_DEFINITIONS['talents']['label'],
-                    pk: $listing->id,
-                    title: $listing->title,
-                    excerpt: self::plainText($listing->description),
-                    imageUrl: PublicationFeedCoverResolver::forTalent($listing, $church, $baseUrl),
-                    publishedAt: $listing->moderated_at ?? $listing->created_at,
-                    href: route('mobile.talents.show', ['talentListing' => $listing->id], absolute: false),
-                    meta: $meta,
-                );
-            });
-    }
-
-    /**
-     * @return Collection<int, array<string, mixed>>
-     */
     private static function collectAcervoItems(?Church $church, string $baseUrl): Collection
     {
         return AcervoItem::query()
@@ -592,7 +587,7 @@ class PublicationFeed
                     publishedAt: $item->updated_at ?? $item->created_at,
                     href: route('mobile.acervo.show', ['acervoItem' => $item->id], absolute: false),
                     meta: $meta,
-                    coverPlayOverlay: true,
+                    coverPlayOverlay: PublicationFeedCoverResolver::acervoShowsPlayOverlay($item),
                 );
             });
     }
@@ -623,7 +618,7 @@ class PublicationFeed
                 publishedAt: $musica->published_at ?? $musica->created_at,
                 href: route('mobile.musica.show', ['musica' => $musica->id], absolute: false),
                 meta: ['Vídeo no YouTube', 'Louvor'],
-                coverPlayOverlay: true,
+                coverPlayOverlay: PublicationFeedCoverResolver::musicaShowsPlayOverlay($musica),
             ));
     }
 

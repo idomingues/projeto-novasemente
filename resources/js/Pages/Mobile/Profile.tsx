@@ -12,7 +12,6 @@ import {
     ChatBubbleLeftRightIcon,
     SparklesIcon,
     LifebuoyIcon,
-    UserCircleIcon,
     ChevronDownIcon,
     PencilSquareIcon,
     UserGroupIcon,
@@ -20,7 +19,7 @@ import {
 
 interface Props {
     church: { name: string } | null;
-    user: { name: string; email: string };
+    user: { name: string; email: string; photo_url?: string | null };
     volunteerSignupCompletion?: VolunteerSignupCompletion | null;
     profileCounts: {
         /** Pedidos em aberto no painel Atendimento Pastoral (null se o usuário não vê o painel). */
@@ -325,9 +324,17 @@ export default function MobileProfile({ church, user, profileCounts, volunteerSi
             <div className="space-y-6">
                 <div className="flex items-start justify-between gap-4 rounded-3xl bg-white/80 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 p-5">
                     <div className="flex items-start gap-4 min-w-0">
-                        <div className="h-16 w-16 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-300">
-                            <UserCircleIcon className="h-10 w-10" aria-hidden />
-                        </div>
+                        {user.photo_url ? (
+                            <img
+                                src={user.photo_url}
+                                alt=""
+                                className="h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-zinc-100 dark:ring-zinc-800"
+                            />
+                        ) : (
+                            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-xl font-bold text-white dark:bg-zinc-700">
+                                {user.name.charAt(0).toUpperCase()}
+                            </div>
+                        )}
                         <div className="min-w-0">
                             <div className="text-sm text-zinc-500 dark:text-zinc-400 flex items-center gap-2">
                                 <ChevronDownIcon className="h-4 w-4" aria-hidden />

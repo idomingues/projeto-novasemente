@@ -29,7 +29,7 @@ export default function MobileMeditationDaily({ ok, html, error = '', sourceUrl 
                     <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
                         Meditação diária
                     </h1>
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400">Devocional do dia (melhor esforço).</p>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400">Meditação do dia (melhor esforço).</p>
                 </header>
 
                 {!ok || !displayHtml ? (

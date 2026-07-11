@@ -320,7 +320,7 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
             <div className="space-y-6">
                 <div className="flex min-w-0 items-center gap-3">
                     <Link
-                        href={route('mobile.more')}
+                        href={route('mobile.home')}
                         className="-ml-2 shrink-0 rounded-xl p-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                         aria-label="Voltar"
                     >

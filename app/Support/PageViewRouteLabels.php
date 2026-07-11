@@ -41,6 +41,7 @@ final class PageViewRouteLabels
         'register' => 'Cadastro',
 
         // —— Mais (cartões) — mesmos títulos que Mobile/More.tsx e More/Index.tsx ——
+        'mobile.publications-feed' => 'Publicações',
         'mobile.news' => 'Notícias',
         'mobile.news.show' => 'Notícias — artigo',
         'mobile.health' => 'Saúde',

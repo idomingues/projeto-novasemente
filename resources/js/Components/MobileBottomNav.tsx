@@ -1,58 +1,34 @@
 import { Link } from '@inertiajs/react';
 import { useAppFeatures } from '@/hooks/useAppFeatures';
 import {
-    HomeIcon,
-    HandRaisedIcon,
-    NewspaperIcon,
-    PlayCircleIcon,
-    Squares2X2Icon,
-} from '@heroicons/react/24/outline';
-import {
     HomeIcon as HomeIconSolid,
     HandRaisedIcon as HandRaisedIconSolid,
-    NewspaperIcon as NewspaperIconSolid,
     PlayCircleIcon as PlayCircleIconSolid,
-    Squares2X2Icon as Squares2X2IconSolid,
+    BookOpenIcon as BookOpenIconSolid,
 } from '@heroicons/react/24/solid';
+import type { ComponentType, SVGProps } from 'react';
 
-const navItems = [
+type NavIcon = ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
+
+type NavItem = {
+    name: string;
+    route: string;
+    activeRoutes: readonly string[];
+    icon?: NavIcon;
+    iconActive?: NavIcon;
+    featureKey?: string;
+    /** PNG único no lugar de ícone + rótulo (ex.: Publicações). */
+    imageSrc?: string;
+};
+
+const navItems: NavItem[] = [
     {
         name: 'Home',
-        route: 'mobile.home' as const,
-        activeRoutes: ['mobile.home', 'volunteers.public-signup.page', 'mobile.baptism'] as const,
-        icon: HomeIcon,
-        iconActive: HomeIconSolid,
-    },
-    {
-        name: 'Assistir culto',
-        route: 'mobile.culto' as const,
-        featureKey: 'culto',
-        activeRoutes: ['mobile.culto', 'mobile.culto.show'] as const,
-        icon: PlayCircleIcon,
-        iconActive: PlayCircleIconSolid,
-    },
-    {
-        name: 'Notícias',
-        route: 'mobile.news' as const,
-        featureKey: 'news',
-        activeRoutes: ['mobile.news', 'mobile.news.show'] as const,
-        icon: NewspaperIcon,
-        iconActive: NewspaperIconSolid,
-    },
-    {
-        name: 'Oração',
-        route: 'mobile.prayer' as const,
-        featureKey: 'prayer',
-        activeRoutes: ['mobile.prayer', 'prayer.index'] as const,
-        icon: HandRaisedIcon,
-        iconActive: HandRaisedIconSolid,
-    },
-    {
-        name: 'Mais',
-        route: 'mobile.more' as const,
+        route: 'mobile.home',
         activeRoutes: [
-            'mobile.more',
-            'mobile.publications-feed',
+            'mobile.home',
+            'volunteers.public-signup.page',
+            'mobile.baptism',
             'mobile.sobre-o-app',
             'mobile.settings',
             'more.index',
@@ -112,20 +88,56 @@ const navItems = [
             'mobile.communities',
             'mobile.biblioteca',
             'mobile.biblioteca.show',
-            'mobile.bible',
             'mobile.ano-biblico',
             'mobile.ano-biblico.complete',
-        ] as const,
-        icon: Squares2X2Icon,
-        iconActive: Squares2X2IconSolid,
+            'mobile.news',
+            'mobile.news.show',
+            'mobile.meditacao-diaria',
+            'mobile.talents.index',
+            'mobile.shared-talents.index',
+            'mobile.campaigns.index',
+            'mobile.donations.index',
+        ],
+        icon: HomeIconSolid,
+        iconActive: HomeIconSolid,
     },
-] as const;
+    {
+        name: 'Culto',
+        route: 'mobile.culto',
+        featureKey: 'culto',
+        activeRoutes: ['mobile.culto', 'mobile.culto.show'],
+        icon: PlayCircleIconSolid,
+        iconActive: PlayCircleIconSolid,
+    },
+    {
+        name: 'Publicações',
+        route: 'mobile.publications-feed',
+        activeRoutes: ['mobile.publications-feed'],
+        imageSrc: '/logo-ns.png',
+    },
+    {
+        name: 'Oração',
+        route: 'mobile.prayer',
+        featureKey: 'prayer',
+        activeRoutes: ['mobile.prayer', 'prayer.index'],
+        icon: HandRaisedIconSolid,
+        iconActive: HandRaisedIconSolid,
+    },
+    {
+        name: 'Bíblia',
+        route: 'mobile.bible',
+        featureKey: 'bible',
+        activeRoutes: ['mobile.bible', 'mobile.bible.chapter', 'mobile.bible.search', 'mobile.bible.reference'],
+        icon: BookOpenIconSolid,
+        iconActive: BookOpenIconSolid,
+    },
+];
 
-/** Barra inferior: Home, Assistir culto, Notícias, Oração, Mais (batismo e voluntário nos cartões do Início). */
+/** Barra inferior: Home, Culto, Publicações, Oração, Bíblia. */
 export default function MobileBottomNav() {
     const { isEnabled } = useAppFeatures();
     const visibleItems = navItems.filter((item) => {
-        if (!('featureKey' in item) || !item.featureKey) {
+        if (!item.featureKey) {
             return true;
         }
 
@@ -139,7 +151,8 @@ export default function MobileBottomNav() {
             aria-label="Menu principal"
         >
             <div className="mx-auto flex h-14 max-w-lg items-center justify-around pt-1 md:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
-                {visibleItems.map(({ name, route: routeName, activeRoutes, icon: Icon, iconActive: IconActive }) => {
+                {visibleItems.map((item) => {
+                    const { name, route: routeName, activeRoutes, icon: Icon, iconActive: IconActive, imageSrc } = item;
                     const href = route(routeName);
                     const isActive = activeRoutes.some((r) => route().current(r));
                     const IconComponent = isActive ? IconActive : Icon;
@@ -150,17 +163,44 @@ export default function MobileBottomNav() {
                             aria-label={name}
                             className={`relative flex flex-col items-center justify-center flex-1 min-w-0 py-2 gap-0.5 transition-colors rounded-xl mx-0.5 ${
                                 isActive
-                                    ? 'text-zinc-900 dark:text-white'
-                                    : 'text-zinc-400 dark:text-zinc-500 active:bg-zinc-100/80 dark:active:bg-zinc-800/50'
+                                    ? 'text-brand-600 dark:text-brand-400'
+                                    : 'text-zinc-900 dark:text-zinc-100 active:bg-zinc-100/80 dark:active:bg-zinc-800/50'
                             }`}
                         >
-                            <IconComponent
-                                className={`flex-shrink-0 transition-all ${isActive ? 'w-7 h-7 text-zinc-900 dark:text-white' : 'w-6 h-6'}`}
-                                aria-hidden
-                            />
-                            <span className={`text-[10px] truncate max-w-full px-0.5 ${isActive ? 'font-semibold text-zinc-900 dark:text-white' : 'font-medium'}`}>
-                                {name}
-                            </span>
+                            {imageSrc ? (
+                                <img
+                                    src={imageSrc}
+                                    alt=""
+                                    className={`rounded-full object-cover transition-all ${
+                                        isActive
+                                            ? 'h-9 w-9 ring-2 ring-brand-600 ring-offset-2 ring-offset-white dark:ring-brand-400 dark:ring-offset-zinc-900'
+                                            : 'h-8 w-8'
+                                    }`}
+                                    aria-hidden
+                                />
+                            ) : (
+                                <>
+                                    {IconComponent ? (
+                                        <IconComponent
+                                            className={`flex-shrink-0 transition-all ${
+                                                isActive
+                                                    ? 'h-7 w-7 text-brand-600 dark:text-brand-400'
+                                                    : 'h-6 w-6 text-zinc-900 dark:text-zinc-100'
+                                            }`}
+                                            aria-hidden
+                                        />
+                                    ) : null}
+                                    <span
+                                        className={`text-[10px] truncate max-w-full px-0.5 ${
+                                            isActive
+                                                ? 'font-semibold text-brand-600 dark:text-brand-400'
+                                                : 'font-medium text-zinc-900 dark:text-zinc-100'
+                                        }`}
+                                    >
+                                        {name}
+                                    </span>
+                                </>
+                            )}
                         </Link>
                     );
                 })}

@@ -3,11 +3,11 @@
 /**
  * Feed unificado de publicações (app mobile).
  *
- * Enquanto `preview_only` for true, só os e-mails em `preview_emails` veem o item no Mais e a rota.
- * Para liberar para todos: `preview_only` => false.
+ * Enquanto `preview_only` for true, só os e-mails em `preview_emails` acessam a rota.
+ * O feed fica na barra inferior; o default é liberado para todos.
  */
 return [
-    'preview_only' => env('PUBLICATIONS_FEED_PREVIEW_ONLY', true),
+    'preview_only' => env('PUBLICATIONS_FEED_PREVIEW_ONLY', false),
 
     'preview_emails' => array_values(array_filter(array_map(
         static fn (string $email): string => strtolower(trim($email)),
@@ -34,7 +34,6 @@ return [
         'photos' => null,
         'events' => null,
         'revista' => null,
-        'talents' => null,
         'acervo' => null,
         'musica' => null,
         'donation_campaign' => null,

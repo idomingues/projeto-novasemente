@@ -44,7 +44,6 @@ const TYPE_ICONS: Record<string, MenuIcon> = {
     photos: PhotoIcon,
     events: CalendarDaysIcon,
     revista: NewspaperIcon,
-    talents: SparklesIcon,
     acervo: PlayCircleIcon,
     musica: MusicalNoteIcon,
     donation_campaign: BanknotesIcon,
@@ -60,7 +59,6 @@ const TYPE_TAG_STYLES: Record<string, string> = {
     photos: 'bg-fuchsia-50 text-fuchsia-800 dark:bg-fuchsia-950/50 dark:text-fuchsia-200',
     events: 'bg-orange-50 text-orange-800 dark:bg-orange-950/50 dark:text-orange-200',
     revista: 'bg-blue-50 text-blue-800 dark:bg-blue-950/50 dark:text-blue-200',
-    talents: 'bg-cyan-50 text-cyan-800 dark:bg-cyan-950/50 dark:text-cyan-200',
     acervo: 'bg-indigo-50 text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-200',
     musica: 'bg-purple-50 text-purple-800 dark:bg-purple-950/50 dark:text-purple-200',
     donation_campaign: 'bg-lime-50 text-lime-900 dark:bg-lime-950/50 dark:text-lime-200',
@@ -152,6 +150,7 @@ export default function PublicationFeedCard({ item, appUrl }: Props) {
     const showCover = Boolean(src) && !coverBroken;
     const when = formatWhen(item.published_at);
     const isPrayer = item.type === 'prayer';
+    const isNews = item.type === 'news';
 
     return (
         <li>
@@ -162,11 +161,19 @@ export default function PublicationFeedCard({ item, appUrl }: Props) {
                 {isPrayer ? (
                     <PrayerCover src={src} showLogo={showCover} onError={() => setCoverBroken(true)} />
                 ) : showCover ? (
-                    <div className="relative aspect-[16/9] overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                    <div
+                        className={`relative overflow-hidden bg-zinc-100 dark:bg-zinc-800 ${
+                            isNews ? '' : 'aspect-[16/9]'
+                        }`}
+                    >
                         <img
                             src={src}
                             alt=""
-                            className="h-full w-full object-cover object-top"
+                            className={
+                                isNews
+                                    ? 'block h-auto w-full object-contain'
+                                    : 'h-full w-full object-cover object-top'
+                            }
                             loading="lazy"
                             decoding="async"
                             onError={() => setCoverBroken(true)}

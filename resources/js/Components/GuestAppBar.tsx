@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import AppVersionTrigger from '@/Components/AppVersionTrigger';
+import TopbarEventsLink from '@/Components/TopbarEventsLink';
 
 /**
  * Barra superior padrão para visitantes (mesma do {@link MobileLayout} sem sessão).
@@ -18,7 +18,7 @@ export default function GuestAppBar() {
         >
             <div className="relative flex h-14 items-center justify-center px-4">
                 <div className="absolute left-3 top-1/2 z-10 -translate-y-1/2 sm:left-4">
-                    <AppVersionTrigger />
+                    <TopbarEventsLink />
                 </div>
                 <Link href={route('mobile.home')} className="flex-shrink-0">
                     <img

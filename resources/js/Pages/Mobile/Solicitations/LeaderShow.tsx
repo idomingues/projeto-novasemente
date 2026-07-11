@@ -51,7 +51,7 @@ export default function LeaderShow({
                     </Link>
                     <span className="text-zinc-300 dark:text-zinc-600">·</span>
                     <Link href={mineUrl} className={solicitationsBackLinkClass}>
-                        Mais
+                        Início
                     </Link>
                 </div>
 

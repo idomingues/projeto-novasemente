@@ -64,7 +64,7 @@ export default function AppFeatures({ churchName, groups, updateUrl }: Props) {
 
             <div className="max-w-2xl space-y-6">
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    Funcionalidades desativadas não aparecem no Início, na barra inferior nem no menu Mais para
+                    Funcionalidades desativadas não aparecem no Início nem na barra inferior para
                     membros. O painel de gestão continua acessível para a equipe.
                 </p>
 

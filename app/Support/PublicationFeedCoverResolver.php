@@ -13,7 +13,6 @@ use App\Models\Musica;
 use App\Models\News;
 use App\Models\PhotoAlbum;
 use App\Models\RevistaAdventistaArticle;
-use App\Models\TalentListing;
 use App\Services\DriveFolderCoverService;
 
 /** Resolve capas e miniaturas para o feed unificado de publicações. */
@@ -56,11 +55,12 @@ final class PublicationFeedCoverResolver
 
     public static function newsShowsPlayOverlay(News $post): bool
     {
-        return in_array($post->content_type, [
-            News::TYPE_YOUTUBE,
-            News::TYPE_INSTAGRAM_FEED,
-            News::TYPE_INSTAGRAM_LINK,
-        ], true) || $post->hasInstagramFeedVideo();
+        if ($post->content_type === News::TYPE_YOUTUBE && filled($post->youtube_url) && self::youtubeThumb($post->youtube_url) !== null) {
+            return true;
+        }
+
+        // Instagram feed só com arquivo de vídeo; link/foto do Instagram não são vídeo certo.
+        return $post->hasInstagramFeedVideo();
     }
 
     public static function forHealth(News $post, string $baseUrl, ?Church $church = null): ?string
@@ -95,8 +95,16 @@ final class PublicationFeedCoverResolver
 
     public static function eventShowsPlayOverlay(Event $event): bool
     {
-        return $event->video_type === Event::VIDEO_YOUTUBE
-            || ($event->video_type === Event::VIDEO_INSTAGRAM && filled($event->video_url));
+        // Só se a capa exibida for a do vídeo (sem imagem própria).
+        if (filled($event->image_url)) {
+            return false;
+        }
+
+        if ($event->video_type === Event::VIDEO_YOUTUBE) {
+            return self::youtubeThumb($event->video_url) !== null;
+        }
+
+        return $event->video_type === Event::VIDEO_INSTAGRAM && filled($event->video_url);
     }
 
     public static function forRevista(RevistaAdventistaArticle $article, ?Church $church, string $baseUrl): ?string
@@ -147,6 +155,11 @@ final class PublicationFeedCoverResolver
 
     public static function charityShowsPlayOverlay(CharityCampaign $campaign): bool
     {
+        // Capa de foto não recebe play só porque existe vídeo na história.
+        if (filled($campaign->cover_image_url)) {
+            return false;
+        }
+
         return filled($campaign->story_video_url) && self::youtubeThumb($campaign->story_video_url) !== null;
     }
 
@@ -168,6 +181,10 @@ final class PublicationFeedCoverResolver
 
     public static function donationShowsPlayOverlay(DonationCampaign $campaign): bool
     {
+        if (filled($campaign->cover_image_url)) {
+            return false;
+        }
+
         return filled($campaign->story_video_url) && self::youtubeThumb($campaign->story_video_url) !== null;
     }
 
@@ -181,9 +198,24 @@ final class PublicationFeedCoverResolver
         return self::finalize($cover !== '' ? $cover : null, 'acervo', $church, $baseUrl);
     }
 
-    public static function forTalent(TalentListing $listing, ?Church $church, string $baseUrl): ?string
+    /** Play só quando a capa veio de um vídeo do YouTube (sem thumbnail própria de série). */
+    public static function acervoShowsPlayOverlay(AcervoItem $item): bool
     {
-        return self::finalize($listing->photo_url, 'talents', $church, $baseUrl);
+        if (filled(trim((string) ($item->thumbnail_url ?? '')))) {
+            return false;
+        }
+
+        return self::youtubeThumb((string) ($item->url ?? '')) !== null;
+    }
+
+    public static function cultoShowsPlayOverlay(Culto $culto): bool
+    {
+        return self::youtubeThumb($culto->youtube_url) !== null;
+    }
+
+    public static function musicaShowsPlayOverlay(Musica $musica): bool
+    {
+        return filled($musica->youtube_thumb_url) || self::youtubeThumb($musica->youtube_url) !== null;
     }
 
     public static function forPrayer(?Church $church, string $baseUrl): ?string

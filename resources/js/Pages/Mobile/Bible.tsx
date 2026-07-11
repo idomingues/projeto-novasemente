@@ -276,8 +276,8 @@ export default function MobileBible({ books, initial }: Props) {
 
             <div className="space-y-5">
                 <div className="space-y-2">
-                    <Link href={route('mobile.more')} className="text-sm text-zinc-500 underline dark:text-zinc-400">
-                        ← Mais
+                    <Link href={route('mobile.home')} className="text-sm text-zinc-500 underline dark:text-zinc-400">
+                        ← Início
                     </Link>
                     <div className="flex items-center justify-between gap-3">
                         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">

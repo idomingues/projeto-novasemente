@@ -43,7 +43,7 @@ class MobileLeaderSolicitationController extends Controller
 
         return Inertia::render('Mobile/Solicitations/LeaderInbox', [
             'conversations' => $rows,
-            'moreUrl' => route('mobile.more'),
+            'moreUrl' => route('mobile.home'),
         ]);
     }
 
@@ -55,7 +55,7 @@ class MobileLeaderSolicitationController extends Controller
             $solicitation,
             route('mobile.leader-solicitations.messages.store', $solicitation),
             route('mobile.leader-solicitations.index'),
-            route('mobile.more'),
+            route('mobile.home'),
             route('mobile.leader-solicitations.finalize', $solicitation),
             true,
         ));

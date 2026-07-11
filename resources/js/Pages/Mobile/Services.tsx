@@ -33,10 +33,10 @@ export default function MobileServices({ churchName, services }: Props) {
             <div className="space-y-6">
                 <div>
                     <Link
-                        href={route('mobile.more')}
+                        href={route('mobile.home')}
                         className="text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline"
                     >
-                        ← Mais
+                        ← Início
                     </Link>
                     <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Cultos e horários</h1>
                     {churchName && (

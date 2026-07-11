@@ -1165,11 +1165,9 @@ class MobileController extends Controller
         return back();
     }
 
-    public function more(): Response
+    public function more(): \Illuminate\Http\RedirectResponse
     {
-        $data = app(MoreController::class)->getLatestItems();
-
-        return Inertia::render('Mobile/More', $data);
+        return redirect()->route('mobile.home');
     }
 
     public function publicationsFeed(Request $request): Response|\Illuminate\Http\JsonResponse
@@ -1193,8 +1191,8 @@ class MobileController extends Controller
     public function sobreOApp(Request $request): Response
     {
         $from = $request->string('from')->toString();
-        $backRoute = $from === 'settings' ? 'mobile.settings' : 'mobile.more';
-        $backLabel = $from === 'settings' ? 'Configurações' : 'Mais';
+        $backRoute = $from === 'settings' ? 'mobile.settings' : 'mobile.home';
+        $backLabel = $from === 'settings' ? 'Configurações' : 'Início';
 
         return Inertia::render('Mobile/SobreOApp', [
             'backRoute' => $backRoute,
@@ -1853,6 +1851,7 @@ class MobileController extends Controller
             'user' => [
                 'name' => $user->name,
                 'email' => $user->email,
+                'photo_url' => $user->photo_url,
             ],
             'profileCounts' => [
                 'atendimento_open' => $atendimentoOpen,

@@ -3,40 +3,37 @@ import VolunteerSignupIncompleteBanner from '@/Components/Volunteers/VolunteerSi
 import type { VolunteerSignupCompletion } from '@/utils/volunteerSignupCompletion';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
-import { formatWhenLine, getDayMonth, type MobileEventListItem } from '@/utils/mobileEventDisplay';
 import {
-    ArchiveBoxIcon,
+    AcademicCapIcon,
     BanknotesIcon,
     BookOpenIcon,
+    CalendarDaysIcon,
+    ClockIcon,
+    FilmIcon,
     GlobeAltIcon,
+    HandRaisedIcon,
     HeartIcon,
+    LifebuoyIcon,
+    MapPinIcon,
     MusicalNoteIcon,
+    NewspaperIcon,
     PhotoIcon,
+    PlayCircleIcon,
     SparklesIcon,
+    UserCircleIcon,
+    UserGroupIcon,
+    UserPlusIcon,
 } from '@heroicons/react/24/outline';
 import type { ComponentType, SVGProps } from 'react';
 import PromiseBoxModal from '@/Components/Mobile/PromiseBoxModal';
+import SobreOAppNavItem from '@/Components/Mobile/SobreOAppNavItem';
 import SabbathHomeBanner, { type SabbathHomeBannerData } from '@/Components/Mobile/SabbathHomeBanner';
+import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 import { useAppFeatures } from '@/hooks/useAppFeatures';
 
 type MenuIcon = ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
 
-type NewsCard = {
-    id: number;
-    title: string;
-    slug: string;
-    excerpt: string | null;
-    content_type: string;
-    type_label: string;
-    image_url: string | null;
-    cover_url: string | null;
-    instagram_url?: string | null;
-    published_at: string | null;
-};
-
 interface Props {
-    latestNews: NewsCard[];
-    upcomingEvents: MobileEventListItem[];
     showPostRegistrationBanner?: boolean;
     volunteerSignupCompletion?: VolunteerSignupCompletion | null;
     sabbathBanner?: SabbathHomeBannerData | null;
@@ -47,88 +44,10 @@ type PageProps = {
     auth?: { user?: { name: string; email?: string; photo_url?: string | null } | null };
 };
 
-function imageSrc(url: string | null, appUrl: string): string {
-    if (!url) return '';
-    if (url.startsWith('http://') || url.startsWith('https://')) return url;
-    const base = appUrl || (typeof window !== 'undefined' ? window.location.origin : '');
-    return `${base}${url}`;
-}
-
 function firstName(fullName: string): string {
     const t = fullName.trim();
     if (!t) return '';
     return t.split(/\s+/)[0] ?? t;
-}
-
-function timeAgoPtBr(iso: string | null): string {
-    if (!iso) return '';
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return '';
-    const diffMs = Date.now() - d.getTime();
-    const diffMin = Math.floor(diffMs / 60000);
-    if (diffMin < 1) return 'Agora';
-    if (diffMin < 60) return `Há ${diffMin} min`;
-    const diffH = Math.floor(diffMin / 60);
-    if (diffH < 24) return `Há ${diffH} ${diffH === 1 ? 'hora' : 'horas'}`;
-    const diffD = Math.floor(diffH / 24);
-    if (diffD < 7) return `Há ${diffD} ${diffD === 1 ? 'dia' : 'dias'}`;
-    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
-}
-
-function cardSnippet(n: NewsCard): string {
-    if (n.excerpt?.trim()) return n.excerpt.trim();
-    if (n.content_type === 'youtube') return 'Vídeo no YouTube';
-    if (n.content_type === 'pdf') return 'Documento PDF';
-    if (n.content_type === 'image') return 'Imagem';
-    if (n.content_type === 'instagram_feed' || n.content_type === 'instagram_link') return '';
-    return '';
-}
-
-function cardTypeLabel(n: NewsCard): string {
-    const normalized = (n.type_label ?? '').trim().toLowerCase();
-    if (
-        n.content_type === 'instagram_feed' ||
-        n.content_type === 'instagram_link' ||
-        normalized === 'feed' ||
-        normalized === 'instagram'
-    ) {
-        return '';
-    }
-
-    return n.type_label || 'COMUNIDADE';
-}
-
-/** Rodapé tipo “Hoje · 14:30” para cartões de notícia. */
-function formatNewsWhen(iso: string | null): string {
-    if (!iso) return '';
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return '';
-    const now = new Date();
-    const sameDay = d.toDateString() === now.toDateString();
-    const timeStr = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    if (sameDay) {
-        return `Hoje · ${timeStr}`;
-    }
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
-    if (d.toDateString() === yesterday.toDateString()) {
-        return `Ontem · ${timeStr}`;
-    }
-    const dateStr = d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' });
-    return `${dateStr} · ${timeStr}`;
-}
-
-function eventCardSnippet(ev: MobileEventListItem): string | null {
-    const d = ev.description?.trim();
-    if (d) {
-        return d;
-    }
-    const loc = ev.location?.trim();
-    if (loc) {
-        return loc;
-    }
-
-    return null;
 }
 
 type QuickAction = {
@@ -144,12 +63,24 @@ function QuickActionGlyph({ icon: Icon }: { icon: MenuIcon }) {
     return <Icon className="h-5 w-5" aria-hidden strokeWidth={2.05} />;
 }
 
-const quickActionsGuest: QuickAction[] = [
+const homeCardClass =
+    'group flex cursor-pointer flex-col rounded-2xl bg-white p-3.5 text-left shadow-sm ring-1 ring-zinc-200 transition duration-200 hover:-translate-y-0.5 hover:bg-zinc-50 hover:shadow-md dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60';
+
+/** Atalhos da Home: itens exclusivos + todos do antigo menu Mais (sem duplicar por rota). */
+const homeQuickActions: QuickAction[] = [
     {
-        label: 'Caixa de Promessas',
-        subtitle: 'Uma mensagem especial para você',
-        featureKey: 'promise_box',
-        icon: SparklesIcon,
+        label: 'Ano Bíblico',
+        subtitle: 'Escolha um plano de leitura e acompanhe o seu progresso.',
+        route: 'mobile.ano-biblico',
+        featureKey: 'ano_biblico',
+        icon: AcademicCapIcon,
+    },
+    {
+        label: 'Área do voluntário',
+        subtitle: 'Cadastro completo',
+        route: 'volunteers.public-signup.page',
+        featureKey: 'volunteer_signup',
+        icon: UserPlusIcon,
     },
     {
         label: 'Batismo',
@@ -159,25 +90,101 @@ const quickActionsGuest: QuickAction[] = [
         icon: SparklesIcon,
     },
     {
-        label: 'Devocional',
+        label: 'Biblioteca',
+        subtitle: 'Livros e PDFs para leitura e download',
+        route: 'mobile.biblioteca',
+        featureKey: 'library',
+        icon: BookOpenIcon,
+    },
+    {
+        label: 'Bíblia',
+        subtitle: 'Leitura e busca de versículos',
+        route: 'mobile.bible',
+        featureKey: 'bible',
+        icon: BookOpenIcon,
+    },
+    {
+        label: 'Caixa de Promessas',
+        subtitle: 'Uma mensagem especial para você',
+        featureKey: 'promise_box',
+        icon: SparklesIcon,
+    },
+    {
+        label: 'Central de Serviços',
+        subtitle: 'Serviços, habilidades e apoio mútuo entre membros',
+        route: 'mobile.talents.index',
+        featureKey: 'talents',
+        icon: SparklesIcon,
+    },
+    {
+        label: 'Classe Começos',
+        subtitle: 'Estudo bíblico presencial ou on-line',
+        route: 'varios.classe-comecos',
+        featureKey: 'classe_comecos',
+        icon: AcademicCapIcon,
+    },
+    {
+        label: 'Comunidades',
+        subtitle: 'Grupos de interesse da igreja no WhatsApp',
+        route: 'mobile.communities',
+        featureKey: 'communities',
+        icon: UserGroupIcon,
+    },
+    {
+        label: 'Culto',
+        subtitle: 'Vídeos do culto online',
+        route: 'mobile.culto',
+        featureKey: 'culto',
+        icon: FilmIcon,
+    },
+    {
+        label: 'Cultos e horários',
+        subtitle: 'Dias e horários dos cultos',
+        route: 'mobile.services',
+        featureKey: 'services',
+        icon: ClockIcon,
+    },
+    {
+        label: 'Meditação diária',
         subtitle: 'Meditação diária de hoje',
         route: 'mobile.meditacao-diaria',
         featureKey: 'devotional',
         icon: BookOpenIcon,
     },
     {
-        label: 'Séries',
-        subtitle: 'Conheça todas as nossas séries',
-        route: 'mobile.acervo',
-        featureKey: 'acervo',
-        icon: ArchiveBoxIcon,
+        label: 'Dízimos e Pacto',
+        subtitle: 'Contribua com dízimos e pacto de forma simples',
+        route: 'mobile.offerings',
+        featureKey: 'offerings',
+        icon: HandRaisedIcon,
     },
     {
-        label: 'Músicas',
-        subtitle: 'Cante nossas músicas',
-        route: 'mobile.musica',
-        featureKey: 'musica',
-        icon: MusicalNoteIcon,
+        label: 'Doação',
+        subtitle: 'Seu gesto de amor pode transformar vidas e renovar esperanças',
+        route: 'mobile.donations.index',
+        featureKey: 'charity_donations',
+        icon: BanknotesIcon,
+    },
+    {
+        label: 'Doar Talentos',
+        subtitle: 'Compartilhe talentos, aprendizado e apoio gratuito na comunidade',
+        route: 'mobile.shared-talents.index',
+        featureKey: 'shared_talents',
+        icon: UserGroupIcon,
+    },
+    {
+        label: 'Em que acreditamos',
+        subtitle: '28 princípios de fé (IASD)',
+        route: 'mobile.beliefs',
+        featureKey: 'beliefs',
+        icon: BookOpenIcon,
+    },
+    {
+        label: 'Eventos',
+        subtitle: 'Agenda de eventos da igreja',
+        route: 'mobile.events',
+        featureKey: 'events',
+        icon: CalendarDaysIcon,
     },
     {
         label: 'Fotos',
@@ -187,11 +194,11 @@ const quickActionsGuest: QuickAction[] = [
         icon: PhotoIcon,
     },
     {
-        label: 'Dízimos e Pacto',
-        subtitle: 'Contribua com dízimos e pacto de forma simples',
-        route: 'mobile.offerings',
-        featureKey: 'offerings',
-        icon: BanknotesIcon,
+        label: 'Localização',
+        subtitle: 'Endereço e mapa da igreja',
+        route: 'mobile.location',
+        featureKey: 'location',
+        icon: MapPinIcon,
     },
     {
         label: 'Missão',
@@ -200,27 +207,72 @@ const quickActionsGuest: QuickAction[] = [
         featureKey: 'mission',
         icon: GlobeAltIcon,
     },
+    {
+        label: 'Música',
+        subtitle: 'Cante nossas músicas',
+        route: 'mobile.musica',
+        featureKey: 'musica',
+        icon: MusicalNoteIcon,
+    },
+    {
+        label: 'Nossos pastores',
+        subtitle: 'Conheça a equipe pastoral',
+        route: 'mobile.pastors',
+        featureKey: 'pastors',
+        icon: UserCircleIcon,
+    },
+    {
+        label: 'Oferta Nova Semente',
+        subtitle: 'Contribuições para causas que transformam vidas',
+        route: 'mobile.campaigns.index',
+        featureKey: 'donation_campaigns',
+        icon: BanknotesIcon,
+    },
+    {
+        label: 'Oração',
+        subtitle: 'Pedidos de oração',
+        route: 'mobile.prayer',
+        featureKey: 'prayer',
+        icon: PrayingHandsIcon,
+    },
+    {
+        label: 'Quem somos',
+        subtitle: 'História e significado do nome',
+        route: 'mobile.quem-somos',
+        featureKey: 'quem_somos',
+        icon: UserGroupIcon,
+    },
+    {
+        label: 'Revista Adventista',
+        subtitle: 'Artigos, editoriais e colunas da Revista Adventista',
+        route: 'mobile.revista-adventista',
+        featureKey: 'revista_adventista',
+        icon: NewspaperIcon,
+    },
+    {
+        label: 'Saúde',
+        subtitle: 'Conteúdos de saúde e bem-estar',
+        route: 'mobile.health',
+        featureKey: 'health',
+        icon: HeartIcon,
+    },
+    {
+        label: 'Séries',
+        subtitle: 'Conheça todas as nossas séries',
+        route: 'mobile.acervo',
+        featureKey: 'acervo',
+        icon: PlayCircleIcon,
+    },
+    {
+        label: 'Suporte APP',
+        subtitle: 'Problema, sugestão ou elogio sobre o app',
+        route: 'mobile.support.index',
+        featureKey: 'support',
+        icon: LifebuoyIcon,
+    },
 ];
 
-const quickActionDevocional: QuickAction = {
-    label: 'Devocional',
-    subtitle: 'Meditação diária de hoje',
-    route: 'mobile.meditacao-diaria',
-    featureKey: 'devotional',
-    icon: BookOpenIcon,
-};
-
-const quickActionSaude: QuickAction = {
-    label: 'Saúde',
-    subtitle: 'Conteúdos de saúde e bem-estar',
-    route: 'mobile.health',
-    featureKey: 'health',
-    icon: HeartIcon,
-};
-
 export default function MobileHome({
-    latestNews,
-    upcomingEvents,
     showPostRegistrationBanner = false,
     volunteerSignupCompletion = null,
     sabbathBanner = null,
@@ -235,25 +287,22 @@ export default function MobileHome({
         setPromiseOpen(true);
     };
 
-    const caixaDePromessaAction: QuickAction = useMemo(
-        () => ({
-            label: 'Caixa de Promessas',
-            subtitle: 'Uma mensagem especial para você',
-            featureKey: 'promise_box',
-            icon: SparklesIcon,
-            onClick: openPromise,
-        }),
-        []
-    );
-
-    const quickActionsExcludingDevocionalAndCaixa = quickActionsGuest.filter(
-        (a) => a.route !== 'mobile.meditacao-diaria' && a.label !== 'Caixa de Promessas',
-    );
-
     const { isEnabled } = useAppFeatures();
-    const quickActions = [quickActionDevocional, quickActionSaude, caixaDePromessaAction, ...quickActionsExcludingDevocionalAndCaixa].filter(
-        (action) => !action.featureKey || isEnabled(action.featureKey),
-    );
+
+    const gridItems = useMemo(() => {
+        const actions = homeQuickActions
+            .map((action) =>
+                action.label === 'Caixa de Promessas'
+                    ? { ...action, onClick: openPromise }
+                    : action,
+            )
+            .filter((action) => !action.featureKey || isEnabled(action.featureKey))
+            .map((action) => ({ kind: 'action' as const, label: action.label, action }));
+
+        return [...actions, { kind: 'sobre' as const, label: 'Sobre o APP' }].sort((a, b) =>
+            a.label.localeCompare(b.label, 'pt-BR', { sensitivity: 'base' }),
+        );
+    }, [isEnabled]);
 
     useEffect(() => {
         if (!showPostRegistrationBanner || typeof window === 'undefined') {
@@ -278,7 +327,7 @@ export default function MobileHome({
                     >
                         <p className="font-semibold">Conta criada com sucesso</p>
                         <p className="mt-1 text-emerald-900/90 dark:text-emerald-100/90">
-                            Você já está conectado(a). Explore notícias, eventos e o restante do aplicativo.
+                            Você já está conectado(a). Explore o restante do aplicativo.
                         </p>
                     </div>
                 ) : null}
@@ -296,14 +345,18 @@ export default function MobileHome({
                             Fique por dentro de tudo que acontece na Nova Semente.
                         </p>
                     </div>
-
                 </header>
 
                 {sabbathBanner ? <SabbathHomeBanner banner={sabbathBanner} appUrl={appUrl} /> : null}
 
                 <section aria-label="Atalhos">
                     <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-3">
-                        {quickActions.map(({ label, subtitle, route: routeName, onClick, icon }) => {
+                        {gridItems.map((item) => {
+                            if (item.kind === 'sobre') {
+                                return <SobreOAppNavItem key="sobre-o-app" variant="home" />;
+                            }
+
+                            const { label, subtitle, route: routeName, onClick, icon } = item.action;
                             const content = (
                                 <>
                                     <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200/70 dark:bg-emerald-950/45 dark:text-emerald-200 dark:ring-emerald-800/60">
@@ -320,12 +373,7 @@ export default function MobileHome({
 
                             if (onClick) {
                                 return (
-                                    <button
-                                        key={label}
-                                        type="button"
-                                        onClick={onClick}
-                                        className="group flex cursor-pointer flex-col rounded-2xl bg-white p-3.5 text-left shadow-sm ring-1 ring-zinc-200 transition duration-200 hover:-translate-y-0.5 hover:bg-zinc-50 hover:shadow-md dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60"
-                                    >
+                                    <button key={label} type="button" onClick={onClick} className={homeCardClass}>
                                         {content}
                                     </button>
                                 );
@@ -334,11 +382,7 @@ export default function MobileHome({
                             if (!routeName) return null;
 
                             return (
-                                <Link
-                                    key={routeName}
-                                    href={route(routeName)}
-                                    className="group flex cursor-pointer flex-col rounded-2xl bg-white p-3.5 text-left shadow-sm ring-1 ring-zinc-200 transition duration-200 hover:-translate-y-0.5 hover:bg-zinc-50 hover:shadow-md dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60"
-                                >
+                                <Link key={routeName} href={route(routeName)} className={homeCardClass}>
                                     {content}
                                 </Link>
                             );
@@ -347,131 +391,6 @@ export default function MobileHome({
                 </section>
 
                 <PromiseBoxModal show={promiseOpen} onClose={() => setPromiseOpen(false)} canFavorite={!!user} />
-
-                <div className="space-y-8 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-10 lg:gap-y-0 lg:space-y-0 xl:gap-x-12">
-                    <section className="space-y-3">
-                        <div className="flex items-center justify-between gap-2">
-                            <h2 className="text-base font-extrabold text-zinc-900 dark:text-white lg:text-lg">Últimas Notícias</h2>
-                            {latestNews.length > 0 ? (
-                                <Link
-                                    href={route('mobile.news')}
-                                    className="text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200"
-                                >
-                                    Ver todas
-                                </Link>
-                            ) : null}
-                        </div>
-                        {latestNews.length === 0 ? (
-                            <p className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-400">
-                                Ainda não há notícias publicadas.
-                            </p>
-                        ) : (
-                            <ul className="space-y-3">
-                                {latestNews.map((n) => {
-                                    const thumb = n.cover_url || n.image_url;
-                                    const src = imageSrc(thumb, appUrl);
-                                    const snippet = cardSnippet(n);
-                                    const whenLine = timeAgoPtBr(n.published_at) || formatNewsWhen(n.published_at);
-                                    const typeLabel = cardTypeLabel(n);
-                                    const textBlock = (
-                                        <div className="min-w-0 flex-1">
-                                            {typeLabel ? (
-                                                <p className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
-                                                    {typeLabel}
-                                                </p>
-                                            ) : null}
-                                            <p className="mt-0.5 line-clamp-2 text-sm font-semibold leading-snug text-zinc-900 dark:text-white">
-                                                {n.title}
-                                            </p>
-                                            {snippet ? (
-                                                <p className="mt-1 line-clamp-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                                    {snippet}
-                                                </p>
-                                            ) : null}
-                                            <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">{whenLine}</p>
-                                        </div>
-                                    );
-                                    return (
-                                        <li key={n.id}>
-                                            <Link
-                                                href={route('mobile.news.show', n.slug)}
-                                                className="flex cursor-pointer items-center gap-3 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-zinc-200 transition hover:bg-zinc-50 dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60"
-                                            >
-                                                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
-                                                    {src ? (
-                                                        <img src={src} alt="" className="h-full w-full object-cover" />
-                                                    ) : (
-                                                        <div className="flex h-full w-full items-center justify-center text-[10px] font-medium text-zinc-400">
-                                                            Nova Semente
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                {textBlock}
-                                            </Link>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        )}
-                    </section>
-
-                    <section className="space-y-3">
-                        <div className="flex items-center justify-between gap-2">
-                            <h2 className="text-base font-extrabold text-zinc-900 dark:text-white lg:text-lg">Próximos Eventos</h2>
-                            {upcomingEvents.length > 0 ? (
-                                <Link
-                                    href={route('mobile.events')}
-                                    className="text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200"
-                                >
-                                    Ver todas
-                                </Link>
-                            ) : null}
-                        </div>
-                        {upcomingEvents.length === 0 ? (
-                            <p className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-400">
-                                Nenhum evento agendado por enquanto.
-                            </p>
-                        ) : (
-                            <ul className="space-y-3">
-                                {upcomingEvents.map((ev) => {
-                                    const src = imageSrc(ev.image_url, appUrl);
-                                    const { day, month } = getDayMonth(ev.starts_at);
-                                    const snippet = eventCardSnippet(ev);
-                                    const whenLine = formatWhenLine(ev);
-                                    return (
-                                        <li key={ev.id}>
-                                            <Link
-                                                href={route('mobile.events')}
-                                                className="flex cursor-pointer items-center gap-3 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-zinc-200 transition hover:bg-zinc-50 dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60"
-                                            >
-                                                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
-                                                    {src ? (
-                                                        <img src={src} alt="" className="h-full w-full object-cover" />
-                                                    ) : (
-                                                        <div
-                                                            className="flex h-full w-full flex-col items-center justify-center px-1 text-center text-white"
-                                                            style={{ backgroundColor: ev.color || '#059669' }}
-                                                        >
-                                                            <span className="text-lg font-extrabold tabular-nums leading-none">{day}</span>
-                                                            <span className="mt-0.5 text-[0.65rem] font-semibold uppercase leading-tight opacity-95">
-                                                                {month}
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div className="min-w-0 flex-1">
-                                                    <p className="line-clamp-2 text-sm font-semibold leading-snug text-zinc-900 dark:text-white">{ev.title}</p>
-                                                    {snippet ? <p className="mt-1 line-clamp-1 text-xs text-zinc-500 dark:text-zinc-400">{snippet}</p> : null}
-                                                    {whenLine ? <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">{whenLine}</p> : null}
-                                                </div>
-                                            </Link>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        )}
-                    </section>
-                </div>
             </div>
         </MobileLayout>
     );

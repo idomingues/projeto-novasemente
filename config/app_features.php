@@ -63,7 +63,7 @@ return [
             'routes' => ['mobile.baptism'],
         ],
         'devotional' => [
-            'label' => 'Devocional',
+            'label' => 'Meditação diária',
             'group' => 'inicio',
             'routes' => ['mobile.meditacao-diaria'],
         ],
@@ -94,7 +94,7 @@ return [
         ],
         'bible' => [
             'label' => 'Bíblia',
-            'group' => 'menu_mais',
+            'group' => 'barra_inferior',
             'routes' => ['mobile.bible', 'mobile.bible.*'],
         ],
         'ano_biblico' => [

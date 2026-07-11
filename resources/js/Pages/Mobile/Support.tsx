@@ -138,8 +138,8 @@ export default function MobileSupport({
             <div className="space-y-5">
                 <PageHeader
                     lead={
-                        <Link href={route('mobile.more')} className="text-sm text-zinc-500 underline dark:text-zinc-400">
-                            ← Mais
+                        <Link href={route('mobile.home')} className="text-sm text-zinc-500 underline dark:text-zinc-400">
+                            ← Início
                         </Link>
                     }
                     title="Suporte do app"

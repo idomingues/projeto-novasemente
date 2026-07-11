@@ -26,7 +26,7 @@ export default function LeaderInbox({ conversations, moreUrl }: Props) {
             <div className="space-y-4">
                 <div>
                     <Link href={moreUrl} className="text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline">
-                        ← Mais
+                        ← Início
                     </Link>
                     <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Conversas como líder</h1>
                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">

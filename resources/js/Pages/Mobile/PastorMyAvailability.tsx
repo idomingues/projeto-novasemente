@@ -14,8 +14,8 @@ export default function PastorMyAvailability({ linked }: Props) {
             <Head title="Agenda Pastoral" />
             <div className="space-y-4">
                 <div className="flex items-center gap-2">
-                    <Link href={route('mobile.more')} className="text-sm text-zinc-500 underline">
-                        ← Mais
+                    <Link href={route('mobile.home')} className="text-sm text-zinc-500 underline">
+                        ← Início
                     </Link>
                 </div>
                 <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Agenda Pastoral</h1>

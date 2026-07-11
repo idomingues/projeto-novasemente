@@ -14,8 +14,6 @@ use App\Models\News;
 use App\Models\PhotoAlbum;
 use App\Models\PrayerRequest;
 use App\Models\RevistaAdventistaArticle;
-use App\Models\TalentCategory;
-use App\Models\TalentListing;
 use App\Models\User;
 use App\Support\PublicationDemoMarker;
 use Illuminate\Console\Attributes\AsCommand;
@@ -75,7 +73,6 @@ class SeedPublicationsFeedDemoCommand extends Command
         $created[] = $this->seedPhotoAlbum($church, $author, $now);
         $created[] = $this->seedEvent($church, $author, $now);
         $created[] = $this->seedRevistaArticle($now);
-        $created[] = $this->seedTalentListing($church, $author, $now);
         $created[] = $this->seedAcervoItem();
         $created[] = $this->seedMusica($church, $author, $now);
         $created[] = $this->seedDonationCampaign($church, $author, $now);
@@ -87,7 +84,7 @@ class SeedPublicationsFeedDemoCommand extends Command
             $this->info($line);
         }
         $this->line('');
-        $this->comment('Abra o app em Mais → Publicações (usuário com acesso preview).');
+        $this->comment('Abra o app na aba Publicações.');
 
         return self::SUCCESS;
     }
@@ -306,43 +303,6 @@ class SeedPublicationsFeedDemoCommand extends Command
         );
 
         return "Revista Adventista — id {$article->id}";
-    }
-
-    private function seedTalentListing(Church $church, User $author, \DateTimeInterface $now): string
-    {
-        $this->callSilent('db:seed', ['--class' => 'TalentCategorySeeder']);
-
-        $category = TalentCategory::query()
-            ->whereNull('church_id')
-            ->orderBy('sort_order')
-            ->first();
-
-        if ($category === null) {
-            throw new \RuntimeException('Categorias da Central de Serviços não encontradas.');
-        }
-
-        $title = PublicationDemoMarker::title('Central de Serviços');
-        $photoPath = $this->publishDemoAsset(
-            'resources/demo/talents/central-servicos-exemplo.png',
-            'publications-feed/demo/talent-cover.png',
-        );
-
-        $listing = TalentListing::query()->updateOrCreate(
-            ['church_id' => $church->id, 'title' => $title],
-            [
-                'user_id' => $author->id,
-                'category_id' => $category->id,
-                'type' => TalentListing::TYPE_OFFER,
-                'description' => 'Publicação de exemplo na Central de Serviços para o feed.',
-                'photo_path' => $photoPath,
-                'status' => TalentListing::STATUS_APPROVED,
-                'moderated_by' => $author->id,
-                'moderated_at' => $now,
-                'member_declaration_at' => $now,
-            ],
-        );
-
-        return "Central de Serviços — id {$listing->id}";
     }
 
     private function seedAcervoItem(): string

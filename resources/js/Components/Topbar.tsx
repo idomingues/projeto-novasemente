@@ -4,7 +4,7 @@ import { BellIcon, SunIcon, MoonIcon, ChevronRightIcon } from '@heroicons/react/
 import Dropdown from '@/Components/Dropdown';
 import MarkInboxNotificationReadButton from '@/Components/MarkInboxNotificationReadButton';
 import DismissNotificationButton from '@/Components/DismissNotificationButton';
-import AppVersionTrigger from '@/Components/AppVersionTrigger';
+import TopbarEventsLink from '@/Components/TopbarEventsLink';
 import { useTheme } from '@/Contexts/ThemeContext';
 import { useEffect, useState } from 'react';
 
@@ -39,6 +39,7 @@ interface TopbarProps {
 
 interface AuthUser {
     name: string;
+    photo_url?: string | null;
     is_ministry_leader?: boolean;
 }
 
@@ -135,7 +136,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
 
                 {/* Right Actions */}
                 <div className="flex items-center gap-3 sm:gap-4">
-                    <AppVersionTrigger className="flex-shrink-0" />
+                    <TopbarEventsLink className="flex-shrink-0" />
 
                     <button
                         onClick={toggleTheme}
@@ -288,9 +289,17 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
                                         ) : null}
                                     </div>
                                 </div>
-                                <div className="w-10 h-10 rounded-full bg-zinc-900 dark:bg-white flex items-center justify-center text-white dark:text-black font-bold text-sm ring-4 ring-zinc-100 dark:ring-zinc-900 group-hover:ring-zinc-200 dark:group-hover:ring-zinc-800 transition-all">
-                                    {user.name.charAt(0).toUpperCase()}
-                                </div>
+                                {user.photo_url ? (
+                                    <img
+                                        src={user.photo_url}
+                                        alt=""
+                                        className="h-10 w-10 rounded-full object-cover ring-4 ring-zinc-100 transition-all group-hover:ring-zinc-200 dark:ring-zinc-900 dark:group-hover:ring-zinc-800"
+                                    />
+                                ) : (
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-900 text-sm font-bold text-white ring-4 ring-zinc-100 transition-all group-hover:ring-zinc-200 dark:bg-zinc-700 dark:text-white dark:ring-zinc-900 dark:group-hover:ring-zinc-800">
+                                        {user.name.charAt(0).toUpperCase()}
+                                    </div>
+                                )}
                             </Link>
                         </>
                     ) : (

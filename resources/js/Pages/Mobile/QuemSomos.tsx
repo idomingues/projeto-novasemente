@@ -8,10 +8,10 @@ export default function MobileQuemSomos() {
             <div className="space-y-5">
                 <div>
                     <Link
-                        href={route('mobile.more')}
+                        href={route('mobile.home')}
                         className="text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline"
                     >
-                        ← Mais
+                        ← Início
                     </Link>
                     <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-primary-600 dark:text-primary-400">
                         Sobre a NS

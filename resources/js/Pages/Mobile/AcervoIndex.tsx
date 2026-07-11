@@ -95,8 +95,8 @@ export default function MobileAcervoIndex({ items, playlistsUrl, canManage }: Pr
         <MobileLayout>
             <Head title="Séries" />
             <div className="space-y-6 -mt-8">
-                <Link href={route('mobile.more')} className="text-sm text-zinc-500 underline dark:text-zinc-400">
-                    ← Mais
+                <Link href={route('mobile.home')} className="text-sm text-zinc-500 underline dark:text-zinc-400">
+                    ← Início
                 </Link>
                 {/* Título e botão Adicionar na mesma linha */}
                 <div className="flex items-center justify-between gap-3 flex-nowrap">

@@ -317,7 +317,7 @@ class HandleInertiaRequests extends Middleware
                     ? ($request->user()->can('mission.view') || $request->user()->can('mission.manage'))
                     : false,
                 'canManageMission' => $request->user()?->can('mission.manage') ?? false,
-                /** Feed unificado de publicações (preview por e-mail enquanto `publications_feed.preview_only`). */
+                /** Feed unificado de publicações (barra inferior; preview opcional via config). */
                 'canAccessPublicationsFeed' => PublicationsFeedAccess::canAccess($request->user()),
             ],
             'missionTripRegistrationsCount' => function () use ($request) {
