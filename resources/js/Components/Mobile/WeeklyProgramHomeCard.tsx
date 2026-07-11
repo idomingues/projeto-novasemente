@@ -1,4 +1,4 @@
-import { CalendarDaysIcon, HeartIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { CalendarDaysIcon, SparklesIcon } from '@heroicons/react/24/outline';
 
 export type WeeklyProgramHomeCardData = {
     id: number;
@@ -53,7 +53,7 @@ export default function WeeklyProgramHomeCard({ card, appUrl = '', isNext = fals
     return (
         <section
             aria-label={`${showNextBadge ? 'Próximo: ' : ''}${card.title} — ${card.day_label}`}
-            className="relative w-full overflow-hidden rounded-[1.35rem] shadow-sm ring-1 ring-amber-900/10 dark:ring-amber-900/40"
+            className="relative flex h-full min-h-[13.5rem] w-full flex-col overflow-hidden rounded-[1.35rem] shadow-sm ring-1 ring-amber-900/10 dark:ring-amber-900/40 sm:min-h-[14.5rem]"
             style={{ backgroundColor: CREAM }}
         >
             {bgImage ? (
@@ -86,10 +86,9 @@ export default function WeeklyProgramHomeCard({ card, appUrl = '', isNext = fals
                 </>
             )}
 
-            <div className={`relative z-10 ${bgImage ? 'pr-[28%] sm:pr-[32%]' : ''}`}>
-                <div className="flex flex-col gap-3.5 px-4 py-4 sm:gap-4 sm:px-5 sm:py-5">
-                    {/* Top meta */}
-                    <div className="flex items-center justify-between gap-3">
+            <div className={`relative z-10 flex min-h-0 flex-1 flex-col ${bgImage ? 'pr-[28%] sm:pr-[32%]' : ''}`}>
+                <div className="flex min-h-0 flex-1 flex-col gap-3.5 px-4 py-4 sm:gap-4 sm:px-5 sm:py-5">
+                    <div className="flex shrink-0 items-center justify-between gap-3">
                         {showNextBadge ? (
                             <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-800/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-50 dark:bg-emerald-700">
                                 <SparklesIcon className="h-3 w-3 shrink-0 text-amber-300" aria-hidden />
@@ -106,12 +105,11 @@ export default function WeeklyProgramHomeCard({ card, appUrl = '', isNext = fals
                         </span>
                     </div>
 
-                    {/* Main grid: copy + time */}
                     <div
-                        className={`grid gap-4 ${
+                        className={`grid min-h-0 flex-1 gap-4 ${
                             bgImage
-                                ? 'grid-cols-1'
-                                : 'grid-cols-1 sm:grid-cols-[minmax(0,1.15fr)_minmax(7.5rem,0.85fr)] sm:items-start sm:gap-5'
+                                ? 'grid-cols-1 content-start'
+                                : 'grid-cols-1 content-start sm:grid-cols-[minmax(0,1.15fr)_minmax(7.5rem,0.85fr)] sm:items-start sm:gap-5'
                         }`}
                     >
                         <div className="min-w-0">
@@ -120,14 +118,14 @@ export default function WeeklyProgramHomeCard({ card, appUrl = '', isNext = fals
                             </h2>
 
                             {body ? (
-                                <p className="mt-3 text-[13px] leading-relaxed text-emerald-900/75 dark:text-emerald-100/75 sm:text-sm sm:leading-relaxed">
+                                <p className="mt-3 line-clamp-4 text-[13px] leading-relaxed text-emerald-900/75 dark:text-emerald-100/75 sm:text-sm sm:leading-relaxed">
                                     {body}
                                 </p>
                             ) : null}
 
                             {lines ? (
                                 <ul className="mt-3 space-y-1.5">
-                                    {lines.map((line) => (
+                                    {lines.slice(0, 3).map((line) => (
                                         <li
                                             key={line}
                                             className="flex items-start gap-2 text-[11px] font-semibold uppercase leading-snug tracking-wide text-emerald-900/85 dark:text-emerald-100/85"
@@ -136,7 +134,7 @@ export default function WeeklyProgramHomeCard({ card, appUrl = '', isNext = fals
                                                 className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-600 dark:bg-emerald-400"
                                                 aria-hidden
                                             />
-                                            <span>{line}</span>
+                                            <span className="line-clamp-1">{line}</span>
                                         </li>
                                     ))}
                                 </ul>
@@ -144,7 +142,7 @@ export default function WeeklyProgramHomeCard({ card, appUrl = '', isNext = fals
                         </div>
 
                         {!bgImage ? (
-                            <div className="flex flex-col items-start justify-center rounded-2xl bg-emerald-900/[0.04] px-4 py-3.5 ring-1 ring-inset ring-emerald-900/5 dark:bg-emerald-950/35 dark:ring-emerald-100/10 sm:items-end sm:px-4 sm:py-4">
+                            <div className="flex shrink-0 flex-col items-start justify-center self-start rounded-2xl bg-emerald-900/[0.04] px-4 py-3.5 ring-1 ring-inset ring-emerald-900/5 dark:bg-emerald-950/35 dark:ring-emerald-100/10 sm:items-end sm:px-4 sm:py-4">
                                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700/65 dark:text-emerald-300/70">
                                     Horário
                                 </p>
@@ -159,7 +157,7 @@ export default function WeeklyProgramHomeCard({ card, appUrl = '', isNext = fals
                                 </p>
                             </div>
                         ) : (
-                            <div className="min-w-0">
+                            <div className="min-w-0 self-start">
                                 <p
                                     className={`font-extrabold tabular-nums leading-none tracking-tight text-emerald-950 dark:text-emerald-50 ${
                                         timeHero.length > 5
@@ -171,12 +169,6 @@ export default function WeeklyProgramHomeCard({ card, appUrl = '', isNext = fals
                                 </p>
                             </div>
                         )}
-                    </div>
-
-                    {/* Footer message */}
-                    <div className="inline-flex w-fit max-w-full items-center gap-1.5 self-start rounded-full bg-emerald-100/95 px-3 py-1.5 text-[11px] font-semibold leading-snug text-emerald-950 dark:bg-emerald-900/55 dark:text-emerald-50">
-                        <HeartIcon className="h-3.5 w-3.5 shrink-0 text-amber-500" aria-hidden />
-                        <span>{card.message}</span>
                     </div>
                 </div>
             </div>
