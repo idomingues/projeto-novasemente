@@ -28,8 +28,9 @@ import {
 import type { ComponentType, SVGProps } from 'react';
 import PromiseBoxModal from '@/Components/Mobile/PromiseBoxModal';
 import SobreOAppNavItem from '@/Components/Mobile/SobreOAppNavItem';
+import WeeklyProgramHomeCarousel from '@/Components/Mobile/WeeklyProgramHomeCarousel';
+import type { WeeklyProgramHomeCardData } from '@/Components/Mobile/WeeklyProgramHomeCard';
 import SabbathHomeBanner, { type SabbathHomeBannerData } from '@/Components/Mobile/SabbathHomeBanner';
-import WeeklyProgramHomeCard, { type WeeklyProgramHomeCardData } from '@/Components/Mobile/WeeklyProgramHomeCard';
 import HomeFeaturedWeek, { type HomeFeaturedWeekPayload } from '@/Components/Mobile/HomeFeaturedWeek';
 import HomeCardBookmarkButton from '@/Components/Mobile/HomeCardBookmarkButton';
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
@@ -462,11 +463,7 @@ export default function MobileHome({
                 </header>
 
                 {weeklyProgramCards.length > 0 ? (
-                    <section aria-label="Programação semanal" className="space-y-3">
-                        {weeklyProgramCards.map((card) => (
-                            <WeeklyProgramHomeCard key={card.id} card={card} appUrl={appUrl} />
-                        ))}
-                    </section>
+                    <WeeklyProgramHomeCarousel cards={weeklyProgramCards} appUrl={appUrl} />
                 ) : sabbathBanner ? (
                     <SabbathHomeBanner banner={sabbathBanner} appUrl={appUrl} />
                 ) : null}

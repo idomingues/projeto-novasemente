@@ -65,7 +65,7 @@ class WeeklyProgramTest extends TestCase
         ]);
     }
 
-    public function test_home_includes_only_next_weekly_program_card(): void
+    public function test_home_includes_weekly_program_carousel_from_next(): void
     {
         config([
             'sabbath.latitude' => -23.574389,
@@ -73,7 +73,7 @@ class WeeklyProgramTest extends TestCase
             'sabbath.timezone' => 'America/Sao_Paulo',
         ]);
 
-        // Quinta 10h — próximo é sexta (pôr do sol), não o culto de sábado.
+        // Quinta 10h — próximo é sexta (pôr do sol), depois o culto de sábado.
         Carbon::setTestNow(Carbon::parse('2026-07-09 10:00:00', 'America/Sao_Paulo'));
 
         Http::fake([
@@ -121,10 +121,13 @@ class WeeklyProgramTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Mobile/Home')
-                ->has('weeklyProgramCards', 1)
+                ->has('weeklyProgramCards', 2)
                 ->where('weeklyProgramCards.0.title', 'INÍCIO DO SÁBADO')
+                ->where('weeklyProgramCards.0.is_next', true)
                 ->where('weeklyProgramCards.0.variant', 'sunset')
                 ->where('weeklyProgramCards.0.time_display', '17:36')
+                ->where('weeklyProgramCards.1.title', 'CULTO')
+                ->where('weeklyProgramCards.1.is_next', false)
             );
 
         Carbon::setTestNow();

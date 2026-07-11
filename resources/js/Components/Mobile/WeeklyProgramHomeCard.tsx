@@ -11,11 +11,13 @@ export type WeeklyProgramHomeCardData = {
     image_url?: string | null;
     body?: string | null;
     lines?: string[] | null;
+    is_next?: boolean;
 };
 
 type Props = {
     card: WeeklyProgramHomeCardData;
     appUrl?: string;
+    isNext?: boolean;
 };
 
 const CREAM = '#f5f1e9';
@@ -40,16 +42,17 @@ function formatTimeHero(raw: string): string {
     return raw.trim();
 }
 
-export default function WeeklyProgramHomeCard({ card, appUrl = '' }: Props) {
+export default function WeeklyProgramHomeCard({ card, appUrl = '', isNext = false }: Props) {
     const hasImage = Boolean(card.image_url);
     const bgImage = hasImage && card.image_url ? imageSrc(card.image_url, appUrl) : null;
     const timeHero = formatTimeHero(card.time_display);
     const body = card.body?.trim() || null;
     const lines = card.lines && card.lines.length > 0 ? card.lines : null;
+    const showNextBadge = isNext || Boolean(card.is_next);
 
     return (
         <section
-            aria-label={`Próximo: ${card.title} — ${card.day_label}`}
+            aria-label={`${showNextBadge ? 'Próximo: ' : ''}${card.title} — ${card.day_label}`}
             className="relative w-full overflow-hidden rounded-[1.35rem] shadow-sm ring-1 ring-amber-900/10 dark:ring-amber-900/40"
             style={{ backgroundColor: CREAM }}
         >
@@ -87,10 +90,16 @@ export default function WeeklyProgramHomeCard({ card, appUrl = '' }: Props) {
                 <div className="flex flex-col gap-3.5 px-4 py-4 sm:gap-4 sm:px-5 sm:py-5">
                     {/* Top meta */}
                     <div className="flex items-center justify-between gap-3">
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-800/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-50 dark:bg-emerald-700">
-                            <SparklesIcon className="h-3 w-3 shrink-0 text-amber-300" aria-hidden />
-                            Próximo
-                        </span>
+                        {showNextBadge ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-800/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-50 dark:bg-emerald-700">
+                                <SparklesIcon className="h-3 w-3 shrink-0 text-amber-300" aria-hidden />
+                                Próximo
+                            </span>
+                        ) : (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-900/8 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-800/70 dark:bg-emerald-950/50 dark:text-emerald-200/80">
+                                Na sequência
+                            </span>
+                        )}
                         <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-800/70 dark:text-emerald-200/75">
                             <CalendarDaysIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
                             {card.day_label}

@@ -32,7 +32,7 @@ class WeeklyProgramService
     }
 
     /**
-     * Card da home: apenas o próximo item da programação (com show_on_home).
+     * Cards da home em sequência a partir do próximo (carrossel).
      *
      * @return list<array<string, mixed>>
      */
@@ -41,17 +41,35 @@ class WeeklyProgramService
         $candidates = $this->activeForChurch($church)
             ->filter(fn (WeeklyProgram $item) => $item->show_on_home);
 
-        $next = $this->nextUpcomingItem($candidates);
-        if ($next === null) {
+        if ($candidates->isEmpty()) {
             return [];
         }
 
-        $card = $this->toHomeCard($next);
-        if ($card === null) {
-            return [];
+        $timezone = (string) config('sabbath.timezone', 'America/Sao_Paulo');
+        $now = Carbon::now($timezone);
+
+        $ordered = $candidates
+            ->map(fn (WeeklyProgram $item) => [
+                'item' => $item,
+                'at' => $this->nextOccurrenceAt($item, $now, $timezone),
+            ])
+            ->filter(fn (array $row) => $row['at'] instanceof Carbon)
+            ->sortBy(fn (array $row) => $row['at']->getTimestamp())
+            ->values();
+
+        $cards = [];
+        foreach ($ordered as $index => $row) {
+            /** @var WeeklyProgram $item */
+            $item = $row['item'];
+            $card = $this->toHomeCard($item);
+            if ($card === null) {
+                continue;
+            }
+            $card['is_next'] = $index === 0;
+            $cards[] = $card;
         }
 
-        return [$card];
+        return $cards;
     }
 
     /**
@@ -70,35 +88,6 @@ class WeeklyProgramService
             ->orderBy('day_of_week')
             ->orderBy('id')
             ->get();
-    }
-
-    /**
-     * @param  Collection<int, WeeklyProgram>  $items
-     */
-    private function nextUpcomingItem(Collection $items): ?WeeklyProgram
-    {
-        if ($items->isEmpty()) {
-            return null;
-        }
-
-        $timezone = (string) config('sabbath.timezone', 'America/Sao_Paulo');
-        $now = Carbon::now($timezone);
-
-        $best = null;
-        $bestAt = null;
-
-        foreach ($items as $item) {
-            $at = $this->nextOccurrenceAt($item, $now, $timezone);
-            if ($at === null) {
-                continue;
-            }
-            if ($bestAt === null || $at->lt($bestAt)) {
-                $bestAt = $at;
-                $best = $item;
-            }
-        }
-
-        return $best;
     }
 
     private function nextOccurrenceAt(WeeklyProgram $item, Carbon $now, string $timezone): ?Carbon
