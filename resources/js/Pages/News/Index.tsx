@@ -22,6 +22,7 @@ import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
 import ListCardIconActionButton from '@/Components/ListCard/ListCardIconActionButton';
 import InputError from '@/Components/InputError';
 import SelectInput from '@/Components/SelectInput';
+import Checkbox from '@/Components/Checkbox';
 import { useState, useEffect, FormEventHandler, useMemo, useCallback, useRef } from 'react';
 import ListSearchHint from '@/Components/ListSearchHint';
 import { useDebouncedServerSearch } from '@/hooks/useDebouncedServerSearch';
@@ -50,6 +51,7 @@ import FeedPostHeader, { type FeedPostAuthor } from '@/Components/News/FeedPostH
 import NewsCoverImagePicker from '@/Components/News/NewsCoverImagePicker';
 import NewsPdfFilePicker, { PDF_MAX_MB } from '@/Components/News/NewsPdfFilePicker';
 import VideoPlayOverlay from '@/Components/News/VideoPlayOverlay';
+import InstagramViewLink from '@/Components/News/InstagramViewLink';
 import { InstagramBrandIcon } from '@/Components/SocialBrandIcons';
 import { feedCaptionText } from '@/utils/feedCaption';
 import {
@@ -82,6 +84,7 @@ interface NewsPost {
     cover_url: string | null;
     pdf_url: string | null;
     video_url: string | null;
+    has_video?: boolean;
     published_at: string | null;
     is_active?: boolean;
     created_at: string;
@@ -209,6 +212,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
         instagram_url: '',
         image_url: '',
         published_at: '',
+        has_video: false,
         image_file: null as File | null,
         video_file: null as File | null,
         pdf_file: null as File | null,
@@ -265,10 +269,11 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                 instagram_url: p.instagram_url ?? '',
                 image_url: p.image_url ?? '',
                 published_at: p.published_at ? p.published_at.substring(0, 16) : '',
+                has_video: Boolean(p.has_video),
+                image_file: null,
+                video_file: null,
+                pdf_file: null,
             });
-            setData('image_file', null);
-            setData('video_file', null);
-            setData('pdf_file', null);
         },
         [setData],
     );
@@ -621,7 +626,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                     >
                                         <PhotoIcon className="h-12 w-12 text-zinc-400" />
                                     </div>
-                                    {p.instagram_url && <VideoPlayOverlay />}
+                                    {p.has_video ? <VideoPlayOverlay /> : null}
                                     <span className="absolute left-2 top-2 z-10 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
                                         {typeShortLabel(p.content_type ?? 'article')}
                                     </span>
@@ -644,7 +649,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                             ) : p.content_type === 'instagram_link' ? (
                                 <div className="group relative flex h-40 w-full flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-pink-100 via-purple-50 to-rose-100 dark:from-pink-950/40 dark:via-zinc-800 dark:to-purple-950/30 md:h-48">
                                     <InstagramBrandIcon className="h-14 w-14 text-pink-600/80 dark:text-pink-400/70" />
-                                    {p.instagram_url && <VideoPlayOverlay />}
+                                    {p.has_video ? <VideoPlayOverlay /> : null}
                                     <span className="absolute left-2 top-2 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
                                         Instagram
                                     </span>
@@ -705,18 +710,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                     >
                                         Ver na app
                                     </Link>
-                                    {(p.content_type === 'instagram_link' || p.content_type === 'instagram_feed') &&
-                                        p.instagram_url && (
-                                        <a
-                                            href={p.instagram_url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center gap-1 text-xs font-medium text-pink-600 hover:underline dark:text-pink-400"
-                                        >
-                                            <InstagramBrandIcon className="h-4 w-4" />
-                                            Ver vídeo
-                                        </a>
-                                    )}
+                                    {p.instagram_url ? <InstagramViewLink href={p.instagram_url} className="text-xs" /> : null}
                                 </div>
                             </div>
                         </Card>
@@ -801,9 +795,13 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                     id="news_content_type"
                                     value={data.content_type}
                                     className="mt-1"
-                                    onChange={(e) =>
-                                        setData('content_type', e.target.value as ContentType)
-                                    }
+                                    onChange={(e) => {
+                                        const next = e.target.value as ContentType;
+                                        setData('content_type', next);
+                                        if (next === 'youtube') {
+                                            setData('has_video', true);
+                                        }
+                                    }}
                                 >
                                     <option value="article">Artigo (texto)</option>
                                     <option value="youtube">Vídeo (YouTube)</option>
@@ -833,6 +831,21 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                     </p>
                                 )}
                                 <InputError message={errors.content_type} className="mt-1" />
+                            </div>
+                            <div className="flex items-start gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-3 dark:border-zinc-700 dark:bg-zinc-900/40">
+                                <Checkbox
+                                    id="news_has_video"
+                                    checked={data.has_video}
+                                    onChange={(e) => setData('has_video', e.target.checked)}
+                                />
+                                <div className="min-w-0">
+                                    <InputLabel htmlFor="news_has_video" value="Tem vídeo" className="cursor-pointer" />
+                                    <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                                        Marque para mostrar o ícone de play na capa (lista e feed). No detalhe a imagem
+                                        abre completa, sem play.
+                                    </p>
+                                    <InputError message={errors.has_video} className="mt-1" />
+                                </div>
                             </div>
                             <div>
                                 <InputLabel htmlFor="title" value="Título" />
@@ -916,7 +929,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                         placeholder="https://www.instagram.com/p/… ou …/reel/…"
                                     />
                                     <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                        Cole o link do post, reel ou IGTV. Na app, aparecerá o botão «Ver vídeo».
+                                        Cole o link do post, reel ou IGTV. Na app, aparecerá o botão «Ver no Instagram».
                                     </p>
                                     <InputError message={errors.instagram_url} className="mt-1" />
                                 </div>
@@ -1086,7 +1099,24 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                     />
                                     <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                                         Se a publicação original estiver no Instagram, cole o link para exibir o botão
-                                        «Ver vídeo» na app (além da imagem ou vídeo enviados acima).
+                                        «Ver no Instagram» na app (além da imagem ou vídeo enviados acima).
+                                    </p>
+                                    <InputError message={errors.instagram_url} className="mt-1" />
+                                </div>
+                            )}
+
+                            {!isInstagramFeed && !isInstagramLink && (
+                                <div>
+                                    <InputLabel htmlFor="instagram_url_optional" value="Link no Instagram (opcional)" />
+                                    <TextInput
+                                        id="instagram_url_optional"
+                                        value={data.instagram_url}
+                                        onChange={(e) => setData('instagram_url', e.target.value)}
+                                        className="mt-1 block w-full"
+                                        placeholder="https://www.instagram.com/p/… ou …/reel/…"
+                                    />
+                                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                        Se houver publicação no Instagram, a app mostra o botão «Ver no Instagram».
                                     </p>
                                     <InputError message={errors.instagram_url} className="mt-1" />
                                 </div>
@@ -1109,6 +1139,9 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                         onChange={(e) => {
                                             const file = e.target.files?.[0] ?? null;
                                             setData('video_file', file);
+                                            if (file) {
+                                                setData('has_video', true);
+                                            }
                                         }}
                                         className="mt-2 block w-full text-sm text-zinc-900 file:mr-4 file:rounded-full file:border-0 file:bg-zinc-900 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-white hover:file:bg-zinc-800 dark:text-zinc-100 dark:file:bg-zinc-100 dark:file:text-zinc-900"
                                     />
@@ -1178,10 +1211,9 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                                 isInstagramFeed ? 'aspect-[4/5]' : 'h-40'
                                             }`}
                                         />
-                                        {data.instagram_url?.trim() &&
-                                            (isInstagramFeed || isInstagramLink) && <VideoPlayOverlay />}
+                                        {data.has_video ? <VideoPlayOverlay /> : null}
                                         {data.content_type === 'youtube' && (
-                                            <span className="absolute left-2 top-2 flex items-center gap-1 rounded-lg bg-black/65 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
+                                            <span className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded-lg bg-black/65 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
                                                 <PlayCircleIcon className="h-3.5 w-3.5" />
                                                 Vídeo
                                             </span>
@@ -1202,8 +1234,11 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                 ) : isInstagramLink ? (
                                     <div className="group relative flex h-40 flex-col items-center justify-center bg-gradient-to-br from-pink-100 via-purple-50 to-rose-100 px-4 dark:from-pink-950/40 dark:via-zinc-900 dark:to-purple-950/30">
                                         <InstagramBrandIcon className="h-12 w-12 text-pink-600 dark:text-pink-400" />
+                                        {data.has_video ? <VideoPlayOverlay /> : null}
                                         {data.instagram_url?.trim() ? (
-                                            <VideoPlayOverlay />
+                                            <p className="relative z-10 mt-2 text-center text-xs font-medium text-pink-700 dark:text-pink-300">
+                                                Ver no Instagram
+                                            </p>
                                         ) : (
                                             <p className="relative z-10 text-center text-xs text-zinc-600 dark:text-zinc-400">
                                                 Cole o link do Instagram acima

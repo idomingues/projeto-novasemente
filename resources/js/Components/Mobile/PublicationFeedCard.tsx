@@ -3,7 +3,6 @@ import {
     BanknotesIcon,
     BookOpenIcon,
     CalendarDaysIcon,
-    ChevronRightIcon,
     FilmIcon,
     HeartIcon,
     MusicalNoteIcon,
@@ -148,7 +147,6 @@ export default function PublicationFeedCard({ item, appUrl }: Props) {
     const meta = item.meta ?? [];
     const [coverBroken, setCoverBroken] = useState(false);
     const showCover = Boolean(src) && !coverBroken;
-    const when = formatWhen(item.published_at);
     const isPrayer = item.type === 'prayer';
     const isNews = item.type === 'news';
 
@@ -187,11 +185,8 @@ export default function PublicationFeedCard({ item, appUrl }: Props) {
                 )}
 
                 <div className="space-y-2 p-4">
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
                         <PublicationFeedTypeTag type={item.type} label={item.type_label} />
-                        {when ? (
-                            <p className="shrink-0 text-xs text-zinc-400 dark:text-zinc-500">{when}</p>
-                        ) : null}
                     </div>
 
                     {isPrayer ? (
@@ -217,9 +212,12 @@ export default function PublicationFeedCard({ item, appUrl }: Props) {
                     )}
 
                     <div className="flex items-center justify-end pt-1">
-                        <span className="inline-flex items-center gap-0.5 text-sm text-zinc-500 transition group-hover:text-zinc-700 dark:text-zinc-400 dark:group-hover:text-zinc-200">
-                            {item.action_label || 'Abrir'}
-                            <ChevronRightIcon className="h-4 w-4" aria-hidden />
+                        <span
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-zinc-500 transition group-hover:bg-zinc-100 group-hover:text-zinc-800 dark:text-zinc-400 dark:group-hover:bg-zinc-800 dark:group-hover:text-zinc-100"
+                            aria-label={item.action_label || 'Ler publicação'}
+                            title={item.action_label || 'Ler publicação'}
+                        >
+                            <BookOpenIcon className="h-5 w-5" aria-hidden strokeWidth={1.75} />
                         </span>
                     </div>
                 </div>

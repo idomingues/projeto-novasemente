@@ -1,8 +1,8 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import InstagramFeedCard, { type InstagramFeedPost } from '@/Components/News/InstagramFeedCard';
+import InstagramViewLink from '@/Components/News/InstagramViewLink';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { DocumentTextIcon, NewspaperIcon, PhotoIcon, PlayCircleIcon } from '@heroicons/react/24/outline';
-import CoverWithVideoLink from '@/Components/News/CoverWithVideoLink';
 import NewsPostCover from '@/Components/News/NewsPostCover';
 
 function imageSrc(url: string | null, appUrl: string): string {
@@ -24,6 +24,7 @@ interface Post extends InstagramFeedPost {
     content_type: ContentType;
     excerpt: string | null;
     body: string;
+    has_video?: boolean;
 }
 
 interface Props {
@@ -82,7 +83,7 @@ function TypeCornerBadge({ type }: { type: ContentType }) {
     }
     if (type === 'image') {
         return (
-            <span className="absolute left-2 top-2 flex items-center gap-1 rounded-lg bg-black/60 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
+            <span className="absolute left-2 top-2 flex items-center gap-1 rounded-lg bg-emerald-900/80 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
                 <PhotoIcon className="h-3.5 w-3.5" aria-hidden />
                 Imagem
             </span>
@@ -128,111 +129,86 @@ export default function MobileNews({ posts, config }: Props) {
 
                             const thumb = p.cover_url || p.image_url;
                             const snippet = previewSnippet(p);
-                            const instagramVideoUrl = p.instagram_url?.trim() || '';
-                            const hasInstagramVideoLink = Boolean(instagramVideoUrl);
+                            const instagramUrl = p.instagram_url?.trim() || '';
+                            const showPlay = Boolean(p.has_video);
 
                             return (
                                 <li
                                     key={p.id}
                                     className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition-all hover:border-zinc-300 hover:shadow-md active:scale-[0.99] dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
                                 >
-                                                {thumb ? (
-                                                    <div className="relative rounded-t-2xl">
-                                                        <NewsPostCover
-                                                            imageSrc={imageSrc(thumb, appUrl)}
-                                                            instagramVideoUrl={
-                                                                hasInstagramVideoLink ? instagramVideoUrl : null
-                                                            }
-                                                            detailHref={
-                                                                hasInstagramVideoLink
-                                                                    ? undefined
-                                                                    : route(showRoute, p.slug)
-                                                            }
-                                                            showYoutubePlayOverlay={p.content_type === 'youtube'}
-                                                            onImageError={(e) => {
-                                                                const el = e.currentTarget;
-                                                                el.style.display = 'none';
-                                                                const next = el.nextElementSibling as HTMLElement | null;
-                                                                if (next) next.style.display = 'flex';
-                                                            }}
-                                                            imageFallback={
-                                                                <div
-                                                                    className="absolute inset-0 hidden items-center justify-center bg-zinc-200 dark:bg-zinc-700"
-                                                                    style={{ display: 'none' }}
-                                                                    aria-hidden
-                                                                >
-                                                                    <NewspaperIcon className="h-12 w-12 text-zinc-400" />
-                                                                </div>
-                                                            }
-                                                            overlaySlot={
-                                                                <>
-                                                                    {!hasInstagramVideoLink && (
-                                                                        <TypeCornerBadge type={p.content_type} />
-                                                                    )}
-                                                                    <span className="pointer-events-none absolute bottom-2 right-2 z-10 rounded-lg bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
-                                                                        {formatDate(p.published_at)}
-                                                                    </span>
-                                                                </>
-                                                            }
-                                                        />
+                                    {thumb ? (
+                                        <div className="relative rounded-t-2xl">
+                                            <NewsPostCover
+                                                imageSrc={imageSrc(thumb, appUrl)}
+                                                detailHref={route(showRoute, p.slug)}
+                                                showPlayOverlay={showPlay}
+                                                onImageError={(e) => {
+                                                    const el = e.currentTarget;
+                                                    el.style.display = 'none';
+                                                    const next = el.nextElementSibling as HTMLElement | null;
+                                                    if (next) next.style.display = 'flex';
+                                                }}
+                                                imageFallback={
+                                                    <div
+                                                        className="absolute inset-0 hidden items-center justify-center bg-zinc-200 dark:bg-zinc-700"
+                                                        style={{ display: 'none' }}
+                                                        aria-hidden
+                                                    >
+                                                        <NewspaperIcon className="h-12 w-12 text-zinc-400" />
                                                     </div>
-                                                ) : (
-                                                    hasInstagramVideoLink ? (
-                                                        <CoverWithVideoLink
-                                                            videoHref={instagramVideoUrl}
-                                                            className={`relative flex h-32 items-center justify-center rounded-t-2xl ${
-                                                                p.content_type === 'instagram_link'
-                                                                    ? 'bg-gradient-to-br from-pink-100 via-purple-50 to-rose-100 dark:from-pink-950/30 dark:via-zinc-800 dark:to-purple-950/20'
-                                                                    : 'bg-gradient-to-br from-rose-100 via-zinc-100 to-amber-50 dark:from-rose-950/30 dark:via-zinc-800 dark:to-amber-950/20'
-                                                            }`}
-                                                        >
-                                                            <span className="sr-only">Ver vídeo</span>
-                                                            <span className="pointer-events-none absolute bottom-2 right-2 z-10 rounded-lg bg-black/50 px-2 py-1 text-xs text-white">
-                                                                {formatDate(p.published_at)}
-                                                            </span>
-                                                        </CoverWithVideoLink>
-                                                    ) : (
-                                                        <Link
-                                                            href={route(showRoute, p.slug)}
-                                                            className="block rounded-t-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"
-                                                        >
-                                                            <div
-                                                                className={`relative flex h-32 items-center justify-center ${
-                                                                    p.content_type === 'instagram_link'
-                                                                        ? 'bg-gradient-to-br from-pink-100 via-purple-50 to-rose-100 dark:from-pink-950/30 dark:via-zinc-800 dark:to-purple-950/20'
-                                                                        : 'bg-gradient-to-br from-rose-100 via-zinc-100 to-amber-50 dark:from-rose-950/30 dark:via-zinc-800 dark:to-amber-950/20'
-                                                                }`}
-                                                            >
-                                                                <TypeCornerBadge type={p.content_type} />
-                                                                <DocumentTextIcon className="h-12 w-12 text-rose-500/70 dark:text-rose-400/60" />
-                                                                <span className="absolute bottom-2 right-2 rounded-lg bg-black/50 px-2 py-1 text-xs text-white">
-                                                                    {formatDate(p.published_at)}
-                                                                </span>
-                                                            </div>
-                                                        </Link>
-                                                    )
-                                                )}
-                                                <Link
-                                                    href={route(showRoute, p.slug)}
-                                                    className="flex flex-1 flex-col rounded-b-2xl p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
-                                                >
-                                                    <h2 className="line-clamp-2 text-lg font-semibold leading-snug text-zinc-900 dark:text-white">
-                                                        {p.title}
-                                                    </h2>
-                                                    {!thumb && (
-                                                        <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                                                }
+                                                overlaySlot={
+                                                    <>
+                                                        <TypeCornerBadge type={p.content_type} />
+                                                        <span className="pointer-events-none absolute bottom-2 right-2 z-10 rounded-lg bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
                                                             {formatDate(p.published_at)}
-                                                        </p>
-                                                    )}
-                                                    {snippet && (
-                                                        <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
-                                                            {snippet}
-                                                        </p>
-                                                    )}
-                                                    <span className="mt-3 inline-block text-sm font-semibold text-brand-600 underline-offset-2 hover:underline dark:text-brand-400">
-                                                        Ler publicação
-                                                    </span>
-                                                </Link>
+                                                        </span>
+                                                    </>
+                                                }
+                                            />
+                                        </div>
+                                    ) : (
+                                        <Link
+                                            href={route(showRoute, p.slug)}
+                                            className="block cursor-pointer rounded-t-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"
+                                        >
+                                            <div
+                                                className={`relative flex h-32 items-center justify-center ${
+                                                    p.content_type === 'instagram_link'
+                                                        ? 'bg-gradient-to-br from-pink-100 via-purple-50 to-rose-100 dark:from-pink-950/30 dark:via-zinc-800 dark:to-purple-950/20'
+                                                        : 'bg-gradient-to-br from-rose-100 via-zinc-100 to-amber-50 dark:from-rose-950/30 dark:via-zinc-800 dark:to-amber-950/20'
+                                                }`}
+                                            >
+                                                <TypeCornerBadge type={p.content_type} />
+                                                <DocumentTextIcon className="h-12 w-12 text-rose-500/70 dark:text-rose-400/60" />
+                                                <span className="absolute bottom-2 right-2 rounded-lg bg-black/50 px-2 py-1 text-xs text-white">
+                                                    {formatDate(p.published_at)}
+                                                </span>
+                                            </div>
+                                        </Link>
+                                    )}
+                                    <Link
+                                        href={route(showRoute, p.slug)}
+                                        className="flex flex-1 cursor-pointer flex-col rounded-b-2xl p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
+                                    >
+                                        <h2 className="line-clamp-2 text-lg font-semibold leading-snug text-zinc-900 dark:text-white">
+                                            {p.title}
+                                        </h2>
+                                        {snippet ? (
+                                            <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                                                {snippet}
+                                            </p>
+                                        ) : null}
+                                        <span className="mt-3 inline-block text-sm font-semibold text-brand-600 underline-offset-2 hover:underline dark:text-brand-400">
+                                            Ler publicação
+                                        </span>
+                                    </Link>
+                                    {instagramUrl ? (
+                                        <div className="border-t border-zinc-100 px-4 py-3 dark:border-zinc-800">
+                                            <InstagramViewLink href={instagramUrl} />
+                                        </div>
+                                    ) : null}
                                 </li>
                             );
                         })}
@@ -247,7 +223,7 @@ export default function MobileNews({ posts, config }: Props) {
                                     {link.url ? (
                                         <Link
                                             href={link.url}
-                                            className={`block border-l border-zinc-200 px-4 py-2 text-sm first:border-l-0 dark:border-zinc-700 ${
+                                            className={`block cursor-pointer border-l border-zinc-200 px-4 py-2 text-sm first:border-l-0 dark:border-zinc-700 ${
                                                 link.active
                                                     ? 'bg-zinc-900 font-semibold text-white dark:bg-white dark:text-zinc-900'
                                                     : 'text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800'

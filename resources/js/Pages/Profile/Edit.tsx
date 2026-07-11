@@ -69,7 +69,7 @@ export default function Edit({
                                     Pastores
                                 </h3>
                                 <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                                    Fotos e textos da equipe pastoral exibidos em Mais → Nossos pastores.
+                                    Fotos e textos da equipe pastoral exibidos em Mais → Pastores.
                                 </p>
                                 <Link
                                     href={route('pastors.index')}

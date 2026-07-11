@@ -29,7 +29,7 @@ export default function MobileServices({ churchName, services }: Props) {
 
     return (
         <MobileLayout>
-            <Head title="Cultos e horários" />
+            <Head title="Horários" />
             <div className="space-y-6">
                 <div>
                     <Link
@@ -38,7 +38,7 @@ export default function MobileServices({ churchName, services }: Props) {
                     >
                         ← Início
                     </Link>
-                    <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Cultos e horários</h1>
+                    <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Horários</h1>
                     {churchName && (
                         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{churchName}</p>
                     )}

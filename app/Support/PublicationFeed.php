@@ -2,7 +2,6 @@
 
 namespace App\Support;
 
-use App\Models\AcervoItem;
 use App\Models\CharityCampaign;
 use App\Models\Church;
 use App\Models\Culto;
@@ -79,12 +78,6 @@ class PublicationFeed
             'feature' => 'revista_adventista',
             'description' => 'Artigo da Revista Adventista para ler no app.',
             'action' => 'Ler artigo',
-        ],
-        'acervo' => [
-            'label' => 'Novas Séries',
-            'feature' => 'acervo',
-            'description' => 'Série de vídeos já passados na Nova Semente.',
-            'action' => 'Ver série',
         ],
         'musica' => [
             'label' => 'Música',
@@ -243,7 +236,6 @@ class PublicationFeed
                 'photos' => self::collectPhotoAlbums($church, $churchId, $driveCover, $baseUrl),
                 'events' => self::collectEvents($church, $churchId, $baseUrl),
                 'revista' => self::collectRevistaArticles($church, $baseUrl),
-                'acervo' => self::collectAcervoItems($church, $baseUrl),
                 'musica' => self::collectMusicas($church, $churchId, $baseUrl),
                 'donation_campaign' => self::collectDonationCampaigns($church, $churchId, $baseUrl),
                 default => collect(),
@@ -555,39 +547,6 @@ class PublicationFeed
                     publishedAt: $article->published_at,
                     href: route('mobile.revista-adventista.show', ['revistaAdventistaArticle' => $article->slug], absolute: false),
                     meta: $meta,
-                );
-            });
-    }
-
-    /**
-     * @return Collection<int, array<string, mixed>>
-     */
-    private static function collectAcervoItems(?Church $church, string $baseUrl): Collection
-    {
-        return AcervoItem::query()
-            ->orderByDesc('updated_at')
-            ->orderByDesc('id')
-            ->limit(100)
-            ->get()
-            ->map(function (AcervoItem $item) use ($church, $baseUrl) {
-                $count = (int) ($item->video_count ?? 0);
-                $meta = [
-                    $count > 0
-                        ? $count.' '.($count === 1 ? 'vídeo na série' : 'vídeos na série')
-                        : 'Playlist de vídeos',
-                ];
-
-                return self::entry(
-                    type: 'acervo',
-                    typeLabel: self::TYPE_DEFINITIONS['acervo']['label'],
-                    pk: $item->id,
-                    title: $item->title,
-                    excerpt: 'Série de vídeos já passados na Nova Semente — assista quando quiser.',
-                    imageUrl: PublicationFeedCoverResolver::forAcervo($item, $church, $baseUrl),
-                    publishedAt: $item->updated_at ?? $item->created_at,
-                    href: route('mobile.acervo.show', ['acervoItem' => $item->id], absolute: false),
-                    meta: $meta,
-                    coverPlayOverlay: PublicationFeedCoverResolver::acervoShowsPlayOverlay($item),
                 );
             });
     }

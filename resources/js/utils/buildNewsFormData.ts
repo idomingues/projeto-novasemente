@@ -7,6 +7,7 @@ export type NewsFormData = {
     instagram_url: string;
     image_url: string;
     published_at: string;
+    has_video: boolean;
     image_file: File | null;
     video_file: File | null;
     pdf_file: File | null;
@@ -21,6 +22,7 @@ export function buildNewsFormData(data: NewsFormData): FormData {
     formData.append('youtube_url', data.youtube_url);
     formData.append('instagram_url', data.instagram_url);
     formData.append('image_url', data.image_url);
+    formData.append('has_video', data.has_video ? '1' : '0');
     if (data.published_at.trim() !== '') {
         formData.append('published_at', data.published_at);
     }

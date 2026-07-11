@@ -119,7 +119,7 @@ export default function ChurchServicesIndex({ church, services }: Props) {
             <Card className="!p-0 overflow-hidden">
                 {services.length === 0 ? (
                     <div className="px-6 py-12 text-center text-zinc-500 dark:text-zinc-400">
-                        Nenhum horário cadastrado. Estes horários aparecem no app mobile em &quot;Cultos e horários&quot;.
+                        Nenhum horário cadastrado. Estes horários aparecem no app mobile em &quot;Horários&quot;.
                     </div>
                 ) : (
                     <div className="overflow-x-auto">

@@ -185,7 +185,7 @@ export default function PastorsIndex({ pastors, canManage, linkableUsers }: Prop
                 }
                 subtitle={
                     <>
-                        Equipe pastoral da igreja em contexto (foto e texto). A página pública fica em Mais → Nossos pastores. A{' '}
+                        Equipe pastoral da igreja em contexto (foto e texto). A página pública fica em Mais → Pastores. A{' '}
                         <span className="font-medium text-zinc-700 dark:text-zinc-300">disponibilidade semanal</span> para «Agendar com pastor» define-se no módulo{' '}
                         <span className="font-medium text-zinc-700 dark:text-zinc-300">Agenda pastoral</span> no menu lateral (não neste formulário). Associe a «Conta da app» ao pastor e, se quiser,{' '}
                         <span className="font-medium text-zinc-700 dark:text-zinc-300">delegados da agenda</span> para outros usuários poderem editar as mesmas faixas nesse módulo.
@@ -316,7 +316,7 @@ export default function PastorsIndex({ pastors, canManage, linkableUsers }: Prop
                         <div>
                             <InputLabel htmlFor="pastor_photo" value="Foto (opcional)" />
                             <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                Aparece neste cartão e na página pública (Mais → Nossos pastores). Formatos: JPG ou PNG, até 4&nbsp;MB.
+                                Aparece neste cartão e na página pública (Mais → Pastores). Formatos: JPG ou PNG, até 4&nbsp;MB.
                             </p>
                             <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
                                 <div className="relative flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800">

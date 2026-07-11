@@ -37,7 +37,7 @@ const items: MoreMenuItem[] = [
     { name: 'Dízimos e Pacto', description: 'Contribuições e pacto', route: 'mobile.offerings', featureKey: 'offerings', icon: HandRaisedIcon },
     { name: 'Culto', description: 'Vídeos do culto online', route: 'mobile.culto', featureKey: 'culto', icon: FilmIcon },
     { name: 'Música', description: 'Cante conosco', route: 'musica.index', featureKey: 'musica', icon: MusicalNoteIcon },
-    { name: 'Cultos e horários', description: 'Dias e horários dos cultos', route: 'mobile.services', featureKey: 'services', icon: ClockIcon },
+    { name: 'Horários', description: 'Dias e horários dos cultos', route: 'mobile.services', featureKey: 'services', icon: ClockIcon },
     {
         name: 'Fotos',
         description: 'Álbum de fotos (Google Drive)',
@@ -54,11 +54,11 @@ const items: MoreMenuItem[] = [
         icon: NewspaperIcon,
     },
     { name: 'Localização', description: 'Endereço e mapa da igreja', route: 'mobile.location', featureKey: 'location', icon: MapPinIcon },
-    { name: 'Nossos pastores', description: 'Conheça a equipe pastoral', route: 'mobile.pastors', featureKey: 'pastors', icon: UserCircleIcon },
+    { name: 'Pastores', description: 'Conheça a equipe pastoral', route: 'mobile.pastors', featureKey: 'pastors', icon: UserCircleIcon },
     { name: 'Quem somos', description: 'História e significado do nome', route: 'mobile.quem-somos', featureKey: 'quem_somos', icon: UserGroupIcon },
-    { name: 'Em que acreditamos', description: '28 princípios de fé (IASD)', route: 'mobile.beliefs', featureKey: 'beliefs', icon: BookOpenIcon },
+    { name: 'Em que cremos', description: '28 princípios de fé (IASD)', route: 'mobile.beliefs', featureKey: 'beliefs', icon: BookOpenIcon },
     {
-        name: 'Área do voluntário',
+        name: 'Voluntário',
         description: 'Cadastro completo',
         route: 'volunteers.public-signup.page',
         featureKey: 'volunteer_signup',

@@ -1,9 +1,9 @@
 import { Link, usePage } from '@inertiajs/react';
-import { PlayCircleIcon } from '@heroicons/react/24/solid';
 import FeedCaptionBody from '@/Components/News/FeedCaptionBody';
 import FeedPostHeader, { type FeedPostAuthor } from '@/Components/News/FeedPostHeader';
-import CoverWithVideoLink from '@/Components/News/CoverWithVideoLink';
+import InstagramViewLink from '@/Components/News/InstagramViewLink';
 import NewsPostCover from '@/Components/News/NewsPostCover';
+import VideoPlayOverlay from '@/Components/News/VideoPlayOverlay';
 import { feedCaptionText } from '@/utils/feedCaption';
 
 function mediaSrc(url: string | null, appUrl: string): string {
@@ -23,6 +23,7 @@ export interface InstagramFeedPost {
     cover_url: string | null;
     video_url?: string | null;
     instagram_url?: string | null;
+    has_video?: boolean;
     published_at: string | null;
     author?: FeedPostAuthor | null;
 }
@@ -44,64 +45,50 @@ function FeedMedia({
     appUrl,
     variant,
     showHref,
-    instagramUrl,
 }: {
     post: InstagramFeedPost;
     appUrl: string;
     variant: 'feed' | 'detail';
     showHref: string;
-    instagramUrl: string;
 }) {
     const hostedVideoUrl = post.video_url ? mediaSrc(post.video_url, appUrl) : '';
     const posterUrl = post.cover_url || post.image_url;
     const poster = posterUrl ? mediaSrc(posterUrl, appUrl) : undefined;
     const isDetail = variant === 'detail';
-    const hasInstagramVideo = Boolean(instagramUrl);
+    const showPlay = Boolean(post.has_video) && !isDetail;
 
-    /** Mesma capa da grade Notícias: 16/10, play ao hover, abre o Instagram. */
-    if (hasInstagramVideo && poster) {
+    if (hostedVideoUrl && isDetail) {
         return (
-            <NewsPostCover
-                imageSrc={poster}
-                instagramVideoUrl={instagramUrl}
-                aspectClass="aspect-[16/10]"
-                imageLoading={isDetail ? 'eager' : 'lazy'}
-            />
+            <div className="relative w-full overflow-hidden bg-zinc-950">
+                <video
+                    src={hostedVideoUrl}
+                    poster={poster}
+                    className="h-auto max-h-[min(80vh,56rem)] w-full object-contain"
+                    controls
+                    playsInline
+                    preload="metadata"
+                />
+            </div>
         );
     }
 
-    if (hostedVideoUrl) {
-        const video = (
-            <video
-                src={hostedVideoUrl}
-                poster={poster}
-                className="h-full w-full object-cover object-top"
-                controls={isDetail}
-                playsInline
-                muted={!isDetail}
-                loop={!isDetail}
-                autoPlay={!isDetail}
-                preload={isDetail ? 'metadata' : 'auto'}
-            />
-        );
-
-        if (isDetail) {
-            return (
-                <div className="relative aspect-[9/16] w-full overflow-hidden bg-zinc-950">
-                    {video}
-                </div>
-            );
-        }
-
+    if (hostedVideoUrl && !isDetail) {
         return (
             <Link
                 href={showHref}
-                className="relative block aspect-[9/16] w-full overflow-hidden bg-zinc-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
+                className="relative block aspect-[9/16] w-full cursor-pointer overflow-hidden bg-zinc-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
             >
-                {video}
-                <span className="pointer-events-none absolute right-3 top-3 rounded-full bg-black/55 p-1.5 text-white">
-                    <PlayCircleIcon className="h-6 w-6" aria-hidden />
-                </span>
+                <video
+                    src={hostedVideoUrl}
+                    poster={poster}
+                    className="h-full w-full object-cover object-top"
+                    playsInline
+                    muted
+                    loop
+                    autoPlay
+                    preload="auto"
+                />
+                {showPlay ? <VideoPlayOverlay /> : null}
             </Link>
         );
     }
@@ -112,11 +99,11 @@ function FeedMedia({
 
     if (isDetail) {
         return (
-            <div className="relative aspect-[4/5] w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+            <div className="relative w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
                 <img
                     src={poster}
                     alt=""
-                    className="h-full w-full object-cover object-top"
+                    className="h-auto w-full object-contain object-top"
                     loading="eager"
                     decoding="async"
                 />
@@ -125,12 +112,13 @@ function FeedMedia({
     }
 
     return (
-        <Link
-            href={showHref}
-            className="relative block aspect-[4/5] w-full overflow-hidden bg-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500 dark:bg-zinc-800"
-        >
-            <img src={poster} alt="" className="h-full w-full object-cover object-top" loading="lazy" decoding="async" />
-        </Link>
+        <NewsPostCover
+            imageSrc={poster}
+            detailHref={showHref}
+            aspectClass="aspect-[4/5]"
+            showPlayOverlay={showPlay}
+            imageLoading="lazy"
+        />
     );
 }
 
@@ -164,34 +152,21 @@ export default function InstagramFeedCard({
                 publishedAt={post.published_at}
             />
 
-            <FeedMedia
-                post={post}
-                appUrl={appUrl}
-                variant={variant}
-                showHref={showHref}
-                instagramUrl={instagramUrl}
-            />
+            <FeedMedia post={post} appUrl={appUrl} variant={variant} showHref={showHref} />
 
-            {(caption || (!instagramUrl && !isDetail) || (instagramUrl && !posterUrl && !hasHostedVideo)) && (
+            {(caption || instagramUrl || (!instagramUrl && !isDetail) || (instagramUrl && !posterUrl && !hasHostedVideo)) && (
                 <div className="space-y-3 px-4 py-3">
                     {caption ? (
                         <FeedCaptionBody caption={caption} clampLines={!isDetail} />
                     ) : !isDetail ? (
                         <Link
                             href={showHref}
-                            className="text-sm font-semibold text-brand-600 underline-offset-2 hover:underline dark:text-brand-400"
+                            className="cursor-pointer text-sm font-semibold text-brand-600 underline-offset-2 hover:underline dark:text-brand-400"
                         >
                             Ler publicação
                         </Link>
                     ) : null}
-                    {instagramUrl && !posterUrl && !hasHostedVideo && (
-                        <CoverWithVideoLink
-                            videoHref={instagramUrl}
-                            className="flex aspect-[16/10] w-full items-center justify-center rounded-xl bg-gradient-to-br from-pink-100 via-purple-50 to-rose-100 dark:from-pink-950/40 dark:via-zinc-900 dark:to-purple-950/30"
-                        >
-                            <span className="sr-only">Ver vídeo</span>
-                        </CoverWithVideoLink>
-                    )}
+                    {instagramUrl ? <InstagramViewLink href={instagramUrl} /> : null}
                 </div>
             )}
         </article>

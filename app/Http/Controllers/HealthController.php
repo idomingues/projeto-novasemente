@@ -94,6 +94,7 @@ class HealthController extends Controller
             'video_file' => ['nullable', 'file', 'mimes:mp4,mov,quicktime,webm', 'max:51200'],
             'pdf_file' => ['nullable', 'file', 'mimes:pdf', 'max:12288'],
             'published_at' => ['nullable', 'date'],
+            'has_video' => ['nullable', 'boolean'],
         ], [
             'title.required' => 'Informe o título da publicação de saúde.',
             'excerpt.max' => 'O resumo pode ter no máximo 500 caracteres.',
@@ -182,6 +183,12 @@ class HealthController extends Controller
             $this->normalizeOptionalInstagramUrl($data);
         }
 
+        if (in_array($type, [News::TYPE_ARTICLE, News::TYPE_IMAGE, News::TYPE_YOUTUBE, News::TYPE_PDF], true)) {
+            $this->normalizeOptionalInstagramUrl($data);
+        }
+
+        $data['has_video'] = $request->boolean('has_video');
+
         return $data;
     }
 
@@ -208,7 +215,12 @@ class HealthController extends Controller
     private function instagramUrlForSave(string $contentType, ?string $instagramUrl): ?string
     {
         return match ($contentType) {
-            News::TYPE_INSTAGRAM_LINK, News::TYPE_INSTAGRAM_FEED => $instagramUrl,
+            News::TYPE_INSTAGRAM_LINK,
+            News::TYPE_INSTAGRAM_FEED,
+            News::TYPE_ARTICLE,
+            News::TYPE_IMAGE,
+            News::TYPE_YOUTUBE,
+            News::TYPE_PDF => $instagramUrl,
             default => null,
         };
     }
@@ -325,6 +337,7 @@ class HealthController extends Controller
             'instagram_url' => $this->instagramUrlForSave($data['content_type'], $data['instagram_url'] ?? null),
             'pdf_path' => $data['content_type'] === News::TYPE_PDF ? $pdfPath : null,
             'video_path' => $data['content_type'] === News::TYPE_INSTAGRAM_FEED ? $videoPath : null,
+            'has_video' => (bool) ($data['has_video'] ?? false),
             'image_url' => $imageUrl,
             'published_at' => $publishedAt,
             'created_by' => $request->user()?->id,
@@ -398,6 +411,7 @@ class HealthController extends Controller
             'instagram_url' => $this->instagramUrlForSave($data['content_type'], $data['instagram_url'] ?? null),
             'pdf_path' => $pdfPath,
             'video_path' => $videoPath,
+            'has_video' => (bool) ($data['has_video'] ?? false),
             'image_url' => $imageUrl,
             'published_at' => $publishedAt,
         ])->save();

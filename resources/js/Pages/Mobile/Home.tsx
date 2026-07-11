@@ -76,7 +76,7 @@ const homeQuickActions: QuickAction[] = [
         icon: AcademicCapIcon,
     },
     {
-        label: 'Área do voluntário',
+        label: 'Voluntário',
         subtitle: 'Cadastro completo',
         route: 'volunteers.public-signup.page',
         featureKey: 'volunteer_signup',
@@ -138,7 +138,7 @@ const homeQuickActions: QuickAction[] = [
         icon: FilmIcon,
     },
     {
-        label: 'Cultos e horários',
+        label: 'Horários',
         subtitle: 'Dias e horários dos cultos',
         route: 'mobile.services',
         featureKey: 'services',
@@ -173,7 +173,7 @@ const homeQuickActions: QuickAction[] = [
         icon: UserGroupIcon,
     },
     {
-        label: 'Em que acreditamos',
+        label: 'Em que cremos',
         subtitle: '28 princípios de fé (IASD)',
         route: 'mobile.beliefs',
         featureKey: 'beliefs',
@@ -215,7 +215,7 @@ const homeQuickActions: QuickAction[] = [
         icon: MusicalNoteIcon,
     },
     {
-        label: 'Nossos pastores',
+        label: 'Pastores',
         subtitle: 'Conheça a equipe pastoral',
         route: 'mobile.pastors',
         featureKey: 'pastors',

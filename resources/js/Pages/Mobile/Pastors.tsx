@@ -20,13 +20,13 @@ export default function MobilePastors({ pastors, churchName }: Props) {
 
     return (
         <MobileLayout>
-            <Head title="Nossos pastores" />
+            <Head title="Pastores" />
             <div className="space-y-6">
                 <div>
                     <Link href={route('mobile.home')} className="text-sm text-brand-600 dark:text-brand-400 hover:underline">
                         ← Início
                     </Link>
-                    <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Nossos pastores</h1>
+                    <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Pastores</h1>
                     {churchName && <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">{churchName}</p>}
                     <p className="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
                         Conheça um pouco da trajetória dos nossos pastores.

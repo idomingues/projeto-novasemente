@@ -5,14 +5,17 @@ import VideoPlayOverlay from '@/Components/News/VideoPlayOverlay';
 
 interface Props {
     imageSrc: string;
-    /** Link externo do vídeo (Instagram). Capa clicável com overlay de play. */
+    /** Link externo (ex.: Instagram em eventos). Mantém capa clicável com play. */
     instagramVideoUrl?: string | null;
-    /** Página de detalhe na app (quando não há link de vídeo externo). */
+    /** Página de detalhe na app. */
     detailHref?: string;
     aspectClass?: string;
     wrapperClassName?: string;
     imageClassName?: string;
     imageLoading?: 'lazy' | 'eager';
+    /** Mostra o ícone de play (notícias: só quando marcado «Tem vídeo»). */
+    showPlayOverlay?: boolean;
+    /** Alias legado usado em eventos / YouTube. */
     showYoutubePlayOverlay?: boolean;
     onImageError?: (e: SyntheticEvent<HTMLImageElement>) => void;
     imageFallback?: ReactNode;
@@ -21,7 +24,7 @@ interface Props {
 }
 
 /**
- * Capa de notícia unificada: link Instagram + ícone de play (grade, feed e detalhe).
+ * Capa de notícia/evento unificada (grade, feed e detalhe).
  */
 export default function NewsPostCover({
     imageSrc,
@@ -31,6 +34,7 @@ export default function NewsPostCover({
     wrapperClassName = '',
     imageClassName = 'h-full w-full object-cover object-top',
     imageLoading = 'lazy',
+    showPlayOverlay = false,
     showYoutubePlayOverlay = false,
     onImageError,
     imageFallback,
@@ -39,6 +43,7 @@ export default function NewsPostCover({
 }: Props) {
     const videoUrl = instagramVideoUrl?.trim() || '';
     const hasExternalVideo = Boolean(videoUrl);
+    const playOverlay = showPlayOverlay || showYoutubePlayOverlay;
 
     const frame = (
         <div
@@ -53,7 +58,7 @@ export default function NewsPostCover({
                 onError={onImageError}
             />
             {imageFallback}
-            {!hasExternalVideo && showYoutubePlayOverlay && <VideoPlayOverlay compact={compactPlay} />}
+            {!hasExternalVideo && playOverlay ? <VideoPlayOverlay compact={compactPlay} /> : null}
             {overlaySlot}
         </div>
     );
@@ -70,7 +75,7 @@ export default function NewsPostCover({
         return (
             <Link
                 href={detailHref}
-                className="group relative block w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
+                className="group relative block w-full cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
             >
                 {frame}
             </Link>

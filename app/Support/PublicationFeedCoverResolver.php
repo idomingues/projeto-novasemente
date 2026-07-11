@@ -55,12 +55,7 @@ final class PublicationFeedCoverResolver
 
     public static function newsShowsPlayOverlay(News $post): bool
     {
-        if ($post->content_type === News::TYPE_YOUTUBE && filled($post->youtube_url) && self::youtubeThumb($post->youtube_url) !== null) {
-            return true;
-        }
-
-        // Instagram feed só com arquivo de vídeo; link/foto do Instagram não são vídeo certo.
-        return $post->hasInstagramFeedVideo();
+        return (bool) $post->has_video;
     }
 
     public static function forHealth(News $post, string $baseUrl, ?Church $church = null): ?string

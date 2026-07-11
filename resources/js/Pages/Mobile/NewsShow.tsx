@@ -1,10 +1,11 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import InstagramFeedCard from '@/Components/News/InstagramFeedCard';
+import InstagramViewLink from '@/Components/News/InstagramViewLink';
 import PdfTextReaderScreen from '@/Components/Mobile/PdfTextReaderScreen';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { ArrowLeftIcon, NewspaperIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
-import CoverWithVideoLink from '@/Components/News/CoverWithVideoLink';
 import NewsPostCover from '@/Components/News/NewsPostCover';
+
 function imageSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
@@ -25,6 +26,8 @@ interface Post {
     youtube_embed_url: string | null;
     instagram_url: string | null;
     pdf_url: string | null;
+    video_url?: string | null;
+    has_video?: boolean;
     image_url: string | null;
     cover_url: string | null;
     published_at: string | null;
@@ -81,9 +84,7 @@ export default function MobileNewsShow({ post, config }: Props) {
     const isYoutube = post.content_type === 'youtube';
     const isPdf = post.content_type === 'pdf';
     const isInstagramFeed = post.content_type === 'instagram_feed';
-    const isInstagramLink = post.content_type === 'instagram_link';
-    const instagramVideoUrl = post.instagram_url?.trim() || '';
-    const hasInstagramVideoLink = Boolean(instagramVideoUrl);
+    const instagramUrl = post.instagram_url?.trim() || '';
     const pdfUrl = post.pdf_url ? imageSrc(post.pdf_url, appUrl) : '';
 
     if (isPdf && pdfUrl) {
@@ -114,7 +115,7 @@ export default function MobileNewsShow({ post, config }: Props) {
                 <div className="space-y-4">
                     <Link
                         href={route(listRoute)}
-                        className="inline-flex items-center gap-2 text-sm font-medium text-primary-600 hover:underline dark:text-primary-400"
+                        className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-primary-600 hover:underline dark:text-primary-400"
                     >
                         <ArrowLeftIcon className="h-4 w-4" aria-hidden />
                         {`Voltar às ${listLabel}`}
@@ -131,7 +132,7 @@ export default function MobileNewsShow({ post, config }: Props) {
             <div className="mx-auto w-full min-w-0 max-w-lg space-y-3">
                 <Link
                     href={route(listRoute)}
-                    className="inline-flex items-center gap-2 text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline"
+                    className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-primary-600 hover:underline dark:text-primary-400"
                 >
                     <ArrowLeftIcon className="h-4 w-4 shrink-0" aria-hidden />
                     {`Voltar às ${listLabel}`}
@@ -141,9 +142,10 @@ export default function MobileNewsShow({ post, config }: Props) {
                     {cover ? (
                         <NewsPostCover
                             imageSrc={imageSrc(cover, appUrl)}
-                            instagramVideoUrl={hasInstagramVideoLink ? instagramVideoUrl : null}
-                            showYoutubePlayOverlay={isYoutube && !hasInstagramVideoLink}
+                            aspectClass=""
+                            imageClassName="h-auto w-full object-contain object-top"
                             imageLoading="eager"
+                            showPlayOverlay={false}
                             onImageError={(e) => {
                                 const el = e.currentTarget;
                                 el.style.display = 'none';
@@ -152,7 +154,7 @@ export default function MobileNewsShow({ post, config }: Props) {
                             }}
                             imageFallback={
                                 <div
-                                    className="absolute inset-0 hidden items-center justify-center bg-zinc-200 dark:bg-zinc-700"
+                                    className="hidden min-h-40 w-full items-center justify-center bg-zinc-200 dark:bg-zinc-700"
                                     style={{ display: 'none' }}
                                     aria-hidden
                                 >
@@ -167,13 +169,6 @@ export default function MobileNewsShow({ post, config }: Props) {
                                 <span className="text-sm font-medium">Documento PDF</span>
                             </div>
                         </div>
-                    ) : hasInstagramVideoLink ? (
-                        <CoverWithVideoLink
-                            videoHref={instagramVideoUrl}
-                            className="flex aspect-[16/10] w-full items-center justify-center bg-gradient-to-br from-pink-100 via-purple-50 to-rose-100 dark:from-pink-950/40 dark:via-zinc-900 dark:to-purple-950/30"
-                        >
-                            <span className="sr-only">Ver vídeo</span>
-                        </CoverWithVideoLink>
                     ) : (
                         <div className="flex h-40 items-center justify-center bg-gradient-to-br from-zinc-200 to-zinc-300 dark:from-zinc-700 dark:to-zinc-800">
                             <NewspaperIcon className="h-14 w-14 text-zinc-400 dark:text-zinc-500" />
@@ -195,6 +190,12 @@ export default function MobileNewsShow({ post, config }: Props) {
                                 {post.excerpt}
                             </p>
                         )}
+
+                        {instagramUrl ? (
+                            <div className="mt-4">
+                                <InstagramViewLink href={instagramUrl} />
+                            </div>
+                        ) : null}
 
                         {isYoutube && post.youtube_embed_url && (
                             <div className="mt-6 overflow-hidden rounded-2xl border border-zinc-200 bg-black shadow-inner dark:border-zinc-700">

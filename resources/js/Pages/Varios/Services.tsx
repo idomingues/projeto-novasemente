@@ -30,9 +30,9 @@ export default function VariosServices({ churchName, services }: Props) {
 
     return (
         <AdminLayout>
-            <Head title="Cultos e horários" />
+            <Head title="Horários" />
             <div className="space-y-6 sm:space-y-8">
-                <PageHeader title="Cultos e horários" subtitle={churchName ?? undefined} />
+                <PageHeader title="Horários" subtitle={churchName ?? undefined} />
 
                 <WeeklyAgendaNovaSemente churchName={churchName ?? 'Nova Semente'} />
 

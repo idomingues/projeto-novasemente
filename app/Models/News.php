@@ -42,6 +42,7 @@ class News extends Model
         'instagram_url',
         'pdf_path',
         'video_path',
+        'has_video',
         'image_url',
         'published_at',
         'is_active',
@@ -51,6 +52,7 @@ class News extends Model
     protected $casts = [
         'published_at' => 'datetime',
         'is_active' => 'boolean',
+        'has_video' => 'boolean',
     ];
 
     protected $appends = [

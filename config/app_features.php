@@ -138,7 +138,7 @@ return [
             'routes' => ['mobile.shared-talents', 'mobile.shared-talents.*'],
         ],
         'services' => [
-            'label' => 'Cultos e horários',
+            'label' => 'Horários',
             'group' => 'menu_mais',
             'routes' => ['mobile.services', 'varios.services'],
         ],
@@ -163,7 +163,7 @@ return [
             'routes' => ['mobile.location'],
         ],
         'pastors' => [
-            'label' => 'Nossos pastores',
+            'label' => 'Pastores',
             'group' => 'menu_mais',
             'routes' => ['mobile.pastors'],
         ],
@@ -173,12 +173,12 @@ return [
             'routes' => ['mobile.quem-somos'],
         ],
         'beliefs' => [
-            'label' => 'Em que acreditamos',
+            'label' => 'Em que cremos',
             'group' => 'menu_mais',
             'routes' => ['mobile.beliefs'],
         ],
         'volunteer_signup' => [
-            'label' => 'Área do voluntário',
+            'label' => 'Voluntário',
             'group' => 'menu_mais',
             'routes' => [
                 'volunteers.public-signup.page',
