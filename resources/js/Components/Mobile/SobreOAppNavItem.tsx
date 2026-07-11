@@ -1,4 +1,5 @@
 import SobreOAppModal from '@/Components/Mobile/SobreOAppModal';
+import HomeCardBookmarkButton from '@/Components/Mobile/HomeCardBookmarkButton';
 import { useMinWidthMd } from '@/hooks/useMinWidthMd';
 import { Link } from '@inertiajs/react';
 import { BookOpenIcon } from '@heroicons/react/24/outline';
@@ -11,14 +12,20 @@ const moreCardClass =
     'flex w-full items-center gap-4 rounded-2xl border border-zinc-200 bg-white p-4 text-left transition-colors hover:border-zinc-300 active:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700 dark:active:bg-zinc-800';
 
 const homeCardClass =
-    'group flex cursor-pointer flex-col rounded-2xl bg-white p-3.5 text-left shadow-sm ring-1 ring-zinc-200 transition duration-200 hover:-translate-y-0.5 hover:bg-zinc-50 hover:shadow-md dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60';
+    'group relative flex cursor-pointer flex-col rounded-2xl bg-white p-3.5 pr-9 text-left shadow-sm ring-1 ring-zinc-200 transition duration-200 hover:-translate-y-0.5 hover:bg-zinc-50 hover:shadow-md dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60';
 
 export default function SobreOAppNavItem({
     variant,
     from,
+    bookmark,
 }: {
     variant: 'settings' | 'more' | 'home';
     from?: 'settings';
+    bookmark?: {
+        bookmarked: boolean;
+        onToggle: () => void;
+        disabled?: boolean;
+    };
 }) {
     const isDesktop = useMinWidthMd();
     const [open, setOpen] = useState(false);
@@ -45,6 +52,14 @@ export default function SobreOAppNavItem({
     if (variant === 'home') {
         const content = (
             <>
+                {bookmark ? (
+                    <HomeCardBookmarkButton
+                        cardKey="sobre-o-app"
+                        bookmarked={bookmark.bookmarked}
+                        disabled={bookmark.disabled}
+                        onToggle={() => bookmark.onToggle()}
+                    />
+                ) : null}
                 <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200/70 dark:bg-emerald-950/45 dark:text-emerald-200 dark:ring-emerald-800/60">
                     <BookOpenIcon className="h-5 w-5" aria-hidden strokeWidth={2.05} />
                 </div>

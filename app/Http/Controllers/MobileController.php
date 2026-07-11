@@ -21,6 +21,7 @@ use App\Models\RevistaAdventistaEdition;
 use App\Models\ScheduleCheckinDate;
 use App\Models\User;
 use App\Models\UserDismissedAppNotification;
+use App\Models\UserHomeCardBookmark;
 use App\Models\UserInboxNotification;
 use App\Models\Volunteer;
 use App\Services\DriveFolderCoverService;
@@ -33,6 +34,7 @@ use App\Services\ScheduleAssignmentPresenter;
 use App\Services\SolicitationChatNotifier;
 use App\Services\VolunteerScheduleOverview;
 use App\Support\ChurchAppFeatures;
+use App\Support\HomeCardKeys;
 use App\Support\HomeFeaturedWeek;
 use App\Support\NotificationFeed;
 use App\Support\PublicationFeed;
@@ -243,6 +245,15 @@ class MobileController extends Controller
 
         $sabbathBanner = app(SabbathSunsetService::class)->homeBannerPayload();
         $featuredWeek = HomeFeaturedWeek::forChurch($church);
+        $bookmarkedHomeCards = [];
+        if ($user !== null && Schema::hasTable('user_home_card_bookmarks')) {
+            $bookmarkedHomeCards = UserHomeCardBookmark::query()
+                ->where('user_id', $user->id)
+                ->orderByDesc('created_at')
+                ->pluck('card_key')
+                ->values()
+                ->all();
+        }
 
         return Inertia::render('Mobile/Home', [
             'latestNews' => $latestNews,
@@ -251,6 +262,47 @@ class MobileController extends Controller
             'volunteerSignupCompletion' => $volunteerSignupCompletion,
             'sabbathBanner' => $sabbathBanner,
             'featuredWeek' => $featuredWeek,
+            'bookmarkedHomeCards' => $bookmarkedHomeCards,
+        ]);
+    }
+
+    public function toggleHomeCardBookmark(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user !== null, 401);
+
+        $data = $request->validate([
+            'card_key' => ['required', 'string', 'max:64'],
+        ]);
+        $cardKey = trim((string) $data['card_key']);
+        abort_unless(HomeCardKeys::isAllowed($cardKey), 422);
+
+        $existing = UserHomeCardBookmark::query()
+            ->where('user_id', $user->id)
+            ->where('card_key', $cardKey)
+            ->first();
+
+        if ($existing !== null) {
+            $existing->delete();
+            $bookmarked = false;
+        } else {
+            UserHomeCardBookmark::query()->create([
+                'user_id' => $user->id,
+                'card_key' => $cardKey,
+            ]);
+            $bookmarked = true;
+        }
+
+        $keys = UserHomeCardBookmark::query()
+            ->where('user_id', $user->id)
+            ->orderByDesc('created_at')
+            ->pluck('card_key')
+            ->values()
+            ->all();
+
+        return response()->json([
+            'bookmarked' => $bookmarked,
+            'bookmarkedHomeCards' => $keys,
         ]);
     }
 

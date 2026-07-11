@@ -369,6 +369,9 @@ Route::middleware('auth')->group(function () {
     // Tokens para Push Notifications nativas (Capacitor iOS/Android)
     Route::post('/mobile/push-tokens', [PushTokenController::class, 'store'])->name('mobile.push-tokens.store');
     Route::delete('/mobile/push-tokens', [PushTokenController::class, 'destroy'])->name('mobile.push-tokens.destroy');
+    Route::post('/mobile/inicio/marcadores', [MobileController::class, 'toggleHomeCardBookmark'])
+        ->middleware('throttle:60,1')
+        ->name('mobile.home.bookmarks.toggle');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

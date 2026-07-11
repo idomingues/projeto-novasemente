@@ -30,6 +30,7 @@ import PromiseBoxModal from '@/Components/Mobile/PromiseBoxModal';
 import SobreOAppNavItem from '@/Components/Mobile/SobreOAppNavItem';
 import SabbathHomeBanner, { type SabbathHomeBannerData } from '@/Components/Mobile/SabbathHomeBanner';
 import HomeFeaturedWeek, { type HomeFeaturedWeekPayload } from '@/Components/Mobile/HomeFeaturedWeek';
+import HomeCardBookmarkButton from '@/Components/Mobile/HomeCardBookmarkButton';
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 import { useAppFeatures } from '@/hooks/useAppFeatures';
 
@@ -40,11 +41,13 @@ interface Props {
     volunteerSignupCompletion?: VolunteerSignupCompletion | null;
     sabbathBanner?: SabbathHomeBannerData | null;
     featuredWeek?: HomeFeaturedWeekPayload | null;
+    bookmarkedHomeCards?: string[];
 }
 
 type PageProps = {
     appUrl?: string;
     auth?: { user?: { name: string; email?: string; photo_url?: string | null } | null };
+    csrf_token?: string;
 };
 
 function firstName(fullName: string): string {
@@ -54,6 +57,7 @@ function firstName(fullName: string): string {
 }
 
 type QuickAction = {
+    id: string;
     label: string;
     subtitle: string;
     route?: string;
@@ -68,11 +72,12 @@ function QuickActionGlyph({ icon: Icon }: { icon: MenuIcon }) {
 }
 
 const homeCardClass =
-    'group flex cursor-pointer flex-col rounded-2xl bg-white p-3.5 text-left shadow-sm ring-1 ring-zinc-200 transition duration-200 hover:-translate-y-0.5 hover:bg-zinc-50 hover:shadow-md dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60';
+    'group relative flex cursor-pointer flex-col rounded-2xl bg-white p-3.5 pr-9 text-left shadow-sm ring-1 ring-zinc-200 transition duration-200 hover:-translate-y-0.5 hover:bg-zinc-50 hover:shadow-md dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60';
 
 /** Atalhos da Home: itens exclusivos + todos do antigo menu Mais (sem duplicar por rota). */
 const homeQuickActions: QuickAction[] = [
     {
+        id: 'ano-biblico',
         label: 'Ano Bíblico',
         subtitle: 'Escolha um plano de leitura e acompanhe o seu progresso.',
         route: 'mobile.ano-biblico',
@@ -80,6 +85,7 @@ const homeQuickActions: QuickAction[] = [
         icon: AcademicCapIcon,
     },
     {
+        id: 'voluntario',
         label: 'Voluntário',
         subtitle: 'Cadastro completo',
         route: 'volunteers.public-signup.page',
@@ -87,6 +93,7 @@ const homeQuickActions: QuickAction[] = [
         icon: UserPlusIcon,
     },
     {
+        id: 'batismo',
         label: 'Batismo',
         subtitle: 'Ainda não é batizado? Faça parte da família NS',
         route: 'mobile.baptism',
@@ -94,6 +101,7 @@ const homeQuickActions: QuickAction[] = [
         icon: SparklesIcon,
     },
     {
+        id: 'biblioteca',
         label: 'Biblioteca',
         subtitle: 'Livros e PDFs para leitura e download',
         route: 'mobile.biblioteca',
@@ -101,6 +109,7 @@ const homeQuickActions: QuickAction[] = [
         icon: BookOpenIcon,
     },
     {
+        id: 'biblia',
         label: 'Bíblia',
         subtitle: 'Leitura e busca de versículos',
         route: 'mobile.bible',
@@ -108,12 +117,14 @@ const homeQuickActions: QuickAction[] = [
         icon: BookOpenIcon,
     },
     {
+        id: 'caixa-promessas',
         label: 'Caixa de Promessas',
         subtitle: 'Uma mensagem especial para você',
         featureKey: 'promise_box',
         icon: SparklesIcon,
     },
     {
+        id: 'central-servicos',
         label: 'Central de Serviços',
         subtitle: 'Serviços, habilidades e apoio mútuo entre membros',
         route: 'mobile.talents.index',
@@ -121,6 +132,7 @@ const homeQuickActions: QuickAction[] = [
         icon: SparklesIcon,
     },
     {
+        id: 'classe-comecos',
         label: 'Classe Começos',
         subtitle: 'Estudo bíblico presencial ou on-line',
         route: 'varios.classe-comecos',
@@ -128,6 +140,7 @@ const homeQuickActions: QuickAction[] = [
         icon: AcademicCapIcon,
     },
     {
+        id: 'comunidades',
         label: 'Comunidades',
         subtitle: 'Grupos de interesse da igreja no WhatsApp',
         route: 'mobile.communities',
@@ -135,6 +148,7 @@ const homeQuickActions: QuickAction[] = [
         icon: UserGroupIcon,
     },
     {
+        id: 'culto',
         label: 'Culto',
         subtitle: 'Vídeos do culto online',
         route: 'mobile.culto',
@@ -142,6 +156,7 @@ const homeQuickActions: QuickAction[] = [
         icon: FilmIcon,
     },
     {
+        id: 'horarios',
         label: 'Horários',
         subtitle: 'Dias e horários dos cultos',
         route: 'mobile.services',
@@ -149,6 +164,7 @@ const homeQuickActions: QuickAction[] = [
         icon: ClockIcon,
     },
     {
+        id: 'meditacao-diaria',
         label: 'Meditação diária',
         subtitle: 'Meditação diária de hoje',
         route: 'mobile.meditacao-diaria',
@@ -156,6 +172,7 @@ const homeQuickActions: QuickAction[] = [
         icon: BookOpenIcon,
     },
     {
+        id: 'licao',
         label: 'Lição',
         subtitle: 'Estudo da lição da escola sabatina',
         route: 'mobile.biblioteca',
@@ -164,6 +181,7 @@ const homeQuickActions: QuickAction[] = [
         icon: ClipboardDocumentListIcon,
     },
     {
+        id: 'dizimos-pacto',
         label: 'Dízimos e Pacto',
         subtitle: 'Contribua com dízimos e pacto de forma simples',
         route: 'mobile.offerings',
@@ -171,6 +189,7 @@ const homeQuickActions: QuickAction[] = [
         icon: HandRaisedIcon,
     },
     {
+        id: 'doacao',
         label: 'Doação',
         subtitle: 'Seu gesto de amor pode transformar vidas e renovar esperanças',
         route: 'mobile.donations.index',
@@ -178,6 +197,7 @@ const homeQuickActions: QuickAction[] = [
         icon: BanknotesIcon,
     },
     {
+        id: 'doar-talentos',
         label: 'Doar Talentos',
         subtitle: 'Compartilhe talentos, aprendizado e apoio gratuito na comunidade',
         route: 'mobile.shared-talents.index',
@@ -185,6 +205,7 @@ const homeQuickActions: QuickAction[] = [
         icon: UserGroupIcon,
     },
     {
+        id: 'em-que-cremos',
         label: 'Em que cremos',
         subtitle: '28 princípios de fé (IASD)',
         route: 'mobile.beliefs',
@@ -192,6 +213,7 @@ const homeQuickActions: QuickAction[] = [
         icon: BookOpenIcon,
     },
     {
+        id: 'eventos',
         label: 'Eventos',
         subtitle: 'Agenda de eventos da igreja',
         route: 'mobile.events',
@@ -199,6 +221,7 @@ const homeQuickActions: QuickAction[] = [
         icon: CalendarDaysIcon,
     },
     {
+        id: 'fotos',
         label: 'Fotos',
         subtitle: 'Veja o que nossos fotógrafos prepararam para você',
         route: 'mobile.fotos',
@@ -206,6 +229,7 @@ const homeQuickActions: QuickAction[] = [
         icon: PhotoIcon,
     },
     {
+        id: 'localizacao',
         label: 'Localização',
         subtitle: 'Endereço e mapa da igreja',
         route: 'mobile.location',
@@ -213,6 +237,7 @@ const homeQuickActions: QuickAction[] = [
         icon: MapPinIcon,
     },
     {
+        id: 'missao',
         label: 'Missão',
         subtitle: 'Eventos, depoimentos, mural e cadastro missionário',
         route: 'mobile.mission',
@@ -220,6 +245,7 @@ const homeQuickActions: QuickAction[] = [
         icon: GlobeAltIcon,
     },
     {
+        id: 'musica',
         label: 'Música',
         subtitle: 'Cante nossas músicas',
         route: 'mobile.musica',
@@ -227,6 +253,7 @@ const homeQuickActions: QuickAction[] = [
         icon: MusicalNoteIcon,
     },
     {
+        id: 'pastores',
         label: 'Pastores',
         subtitle: 'Conheça a equipe pastoral',
         route: 'mobile.pastors',
@@ -234,6 +261,7 @@ const homeQuickActions: QuickAction[] = [
         icon: UserCircleIcon,
     },
     {
+        id: 'oferta-nova-semente',
         label: 'Oferta Nova Semente',
         subtitle: 'Contribuições para causas que transformam vidas',
         route: 'mobile.campaigns.index',
@@ -241,6 +269,7 @@ const homeQuickActions: QuickAction[] = [
         icon: BanknotesIcon,
     },
     {
+        id: 'oracao',
         label: 'Oração',
         subtitle: 'Pedidos de oração',
         route: 'mobile.prayer',
@@ -248,6 +277,7 @@ const homeQuickActions: QuickAction[] = [
         icon: PrayingHandsIcon,
     },
     {
+        id: 'quem-somos',
         label: 'Quem somos',
         subtitle: 'História e significado do nome',
         route: 'mobile.quem-somos',
@@ -255,6 +285,7 @@ const homeQuickActions: QuickAction[] = [
         icon: UserGroupIcon,
     },
     {
+        id: 'revista-adventista',
         label: 'Revista Adventista',
         subtitle: 'Artigos, editoriais e colunas da Revista Adventista',
         route: 'mobile.revista-adventista',
@@ -262,6 +293,7 @@ const homeQuickActions: QuickAction[] = [
         icon: NewspaperIcon,
     },
     {
+        id: 'saude',
         label: 'Saúde',
         subtitle: 'Conteúdos de saúde e bem-estar',
         route: 'mobile.health',
@@ -269,6 +301,7 @@ const homeQuickActions: QuickAction[] = [
         icon: HeartIcon,
     },
     {
+        id: 'series',
         label: 'Séries',
         subtitle: 'Conheça todas as nossas séries',
         route: 'mobile.acervo',
@@ -276,6 +309,7 @@ const homeQuickActions: QuickAction[] = [
         icon: PlayCircleIcon,
     },
     {
+        id: 'suporte-app',
         label: 'Suporte APP',
         subtitle: 'Problema, sugestão ou elogio sobre o app',
         route: 'mobile.support.index',
@@ -289,12 +323,19 @@ export default function MobileHome({
     volunteerSignupCompletion = null,
     sabbathBanner = null,
     featuredWeek = null,
+    bookmarkedHomeCards = [],
 }: Props) {
     const page = usePage();
-    const { appUrl = '', auth } = page.props as unknown as PageProps;
+    const { appUrl = '', auth, csrf_token: csrfProp } = page.props as unknown as PageProps;
     const user = auth?.user ?? null;
     const displayName = user?.name ? firstName(user.name) : '';
     const [promiseOpen, setPromiseOpen] = useState(false);
+    const [bookmarks, setBookmarks] = useState<string[]>(bookmarkedHomeCards);
+    const [bookmarkBusy, setBookmarkBusy] = useState(false);
+
+    useEffect(() => {
+        setBookmarks(bookmarkedHomeCards);
+    }, [bookmarkedHomeCards]);
 
     const openPromise = () => {
         setPromiseOpen(true);
@@ -307,20 +348,72 @@ export default function MobileHome({
         return raw.filter((item) => !item.feature_key || isEnabled(item.feature_key));
     }, [featuredWeek, isEnabled]);
 
+    const canBookmark = Boolean(user);
+
+    const toggleBookmark = async (cardKey: string) => {
+        if (!canBookmark || bookmarkBusy) {
+            return;
+        }
+        setBookmarkBusy(true);
+        const prev = bookmarks;
+        const next = prev.includes(cardKey)
+            ? prev.filter((k) => k !== cardKey)
+            : [cardKey, ...prev.filter((k) => k !== cardKey)];
+        setBookmarks(next);
+
+        try {
+            const csrf =
+                csrfProp ??
+                document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ??
+                '';
+            const response = await fetch(route('mobile.home.bookmarks.toggle'), {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ card_key: cardKey }),
+            });
+            if (!response.ok) {
+                setBookmarks(prev);
+                return;
+            }
+            const payload = (await response.json()) as { bookmarkedHomeCards?: string[] };
+            if (Array.isArray(payload.bookmarkedHomeCards)) {
+                setBookmarks(payload.bookmarkedHomeCards);
+            }
+        } catch {
+            setBookmarks(prev);
+        } finally {
+            setBookmarkBusy(false);
+        }
+    };
+
     const gridItems = useMemo(() => {
         const actions = homeQuickActions
             .map((action) =>
-                action.label === 'Caixa de Promessas'
-                    ? { ...action, onClick: openPromise }
-                    : action,
+                action.id === 'caixa-promessas' ? { ...action, onClick: openPromise } : action,
             )
             .filter((action) => !action.featureKey || isEnabled(action.featureKey))
-            .map((action) => ({ kind: 'action' as const, label: action.label, action }));
+            .map((action) => ({ kind: 'action' as const, id: action.id, label: action.label, action }));
 
-        return [...actions, { kind: 'sobre' as const, label: 'Sobre o APP' }].sort((a, b) =>
-            a.label.localeCompare(b.label, 'pt-BR', { sensitivity: 'base' }),
-        );
-    }, [isEnabled]);
+        const items = [...actions, { kind: 'sobre' as const, id: 'sobre-o-app', label: 'Sobre o APP' }];
+
+        return items.sort((a, b) => {
+            const aBook = bookmarks.includes(a.id) ? 0 : 1;
+            const bBook = bookmarks.includes(b.id) ? 0 : 1;
+            if (aBook !== bBook) {
+                return aBook - bBook;
+            }
+            if (aBook === 0) {
+                return bookmarks.indexOf(a.id) - bookmarks.indexOf(b.id);
+            }
+            return a.label.localeCompare(b.label, 'pt-BR', { sensitivity: 'base' });
+        });
+    }, [isEnabled, bookmarks]);
 
     useEffect(() => {
         if (!showPostRegistrationBanner || typeof window === 'undefined') {
@@ -373,12 +466,34 @@ export default function MobileHome({
                     <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-3">
                         {gridItems.map((item) => {
                             if (item.kind === 'sobre') {
-                                return <SobreOAppNavItem key="sobre-o-app" variant="home" />;
+                                return (
+                                    <SobreOAppNavItem
+                                        key="sobre-o-app"
+                                        variant="home"
+                                        bookmark={
+                                            canBookmark
+                                                ? {
+                                                      bookmarked: bookmarks.includes('sobre-o-app'),
+                                                      onToggle: () => void toggleBookmark('sobre-o-app'),
+                                                      disabled: bookmarkBusy,
+                                                  }
+                                                : undefined
+                                        }
+                                    />
+                                );
                             }
 
-                            const { label, subtitle, route: routeName, routeParams, onClick, icon } = item.action;
+                            const { id, label, subtitle, route: routeName, routeParams, onClick, icon } = item.action;
                             const content = (
                                 <>
+                                    {canBookmark ? (
+                                        <HomeCardBookmarkButton
+                                            cardKey={id}
+                                            bookmarked={bookmarks.includes(id)}
+                                            disabled={bookmarkBusy}
+                                            onToggle={(key) => void toggleBookmark(key)}
+                                        />
+                                    ) : null}
                                     <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200/70 dark:bg-emerald-950/45 dark:text-emerald-200 dark:ring-emerald-800/60">
                                         <QuickActionGlyph icon={icon} />
                                     </div>
@@ -393,7 +508,7 @@ export default function MobileHome({
 
                             if (onClick) {
                                 return (
-                                    <button key={label} type="button" onClick={onClick} className={homeCardClass}>
+                                    <button key={id} type="button" onClick={onClick} className={homeCardClass}>
                                         {content}
                                     </button>
                                 );
@@ -403,7 +518,7 @@ export default function MobileHome({
 
                             return (
                                 <Link
-                                    key={label}
+                                    key={id}
                                     href={
                                         routeParams
                                             ? route(routeName, routeParams)
