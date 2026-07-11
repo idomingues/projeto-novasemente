@@ -33,6 +33,7 @@ use App\Services\ScheduleAssignmentPresenter;
 use App\Services\SolicitationChatNotifier;
 use App\Services\VolunteerScheduleOverview;
 use App\Support\ChurchAppFeatures;
+use App\Support\HomeFeaturedWeek;
 use App\Support\NotificationFeed;
 use App\Support\PublicationFeed;
 use App\Support\PublicationsFeedAccess;
@@ -241,6 +242,7 @@ class MobileController extends Controller
             : null;
 
         $sabbathBanner = app(SabbathSunsetService::class)->homeBannerPayload();
+        $featuredWeek = HomeFeaturedWeek::forChurch($church);
 
         return Inertia::render('Mobile/Home', [
             'latestNews' => $latestNews,
@@ -248,6 +250,7 @@ class MobileController extends Controller
             'showPostRegistrationBanner' => $request->boolean('reg_ok') && $request->user() !== null,
             'volunteerSignupCompletion' => $volunteerSignupCompletion,
             'sabbathBanner' => $sabbathBanner,
+            'featuredWeek' => $featuredWeek,
         ]);
     }
 

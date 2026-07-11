@@ -29,6 +29,7 @@ import type { ComponentType, SVGProps } from 'react';
 import PromiseBoxModal from '@/Components/Mobile/PromiseBoxModal';
 import SobreOAppNavItem from '@/Components/Mobile/SobreOAppNavItem';
 import SabbathHomeBanner, { type SabbathHomeBannerData } from '@/Components/Mobile/SabbathHomeBanner';
+import HomeFeaturedWeek, { type HomeFeaturedWeekPayload } from '@/Components/Mobile/HomeFeaturedWeek';
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 import { useAppFeatures } from '@/hooks/useAppFeatures';
 
@@ -38,6 +39,7 @@ interface Props {
     showPostRegistrationBanner?: boolean;
     volunteerSignupCompletion?: VolunteerSignupCompletion | null;
     sabbathBanner?: SabbathHomeBannerData | null;
+    featuredWeek?: HomeFeaturedWeekPayload | null;
 }
 
 type PageProps = {
@@ -286,6 +288,7 @@ export default function MobileHome({
     showPostRegistrationBanner = false,
     volunteerSignupCompletion = null,
     sabbathBanner = null,
+    featuredWeek = null,
 }: Props) {
     const page = usePage();
     const { appUrl = '', auth } = page.props as unknown as PageProps;
@@ -298,6 +301,11 @@ export default function MobileHome({
     };
 
     const { isEnabled } = useAppFeatures();
+
+    const featuredItems = useMemo(() => {
+        const raw = featuredWeek?.items ?? [];
+        return raw.filter((item) => !item.feature_key || isEnabled(item.feature_key));
+    }, [featuredWeek, isEnabled]);
 
     const gridItems = useMemo(() => {
         const actions = homeQuickActions
@@ -358,6 +366,8 @@ export default function MobileHome({
                 </header>
 
                 {sabbathBanner ? <SabbathHomeBanner banner={sabbathBanner} appUrl={appUrl} /> : null}
+
+                <HomeFeaturedWeek items={featuredItems} />
 
                 <section aria-label="Atalhos">
                     <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-3">
