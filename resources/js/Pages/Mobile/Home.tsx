@@ -29,6 +29,7 @@ import type { ComponentType, SVGProps } from 'react';
 import PromiseBoxModal from '@/Components/Mobile/PromiseBoxModal';
 import SobreOAppNavItem from '@/Components/Mobile/SobreOAppNavItem';
 import SabbathHomeBanner, { type SabbathHomeBannerData } from '@/Components/Mobile/SabbathHomeBanner';
+import WeeklyProgramHomeCard, { type WeeklyProgramHomeCardData } from '@/Components/Mobile/WeeklyProgramHomeCard';
 import HomeFeaturedWeek, { type HomeFeaturedWeekPayload } from '@/Components/Mobile/HomeFeaturedWeek';
 import HomeCardBookmarkButton from '@/Components/Mobile/HomeCardBookmarkButton';
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
@@ -40,6 +41,7 @@ interface Props {
     showPostRegistrationBanner?: boolean;
     volunteerSignupCompletion?: VolunteerSignupCompletion | null;
     sabbathBanner?: SabbathHomeBannerData | null;
+    weeklyProgramCards?: WeeklyProgramHomeCardData[];
     featuredWeek?: HomeFeaturedWeekPayload | null;
     bookmarkedHomeCards?: string[];
 }
@@ -322,6 +324,7 @@ export default function MobileHome({
     showPostRegistrationBanner = false,
     volunteerSignupCompletion = null,
     sabbathBanner = null,
+    weeklyProgramCards = [],
     featuredWeek = null,
     bookmarkedHomeCards = [],
 }: Props) {
@@ -458,7 +461,15 @@ export default function MobileHome({
                     </div>
                 </header>
 
-                {sabbathBanner ? <SabbathHomeBanner banner={sabbathBanner} appUrl={appUrl} /> : null}
+                {weeklyProgramCards.length > 0 ? (
+                    <section aria-label="Programação semanal" className="space-y-3">
+                        {weeklyProgramCards.map((card) => (
+                            <WeeklyProgramHomeCard key={card.id} card={card} appUrl={appUrl} />
+                        ))}
+                    </section>
+                ) : sabbathBanner ? (
+                    <SabbathHomeBanner banner={sabbathBanner} appUrl={appUrl} />
+                ) : null}
 
                 <HomeFeaturedWeek items={featuredItems} />
 

@@ -65,8 +65,12 @@ class SabbathSunsetService
         ];
     }
 
-    private function sunsetForDate(string $date, string $timezone): ?Carbon
+    /**
+     * Pôr do sol na data (fuso da igreja), com cache diário.
+     */
+    public function sunsetForDate(string $date, ?string $timezone = null): ?Carbon
     {
+        $timezone = $timezone ?: (string) config('sabbath.timezone', 'America/Sao_Paulo');
         $lat = (float) config('sabbath.latitude');
         $lng = (float) config('sabbath.longitude');
 

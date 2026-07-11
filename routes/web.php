@@ -573,6 +573,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/rooms', [\App\Http\Controllers\RoomController::class, 'store'])->name('rooms.store')->middleware('permission:rooms.manage');
     Route::put('/rooms/{room}', [\App\Http\Controllers\RoomController::class, 'update'])->name('rooms.update')->middleware('permission:rooms.manage');
     Route::delete('/rooms/{room}', [\App\Http\Controllers\RoomController::class, 'destroy'])->name('rooms.destroy')->middleware('permission:rooms.manage');
+
+    Route::get('/programacao', [\App\Http\Controllers\WeeklyProgramController::class, 'index'])->name('programacao.index')->middleware('permission:programacao.view|programacao.manage');
+    Route::post('/programacao', [\App\Http\Controllers\WeeklyProgramController::class, 'store'])->name('programacao.store')->middleware('permission:programacao.manage');
+    Route::put('/programacao/{weeklyProgram}', [\App\Http\Controllers\WeeklyProgramController::class, 'update'])->name('programacao.update')->middleware('permission:programacao.manage');
+    Route::delete('/programacao/{weeklyProgram}', [\App\Http\Controllers\WeeklyProgramController::class, 'destroy'])->name('programacao.destroy')->middleware('permission:programacao.manage');
     // Agendamento de salas (calendário + reservas)
     Route::get('/salas/agenda', [RoomBookingController::class, 'index'])->name('room-bookings.index')->middleware('permission:rooms.view|rooms.manage|rooms.schedule');
     Route::post('/salas/agenda', [RoomBookingController::class, 'store'])->name('room-bookings.store')->middleware('permission:rooms.schedule');

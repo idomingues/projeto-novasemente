@@ -54,6 +54,7 @@ const GROUP_LABELS: Record<string, string> = {
     pastoral_appointments: 'Agenda pastoral',
     solicitations: 'Solicitações',
     mission: 'Missão',
+    programacao: 'Programação',
 };
 
 function groupTitle(group: string): string {
@@ -69,6 +70,8 @@ function permissionLineLabel(perm: string): string {
         'rooms.manage': 'Gerir salas (criar, editar e remover salas)',
         'rooms.schedule':
             'Agendar salas (calendário de reservas, criar e editar os próprios agendamentos; quem gere salas pode editar todos)',
+        'programacao.view': 'Ver programação semanal (cultos, classes e pôr do sol)',
+        'programacao.manage': 'Gerir programação semanal (criar, editar e excluir itens)',
         'solicitations.view': 'Ver solicitações formais (batismo, visita, etc.)',
         'solicitations.manage': 'Gerir solicitações formais',
         'roles.manage': 'Gerir perfis e permissões (esta página)',

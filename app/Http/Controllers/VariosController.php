@@ -108,9 +108,12 @@ class VariosController extends Controller
             })->toArray();
         }
 
+        $weeklyProgram = app(\App\Services\WeeklyProgramService::class)->agendaRows($church);
+
         return Inertia::render('Varios/Services', [
             'churchName' => $church?->name,
             'services' => $services,
+            'weeklyProgram' => $weeklyProgram,
         ]);
     }
 

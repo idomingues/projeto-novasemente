@@ -66,6 +66,11 @@ class Church extends Model
         return $this->hasMany(ChurchService::class)->orderBy('day_of_week')->orderBy('sort_order')->orderBy('start_time');
     }
 
+    public function weeklyPrograms(): HasMany
+    {
+        return $this->hasMany(WeeklyProgram::class)->orderBy('sort_order')->orderBy('day_of_week');
+    }
+
     public function pastors(): HasMany
     {
         return $this->hasMany(Pastor::class)->orderBy('sort_order')->orderBy('name');

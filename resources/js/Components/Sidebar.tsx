@@ -125,6 +125,7 @@ const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'Salas', route: 'rooms.index', icon: BuildingOfficeIcon },
     { name: 'Departamentos', route: 'departments.index', icon: BuildingOffice2Icon },
     { name: 'Pastores', route: 'pastors.index', icon: UserCircleIcon },
+    { name: 'Programação', route: 'programacao.index', icon: ClockIcon },
     { name: 'Igrejas', route: 'churches.index', icon: BuildingOfficeIcon },
     { name: 'Operações', route: 'operations.index', icon: ChartBarSquareIcon },
     { name: 'Perfis', route: 'roles.index', icon: KeyIcon },
@@ -222,7 +223,7 @@ export default function Sidebar({
         'donation-item-campaigns.index',
         'notifications.manage',
     ]);
-    const cadastroRoutes = new Set(['rooms.index', 'departments.index', 'pastors.index']);
+    const cadastroRoutes = new Set(['rooms.index', 'departments.index', 'pastors.index', 'programacao.index']);
 
     /** OPERAÇÃO aberta por padrão no painel de gestão (comentário legado no código). */
     const [isMainOpen, setIsMainOpen] = useState(true);

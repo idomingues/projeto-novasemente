@@ -33,6 +33,7 @@ use App\Services\SabbathSunsetService;
 use App\Services\ScheduleAssignmentPresenter;
 use App\Services\SolicitationChatNotifier;
 use App\Services\VolunteerScheduleOverview;
+use App\Services\YoutubePlaylistImportService;
 use App\Support\ChurchAppFeatures;
 use App\Support\HomeCardKeys;
 use App\Support\HomeFeaturedWeek;
@@ -46,6 +47,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -244,6 +246,7 @@ class MobileController extends Controller
             : null;
 
         $sabbathBanner = app(SabbathSunsetService::class)->homeBannerPayload();
+        $weeklyProgramCards = app(\App\Services\WeeklyProgramService::class)->homeCards($church);
         $featuredWeek = HomeFeaturedWeek::forChurch($church);
         $bookmarkedHomeCards = [];
         if ($user !== null && Schema::hasTable('user_home_card_bookmarks')) {
@@ -260,7 +263,8 @@ class MobileController extends Controller
             'upcomingEvents' => $upcomingEvents,
             'showPostRegistrationBanner' => $request->boolean('reg_ok') && $request->user() !== null,
             'volunteerSignupCompletion' => $volunteerSignupCompletion,
-            'sabbathBanner' => $sabbathBanner,
+            'sabbathBanner' => $weeklyProgramCards === [] ? $sabbathBanner : null,
+            'weeklyProgramCards' => $weeklyProgramCards,
             'featuredWeek' => $featuredWeek,
             'bookmarkedHomeCards' => $bookmarkedHomeCards,
         ]);
@@ -1594,9 +1598,12 @@ class MobileController extends Controller
             })->toArray();
         }
 
+        $weeklyProgram = app(\App\Services\WeeklyProgramService::class)->agendaRows($church);
+
         return Inertia::render('Mobile/Services', [
             'churchName' => $church?->name,
             'services' => $services,
+            'weeklyProgram' => $weeklyProgram,
         ]);
     }
 
@@ -1760,16 +1767,25 @@ class MobileController extends Controller
         $url = trim((string) $acervoItem->url);
         $title = trim((string) $acervoItem->title);
 
-        $embedUrl = null;
+        $listId = Musica::youtubePlaylistIdFromUrl($url);
         $videoId = Musica::youtubeVideoId($url);
-        if ($videoId) {
+        $episodes = $listId !== null ? $this->acervoPlaylistEpisodes($listId) : [];
+
+        $embedUrl = null;
+        if ($listId !== null && $episodes !== []) {
+            $firstVideoId = $episodes[0]['video_id'] ?? null;
+            $embedUrl = is_string($firstVideoId) && $firstVideoId !== ''
+                ? "https://www.youtube.com/embed/{$firstVideoId}?list={$listId}"
+                : "https://www.youtube.com/embed/videoseries?list={$listId}";
+        } elseif ($listId !== null) {
+            $embedUrl = "https://www.youtube.com/embed/videoseries?list={$listId}";
+        } elseif ($videoId) {
             $embedUrl = "https://www.youtube.com/embed/{$videoId}";
-        } elseif (preg_match('/[?&]list=([a-zA-Z0-9_-]+)/', $url, $m)) {
-            $listId = $m[1] ?? null;
-            if (is_string($listId) && $listId !== '') {
-                $embedUrl = "https://www.youtube.com/embed/videoseries?list={$listId}";
-            }
         }
+
+        $videoCount = count($episodes) > 0
+            ? count($episodes)
+            : $acervoItem->video_count;
 
         return Inertia::render('Mobile/AcervoShow', [
             'item' => [
@@ -1777,9 +1793,52 @@ class MobileController extends Controller
                 'title' => $title !== '' ? $title : 'Séries',
                 'url' => $url,
                 'embed_url' => $embedUrl,
-                'videoCount' => $acervoItem->video_count,
+                'playlist_id' => $listId,
+                'videoCount' => $videoCount,
+                'episodes' => $episodes,
             ],
         ]);
+    }
+
+    /**
+     * @return list<array{video_id: string, title: string, thumbnail: string}>
+     */
+    private function acervoPlaylistEpisodes(string $listId): array
+    {
+        $cacheKey = 'acervo_playlist_episodes_'.md5($listId);
+        $cached = Cache::get($cacheKey);
+        if (is_array($cached)) {
+            return $cached;
+        }
+
+        $fetched = YoutubePlaylistImportService::fetchPlaylistVideos($listId);
+        if (! ($fetched['ok'] ?? false) || ! is_array($fetched['items'] ?? null)) {
+            return [];
+        }
+
+        $episodes = [];
+        foreach ($fetched['items'] as $row) {
+            $videoId = is_string($row['video_id'] ?? null) ? $row['video_id'] : '';
+            $episodeTitle = is_string($row['title'] ?? null) ? trim($row['title']) : '';
+            if ($videoId === '' || strlen($videoId) !== 11) {
+                continue;
+            }
+            $lower = mb_strtolower($episodeTitle);
+            if ($lower === 'deleted video' || $lower === 'private video') {
+                continue;
+            }
+            $episodes[] = [
+                'video_id' => $videoId,
+                'title' => $episodeTitle !== '' ? $episodeTitle : 'Sem título',
+                'thumbnail' => "https://i.ytimg.com/vi/{$videoId}/mqdefault.jpg",
+            ];
+        }
+
+        if ($episodes !== []) {
+            Cache::put($cacheKey, $episodes, 3600);
+        }
+
+        return $episodes;
     }
 
     public function notifications(Request $request): Response
