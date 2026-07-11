@@ -157,7 +157,7 @@ const homeQuickActions: QuickAction[] = [
         label: 'Lição',
         subtitle: 'Estudo da lição da escola sabatina',
         route: 'mobile.biblioteca',
-        routeParams: { tab: 'lesson' },
+        routeParams: { tab: 'lesson', solo: '1' },
         featureKey: 'library',
         icon: ClipboardDocumentListIcon,
     },

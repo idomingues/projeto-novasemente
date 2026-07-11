@@ -153,10 +153,19 @@ export default function MobileLibrary({
     const tabFromUrl = useMemo(() => {
         const raw = String(page.url ?? '');
         const qs = raw.includes('?') ? raw.slice(raw.indexOf('?') + 1) : '';
-        const t = new URLSearchParams(qs).get('tab')?.trim().toLowerCase() ?? '';
+        const params = new URLSearchParams(qs);
+        const t = params.get('tab')?.trim().toLowerCase() ?? '';
         return categories.some((c) => c.value === t) ? t : '';
     }, [page.url, categories]);
-    const [tab, setTab] = useState<string>(() => tabFromUrl || categories[0]?.value || 'books');
+    const soloLesson = useMemo(() => {
+        const raw = String(page.url ?? '');
+        const qs = raw.includes('?') ? raw.slice(raw.indexOf('?') + 1) : '';
+        const params = new URLSearchParams(qs);
+        return params.get('solo') === '1' && (tabFromUrl === 'lesson' || params.get('tab') === 'lesson');
+    }, [page.url, tabFromUrl]);
+    const [tab, setTab] = useState<string>(() =>
+        soloLesson ? 'lesson' : tabFromUrl || categories[0]?.value || 'books',
+    );
     const [search, setSearch] = useState('');
     const [selectedDetails, setSelectedDetails] = useState<BookItem | null>(null);
     const [readerStatus, setReaderStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
@@ -172,10 +181,14 @@ export default function MobileLibrary({
     }, []);
 
     useEffect(() => {
+        if (soloLesson) {
+            setTab('lesson');
+            return;
+        }
         if (tabFromUrl) {
             setTab(tabFromUrl);
         }
-    }, [tabFromUrl]);
+    }, [tabFromUrl, soloLesson]);
 
     const meditationUrl = String(meditationUrlProp ?? '').trim();
     const lessonUrl = String(lessonUrlProp ?? '').trim();
@@ -313,32 +326,43 @@ export default function MobileLibrary({
 
     return (
         <MobileLayout>
-            <Head title="Biblioteca" />
+            <Head title={soloLesson ? 'Lição' : 'Biblioteca'} />
 
             <div className="space-y-6">
-                <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                    <div className="flex flex-wrap items-center gap-3">
+                {soloLesson ? (
+                    <header>
                         <h1 className="min-w-0 text-balance text-3xl font-bold leading-[1.12] tracking-[-0.03em] text-zinc-900 antialiased dark:text-white sm:text-4xl sm:tracking-[-0.035em]">
-                            Biblioteca
+                            Lição
                         </h1>
-                        <GratisBadge className="translate-y-0.5" />
-                    </div>
-                    <div className="relative w-full sm:max-w-xs">
-                        {!isAcervoTab ? (
-                            <>
-                                <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-                                <input
-                                    type="search"
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    placeholder="Pesquisar…"
-                                    className="w-full rounded-xl border border-zinc-200/90 bg-white py-2.5 pl-9 pr-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900/15 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:placeholder:text-zinc-500 dark:focus:border-zinc-300 dark:focus:ring-zinc-300/20"
-                                    aria-label="Pesquisar na biblioteca"
-                                />
-                            </>
-                        ) : null}
-                    </div>
-                </header>
+                        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                            Estudo da lição da escola sabatina
+                        </p>
+                    </header>
+                ) : (
+                    <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                        <div className="flex flex-wrap items-center gap-3">
+                            <h1 className="min-w-0 text-balance text-3xl font-bold leading-[1.12] tracking-[-0.03em] text-zinc-900 antialiased dark:text-white sm:text-4xl sm:tracking-[-0.035em]">
+                                Biblioteca
+                            </h1>
+                            <GratisBadge className="translate-y-0.5" />
+                        </div>
+                        <div className="relative w-full sm:max-w-xs">
+                            {!isAcervoTab ? (
+                                <>
+                                    <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+                                    <input
+                                        type="search"
+                                        value={search}
+                                        onChange={(e) => setSearch(e.target.value)}
+                                        placeholder="Pesquisar…"
+                                        className="w-full rounded-xl border border-zinc-200/90 bg-white py-2.5 pl-9 pr-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900/15 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:placeholder:text-zinc-500 dark:focus:border-zinc-300 dark:focus:ring-zinc-300/20"
+                                        aria-label="Pesquisar na biblioteca"
+                                    />
+                                </>
+                            ) : null}
+                        </div>
+                    </header>
+                )}
 
                 {librarySetupMessage ? (
                     <div
@@ -350,6 +374,7 @@ export default function MobileLibrary({
                     </div>
                 ) : null}
 
+                {!soloLesson ? (
                 <nav
                     role="tablist"
                     aria-label="Categorias"
@@ -405,6 +430,7 @@ export default function MobileLibrary({
                         );
                     })}
                 </nav>
+                ) : null}
 
                 {isAcervoTab && revistaAdventistaAcervo ? (
                     <RevistaAdventistaAcervoContent
