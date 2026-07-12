@@ -573,23 +573,23 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
             )}
 
             <Modal show={isModalOpen} onClose={closeModal} maxWidth="md">
-                <form onSubmit={submit} className="p-6">
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                <form onSubmit={submit} className="min-w-0 max-w-full overflow-x-hidden p-6">
+                    <h2 className="mb-4 pr-10 text-lg font-semibold text-gray-900 dark:text-white">
                         {isEditing ? 'Editar evento' : 'Novo evento'}
                     </h2>
-                    <div className="space-y-4">
-                        <div>
+                    <div className="min-w-0 space-y-4">
+                        <div className="min-w-0">
                             <InputLabel htmlFor="title">Título *</InputLabel>
                             <TextInput
                                 id="title"
                                 value={data.title}
                                 onChange={(e) => setData('title', e.target.value)}
-                                className="mt-1 block w-full"
+                                className="mt-1 block w-full min-w-0 max-w-full"
                                 required
                             />
                             <InputError message={errors.title} />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                             <InputLabel htmlFor="published_at" value="Data de publicação (vazio = publicar agora)" />
                             <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                                 Se escolher uma data no futuro, o evento só vai aparecer no app a partir dessa data.
@@ -600,35 +600,35 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
                                 type="datetime-local"
                                 value={data.published_at}
                                 onChange={(e) => setData('published_at', e.target.value)}
-                                className="mt-1 block w-full"
+                                className="mt-1 block w-full min-w-0 max-w-full"
                             />
                             <InputError message={errors.published_at} />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                             <InputLabel htmlFor="description">Descrição</InputLabel>
                             <Textarea
                                 id="description"
                                 value={data.description}
                                 onChange={(e) => setData('description', e.target.value)}
-                                className="mt-1 block w-full"
+                                className="mt-1 block w-full min-w-0 max-w-full"
                                 rows={3}
                             />
                             <InputError message={errors.description} />
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
+                        <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div className="min-w-0">
                                 <InputLabel htmlFor="starts_at">Início *</InputLabel>
                                 <TextInput
                                     id="starts_at"
                                     type={data.all_day ? 'date' : 'datetime-local'}
                                     value={data.all_day ? data.starts_at.slice(0, 10) : data.starts_at}
                                     onChange={(e) => setData('starts_at', e.target.value)}
-                                    className="mt-1 block w-full"
+                                    className="mt-1 block w-full min-w-0 max-w-full"
                                     required
                                 />
                                 <InputError message={errors.starts_at} />
                             </div>
-                            <div>
+                            <div className="min-w-0">
                                 <InputLabel htmlFor="ends_at">Fim (opcional)</InputLabel>
                                 <TextInput
                                     id="ends_at"
@@ -641,7 +641,7 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
                                             : ''
                                     }
                                     onChange={(e) => setData('ends_at', e.target.value)}
-                                    className="mt-1 block w-full"
+                                    className="mt-1 block w-full min-w-0 max-w-full"
                                 />
                                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                     Deixe em branco se o evento não tiver horário de término.

@@ -31,7 +31,7 @@ export default function MobileEventDetailModal({
     imageFilenamePrefix = 'evento',
 }: Props) {
     return (
-        <Modal show={selected !== null} onClose={onClose} maxWidth="lg">
+        <Modal show={selected !== null} onClose={onClose} maxWidth="lg" showCloseButton={false}>
             {selected && (
                 <>
                     <div className="relative">
@@ -62,7 +62,9 @@ export default function MobileEventDetailModal({
                             >
                                 <span className="sr-only">Ver vídeo</span>
                             </CoverWithVideoLink>
-                        ) : null}
+                        ) : (
+                            <div className="h-[max(0.75rem,env(safe-area-inset-top,0px))] sm:h-0" aria-hidden />
+                        )}
                         {selected.image_url ? (
                             <ImageDownloadButton
                                 src={selected.image_url}
@@ -74,7 +76,7 @@ export default function MobileEventDetailModal({
                         <button
                             type="button"
                             onClick={onClose}
-                            className="absolute right-3 top-3 z-20 cursor-pointer rounded-full bg-black/50 p-2 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
+                            className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top,0px))] z-20 cursor-pointer rounded-full bg-black/55 p-2.5 text-white shadow-md backdrop-blur-sm transition-colors hover:bg-black/70 sm:top-3"
                             aria-label="Fechar"
                         >
                             <XMarkIcon className="h-5 w-5" />

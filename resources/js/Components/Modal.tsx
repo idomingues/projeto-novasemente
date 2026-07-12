@@ -38,10 +38,31 @@ export default function Modal({
 
     useEffect(() => {
         if (!show) return;
-        const prev = document.body.style.overflow;
-        document.body.style.overflow = 'hidden';
+
+        const html = document.documentElement;
+        const body = document.body;
+        const prevBodyOverflow = body.style.overflow;
+        const prevBodyOverflowX = body.style.overflowX;
+        const prevHtmlOverflowX = html.style.overflowX;
+        const prevBodyOverscrollX = body.style.overscrollBehaviorX;
+        const prevHtmlOverscrollX = html.style.overscrollBehaviorX;
+
+        // Trava scroll da página atrás do modal (inclui eixo X — evita “arrastar” no iOS).
+        body.style.overflow = 'hidden';
+        body.style.overflowX = 'hidden';
+        html.style.overflowX = 'hidden';
+        body.style.overscrollBehaviorX = 'none';
+        html.style.overscrollBehaviorX = 'none';
+        window.scrollTo(0, window.scrollY);
+        body.scrollLeft = 0;
+        html.scrollLeft = 0;
+
         return () => {
-            document.body.style.overflow = prev;
+            body.style.overflow = prevBodyOverflow;
+            body.style.overflowX = prevBodyOverflowX;
+            html.style.overflowX = prevHtmlOverflowX;
+            body.style.overscrollBehaviorX = prevBodyOverscrollX;
+            html.style.overscrollBehaviorX = prevHtmlOverscrollX;
         };
     }, [show]);
 
@@ -74,19 +95,19 @@ export default function Modal({
             />
             {/*
               Portal em document.body: cobre sidebar (z-50) e barra inferior.
-              Mobile: sem overflow no contentor externo — evita o “salto” do sheet ao focar inputs.
+              Sem w-screen/100vw — no mobile 100vw é mais largo que a viewport e causa arrasto horizontal.
             */}
-            <div className="fixed inset-0 z-[251] w-screen max-w-[100vw] max-sm:flex max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:flex-col max-sm:overflow-hidden max-sm:overscroll-none sm:overflow-y-auto">
-                <div className="flex items-end justify-center p-0 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] text-center max-sm:h-full max-sm:min-h-0 max-sm:flex-1 sm:min-h-full sm:items-center sm:p-4 sm:pb-4">
+            <div className="fixed inset-0 z-[251] w-full max-w-full overflow-x-hidden max-sm:flex max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:flex-col max-sm:overflow-hidden max-sm:overscroll-none sm:overflow-y-auto sm:overscroll-y-contain">
+                <div className="flex w-full max-w-full items-end justify-center p-0 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] text-center max-sm:h-full max-sm:min-h-0 max-sm:flex-1 sm:min-h-full sm:items-center sm:p-4 sm:pb-4">
                     <DialogPanel
                         transition
-                        className={`relative flex w-full min-h-0 max-h-[calc(100dvh-env(safe-area-inset-bottom,0px))] flex-col transform overflow-hidden rounded-t-[1.75rem] border border-b-0 border-zinc-200 bg-white text-left shadow-2xl transition-all duration-300 ease-out dark:border-zinc-800 dark:bg-zinc-900 sm:my-8 sm:max-h-[min(90dvh,calc(100dvh-2rem))] sm:w-full sm:rounded-3xl sm:border-b data-closed:translate-y-4 data-closed:opacity-0 sm:data-closed:translate-y-0 sm:data-closed:scale-95 ${maxWidthClass}`}
+                        className={`relative flex w-full min-w-0 max-w-full min-h-0 max-h-[calc(100dvh-env(safe-area-inset-bottom,0px))] flex-col transform overflow-hidden rounded-t-[1.75rem] border border-b-0 border-zinc-200 bg-white text-left shadow-2xl transition-all duration-300 ease-out dark:border-zinc-800 dark:bg-zinc-900 sm:my-8 sm:max-h-[min(90dvh,calc(100dvh-2rem))] sm:w-full sm:rounded-3xl sm:border-b data-closed:translate-y-4 data-closed:opacity-0 sm:data-closed:translate-y-0 sm:data-closed:scale-95 ${maxWidthClass}`}
                     >
                         {closeable && showCloseButton && (
                             <button
                                 type="button"
                                 onClick={close}
-                                className="absolute right-2 top-2 z-20 cursor-pointer rounded-full p-2 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white dark:focus-visible:ring-zinc-500 sm:right-3 sm:top-3"
+                                className="absolute right-2 top-[max(0.5rem,env(safe-area-inset-top,0px))] z-20 cursor-pointer rounded-full bg-white/90 p-2 text-zinc-600 shadow-sm backdrop-blur-sm transition-colors hover:bg-white hover:text-zinc-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:bg-zinc-900/90 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white dark:focus-visible:ring-zinc-500 sm:right-3 sm:top-3 sm:bg-transparent sm:shadow-none sm:backdrop-blur-none dark:sm:bg-transparent"
                                 aria-label="Fechar"
                             >
                                 <XMarkIcon className="h-6 w-6" aria-hidden />
@@ -95,14 +116,18 @@ export default function Modal({
                         {disableBodyScroll ? (
                             children
                         ) : footer != null ? (
-                            <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
-                                <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">{children}</div>
+                            <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
+                                <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain">
+                                    {children}
+                                </div>
                                 <div className="shrink-0 border-t border-zinc-100 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] dark:border-zinc-800 dark:bg-zinc-900 sm:px-6">
                                     {footer}
                                 </div>
                             </div>
                         ) : (
-                            <div className="min-h-0 w-full flex-1 overflow-y-auto overscroll-y-contain">{children}</div>
+                            <div className="min-h-0 w-full min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain">
+                                {children}
+                            </div>
                         )}
                     </DialogPanel>
                 </div>

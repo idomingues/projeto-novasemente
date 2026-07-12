@@ -115,7 +115,7 @@ export default function EventAdminModal({
 }: Props) {
     return (
         <Modal show={show} onClose={onClose} maxWidth="md">
-            <form onSubmit={onSubmit} className="p-6">
+            <form onSubmit={onSubmit} className="min-w-0 max-w-full overflow-x-hidden p-6">
                 <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
                     {isEditing ? 'Editar evento' : 'Novo evento'}
                 </h2>

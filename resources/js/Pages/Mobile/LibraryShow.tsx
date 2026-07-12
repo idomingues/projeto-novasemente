@@ -211,7 +211,7 @@ export default function MobileLibraryShow({ book }: Props) {
                         <button
                             type="button"
                             onClick={() => setDetailsOpen(false)}
-                            className="absolute right-3 top-3 cursor-pointer rounded-full bg-black/50 p-2 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
+                            className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top,0px))] z-20 cursor-pointer rounded-full bg-black/55 p-2.5 text-white shadow-md backdrop-blur-sm transition-colors hover:bg-black/70 sm:top-3"
                             aria-label="Fechar"
                         >
                             <XMarkIcon className="h-5 w-5" />
@@ -298,7 +298,7 @@ export default function MobileLibraryShow({ book }: Props) {
                         <button
                             type="button"
                             onClick={() => setDetailsOpen(false)}
-                            className="absolute right-3 top-3 cursor-pointer rounded-full bg-black/50 p-2 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
+                            className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top,0px))] z-20 cursor-pointer rounded-full bg-black/55 p-2.5 text-white shadow-md backdrop-blur-sm transition-colors hover:bg-black/70 sm:top-3"
                             aria-label="Fechar"
                         >
                             <XMarkIcon className="h-5 w-5" />
@@ -441,7 +441,7 @@ export default function MobileLibraryShow({ book }: Props) {
                     <button
                         type="button"
                         onClick={() => setDetailsOpen(false)}
-                        className="absolute right-3 top-3 cursor-pointer rounded-full bg-black/50 p-2 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
+                        className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top,0px))] z-20 cursor-pointer rounded-full bg-black/55 p-2.5 text-white shadow-md backdrop-blur-sm transition-colors hover:bg-black/70 sm:top-3"
                         aria-label="Fechar"
                     >
                         <XMarkIcon className="h-5 w-5" />
