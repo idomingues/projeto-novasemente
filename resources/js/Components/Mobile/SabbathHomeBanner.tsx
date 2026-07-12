@@ -16,8 +16,6 @@ type Props = {
     appUrl?: string;
 };
 
-const CREAM = '#f5f1e9';
-
 const sunsetMask =
     'linear-gradient(to right, transparent 0%, transparent 30%, rgba(0,0,0,0.12) 40%, rgba(0,0,0,0.45) 50%, rgba(0,0,0,0.85) 58%, black 68%, black 100%)';
 
@@ -35,8 +33,7 @@ export default function SabbathHomeBanner({ banner, appUrl = '' }: Props) {
     return (
         <section
             aria-label={banner.variant === 'friday' ? 'Início do sábado' : 'Despedida do sábado'}
-            className="relative w-full overflow-hidden rounded-2xl shadow-sm ring-1 ring-amber-900/10 dark:ring-amber-900/40"
-            style={{ backgroundColor: CREAM }}
+            className="relative w-full overflow-hidden rounded-2xl bg-[#f5f1e9] shadow-sm ring-1 ring-amber-900/10 dark:bg-emerald-950 dark:ring-emerald-800/60"
         >
             <div
                 className="absolute inset-0 bg-cover"
@@ -49,7 +46,7 @@ export default function SabbathHomeBanner({ banner, appUrl = '' }: Props) {
                 aria-hidden
             />
             <div
-                className="pointer-events-none absolute inset-y-0 left-0 w-[66%] bg-gradient-to-r from-[#f5f1e9] from-30% via-[#f5f1e9]/92 via-52% to-transparent dark:from-amber-950/30 dark:via-amber-950/25"
+                className="pointer-events-none absolute inset-y-0 left-0 w-[66%] bg-gradient-to-r from-[#f5f1e9] from-30% via-[#f5f1e9]/92 via-52% to-transparent dark:from-emerald-950 dark:via-emerald-950/92"
                 aria-hidden
             />
 

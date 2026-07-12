@@ -75,14 +75,15 @@ export default function HomeFeaturedWeek({ items }: Props) {
     }
 
     return (
-        <section aria-label="Mais visualizados" className="space-y-2.5">
+        <section aria-label="Mais visualizados" className="relative space-y-2.5 overflow-visible">
             <div className="px-0.5">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-400">
                     Mais visualizados
                 </p>
             </div>
 
-            <div className="-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 pr-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {/* py evita corte do ring/sombra no eixo Y quando overflow-x cria scrollport */}
+            <div className="flex snap-x snap-mandatory gap-2 overflow-x-auto py-1 pr-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {items.map((item) => {
                     const Icon = ICONS[item.icon_key] ?? SparklesIcon;
 

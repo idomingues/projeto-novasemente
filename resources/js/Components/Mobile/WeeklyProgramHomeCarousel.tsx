@@ -12,7 +12,15 @@ export default function WeeklyProgramHomeCarousel({ cards, appUrl = '' }: Props)
 
     useEffect(() => {
         const el = scrollerRef.current;
-        if (!el || cards.length <= 1) {
+        if (!el) {
+            return;
+        }
+
+        // Garante que o slide visível seja sempre o próximo evento (primeiro da lista).
+        el.scrollLeft = 0;
+        setActiveIndex(0);
+
+        if (cards.length <= 1) {
             return;
         }
 
@@ -42,7 +50,7 @@ export default function WeeklyProgramHomeCarousel({ cards, appUrl = '' }: Props)
             el.removeEventListener('scroll', updateActive);
             window.removeEventListener('resize', updateActive);
         };
-    }, [cards.length]);
+    }, [cards]);
 
     if (cards.length === 0) {
         return null;
@@ -51,7 +59,7 @@ export default function WeeklyProgramHomeCarousel({ cards, appUrl = '' }: Props)
     const showCarouselChrome = cards.length > 1;
 
     return (
-        <section aria-label="Programação semanal" className="min-w-0 space-y-2.5">
+        <section aria-label="Programação semanal" className="min-w-0 space-y-2.5 isolation-isolate">
             {showCarouselChrome ? (
                 <div className="px-0.5">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-400">
@@ -64,7 +72,7 @@ export default function WeeklyProgramHomeCarousel({ cards, appUrl = '' }: Props)
                 ref={scrollerRef}
                 className={
                     showCarouselChrome
-                        ? 'flex min-w-0 flex-nowrap items-stretch gap-3 overflow-x-auto overscroll-x-contain scroll-smooth snap-x snap-mandatory pb-1 touch-pan-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+                        ? 'flex min-w-0 flex-nowrap items-stretch gap-3 overflow-x-auto overscroll-x-contain scroll-smooth snap-x snap-mandatory py-1 touch-pan-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
                         : 'min-w-0'
                 }
             >
@@ -81,7 +89,8 @@ export default function WeeklyProgramHomeCarousel({ cards, appUrl = '' }: Props)
                         <WeeklyProgramHomeCard
                             card={card}
                             appUrl={appUrl}
-                            isNext={card.is_next ?? index === 0}
+                            isNext={Boolean(card.is_next)}
+                            isOngoing={Boolean(card.is_ongoing)}
                         />
                     </div>
                 ))}

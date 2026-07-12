@@ -204,7 +204,7 @@ class MobileChurchSolicitationController extends Controller
     /**
      * App mobile: só pedidos de batismo (+ lista + modal no mesmo padrão do hub).
      */
-    public function baptismHub(Request $request): Response|RedirectResponse
+    public function baptismHub(Request $request): Response
     {
         $churchId = $this->currentChurchId($request);
         $user = $request->user();
@@ -253,6 +253,8 @@ class MobileChurchSolicitationController extends Controller
             ->values()
             ->all();
 
+        // Home / atalho do app: sempre visão do membro (mesmo para admin).
+        // Gestão da igreja fica só em baptism-requests.index (menu lateral).
         return Inertia::render('Mobile/Solicitations/Hub', [
             'types' => $types,
             'mineUrl' => $hubUrl,
@@ -260,11 +262,10 @@ class MobileChurchSolicitationController extends Controller
             'pastorOptions' => SolicitationAssignees::pastorOptions($churchId),
             'mySolicitations' => $mySolicitations,
             'pastoralAgendaUrl' => route('mobile.pastoral-appointments.request', [], false),
-            'pageTitle' => 'Batismo',
-            'pageSubtitle' => 'Toque num pedido para editar ou conversar com a igreja.',
+            'pageTitle' => 'Pedido de batismo',
+            'pageSubtitle' => 'Envie seu pedido e acompanhe a conversa com a igreja.',
             'singleBaptismType' => true,
             'hideConversationReturnTo' => 'baptism_hub',
-            'staffBaptismManageUrl' => null,
         ]);
     }
 

@@ -1,5 +1,5 @@
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
 import {
     BookOpenIcon,
     ChevronLeftIcon,
@@ -69,8 +69,6 @@ interface Props {
     singleBaptismType?: boolean;
     /** Redirecionamento após «excluir da minha app» (batismo vs hub geral). */
     hideConversationReturnTo?: 'hub' | 'baptism_hub';
-    /** Equipe com permissão de gestão: atalho para o painel admin de batismo. */
-    staffBaptismManageUrl?: string | null;
 }
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
@@ -117,7 +115,6 @@ export default function Hub({
     pageSubtitle,
     singleBaptismType = false,
     hideConversationReturnTo = 'hub',
-    staffBaptismManageUrl = null,
 }: Props) {
     const [createOpen, setCreateOpen] = useState(false);
     const [step, setStep] = useState<'pick' | 'form'>('pick');
@@ -245,22 +242,6 @@ export default function Hub({
                     subtitle={<span className="text-zinc-600 dark:text-zinc-400">{sub}</span>}
                     actions={<AddButton variant="icon" onClick={openCreate} title="Nova solicitação">Nova solicitação</AddButton>}
                 />
-
-                {staffBaptismManageUrl ? (
-                    <div className="rounded-2xl border border-teal-200 bg-teal-50/90 px-4 py-3 text-sm text-teal-950 dark:border-teal-800/60 dark:bg-teal-950/40 dark:text-teal-100">
-                        <p className="font-medium">Gestão da igreja</p>
-                        <p className="mt-1 text-xs leading-relaxed opacity-90">
-                            Esta tela é a visão do membro. Para alterar situação, notas internas e acompanhar todos os pedidos,
-                            use o painel da equipe.
-                        </p>
-                        <Link
-                            href={staffBaptismManageUrl}
-                            className="mt-3 inline-flex text-xs font-semibold text-teal-800 underline dark:text-teal-200"
-                        >
-                            Abrir gestão de batismo
-                        </Link>
-                    </div>
-                ) : null}
 
                 <div ref={listRef} id="lista-solicitacoes" className="scroll-mt-24">
                     <h2 className="text-sm font-semibold text-zinc-900 dark:text-white mb-3">{listHeading}</h2>

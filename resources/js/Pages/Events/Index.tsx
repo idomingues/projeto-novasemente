@@ -490,79 +490,81 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
                         </Card>
                     ) : (
                         events.map((ev) => (
-                            <Card key={ev.id} className="flex flex-row items-center gap-3 p-4">
-                                <div className="flex shrink-0 self-stretch items-center">
+                            <Card key={ev.id} className="w-full min-w-0 overflow-hidden p-4">
+                                <div className="flex min-w-0 gap-3">
                                     <div
-                                        className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-lg text-lg font-bold text-white"
+                                        className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg text-lg font-bold text-white"
                                         style={{
                                             backgroundColor: ev.color || 'var(--primary-600, #2563eb)',
                                         }}
                                     >
                                         {new Date(ev.starts_at).getDate()}
                                     </div>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-start justify-between gap-3">
-                                        <h3 className="min-w-0 font-semibold text-gray-900 dark:text-white">
-                                            <span className="truncate">{ev.title}</span>
-                                            {!ev.is_active && (
-                                                <span className="ml-2 inline-flex items-center rounded-full bg-zinc-200 px-2 py-0.5 text-[11px] font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                                                    Inativo
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
+                                            <h3 className="min-w-0 break-words font-semibold text-gray-900 dark:text-white sm:flex-1">
+                                                {ev.title}
+                                                {!ev.is_active && (
+                                                    <span className="ml-2 inline-flex align-middle items-center rounded-full bg-zinc-200 px-2 py-0.5 text-[11px] font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                                                        Inativo
+                                                    </span>
+                                                )}
+                                            </h3>
+                                            {canManage && (
+                                                <ListCardActionRow className="-ml-1 self-end sm:-mr-1 sm:-mt-1 sm:ml-0 sm:self-auto">
+                                                    <ListCardIconActionButton
+                                                        label={ev.is_active ? 'Desativar' : 'Ativar'}
+                                                        icon={<PowerIcon className="h-5 w-5" />}
+                                                        onClick={() => setActive(ev, !ev.is_active)}
+                                                        disabled={activatingId === ev.id}
+                                                    />
+                                                    <ListCardIconActionButton
+                                                        label="Editar"
+                                                        icon={<PencilIcon className="h-5 w-5" />}
+                                                        onClick={() => openEditModal(ev)}
+                                                    />
+                                                    <ListCardIconActionButton
+                                                        label="Excluir"
+                                                        icon={<TrashIcon className="h-5 w-5" />}
+                                                        tone="danger"
+                                                        onClick={() => handleDelete(ev.id)}
+                                                    />
+                                                </ListCardActionRow>
+                                            )}
+                                        </div>
+                                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-600 dark:text-gray-400">
+                                            <span className="flex min-w-0 items-center gap-1">
+                                                <ClockIcon className="h-4 w-4 shrink-0" />
+                                                <span className="min-w-0 break-words">
+                                                    {formatDateTime(ev.starts_at, ev.all_day)}
+                                                    {ev.ends_at && !ev.all_day && ` – ${formatTime(ev.ends_at)}`}
+                                                </span>
+                                            </span>
+                                            {ev.location && (
+                                                <span className="flex min-w-0 items-center gap-1">
+                                                    <MapPinIcon className="h-4 w-4 shrink-0" />
+                                                    <span className="min-w-0 truncate">{ev.location}</span>
                                                 </span>
                                             )}
-                                        </h3>
-                                        {canManage && (
-                                            <ListCardActionRow className="shrink-0 sm:w-auto">
-                                                <ListCardIconActionButton
-                                                    label={ev.is_active ? 'Desativar' : 'Ativar'}
-                                                    icon={<PowerIcon className="h-5 w-5" />}
-                                                    onClick={() => setActive(ev, !ev.is_active)}
-                                                    disabled={activatingId === ev.id}
-                                                />
-                                                <ListCardIconActionButton
-                                                    label="Editar"
-                                                    icon={<PencilIcon className="h-5 w-5" />}
-                                                    onClick={() => openEditModal(ev)}
-                                                />
-                                                <ListCardIconActionButton
-                                                    label="Excluir"
-                                                    icon={<TrashIcon className="h-5 w-5" />}
-                                                    tone="danger"
-                                                    onClick={() => handleDelete(ev.id)}
-                                                />
-                                            </ListCardActionRow>
+                                            {ev.price && (
+                                                <span className="flex items-center gap-1">
+                                                    <BanknotesIcon className="h-4 w-4 shrink-0" />
+                                                    {ev.price}
+                                                </span>
+                                            )}
+                                            {ev.purchase_url && (
+                                                <span className="inline-flex items-center gap-1 rounded-full bg-primary-100 px-2 py-0.5 text-xs font-semibold text-primary-800 dark:bg-primary-900/50 dark:text-primary-200">
+                                                    <TicketIcon className="h-3.5 w-3.5" />
+                                                    Compra / inscrição
+                                                </span>
+                                            )}
+                                        </div>
+                                        {ev.description && (
+                                            <p className="mt-1 line-clamp-2 break-words text-sm text-gray-600 dark:text-gray-400">
+                                                {ev.description}
+                                            </p>
                                         )}
                                     </div>
-                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-sm text-gray-600 dark:text-gray-400">
-                                        <span className="flex items-center gap-1">
-                                            <ClockIcon className="w-4 h-4 flex-shrink-0" />
-                                            {formatDateTime(ev.starts_at, ev.all_day)}
-                                            {ev.ends_at && !ev.all_day && ` – ${formatTime(ev.ends_at)}`}
-                                        </span>
-                                        {ev.location && (
-                                            <span className="flex items-center gap-1 truncate">
-                                                <MapPinIcon className="w-4 h-4 flex-shrink-0" />
-                                                {ev.location}
-                                            </span>
-                                        )}
-                                        {ev.price && (
-                                            <span className="flex items-center gap-1">
-                                                <BanknotesIcon className="w-4 h-4 flex-shrink-0" />
-                                                {ev.price}
-                                            </span>
-                                        )}
-                                        {ev.purchase_url && (
-                                            <span className="inline-flex items-center gap-1 rounded-full bg-primary-100 px-2 py-0.5 text-xs font-semibold text-primary-800 dark:bg-primary-900/50 dark:text-primary-200">
-                                                <TicketIcon className="h-3.5 w-3.5" />
-                                                Compra / inscrição
-                                            </span>
-                                        )}
-                                    </div>
-                                    {ev.description && (
-                                        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                                            {ev.description}
-                                        </p>
-                                    )}
                                 </div>
                             </Card>
                         ))

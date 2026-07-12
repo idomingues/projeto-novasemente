@@ -148,14 +148,77 @@ class WeeklyProgramTest extends TestCase
                 ->where('weeklyProgramCards.0.is_next', true)
             );
 
-        // Sábado 10h — culto das 09:30 já ocorreu; some do carrossel.
+        WeeklyProgram::query()->create([
+            'church_id' => $church->id,
+            'day_of_week' => 6,
+            'when_label' => 'SÁB 11H',
+            'title' => 'ESTUDO',
+            'body' => null,
+            'time_mode' => 'fixed',
+            'start_time' => '11:00:00',
+            'display_time' => '11:00',
+            'home_message' => 'Estudo',
+            'show_on_home' => true,
+            'is_active' => true,
+            'sort_order' => 2,
+        ]);
+        WeeklyProgram::query()->create([
+            'church_id' => $church->id,
+            'day_of_week' => 6,
+            'when_label' => 'SÁB 12H',
+            'title' => '2º CULTO',
+            'body' => null,
+            'time_mode' => 'fixed',
+            'start_time' => '12:00:00',
+            'display_time' => '12:00',
+            'home_message' => 'Culto',
+            'show_on_home' => true,
+            'is_active' => true,
+            'sort_order' => 3,
+        ]);
+
+        // Sábado 10h — 1º culto em andamento (fim = início do ESTUDO); Próximo = ESTUDO.
         Carbon::setTestNow(Carbon::parse('2026-07-11 10:00:00', 'America/Sao_Paulo'));
         $this->withSession(['working_church_id' => $church->id])
             ->get(route('mobile.home'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Mobile/Home')
+                ->has('weeklyProgramCards', 3)
+                ->where('weeklyProgramCards.0.title', '1º CULTO')
+                ->where('weeklyProgramCards.0.is_ongoing', true)
+                ->where('weeklyProgramCards.0.is_next', false)
+                ->where('weeklyProgramCards.1.title', 'ESTUDO')
+                ->where('weeklyProgramCards.1.is_ongoing', false)
+                ->where('weeklyProgramCards.1.is_next', true)
+                ->where('weeklyProgramCards.2.title', '2º CULTO')
+                ->where('weeklyProgramCards.2.is_next', false)
+            );
+
+        // Último item do dia sem end_time: após o início, some (fim não identificável).
+        WeeklyProgram::query()->where('title', '1º CULTO')->delete();
+        WeeklyProgram::query()->where('title', 'ESTUDO')->delete();
+        Carbon::setTestNow(Carbon::parse('2026-07-11 12:30:00', 'America/Sao_Paulo'));
+        $this->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.home'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Mobile/Home')
                 ->has('weeklyProgramCards', 0)
+            );
+
+        // Com end_time explícito, identifica «Em andamento» mesmo sendo o último.
+        WeeklyProgram::query()->where('title', '2º CULTO')->update(['end_time' => '13:30:00']);
+        Carbon::setTestNow(Carbon::parse('2026-07-11 12:30:00', 'America/Sao_Paulo'));
+        $this->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.home'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Mobile/Home')
+                ->has('weeklyProgramCards', 1)
+                ->where('weeklyProgramCards.0.title', '2º CULTO')
+                ->where('weeklyProgramCards.0.is_ongoing', true)
+                ->where('weeklyProgramCards.0.is_next', false)
             );
 
         Carbon::setTestNow();

@@ -1,0 +1,30 @@
+---
+description: Contraste legível em cards no modo escuro (e claro)
+alwaysApply: true
+---
+
+# Contraste em cards (modo claro e escuro)
+
+Em **toda** UI de card, banner ou superfície destacada, o texto precisa permanecer **legível** nos dois temas. Nunca assumir que `dark:text-*` claro funciona se o fundo do card continua claro.
+
+## Erro típico (evitar)
+
+- Fundo fixo claro (`#f5f1e9`, `bg-white`, inline `style={{ backgroundColor }}`) **sem** `dark:bg-*` correspondente.
+- Texto com `dark:text-emerald-50` / `dark:text-zinc-100` sobre esse fundo claro → texto “some”.
+- Overlay/gradiente com `dark:from-*/30` transparente que deixa o texto claro sobre imagem clara.
+
+## O que fazer
+
+1. **Par fundo + texto:** se o card escurece no dark (`dark:bg-emerald-950`, `dark:bg-zinc-900`), use texto claro; se o card **permanece** claro (ilha), **não** clareie o texto no dark — mantenha texto escuro.
+2. Preferir classes Tailwind (`bg-… dark:bg-…`) em vez de cor inline só no claro.
+3. Gradientes/máscaras de leitura devem acompanhar o fundo (`dark:from-emerald-950`, não só opacidade baixa).
+4. Badges e secundários: conferir contraste nos dois temas (ex.: “Na sequência” precisa de fundo/texto legíveis no dark).
+
+## Ao implementar ou revisar
+
+Antes de concluir: **alternar o tema para escuro** e ler título, corpo, horário e labels do card. Se não der para ler de relance, não está pronto.
+
+## Referência
+
+- Card de programação: `resources/js/Components/Mobile/WeeklyProgramHomeCard.tsx`
+- Banner do sábado: `resources/js/Components/Mobile/SabbathHomeBanner.tsx`

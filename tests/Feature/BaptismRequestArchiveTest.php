@@ -144,12 +144,22 @@ class BaptismRequestArchiveTest extends TestCase
 
         $this->actingAs($admin)
             ->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.baptism'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Mobile/Solicitations/Hub')
+                ->where('pageTitle', 'Pedido de batismo')
+                ->where('singleBaptismType', true)
+                ->has('mySolicitations', 1)
+            );
+
+        $this->actingAs($admin)
+            ->withSession(['working_church_id' => $church->id])
             ->get(route('mobile.baptism', ['solicitacao' => $solicitation->id]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Mobile/Solicitations/Hub')
-                ->where('pageTitle', 'Batismo')
-                ->where('staffBaptismManageUrl', null)
+                ->where('pageTitle', 'Pedido de batismo')
                 ->has('mySolicitations', 1)
             );
 

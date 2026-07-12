@@ -75,7 +75,7 @@ function QuickActionGlyph({ icon: Icon }: { icon: MenuIcon }) {
 }
 
 const homeCardClass =
-    'group relative flex cursor-pointer flex-col rounded-2xl bg-white p-3.5 pr-9 text-left shadow-sm ring-1 ring-zinc-200 transition duration-200 hover:-translate-y-0.5 hover:bg-zinc-50 hover:shadow-md dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60';
+    'group relative flex cursor-pointer flex-col rounded-2xl bg-white p-3.5 pr-9 text-left shadow-sm ring-1 ring-zinc-200 transition duration-200 hover:bg-zinc-50 hover:shadow-md dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60';
 
 /** Atalhos da Home: itens exclusivos + todos do antigo menu Mais (sem duplicar por rota). */
 const homeQuickActions: QuickAction[] = [
@@ -434,7 +434,7 @@ export default function MobileHome({
     return (
         <MobileLayout>
             <Head title="Home" />
-            <div className="mx-auto w-full max-w-lg -mt-5 space-y-7 pb-4 sm:max-w-xl md:max-w-2xl lg:-mt-3 lg:max-w-none">
+            <div className="mx-auto flex w-full max-w-lg -mt-5 flex-col gap-7 pb-4 sm:max-w-xl md:max-w-2xl lg:-mt-3 lg:max-w-none">
                 {showPostRegistrationBanner ? (
                     <div
                         className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-50"
@@ -467,7 +467,7 @@ export default function MobileHome({
 
                 <HomeFeaturedWeek items={featuredItems} />
 
-                <section aria-label="Atalhos">
+                <section aria-label="Atalhos" className="relative z-[1]">
                     <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-3">
                         {gridItems.map((item) => {
                             if (item.kind === 'sobre') {

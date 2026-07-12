@@ -32,7 +32,8 @@ class WeeklyProgramService
     }
 
     /**
-     * Cards da home: só itens de hoje que ainda não ocorreram (carrossel).
+     * Cards da home: itens de hoje ainda relevantes (em andamento ou futuros).
+     * «Em andamento» só quando o fim é identificável (end_time ou início do próximo).
      *
      * @return list<array<string, mixed>>
      */
@@ -41,6 +42,7 @@ class WeeklyProgramService
         $timezone = (string) config('sabbath.timezone', 'America/Sao_Paulo');
         $now = Carbon::now($timezone);
         $todayDow = (int) $now->dayOfWeek;
+        $dayStart = $now->copy()->startOfDay();
 
         $candidates = $this->activeForChurch($church)
             ->filter(fn (WeeklyProgram $item) => $item->show_on_home)
@@ -50,28 +52,101 @@ class WeeklyProgramService
             return [];
         }
 
-        $upcoming = $candidates
+        $timed = $candidates
             ->map(fn (WeeklyProgram $item) => [
                 'item' => $item,
-                'at' => $this->occurrenceOnDate($item, $now->copy()->startOfDay(), $timezone),
+                'at' => $this->occurrenceOnDate($item, $dayStart, $timezone),
             ])
-            ->filter(fn (array $row) => $row['at'] instanceof Carbon && $row['at']->gt($now))
+            ->filter(fn (array $row) => $row['at'] instanceof Carbon)
             ->sortBy(fn (array $row) => $row['at']->getTimestamp())
             ->values();
 
-        $cards = [];
-        foreach ($upcoming as $index => $row) {
+        $starts = $timed->map(fn (array $row) => $row['at'])->all();
+
+        $visible = [];
+        foreach ($timed as $index => $row) {
             /** @var WeeklyProgram $item */
             $item = $row['item'];
+            /** @var Carbon $at */
+            $at = $row['at'];
+            $endsAt = $this->resolveEndsAt($item, $dayStart, $timezone, $starts, $index);
+
+            $isOngoing = $endsAt instanceof Carbon
+                && $at->lte($now)
+                && $endsAt->gt($now);
+            $isUpcoming = $at->gt($now);
+
+            if (! $isOngoing && ! $isUpcoming) {
+                continue;
+            }
+
             $card = $this->toHomeCard($item);
             if ($card === null) {
                 continue;
             }
-            $card['is_next'] = $index === 0;
-            $cards[] = $card;
+
+            $card['is_ongoing'] = $isOngoing;
+            $card['is_next'] = false;
+            $visible[] = $card;
         }
 
-        return $cards;
+        $markedNext = false;
+        foreach ($visible as $i => $card) {
+            if ($card['is_ongoing']) {
+                continue;
+            }
+            $visible[$i]['is_next'] = ! $markedNext;
+            $markedNext = true;
+        }
+
+        return $visible;
+    }
+
+    /**
+     * Fim identificável: end_time explícito, senão o início do próximo item do dia.
+     *
+     * @param  list<Carbon>  $starts
+     */
+    private function resolveEndsAt(
+        WeeklyProgram $item,
+        Carbon $dayStart,
+        string $timezone,
+        array $starts,
+        int $index,
+    ): ?Carbon {
+        $explicit = $this->occurrenceEndOnDate($item, $dayStart, $timezone);
+        if ($explicit instanceof Carbon) {
+            return $explicit;
+        }
+
+        $nextStart = $starts[$index + 1] ?? null;
+
+        return $nextStart instanceof Carbon ? $nextStart->copy() : null;
+    }
+
+    private function occurrenceEndOnDate(WeeklyProgram $item, Carbon $date, string $timezone): ?Carbon
+    {
+        $time = $this->fixedEndTime($item);
+        if ($time === null) {
+            return null;
+        }
+
+        $day = $date->copy()->timezone($timezone)->startOfDay();
+
+        return $day->setTimeFromTimeString($time);
+    }
+
+    private function fixedEndTime(WeeklyProgram $item): ?string
+    {
+        if ($item->end_time === null || trim((string) $item->end_time) === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($item->end_time)->format('H:i:s');
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**

@@ -1,4 +1,4 @@
-import { CalendarDaysIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { CalendarDaysIcon, ClockIcon, SparklesIcon } from '@heroicons/react/24/outline';
 
 export type WeeklyProgramHomeCardData = {
     id: number;
@@ -12,15 +12,15 @@ export type WeeklyProgramHomeCardData = {
     body?: string | null;
     lines?: string[] | null;
     is_next?: boolean;
+    is_ongoing?: boolean;
 };
 
 type Props = {
     card: WeeklyProgramHomeCardData;
     appUrl?: string;
     isNext?: boolean;
+    isOngoing?: boolean;
 };
-
-const CREAM = '#f5f1e9';
 
 const sunsetMask =
     'linear-gradient(to right, transparent 0%, transparent 28%, rgba(0,0,0,0.12) 38%, rgba(0,0,0,0.45) 50%, rgba(0,0,0,0.85) 58%, black 68%, black 100%)';
@@ -42,19 +42,25 @@ function formatTimeHero(raw: string): string {
     return raw.trim();
 }
 
-export default function WeeklyProgramHomeCard({ card, appUrl = '', isNext = false }: Props) {
+export default function WeeklyProgramHomeCard({
+    card,
+    appUrl = '',
+    isNext = false,
+    isOngoing = false,
+}: Props) {
     const hasImage = Boolean(card.image_url);
     const bgImage = hasImage && card.image_url ? imageSrc(card.image_url, appUrl) : null;
     const timeHero = formatTimeHero(card.time_display);
     const body = card.body?.trim() || null;
     const lines = card.lines && card.lines.length > 0 ? card.lines : null;
-    const showNextBadge = isNext || Boolean(card.is_next);
+    const showOngoingBadge = Boolean(isOngoing || card.is_ongoing);
+    const showNextBadge = !showOngoingBadge && Boolean(isNext || card.is_next);
+    const statusLabel = showOngoingBadge ? 'Em andamento' : showNextBadge ? 'Próximo' : 'Na sequência';
 
     return (
         <section
-            aria-label={`${showNextBadge ? 'Próximo: ' : ''}${card.title} — ${card.day_label}`}
-            className="relative flex h-full min-h-[13.5rem] w-full flex-col overflow-hidden rounded-[1.35rem] shadow-sm ring-1 ring-amber-900/10 dark:ring-amber-900/40 sm:min-h-[14.5rem]"
-            style={{ backgroundColor: CREAM }}
+            aria-label={`${statusLabel}: ${card.title} — ${card.day_label}`}
+            className="relative flex h-full min-h-[13.5rem] w-full flex-col overflow-hidden rounded-[1.35rem] bg-[#f5f1e9] shadow-sm ring-1 ring-amber-900/10 dark:bg-emerald-950 dark:ring-emerald-800/60 sm:min-h-[14.5rem]"
         >
             {bgImage ? (
                 <>
@@ -69,18 +75,18 @@ export default function WeeklyProgramHomeCard({ card, appUrl = '', isNext = fals
                         aria-hidden
                     />
                     <div
-                        className="pointer-events-none absolute inset-y-0 left-0 w-[72%] bg-gradient-to-r from-[#f5f1e9] from-35% via-[#f5f1e9]/94 via-58% to-transparent dark:from-amber-950/35 dark:via-amber-950/28"
+                        className="pointer-events-none absolute inset-y-0 left-0 w-[72%] bg-gradient-to-r from-[#f5f1e9] from-35% via-[#f5f1e9]/94 via-58% to-transparent dark:from-emerald-950 dark:via-emerald-950/94"
                         aria-hidden
                     />
                 </>
             ) : (
                 <>
                     <div
-                        className="pointer-events-none absolute -right-10 -top-16 h-40 w-40 rounded-full bg-emerald-200/35 blur-3xl dark:bg-emerald-800/25"
+                        className="pointer-events-none absolute -right-10 -top-16 h-40 w-40 rounded-full bg-emerald-200/35 blur-3xl dark:bg-emerald-700/20"
                         aria-hidden
                     />
                     <div
-                        className="pointer-events-none absolute -bottom-14 right-8 h-32 w-32 rounded-full bg-amber-100/50 blur-3xl dark:bg-amber-900/20"
+                        className="pointer-events-none absolute -bottom-14 right-8 h-32 w-32 rounded-full bg-amber-100/50 blur-3xl dark:bg-amber-800/15"
                         aria-hidden
                     />
                 </>
@@ -89,17 +95,22 @@ export default function WeeklyProgramHomeCard({ card, appUrl = '', isNext = fals
             <div className={`relative z-10 flex min-h-0 flex-1 flex-col ${bgImage ? 'pr-[28%] sm:pr-[32%]' : ''}`}>
                 <div className="flex min-h-0 flex-1 flex-col gap-3.5 px-4 py-4 sm:gap-4 sm:px-5 sm:py-5">
                     <div className="flex shrink-0 items-center justify-between gap-3">
-                        {showNextBadge ? (
+                        {showOngoingBadge ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-700/95 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-50 dark:bg-amber-600">
+                                <ClockIcon className="h-3 w-3 shrink-0 text-amber-100" aria-hidden />
+                                Em andamento
+                            </span>
+                        ) : showNextBadge ? (
                             <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-800/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-50 dark:bg-emerald-700">
                                 <SparklesIcon className="h-3 w-3 shrink-0 text-amber-300" aria-hidden />
                                 Próximo
                             </span>
                         ) : (
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-900/8 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-800/70 dark:bg-emerald-950/50 dark:text-emerald-200/80">
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-900/8 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-800/70 dark:bg-emerald-900/55 dark:text-emerald-100/90">
                                 Na sequência
                             </span>
                         )}
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-800/70 dark:text-emerald-200/75">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-800/70 dark:text-emerald-200/80">
                             <CalendarDaysIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
                             {card.day_label}
                         </span>
@@ -118,7 +129,7 @@ export default function WeeklyProgramHomeCard({ card, appUrl = '', isNext = fals
                             </h2>
 
                             {body ? (
-                                <p className="mt-3 line-clamp-4 text-[13px] leading-relaxed text-emerald-900/75 dark:text-emerald-100/75 sm:text-sm sm:leading-relaxed">
+                                <p className="mt-3 line-clamp-4 text-[13px] leading-relaxed text-emerald-900/75 dark:text-emerald-100/80 sm:text-sm sm:leading-relaxed">
                                     {body}
                                 </p>
                             ) : null}
@@ -142,8 +153,8 @@ export default function WeeklyProgramHomeCard({ card, appUrl = '', isNext = fals
                         </div>
 
                         {!bgImage ? (
-                            <div className="flex shrink-0 flex-col items-start justify-center self-start rounded-2xl bg-emerald-900/[0.04] px-4 py-3.5 ring-1 ring-inset ring-emerald-900/5 dark:bg-emerald-950/35 dark:ring-emerald-100/10 sm:items-end sm:px-4 sm:py-4">
-                                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700/65 dark:text-emerald-300/70">
+                            <div className="flex shrink-0 flex-col items-start justify-center self-start rounded-2xl bg-emerald-900/[0.04] px-4 py-3.5 ring-1 ring-inset ring-emerald-900/5 dark:bg-emerald-900/45 dark:ring-emerald-100/10 sm:items-end sm:px-4 sm:py-4">
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700/65 dark:text-emerald-200/75">
                                     Horário
                                 </p>
                                 <p
