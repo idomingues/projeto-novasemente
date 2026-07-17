@@ -141,7 +141,14 @@ export default function MobileNews({ posts, config }: Props) {
                                         <div className="relative rounded-t-2xl">
                                             <NewsPostCover
                                                 imageSrc={imageSrc(thumb, appUrl)}
-                                                detailHref={route(showRoute, p.slug)}
+                                                instagramVideoUrl={
+                                                    showPlay && instagramUrl ? instagramUrl : null
+                                                }
+                                                detailHref={
+                                                    showPlay && instagramUrl
+                                                        ? undefined
+                                                        : route(showRoute, p.slug)
+                                                }
                                                 showPlayOverlay={showPlay}
                                                 onImageError={(e) => {
                                                     const el = e.currentTarget;

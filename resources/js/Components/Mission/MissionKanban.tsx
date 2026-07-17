@@ -38,12 +38,21 @@ type Props = {
     totalCount?: number;
 };
 
-function canDropOnPhase(operablePhaseIds: number[] | null, phaseId: number): boolean {
+/**
+ * Destino do drop no kanban.
+ * Gestor (`operablePhaseIds === null`): qualquer fase.
+ * Líder de fase: pode tirar da fase que opera e soltar em qualquer fase
+ * (mesma regra do backend em MissionTeamAccess::canOperateVolunteer).
+ */
+function canDropOnPhase(
+    operablePhaseIds: number[] | null,
+    draggingVolunteer: VolunteerCard | null,
+): boolean {
     if (operablePhaseIds === null) {
         return true;
     }
 
-    return operablePhaseIds.includes(phaseId);
+    return draggingVolunteer?.canEditPhase === true;
 }
 
 function slaProgressPercent(daysInPhase: number, slaDays: number | null): number {
@@ -208,11 +217,11 @@ export default function MissionKanban({ phases, volunteers, operablePhaseIds, on
             setDraggingId(null);
             return;
         }
-        if (!canDropOnPhase(operablePhaseIds, columnKey)) {
+        const volunteer = volunteers.find((v) => v.id === draggingId) ?? null;
+        if (!canDropOnPhase(operablePhaseIds, volunteer)) {
             setDraggingId(null);
             return;
         }
-        const volunteer = volunteers.find((v) => v.id === draggingId);
         if (!volunteer || volunteer.phaseId === columnKey) {
             setDraggingId(null);
             return;
@@ -238,7 +247,10 @@ export default function MissionKanban({ phases, volunteers, operablePhaseIds, on
                 {columns.map((col) => {
                     const cards = cardsByColumn.get(String(col.key)) ?? [];
                     const isDropActive = dropTarget === col.key;
-                    const dropEnabled = col.key !== 'unset' && canDropOnPhase(operablePhaseIds, col.key as number);
+                    const draggingVolunteer =
+                        draggingId === null ? null : (volunteers.find((v) => v.id === draggingId) ?? null);
+                    const dropEnabled =
+                        col.key !== 'unset' && canDropOnPhase(operablePhaseIds, draggingVolunteer);
                     const hasOverdue = col.overdueCount > 0;
 
                     return (

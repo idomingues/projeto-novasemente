@@ -56,6 +56,9 @@ function FeedMedia({
     const poster = posterUrl ? mediaSrc(posterUrl, appUrl) : undefined;
     const isDetail = variant === 'detail';
     const showPlay = Boolean(post.has_video) && !isDetail;
+    const instagramUrl = post.instagram_url?.trim() || '';
+    /** Com vídeo + link do Instagram, o play abre o post no Instagram. */
+    const openInstagramOnPlay = showPlay && Boolean(instagramUrl);
 
     if (hostedVideoUrl && isDetail) {
         return (
@@ -73,11 +76,10 @@ function FeedMedia({
     }
 
     if (hostedVideoUrl && !isDetail) {
-        return (
-            <Link
-                href={showHref}
-                className="relative block aspect-[9/16] w-full cursor-pointer overflow-hidden bg-zinc-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
-            >
+        const mediaClassName =
+            'relative block aspect-[9/16] w-full cursor-pointer overflow-hidden bg-zinc-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500';
+        const video = (
+            <>
                 <video
                     src={hostedVideoUrl}
                     poster={poster}
@@ -89,6 +91,26 @@ function FeedMedia({
                     preload="auto"
                 />
                 {showPlay ? <VideoPlayOverlay /> : null}
+            </>
+        );
+
+        if (openInstagramOnPlay) {
+            return (
+                <a
+                    href={instagramUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Ver vídeo no Instagram"
+                    className={mediaClassName}
+                >
+                    {video}
+                </a>
+            );
+        }
+
+        return (
+            <Link href={showHref} className={mediaClassName}>
+                {video}
             </Link>
         );
     }
@@ -114,7 +136,8 @@ function FeedMedia({
     return (
         <NewsPostCover
             imageSrc={poster}
-            detailHref={showHref}
+            instagramVideoUrl={openInstagramOnPlay ? instagramUrl : null}
+            detailHref={openInstagramOnPlay ? undefined : showHref}
             aspectClass="aspect-[4/5]"
             showPlayOverlay={showPlay}
             imageLoading="lazy"

@@ -13,6 +13,7 @@ import {
     PlayCircleIcon,
     SparklesIcon,
 } from '@heroicons/react/24/outline';
+import CoverWithVideoLink from '@/Components/News/CoverWithVideoLink';
 import InstagramViewLink from '@/Components/News/InstagramViewLink';
 import VideoPlayOverlay from '@/Components/News/VideoPlayOverlay';
 import type { ComponentType, SVGProps } from 'react';
@@ -140,6 +141,29 @@ export default function PublicationFeedCard({ item, appUrl, expanded, onToggle }
         (showInstagram || showOpenCta || fullPlain.length > 0);
     const isExpanded = canExpand && expanded;
     const navigateHref = !canExpand && item.href ? item.href : null;
+    const openInstagramOnPlay = Boolean(item.cover_play_overlay) && Boolean(instagramUrl);
+
+    const coverFrame = showCover ? (
+        <div
+            className={`relative overflow-hidden bg-zinc-100 dark:bg-zinc-800 ${
+                isNews ? '' : 'aspect-[16/9]'
+            }`}
+        >
+            <img
+                src={src}
+                alt=""
+                className={
+                    isNews
+                        ? 'block h-auto w-full object-contain'
+                        : 'h-full w-full object-cover object-top'
+                }
+                loading="lazy"
+                decoding="async"
+                onError={() => setCoverBroken(true)}
+            />
+            {!openInstagramOnPlay && item.cover_play_overlay ? <VideoPlayOverlay /> : null}
+        </div>
+    ) : null;
 
     const body = (
             <article
@@ -149,26 +173,18 @@ export default function PublicationFeedCard({ item, appUrl, expanded, onToggle }
                         : ''
                 }`}
             >
-                {showCover ? (
-                    <div
-                        className={`relative overflow-hidden bg-zinc-100 dark:bg-zinc-800 ${
-                            isNews ? '' : 'aspect-[16/9]'
-                        }`}
-                    >
-                        <img
-                            src={src}
-                            alt=""
-                            className={
-                                isNews
-                                    ? 'block h-auto w-full object-contain'
-                                    : 'h-full w-full object-cover object-top'
-                            }
-                            loading="lazy"
-                            decoding="async"
-                            onError={() => setCoverBroken(true)}
-                        />
-                        {item.cover_play_overlay ? <VideoPlayOverlay /> : null}
-                    </div>
+                {showCover && coverFrame ? (
+                    openInstagramOnPlay ? (
+                        <CoverWithVideoLink
+                            videoHref={instagramUrl}
+                            ariaLabel="Ver vídeo no Instagram"
+                            className="block w-full cursor-pointer"
+                        >
+                            {coverFrame}
+                        </CoverWithVideoLink>
+                    ) : (
+                        coverFrame
+                    )
                 ) : (
                     <div className="flex aspect-[16/9] items-center justify-center bg-zinc-100 dark:bg-zinc-800">
                         <Icon className="h-10 w-10 text-zinc-400 dark:text-zinc-500" aria-hidden strokeWidth={1.5} />

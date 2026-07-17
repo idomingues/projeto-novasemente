@@ -75,6 +75,9 @@ function permissionLineLabel(perm: string): string {
         'solicitations.view': 'Ver solicitações formais (batismo, visita, etc.)',
         'solicitations.manage': 'Gerir solicitações formais',
         'roles.manage': 'Gerir perfis e permissões (esta página)',
+        'mission.view': 'Visualizar painel Missão (quadro e cadastros)',
+        'mission.manage':
+            'Gerir Missão (fases, movimentar voluntários, conteúdo, comunicação e líderes de fase)',
     };
     if (custom[perm]) {
         return custom[perm];
@@ -477,7 +480,10 @@ export default function RolesIndex({ roles, permissions }: Props) {
                         <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Novo perfil</h2>
                         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                             Escolha um nome para o perfil (ex.: Missão, Financeiro). O card aparece nesta página — não no
-                            painel Missão → gestão. Depois marque as permissões; cada check salva automaticamente.
+                            painel Missão → gestão. Depois marque as permissões; cada check salva automaticamente. Para
+                            coordenar a Área de Missão (gerir fases e movimentar voluntários), marque também{' '}
+                            <span className="font-medium text-zinc-700 dark:text-zinc-200">Gerir Missão</span>, não só
+                            visualizar.
                         </p>
                         {createSaveMessage ? (
                             <p className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-100">

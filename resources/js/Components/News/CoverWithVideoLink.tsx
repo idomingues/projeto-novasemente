@@ -23,7 +23,7 @@ export default function CoverWithVideoLink({
             target="_blank"
             rel="noopener noreferrer"
             aria-label={ariaLabel}
-            className={`group relative block overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset ${className}`}
+            className={`group relative block cursor-pointer overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset ${className}`}
         >
             {children}
             <VideoPlayOverlay compact={compactPlay} />
