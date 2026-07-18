@@ -32,6 +32,7 @@ import { useDebouncedServerSearch } from '@/hooks/useDebouncedServerSearch';
 import axios from 'axios';
 import type { VolunteerDetailData } from '@/utils/volunteerDetailRows';
 import { confirmAction } from '@/utils/confirmDialog';
+import { askEncaminharWhenLinkingDepartments } from '@/utils/volunteerDepartmentSyncSave';
 import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import {
     applyVolunteerModalFormErrors,
@@ -628,11 +629,19 @@ export default function Index({
     const submitMinistries: FormEventHandler = async (e) => {
         e.preventDefault();
         if (!detailPayload?.syncMinistriesUrl || ministriesSaving) return;
+        const previousAttachedIds = (detailPayload.ministryOptions ?? []).filter((o) => o.attached).map((o) => o.id);
+        const encaminhar = await askEncaminharWhenLinkingDepartments(
+            previousAttachedIds,
+            ministriesForm.data.ministry_ids,
+            detailPayload.ministryOptions ?? [],
+        );
+        if (encaminhar === null) return;
         ministriesForm.clearErrors();
         setMinistriesSaving(true);
         try {
             const payload: Record<string, unknown> = {
                 ministry_ids: ministriesForm.data.ministry_ids,
+                encaminhar,
             };
             if (canManage) {
                 payload.leader_ministry_ids = ministriesForm.data.leader_ministry_ids;
@@ -644,7 +653,9 @@ export default function Index({
                 );
                 return;
             }
-            showModalSaveMessage('Departamentos atualizados.');
+            showModalSaveMessage(
+                encaminhar ? 'Departamentos atualizados e encaminhamento registrado.' : 'Departamentos atualizados.',
+            );
             if (selectedVolunteerId) await refreshVolunteerDetail(selectedVolunteerId);
         } finally {
             setMinistriesSaving(false);

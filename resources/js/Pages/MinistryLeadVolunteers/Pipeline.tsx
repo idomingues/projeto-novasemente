@@ -19,6 +19,7 @@ import { useDebouncedServerSearch } from '@/hooks/useDebouncedServerSearch';
 import { serverSearchTerm } from '@/utils/listSearch';
 import {
     AdjustmentsHorizontalIcon,
+    ArrowRightCircleIcon,
     ChevronDownIcon,
     ChevronUpIcon,
     MagnifyingGlassIcon,
@@ -30,10 +31,14 @@ import VolunteerRequestsStaffSection, {
 } from '@/Components/Volunteers/VolunteerRequestsStaffSection';
 import PublicVolunteerSignupShareModal from '@/Components/Volunteers/PublicVolunteerSignupShareModal';
 import VolunteerInviteShareModal from '@/Components/Volunteers/VolunteerInviteShareModal';
-import VolunteerAppInviteButton, { volunteerEncaminharButtonClass } from '@/Components/Volunteers/VolunteerAppInviteButton';
+import VolunteerAppInviteButton, {
+    volunteerEncaminharButtonClass,
+    volunteerSalvarFaseButtonClass,
+} from '@/Components/Volunteers/VolunteerAppInviteButton';
 import VolunteerDeleteConfirmBlock from '@/Components/Volunteers/VolunteerDeleteConfirmBlock';
 import VolunteerPasswordChangeForm from '@/Components/Volunteers/VolunteerPasswordChangeForm';
 import { confirmAction } from '@/utils/confirmDialog';
+import { askEncaminharWhenLinkingDepartments } from '@/utils/volunteerDepartmentSyncSave';
 import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import {
     applyVolunteerModalFormErrors,
@@ -221,6 +226,7 @@ type DetailJson = {
     statusHistoryByMinistry?: MinistryStatusHistorySection[];
     notes: DetailNote[];
     ministryOptions?: MinistryOption[];
+    forwardedMinistryIds?: number[];
     updateStageUrl: string;
     storeNoteUrl: string;
     syncMinistriesUrl?: string | null;
@@ -732,11 +738,19 @@ export default function Pipeline({
     const submitMinistries: FormEventHandler = async (e) => {
         e.preventDefault();
         if (!detail?.syncMinistriesUrl || ministriesSaving) return;
+        const previousAttachedIds = (detail.ministryOptions ?? []).filter((o) => o.attached).map((o) => o.id);
+        const encaminhar = await askEncaminharWhenLinkingDepartments(
+            previousAttachedIds,
+            ministriesForm.data.ministry_ids,
+            detail.ministryOptions ?? [],
+        );
+        if (encaminhar === null) return;
         ministriesForm.clearErrors();
         setMinistriesSaving(true);
         try {
             const payload: Record<string, unknown> = {
                 ministry_ids: ministriesForm.data.ministry_ids,
+                encaminhar,
             };
             if (canVolunteerManage) {
                 payload.leader_ministry_ids = ministriesForm.data.leader_ministry_ids;
@@ -748,7 +762,9 @@ export default function Pipeline({
                 );
                 return;
             }
-            showModalSaveMessage('Departamentos atualizados.');
+            showModalSaveMessage(
+                encaminhar ? 'Departamentos atualizados e encaminhamento registrado.' : 'Departamentos atualizados.',
+            );
             if (selectedId) await refreshVolunteerDetail(selectedId);
         } finally {
             setMinistriesSaving(false);
@@ -1893,13 +1909,78 @@ export default function Pipeline({
                                                     </p>
                                                 ) : null}
                                             </div>
-                                            <PrimaryButton type="submit" disabled={stageSaving}>
-                                                {stageSaving
-                                                    ? 'Salvando…'
-                                                    : canVolunteerManage
-                                                      ? 'Salvar fase principal'
-                                                      : 'Salvar fase'}
-                                            </PrimaryButton>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <button
+                                                    type="submit"
+                                                    title={
+                                                        canVolunteerManage
+                                                            ? 'Salvar fase principal do voluntário'
+                                                            : 'Salvar fase do voluntário'
+                                                    }
+                                                    disabled={stageSaving}
+                                                    className={volunteerSalvarFaseButtonClass}
+                                                >
+                                                    {stageSaving
+                                                        ? 'Salvando…'
+                                                        : canVolunteerManage
+                                                          ? 'Salvar fase principal'
+                                                          : 'Salvar fase'}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const v = detail.volunteer as VolunteerDetailData;
+                                                        openInvite({
+                                                            id: v.id,
+                                                            name: v.name ?? 'Voluntário',
+                                                            email: v.email ?? null,
+                                                            phone: v.phone ?? null,
+                                                            active: v.active !== false,
+                                                            stageId: detail.pipeline?.stageId,
+                                                            stageName: detail.pipeline?.stageName ?? '—',
+                                                            adminWorkflowStageId:
+                                                                detail.pipeline?.adminWorkflowStageId ?? null,
+                                                            adminWorkflowStageName: null,
+                                                            createdAt: null,
+                                                            hasUserAccount: Boolean(v.has_app_account),
+                                                            photoUrl: v.photo_url ?? null,
+                                                            pendingInvite: false,
+                                                            pendingInviteMinistryNames: [],
+                                                            interestPreview: null,
+                                                            ministryNames: [],
+                                                            ministryPhases: [],
+                                                            forwardedMinistryIds: detail.forwardedMinistryIds ?? [],
+                                                            signals: {
+                                                                memberNs: false,
+                                                                sixMonthsInChurchOrLetter: false,
+                                                                ministryExperienceDeclared: false,
+                                                            },
+                                                        });
+                                                    }}
+                                                    className={volunteerEncaminharButtonClass}
+                                                    title="Escolher departamentos para encaminhar este voluntário"
+                                                >
+                                                    <ArrowRightCircleIcon className="h-4 w-4 shrink-0" aria-hidden />
+                                                    Encaminhar
+                                                </button>
+                                                {canVolunteerManage &&
+                                                !(String((detail.volunteer as VolunteerDetailData).email ?? '').trim()) ? (
+                                                    <VolunteerAppInviteButton
+                                                        disabled={invitingVolunteerId === detail.volunteer.id}
+                                                        onClick={() => {
+                                                            setInvitingVolunteerId(detail.volunteer.id);
+                                                            router.post(
+                                                                route('volunteers.invite', detail.volunteer.id),
+                                                                {},
+                                                                {
+                                                                    preserveScroll: true,
+                                                                    onFinish: () => setInvitingVolunteerId(null),
+                                                                },
+                                                            );
+                                                        }}
+                                                    />
+                                                ) : null}
+                                            </div>
                                             <InputError message={stageMoveForm.errors.stage_id} />
                                         </form>
                                     ) : (

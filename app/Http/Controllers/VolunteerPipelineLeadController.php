@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Volunteers\ApplyVolunteerMinistryLeaderStatusUpdate;
+use App\Actions\Volunteers\CreateAndNotifyVolunteerMinistryInvitation;
 use App\Actions\Volunteers\ProvisionVolunteerAppPasswordFromStaff;
 use App\Domain\Volunteers\Actions\DeleteVolunteer;
 use App\Domain\Volunteers\Actions\SyncVolunteerMinistryAttachments;
@@ -222,6 +223,12 @@ class VolunteerPipelineLeadController extends Controller
             'statusHistoryByMinistry' => $statusHistoryByMinistry,
             'notes' => $notes,
             'ministryOptions' => $ministryOptions,
+            'forwardedMinistryIds' => Schema::hasTable('volunteer_ministry_invitations')
+                ? (VolunteerMinistryInvitation::blockingMinistryIdsByVolunteerIds(
+                    $churchId,
+                    [(int) $volunteer->id],
+                )[(int) $volunteer->id] ?? [])
+                : [],
             'updateStageUrl' => route('ministry-lead.volunteers.pipeline.stage', $volunteer),
             'storeNoteUrl' => route('ministry-lead.volunteers.pipeline.notes.store', $volunteer),
             'syncMinistriesUrl' => $canMutate
@@ -537,6 +544,7 @@ class VolunteerPipelineLeadController extends Controller
             'ministry_ids.*' => ['integer', Rule::exists('ministries', 'id')->where('church_id', $churchId)],
             'leader_ministry_ids' => ['nullable', 'array'],
             'leader_ministry_ids.*' => ['integer', Rule::exists('ministries', 'id')->where('church_id', $churchId)],
+            'encaminhar' => ['sometimes', 'boolean'],
         ]);
 
         $requestedIds = collect($valid['ministry_ids'] ?? [])
@@ -558,8 +566,10 @@ class VolunteerPipelineLeadController extends Controller
         $leaderChoice = array_values(array_intersect($requestedIds, $leaderIds));
         $finalIds = array_values(array_unique(array_merge($untouchable, $leaderChoice)));
         $removed = array_values(array_diff($currentIds, $finalIds));
+        $added = array_values(array_diff($finalIds, $currentIds));
+        $encaminhar = (bool) ($valid['encaminhar'] ?? false);
 
-        DB::transaction(function () use ($volunteer, $churchId, $finalIds, $removed) {
+        DB::transaction(function () use ($request, $volunteer, $churchId, $finalIds, $removed, $added, $encaminhar) {
             app(SyncVolunteerMinistryAttachments::class)($volunteer, $finalIds);
 
             foreach ($removed as $ministryId) {
@@ -576,6 +586,41 @@ class VolunteerPipelineLeadController extends Controller
                         ->delete();
                 }
             }
+
+            if ($added !== [] && Schema::hasTable('volunteer_ministry_invitations')) {
+                foreach ($added as $ministryId) {
+                    $ministry = Ministry::query()->where('church_id', $churchId)->findOrFail($ministryId);
+                    $invitation = app(CreateAndNotifyVolunteerMinistryInvitation::class)(
+                        (int) $churchId,
+                        $volunteer,
+                        $ministry,
+                        $request->user(),
+                        [],
+                        [],
+                    );
+                    if (Schema::hasTable('volunteer_ministry_invitation_status_histories')) {
+                        VolunteerMinistryInvitationStatusHistory::create([
+                            'invitation_id' => $invitation->id,
+                            'church_id' => $invitation->church_id,
+                            'ministry_id' => $invitation->ministry_id,
+                            'volunteer_id' => $invitation->volunteer_id,
+                            'changed_by_user_id' => $request->user()?->id,
+                            'from_status' => null,
+                            'to_status' => null,
+                            'note' => $encaminhar
+                                ? 'Encaminhamento registrado ao vincular o departamento na ficha do voluntário.'
+                                : 'Departamento vinculado na ficha do voluntário.',
+                        ]);
+                    }
+                }
+                if ($encaminhar) {
+                    VolunteerPipelineBootstrap::moveVolunteerToStageByNormalizedName(
+                        $volunteer,
+                        (int) $churchId,
+                        'encaminhado',
+                    );
+                }
+            }
         });
 
         if ($request->user()?->can('volunteers.manage') && $request->has('leader_ministry_ids')) {
@@ -588,7 +633,11 @@ class VolunteerPipelineLeadController extends Controller
             $this->syncVolunteerMinistryLeadership($volunteer, $finalIds, $leaderRequested, true);
         }
 
-        return back()->with('success', 'Departamentos atualizados.');
+        $msg = $encaminhar && $added !== []
+            ? 'Departamentos atualizados e encaminhamento registrado.'
+            : 'Departamentos atualizados.';
+
+        return back()->with('success', $msg);
     }
 
     /**

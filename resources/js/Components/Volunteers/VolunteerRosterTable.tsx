@@ -143,7 +143,7 @@ export default function VolunteerRosterTable({
                                         </button>
                                     </Dropdown.Trigger>
 
-                                    <Dropdown.Content width="48" align="right">
+                                    <Dropdown.Content width="48" align="right" portal>
                                         <div className="py-1">
                                             {canVolunteerManage && !v.email?.trim() ? (
                                                 <button

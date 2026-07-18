@@ -22,8 +22,16 @@ import VolunteerServeMinistriesPicker from '@/Components/Volunteers/VolunteerSer
 import VolunteerUsuarioAppTabPanel from '@/Components/Volunteers/VolunteerUsuarioAppTabPanel';
 import VolunteerPipelineDetailTabBar from '@/Components/Volunteers/VolunteerPipelineDetailTabBar';
 import VolunteerPipelineNotesPanel from '@/Components/Volunteers/VolunteerPipelineNotesPanel';
+import VolunteerEncaminharModal from '@/Components/Volunteers/VolunteerEncaminharModal';
+import VolunteerInviteShareModal from '@/Components/Volunteers/VolunteerInviteShareModal';
+import VolunteerAppInviteButton, {
+    volunteerEncaminharButtonClass,
+    volunteerSalvarFaseButtonClass,
+} from '@/Components/Volunteers/VolunteerAppInviteButton';
 import { leaderMinistryIdsFromVolunteer } from '@/utils/volunteerMinistryLeadership';
 import { confirmAction } from '@/utils/confirmDialog';
+import { askEncaminharWhenLinkingDepartments } from '@/utils/volunteerDepartmentSyncSave';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import {
     applyVolunteerModalFormErrors,
     parseVolunteerModalFromUrl,
@@ -36,9 +44,8 @@ import { volunteerDetailSections, volunteerRecordHeaderSubtitle, type VolunteerD
 import { centerVolunteersQuery, type CenterGroupBy, type CenterVinculo } from '@/utils/centerVolunteersQuery';
 import type { VolunteerRosterBoardFilters, VolunteerRosterListRow } from '@/utils/volunteerRosterList';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { PencilSquareIcon } from '@heroicons/react/24/outline';
-import { PlusIcon } from '@heroicons/react/24/outline';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { PencilSquareIcon, PlusIcon, ArrowRightCircleIcon } from '@heroicons/react/24/outline';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEventHandler } from 'react';
 import { useResizablePaneWidth } from '@/hooks/useResizablePaneWidth';
 
 const compactInputClass =
@@ -116,6 +123,7 @@ type DetailJson = {
     statusHistoryByMinistry?: MinistryLeaderStatusSectionData[];
     notes: Array<{ id: number; body: string; authorName: string; createdAt: string; destroyUrl?: string | null }>;
     ministryOptions?: Array<{ id: number; name: string; attached: boolean; canEdit: boolean }>;
+    forwardedMinistryIds?: number[];
     updateStageUrl: string;
     storeNoteUrl: string;
     syncMinistriesUrl: string | null;
@@ -168,6 +176,11 @@ export default function ManagementCenter({
     const [modalSaveMessage, setModalSaveMessage] = useState<string | null>(null);
     const [stageSaving, setStageSaving] = useState(false);
     const [ministriesSaving, setMinistriesSaving] = useState(false);
+    const [invitingVolunteerId, setInvitingVolunteerId] = useState<number | null>(null);
+    const [inviteShareOpen, setInviteShareOpen] = useState(false);
+    const [inviteShare, setInviteShare] = useState<{ link: string; name: string } | null>(null);
+    const [encaminharOpen, setEncaminharOpen] = useState(false);
+    const [encaminharSelectedIds, setEncaminharSelectedIds] = useState<number[]>([]);
     const isPhaseGroup = groupBy === 'fase';
     const boardFiltersRef = useRef(boardFilters);
     boardFiltersRef.current = boardFilters;
@@ -176,9 +189,24 @@ export default function ManagementCenter({
     const page = usePage();
     const pageUrl = page.url;
     const csrf = (page.props as { csrf_token?: string }).csrf_token ?? '';
+    const flash = (page.props as {
+        flash?: {
+            invitation_link?: string | null;
+            invitation_for_name?: string | null;
+        };
+    }).flash;
     const authProps = page.props as { auth?: { openVolunteerRequestsCount?: number } };
     const openVolunteerRequestsCount =
         typeof authProps.auth?.openVolunteerRequestsCount === 'number' ? authProps.auth.openVolunteerRequestsCount : 0;
+
+    useEffect(() => {
+        const link = flash?.invitation_link;
+        const name = flash?.invitation_for_name;
+        if (typeof link === 'string' && link.length > 0) {
+            setInviteShare({ link, name: typeof name === 'string' ? name : '' });
+            setInviteShareOpen(true);
+        }
+    }, [flash?.invitation_link, flash?.invitation_for_name]);
 
     const stageMoveForm = useForm({ stage_id: '' as string | number });
     const ministriesForm = useForm<{ ministry_ids: number[]; leader_ministry_ids: number[] }>({
@@ -432,11 +460,19 @@ export default function ManagementCenter({
     const submitMinistries: React.FormEventHandler = async (e) => {
         e.preventDefault();
         if (!detail?.syncMinistriesUrl || ministriesSaving) return;
+        const previousAttachedIds = (detail.ministryOptions ?? []).filter((o) => o.attached).map((o) => o.id);
+        const encaminhar = await askEncaminharWhenLinkingDepartments(
+            previousAttachedIds,
+            ministriesForm.data.ministry_ids,
+            detail.ministryOptions ?? [],
+        );
+        if (encaminhar === null) return;
         ministriesForm.clearErrors();
         setMinistriesSaving(true);
         try {
             const payload: Record<string, unknown> = {
                 ministry_ids: ministriesForm.data.ministry_ids,
+                encaminhar,
             };
             if (canVolunteerManage) {
                 payload.leader_ministry_ids = ministriesForm.data.leader_ministry_ids;
@@ -448,7 +484,9 @@ export default function ManagementCenter({
                 );
                 return;
             }
-            showModalSaveMessage('Departamentos atualizados.');
+            showModalSaveMessage(
+                encaminhar ? 'Departamentos atualizados e encaminhamento registrado.' : 'Departamentos atualizados.',
+            );
             if (selectedId) await refreshVolunteerDetail(selectedId);
         } finally {
             setMinistriesSaving(false);
@@ -475,6 +513,66 @@ export default function ManagementCenter({
             })),
         [detail?.ministryOptions, ministriesForm.data.ministry_ids],
     );
+
+    const encaminharAvailableMinistries = useMemo(() => {
+        if (encaminharMinistryIds == null) {
+            return ministries;
+        }
+        const allowed = new Set(encaminharMinistryIds);
+        return ministries.filter((m) => allowed.has(m.id));
+    }, [ministries, encaminharMinistryIds]);
+
+    const detailForwardedMinistryIds = useMemo(
+        () => new Set(detail?.forwardedMinistryIds ?? []),
+        [detail?.forwardedMinistryIds],
+    );
+
+    const detailVolunteerName =
+        (detail?.volunteer?.name as string | null)?.trim() ||
+        (detail?.volunteer as VolunteerDetailData | undefined)?.user?.name?.trim() ||
+        'Voluntário';
+
+    const canInviteAppFromDetail =
+        canVolunteerManage &&
+        detail?.volunteer != null &&
+        !(String((detail.volunteer as VolunteerDetailData).email ?? '').trim());
+
+    const openEncaminharFromDetail = () => {
+        if (!detail?.volunteer) return;
+        setEncaminharSelectedIds([]);
+        setEncaminharOpen(true);
+    };
+
+    const submitEncaminharFromDetail: FormEventHandler = (e) => {
+        e.preventDefault();
+        if (!selectedId || encaminharSelectedIds.length === 0) return;
+        router.post(
+            route('ministry-lead.volunteers.ministry-invite.store', selectedId),
+            { ministry_ids: encaminharSelectedIds, channels: [] },
+            {
+                ...inertiaListModalSave,
+                onSuccess: () => {
+                    setEncaminharSelectedIds([]);
+                    setEncaminharOpen(false);
+                    showModalSaveMessage('Voluntário encaminhado.');
+                    void refreshVolunteerDetail(selectedId);
+                },
+            },
+        );
+    };
+
+    const sendAppInviteFromDetail = () => {
+        if (!selectedId) return;
+        setInvitingVolunteerId(selectedId);
+        router.post(
+            route('volunteers.invite', selectedId),
+            {},
+            {
+                preserveScroll: true,
+                onFinish: () => setInvitingVolunteerId(null),
+            },
+        );
+    };
 
     const selectedTitle = isPhaseGroup
         ? (selectedPhase?.label ?? 'Fase')
@@ -746,29 +844,54 @@ export default function ManagementCenter({
                                                     ))}
                                                 </SelectInput>
                                             </div>
-                                            <PrimaryButton
-                                                type="submit"
-                                                title={canVolunteerManage ? 'Salvar fase principal do voluntário' : 'Salvar fase do voluntário'}
-                                                disabled={stageSaving}
-                                            >
-                                                {stageSaving
-                                                    ? 'Salvando…'
-                                                    : canVolunteerManage
-                                                      ? 'Salvar fase principal'
-                                                      : 'Salvar fase'}
-                                            </PrimaryButton>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <button
+                                                    type="submit"
+                                                    title={
+                                                        canVolunteerManage
+                                                            ? 'Salvar fase principal do voluntário'
+                                                            : 'Salvar fase do voluntário'
+                                                    }
+                                                    disabled={stageSaving}
+                                                    className={volunteerSalvarFaseButtonClass}
+                                                >
+                                                    {stageSaving
+                                                        ? 'Salvando…'
+                                                        : canVolunteerManage
+                                                          ? 'Salvar fase principal'
+                                                          : 'Salvar fase'}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={openEncaminharFromDetail}
+                                                    className={volunteerEncaminharButtonClass}
+                                                    title="Escolher departamentos para encaminhar este voluntário"
+                                                >
+                                                    <ArrowRightCircleIcon className="h-4 w-4 shrink-0" aria-hidden />
+                                                    Encaminhar
+                                                </button>
+                                                {canInviteAppFromDetail ? (
+                                                    <VolunteerAppInviteButton
+                                                        disabled={invitingVolunteerId === selectedId}
+                                                        onClick={sendAppInviteFromDetail}
+                                                    />
+                                                ) : null}
+                                            </div>
                                             <InputError message={stageMoveForm.errors.stage_id} />
                                         </form>
                                     ) : (
-                                        <div className="text-sm text-zinc-600 dark:text-zinc-300">
-                                            <div className="text-xs font-medium text-zinc-500">
-                                                {canVolunteerManage ? 'Fase principal' : 'Fase / pasta'}
-                                            </div>
-                                            <div className="mt-1 font-medium text-zinc-900 dark:text-white">
-                                                {stageMoveForm.data.stage_id
-                                                    ? (detail.stages.find((s) => String(s.id) === String(stageMoveForm.data.stage_id))?.name ??
-                                                          '—')
-                                                    : '—'}
+                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                                            <div className="text-sm text-zinc-600 dark:text-zinc-300">
+                                                <div className="text-xs font-medium text-zinc-500">
+                                                    {canVolunteerManage ? 'Fase principal' : 'Fase / pasta'}
+                                                </div>
+                                                <div className="mt-1 font-medium text-zinc-900 dark:text-white">
+                                                    {stageMoveForm.data.stage_id
+                                                        ? (detail.stages.find(
+                                                              (s) => String(s.id) === String(stageMoveForm.data.stage_id),
+                                                          )?.name ?? '—')
+                                                        : '—'}
+                                                </div>
                                             </div>
                                         </div>
                                     )}
@@ -975,6 +1098,30 @@ export default function ManagementCenter({
                     )}
                 </div>
             </Modal>
+
+            <VolunteerEncaminharModal
+                show={encaminharOpen}
+                volunteerName={detailVolunteerName}
+                ministries={encaminharAvailableMinistries}
+                blockedMinistryIds={detailForwardedMinistryIds}
+                selectedIds={encaminharSelectedIds}
+                onChangeSelectedIds={setEncaminharSelectedIds}
+                onClose={() => {
+                    setEncaminharOpen(false);
+                    setEncaminharSelectedIds([]);
+                }}
+                onSubmit={submitEncaminharFromDetail}
+            />
+
+            <VolunteerInviteShareModal
+                show={inviteShareOpen && !!inviteShare}
+                link={inviteShare?.link ?? ''}
+                inviteeName={inviteShare?.name}
+                onClose={() => {
+                    setInviteShareOpen(false);
+                    setInviteShare(null);
+                }}
+            />
         </AdminLayout>
     );
 }

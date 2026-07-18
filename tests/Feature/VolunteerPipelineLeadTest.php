@@ -122,6 +122,7 @@ class VolunteerPipelineLeadTest extends TestCase
         $response->assertJsonPath('volunteer.photo_url', 'https://example.test/media/users/photos/ficha.jpg');
         $response->assertJsonPath('volunteer.phone', '11988887777');
         $response->assertJsonPath('volunteer.gifts_to_develop', 'Organização');
+        $response->assertJsonStructure(['forwardedMinistryIds']);
         $sections = $response->json('statusHistoryByMinistry');
         $this->assertIsArray($sections);
         $this->assertNotEmpty($sections);
@@ -183,6 +184,108 @@ class VolunteerPipelineLeadTest extends TestCase
         $detail->assertOk();
         $ledIds = collect($detail->json('volunteer.user.led_ministries'))->pluck('id')->map(fn ($id) => (int) $id)->all();
         $this->assertContains((int) $ministryA->id, $ledIds);
+    }
+
+    public function test_pipeline_sync_ministries_with_encaminhar_creates_invitation_and_history(): void
+    {
+        $admin = $this->actingAsAdmin();
+        $church = Church::query()->firstOrFail();
+        $ministry = Ministry::query()->where('church_id', $church->id)->orderBy('id')->firstOrFail();
+
+        $this->actingAs($admin)->post('/volunteers', [
+            'name' => 'Sync Encaminhar Check',
+            'email' => 'sync.encaminhar.check@example.com',
+            'ministry_ids' => [],
+            'active' => '1',
+            'app_password' => 'secret123',
+            'app_password_confirmation' => 'secret123',
+        ])->assertRedirect();
+
+        $volunteer = Volunteer::query()->where('email', 'sync.encaminhar.check@example.com')->firstOrFail();
+        $this->assertFalse($volunteer->ministries()->where('ministries.id', $ministry->id)->exists());
+
+        $this->actingAs($admin)
+            ->patchJson(route('ministry-lead.volunteers.pipeline.ministries.sync', $volunteer), [
+                'ministry_ids' => [$ministry->id],
+                'encaminhar' => true,
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertTrue($volunteer->fresh()->ministries()->where('ministries.id', $ministry->id)->exists());
+
+        $invitation = VolunteerMinistryInvitation::query()
+            ->where('volunteer_id', $volunteer->id)
+            ->where('ministry_id', $ministry->id)
+            ->where('church_id', $church->id)
+            ->first();
+
+        $this->assertNotNull($invitation);
+        $this->assertSame('pending', $invitation->status);
+
+        $this->assertDatabaseHas('volunteer_ministry_invitation_status_histories', [
+            'invitation_id' => $invitation->id,
+            'volunteer_id' => $volunteer->id,
+            'ministry_id' => $ministry->id,
+            'note' => 'Encaminhamento registrado ao vincular o departamento na ficha do voluntário.',
+        ]);
+
+        $detail = $this->actingAs($admin)->getJson(route('ministry-lead.volunteers.pipeline.detail', $volunteer));
+        $detail->assertOk();
+        $this->assertSame('Encaminhado', $detail->json('pipeline.stageName'));
+        $sections = collect($detail->json('statusHistoryByMinistry') ?? []);
+        $section = $sections->firstWhere('ministryId', (int) $ministry->id);
+        $this->assertNotNull($section);
+        $this->assertNotEmpty($section['history'] ?? []);
+    }
+
+    public function test_pipeline_sync_ministries_without_encaminhar_still_creates_history(): void
+    {
+        $admin = $this->actingAsAdmin();
+        $church = Church::query()->firstOrFail();
+        $ministry = Ministry::query()->where('church_id', $church->id)->orderBy('id')->firstOrFail();
+
+        $this->actingAs($admin)->post('/volunteers', [
+            'name' => 'Sync Sem Encaminhar',
+            'email' => 'sync.sem.encaminhar@example.com',
+            'ministry_ids' => [],
+            'active' => '1',
+            'app_password' => 'secret123',
+            'app_password_confirmation' => 'secret123',
+        ])->assertRedirect();
+
+        $volunteer = Volunteer::query()->where('email', 'sync.sem.encaminhar@example.com')->firstOrFail();
+
+        $this->actingAs($admin)
+            ->patchJson(route('ministry-lead.volunteers.pipeline.ministries.sync', $volunteer), [
+                'ministry_ids' => [$ministry->id],
+                'encaminhar' => false,
+            ])
+            ->assertRedirect();
+
+        $this->assertTrue($volunteer->fresh()->ministries()->where('ministries.id', $ministry->id)->exists());
+
+        $invitation = VolunteerMinistryInvitation::query()
+            ->where('volunteer_id', $volunteer->id)
+            ->where('ministry_id', $ministry->id)
+            ->where('church_id', $church->id)
+            ->first();
+
+        $this->assertNotNull($invitation);
+        $this->assertDatabaseHas('volunteer_ministry_invitation_status_histories', [
+            'invitation_id' => $invitation->id,
+            'volunteer_id' => $volunteer->id,
+            'ministry_id' => $ministry->id,
+            'note' => 'Departamento vinculado na ficha do voluntário.',
+        ]);
+
+        $detail = $this->actingAs($admin)->getJson(route('ministry-lead.volunteers.pipeline.detail', $volunteer));
+        $detail->assertOk();
+        $this->assertNotSame('Encaminhado', $detail->json('pipeline.stageName'));
+        $sections = collect($detail->json('statusHistoryByMinistry') ?? []);
+        $section = $sections->firstWhere('ministryId', (int) $ministry->id);
+        $this->assertNotNull($section);
+        $this->assertNotEmpty($section['history'] ?? []);
     }
 
     public function test_pipeline_admin_can_clear_ministry_leadership_for_linked_user(): void

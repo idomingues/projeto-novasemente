@@ -3,26 +3,34 @@ import { XMarkIcon } from '@heroicons/react/20/solid';
 import { InertiaLinkProps, Link, router } from '@inertiajs/react';
 import {
     createContext,
+    CSSProperties,
     Dispatch,
     PropsWithChildren,
+    RefObject,
     SetStateAction,
     useContext,
     useEffect,
+    useLayoutEffect,
+    useRef,
     useState,
 } from 'react';
+import { createPortal } from 'react-dom';
 
 const DropDownContext = createContext<{
     open: boolean;
     setOpen: Dispatch<SetStateAction<boolean>>;
     toggleOpen: () => void;
+    rootRef: RefObject<HTMLDivElement | null>;
 }>({
     open: false,
     setOpen: () => {},
     toggleOpen: () => {},
+    rootRef: { current: null },
 });
 
 const Dropdown = ({ children }: PropsWithChildren) => {
     const [open, setOpen] = useState(false);
+    const rootRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         return router.on('start', () => setOpen(false));
@@ -33,8 +41,10 @@ const Dropdown = ({ children }: PropsWithChildren) => {
     };
 
     return (
-        <DropDownContext.Provider value={{ open, setOpen, toggleOpen }}>
-            <div className="relative">{children}</div>
+        <DropDownContext.Provider value={{ open, setOpen, toggleOpen, rootRef }}>
+            <div className="relative" ref={rootRef}>
+                {children}
+            </div>
         </DropDownContext.Provider>
     );
 };
@@ -42,21 +52,36 @@ const Dropdown = ({ children }: PropsWithChildren) => {
 const Trigger = ({ children }: PropsWithChildren) => {
     const { open, setOpen, toggleOpen } = useContext(DropDownContext);
 
+    const backdrop =
+        open && typeof document !== 'undefined'
+            ? createPortal(
+                  <div
+                      className="fixed inset-0 z-[55] bg-black/20 dark:bg-black/40"
+                      onClick={() => setOpen(false)}
+                      data-dropdown-backdrop="true"
+                      aria-hidden
+                  />,
+                  document.body,
+              )
+            : null;
+
     return (
         <>
             <div onClick={toggleOpen}>{children}</div>
-
-            {open && (
-                <div
-                    className="fixed inset-0 z-[55] bg-black/20 dark:bg-black/40"
-                    onClick={() => setOpen(false)}
-                    data-dropdown-backdrop="true"
-                    aria-hidden
-                />
-            )}
+            {backdrop}
         </>
     );
 };
+
+function dropdownWidthPx(width: '48' | '80' | '96'): number {
+    if (width === '96') {
+        return 384;
+    }
+    if (width === '80') {
+        return 320;
+    }
+    return 192;
+}
 
 const Content = ({
     align = 'right',
@@ -64,18 +89,73 @@ const Content = ({
     contentClasses = 'py-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300',
     /** Ancora ao viewport (evita painel a sair da tela quando o gatilho é estreito, ex.: sino no mobile). */
     viewport = false,
+    /**
+     * Renderiza o menu no `document.body` com posição fixa (evita corte por overflow
+     * em tabelas / painéis com scroll — ex.: lista com um único item).
+     */
+    portal = false,
     children,
 }: PropsWithChildren<{
     align?: 'left' | 'right';
     width?: '48' | '80' | '96';
     contentClasses?: string;
     viewport?: boolean;
+    portal?: boolean;
 }>) => {
-    const { open } = useContext(DropDownContext);
+    const { open, rootRef } = useContext(DropDownContext);
+    const panelRef = useRef<HTMLDivElement>(null);
+    const [portalStyle, setPortalStyle] = useState<CSSProperties | null>(null);
+
+    useLayoutEffect(() => {
+        if (!open || !portal || viewport) {
+            setPortalStyle(null);
+            return;
+        }
+
+        const update = () => {
+            const anchor = rootRef.current;
+            if (!anchor) {
+                return;
+            }
+
+            const rect = anchor.getBoundingClientRect();
+            const gap = 8;
+            const panelWidth = dropdownWidthPx(width);
+            const panelHeight = panelRef.current?.offsetHeight ?? 48;
+            const spaceBelow = window.innerHeight - rect.bottom - gap;
+            const spaceAbove = rect.top - gap;
+            const openUp = spaceBelow < panelHeight && spaceAbove > spaceBelow;
+
+            let top = openUp ? rect.top - gap - panelHeight : rect.bottom + gap;
+            top = Math.max(8, Math.min(top, window.innerHeight - panelHeight - 8));
+
+            let left = align === 'right' ? rect.right - panelWidth : rect.left;
+            left = Math.max(8, Math.min(left, window.innerWidth - panelWidth - 8));
+
+            setPortalStyle({
+                position: 'fixed',
+                top,
+                left,
+                width: panelWidth,
+                zIndex: 70,
+            });
+        };
+
+        update();
+        const frame = requestAnimationFrame(update);
+        window.addEventListener('resize', update);
+        window.addEventListener('scroll', update, true);
+
+        return () => {
+            cancelAnimationFrame(frame);
+            window.removeEventListener('resize', update);
+            window.removeEventListener('scroll', update, true);
+        };
+    }, [open, portal, viewport, align, width, rootRef]);
 
     let alignmentClasses = 'origin-top';
 
-    if (! viewport) {
+    if (!viewport && !portal) {
         if (align === 'left') {
             alignmentClasses = 'ltr:origin-top-left rtl:origin-top-right start-0';
         } else if (align === 'right') {
@@ -87,32 +167,41 @@ const Content = ({
 
     const positionClasses = viewport
         ? 'fixed z-[70] left-3 right-3 top-[4.25rem] w-auto max-w-none md:left-auto md:right-6 md:top-[6.75rem] md:w-[min(24rem,calc(100vw-3rem))]'
-        : `absolute z-[70] mt-2 ${alignmentClasses} ${widthClasses}`;
+        : portal
+          ? 'z-[70]'
+          : `absolute z-[70] mt-2 ${alignmentClasses} ${widthClasses}`;
 
-    return (
-        <>
-            <Transition
-                show={open}
-                enter="transition ease-out duration-200"
-                enterFrom="opacity-0 scale-95"
-                enterTo="opacity-100 scale-100"
-                leave="transition ease-in duration-75"
-                leaveFrom="opacity-100 scale-100"
-                leaveTo="opacity-0 scale-95"
+    const panel = (
+        <Transition
+            show={open}
+            enter="transition ease-out duration-200"
+            enterFrom="opacity-0 scale-95"
+            enterTo="opacity-100 scale-100"
+            leave="transition ease-in duration-75"
+            leaveFrom="opacity-100 scale-100"
+            leaveTo="opacity-0 scale-95"
+        >
+            <div
+                ref={panelRef}
+                className={`rounded-xl shadow-lg ${positionClasses}`}
+                style={portal ? (portalStyle ?? { position: 'fixed', visibility: 'hidden', zIndex: 70 }) : undefined}
             >
-                <div className={`rounded-xl shadow-lg ${positionClasses}`}>
-                    <div
-                        className={
-                            `rounded-xl ring-1 ring-black ring-opacity-5 overflow-hidden ` +
-                            contentClasses
-                        }
-                    >
-                        {children}
-                    </div>
+                <div
+                    className={
+                        `rounded-xl ring-1 ring-black ring-opacity-5 overflow-hidden ` + contentClasses
+                    }
+                >
+                    {children}
                 </div>
-            </Transition>
-        </>
+            </div>
+        </Transition>
     );
+
+    if (portal && typeof document !== 'undefined') {
+        return createPortal(panel, document.body);
+    }
+
+    return <>{panel}</>;
 };
 
 const CloseButton = ({ className = '' }: { className?: string }) => {
@@ -137,11 +226,7 @@ const CloseButton = ({ className = '' }: { className?: string }) => {
     );
 };
 
-const DropdownLink = ({
-    className = '',
-    children,
-    ...props
-}: InertiaLinkProps) => {
+const DropdownLink = ({ className = '', children, ...props }: InertiaLinkProps) => {
     return (
         <Link
             {...props}
