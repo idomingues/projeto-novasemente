@@ -435,7 +435,7 @@ class PublicationFeed
                     $meta[] = 'Fotógrafo: '.$album->photographer_name;
                 }
 
-                return self::entry(
+                $entry = self::entry(
                     type: 'photos',
                     typeLabel: self::TYPE_DEFINITIONS['photos']['label'],
                     pk: $album->id,
@@ -452,6 +452,11 @@ class PublicationFeed
                         : 'Confira as fotos deste momento da igreja.',
                     requiresOpen: true,
                 );
+                $entry['photographer_name'] = filled($album->photographer_name)
+                    ? (string) $album->photographer_name
+                    : null;
+
+                return $entry;
             });
     }
 

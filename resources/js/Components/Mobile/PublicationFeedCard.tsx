@@ -34,6 +34,8 @@ export type PublicationFeedItem = {
     image_url: string | null;
     cover_play_overlay?: boolean;
     published_at: string | null;
+    /** Nome do fotógrafo — exibido ao lado da data (álbuns de fotos). */
+    photographer_name?: string | null;
     href: string;
     meta: string[];
 };
@@ -124,7 +126,6 @@ type Props = {
 export default function PublicationFeedCard({ item, appUrl, expanded, onToggle }: Props) {
     const Icon = TYPE_ICONS[item.type] ?? DEFAULT_ICON;
     const src = imageSrc(item.image_url, appUrl);
-    const meta = item.meta ?? [];
     const [coverBroken, setCoverBroken] = useState(false);
     const showCover = Boolean(src) && !coverBroken;
     const isNews = item.type === 'news' || item.type === 'health';
@@ -142,6 +143,10 @@ export default function PublicationFeedCard({ item, appUrl, expanded, onToggle }
     const isExpanded = canExpand && expanded;
     const navigateHref = !canExpand && item.href ? item.href : null;
     const openInstagramOnPlay = Boolean(item.cover_play_overlay) && Boolean(instagramUrl);
+    const whenLabel = formatWhen(item.published_at);
+    const photographerLabel = item.photographer_name?.trim() || '';
+    const bylineParts = [whenLabel, photographerLabel].filter(Boolean);
+    const byline = bylineParts.join(' · ');
 
     const coverFrame = showCover ? (
         <div
@@ -206,8 +211,8 @@ export default function PublicationFeedCard({ item, appUrl, expanded, onToggle }
                         </p>
                     ) : null}
 
-                    {!isExpanded && meta.length > 0 ? (
-                        <p className="text-xs text-zinc-500 dark:text-zinc-500">{meta.join(' · ')}</p>
+                    {byline ? (
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">{byline}</p>
                     ) : null}
 
                     {canExpand ? (
@@ -238,10 +243,6 @@ export default function PublicationFeedCard({ item, appUrl, expanded, onToggle }
                                             Sem texto adicional nesta publicação.
                                         </p>
                                     )}
-
-                                    {meta.length > 0 ? (
-                                        <p className="text-xs text-zinc-500 dark:text-zinc-500">{meta.join(' · ')}</p>
-                                    ) : null}
 
                                     {showInstagram ? <InstagramViewLink href={instagramUrl} /> : null}
 

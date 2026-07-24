@@ -1,0 +1,66 @@
+---
+description: Template e boas práticas para escrever prompts de mudanças de UI/feature (economiza crédito e reduz retrabalho)
+alwaysApply: false
+---
+
+# Template de prompt para mudanças de UI / feature
+
+Guia para pedir alterações ao agente de forma que economize crédito e evite vai-e-volta. Cada mensagem reenvia o contexto do chat inteiro — então **poucos prompts completos** custam menos que **muitos prompts pequenos**.
+
+## Template completo (features / mudanças com risco)
+
+```text
+Tela/Componente: [ex.: card "Mais visualizados" na Home mobile]
+Arquivo (se souber): [ex.: resources/js/Components/Mobile/...]
+
+O que quero:
+- [mudança 1]
+- [mudança 2]
+- [mudança 3]
+
+Restrições (o que NÃO pode acontecer):
+- [ex.: não mover o card ao expandir; manter altura igual aos outros]
+- [ex.: sem sombra/3D; nada de select acima da lista]
+
+Critério de pronto:
+- [ex.: legível no tema claro E escuro; funciona no mobile]
+
+Print: [anexado acima / não tenho]
+```
+
+## Versão mínima (ajuste cosmético rápido)
+
+```text
+[Tela/card]: [lista de ajustes juntos, separados por vírgula]
+Restrição: [1 linha, se houver]
+```
+
+Exemplo preenchido (ajustes em lote, não um por mensagem):
+
+```text
+Card "Mais visualizados" (Home): fundo branco, ícones verdes, texto ao lado do
+ícone, plano (sem 3D), mais respiro na borda direita e uniforme nos dois lados.
+Restrição: manter minimalista e altura igual aos outros cards.
+```
+
+## Regras de ouro
+
+1. **Junte 3–4 ajustes** num prompt só, em vez de um por mensagem.
+2. **Chat novo por feature** — não arraste threads gigantes (a última mensagem paga por todas as anteriores).
+3. **Diga o resultado final e as restrições logo de início**, não depois de errar.
+4. **Anexe o print antes** de dizer "veja o print".
+5. **Feche a decisão** antes de mandar (ex.: "são dois cultos: 1º 09:30, 2º 12:00, maiúsculo").
+6. Deixe o modelo no **Auto** (ele já equilibra custo e capacidade) — só suba para **Premium** ou um modelo forte em tarefas realmente complexas. Features grandes: usar **plan mode**.
+
+## Não precisa repetir no prompt
+
+O projeto já tem regras registradas que o agente deve seguir sozinho:
+
+- **Contraste claro/escuro** em cards → `contraste-dark-mode-cards.mdc`
+- **Filtro/ordenação por ícone + modal** em listas → `list-filtro-ordenacao-padrao.mdc`
+- **Telas em modal por padrão** (detalhe/edição/criação) → `modal-padrao-ui.mdc`
+- **Criação em lista com botão + e modal** → `forms-list-modal.mdc`
+- **`cursor-pointer`** em botões/áreas clicáveis → `cursor-pointer-botoes.mdc`
+- **Textos em pt_BR** → `pt-br-idioma.mdc`
+
+Basta dizer "seguir as regras do projeto" se quiser reforçar.

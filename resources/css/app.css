@@ -13,6 +13,7 @@
     --color-brand-800: #005c25;
     --color-brand-900: #004a1e;
     --color-brand-950: #002910;
+    --font-script: "Great Vibes", "Apple Chancery", "Segoe Script", cursive;
 }
 
 /* Dark mode por classe (html.dark) — necessário no Tailwind v4 */

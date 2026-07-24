@@ -1,6 +1,9 @@
+import PublicationFeedCard, {
+    type PublicationFeedItem,
+} from '@/Components/Mobile/PublicationFeedCard';
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Head, Link } from '@inertiajs/react';
-import { ArrowTopRightOnSquareIcon, CameraIcon, CalendarDaysIcon } from '@heroicons/react/24/outline';
+import { Head, usePage } from '@inertiajs/react';
+import { CameraIcon } from '@heroicons/react/24/outline';
 
 interface AlbumRow {
     id: number;
@@ -16,101 +19,63 @@ interface Props {
     albums: AlbumRow[];
 }
 
-function formatPublishedLabel(iso: string | null): string {
-    if (!iso) {
-        return 'Sem data';
-    }
-    return new Date(iso).toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-    });
-}
+type PageProps = {
+    appUrl?: string;
+};
 
-function formatBigDate(iso: string | null): string {
-    if (!iso) {
-        return 'Sem data';
-    }
-    return new Date(iso).toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-    });
+function albumToFeedItem(album: AlbumRow): PublicationFeedItem {
+    const photographer = album.photographer_name?.trim() || '';
+
+    return {
+        id: `photos-${album.id}`,
+        type: 'photos',
+        type_label: 'Fotos',
+        type_description: 'Álbum de fotos de eventos e momentos da igreja.',
+        action_label: 'Ver álbum',
+        title: album.title?.trim() || 'Álbum de fotos',
+        excerpt: 'Confira as fotos deste momento da igreja.',
+        image_url: album.cover_image_url || album.auto_cover_url,
+        published_at: album.published_at,
+        photographer_name: photographer || null,
+        href: route('mobile.fotos.show', album.id),
+        meta: photographer ? ['Álbum de fotos', `Fotógrafo: ${photographer}`] : ['Álbum de fotos'],
+    };
 }
 
 export default function MobilePhotoAlbums({ albums }: Props) {
+    const pageProps = usePage().props as PageProps;
+    const appUrl = (pageProps.appUrl ?? '') as string;
+    const feedItems = albums.map(albumToFeedItem);
+
     return (
         <MobileLayout>
             <Head title="Fotos" />
 
-            <div className="space-y-6">
-                {albums.length === 0 ? (
-                    <div className="py-12 lg:py-20 text-center">
-                        <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-4">
-                            <CameraIcon className="w-8 h-8 text-zinc-400 dark:text-zinc-500" />
+            <div className="mx-auto w-full max-w-lg space-y-5 sm:max-w-xl md:max-w-2xl lg:max-w-3xl">
+                {feedItems.length === 0 ? (
+                    <div className="py-12 text-center lg:py-20">
+                        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-100 dark:bg-zinc-800">
+                            <CameraIcon className="h-8 w-8 text-zinc-400 dark:text-zinc-500" />
                         </div>
-                        <p className="text-zinc-600 dark:text-zinc-400 font-medium">Nenhum álbum publicado</p>
-                        <p className="text-sm text-zinc-500 dark:text-zinc-500 mt-1 max-w-sm mx-auto">
+                        <p className="font-medium text-zinc-600 dark:text-zinc-400">Nenhum álbum publicado</p>
+                        <p className="mx-auto mt-1 max-w-sm text-sm text-zinc-500 dark:text-zinc-500">
                             Quando houver álbuns, eles aparecerão aqui.
                         </p>
                     </div>
                 ) : (
-                    <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        {albums.map((a) => {
-                            const cover = a.cover_image_url || a.auto_cover_url;
-                            return (
-                                <li
-                                    key={a.id}
-                                    className="rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm hover:shadow-md hover:border-zinc-300 dark:hover:border-zinc-700 active:scale-[0.99] transition-all"
-                                >
-                                    <Link href={route('mobile.fotos.show', a.id)} className="block">
-                                        {cover ? (
-                                            <div className="relative aspect-video overflow-hidden bg-zinc-200 dark:bg-zinc-800">
-                                                <img src={cover} alt="" className="w-full h-full object-cover" loading="lazy" />
-                                                <span className="absolute bottom-2 left-3 px-2.5 py-1 rounded-lg bg-black/60 text-white text-xs font-medium backdrop-blur-sm inline-flex items-center gap-1.5">
-                                                    <CalendarDaysIcon className="w-4 h-4" />
-                                                    {formatPublishedLabel(a.published_at)}
-                                                </span>
-                                                {a.drive_view_url ? (
-                                                    <a
-                                                        href={a.drive_view_url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="absolute top-2 right-2 inline-flex items-center justify-center w-10 h-10 rounded-full bg-black/60 text-white backdrop-blur-sm hover:bg-black/70"
-                                                        title="Abrir no Drive"
-                                                        aria-label="Abrir no Drive"
-                                                        onClick={(e) => e.stopPropagation()}
-                                                    >
-                                                        <ArrowTopRightOnSquareIcon className="w-5 h-5" aria-hidden />
-                                                    </a>
-                                                ) : null}
-                                            </div>
-                                        ) : (
-                                            <div className="aspect-video bg-gradient-to-br from-zinc-200 to-zinc-300 dark:from-zinc-700 dark:to-zinc-800 flex items-center justify-center">
-                                                <CameraIcon className="w-12 h-12 text-zinc-400 dark:text-zinc-500" />
-                                            </div>
-                                        )}
-                                        <div className="p-4">
-                                            <p className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
-                                                {formatBigDate(a.published_at)}
-                                            </p>
-                                            <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-200 mt-1">
-                                                {a.title || 'Culto'}
-                                            </p>
-                                            {a.photographer_name ? (
-                                                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{a.photographer_name}</p>
-                                            ) : null}
-                                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                                                {formatPublishedLabel(a.published_at)}
-                                            </p>
-                                        </div>
-                                    </Link>
-                                </li>
-                            );
-                        })}
+                    <ul className="space-y-4">
+                        {feedItems.map((item) => (
+                            <PublicationFeedCard
+                                key={item.id}
+                                item={item}
+                                appUrl={appUrl}
+                                expanded={false}
+                                onToggle={() => undefined}
+                            />
+                        ))}
                     </ul>
                 )}
             </div>
         </MobileLayout>
     );
 }
-
