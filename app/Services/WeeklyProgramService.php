@@ -46,7 +46,8 @@ class WeeklyProgramService
 
         $candidates = $this->activeForChurch($church)
             ->filter(fn (WeeklyProgram $item) => $item->show_on_home)
-            ->filter(fn (WeeklyProgram $item) => (int) $item->day_of_week === $todayDow);
+            ->filter(fn (WeeklyProgram $item) => (int) $item->day_of_week === $todayDow)
+            ->reject(fn (WeeklyProgram $item) => $this->isHiddenFromHomeCard($item, $now));
 
         if ($candidates->isEmpty()) {
             return [];
@@ -100,6 +101,18 @@ class WeeklyProgramService
         }
 
         return $visible;
+    }
+
+    /**
+     * Temporário: em julho/2026 o Culto de Oração não aparece no card da home.
+     */
+    private function isHiddenFromHomeCard(WeeklyProgram $item, Carbon $now): bool
+    {
+        if ((int) $now->year !== 2026 || (int) $now->month !== 7) {
+            return false;
+        }
+
+        return mb_strtoupper(trim((string) $item->title), 'UTF-8') === 'CULTO DE ORAÇÃO';
     }
 
     /**

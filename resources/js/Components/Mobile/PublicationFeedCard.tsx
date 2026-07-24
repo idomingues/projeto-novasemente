@@ -129,6 +129,7 @@ export default function PublicationFeedCard({ item, appUrl, expanded, onToggle }
     const [coverBroken, setCoverBroken] = useState(false);
     const showCover = Boolean(src) && !coverBroken;
     const isNews = item.type === 'news' || item.type === 'health';
+    const isPhotos = item.type === 'photos';
     const fullText = (item.body ?? item.excerpt ?? '').trim();
     const previewText = (item.excerpt || fullText).trim();
     const fullPlain = stripHtml(fullText);
@@ -148,20 +149,18 @@ export default function PublicationFeedCard({ item, appUrl, expanded, onToggle }
     const bylineParts = [whenLabel, photographerLabel].filter(Boolean);
     const byline = bylineParts.join(' · ');
 
+    const coverAspectClass = isNews ? '' : isPhotos ? 'aspect-[4/5]' : 'aspect-[16/9]';
+    const placeholderAspectClass = isPhotos ? 'aspect-[4/5]' : 'aspect-[16/9]';
+    const coverImageClass = isNews
+        ? 'block h-auto w-full object-contain'
+        : 'h-full w-full object-cover object-top';
+
     const coverFrame = showCover ? (
-        <div
-            className={`relative overflow-hidden bg-zinc-100 dark:bg-zinc-800 ${
-                isNews ? '' : 'aspect-[16/9]'
-            }`}
-        >
+        <div className={`relative overflow-hidden bg-zinc-100 dark:bg-zinc-800 ${coverAspectClass}`}>
             <img
                 src={src}
                 alt=""
-                className={
-                    isNews
-                        ? 'block h-auto w-full object-contain'
-                        : 'h-full w-full object-cover object-top'
-                }
+                className={coverImageClass}
                 loading="lazy"
                 decoding="async"
                 onError={() => setCoverBroken(true)}
@@ -191,7 +190,9 @@ export default function PublicationFeedCard({ item, appUrl, expanded, onToggle }
                         coverFrame
                     )
                 ) : (
-                    <div className="flex aspect-[16/9] items-center justify-center bg-zinc-100 dark:bg-zinc-800">
+                    <div
+                        className={`flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 ${placeholderAspectClass}`}
+                    >
                         <Icon className="h-10 w-10 text-zinc-400 dark:text-zinc-500" aria-hidden strokeWidth={1.5} />
                     </div>
                 )}

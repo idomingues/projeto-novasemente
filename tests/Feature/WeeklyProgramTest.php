@@ -263,4 +263,49 @@ class WeeklyProgramTest extends TestCase
                 ->where('weeklyProgram.0.title', 'CULTO DE ORAÇÃO')
             );
     }
+
+    public function test_home_hides_culto_de_oracao_only_in_july_2026(): void
+    {
+        $this->seed(ChurchSeeder::class);
+        $church = Church::query()->firstOrFail();
+
+        WeeklyProgram::query()->create([
+            'church_id' => $church->id,
+            'day_of_week' => 3,
+            'when_label' => 'QUA 20H',
+            'title' => 'CULTO DE ORAÇÃO',
+            'body' => 'Momento de oração.',
+            'time_mode' => 'fixed',
+            'start_time' => '20:00:00',
+            'display_time' => '20h',
+            'home_message' => 'Todos são bem-vindos.',
+            'show_on_home' => true,
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
+        // Quarta em julho/2026 — card oculto.
+        Carbon::setTestNow(Carbon::parse('2026-07-22 10:00:00', 'America/Sao_Paulo'));
+        $this->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.home'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Mobile/Home')
+                ->has('weeklyProgramCards', 0)
+            );
+
+        // Quarta em agosto/2026 — card volta a aparecer.
+        Carbon::setTestNow(Carbon::parse('2026-08-05 10:00:00', 'America/Sao_Paulo'));
+        $this->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.home'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Mobile/Home')
+                ->has('weeklyProgramCards', 1)
+                ->where('weeklyProgramCards.0.title', 'CULTO DE ORAÇÃO')
+                ->where('weeklyProgramCards.0.is_next', true)
+            );
+
+        Carbon::setTestNow();
+    }
 }
