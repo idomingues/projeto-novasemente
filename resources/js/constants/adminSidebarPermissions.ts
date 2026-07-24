@@ -68,6 +68,8 @@ export const adminSidebarRoutePermissions: Record<string, string[]> = {
     'inventory.index': ['inventory.view', 'inventory.manage'],
     'roles.index': ['roles.manage'],
     'news.index': ['news.view', 'news.manage'],
+    'publication-comments.index': ['news.manage'],
+    'publication-comments.destroy': ['news.manage'],
     'health.index': ['news.view', 'news.manage'],
     'revista-adventista.index': ['news.view', 'news.manage'],
     'revista-adventista.active': ['news.manage'],

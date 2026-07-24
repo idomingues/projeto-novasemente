@@ -1,23 +1,24 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import {
     BanknotesIcon,
     BookOpenIcon,
     CalendarDaysIcon,
-    ChevronDownIcon,
-    ChevronUpIcon,
+    ChatBubbleOvalLeftIcon,
     FilmIcon,
-    HeartIcon,
+    HeartIcon as HeartOutlineIcon,
     MusicalNoteIcon,
     NewspaperIcon,
     PhotoIcon,
     PlayCircleIcon,
     SparklesIcon,
 } from '@heroicons/react/24/outline';
+import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid';
 import CoverWithVideoLink from '@/Components/News/CoverWithVideoLink';
 import InstagramViewLink from '@/Components/News/InstagramViewLink';
 import VideoPlayOverlay from '@/Components/News/VideoPlayOverlay';
+import PublicationCommentsSheet from '@/Components/Mobile/PublicationCommentsSheet';
 import type { ComponentType, SVGProps } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export type PublicationFeedItem = {
     id: string;
@@ -34,10 +35,12 @@ export type PublicationFeedItem = {
     image_url: string | null;
     cover_play_overlay?: boolean;
     published_at: string | null;
-    /** Nome do fotógrafo — exibido ao lado da data (álbuns de fotos). */
     photographer_name?: string | null;
     href: string;
     meta: string[];
+    likes_count?: number;
+    comments_count?: number;
+    liked_by_me?: boolean;
 };
 
 type MenuIcon = ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
@@ -45,7 +48,7 @@ type MenuIcon = ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
 const TYPE_ICONS: Record<string, MenuIcon> = {
     news: NewspaperIcon,
     culto: FilmIcon,
-    health: HeartIcon,
+    health: HeartOutlineIcon,
     charity_donation: BanknotesIcon,
     library: BookOpenIcon,
     photos: PhotoIcon,
@@ -56,21 +59,6 @@ const TYPE_ICONS: Record<string, MenuIcon> = {
     donation_campaign: BanknotesIcon,
 };
 
-const TYPE_TAG_STYLES: Record<string, string> = {
-    news: 'bg-teal-50 text-teal-800 dark:bg-teal-950/50 dark:text-teal-200',
-    culto: 'bg-violet-50 text-violet-800 dark:bg-violet-950/50 dark:text-violet-200',
-    health: 'bg-rose-50 text-rose-800 dark:bg-rose-950/50 dark:text-rose-200',
-    charity_donation: 'bg-amber-50 text-amber-900 dark:bg-amber-950/50 dark:text-amber-200',
-    library: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200',
-    photos: 'bg-fuchsia-50 text-fuchsia-800 dark:bg-fuchsia-950/50 dark:text-fuchsia-200',
-    events: 'bg-orange-50 text-orange-800 dark:bg-orange-950/50 dark:text-orange-200',
-    revista: 'bg-blue-50 text-blue-800 dark:bg-blue-950/50 dark:text-blue-200',
-    acervo: 'bg-indigo-50 text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-200',
-    musica: 'bg-purple-50 text-purple-800 dark:bg-purple-950/50 dark:text-purple-200',
-    donation_campaign: 'bg-lime-50 text-lime-900 dark:bg-lime-950/50 dark:text-lime-200',
-};
-
-const DEFAULT_TAG_STYLE = 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300';
 const DEFAULT_ICON = SparklesIcon;
 
 function imageSrc(url: string | null, appUrl: string): string {
@@ -80,80 +68,137 @@ function imageSrc(url: string | null, appUrl: string): string {
     return `${base}${url}`;
 }
 
-function formatWhen(iso: string | null): string {
+function formatRelative(iso: string | null): string {
     if (!iso) return '';
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return '';
-    const now = new Date();
-    const sameDay = d.toDateString() === now.toDateString();
-    const timeStr = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    if (sameDay) return `Hoje · ${timeStr}`;
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
-    if (d.toDateString() === yesterday.toDateString()) return `Ontem · ${timeStr}`;
-    return d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', year: 'numeric' });
+    const now = Date.now();
+    const diffSec = Math.max(0, Math.floor((now - d.getTime()) / 1000));
+    if (diffSec < 60) return 'agora';
+    const mins = Math.floor(diffSec / 60);
+    if (mins < 60) return `há ${mins} min`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `há ${hours} h`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `há ${days} d`;
+    return d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' });
 }
 
-function PublicationFeedTypeTag({ type, label }: { type: string; label: string }) {
-    const Icon = TYPE_ICONS[type] ?? DEFAULT_ICON;
-    const tone = TYPE_TAG_STYLES[type] ?? DEFAULT_TAG_STYLE;
+function formatPhotoDate(iso: string | null): string {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+}
 
-    return (
-        <span
-            className={`inline-flex max-w-full items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none ${tone}`}
-            aria-label={`Tipo: ${label}`}
-        >
-            <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden strokeWidth={2} />
-            <span className="truncate">{label}</span>
-        </span>
-    );
+function formatWhen(iso: string | null): string {
+    return formatRelative(iso);
 }
 
 function stripHtml(text: string): string {
     return text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-/** Tipos com leitura inline no feed; os demais só navegam (sem ícone de expandir). */
-const EXPANDABLE_TYPES = new Set(['news', 'health', 'revista']);
-
 type Props = {
     item: PublicationFeedItem;
     appUrl: string;
-    expanded: boolean;
-    onToggle: () => void;
+    expanded?: boolean;
+    onToggle?: () => void;
+    showTypeTag?: boolean;
+    onEngagementChange?: (
+        id: string,
+        patch: { likes_count?: number; comments_count?: number; liked_by_me?: boolean },
+    ) => void;
 };
 
-export default function PublicationFeedCard({ item, appUrl, expanded, onToggle }: Props) {
+type PageProps = {
+    csrf_token?: string;
+};
+
+export default function PublicationFeedCard({ item, appUrl, onEngagementChange }: Props) {
+    const page = usePage().props as PageProps;
+    const csrf = page.csrf_token ?? '';
     const Icon = TYPE_ICONS[item.type] ?? DEFAULT_ICON;
     const src = imageSrc(item.image_url, appUrl);
     const [coverBroken, setCoverBroken] = useState(false);
+    const [liked, setLiked] = useState(Boolean(item.liked_by_me));
+    const [likesCount, setLikesCount] = useState(item.likes_count ?? 0);
+    const [commentsCount, setCommentsCount] = useState(item.comments_count ?? 0);
+    const [likeBusy, setLikeBusy] = useState(false);
+    const [commentsOpen, setCommentsOpen] = useState(false);
+    const [captionExpanded, setCaptionExpanded] = useState(false);
+
+    useEffect(() => {
+        setLiked(Boolean(item.liked_by_me));
+        setLikesCount(item.likes_count ?? 0);
+        setCommentsCount(item.comments_count ?? 0);
+    }, [item.id, item.liked_by_me, item.likes_count, item.comments_count]);
+
     const showCover = Boolean(src) && !coverBroken;
     const isNews = item.type === 'news' || item.type === 'health';
     const isPhotos = item.type === 'photos';
-    const fullText = (item.body ?? item.excerpt ?? '').trim();
-    const previewText = (item.excerpt || fullText).trim();
-    const fullPlain = stripHtml(fullText);
-    const previewPlain = stripHtml(previewText);
+    const commentsEnabled = !isPhotos;
+    const previewPlain = stripHtml((item.excerpt || item.body || '').trim());
     const instagramUrl = item.instagram_url?.trim() || '';
-    const showInstagram = Boolean(instagramUrl);
-    const showOpenCta = Boolean(item.requires_open && item.href) && !showInstagram;
-    const actionLabel = item.action_label || 'Abrir';
-    const canExpand =
-        EXPANDABLE_TYPES.has(item.type) &&
-        (showInstagram || showOpenCta || fullPlain.length > 0);
-    const isExpanded = canExpand && expanded;
-    const navigateHref = !canExpand && item.href ? item.href : null;
     const openInstagramOnPlay = Boolean(item.cover_play_overlay) && Boolean(instagramUrl);
-    const whenLabel = formatWhen(item.published_at);
+    const whenLabel = formatRelative(item.published_at);
+    const photoDateLabel = formatPhotoDate(item.published_at);
     const photographerLabel = item.photographer_name?.trim() || '';
-    const bylineParts = [whenLabel, photographerLabel].filter(Boolean);
-    const byline = bylineParts.join(' · ');
 
-    const coverAspectClass = isNews ? '' : isPhotos ? 'aspect-[4/5]' : 'aspect-[16/9]';
-    const placeholderAspectClass = isPhotos ? 'aspect-[4/5]' : 'aspect-[16/9]';
+    const coverAspectClass = isNews ? '' : isPhotos ? 'aspect-[4/5]' : 'aspect-square';
+    const placeholderAspectClass = isPhotos ? 'aspect-[4/5]' : 'aspect-square';
     const coverImageClass = isNews
         ? 'block h-auto w-full object-contain'
-        : 'h-full w-full object-cover object-top';
+        : 'h-full w-full object-cover object-center';
+
+    const toggleLike = async () => {
+        if (likeBusy) return;
+
+        const prevLiked = liked;
+        const prevCount = likesCount;
+        const nextLiked = !prevLiked;
+        const nextCount = Math.max(0, prevCount + (nextLiked ? 1 : -1));
+        setLiked(nextLiked);
+        setLikesCount(nextCount);
+        onEngagementChange?.(item.id, { liked_by_me: nextLiked, likes_count: nextCount });
+        setLikeBusy(true);
+
+        try {
+            const response = await fetch(route('mobile.publications.like', { feedId: item.id }), {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrf,
+                },
+                credentials: 'same-origin',
+            });
+            if (!response.ok) {
+                setLiked(prevLiked);
+                setLikesCount(prevCount);
+                onEngagementChange?.(item.id, { liked_by_me: prevLiked, likes_count: prevCount });
+                return;
+            }
+            const payload = (await response.json()) as { liked: boolean; likes_count: number };
+            setLiked(payload.liked);
+            setLikesCount(payload.likes_count);
+            onEngagementChange?.(item.id, {
+                liked_by_me: payload.liked,
+                likes_count: payload.likes_count,
+            });
+        } catch {
+            setLiked(prevLiked);
+            setLikesCount(prevCount);
+            onEngagementChange?.(item.id, { liked_by_me: prevLiked, likes_count: prevCount });
+        } finally {
+            setLikeBusy(false);
+        }
+    };
+
+    const openComments = () => {
+        if (!commentsEnabled) return;
+        setCommentsOpen(true);
+    };
 
     const coverFrame = showCover ? (
         <div className={`relative overflow-hidden bg-zinc-100 dark:bg-zinc-800 ${coverAspectClass}`}>
@@ -163,135 +208,179 @@ export default function PublicationFeedCard({ item, appUrl, expanded, onToggle }
                 className={coverImageClass}
                 loading="lazy"
                 decoding="async"
+                referrerPolicy="no-referrer"
                 onError={() => setCoverBroken(true)}
             />
             {!openInstagramOnPlay && item.cover_play_overlay ? <VideoPlayOverlay /> : null}
         </div>
     ) : null;
 
-    const body = (
-            <article
-                className={`overflow-hidden rounded-2xl border border-zinc-200 bg-white transition dark:border-zinc-800 dark:bg-zinc-900 ${
-                    navigateHref
-                        ? 'cursor-pointer hover:border-zinc-300 dark:hover:border-zinc-700'
-                        : ''
-                }`}
+    const media = showCover && coverFrame ? (
+        openInstagramOnPlay ? (
+            <CoverWithVideoLink
+                videoHref={instagramUrl}
+                ariaLabel="Ver vídeo no Instagram"
+                className="block w-full cursor-pointer"
             >
-                {showCover && coverFrame ? (
-                    openInstagramOnPlay ? (
-                        <CoverWithVideoLink
-                            videoHref={instagramUrl}
-                            ariaLabel="Ver vídeo no Instagram"
-                            className="block w-full cursor-pointer"
-                        >
-                            {coverFrame}
-                        </CoverWithVideoLink>
-                    ) : (
-                        coverFrame
-                    )
-                ) : (
-                    <div
-                        className={`flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 ${placeholderAspectClass}`}
-                    >
-                        <Icon className="h-10 w-10 text-zinc-400 dark:text-zinc-500" aria-hidden strokeWidth={1.5} />
-                    </div>
-                )}
-
-                <div className="space-y-2 p-4">
-                    <div className="flex items-center gap-2">
-                        <PublicationFeedTypeTag type={item.type} label={item.type_label} />
-                    </div>
-
-                    <h2 className="line-clamp-2 text-base font-semibold leading-snug text-zinc-900 dark:text-white">
-                        {item.title}
-                    </h2>
-
-                    {!isExpanded && previewText ? (
-                        <p className="line-clamp-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                            {previewPlain}
-                        </p>
-                    ) : null}
-
-                    {byline ? (
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400">{byline}</p>
-                    ) : null}
-
-                    {canExpand ? (
-                        <div
-                            className={`publication-feed-leaf-stage grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none ${
-                                isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
-                            }`}
-                        >
-                            <div className="min-h-0 overflow-hidden">
-                                <div
-                                    className={`publication-feed-leaf space-y-3 border-t border-zinc-100 pt-3 dark:border-zinc-800 ${
-                                        isExpanded ? 'is-open' : ''
-                                    }`}
-                                >
-                                    {fullText ? (
-                                        item.body_is_html ? (
-                                            <div
-                                                className="max-w-full break-words text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 [&_*]:max-w-full [&_a]:text-primary-600 dark:[&_a]:text-primary-400 [&_a]:underline [&_p]:mb-3 [&_p:last-child]:mb-0"
-                                                dangerouslySetInnerHTML={{ __html: fullText }}
-                                            />
-                                        ) : (
-                                            <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
-                                                {fullText}
-                                            </p>
-                                        )
-                                    ) : (
-                                        <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                                            Sem texto adicional nesta publicação.
-                                        </p>
-                                    )}
-
-                                    {showInstagram ? <InstagramViewLink href={instagramUrl} /> : null}
-
-                                    {showOpenCta ? (
-                                        <Link
-                                            href={item.href}
-                                            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-sm font-semibold text-zinc-800 transition hover:border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:border-zinc-600 dark:hover:bg-zinc-700"
-                                        >
-                                            {actionLabel}
-                                            <ChevronDownIcon className="h-4 w-4 -rotate-90" aria-hidden />
-                                        </Link>
-                                    ) : null}
-                                </div>
-                            </div>
-                        </div>
-                    ) : null}
-
-                    {canExpand ? (
-                        <div className="flex items-center justify-end pt-1">
-                            <button
-                                type="button"
-                                onClick={onToggle}
-                                aria-expanded={isExpanded}
-                                aria-label={isExpanded ? 'Recolher publicação' : 'Expandir publicação'}
-                                title={isExpanded ? 'Recolher' : 'Expandir'}
-                                className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-zinc-900 text-white shadow-sm ring-1 ring-inset ring-white/10 transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
-                            >
-                                {isExpanded ? (
-                                    <ChevronUpIcon className="h-5 w-5" aria-hidden strokeWidth={2.2} />
-                                ) : (
-                                    <ChevronDownIcon className="h-5 w-5" aria-hidden strokeWidth={2.2} />
-                                )}
-                            </button>
-                        </div>
-                    ) : null}
-                </div>
-            </article>
+                {coverFrame}
+            </CoverWithVideoLink>
+        ) : item.href ? (
+            <Link href={item.href} className="block cursor-pointer">
+                {coverFrame}
+            </Link>
+        ) : (
+            coverFrame
+        )
+    ) : (
+        <Link
+            href={item.href || '#'}
+            className={`flex cursor-pointer items-center justify-center bg-zinc-100 dark:bg-zinc-800 ${placeholderAspectClass}`}
+        >
+            <Icon className="h-10 w-10 text-zinc-400 dark:text-zinc-500" aria-hidden strokeWidth={1.5} />
+        </Link>
     );
 
     return (
-        <li>
-            {navigateHref ? (
-                <Link href={navigateHref} className="block cursor-pointer">
-                    {body}
-                </Link>
-            ) : (
-                body
-            )}
+        <li className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 sm:rounded-2xl sm:border sm:shadow-sm">
+            <article>
+                {!isPhotos ? (
+                    <header className="flex items-center gap-3 px-3 py-2.5">
+                        <div
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-emerald-700 text-white shadow-sm"
+                            aria-hidden
+                        >
+                            <Icon className="h-4.5 w-4.5 h-[18px] w-[18px]" strokeWidth={2} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-zinc-900 dark:text-white">{item.type_label}</p>
+                        </div>
+                    </header>
+                ) : null}
+
+                {media}
+
+                <div className="space-y-2 px-3 pb-4 pt-2">
+                    <div className="flex items-center gap-3">
+                        <button
+                            type="button"
+                            onClick={() => void toggleLike()}
+                            disabled={likeBusy}
+                            className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-zinc-900 transition hover:bg-zinc-100 disabled:cursor-not-allowed dark:text-white dark:hover:bg-zinc-800"
+                            aria-label={liked ? 'Remover curtida' : 'Curtir'}
+                            aria-pressed={liked}
+                        >
+                            {liked ? (
+                                <HeartSolidIcon className="h-7 w-7 text-rose-500" aria-hidden />
+                            ) : (
+                                <HeartOutlineIcon className="h-7 w-7" aria-hidden strokeWidth={1.8} />
+                            )}
+                        </button>
+                        {commentsEnabled ? (
+                            <button
+                                type="button"
+                                onClick={openComments}
+                                className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-zinc-900 transition hover:bg-zinc-100 dark:text-white dark:hover:bg-zinc-800"
+                                aria-label="Comentários"
+                            >
+                                <ChatBubbleOvalLeftIcon className="h-7 w-7" aria-hidden strokeWidth={1.8} />
+                            </button>
+                        ) : null}
+                    </div>
+
+                    {likesCount > 0 ? (
+                        <p className="text-sm font-semibold text-zinc-900 dark:text-white">
+                            {likesCount === 1 ? '1 curtida' : `${likesCount} curtidas`}
+                        </p>
+                    ) : null}
+
+                    {isPhotos ? (
+                        <div className="space-y-0.5">
+                            {photographerLabel ? (
+                                <p className="text-sm font-semibold text-zinc-900 dark:text-white">
+                                    Fotógrafo: {photographerLabel}
+                                </p>
+                            ) : null}
+                            {photoDateLabel ? (
+                                <p className="text-sm font-medium text-zinc-600 dark:text-zinc-300">
+                                    {photoDateLabel}
+                                </p>
+                            ) : null}
+                        </div>
+                    ) : (
+                        <>
+                            <div className="text-sm leading-snug text-zinc-800 dark:text-zinc-100">
+                                <span className="font-semibold">{item.type_label}</span>{' '}
+                                <span className={captionExpanded ? '' : 'line-clamp-2'}>
+                                    <span className="font-medium">{item.title}</span>
+                                    {previewPlain && previewPlain !== item.title ? (
+                                        <>
+                                            {' '}
+                                            <span className="font-normal text-zinc-600 dark:text-zinc-300">
+                                                {previewPlain}
+                                            </span>
+                                        </>
+                                    ) : null}
+                                </span>
+                                {previewPlain.length > 120 || item.title.length > 80 ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => setCaptionExpanded((v) => !v)}
+                                        className="ml-1 cursor-pointer text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                                    >
+                                        {captionExpanded ? 'menos' : 'mais'}
+                                    </button>
+                                ) : null}
+                            </div>
+
+                            {instagramUrl ? (
+                                <div className="pt-0.5">
+                                    <InstagramViewLink href={instagramUrl} />
+                                </div>
+                            ) : null}
+
+                            {commentsEnabled ? (
+                                commentsCount > 0 ? (
+                                    <button
+                                        type="button"
+                                        onClick={openComments}
+                                        className="cursor-pointer text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                                    >
+                                        {commentsCount === 1
+                                            ? 'Ver o comentário'
+                                            : `Ver todos os ${commentsCount} comentários`}
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={openComments}
+                                        className="cursor-pointer text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                                    >
+                                        Adicionar um comentário…
+                                    </button>
+                                )
+                            ) : null}
+
+                            {whenLabel ? (
+                                <p className="text-[11px] uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+                                    {whenLabel}
+                                </p>
+                            ) : null}
+                        </>
+                    )}
+                </div>
+            </article>
+
+            {commentsEnabled ? (
+                <PublicationCommentsSheet
+                    show={commentsOpen}
+                    feedId={item.id}
+                    onClose={() => setCommentsOpen(false)}
+                    onCountChange={(count) => {
+                        setCommentsCount(count);
+                        onEngagementChange?.(item.id, { comments_count: count });
+                    }}
+                />
+            ) : null}
         </li>
     );
 }

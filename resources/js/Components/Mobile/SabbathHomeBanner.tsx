@@ -77,7 +77,7 @@ export default function SabbathHomeBanner({ banner, appUrl = '' }: Props) {
             />
 
             <p
-                className="pointer-events-none absolute top-[42%] right-3.5 z-10 max-w-[48%] -translate-y-1/2 text-right font-script text-[1.4rem] leading-[1.15] tracking-wide text-[#f5f1e9] sm:right-4 sm:max-w-[44%] sm:text-[1.65rem] md:right-[16%] lg:right-[22%] lg:max-w-[32%] lg:text-[1.9rem] xl:right-[26%]"
+                className="pointer-events-none absolute top-[42%] right-3.5 z-10 max-w-[48%] -translate-y-1/2 text-right font-script text-[1.2rem] leading-[1.15] tracking-wide text-[#f5f1e9] sm:right-4 sm:max-w-[44%] sm:text-[1.4rem] md:right-[16%] lg:right-[22%] lg:max-w-[32%] lg:text-[1.6rem] xl:right-[26%]"
                 style={{
                     textShadow:
                         '0 1px 1px rgba(0,0,0,0.35), 0 4px 14px rgba(0,0,0,0.4), 0 0 20px rgba(0,0,0,0.2)',

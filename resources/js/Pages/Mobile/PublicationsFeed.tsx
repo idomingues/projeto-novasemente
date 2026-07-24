@@ -31,14 +31,21 @@ export default function PublicationsFeed({ items }: Props) {
     const [hasMore, setHasMore] = useState(items.has_more);
     const [nextPage, setNextPage] = useState(items.next_page);
     const [loadingMore, setLoadingMore] = useState(false);
-    const [expandedId, setExpandedId] = useState<string | null>(null);
 
     useEffect(() => {
         setFeedItems(items.data);
         setHasMore(items.has_more);
         setNextPage(items.next_page);
-        setExpandedId(null);
     }, [items]);
+
+    const patchItem = (
+        id: string,
+        patch: { likes_count?: number; comments_count?: number; liked_by_me?: boolean },
+    ) => {
+        setFeedItems((current) =>
+            current.map((row) => (row.id === id ? { ...row, ...patch } : row)),
+        );
+    };
 
     const loadMore = async () => {
         if (loadingMore || !hasMore || nextPage === null) {
@@ -72,7 +79,7 @@ export default function PublicationsFeed({ items }: Props) {
     return (
         <MobileLayout>
             <Head title="Publicações" />
-            <div className="mx-auto w-full max-w-lg space-y-5 sm:max-w-xl md:max-w-2xl lg:max-w-3xl">
+            <div className="mx-auto w-full max-w-lg sm:max-w-xl md:max-w-2xl">
                 {feedItems.length === 0 ? (
                     <div className="py-16 text-center">
                         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
@@ -85,22 +92,19 @@ export default function PublicationsFeed({ items }: Props) {
                     </div>
                 ) : (
                     <>
-                        <ul className="space-y-4">
+                        <ul className="divide-y-0 sm:space-y-4 sm:py-2">
                             {feedItems.map((item) => (
                                 <PublicationFeedCard
                                     key={item.id}
                                     item={item}
                                     appUrl={appUrl}
-                                    expanded={expandedId === item.id}
-                                    onToggle={() =>
-                                        setExpandedId((current) => (current === item.id ? null : item.id))
-                                    }
+                                    onEngagementChange={patchItem}
                                 />
                             ))}
                         </ul>
 
                         {hasMore ? (
-                            <div className="flex justify-center pt-2 pb-6">
+                            <div className="flex justify-center py-6">
                                 <button
                                     type="button"
                                     onClick={() => void loadMore()}
@@ -111,7 +115,7 @@ export default function PublicationsFeed({ items }: Props) {
                                 </button>
                             </div>
                         ) : (
-                            <p className="pb-6 pt-1 text-center text-xs text-zinc-400 dark:text-zinc-500">
+                            <p className="pb-6 pt-4 text-center text-xs text-zinc-400 dark:text-zinc-500">
                                 Você viu tudo por aqui
                             </p>
                         )}

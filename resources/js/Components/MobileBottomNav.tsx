@@ -168,16 +168,23 @@ export default function MobileBottomNav() {
                             }`}
                         >
                             {imageSrc ? (
-                                <img
-                                    src={imageSrc}
-                                    alt=""
-                                    className={`rounded-full object-cover transition-all ${
-                                        isActive
-                                            ? 'h-9 w-9 ring-2 ring-brand-600 ring-offset-2 ring-offset-white dark:ring-brand-400 dark:ring-offset-zinc-900'
-                                            : 'h-8 w-8'
-                                    }`}
-                                    aria-hidden
-                                />
+                                <span className="relative inline-flex items-center justify-center">
+                                    {/* Linha piscando ao redor do ícone de Publicações */}
+                                    <span
+                                        aria-hidden
+                                        className={`pointer-events-none absolute rounded-full border-2 border-brand-500 animate-pulse motion-reduce:animate-none dark:border-brand-400 ${
+                                            isActive ? '-inset-1' : '-inset-0.5'
+                                        }`}
+                                    />
+                                    <img
+                                        src={imageSrc}
+                                        alt=""
+                                        className={`relative z-[1] rounded-full object-cover transition-all ${
+                                            isActive ? 'h-9 w-9' : 'h-8 w-8'
+                                        }`}
+                                        aria-hidden
+                                    />
+                                </span>
                             ) : (
                                 <>
                                     {IconComponent ? (

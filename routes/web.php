@@ -51,6 +51,8 @@ use App\Http\Controllers\PastorController;
 use App\Http\Controllers\PhotoAlbumController;
 use App\Http\Controllers\PrayerRequestController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PublicationCommentAdminController;
+use App\Http\Controllers\PublicationEngagementController;
 use App\Http\Controllers\PublicDiskFileController;
 use App\Http\Controllers\PushTokenController;
 use App\Http\Controllers\RoleController;
@@ -145,6 +147,14 @@ Route::get('/mobile/schedule', [MobileController::class, 'schedule'])->name('mob
 Route::get('/mobile/schedule/full', [MobileController::class, 'scheduleFull'])->name('mobile.schedule.full');
 Route::get('/mobile/more', [MobileController::class, 'more'])->name('mobile.more');
 Route::get('/mobile/publicacoes', [MobileController::class, 'publicationsFeed'])->name('mobile.publications-feed');
+Route::get('/mobile/publicacoes/{feedId}/comentarios', [PublicationEngagementController::class, 'comments'])
+    ->middleware('throttle:60,1')
+    ->where('feedId', '[A-Za-z0-9_-]+')
+    ->name('mobile.publications.comments.index');
+Route::post('/mobile/publicacoes/{feedId}/like', [PublicationEngagementController::class, 'toggleLike'])
+    ->middleware('throttle:60,1')
+    ->where('feedId', '[A-Za-z0-9_-]+')
+    ->name('mobile.publications.like');
 Route::get('/mobile/comunidade', [CommunityController::class, 'mobile'])->name('mobile.communities');
 Route::get('/mobile/missao', [\App\Http\Controllers\MissionHubController::class, 'index'])->name('mobile.mission');
 Route::get('/mobile/missao/home', [\App\Http\Controllers\MissionHubController::class, 'home'])->name('mobile.mission.home');
@@ -372,6 +382,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/mobile/inicio/marcadores', [MobileController::class, 'toggleHomeCardBookmark'])
         ->middleware('throttle:60,1')
         ->name('mobile.home.bookmarks.toggle');
+
+    Route::post('/mobile/publicacoes/{feedId}/comentarios', [PublicationEngagementController::class, 'storeComment'])
+        ->middleware('throttle:30,1')
+        ->where('feedId', '[A-Za-z0-9_-]+')
+        ->name('mobile.publications.comments.store');
+    Route::delete('/mobile/publicacoes/comentarios/{comment}', [PublicationEngagementController::class, 'destroyOwnComment'])
+        ->middleware('throttle:30,1')
+        ->name('mobile.publications.comments.destroy');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -615,6 +633,12 @@ Route::middleware('auth')->group(function () {
     Route::put('/news/{news}', [NewsController::class, 'update'])->name('news.update')->middleware('permission:news.manage');
     Route::patch('/news/{news}/active', [NewsController::class, 'setActive'])->name('news.active')->middleware('permission:news.manage');
     Route::delete('/news/{news}', [NewsController::class, 'destroy'])->name('news.destroy')->middleware('permission:news.manage');
+    Route::get('/publicacoes/comentarios', [PublicationCommentAdminController::class, 'index'])
+        ->name('publication-comments.index')
+        ->middleware('permission:news.manage');
+    Route::delete('/publicacoes/comentarios/{publicationComment}', [PublicationCommentAdminController::class, 'destroy'])
+        ->name('publication-comments.destroy')
+        ->middleware('permission:news.manage');
     Route::get('/saude', [HealthController::class, 'index'])->name('health.index');
     Route::post('/saude', [HealthController::class, 'store'])->name('health.store')->middleware('permission:news.manage');
     Route::put('/saude/{health}', [HealthController::class, 'update'])->name('health.update')->middleware('permission:news.manage');

@@ -138,6 +138,12 @@ class PublicationFeed
 
         // Página 1: todos do mês atual (mín. 10). Demais páginas: +10.
         [$slice, $hasMore, $nextPage] = self::paginateForFeed($items, $page, $sort);
+        $guestKey = $request->session()->get('publication_like_guest_key');
+        $slice = PublicationEngagement::enrichItems(
+            $slice,
+            $request->user(),
+            is_string($guestKey) ? $guestKey : null,
+        );
 
         return [
             'items' => [

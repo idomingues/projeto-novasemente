@@ -38,6 +38,7 @@ use App\Support\ChurchAppFeatures;
 use App\Support\HomeCardKeys;
 use App\Support\HomeFeaturedWeek;
 use App\Support\NotificationFeed;
+use App\Support\PublicationEngagement;
 use App\Support\PublicationFeed;
 use App\Support\PublicationsFeedAccess;
 use App\Support\ScheduleBoardViewData;
@@ -1285,7 +1286,7 @@ class MobileController extends Controller
         return Inertia::render('Mobile/QuemSomos');
     }
 
-    public function fotos(DriveFolderCoverService $cover): Response
+    public function fotos(Request $request, DriveFolderCoverService $cover): Response
     {
         $churchId = $this->currentChurch()?->id;
 
@@ -1315,6 +1316,21 @@ class MobileController extends Controller
             ->values()
             ->all();
 
+        $guestKey = $request->session()->get('publication_like_guest_key');
+        $engagement = PublicationEngagement::enrichItems(
+            array_map(static fn (array $a): array => [
+                'id' => 'photos-'.$a['id'],
+                'type' => 'photos',
+            ], $albums),
+            $request->user(),
+            is_string($guestKey) ? $guestKey : null,
+        );
+
+        foreach ($albums as $i => $album) {
+            $albums[$i]['likes_count'] = (int) ($engagement[$i]['likes_count'] ?? 0);
+            $albums[$i]['liked_by_me'] = (bool) ($engagement[$i]['liked_by_me'] ?? false);
+        }
+
         return Inertia::render('Mobile/PhotoAlbums', [
             'albums' => $albums,
         ]);
@@ -1337,6 +1353,34 @@ class MobileController extends Controller
         $images = [];
         if ($album->drive_folder_id) {
             $images = $driveImages->listPublicFolderImages($album->drive_folder_id);
+        }
+
+        $coverUrl = PhotoAlbum::normalizeCoverUrl($album->cover_image_url);
+        if (is_string($coverUrl) && $coverUrl !== '') {
+            $coverAlreadyListed = collect($images)->contains(function (array $img) use ($coverUrl, $album): bool {
+                $fileId = PhotoAlbum::driveFileIdFromUrl((string) ($album->cover_image_url ?? ''));
+                if ($fileId !== null && ($img['id'] ?? null) === $fileId) {
+                    return true;
+                }
+
+                return in_array($coverUrl, [
+                    $img['thumb_url'] ?? null,
+                    $img['full_url'] ?? null,
+                    $img['view_image_url'] ?? null,
+                ], true);
+            });
+
+            if (! $coverAlreadyListed) {
+                array_unshift($images, [
+                    'id' => 'cover',
+                    'name' => $album->title,
+                    'thumb_url' => $coverUrl,
+                    'full_url' => $coverUrl,
+                    'view_image_url' => $coverUrl,
+                    'download_url' => $coverUrl,
+                    'view_url' => $folderUrl,
+                ]);
+            }
         }
 
         return Inertia::render('Mobile/Photos', [

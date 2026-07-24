@@ -42,8 +42,8 @@ class DriveFolderImagesService
     {
         $apiKey = (string) config('services.google.drive_api_key');
         $runId = 'pre-fix';
-        // v2: invalida caches antigos (incluindo listas vazias) após ajustes em produção.
-        $cacheKey = 'drive_folder_images:list:v2:'.$folderId.':'.$pageSize;
+        // v3: prioriza thumbnailLink (lh3) — evita <img> quebrado do drive.google.com/thumbnail.
+        $cacheKey = 'drive_folder_images:list:v3:'.$folderId.':'.$pageSize;
         $this->debugLog($runId, 'H1', 'listPublicFolderImages called', [
             'folderId' => $folderId,
             'pageSize' => $pageSize,
@@ -86,7 +86,7 @@ class DriveFolderImagesService
                         'q' => $q,
                         'pageSize' => $pageSize,
                         'orderBy' => 'createdTime asc',
-                        'fields' => 'nextPageToken,files(id,name,mimeType)',
+                        'fields' => 'nextPageToken,files(id,name,mimeType,thumbnailLink)',
                         'pageToken' => $pageToken,
                     ], fn ($v) => $v !== null && $v !== ''));
 
@@ -126,16 +126,28 @@ class DriveFolderImagesService
                         continue;
                     }
                     $name = isset($f['name']) && is_string($f['name']) ? $f['name'] : null;
+                    $apiThumb = isset($f['thumbnailLink']) && is_string($f['thumbnailLink'])
+                        ? trim($f['thumbnailLink'])
+                        : '';
+                    // thumbnailLink do Drive costuma ser lh3.googleusercontent.com (melhor no <img>).
+                    // Remove =s220 (tamanho pequeno) quando existir, para pedir preview maior.
+                    if ($apiThumb !== '') {
+                        $apiThumb = preg_replace('/=s\d+$/', '=s1000', $apiThumb) ?? $apiThumb;
+                    }
+
+                    $driveThumb = "https://drive.google.com/thumbnail?id={$id}&sz=w1000";
+                    $driveFull = "https://drive.google.com/thumbnail?id={$id}&sz=w2000";
+                    $viewImage = "https://drive.google.com/uc?export=view&id={$id}";
+                    $apiFull = $apiThumb !== ''
+                        ? (preg_replace('/=s\d+$/', '=s2000', $apiThumb) ?? $apiThumb)
+                        : '';
 
                     $out[] = [
                         'id' => $id,
                         'name' => $name,
-                        // thumbnails que geralmente funcionam para arquivos públicos sem token
-                        'thumb_url' => "https://drive.google.com/thumbnail?id={$id}&sz=w600",
-                        'full_url' => "https://drive.google.com/thumbnail?id={$id}&sz=w2000",
-                        // alternativa que em alguns ambientes carrega melhor no <img> (sem UI do Drive)
-                        'view_image_url' => "https://drive.google.com/uc?export=view&id={$id}",
-                        // download direto (pode abrir em nova aba e salvar)
+                        'thumb_url' => $apiThumb !== '' ? $apiThumb : $driveThumb,
+                        'full_url' => $apiFull !== '' ? $apiFull : $driveFull,
+                        'view_image_url' => $viewImage,
                         'download_url' => "https://drive.google.com/uc?export=download&id={$id}",
                         'view_url' => "https://drive.google.com/file/d/{$id}/view",
                     ];

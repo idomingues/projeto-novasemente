@@ -30,6 +30,45 @@ function formatAlbumDate(iso: string | null | undefined): string | null {
     return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+function GalleryThumb({
+    thumbUrl,
+    viewImageUrl,
+    fullUrl,
+    alt,
+}: {
+    thumbUrl: string;
+    viewImageUrl: string;
+    fullUrl: string;
+    alt: string;
+}) {
+    const sources = [thumbUrl, viewImageUrl, fullUrl].filter(
+        (url, index, all) => Boolean(url) && all.indexOf(url) === index,
+    );
+    const [srcIndex, setSrcIndex] = useState(0);
+    const src = sources[Math.min(srcIndex, Math.max(0, sources.length - 1))] ?? '';
+
+    if (!src) {
+        return <div className="h-full w-full bg-zinc-200 dark:bg-zinc-800" aria-hidden />;
+    }
+
+    return (
+        <img
+            src={src}
+            alt={alt}
+            className="h-full w-full object-cover"
+            loading="lazy"
+            decoding="async"
+            referrerPolicy="no-referrer"
+            onError={() => {
+                setSrcIndex((current) => {
+                    if (current + 1 >= sources.length) return current;
+                    return current + 1;
+                });
+            }}
+        />
+    );
+}
+
 export default function MobilePhotos({
     title = 'Fotos',
     publishedAt = null,
@@ -120,11 +159,11 @@ export default function MobilePhotos({
                                     className="relative aspect-[4/5] sm:aspect-[16/10] w-full overflow-hidden rounded-3xl bg-zinc-200 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 shadow-sm active:scale-[0.99] transition"
                                     aria-label={`Abrir foto ${i + 1} de ${images.length}`}
                                 >
-                                    <img
-                                        src={img.thumb_url}
+                                    <GalleryThumb
+                                        thumbUrl={img.thumb_url}
+                                        viewImageUrl={img.view_image_url}
+                                        fullUrl={img.full_url}
                                         alt=""
-                                        className="w-full h-full object-cover"
-                                        loading="lazy"
                                     />
                                 </button>
                             ))}

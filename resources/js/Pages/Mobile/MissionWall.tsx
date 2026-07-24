@@ -78,6 +78,7 @@ export default function MissionWall({ albums }: Props) {
                                 appUrl={appUrl}
                                 expanded={false}
                                 onToggle={() => undefined}
+                                showTypeTag={false}
                             />
                         ))}
                     </ul>

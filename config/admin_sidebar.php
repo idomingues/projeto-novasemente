@@ -28,6 +28,7 @@ return [
         ['name' => 'Oração', 'route' => 'prayer.index', 'icon' => 'praying-hands'],
         // Publicação
         ['name' => 'News', 'route' => 'news.index', 'icon' => 'newspaper'],
+        ['name' => 'Comentários', 'route' => 'publication-comments.index', 'icon' => 'chat-bubble'],
         ['name' => 'Saúde', 'route' => 'health.index', 'icon' => 'heart'],
         ['name' => 'Revista Adventista', 'route' => 'revista-adventista.index', 'icon' => 'newspaper'],
         ['name' => 'Acervo Revista Adventista', 'route' => 'revista-adventista-acervo.index', 'icon' => 'book-open'],
