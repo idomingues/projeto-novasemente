@@ -324,17 +324,15 @@ export function faceFitLabel(status: FaceFitStatus): string {
 export const FACE_MATCH_THRESHOLD = 0.55;
 
 /**
- * Limiar adaptativo:
+ * Limiar adaptativo (menor = menos falso positivo).
+ * Com mais rostos, a menor distância entre estranhos tende a cair (estatística de ordem),
+ * então o limiar precisa ser mais rigoroso — não mais folgado.
  * - 1 rosto: 0.55 (pega casos como dist 0.505)
- * - 2 rostos: 0.52 (mais rigoroso — parentesco em foto de dupla)
- * - 3+ rostos: 0.66 (grupo: ângulo/luz piores)
+ * - 2+ rostos: 0.50 (parentesco / grupo; 0.66 gerava falso positivo ~0.60–0.64)
  */
 export function matchThresholdForFaceCount(facesFound: number): number {
-    if (facesFound >= 3) {
-        return 0.66;
-    }
-    if (facesFound === 2) {
-        return 0.52;
+    if (facesFound >= 2) {
+        return 0.5;
     }
     return FACE_MATCH_THRESHOLD;
 }
@@ -444,12 +442,13 @@ async function detectOnInput(api: FaceApiNamespace, input: DetectInput): Promise
 
 /**
  * Coleta descriptors em várias rotações — ajuda quando a cabeça está inclinada.
+ * Usar no cadastro / selfie; em fotos de grupo preferir só o ângulo 0 (ver match).
  */
 async function collectFaceDescriptors(
     api: FaceApiNamespace,
     img: HTMLImageElement,
+    angles: number[] = [0, -18, 18, -32, 32],
 ): Promise<number[][]> {
-    const angles = [0, -18, 18, -32, 32];
     const descriptors: number[][] = [];
 
     for (const angle of angles) {
@@ -465,9 +464,31 @@ async function collectFaceDescriptors(
     return descriptors;
 }
 
+function descriptorsFromDetections(detections: FaceDetectionResult[]): number[][] {
+    const out: number[][] = [];
+    for (const detection of detections) {
+        if (detection.descriptor) {
+            out.push(Array.from(detection.descriptor));
+        }
+    }
+    return out;
+}
+
+function bestDistanceToReference(reference: number[], probes: number[][]): number {
+    let best = Number.POSITIVE_INFINITY;
+    for (const probe of probes) {
+        const distance = euclideanDistance(reference, probe);
+        if (distance < best) {
+            best = distance;
+        }
+    }
+    return best;
+}
+
 /**
- * Detecta rostos na foto (com rotações) e compara cada um com a matriz cadastrada.
- * Retorna a melhor (menor) distância.
+ * Detecta rostos e compara com a matriz cadastrada.
+ * Em grupo (2+): só ângulo 0 — rotações × N rostos inflavam falso positivo.
+ * Em selfie (0–1): tenta inclinações leves se o ângulo 0 não bater.
  */
 export async function matchReferenceInImageFile(
     file: File,
@@ -477,10 +498,25 @@ export async function matchReferenceInImageFile(
     await api.nets.ssdMobilenetv1.loadFromUri(FACE_API_MODELS);
 
     const img = await loadImageFromFile(file);
-    const probes = await collectFaceDescriptors(api, img);
-    // Contagem aproximada: no ângulo 0 (sem contar duplicatas de rotação)
     const upright = await detectOnInput(api, img);
-    const facesFound = Math.max(upright.length, probes.length > 0 ? 1 : 0);
+    const facesFound = upright.length;
+    let probes = descriptorsFromDetections(upright);
+
+    // Selfie / 1 rosto: se não achou ou distância alta, tenta inclinações.
+    const mayNeedTilt =
+        facesFound <= 1 &&
+        (probes.length === 0 ||
+            (referenceEmbedding.length > 0 &&
+                bestDistanceToReference(referenceEmbedding, probes) > FACE_MATCH_THRESHOLD));
+
+    if (mayNeedTilt) {
+        const tilted = await collectFaceDescriptors(api, img, [-18, 18, -32, 32]);
+        if (tilted.length > 0) {
+            probes = probes.length > 0 ? probes.concat(tilted) : tilted;
+        }
+    }
+
+    const shownFaces = Math.max(facesFound, probes.length > 0 ? 1 : 0);
 
     if (probes.length === 0) {
         return {
@@ -493,7 +529,7 @@ export async function matchReferenceInImageFile(
     }
 
     if (referenceEmbedding.length === 0) {
-        const n = facesFound || probes.length;
+        const n = shownFaces || probes.length;
         return {
             facesFound: n,
             bestDistance: null,
@@ -503,20 +539,12 @@ export async function matchReferenceInImageFile(
         };
     }
 
-    let bestDistance = Number.POSITIVE_INFINITY;
-    for (const probe of probes) {
-        const distance = euclideanDistance(referenceEmbedding, probe);
-        if (distance < bestDistance) {
-            bestDistance = distance;
-        }
-    }
-
-    const shownFaces = facesFound || 1;
-    const threshold = matchThresholdForFaceCount(shownFaces);
+    const bestDistance = bestDistanceToReference(referenceEmbedding, probes);
+    const threshold = matchThresholdForFaceCount(shownFaces || 1);
     const { matched, label } = describeMatch(bestDistance, threshold);
 
     return {
-        facesFound: shownFaces,
+        facesFound: shownFaces || 1,
         bestDistance,
         matched,
         label,

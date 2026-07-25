@@ -541,7 +541,7 @@ export default function FaceMatchTester({
                     </div>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400">
                         Busca todos os rostos e compara com o cadastrado. O limiar varia: 1 rosto
-                        0,55 · 2 rostos 0,52 · 3+ rostos 0,66. Em caso de erro, copie o código da
+                        0,55 · 2 ou mais rostos 0,50. Em caso de erro, copie o código da
                         foto e envie no suporte.
                     </p>
                 </div>
