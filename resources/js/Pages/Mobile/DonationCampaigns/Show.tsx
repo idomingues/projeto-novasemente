@@ -261,9 +261,9 @@ export default function MobileDonationCampaignShow({ campaign, recentDonations, 
                     </div>
                 )}
 
-                {campaign.cover_image_url && (
+                {campaign.cover_image_url && !campaign.show_caixa_fixo_story ? (
                     <img src={campaign.cover_image_url} alt="" className="h-96 w-full rounded-2xl object-cover" />
-                )}
+                ) : null}
 
                 <div>
                     <h1 className="text-2xl font-bold text-zinc-900 dark:text-white sm:text-3xl">{campaign.title}</h1>
