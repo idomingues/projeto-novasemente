@@ -86,6 +86,9 @@ class FaceAiController extends Controller
 
     /**
      * Proxy de download de um arquivo de imagem do Drive (evita CORS no browser).
+     *
+     * A API `alt=media` costuma ser bloqueada (403 HTML “automated queries”).
+     * Por isso tentamos também uc/thumbnail públicos — o mesmo padrão dos álbuns.
      */
     public function proxyDriveImage(Request $request, string $fileId): HttpResponse|JsonResponse
     {
@@ -98,30 +101,138 @@ class FaceAiController extends Controller
             return response()->json(['message' => 'API do Google Drive não configurada.'], 422);
         }
 
-        $response = Http::timeout(30)
-            ->withHeaders(['Accept' => 'image/*,*/*'])
-            ->get('https://www.googleapis.com/drive/v3/files/'.$fileId, [
-                'key' => $apiKey,
-                'alt' => 'media',
-            ]);
-
-        if (! $response->successful()) {
+        $downloaded = $this->downloadDriveImageBytes($fileId, $apiKey);
+        if ($downloaded === null) {
             return response()->json([
                 'message' => 'Não foi possível baixar a imagem do Drive.',
             ], 502);
         }
 
-        $contentType = $response->header('Content-Type') ?: 'image/jpeg';
-        if (! str_starts_with((string) $contentType, 'image/')) {
-            return response()->json([
-                'message' => 'O arquivo do Drive não é uma imagem.',
-            ], 422);
-        }
-
-        return response($response->body(), 200, [
-            'Content-Type' => $contentType,
+        return response($downloaded['body'], 200, [
+            'Content-Type' => $downloaded['content_type'],
             'Cache-Control' => 'private, max-age=300',
         ]);
+    }
+
+    /**
+     * @return array{body: string, content_type: string}|null
+     */
+    private function downloadDriveImageBytes(string $fileId, string $apiKey): ?array
+    {
+        $browserHeaders = [
+            'Accept' => 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+            'User-Agent' => 'Mozilla/5.0 (compatible; NovaSementeFaceAi/1.0)',
+        ];
+
+        $candidates = [
+            // Download público direto (alt=media da API costuma cair em 403 antibot)
+            [
+                'url' => 'https://drive.google.com/uc',
+                'query' => ['export' => 'download', 'id' => $fileId],
+                'headers' => $browserHeaders,
+            ],
+            // Thumbnail grande (bom o bastante para face-api)
+            [
+                'url' => 'https://drive.google.com/thumbnail',
+                'query' => ['id' => $fileId, 'sz' => 'w2000'],
+                'headers' => $browserHeaders,
+            ],
+            // API oficial por último
+            [
+                'url' => 'https://www.googleapis.com/drive/v3/files/'.$fileId,
+                'query' => ['key' => $apiKey, 'alt' => 'media'],
+                'headers' => ['Accept' => 'image/*,*/*'],
+            ],
+        ];
+
+        foreach ($candidates as $candidate) {
+            $parsed = $this->tryDownloadDriveCandidate($candidate);
+            if ($parsed !== null) {
+                return $parsed;
+            }
+        }
+
+        // Último recurso: thumbnailLink lh3 do metadata
+        try {
+            $meta = Http::timeout(8)->get('https://www.googleapis.com/drive/v3/files/'.$fileId, [
+                'key' => $apiKey,
+                'fields' => 'thumbnailLink',
+            ]);
+            $thumb = trim((string) $meta->json('thumbnailLink', ''));
+            if ($meta->successful() && $thumb !== '') {
+                $thumb = preg_replace('/=s\d+$/', '=s2000', $thumb) ?? $thumb;
+                $parsed = $this->tryDownloadDriveCandidate([
+                    'url' => $thumb,
+                    'query' => [],
+                    'headers' => $browserHeaders,
+                ]);
+                if ($parsed !== null) {
+                    return $parsed;
+                }
+            }
+        } catch (\Throwable) {
+            // ignore
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array{url: string, query: array<string, string>, headers: array<string, string>}  $candidate
+     * @return array{body: string, content_type: string}|null
+     */
+    private function tryDownloadDriveCandidate(array $candidate): ?array
+    {
+        try {
+            $response = Http::timeout(45)
+                ->withHeaders($candidate['headers'])
+                ->withOptions(['allow_redirects' => true])
+                ->get($candidate['url'], $candidate['query']);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        if (! $response->successful()) {
+            return null;
+        }
+
+        $body = $response->body();
+        if ($body === '' || strlen($body) < 100) {
+            return null;
+        }
+
+        $contentType = (string) ($response->header('Content-Type') ?: '');
+        $sniffed = $this->sniffImageContentType($body);
+        if ($sniffed !== null) {
+            return ['body' => $body, 'content_type' => $sniffed];
+        }
+
+        if (str_starts_with($contentType, 'image/')) {
+            return [
+                'body' => $body,
+                'content_type' => strtok($contentType, ';') ?: 'image/jpeg',
+            ];
+        }
+
+        return null;
+    }
+
+    private function sniffImageContentType(string $body): ?string
+    {
+        if (str_starts_with($body, "\xFF\xD8\xFF")) {
+            return 'image/jpeg';
+        }
+        if (str_starts_with($body, "\x89PNG\r\n\x1a\n")) {
+            return 'image/png';
+        }
+        if (str_starts_with($body, 'GIF87a') || str_starts_with($body, 'GIF89a')) {
+            return 'image/gif';
+        }
+        if (str_starts_with($body, 'RIFF') && str_contains(substr($body, 0, 16), 'WEBP')) {
+            return 'image/webp';
+        }
+
+        return null;
     }
 
     public function store(Request $request): RedirectResponse|JsonResponse

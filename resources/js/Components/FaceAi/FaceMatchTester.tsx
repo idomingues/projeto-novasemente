@@ -205,37 +205,73 @@ export default function FaceMatchTester({
 
             setDriveProgress({ current: 0, total: images.length });
             const files: File[] = [];
+            let failCount = 0;
+            let doneCount = 0;
+            const concurrency = 4;
 
-            for (let i = 0; i < images.length; i++) {
-                const img = images[i] as { id: string; name?: string };
-                setDriveProgress({ current: i + 1, total: images.length });
+            const downloadOne = async (img: { id: string; name?: string }) => {
                 const proxyUrl = route('face-ai.drive-proxy', { fileId: img.id });
                 const fileRes = await fetch(proxyUrl, {
                     headers: { Accept: 'image/*', 'X-Requested-With': 'XMLHttpRequest' },
                     credentials: 'same-origin',
                 });
                 if (!fileRes.ok) {
-                    continue;
+                    failCount += 1;
+                    return;
                 }
                 const blob = await fileRes.blob();
-                if (!blob.type.startsWith('image/')) {
-                    continue;
+                const headerType = (fileRes.headers.get('Content-Type') || '').split(';')[0].trim();
+                const type =
+                    blob.type.startsWith('image/')
+                        ? blob.type
+                        : headerType.startsWith('image/')
+                          ? headerType
+                          : '';
+                if (!type.startsWith('image/')) {
+                    failCount += 1;
+                    return;
                 }
-                const ext = blob.type.includes('png')
+                const ext = type.includes('png')
                     ? 'png'
-                    : blob.type.includes('webp')
+                    : type.includes('webp')
                       ? 'webp'
                       : 'jpg';
                 const baseName = (img.name || `drive-${img.id}`).replace(/\.[^.]+$/, '');
-                files.push(new File([blob], `${baseName}.${ext}`, { type: blob.type }));
+                files.push(new File([blob], `${baseName}.${ext}`, { type }));
+            };
+
+            for (let start = 0; start < images.length; start += concurrency) {
+                const batch = images.slice(start, start + concurrency) as Array<{
+                    id: string;
+                    name?: string;
+                }>;
+                await Promise.all(
+                    batch.map(async (img) => {
+                        try {
+                            await downloadOne(img);
+                        } catch {
+                            failCount += 1;
+                        } finally {
+                            doneCount += 1;
+                            setDriveProgress({ current: doneCount, total: images.length });
+                        }
+                    }),
+                );
             }
 
             if (files.length === 0) {
-                throw new Error('As imagens do Drive não puderam ser baixadas.');
+                throw new Error(
+                    'As imagens do Drive não puderam ser baixadas. Confira se a pasta é pública ou tente de novo em instantes.',
+                );
             }
 
             addFiles(files);
             setDriveUrl('');
+            if (failCount > 0) {
+                setError(
+                    `${files.length} foto(s) importada(s); ${failCount} falharam no download.`,
+                );
+            }
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Falha ao importar do Drive.');
         } finally {
