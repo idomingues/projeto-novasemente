@@ -46,32 +46,32 @@ const barToneClass: Record<CostBarTone, string> = {
 
 const annualToneClass: Record<
     AnnualLineTone,
-    { row: string; amount: string; bar: string }
+    { chip: string; amount: string; bar: string }
 > = {
     emerald: {
-        row: 'bg-emerald-50 dark:bg-emerald-950/50',
-        amount: 'text-emerald-900 dark:text-emerald-100',
+        chip: 'border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900',
+        amount: 'text-zinc-900 dark:text-zinc-50',
         bar: 'bg-emerald-500',
     },
     sky: {
-        row: 'bg-sky-50 dark:bg-sky-950/50',
-        amount: 'text-sky-900 dark:text-sky-100',
+        chip: 'border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900',
+        amount: 'text-zinc-900 dark:text-zinc-50',
         bar: 'bg-sky-500',
     },
     amber: {
-        row: 'bg-amber-50 dark:bg-amber-950/40',
-        amount: 'text-amber-950 dark:text-amber-100',
+        chip: 'border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900',
+        amount: 'text-zinc-900 dark:text-zinc-50',
         bar: 'bg-amber-500',
     },
     orange: {
-        row: 'bg-orange-50 dark:bg-orange-950/40',
-        amount: 'text-orange-950 dark:text-orange-100',
+        chip: 'border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900',
+        amount: 'text-zinc-900 dark:text-zinc-50',
         bar: 'bg-orange-500',
     },
     brand: {
-        row: 'bg-brand-600 dark:bg-brand-700',
-        amount: 'text-white',
-        bar: 'bg-white/80',
+        chip: 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-800 dark:bg-emerald-950/40',
+        amount: 'text-emerald-900 dark:text-emerald-100',
+        bar: 'bg-emerald-600 dark:bg-emerald-400',
     },
 };
 
@@ -193,32 +193,38 @@ export default function CaixaFixoIgrejaStory() {
                 </ul>
             </section>
 
-            <section className="overflow-hidden rounded-2xl border border-sky-200 shadow-sm dark:border-sky-900/50">
-                <div className="bg-gradient-to-br from-sky-700 to-sky-800 px-4 py-4 dark:from-sky-800 dark:to-sky-950 sm:px-5">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-sky-100">Transparência financeira</p>
-                    <h3 className="mt-0.5 text-lg font-bold text-white">Saldo anual {CAIXA_FIXO_ANNUAL_YEAR}</h3>
-                    <p className="mt-1 text-sm text-sky-100/90">
+            <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                <div className="border-b border-zinc-100 px-4 py-4 dark:border-zinc-800 sm:px-5">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-400">
+                        Transparência financeira
+                    </p>
+                    <h3 className="mt-1 text-lg font-semibold tracking-tight text-zinc-900 dark:text-white">
+                        Saldo anual {CAIXA_FIXO_ANNUAL_YEAR}
+                    </h3>
+                    <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                         Movimentação do caixa da Oferta Nova Semente ao longo de {CAIXA_FIXO_ANNUAL_YEAR}.
                     </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 border-b border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900 sm:grid-cols-4 sm:gap-3 sm:p-4">
+                <div className="grid grid-cols-2 gap-2 border-b border-zinc-100 p-3 dark:border-zinc-800 sm:grid-cols-4 sm:gap-3 sm:p-4">
                     {CAIXA_FIXO_ANNUAL_LINES.filter((line) => !line.emphasize).map((line) => (
                         <div
                             key={`chip-${line.label}`}
-                            className={`rounded-xl px-3 py-2.5 ${annualToneClass[line.tone].row}`}
+                            className={`rounded-xl border px-3 py-2.5 ${annualToneClass[line.tone].chip}`}
                         >
-                            <p className="text-[11px] font-medium leading-tight text-zinc-600 dark:text-zinc-300">
+                            <p className="text-[11px] font-medium leading-tight text-zinc-500 dark:text-zinc-400">
                                 {line.label}
                             </p>
-                            <p className={`mt-1 text-sm font-bold tabular-nums leading-tight ${annualToneClass[line.tone].amount}`}>
+                            <p
+                                className={`mt-1 text-sm font-semibold tabular-nums leading-tight ${annualToneClass[line.tone].amount}`}
+                            >
                                 {formatBrl(line.amount)}
                             </p>
                         </div>
                     ))}
                 </div>
 
-                <div className="divide-y divide-zinc-200/80 dark:divide-zinc-800">
+                <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
                     {CAIXA_FIXO_ANNUAL_LINES.map((line) => {
                         const tone = annualToneClass[line.tone];
                         const isEmphasized = Boolean(line.emphasize);
@@ -226,28 +232,30 @@ export default function CaixaFixoIgrejaStory() {
                         return (
                             <div
                                 key={line.label}
-                                className={`flex items-center justify-between gap-3 px-4 py-3.5 sm:px-5 ${tone.row} ${
-                                    isEmphasized ? 'py-4' : ''
+                                className={`flex items-center justify-between gap-3 px-4 py-3.5 sm:px-5 ${
+                                    isEmphasized
+                                        ? 'border-t border-emerald-100 bg-emerald-50/60 py-4 dark:border-emerald-900/50 dark:bg-emerald-950/30'
+                                        : 'bg-white dark:bg-zinc-900'
                                 }`}
                             >
                                 <div className="flex min-w-0 items-center gap-2.5">
-                                    {!isEmphasized && (
-                                        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${tone.bar}`} aria-hidden />
-                                    )}
+                                    <span className={`h-2 w-2 shrink-0 rounded-full ${tone.bar}`} aria-hidden />
                                     <div className="min-w-0">
                                         <span
                                             className={`text-sm font-medium ${
-                                                isEmphasized ? 'text-white' : 'text-zinc-800 dark:text-zinc-100'
+                                                isEmphasized
+                                                    ? 'text-emerald-950 dark:text-emerald-50'
+                                                    : 'text-zinc-800 dark:text-zinc-100'
                                             }`}
                                         >
                                             {line.label}
                                         </span>
                                         {line.flow && (
                                             <span
-                                                className={`ml-2 inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                                                className={`ml-2 inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
                                                     line.flow === 'out'
-                                                        ? 'bg-amber-200/80 text-amber-900 dark:bg-amber-900/60 dark:text-amber-100'
-                                                        : 'bg-emerald-200/80 text-emerald-900 dark:bg-emerald-900/60 dark:text-emerald-100'
+                                                        ? 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'
+                                                        : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'
                                                 }`}
                                             >
                                                 {line.flow === 'out' ? 'Saída' : 'Entrada'}
@@ -256,8 +264,10 @@ export default function CaixaFixoIgrejaStory() {
                                     </div>
                                 </div>
                                 <span
-                                    className={`shrink-0 text-sm font-bold tabular-nums sm:text-base ${tone.amount} ${
-                                        isEmphasized ? 'text-lg sm:text-xl' : ''
+                                    className={`shrink-0 tabular-nums ${
+                                        isEmphasized
+                                            ? 'text-base font-bold text-emerald-900 dark:text-emerald-100 sm:text-lg'
+                                            : 'text-sm font-semibold text-zinc-900 dark:text-zinc-50 sm:text-base'
                                     }`}
                                 >
                                     {formatBrl(line.amount)}
@@ -266,7 +276,7 @@ export default function CaixaFixoIgrejaStory() {
                         );
                     })}
                 </div>
-                <p className="bg-zinc-50 px-4 py-3 text-xs leading-relaxed text-zinc-600 dark:bg-zinc-950/60 dark:text-zinc-400 sm:px-5">
+                <p className="border-t border-zinc-100 px-4 py-3 text-xs leading-relaxed text-zinc-500 dark:border-zinc-800 dark:text-zinc-400 sm:px-5">
                     O saldo atual considera o saldo inicial, as ofertas recebidas em {CAIXA_FIXO_ANNUAL_YEAR}, as
                     despesas do período e o repasse à AP Construção.
                 </p>
