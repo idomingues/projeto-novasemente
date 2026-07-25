@@ -55,7 +55,9 @@ function NotificationActions({ n }: { n: NotificationEntry }) {
     return (
         <div className="flex shrink-0">
             {showMark ? <MarkInboxNotificationReadButton notificationId={inboxId} /> : null}
-            {target ? <DismissNotificationButton kind={target.kind} recordId={target.id} /> : null}
+            {target ? (
+                <DismissNotificationButton kind={target.kind} recordId={target.id} appearance="delete" />
+            ) : null}
         </div>
     );
 }

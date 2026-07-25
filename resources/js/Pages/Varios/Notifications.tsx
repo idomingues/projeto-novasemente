@@ -11,6 +11,7 @@ import InputError from '@/Components/InputError';
 import Modal from '@/Components/Modal';
 import SecondaryButton from '@/Components/SecondaryButton';
 import MarkInboxNotificationReadButton from '@/Components/MarkInboxNotificationReadButton';
+import DismissNotificationButton from '@/Components/DismissNotificationButton';
 import { confirmAction } from '@/utils/confirmDialog';
 import SearchableSelect, { type SearchableOption } from '@/Components/SearchableSelect';
 import { FormEventHandler, useMemo, useState } from 'react';
@@ -28,6 +29,8 @@ interface NotificationItem {
     kind?: string;
     inbox_notification_id?: number;
     inbox_unread?: boolean;
+    app_notification_id?: number;
+    can_remove?: boolean;
 }
 
 interface Props {
@@ -46,6 +49,24 @@ function formatTimeAgo(iso: string): string {
     if (sec < 86400) return `${Math.floor(sec / 3600)} h`;
     if (sec < 2592000) return `${Math.floor(sec / 86400)} dias`;
     return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function dismissTarget(n: NotificationItem): { kind: 'inbox' | 'app'; id: number } | null {
+    if (n.can_remove === false) return null;
+    if (n.kind === 'inbox' && typeof n.inbox_notification_id === 'number') {
+        return { kind: 'inbox', id: n.inbox_notification_id };
+    }
+    if (n.kind === 'app') {
+        const fromProp = n.app_notification_id;
+        if (typeof fromProp === 'number' && fromProp > 0) {
+            return { kind: 'app', id: fromProp };
+        }
+        const raw = (n.id || '').startsWith('app-') ? Number(n.id.slice(4)) : NaN;
+        if (Number.isFinite(raw) && raw > 0) {
+            return { kind: 'app', id: raw };
+        }
+    }
+    return null;
 }
 
 export default function VariosNotifications({
@@ -159,29 +180,21 @@ export default function VariosNotifications({
                     ) : (
                         <ul className="space-y-3">
                             {notifications.map((n) => {
-                                const canDelete = canCreate && n.kind === 'app' && appNotificationIds.has(n.id);
-                                const card = (
+                                const canAdminDelete = canCreate && n.kind === 'app' && appNotificationIds.has(n.id);
+                                const removeTarget = dismissTarget(n);
+                                const inboxId = n.inbox_notification_id;
+                                const showMark =
+                                    n.kind === 'inbox' && n.inbox_unread && typeof inboxId === 'number';
+                                const hasSideActions = Boolean(showMark || removeTarget || canAdminDelete);
+
+                                const body = (
                                     <div className="flex gap-3">
                                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-100 dark:bg-primary-900/30">
-                                            <BellAlertIcon className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                                            <BellAlertIcon className="h-5 w-5 text-primary-600 dark:text-primary-400" />
                                         </div>
                                         <div className="min-w-0 flex-1">
-                                            <div className="flex items-start justify-between gap-3">
-                                                <p className="font-semibold text-zinc-900 dark:text-white">
-                                                    {n.title}
-                                                </p>
-                                                {canDelete && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => void onDelete(n)}
-                                                        className="shrink-0 inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
-                                                    >
-                                                        <TrashIcon className="h-4 w-4" />
-                                                        Excluir
-                                                    </button>
-                                                )}
-                                            </div>
-                                            <p className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-400 line-clamp-2">
+                                            <p className="font-semibold text-zinc-900 dark:text-white">{n.title}</p>
+                                            <p className="mt-0.5 line-clamp-2 text-sm text-zinc-600 dark:text-zinc-400">
                                                 {n.body}
                                             </p>
                                             <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
@@ -192,30 +205,48 @@ export default function VariosNotifications({
                                         </div>
                                     </div>
                                 );
-                                const wrapClass =
-                                    'rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors block';
-                                if (n.href) {
-                                    const inboxId = n.inbox_notification_id;
-                                    const showMark = n.kind === 'inbox' && n.inbox_unread && typeof inboxId === 'number';
-                                    return (
-                                        <li key={n.id}>
-                                            <div className="flex overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm transition-colors hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700">
+
+                                const sideActions = hasSideActions ? (
+                                    <div className="flex shrink-0">
+                                        {showMark ? (
+                                            <MarkInboxNotificationReadButton notificationId={inboxId} />
+                                        ) : null}
+                                        {removeTarget ? (
+                                            <DismissNotificationButton
+                                                kind={removeTarget.kind}
+                                                recordId={removeTarget.id}
+                                                appearance="delete"
+                                            />
+                                        ) : null}
+                                        {canAdminDelete ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => void onDelete(n)}
+                                                title="Excluir para todos"
+                                                aria-label="Excluir notificação para todos"
+                                                className="flex shrink-0 cursor-pointer items-center justify-center self-stretch border-l border-zinc-100 px-2.5 text-zinc-400 transition hover:bg-red-50 hover:text-red-600 dark:border-zinc-800 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                                            >
+                                                <TrashIcon className="h-5 w-5" aria-hidden />
+                                            </button>
+                                        ) : null}
+                                    </div>
+                                ) : null;
+
+                                return (
+                                    <li key={n.id}>
+                                        <div className="flex overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm transition-colors hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700">
+                                            {n.href ? (
                                                 <Link
                                                     href={notificationLinkHref(n.href)}
-                                                    className="min-w-0 flex-1 p-4 text-left transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40"
+                                                    className="min-w-0 flex-1 cursor-pointer p-4 text-left transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40"
                                                 >
-                                                    {card}
+                                                    {body}
                                                 </Link>
-                                                {showMark ? (
-                                                    <MarkInboxNotificationReadButton notificationId={inboxId} />
-                                                ) : null}
-                                            </div>
-                                        </li>
-                                    );
-                                }
-                                return (
-                                    <li key={n.id} className={wrapClass}>
-                                        {card}
+                                            ) : (
+                                                <div className="min-w-0 flex-1 p-4">{body}</div>
+                                            )}
+                                            {sideActions}
+                                        </div>
                                     </li>
                                 );
                             })}
