@@ -1,4 +1,5 @@
 import AdminLayout from '@/Layouts/AdminLayout';
+import CaixaFixoIgrejaStory from '@/Components/Donations/CaixaFixoIgrejaStory';
 import DonationProgressBar from '@/Components/Donations/DonationProgressBar';
 import AddButton from '@/Components/AddButton';
 import PageHeader from '@/Components/PageHeader';
@@ -11,8 +12,18 @@ import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
-import { Head, router, useForm } from '@inertiajs/react';
-import { BanknotesIcon, EyeIcon, PencilIcon, PencilSquareIcon, PhotoIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { Head, Link, router, useForm } from '@inertiajs/react';
+import {
+    ArrowTopRightOnSquareIcon,
+    BanknotesIcon,
+    DocumentTextIcon,
+    EyeIcon,
+    PencilIcon,
+    PencilSquareIcon,
+    PhotoIcon,
+    PlusIcon,
+    TrashIcon,
+} from '@heroicons/react/24/outline';
 import { FormEventHandler, useEffect, useMemo, useRef, useState } from 'react';
 import { DONATION_CAMPAIGN_COVER_SPECS } from '@/constants/mediaCoverSpecs';
 import { parseMoneyInput } from '@/lib/pixPayload';
@@ -89,6 +100,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
+    const [previewCampaign, setPreviewCampaign] = useState<Campaign | null>(null);
     const [detailCampaign, setDetailCampaign] = useState<Campaign | null>(null);
     const [detailDonations, setDetailDonations] = useState<DonationRow[]>([]);
     const [loadingDonations, setLoadingDonations] = useState(false);
@@ -381,7 +393,11 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                             key={campaign.id}
                             className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900"
                         >
-                            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                            <button
+                                type="button"
+                                onClick={() => setPreviewCampaign(campaign)}
+                                className="flex w-full cursor-pointer flex-col gap-4 rounded-xl text-left transition hover:bg-zinc-50/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:hover:bg-zinc-800/40 sm:flex-row sm:items-start sm:justify-between"
+                            >
                                 <div className="min-w-0 flex-1 space-y-3">
                                     <div className="flex flex-wrap items-center gap-2">
                                         <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">{campaign.title}</h2>
@@ -417,8 +433,15 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                                         className="h-24 w-24 shrink-0 rounded-xl object-cover"
                                     />
                                 )}
-                            </div>
+                            </button>
                             <ListCardActionRow className="mt-4">
+                                <ListCardTextActionButton
+                                    type="button"
+                                    icon={<DocumentTextIcon className="h-4 w-4" />}
+                                    onClick={() => setPreviewCampaign(campaign)}
+                                >
+                                    Ver conteúdo
+                                </ListCardTextActionButton>
                                 <ListCardTextActionButton
                                     type="button"
                                     icon={<EyeIcon className="h-4 w-4" />}
@@ -455,6 +478,65 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                     ))
                 )}
             </div>
+
+            <Modal show={previewCampaign !== null} onClose={() => setPreviewCampaign(null)} maxWidth="3xl">
+                <div className="flex max-h-[min(90dvh,calc(100dvh-2rem))] flex-col">
+                    <div className="flex shrink-0 flex-col gap-3 border-b border-zinc-200 px-5 py-4 dark:border-zinc-800 sm:flex-row sm:items-start sm:justify-between sm:px-6">
+                        <div className="min-w-0">
+                            <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
+                                {previewCampaign?.title}
+                            </h3>
+                            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                                Prévia do conteúdo exibido no app
+                            </p>
+                        </div>
+                        <div className="flex shrink-0 flex-wrap gap-2">
+                            {previewCampaign ? (
+                                <Link
+                                    href={route('mobile.campaigns.show', previewCampaign.id)}
+                                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
+                                >
+                                    <ArrowTopRightOnSquareIcon className="h-4 w-4" aria-hidden />
+                                    Abrir no app
+                                </Link>
+                            ) : null}
+                            <SecondaryButton type="button" onClick={() => setPreviewCampaign(null)}>
+                                Fechar
+                            </SecondaryButton>
+                        </div>
+                    </div>
+                    <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5 sm:px-6">
+                        {previewCampaign?.cover_image_url && !previewCampaign.show_caixa_fixo_story ? (
+                            <img
+                                src={previewCampaign.cover_image_url}
+                                alt=""
+                                className="h-56 w-full rounded-2xl object-cover sm:h-72"
+                            />
+                        ) : null}
+                        {previewCampaign?.show_caixa_fixo_story ? (
+                            <CaixaFixoIgrejaStory />
+                        ) : previewCampaign?.description ? (
+                            <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+                                {previewCampaign.description}
+                            </p>
+                        ) : (
+                            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                                Esta campanha ainda não tem descrição ou história publicada.
+                            </p>
+                        )}
+                        {previewCampaign ? (
+                            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/50">
+                                <DonationProgressBar
+                                    raisedAmount={previewCampaign.raised_amount}
+                                    goalAmount={previewCampaign.goal_amount}
+                                    remainingAmount={previewCampaign.remaining_amount}
+                                    progressPercent={previewCampaign.progress_percent}
+                                />
+                            </div>
+                        ) : null}
+                    </div>
+                </div>
+            </Modal>
 
             <Modal show={isModalOpen} onClose={closeModal} maxWidth="lg">
                 <form onSubmit={submit} className="p-6 space-y-4">

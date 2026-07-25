@@ -4,6 +4,7 @@ import {
     CAIXA_FIXO_CLOSING,
     CAIXA_FIXO_COST_ITEMS,
     CAIXA_FIXO_EXECUTIVE_SUMMARY,
+    CAIXA_FIXO_HERO_IMAGE,
     CAIXA_FIXO_INTRO,
     CAIXA_FIXO_MONTHLY_TOTAL,
     type AnnualLineTone,
@@ -11,7 +12,6 @@ import {
 } from '@/data/caixaFixoIgrejaStory';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import {
-    BuildingLibraryIcon,
     ChartBarIcon,
     HeartIcon,
 } from '@heroicons/react/24/outline';
@@ -81,21 +81,30 @@ export default function CaixaFixoIgrejaStory() {
 
     return (
         <div className="space-y-5">
-            <section className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:p-5">
-                <div className="flex items-start gap-3">
-                    <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700 dark:bg-brand-950/60 dark:text-brand-200">
-                        <BuildingLibraryIcon className="h-5 w-5" aria-hidden />
-                    </span>
-                    <div className="min-w-0">
-                        <h2 className="text-lg font-semibold leading-snug text-zinc-900 dark:text-white">
+            <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                <div className="relative aspect-[16/10] w-full sm:aspect-[21/9]">
+                    <img
+                        src={CAIXA_FIXO_HERO_IMAGE}
+                        alt="Igreja Nova Semente — casa de culto e missão"
+                        className="absolute inset-0 h-full w-full object-cover object-center"
+                    />
+                    <div
+                        className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/55 to-zinc-950/10"
+                        aria-hidden
+                    />
+                    <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-100/90">
+                            {CAIXA_FIXO_INTRO.eyebrow}
+                        </p>
+                        <h2 className="mt-1.5 max-w-xl text-xl font-semibold leading-snug text-white sm:text-2xl">
                             {CAIXA_FIXO_INTRO.title}
                         </h2>
-                        <div className="mt-3 space-y-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
-                            {CAIXA_FIXO_INTRO.paragraphs.map((paragraph) => (
-                                <p key={paragraph.slice(0, 40)}>{paragraph}</p>
-                            ))}
-                        </div>
                     </div>
+                </div>
+                <div className="space-y-3 p-4 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300 sm:p-5">
+                    {CAIXA_FIXO_INTRO.paragraphs.map((paragraph) => (
+                        <p key={paragraph.slice(0, 40)}>{paragraph}</p>
+                    ))}
                 </div>
             </section>
 

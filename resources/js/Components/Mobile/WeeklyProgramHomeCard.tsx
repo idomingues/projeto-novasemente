@@ -92,8 +92,8 @@ export default function WeeklyProgramHomeCard({
                 </>
             )}
 
-            <div className={`relative z-10 flex min-h-0 flex-1 flex-col ${bgImage ? 'pr-[28%] sm:pr-[32%]' : ''}`}>
-                <div className="flex min-h-0 flex-1 flex-col gap-3.5 px-4 py-4 sm:gap-4 sm:px-5 sm:py-5">
+            <div className={`relative z-10 flex min-h-0 flex-1 flex-col ${bgImage ? 'pr-[28%] sm:pr-[32%] lg:pr-[36%]' : ''}`}>
+                <div className="flex min-h-0 flex-1 flex-col gap-3.5 px-4 py-4 sm:gap-4 sm:px-5 sm:py-5 lg:px-6 lg:py-5">
                     <div className="flex shrink-0 items-center justify-between gap-3">
                         {showOngoingBadge ? (
                             <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-700/95 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-50 dark:bg-amber-600">
@@ -110,7 +110,11 @@ export default function WeeklyProgramHomeCard({
                                 Na sequência
                             </span>
                         )}
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-800/70 dark:text-emerald-200/80">
+                        <span
+                            className={`inline-flex items-center gap-1 text-[11px] font-medium text-emerald-800/70 dark:text-emerald-200/80 ${
+                                bgImage ? '' : 'lg:hidden'
+                            }`}
+                        >
                             <CalendarDaysIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
                             {card.day_label}
                         </span>
@@ -120,16 +124,16 @@ export default function WeeklyProgramHomeCard({
                         className={`grid min-h-0 flex-1 gap-4 ${
                             bgImage
                                 ? 'grid-cols-1 content-start'
-                                : 'grid-cols-1 content-start sm:grid-cols-[minmax(0,1.15fr)_minmax(7.5rem,0.85fr)] sm:items-start sm:gap-5'
+                                : 'grid-cols-1 content-start sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-5 lg:grid-cols-[minmax(0,36rem)_auto] lg:justify-start lg:gap-8'
                         }`}
                     >
                         <div className="min-w-0">
-                            <h2 className="text-lg font-bold uppercase leading-tight tracking-tight text-emerald-950 dark:text-emerald-50 sm:text-xl">
+                            <h2 className="text-lg font-bold uppercase leading-tight tracking-tight text-emerald-950 dark:text-emerald-50 sm:text-xl lg:text-[1.35rem]">
                                 {card.title}
                             </h2>
 
                             {body ? (
-                                <p className="mt-3 line-clamp-4 text-[13px] leading-relaxed text-emerald-900/75 dark:text-emerald-100/80 sm:text-sm sm:leading-relaxed">
+                                <p className="mt-3 line-clamp-4 text-[13px] leading-relaxed text-emerald-900/75 dark:text-emerald-100/80 sm:text-sm sm:leading-relaxed lg:mt-2.5 lg:line-clamp-3">
                                     {body}
                                 </p>
                             ) : null}
@@ -153,7 +157,11 @@ export default function WeeklyProgramHomeCard({
                         </div>
 
                         {!bgImage ? (
-                            <div className="flex shrink-0 flex-col items-start justify-center self-start rounded-2xl bg-emerald-900/[0.04] px-4 py-3.5 ring-1 ring-inset ring-emerald-900/5 dark:bg-emerald-900/45 dark:ring-emerald-100/10 sm:items-end sm:px-4 sm:py-4">
+                            <div className="flex w-fit shrink-0 flex-col items-start justify-center self-start rounded-2xl bg-emerald-900/[0.04] px-4 py-3.5 ring-1 ring-inset ring-emerald-900/5 dark:bg-emerald-900/45 dark:ring-emerald-100/10 sm:items-end sm:self-center sm:px-5 sm:py-4 lg:min-w-[9.5rem]">
+                                <span className="mb-2 hidden items-center gap-1 text-[11px] font-medium text-emerald-800/70 dark:text-emerald-200/80 lg:inline-flex">
+                                    <CalendarDaysIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                                    {card.day_label}
+                                </span>
                                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700/65 dark:text-emerald-200/75">
                                     Horário
                                 </p>

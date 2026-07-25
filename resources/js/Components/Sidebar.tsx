@@ -99,6 +99,7 @@ const ICON_MAP: Record<string, MenuIcon> = {
 const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'Dashboard', route: 'dashboard', icon: HomeIcon },
     { name: 'Comunicação', route: 'communication-requests.index', icon: ChatBubbleLeftRightIcon },
+    { name: 'IA Foto', route: 'face-ai.index', icon: SparklesIcon },
     { name: 'Atendimento', route: 'solicitations.index', icon: InboxIcon },
     { name: 'Batismo', route: 'baptism-requests.index', icon: SparklesIcon },
     { name: 'Agenda', route: 'pastoral-agenda.index', icon: ClockIcon },
@@ -116,7 +117,6 @@ const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'Séries', route: 'acervo.index', icon: PlayCircleIcon },
     { name: 'Música', route: 'musica.index', icon: MusicalNoteIcon },
     { name: 'Fotos', route: 'photo-albums.index', icon: CameraIcon },
-    { name: 'IA Foto', route: 'face-ai.index', icon: SparklesIcon },
     { name: 'Biblioteca', route: 'library-books.index', icon: BookOpenIcon },
     { name: 'Comunidades', route: 'communities.index', icon: UserGroupIcon },
     { name: 'Culto', route: 'culto.index', icon: FilmIcon },
@@ -217,7 +217,6 @@ export default function Sidebar({
         'acervo.index',
         'musica.index',
         'photo-albums.index',
-        'face-ai.index',
         'library-books.index',
         'communities.index',
         'promise-box-verses.index',

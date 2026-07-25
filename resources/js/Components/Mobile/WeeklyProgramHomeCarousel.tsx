@@ -59,7 +59,7 @@ export default function WeeklyProgramHomeCarousel({ cards, appUrl = '' }: Props)
     const showCarouselChrome = cards.length > 1;
 
     return (
-        <section aria-label="Programação semanal" className="min-w-0 space-y-2.5 isolation-isolate">
+        <section aria-label="Programação semanal" className="min-w-0 space-y-2.5 isolation-isolate lg:max-w-4xl">
             {showCarouselChrome ? (
                 <div className="px-0.5">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-400">

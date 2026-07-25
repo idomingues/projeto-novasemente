@@ -15,6 +15,8 @@ return [
         // OPERAÇÃO
         ['name' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'home'],
         ['name' => 'Comunicação', 'route' => 'communication-requests.index', 'icon' => 'chat-bubble'],
+        // Teste admin (fase 1) — fora de Publicação para ficar visível com OPERAÇÃO aberta
+        ['name' => 'IA Foto', 'route' => 'face-ai.index', 'icon' => 'sparkles'],
         // PASTOR (ordem fixa em Sidebar.tsx — pastorRouteOrder)
         ['name' => 'Atendimento', 'route' => 'solicitations.index', 'icon' => 'inbox'],
         ['name' => 'Batismo', 'route' => 'baptism-requests.index', 'icon' => 'sparkles'],
@@ -36,7 +38,6 @@ return [
         ['name' => 'Séries', 'route' => 'acervo.index', 'icon' => 'play-circle'],
         ['name' => 'Música', 'route' => 'musica.index', 'icon' => 'musical-note'],
         ['name' => 'Fotos', 'route' => 'photo-albums.index', 'icon' => 'camera'],
-        ['name' => 'IA Foto', 'route' => 'face-ai.index', 'icon' => 'sparkles'],
         ['name' => 'Biblioteca', 'route' => 'library-books.index', 'icon' => 'book-open'],
         ['name' => 'Comunidades', 'route' => 'communities.index', 'icon' => 'user-group'],
         ['name' => 'Caixa de Promessas', 'route' => 'promise-box-verses.index', 'icon' => 'sparkles'],

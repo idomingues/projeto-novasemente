@@ -35,8 +35,11 @@ export type AnnualLine = {
 
 export const CAIXA_FIXO_MONTHLY_TOTAL = 177_948.95;
 
+export const CAIXA_FIXO_HERO_IMAGE = '/images/caixa-fixo-igreja-hero.jpg';
+
 export const CAIXA_FIXO_INTRO = {
     title: 'Nova Semente: Uma Igreja Viva, Uma Missão Permanente',
+    eyebrow: 'Oferta Nova Semente',
     paragraphs: [
         'A Igreja Adventista da Nova Semente é muito mais do que um templo. São mais de 2.800 m² de área construída, preparados para receber milhares de pessoas semanalmente, produzir conteúdo evangelístico de excelência e proporcionar uma experiência real e transformadora com Deus.',
         'Por trás de cada culto, transmissão, atendimento e ação missionária existe uma estrutura que funciona todos os dias, mantendo um ambiente acolhedor, seguro e preparado para cumprir a missão.',
