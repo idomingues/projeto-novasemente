@@ -1,7 +1,6 @@
 import { router } from '@inertiajs/react';
 import { CheckCircleIcon } from '@heroicons/react/24/outline';
 import type { MouseEvent } from 'react';
-import { confirmAction } from '@/utils/confirmDialog';
 
 type Props = {
     kind: 'inbox' | 'app';
@@ -12,20 +11,9 @@ type Props = {
 
 /** Remove da lista do usuário: inbox apaga o registro; aviso da igreja só oculta para esta conta. */
 export default function DismissNotificationButton({ kind, recordId, compact = true }: Props) {
-    const handleClick = async (e: MouseEvent) => {
+    const handleClick = (e: MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-
-        const ok = await confirmAction({
-            title: 'Marcar como vista?',
-            text:
-                kind === 'inbox'
-                    ? 'Esta notificação sai da sua lista.'
-                    : 'O aviso deixa de aparecer para você. Outras pessoas continuam vendo.',
-            confirmButtonText: 'Já vi',
-            cancelButtonText: 'Cancelar',
-        });
-        if (!ok) return;
 
         router.post(
             route('notifications.remove'),

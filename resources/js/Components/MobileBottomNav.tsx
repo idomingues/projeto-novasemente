@@ -150,7 +150,7 @@ export default function MobileBottomNav() {
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
             aria-label="Menu principal"
         >
-            <div className="mx-auto flex h-14 max-w-lg items-center justify-around pt-1 md:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
+            <div className="mx-auto flex h-16 max-w-lg items-center justify-around pt-1 md:h-14 md:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
                 {visibleItems.map((item) => {
                     const { name, route: routeName, activeRoutes, icon: Icon, iconActive: IconActive, imageSrc } = item;
                     const href = route(routeName);
@@ -161,26 +161,31 @@ export default function MobileBottomNav() {
                             key={routeName}
                             href={href}
                             aria-label={name}
-                            className={`relative flex flex-col items-center justify-center flex-1 min-w-0 py-2 gap-0.5 transition-colors rounded-xl mx-0.5 ${
+                            className={`relative flex flex-1 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl mx-0.5 py-2 transition-colors ${
                                 isActive
                                     ? 'text-brand-600 dark:text-brand-400'
                                     : 'text-zinc-900 dark:text-zinc-100 active:bg-zinc-100/80 dark:active:bg-zinc-800/50'
                             }`}
                         >
                             {imageSrc ? (
-                                <span className="relative inline-flex items-center justify-center">
-                                    {/* Linha piscando ao redor do ícone de Publicações */}
+                                <span className="relative -mt-5 inline-flex h-14 w-14 items-center justify-center md:-mt-1 md:h-11 md:w-11">
+                                    {/* Halo externo — pulso expandindo */}
                                     <span
                                         aria-hidden
-                                        className={`pointer-events-none absolute rounded-full border-2 border-brand-500 animate-pulse motion-reduce:animate-none dark:border-brand-400 ${
-                                            isActive ? '-inset-1' : '-inset-0.5'
+                                        className="ns-publications-nav-ping pointer-events-none absolute inset-0 rounded-full bg-brand-400/35 dark:bg-brand-400/25"
+                                    />
+                                    {/* Anel sólido piscando */}
+                                    <span
+                                        aria-hidden
+                                        className={`ns-publications-nav-ring pointer-events-none absolute rounded-full border-[3px] border-brand-500 dark:border-brand-400 ${
+                                            isActive ? 'inset-0' : 'inset-0.5'
                                         }`}
                                     />
                                     <img
                                         src={imageSrc}
                                         alt=""
-                                        className={`relative z-[1] rounded-full object-cover transition-all ${
-                                            isActive ? 'h-9 w-9' : 'h-8 w-8'
+                                        className={`relative z-[1] rounded-full object-cover shadow-md ring-2 ring-white dark:ring-zinc-900 ${
+                                            isActive ? 'h-12 w-12 md:h-9 md:w-9' : 'h-11 w-11 md:h-8 md:w-8'
                                         }`}
                                         aria-hidden
                                     />
@@ -199,7 +204,7 @@ export default function MobileBottomNav() {
                                         />
                                     ) : null}
                                     <span
-                                        className={`text-[10px] truncate max-w-full px-0.5 ${
+                                        className={`max-w-full truncate px-0.5 text-[10px] ${
                                             isActive
                                                 ? 'font-semibold text-brand-600 dark:text-brand-400'
                                                 : 'font-medium text-zinc-900 dark:text-zinc-100'

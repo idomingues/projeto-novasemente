@@ -4,6 +4,8 @@ import {
     BookOpenIcon,
     CalendarDaysIcon,
     ChatBubbleOvalLeftIcon,
+    ChevronDownIcon,
+    ChevronUpIcon,
     FilmIcon,
     HeartIcon as HeartOutlineIcon,
     MusicalNoteIcon,
@@ -59,7 +61,52 @@ const TYPE_ICONS: Record<string, MenuIcon> = {
     donation_campaign: BanknotesIcon,
 };
 
+const TYPE_TAG_STYLES: Record<string, string> = {
+    news: 'bg-teal-50 text-teal-800 ring-teal-200/80 dark:bg-teal-950/50 dark:text-teal-200 dark:ring-teal-800/60',
+    culto: 'bg-violet-50 text-violet-800 ring-violet-200/80 dark:bg-violet-950/50 dark:text-violet-200 dark:ring-violet-800/60',
+    health: 'bg-rose-50 text-rose-800 ring-rose-200/80 dark:bg-rose-950/50 dark:text-rose-200 dark:ring-rose-800/60',
+    charity_donation:
+        'bg-amber-50 text-amber-900 ring-amber-200/80 dark:bg-amber-950/50 dark:text-amber-200 dark:ring-amber-800/60',
+    library:
+        'bg-emerald-50 text-emerald-800 ring-emerald-200/80 dark:bg-emerald-950/50 dark:text-emerald-200 dark:ring-emerald-800/60',
+    photos:
+        'bg-fuchsia-50 text-fuchsia-800 ring-fuchsia-200/80 dark:bg-fuchsia-950/50 dark:text-fuchsia-200 dark:ring-fuchsia-800/60',
+    events:
+        'bg-orange-50 text-orange-800 ring-orange-200/80 dark:bg-orange-950/50 dark:text-orange-200 dark:ring-orange-800/60',
+    revista: 'bg-blue-50 text-blue-800 ring-blue-200/80 dark:bg-blue-950/50 dark:text-blue-200 dark:ring-blue-800/60',
+    acervo:
+        'bg-indigo-50 text-indigo-800 ring-indigo-200/80 dark:bg-indigo-950/50 dark:text-indigo-200 dark:ring-indigo-800/60',
+    musica:
+        'bg-purple-50 text-purple-800 ring-purple-200/80 dark:bg-purple-950/50 dark:text-purple-200 dark:ring-purple-800/60',
+    donation_campaign:
+        'bg-lime-50 text-lime-900 ring-lime-200/80 dark:bg-lime-950/50 dark:text-lime-200 dark:ring-lime-800/60',
+};
+
+const DEFAULT_TAG_STYLE =
+    'bg-zinc-100 text-zinc-700 ring-zinc-200/80 dark:bg-zinc-800 dark:text-zinc-300 dark:ring-zinc-700/60';
 const DEFAULT_ICON = SparklesIcon;
+
+function PublicationFeedTypeTag({ type, label }: { type: string; label: string }) {
+    const Icon = TYPE_ICONS[type] ?? DEFAULT_ICON;
+    const tone = TYPE_TAG_STYLES[type] ?? DEFAULT_TAG_STYLE;
+
+    return (
+        <span
+            className={`inline-flex max-w-full items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none ring-1 ring-inset ${tone}`}
+            aria-label={`Tipo: ${label}`}
+        >
+            <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden strokeWidth={2} />
+            <span className="truncate">{label}</span>
+        </span>
+    );
+}
+
+function formatCount(n: number): string {
+    if (n < 1000) return String(n);
+    if (n < 10_000) return `${(n / 1000).toFixed(1).replace('.0', '')} mil`;
+    if (n < 1_000_000) return `${Math.round(n / 1000)} mil`;
+    return `${(n / 1_000_000).toFixed(1).replace('.0', '')} mi`;
+}
 
 function imageSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
@@ -103,6 +150,12 @@ function stripHtml(text: string): string {
     return text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+/** Tipos com leitura inline no feed; os demais só navegam (sem ícone de expandir). */
+const EXPANDABLE_TYPES = new Set(['news', 'health', 'revista']);
+
+/** Acima disso (~1 parágrafo), mostra o botão de expandir com efeito de folha. */
+const SHORT_BODY_LIMIT = 220;
+
 type Props = {
     item: PublicationFeedItem;
     appUrl: string;
@@ -120,7 +173,13 @@ type PageProps = {
     csrf_token?: string;
 };
 
-export default function PublicationFeedCard({ item, appUrl, onEngagementChange }: Props) {
+export default function PublicationFeedCard({
+    item,
+    appUrl,
+    expanded = false,
+    onToggle,
+    onEngagementChange,
+}: Props) {
     const page = usePage().props as PageProps;
     const user = page.auth?.user ?? null;
     const csrf = page.csrf_token ?? '';
@@ -132,7 +191,7 @@ export default function PublicationFeedCard({ item, appUrl, onEngagementChange }
     const [commentsCount, setCommentsCount] = useState(item.comments_count ?? 0);
     const [likeBusy, setLikeBusy] = useState(false);
     const [commentsOpen, setCommentsOpen] = useState(false);
-    const [captionExpanded, setCaptionExpanded] = useState(false);
+    const [localExpanded, setLocalExpanded] = useState(false);
 
     useEffect(() => {
         setLiked(Boolean(item.liked_by_me));
@@ -143,8 +202,27 @@ export default function PublicationFeedCard({ item, appUrl, onEngagementChange }
     const showCover = Boolean(src) && !coverBroken;
     const isNews = item.type === 'news' || item.type === 'health';
     const isPhotos = item.type === 'photos';
-    const previewPlain = stripHtml((item.excerpt || item.body || '').trim());
+    const fullText = (item.body ?? item.excerpt ?? '').trim();
+    const previewText = (item.excerpt || fullText).trim();
+    const fullPlain = stripHtml(fullText);
+    const previewPlain = stripHtml(previewText);
     const instagramUrl = item.instagram_url?.trim() || '';
+    const showInstagram = Boolean(instagramUrl);
+    const showOpenCta = Boolean(item.requires_open && item.href) && !showInstagram;
+    const actionLabel = item.action_label || 'Abrir';
+    const isLongBody =
+        fullPlain.length > SHORT_BODY_LIMIT || fullPlain.length > previewPlain.length + 40;
+    const canExpand =
+        EXPANDABLE_TYPES.has(item.type) && (showOpenCta || isLongBody);
+    const isControlled = typeof onToggle === 'function';
+    const isExpanded = canExpand && (isControlled ? expanded : localExpanded);
+    const handleToggleExpand = () => {
+        if (isControlled) {
+            onToggle?.();
+            return;
+        }
+        setLocalExpanded((current) => !current);
+    };
     const openInstagramOnPlay = Boolean(item.cover_play_overlay) && Boolean(instagramUrl);
     const whenLabel = formatRelative(item.published_at);
     const photographerLabel = item.photographer_name?.trim() || '';
@@ -253,53 +331,68 @@ export default function PublicationFeedCard({ item, appUrl, onEngagementChange }
     );
 
     return (
-        <li className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 sm:rounded-2xl sm:border sm:shadow-sm">
+        <li className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_rgba(15,23,42,0.04)] dark:border-zinc-800 dark:bg-zinc-900">
             <article>
-                <header className="flex items-center gap-3 px-3 py-2.5">
-                    <div
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-emerald-700 text-white shadow-sm"
-                        aria-hidden
-                    >
-                        <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-zinc-900 dark:text-white">{item.type_label}</p>
-                        {!isPhotos && photographerLabel ? (
-                            <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{photographerLabel}</p>
+                <div className="w-full">{media}</div>
+
+                <div className="space-y-2 p-4">
+                    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                        <PublicationFeedTypeTag type={item.type} label={item.type_label} />
+                        {!isPhotos && whenLabel ? (
+                            <span className="shrink-0 text-[11px] text-zinc-400 dark:text-zinc-500">
+                                · {whenLabel}
+                            </span>
                         ) : null}
                     </div>
-                </header>
 
-                {media}
-
-                <div className="space-y-2 px-3 pb-4 pt-2">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center">
                         <button
                             type="button"
                             onClick={() => void toggleLike()}
                             disabled={likeBusy}
-                            className="inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full pr-1.5 text-zinc-900 transition hover:bg-zinc-100 disabled:cursor-not-allowed dark:text-white dark:hover:bg-zinc-800"
+                            className="group inline-flex h-9 cursor-pointer items-center text-zinc-900 transition hover:bg-zinc-100/80 disabled:cursor-not-allowed dark:text-white dark:hover:bg-zinc-800/80"
                             aria-label={liked ? 'Remover curtida' : 'Curtir'}
                             aria-pressed={liked}
                         >
-                            <span className="inline-flex h-10 w-10 items-center justify-center">
+                            <span className="inline-flex h-9 w-9 items-center justify-center">
                                 {liked ? (
-                                    <HeartSolidIcon className="h-7 w-7 text-rose-500" aria-hidden />
+                                    <HeartSolidIcon className="h-6 w-6 text-rose-500 drop-shadow-sm" aria-hidden />
                                 ) : (
-                                    <HeartOutlineIcon className="h-7 w-7" aria-hidden strokeWidth={1.8} />
+                                    <HeartOutlineIcon
+                                        className="h-6 w-6 transition group-hover:scale-105"
+                                        aria-hidden
+                                        strokeWidth={1.7}
+                                    />
                                 )}
                             </span>
                             {likesCount > 0 ? (
-                                <span className="pr-1 text-sm font-semibold tabular-nums">{likesCount}</span>
+                                <span className="-ml-1 pr-1.5 text-[11px] font-semibold leading-none tabular-nums tracking-tight text-zinc-600 dark:text-zinc-300">
+                                    {likesCount}
+                                </span>
                             ) : null}
                         </button>
                         <button
                             type="button"
                             onClick={() => setCommentsOpen(true)}
-                            className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-zinc-900 transition hover:bg-zinc-100 dark:text-white dark:hover:bg-zinc-800"
-                            aria-label="Comentários"
+                            className="group inline-flex h-9 cursor-pointer items-center text-zinc-900 transition hover:bg-zinc-100/80 dark:text-white dark:hover:bg-zinc-800/80"
+                            aria-label={
+                                commentsCount > 0
+                                    ? `Comentários, ${commentsCount}`
+                                    : 'Comentários'
+                            }
                         >
-                            <ChatBubbleOvalLeftIcon className="h-7 w-7" aria-hidden strokeWidth={1.8} />
+                            <span className="inline-flex h-9 w-9 items-center justify-center">
+                                <ChatBubbleOvalLeftIcon
+                                    className="h-6 w-6 transition group-hover:scale-105"
+                                    aria-hidden
+                                    strokeWidth={1.7}
+                                />
+                            </span>
+                            {commentsCount > 0 ? (
+                                <span className="-ml-1 pr-1.5 text-[11px] font-semibold leading-none tabular-nums tracking-tight text-zinc-600 dark:text-zinc-300">
+                                    {formatCount(commentsCount)}
+                                </span>
+                            ) : null}
                         </button>
                     </div>
 
@@ -316,64 +409,119 @@ export default function PublicationFeedCard({ item, appUrl, onEngagementChange }
                                     </span>
                                 </p>
                             ) : null}
+                            {showInstagram ? (
+                                <InstagramViewLink href={instagramUrl} variant="icon" className="-ml-1.5" />
+                            ) : null}
                         </div>
                     ) : (
-                        <div className="text-sm leading-snug text-zinc-800 dark:text-zinc-100">
-                            <span className="font-semibold">{item.type_label}</span>{' '}
-                            <span className={captionExpanded ? '' : 'line-clamp-2'}>
-                                <span className="font-medium">{item.title}</span>
-                                {previewPlain && previewPlain !== item.title ? (
-                                    <>
-                                        {' '}
-                                        <span className="font-normal text-zinc-600 dark:text-zinc-300">
-                                            {previewPlain}
-                                        </span>
-                                    </>
-                                ) : null}
-                            </span>
-                            {previewPlain.length > 120 || item.title.length > 80 ? (
-                                <button
-                                    type="button"
-                                    onClick={() => setCaptionExpanded((v) => !v)}
-                                    className="ml-1 cursor-pointer text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                        <div className="space-y-1.5">
+                            <h2 className="text-[15px] font-semibold leading-snug tracking-tight text-zinc-900 dark:text-white">
+                                {item.title}
+                            </h2>
+
+                            {!canExpand && fullText ? (
+                                EXPANDABLE_TYPES.has(item.type) || fullPlain.length <= SHORT_BODY_LIMIT ? (
+                                    item.body_is_html ? (
+                                        <div
+                                            className="max-w-full break-words text-[13.5px] leading-relaxed text-zinc-600 dark:text-zinc-300 [&_*]:max-w-full [&_a]:text-primary-600 dark:[&_a]:text-primary-400 [&_a]:underline [&_p]:mb-3 [&_p:last-child]:mb-0"
+                                            dangerouslySetInnerHTML={{ __html: fullText }}
+                                        />
+                                    ) : (
+                                        <p className="whitespace-pre-wrap break-words text-[13.5px] leading-relaxed text-zinc-600 dark:text-zinc-300">
+                                            {fullPlain}
+                                        </p>
+                                    )
+                                ) : previewPlain ? (
+                                    <p className="line-clamp-2 text-[13.5px] leading-relaxed text-zinc-600 dark:text-zinc-300">
+                                        {previewPlain}
+                                    </p>
+                                ) : null
+                            ) : null}
+
+                            {canExpand && !isExpanded && previewPlain ? (
+                                <p className="line-clamp-2 text-[13.5px] leading-relaxed text-zinc-600 dark:text-zinc-300">
+                                    {previewPlain}
+                                </p>
+                            ) : null}
+
+                            {canExpand ? (
+                                <div
+                                    className={`publication-feed-leaf-stage grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none ${
+                                        isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+                                    }`}
                                 >
-                                    {captionExpanded ? 'menos' : 'mais'}
-                                </button>
+                                    <div className="min-h-0 overflow-hidden">
+                                        <div
+                                            className={`publication-feed-leaf space-y-3 border-t border-zinc-100 pt-3 dark:border-zinc-800 ${
+                                                isExpanded ? 'is-open' : ''
+                                            }`}
+                                        >
+                                            {fullText ? (
+                                                item.body_is_html ? (
+                                                    <div
+                                                        className="max-w-full break-words text-[13.5px] leading-relaxed text-zinc-700 dark:text-zinc-300 [&_*]:max-w-full [&_a]:text-primary-600 dark:[&_a]:text-primary-400 [&_a]:underline [&_p]:mb-3 [&_p:last-child]:mb-0"
+                                                        dangerouslySetInnerHTML={{ __html: fullText }}
+                                                    />
+                                                ) : (
+                                                    <p className="whitespace-pre-wrap break-words text-[13.5px] leading-relaxed text-zinc-700 dark:text-zinc-300">
+                                                        {fullText}
+                                                    </p>
+                                                )
+                                            ) : (
+                                                <p className="text-[13.5px] text-zinc-500 dark:text-zinc-400">
+                                                    Sem texto adicional nesta publicação.
+                                                </p>
+                                            )}
+
+                                            {showOpenCta ? (
+                                                <Link
+                                                    href={item.href}
+                                                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-sm font-semibold text-zinc-800 transition hover:border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:border-zinc-600 dark:hover:bg-zinc-700"
+                                                >
+                                                    {actionLabel}
+                                                    <ChevronDownIcon className="h-4 w-4 -rotate-90" aria-hidden />
+                                                </Link>
+                                            ) : null}
+
+                                            {showInstagram ? (
+                                                <InstagramViewLink href={instagramUrl} variant="icon" className="-ml-1.5" />
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : null}
+
+                            {showInstagram && !canExpand ? (
+                                <InstagramViewLink href={instagramUrl} variant="icon" className="-ml-1.5" />
                             ) : null}
                         </div>
                     )}
 
-                    {instagramUrl ? (
-                        <div className="pt-0.5">
-                            <InstagramViewLink href={instagramUrl} />
-                        </div>
-                    ) : null}
-
-                    {commentsCount > 0 ? (
+                    <div className="flex items-center justify-between gap-3 pt-0.5">
                         <button
                             type="button"
                             onClick={() => setCommentsOpen(true)}
-                            className="cursor-pointer text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                            className="cursor-pointer text-[13px] text-zinc-400 transition hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
                         >
-                            {commentsCount === 1
-                                ? 'Ver o comentário'
-                                : `Ver todos os ${commentsCount} comentários`}
+                            {commentsCount > 0 ? 'Ver comentários' : 'Adicionar um comentário…'}
                         </button>
-                    ) : (
-                        <button
-                            type="button"
-                            onClick={() => setCommentsOpen(true)}
-                            className="cursor-pointer text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
-                        >
-                            Adicionar um comentário…
-                        </button>
-                    )}
-
-                    {!isPhotos && whenLabel ? (
-                        <p className="text-[11px] uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
-                            {whenLabel}
-                        </p>
-                    ) : null}
+                        {canExpand ? (
+                            <button
+                                type="button"
+                                onClick={handleToggleExpand}
+                                aria-expanded={isExpanded}
+                                aria-label={isExpanded ? 'Recolher publicação' : 'Expandir publicação'}
+                                title={isExpanded ? 'Recolher' : 'Expandir'}
+                                className="inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full bg-zinc-900 text-white shadow-sm ring-1 ring-inset ring-white/10 transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+                            >
+                                {isExpanded ? (
+                                    <ChevronUpIcon className="h-5 w-5" aria-hidden strokeWidth={2.2} />
+                                ) : (
+                                    <ChevronDownIcon className="h-5 w-5" aria-hidden strokeWidth={2.2} />
+                                )}
+                            </button>
+                        ) : null}
+                    </div>
                 </div>
             </article>
 

@@ -43,6 +43,60 @@
     }
 }
 
+/* Botão Publicações na barra inferior — anel e halo bem visíveis no celular */
+@keyframes ns-publications-nav-ring {
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgb(65 177 68 / 0.55);
+    }
+    50% {
+        opacity: 0.55;
+        transform: scale(1.08);
+        box-shadow: 0 0 0 6px rgb(65 177 68 / 0);
+    }
+}
+
+@keyframes ns-publications-nav-ping {
+    0% {
+        opacity: 0.55;
+        transform: scale(0.92);
+    }
+    70% {
+        opacity: 0;
+        transform: scale(1.35);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1.35);
+    }
+}
+
+.ns-publications-nav-ring {
+    animation: ns-publications-nav-ring 1.15s ease-in-out infinite;
+}
+
+.ns-publications-nav-ping {
+    animation: ns-publications-nav-ping 1.35s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ns-publications-nav-ring,
+    .ns-publications-nav-ping {
+        animation: none;
+    }
+
+    .ns-publications-nav-ring {
+        opacity: 1;
+        box-shadow: 0 0 0 3px rgb(65 177 68 / 0.35);
+    }
+
+    .ns-publications-nav-ping {
+        opacity: 0;
+    }
+}
+
 /* Dark mode por classe (html.dark) — necessário no Tailwind v4 */
 @custom-variant dark (&:where(.dark, .dark *));
 

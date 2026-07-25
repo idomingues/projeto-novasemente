@@ -1,20 +1,39 @@
 import { InstagramBrandIcon } from '@/Components/SocialBrandIcons';
 
 /**
- * Botão discreto para abrir a publicação no Instagram.
+ * Link discreto para abrir a publicação no Instagram.
+ * `variant="icon"` — só o ícone (feed / UI compacta).
+ * `variant="button"` — pill com texto (padrão nas telas de notícias).
  */
 export default function InstagramViewLink({
     href,
     className = '',
     label = 'Ver no Instagram',
+    variant = 'button',
 }: {
     href: string;
     className?: string;
     label?: string;
+    variant?: 'button' | 'icon';
 }) {
     const url = href.trim();
     if (!url) {
         return null;
+    }
+
+    if (variant === 'icon') {
+        return (
+            <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={label}
+                title={label}
+                className={`inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-pink-600 transition hover:bg-pink-50 hover:text-pink-700 dark:text-pink-400 dark:hover:bg-pink-950/50 dark:hover:text-pink-300 ${className}`}
+            >
+                <InstagramBrandIcon className="h-5 w-5" />
+            </a>
+        );
     }
 
     return (
