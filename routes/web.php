@@ -935,6 +935,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/ia-foto', [FaceAiController::class, 'index'])->name('face-ai.index')->middleware('permission:photos.manage');
     Route::post('/ia-foto', [FaceAiController::class, 'store'])->name('face-ai.store')->middleware('permission:photos.manage');
     Route::delete('/ia-foto', [FaceAiController::class, 'destroy'])->name('face-ai.destroy')->middleware('permission:photos.manage');
+    Route::post('/ia-foto/drive', [FaceAiController::class, 'listDriveImages'])->name('face-ai.drive-list')->middleware('permission:photos.manage');
+    Route::get('/ia-foto/drive/{fileId}', [FaceAiController::class, 'proxyDriveImage'])->name('face-ai.drive-proxy')->middleware('permission:photos.manage');
     Route::get('/comunidades', [CommunityController::class, 'index'])->name('communities.index')
         ->middleware('permission:communities.view|communities.manage');
     Route::post('/comunidades', [CommunityController::class, 'store'])->name('communities.store')

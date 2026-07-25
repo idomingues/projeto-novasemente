@@ -195,9 +195,37 @@ class WeeklyProgramTest extends TestCase
                 ->where('weeklyProgramCards.2.is_next', false)
             );
 
+        // Gap longo até o próximo item: culto 12h não fica «em andamento» até as 15h.
+        WeeklyProgram::query()->create([
+            'church_id' => $church->id,
+            'day_of_week' => 6,
+            'when_label' => 'SÁB 15H',
+            'title' => 'CLASSE COMEÇOS',
+            'body' => null,
+            'time_mode' => 'fixed',
+            'start_time' => '15:00:00',
+            'display_time' => '15:00',
+            'home_message' => 'Classe',
+            'show_on_home' => true,
+            'is_active' => true,
+            'sort_order' => 4,
+        ]);
+        Carbon::setTestNow(Carbon::parse('2026-07-11 14:02:00', 'America/Sao_Paulo'));
+        $this->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.home'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Mobile/Home')
+                ->has('weeklyProgramCards', 1)
+                ->where('weeklyProgramCards.0.title', 'CLASSE COMEÇOS')
+                ->where('weeklyProgramCards.0.is_ongoing', false)
+                ->where('weeklyProgramCards.0.is_next', true)
+            );
+
         // Último item do dia sem end_time: após o início, some (fim não identificável).
         WeeklyProgram::query()->where('title', '1º CULTO')->delete();
         WeeklyProgram::query()->where('title', 'ESTUDO')->delete();
+        WeeklyProgram::query()->where('title', 'CLASSE COMEÇOS')->delete();
         Carbon::setTestNow(Carbon::parse('2026-07-11 12:30:00', 'America/Sao_Paulo'));
         $this->withSession(['working_church_id' => $church->id])
             ->get(route('mobile.home'))

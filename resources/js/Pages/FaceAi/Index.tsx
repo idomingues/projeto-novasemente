@@ -1,5 +1,6 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import FaceEnrollmentCamera from '@/Components/FaceAi/FaceEnrollmentCamera';
+import FaceMatchTester from '@/Components/FaceAi/FaceMatchTester';
 import PageHeader from '@/Components/PageHeader';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
@@ -11,6 +12,7 @@ import { confirmAction } from '@/utils/confirmDialog';
 type IdentityPayload = {
     id: number;
     reference_photo_url: string;
+    embedding: number[];
     embedding_dim: number;
     model_version: string;
     liveness_passed_at: string | null;
@@ -19,6 +21,7 @@ type IdentityPayload = {
 
 type Props = {
     identity: IdentityPayload | null;
+    hasDriveApiKey?: boolean;
 };
 
 type PageProps = {
@@ -37,7 +40,7 @@ function formatWhen(iso: string | null): string {
     });
 }
 
-export default function FaceAiIndex({ identity }: Props) {
+export default function FaceAiIndex({ identity, hasDriveApiKey = false }: Props) {
     const page = usePage().props as PageProps;
     const [sessionOpen, setSessionOpen] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -105,9 +108,10 @@ export default function FaceAiIndex({ identity }: Props) {
 
     const remove = async () => {
         const ok = await confirmAction({
-            title: 'Remover cadastro facial?',
+            title: 'Limpar cadastro facial?',
             text: 'A foto de referência e a matriz serão apagadas. Você poderá cadastrar de novo.',
-            confirmButtonText: 'Remover',
+            confirmButtonText: 'Limpar',
+            danger: true,
         });
         if (!ok) return;
         router.delete(route('face-ai.destroy'));
@@ -117,26 +121,38 @@ export default function FaceAiIndex({ identity }: Props) {
         <AdminLayout>
             <Head title="IA Foto" />
 
-            <div className="mx-auto w-full max-w-3xl">
+            <div className="mx-auto w-full max-w-3xl space-y-5">
                 <PageHeader
                     title="IA Foto"
-                    subtitle="Página de teste (admin): cadastre um rosto com câmera e prova de movimento. Depois acoplamos no app."
+                    subtitle="Página de teste (admin): cadastre o rosto, envie fotos e identifique correspondências."
                 />
 
                 {page.flash?.success ? (
-                    <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-100">
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-100">
                         {page.flash.success}
                     </div>
                 ) : null}
 
                 {error ? (
-                    <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-100">
+                    <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-100">
                         {error}
                     </div>
                 ) : null}
 
+                {/* Fase 1 — cadastro */}
                 {!sessionOpen ? (
                     <div className="space-y-5 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+                        <div>
+                            <div className="mb-3 flex items-center gap-2">
+                                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-900 text-[11px] font-bold text-white dark:bg-zinc-100 dark:text-zinc-900">
+                                    1
+                                </span>
+                                <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                                    Fase 1 — Cadastrar rosto
+                                </h2>
+                            </div>
+                        </div>
+
                         {identity ? (
                             <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                                 <img
@@ -172,9 +188,9 @@ export default function FaceAiIndex({ identity }: Props) {
                                         Nenhum rosto cadastrado ainda
                                     </p>
                                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                                        Ao iniciar, a câmera pedirá movimentos simples (esquerda, direita e
-                                        frente) e depois gera a matriz do rosto. Isso não altera a foto de
-                                        perfil.
+                                        Ao iniciar, a câmera pede movimentos simples (esquerda, direita e
+                                        frente). Depois encaixe o rosto no oval — você pode capturar em
+                                        modo automático ou manual. Isso não altera a foto de perfil.
                                     </p>
                                 </div>
                             </div>
@@ -191,20 +207,43 @@ export default function FaceAiIndex({ identity }: Props) {
                                     onClick={remove}
                                     className="cursor-pointer"
                                 >
-                                    Remover cadastro
+                                    Limpar cadastro
                                 </SecondaryButton>
                             ) : null}
                         </div>
                     </div>
                 ) : (
                     <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+                        <div className="mb-4 flex items-center gap-2">
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-teal-600 text-[11px] font-bold text-white">
+                                1
+                            </span>
+                            <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                                Fase 1 — Cadastrar rosto
+                            </h2>
+                        </div>
                         <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
-                            Siga as instruções na tela. Mantenha o rosto no oval com boa iluminação.
+                            Encaixe o rosto no oval (formato de rosto). Depois do desafio de movimento,
+                            use captura automática ou tire a foto manualmente quando o oval ficar verde.
                             {saving ? ' Salvando…' : ''}
                         </p>
                         <FaceEnrollmentCamera onComplete={onComplete} onCancel={cancel} busy={saving} />
                     </div>
                 )}
+
+                {/* Fases 2 e 3 — upload + identificar/resultado */}
+                {!sessionOpen && identity && identity.embedding?.length ? (
+                    <FaceMatchTester
+                        referenceEmbedding={identity.embedding}
+                        hasDriveApiKey={hasDriveApiKey}
+                    />
+                ) : null}
+
+                {!sessionOpen && !identity ? (
+                    <p className="text-center text-sm text-zinc-500 dark:text-zinc-400">
+                        Conclua a fase 1 para liberar o teste com outras fotografias.
+                    </p>
+                ) : null}
             </div>
         </AdminLayout>
     );

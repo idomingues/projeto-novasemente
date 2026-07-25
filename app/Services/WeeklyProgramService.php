@@ -9,6 +9,13 @@ use Illuminate\Support\Collection;
 
 class WeeklyProgramService
 {
+    /**
+     * Quando não há end_time, o fim é o início do próximo item do dia —
+     * mas só até este teto. Evita «Em andamento» por horas (ex.: culto 12h
+     * até a classe das 15h).
+     */
+    private const MAX_INFERRED_DURATION_MINUTES = 90;
+
     public function __construct(
         private SabbathSunsetService $sunsetService,
     ) {}
@@ -33,7 +40,8 @@ class WeeklyProgramService
 
     /**
      * Cards da home: itens de hoje ainda relevantes (em andamento ou futuros).
-     * «Em andamento» só quando o fim é identificável (end_time ou início do próximo).
+     * «Em andamento» só quando o fim é identificável (end_time ou início do próximo,
+     * com teto de duração quando o próximo fica longe).
      *
      * @return list<array<string, mixed>>
      */
@@ -116,7 +124,8 @@ class WeeklyProgramService
     }
 
     /**
-     * Fim identificável: end_time explícito, senão o início do próximo item do dia.
+     * Fim identificável: end_time explícito; senão o início do próximo item do dia,
+     * limitado a {@see MAX_INFERRED_DURATION_MINUTES} a partir do início deste item.
      *
      * @param  list<Carbon>  $starts
      */
@@ -133,8 +142,18 @@ class WeeklyProgramService
         }
 
         $nextStart = $starts[$index + 1] ?? null;
+        if (! ($nextStart instanceof Carbon)) {
+            return null;
+        }
 
-        return $nextStart instanceof Carbon ? $nextStart->copy() : null;
+        $at = $starts[$index] ?? null;
+        if (! ($at instanceof Carbon)) {
+            return $nextStart->copy();
+        }
+
+        $capped = $at->copy()->addMinutes(self::MAX_INFERRED_DURATION_MINUTES);
+
+        return $nextStart->lte($capped) ? $nextStart->copy() : $capped;
     }
 
     private function occurrenceEndOnDate(WeeklyProgram $item, Carbon $date, string $timezone): ?Carbon

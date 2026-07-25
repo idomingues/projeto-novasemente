@@ -97,4 +97,44 @@ class FaceAiTest extends TestCase
         $this->assertDatabaseMissing('user_face_identities', ['user_id' => $user->id]);
         $this->assertFalse(Storage::disk('public')->exists($path));
     }
+
+    public function test_index_includes_embedding_for_match_tests(): void
+    {
+        Storage::fake('public');
+        $user = $this->adminWithPhotosManage();
+        $path = 'face-id/1/'.$user->id.'.jpg';
+        Storage::disk('public')->put($path, 'fake');
+        $embedding = array_fill(0, 128, 0.05);
+
+        UserFaceIdentity::query()->create([
+            'user_id' => $user->id,
+            'church_id' => $user->church_id,
+            'reference_photo_path' => $path,
+            'embedding' => $embedding,
+            'embedding_dim' => 128,
+            'model_version' => 'face-api-recognition-v1',
+            'liveness_passed_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('face-ai.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('FaceAi/Index')
+                ->has('identity.embedding', 128)
+                ->where('identity.embedding_dim', 128)
+                ->has('hasDriveApiKey'));
+    }
+
+    public function test_drive_list_rejects_invalid_folder_url(): void
+    {
+        $user = $this->adminWithPhotosManage();
+
+        $this->actingAs($user)
+            ->postJson(route('face-ai.drive-list'), [
+                'drive_folder_url' => 'https://example.com/not-a-drive-folder',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['drive_folder_url']);
+    }
 }

@@ -118,6 +118,8 @@ export const adminSidebarRoutePermissions: Record<string, string[]> = {
     'face-ai.index': ['photos.manage'],
     'face-ai.store': ['photos.manage'],
     'face-ai.destroy': ['photos.manage'],
+    'face-ai.drive-list': ['photos.manage'],
+    'face-ai.drive-proxy': ['photos.manage'],
     'library-books.index': ['library.manage'],
     'library-books.egw.sync': ['library.manage'],
     'communities.index': ['communities.view', 'communities.manage'],
