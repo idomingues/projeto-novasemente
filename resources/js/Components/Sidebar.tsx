@@ -421,28 +421,28 @@ export default function Sidebar({
                         <Link
                             href={href}
                             onClick={onMobileClose}
-                            className={`group relative flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-200 ${
+                            className={`group relative flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 transition-all duration-200 ${
                                 isActive
-                                    ? 'bg-brand-600 text-white shadow-md shadow-brand-600/25 dark:bg-brand-500 dark:shadow-brand-500/20'
-                                    : 'text-zinc-600 hover:bg-brand-50/80 hover:text-brand-900 dark:text-zinc-400 dark:hover:bg-white/[0.04] dark:hover:text-zinc-100'
+                                    ? 'bg-zinc-900 text-white shadow-md shadow-zinc-900/20 dark:bg-zinc-100 dark:text-zinc-900 dark:shadow-zinc-100/10'
+                                    : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-white/[0.06] dark:hover:text-zinc-100'
                             }`}
                         >
                             {isActive ? (
                                 <span
-                                    className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-white/80"
+                                    className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-white/80 dark:bg-zinc-900/40"
                                     aria-hidden
                                 />
                             ) : null}
                             <span
-                                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors ${
                                     isActive
-                                        ? 'bg-white/15'
-                                        : 'bg-zinc-100/80 text-zinc-500 group-hover:bg-brand-100/70 group-hover:text-brand-700 dark:bg-zinc-800/80 dark:text-zinc-500 dark:group-hover:bg-zinc-800 dark:group-hover:text-brand-400'
+                                        ? 'bg-white/15 dark:bg-zinc-900/10'
+                                        : 'bg-zinc-100 text-zinc-500 group-hover:bg-zinc-200 group-hover:text-zinc-700 dark:bg-zinc-800 dark:text-zinc-500 dark:group-hover:bg-zinc-800 dark:group-hover:text-zinc-300'
                                 }`}
                             >
                                 <Icon
-                                    className={`h-[18px] w-[18px] ${
-                                        isActive ? 'text-white' : ''
+                                    className={`h-4 w-4 ${
+                                        isActive ? 'text-white dark:text-zinc-900' : ''
                                     }`}
                                 />
                             </span>
@@ -457,7 +457,7 @@ export default function Sidebar({
                                 <span
                                     className={`ml-auto inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums tracking-tight ${
                                         isActive
-                                            ? 'bg-white/20 text-white'
+                                            ? 'bg-white/20 text-white dark:bg-zinc-900/15 dark:text-zinc-900'
                                             : 'bg-rose-500 text-white shadow-sm shadow-rose-500/30'
                                     }`}
                                     title={`${sidebarBadgeCount} em aberto`}
@@ -518,13 +518,13 @@ export default function Sidebar({
         <>
             {mobileOpen ? (
                 <div
-                    className="fixed inset-0 z-40 bg-zinc-950/40 backdrop-blur-[2px] transition-opacity"
+                    className="fixed inset-0 z-40 bg-zinc-950/55 backdrop-blur-[2px] transition-opacity"
                     onClick={onMobileClose}
                     aria-hidden
                 />
             ) : null}
             <aside
-                className={`fixed left-0 top-0 z-50 flex h-screen w-[17.5rem] flex-col border-r border-zinc-200/80 bg-gradient-to-b from-white via-zinc-50/90 to-brand-50/30 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.12)] transition-transform duration-300 ease-out dark:border-zinc-800/80 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-950 dark:shadow-[4px_0_24px_-12px_rgba(0,0,0,0.45)] ${
+                className={`fixed left-0 top-0 z-50 flex h-screen w-[17.5rem] flex-col border-r border-zinc-200 bg-white shadow-[4px_0_24px_-12px_rgba(0,0,0,0.12)] transition-transform duration-300 ease-out dark:border-zinc-800 dark:bg-zinc-950 dark:shadow-[4px_0_24px_-12px_rgba(0,0,0,0.45)] ${
                     mobileOpen ? 'translate-x-0' : '-translate-x-full'
                 }`}
             >
@@ -549,7 +549,7 @@ export default function Sidebar({
                             <span className="truncate text-[15px] font-bold leading-tight tracking-[-0.02em] text-zinc-900 dark:text-zinc-50">
                                 {currentChurch?.name ?? 'Igreja'}
                             </span>
-                            <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-brand-700/70 dark:text-brand-400/80">
+                            <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-400">
                                 Painel
                             </span>
                         </div>
@@ -581,7 +581,7 @@ export default function Sidebar({
                                     router.post(route('working-church.store'), { church_id: id }, { preserveScroll: true });
                                 }
                             }}
-                            className="h-10 w-full cursor-pointer rounded-xl border border-zinc-200/90 bg-white/90 pl-3 pr-8 text-[13px] font-medium text-zinc-800 shadow-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-brand-400 dark:focus:ring-brand-400/20"
+                            className="h-10 w-full cursor-pointer rounded-xl border border-zinc-200 bg-white pl-3 pr-8 text-[13px] font-medium text-zinc-800 shadow-sm outline-none transition focus:border-zinc-400 focus:ring-2 focus:ring-zinc-400/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-500/20"
                         >
                             {churchesForSwitch.map((c) => (
                                 <option key={c.id} value={c.id}>
