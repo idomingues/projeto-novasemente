@@ -18,6 +18,7 @@ class PublicDiskFileController extends Controller
         'inventory/photos/',
         'events/',
         'photos/',
+        'face-id/',
         'library/',
         'donations/',
         'charity/',

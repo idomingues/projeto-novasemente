@@ -48,6 +48,7 @@ use App\Http\Controllers\RevistaAdventistaArticleController;
 use App\Http\Controllers\OperationsDashboardController;
 use App\Http\Controllers\PastoralAgendaController;
 use App\Http\Controllers\PastorController;
+use App\Http\Controllers\FaceAiController;
 use App\Http\Controllers\PhotoAlbumController;
 use App\Http\Controllers\PrayerRequestController;
 use App\Http\Controllers\ProfileController;
@@ -930,6 +931,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/fotos', [PhotoAlbumController::class, 'store'])->name('photo-albums.store')->middleware('permission:photos.manage');
     Route::put('/fotos/{album}', [PhotoAlbumController::class, 'update'])->name('photo-albums.update')->middleware('permission:photos.manage');
     Route::delete('/fotos/{album}', [PhotoAlbumController::class, 'destroy'])->name('photo-albums.destroy')->middleware('permission:photos.manage');
+
+    Route::get('/ia-foto', [FaceAiController::class, 'index'])->name('face-ai.index')->middleware('permission:photos.manage');
+    Route::post('/ia-foto', [FaceAiController::class, 'store'])->name('face-ai.store')->middleware('permission:photos.manage');
+    Route::delete('/ia-foto', [FaceAiController::class, 'destroy'])->name('face-ai.destroy')->middleware('permission:photos.manage');
     Route::get('/comunidades', [CommunityController::class, 'index'])->name('communities.index')
         ->middleware('permission:communities.view|communities.manage');
     Route::post('/comunidades', [CommunityController::class, 'store'])->name('communities.store')
