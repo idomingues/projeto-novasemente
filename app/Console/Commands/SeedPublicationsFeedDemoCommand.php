@@ -6,7 +6,6 @@ use App\Models\AcervoItem;
 use App\Models\CharityCampaign;
 use App\Models\Church;
 use App\Models\Culto;
-use App\Models\DonationCampaign;
 use App\Models\Event;
 use App\Models\LibraryBook;
 use App\Models\Musica;
@@ -75,7 +74,6 @@ class SeedPublicationsFeedDemoCommand extends Command
         $created[] = $this->seedRevistaArticle($now);
         $created[] = $this->seedAcervoItem();
         $created[] = $this->seedMusica($church, $author, $now);
-        $created[] = $this->seedDonationCampaign($church, $author, $now);
 
         $this->info("Igreja: {$church->name} (id {$church->id})");
         $this->info("Autor: {$author->name} <{$author->email}>");
@@ -336,29 +334,5 @@ class SeedPublicationsFeedDemoCommand extends Command
         );
 
         return "Música — id {$musica->id}";
-    }
-
-    private function seedDonationCampaign(Church $church, User $author, \DateTimeInterface $now): string
-    {
-        $title = PublicationDemoMarker::title('Oferta Nova Semente');
-        $coverPath = $this->publishDemoAsset(
-            'resources/demo/talents/doar-talentos-exemplo.png',
-            'publications-feed/demo/donation-campaign-cover.png',
-        );
-
-        $campaign = DonationCampaign::query()->updateOrCreate(
-            ['church_id' => $church->id, 'title' => $title],
-            [
-                'description' => 'Campanha de exemplo para o feed unificado.',
-                'goal_amount' => 5000,
-                'raised_amount' => 0,
-                'status' => DonationCampaign::STATUS_ACTIVE,
-                'cover_image_path' => $coverPath,
-                'story_video_url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-                'created_by' => $author->id,
-            ],
-        );
-
-        return "Oferta Nova Semente — id {$campaign->id}";
     }
 }

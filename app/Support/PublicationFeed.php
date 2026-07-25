@@ -5,7 +5,6 @@ namespace App\Support;
 use App\Models\CharityCampaign;
 use App\Models\Church;
 use App\Models\Culto;
-use App\Models\DonationCampaign;
 use App\Models\Event;
 use App\Models\LibraryBook;
 use App\Models\Musica;
@@ -77,12 +76,6 @@ class PublicationFeed
             'feature' => 'musica',
             'description' => 'Música de louvor para cantar conosco.',
             'action' => 'Ouvir música',
-        ],
-        'donation_campaign' => [
-            'label' => 'Oferta Nova Semente',
-            'feature' => 'donation_campaigns',
-            'description' => 'Campanha da Oferta Nova Semente para contribuir.',
-            'action' => 'Ver campanha',
         ],
     ];
 
@@ -230,7 +223,6 @@ class PublicationFeed
                 'events' => self::collectEvents($church, $churchId, $baseUrl),
                 'revista' => self::collectRevistaArticles($church, $baseUrl),
                 'musica' => self::collectMusicas($church, $churchId, $baseUrl),
-                'donation_campaign' => self::collectDonationCampaigns($church, $churchId, $baseUrl),
                 default => collect(),
             });
         }
@@ -570,54 +562,6 @@ class PublicationFeed
                 body: 'Música de louvor para acompanhar e cantar conosco.',
                 requiresOpen: true,
             ));
-    }
-
-    /**
-     * @return Collection<int, array<string, mixed>>
-     */
-    private static function collectDonationCampaigns(?Church $church, ?int $churchId, string $baseUrl): Collection
-    {
-        if ($churchId === null) {
-            return collect();
-        }
-
-        return DonationCampaign::query()
-            ->with(['storyPhotos' => fn ($q) => $q->orderBy('sort_order')->limit(1)])
-            ->where('church_id', $churchId)
-            ->where(function ($q) {
-                $q->where(function ($active) {
-                    $active->where('status', DonationCampaign::STATUS_ACTIVE)
-                        ->where(function ($dates) {
-                            $dates->whereNull('ends_at')->orWhereDate('ends_at', '>=', now()->toDateString());
-                        });
-                })->orWhere('status', DonationCampaign::STATUS_CLOSED);
-            })
-            ->orderByDesc('created_at')
-            ->limit(100)
-            ->get()
-            ->map(function (DonationCampaign $campaign) use ($church, $baseUrl) {
-                $meta = [
-                    $campaign->status === DonationCampaign::STATUS_CLOSED ? 'Campanha encerrada' : 'Campanha ativa',
-                ];
-                if ($campaign->goal_amount > 0) {
-                    $meta[] = 'Meta R$ '.number_format((float) $campaign->goal_amount, 2, ',', '.');
-                }
-
-                return self::entry(
-                    type: 'donation_campaign',
-                    typeLabel: self::TYPE_DEFINITIONS['donation_campaign']['label'],
-                    pk: $campaign->id,
-                    title: $campaign->title,
-                    excerpt: self::plainText($campaign->description),
-                    imageUrl: PublicationFeedCoverResolver::forDonationCampaign($campaign, $church, $baseUrl),
-                    publishedAt: $campaign->created_at,
-                    href: route('mobile.campaigns.show', ['donationCampaign' => $campaign->id], absolute: false),
-                    meta: $meta,
-                    coverPlayOverlay: PublicationFeedCoverResolver::donationShowsPlayOverlay($campaign),
-                    body: self::fullContent($campaign->description),
-                    requiresOpen: true,
-                );
-            });
     }
 
     /**

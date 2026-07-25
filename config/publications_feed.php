@@ -36,6 +36,5 @@ return [
         'revista' => null,
         'acervo' => null,
         'musica' => null,
-        'donation_campaign' => null,
     ],
 ];

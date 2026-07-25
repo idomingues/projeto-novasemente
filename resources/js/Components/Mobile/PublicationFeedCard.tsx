@@ -58,7 +58,6 @@ const TYPE_ICONS: Record<string, MenuIcon> = {
     revista: NewspaperIcon,
     acervo: PlayCircleIcon,
     musica: MusicalNoteIcon,
-    donation_campaign: BanknotesIcon,
 };
 
 const TYPE_TAG_STYLES: Record<string, string> = {
@@ -78,8 +77,6 @@ const TYPE_TAG_STYLES: Record<string, string> = {
         'bg-indigo-50 text-indigo-800 ring-indigo-200/80 dark:bg-indigo-950/50 dark:text-indigo-200 dark:ring-indigo-800/60',
     musica:
         'bg-purple-50 text-purple-800 ring-purple-200/80 dark:bg-purple-950/50 dark:text-purple-200 dark:ring-purple-800/60',
-    donation_campaign:
-        'bg-lime-50 text-lime-900 ring-lime-200/80 dark:bg-lime-950/50 dark:text-lime-200 dark:ring-lime-800/60',
 };
 
 const DEFAULT_TAG_STYLE =
