@@ -40,7 +40,7 @@ class PublicationEngagementTest extends TestCase
         ]);
     }
 
-    public function test_guest_can_like_but_cannot_comment(): void
+    public function test_guest_can_list_comments_but_cannot_like_or_comment(): void
     {
         $church = $this->seedOpenFeed();
         $author = User::factory()->create(['church_id' => $church->id]);
@@ -54,54 +54,13 @@ class PublicationEngagementTest extends TestCase
 
         $this->withSession(['working_church_id' => $church->id])
             ->postJson(route('mobile.publications.like', ['feedId' => $feedId]))
-            ->assertOk()
-            ->assertJson([
-                'liked' => true,
-                'likes_count' => 1,
-            ]);
-
-        $this->assertDatabaseHas('publication_likes', [
-            'user_id' => null,
-            'subject_type' => 'news',
-            'subject_id' => $news->id,
-        ]);
+            ->assertUnauthorized();
 
         $this->withSession(['working_church_id' => $church->id])
             ->postJson(route('mobile.publications.comments.store', ['feedId' => $feedId]), [
                 'body' => 'Olá',
             ])
             ->assertUnauthorized();
-    }
-
-    public function test_guest_cannot_comment_on_photos(): void
-    {
-        $church = $this->seedOpenFeed();
-        $author = User::factory()->create(['church_id' => $church->id]);
-        $album = \App\Models\PhotoAlbum::query()->create([
-            'church_id' => $church->id,
-            'title' => 'Álbum teste',
-            'drive_folder_url' => 'https://drive.google.com/drive/folders/testdummyfolderid123',
-            'published_at' => now()->subHour(),
-            'created_by' => $author->id,
-        ]);
-        $feedId = 'photos-'.$album->id;
-
-        $this->withSession(['working_church_id' => $church->id])
-            ->getJson(route('mobile.publications.comments.index', ['feedId' => $feedId]))
-            ->assertStatus(422);
-
-        $user = User::factory()->create(['church_id' => $church->id]);
-        $this->actingAs($user)
-            ->withSession(['working_church_id' => $church->id])
-            ->postJson(route('mobile.publications.comments.store', ['feedId' => $feedId]), [
-                'body' => 'Comentário em foto',
-            ])
-            ->assertStatus(422);
-
-        $this->withSession(['working_church_id' => $church->id])
-            ->postJson(route('mobile.publications.like', ['feedId' => $feedId]))
-            ->assertOk()
-            ->assertJsonPath('liked', true);
     }
 
     public function test_authenticated_user_can_toggle_like_and_comment(): void

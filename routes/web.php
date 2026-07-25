@@ -151,10 +151,6 @@ Route::get('/mobile/publicacoes/{feedId}/comentarios', [PublicationEngagementCon
     ->middleware('throttle:60,1')
     ->where('feedId', '[A-Za-z0-9_-]+')
     ->name('mobile.publications.comments.index');
-Route::post('/mobile/publicacoes/{feedId}/like', [PublicationEngagementController::class, 'toggleLike'])
-    ->middleware('throttle:60,1')
-    ->where('feedId', '[A-Za-z0-9_-]+')
-    ->name('mobile.publications.like');
 Route::get('/mobile/comunidade', [CommunityController::class, 'mobile'])->name('mobile.communities');
 Route::get('/mobile/missao', [\App\Http\Controllers\MissionHubController::class, 'index'])->name('mobile.mission');
 Route::get('/mobile/missao/home', [\App\Http\Controllers\MissionHubController::class, 'home'])->name('mobile.mission.home');
@@ -383,6 +379,10 @@ Route::middleware('auth')->group(function () {
         ->middleware('throttle:60,1')
         ->name('mobile.home.bookmarks.toggle');
 
+    Route::post('/mobile/publicacoes/{feedId}/like', [PublicationEngagementController::class, 'toggleLike'])
+        ->middleware('throttle:60,1')
+        ->where('feedId', '[A-Za-z0-9_-]+')
+        ->name('mobile.publications.like');
     Route::post('/mobile/publicacoes/{feedId}/comentarios', [PublicationEngagementController::class, 'storeComment'])
         ->middleware('throttle:30,1')
         ->where('feedId', '[A-Za-z0-9_-]+')

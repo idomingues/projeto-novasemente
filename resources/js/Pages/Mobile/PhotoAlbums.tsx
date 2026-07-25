@@ -41,7 +41,7 @@ function albumToFeedItem(album: AlbumRow): PublicationFeedItem {
         published_at: album.published_at,
         photographer_name: photographer || null,
         href: route('mobile.fotos.show', album.id),
-        meta: photographer ? ['Álbum de fotos', `Fotógrafo: ${photographer}`] : ['Álbum de fotos'],
+        meta: photographer ? ['Álbum de fotos', `Fotógrafa: ${photographer}`] : ['Álbum de fotos'],
         likes_count: album.likes_count ?? 0,
         comments_count: 0,
         liked_by_me: Boolean(album.liked_by_me),

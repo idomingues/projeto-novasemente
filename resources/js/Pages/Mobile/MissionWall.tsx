@@ -39,7 +39,7 @@ function albumToFeedItem(album: AlbumRow): PublicationFeedItem {
         published_at: album.published_at,
         photographer_name: photographer || null,
         href: route('mobile.mission.wall.show', album.id),
-        meta: photographer ? ['Álbum de fotos', `Fotógrafo: ${photographer}`] : ['Álbum de fotos'],
+        meta: photographer ? ['Álbum de fotos', `Fotógrafa: ${photographer}`] : ['Álbum de fotos'],
     };
 }
 

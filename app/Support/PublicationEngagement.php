@@ -14,7 +14,7 @@ final class PublicationEngagement
      * @param  list<array<string, mixed>>  $items
      * @return list<array<string, mixed>>
      */
-    public static function enrichItems(array $items, ?User $user, ?string $guestKey = null): array
+    public static function enrichItems(array $items, ?User $user): array
     {
         if ($items === []) {
             return $items;
@@ -56,8 +56,6 @@ final class PublicationEngagement
         $likedByMe = [];
         if ($user !== null) {
             $likedByMe = self::likedKeysForUser($user->id, $pairs);
-        } elseif (is_string($guestKey) && $guestKey !== '') {
-            $likedByMe = self::likedKeysForGuest($guestKey, $pairs);
         }
 
         return array_map(static function (array $item) use ($likeCounts, $commentCounts, $likedByMe): array {
@@ -66,10 +64,7 @@ final class PublicationEngagement
             $key = $type.'|'.($id ?? '');
 
             $item['likes_count'] = $id !== null ? (int) ($likeCounts[$key] ?? 0) : 0;
-            // Comentários só na sessão Publicações (não em álbuns de fotos).
-            $item['comments_count'] = ($id !== null && $type !== 'photos')
-                ? (int) ($commentCounts[$key] ?? 0)
-                : 0;
+            $item['comments_count'] = $id !== null ? (int) ($commentCounts[$key] ?? 0) : 0;
             $item['liked_by_me'] = $id !== null && isset($likedByMe[$key]);
 
             return $item;
@@ -120,35 +115,6 @@ final class PublicationEngagement
             ->whereIn('subject_id', $ids)
             ->get(['subject_type', 'subject_id']);
 
-        return self::keysFromLikeRows($rows, $pairs);
-    }
-
-    /**
-     * @param  array<string, array{type: string, id: int}>  $pairs
-     * @return array<string, true>
-     */
-    private static function likedKeysForGuest(string $guestKey, array $pairs): array
-    {
-        $types = array_values(array_unique(array_column($pairs, 'type')));
-        $ids = array_values(array_unique(array_column($pairs, 'id')));
-
-        $rows = PublicationLike::query()
-            ->where('guest_key', $guestKey)
-            ->whereNull('user_id')
-            ->whereIn('subject_type', $types)
-            ->whereIn('subject_id', $ids)
-            ->get(['subject_type', 'subject_id']);
-
-        return self::keysFromLikeRows($rows, $pairs);
-    }
-
-    /**
-     * @param  Collection<int, PublicationLike>  $rows
-     * @param  array<string, array{type: string, id: int}>  $pairs
-     * @return array<string, true>
-     */
-    private static function keysFromLikeRows(Collection $rows, array $pairs): array
-    {
         $out = [];
         foreach ($rows as $row) {
             $key = $row->subject_type.'|'.$row->subject_id;

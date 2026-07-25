@@ -214,3 +214,26 @@ html.dark .swal2-popup.swal-app-popup {
         transform: none;
     }
 }
+
+/* Sidebar admin — scrollbar discreta */
+.ns-sidebar-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(212 212 216) transparent;
+}
+
+html.dark .ns-sidebar-scroll {
+    scrollbar-color: rgb(63 63 70) transparent;
+}
+
+.ns-sidebar-scroll::-webkit-scrollbar {
+    width: 5px;
+}
+
+.ns-sidebar-scroll::-webkit-scrollbar-thumb {
+    background: rgb(212 212 216);
+    border-radius: 9999px;
+}
+
+html.dark .ns-sidebar-scroll::-webkit-scrollbar-thumb {
+    background: rgb(63 63 70);
+}

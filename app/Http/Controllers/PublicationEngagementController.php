@@ -14,53 +14,30 @@ class PublicationEngagementController extends Controller
 {
     public function toggleLike(Request $request, string $feedId): JsonResponse
     {
+        $user = $request->user();
+        abort_unless($user !== null, 401);
         abort_unless(Schema::hasTable('publication_likes'), 503);
 
         [$type, $subjectId, $churchId] = $this->resolveSubjectOrAbort($request, $feedId);
 
-        $user = $request->user();
-        if ($user !== null) {
-            $existing = PublicationLike::query()
-                ->where('user_id', $user->id)
-                ->where('subject_type', $type)
-                ->where('subject_id', $subjectId)
-                ->first();
+        $existing = PublicationLike::query()
+            ->where('user_id', $user->id)
+            ->where('subject_type', $type)
+            ->where('subject_id', $subjectId)
+            ->first();
 
-            if ($existing !== null) {
-                $existing->delete();
-                $liked = false;
-            } else {
-                PublicationLike::query()->create([
-                    'user_id' => $user->id,
-                    'guest_key' => null,
-                    'church_id' => $churchId,
-                    'subject_type' => $type,
-                    'subject_id' => $subjectId,
-                ]);
-                $liked = true;
-            }
+        if ($existing !== null) {
+            $existing->delete();
+            $liked = false;
         } else {
-            $guestKey = $this->guestLikeKey($request);
-            $existing = PublicationLike::query()
-                ->where('guest_key', $guestKey)
-                ->whereNull('user_id')
-                ->where('subject_type', $type)
-                ->where('subject_id', $subjectId)
-                ->first();
-
-            if ($existing !== null) {
-                $existing->delete();
-                $liked = false;
-            } else {
-                PublicationLike::query()->create([
-                    'user_id' => null,
-                    'guest_key' => $guestKey,
-                    'church_id' => $churchId,
-                    'subject_type' => $type,
-                    'subject_id' => $subjectId,
-                ]);
-                $liked = true;
-            }
+            PublicationLike::query()->create([
+                'user_id' => $user->id,
+                'guest_key' => null,
+                'church_id' => $churchId,
+                'subject_type' => $type,
+                'subject_id' => $subjectId,
+            ]);
+            $liked = true;
         }
 
         $likesCount = PublicationLike::query()
@@ -79,7 +56,6 @@ class PublicationEngagementController extends Controller
         abort_unless(Schema::hasTable('publication_comments'), 503);
 
         [$type, $subjectId] = $this->resolveSubjectOrAbort($request, $feedId);
-        abort_if($type === 'photos', 422, 'Comentários não estão disponíveis para álbuns de fotos.');
 
         $comments = PublicationComment::query()
             ->with(['user:id,name'])
@@ -108,7 +84,6 @@ class PublicationEngagementController extends Controller
         abort_unless(Schema::hasTable('publication_comments'), 503);
 
         [$type, $subjectId, $churchId] = $this->resolveSubjectOrAbort($request, $feedId);
-        abort_if($type === 'photos', 422, 'Comentários não estão disponíveis para álbuns de fotos.');
 
         $data = $request->validate([
             'body' => ['required', 'string', 'min:1', 'max:1000'],
@@ -116,7 +91,12 @@ class PublicationEngagementController extends Controller
 
         $body = trim(strip_tags((string) $data['body']));
         $body = Str::of($body)->replaceMatches('/\s+/u', ' ')->trim()->toString();
-        abort_if($body === '', 422, 'Comentário vazio.');
+        if ($body === '') {
+            return response()->json([
+                'message' => 'Comentário vazio.',
+                'errors' => ['body' => ['Comentário vazio.']],
+            ], 422);
+        }
 
         $comment = PublicationComment::query()->create([
             'user_id' => $user->id,
@@ -174,17 +154,6 @@ class PublicationEngagementController extends Controller
         );
 
         return [$parsed['type'], $parsed['id'], $churchId];
-    }
-
-    private function guestLikeKey(Request $request): string
-    {
-        $key = $request->session()->get('publication_like_guest_key');
-        if (! is_string($key) || strlen($key) < 16) {
-            $key = (string) Str::uuid();
-            $request->session()->put('publication_like_guest_key', $key);
-        }
-
-        return $key;
     }
 
     /**

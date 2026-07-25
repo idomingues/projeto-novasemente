@@ -138,12 +138,7 @@ class PublicationFeed
 
         // Página 1: todos do mês atual (mín. 10). Demais páginas: +10.
         [$slice, $hasMore, $nextPage] = self::paginateForFeed($items, $page, $sort);
-        $guestKey = $request->session()->get('publication_like_guest_key');
-        $slice = PublicationEngagement::enrichItems(
-            $slice,
-            $request->user(),
-            is_string($guestKey) ? $guestKey : null,
-        );
+        $slice = PublicationEngagement::enrichItems($slice, $request->user());
 
         return [
             'items' => [
@@ -438,7 +433,7 @@ class PublicationFeed
             ->map(function (PhotoAlbum $album) use ($driveCover, $church, $baseUrl) {
                 $meta = ['Álbum de fotos'];
                 if (filled($album->photographer_name)) {
-                    $meta[] = 'Fotógrafo: '.$album->photographer_name;
+                    $meta[] = 'Fotógrafa: '.$album->photographer_name;
                 }
 
                 $entry = self::entry(
@@ -447,15 +442,15 @@ class PublicationFeed
                     pk: $album->id,
                     title: $album->title,
                     excerpt: filled($album->photographer_name)
-                        ? 'Registros fotográficos por '.$album->photographer_name.'.'
-                        : 'Confira as fotos deste momento da igreja.',
+                        ? 'Fotógrafa: '.$album->photographer_name
+                        : 'Registros deste momento da igreja.',
                     imageUrl: PublicationFeedCoverResolver::forPhotoAlbum($album, $driveCover, $church, $baseUrl),
                     publishedAt: $album->published_at ?? $album->created_at,
                     href: route('mobile.fotos.show', ['album' => $album->id], absolute: false),
                     meta: $meta,
                     body: filled($album->photographer_name)
-                        ? 'Registros fotográficos por '.$album->photographer_name.'.'
-                        : 'Confira as fotos deste momento da igreja.',
+                        ? 'Fotógrafa: '.$album->photographer_name
+                        : 'Registros deste momento da igreja.',
                     requiresOpen: true,
                 );
                 $entry['photographer_name'] = filled($album->photographer_name)

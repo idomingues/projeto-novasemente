@@ -407,7 +407,7 @@ export default function Sidebar({
     }, [url]);
 
     const renderMenuLinks = (items: MenuItem[]) => (
-        <ul className="space-y-2">
+        <ul className="space-y-0.5">
             {items.map((item) => {
                 const routeExists = route().has(item.route);
                 const href = routeExists ? route(item.route) : '#';
@@ -420,26 +420,44 @@ export default function Sidebar({
                         <Link
                             href={href}
                             onClick={onMobileClose}
-                            className={`flex items-center px-4 py-3.5 rounded-2xl transition-all duration-200 group ${
+                            className={`group relative flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-200 ${
                                 isActive
-                                    ? 'bg-zinc-900 text-white shadow-lg shadow-zinc-900/10 dark:bg-white dark:text-black dark:shadow-white/10'
-                                    : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-white'
+                                    ? 'bg-brand-600 text-white shadow-md shadow-brand-600/25 dark:bg-brand-500 dark:shadow-brand-500/20'
+                                    : 'text-zinc-600 hover:bg-brand-50/80 hover:text-brand-900 dark:text-zinc-400 dark:hover:bg-white/[0.04] dark:hover:text-zinc-100'
                             }`}
                         >
-                            <Icon
-                                className={`w-6 h-6 mr-3 ${
+                            {isActive ? (
+                                <span
+                                    className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-white/80"
+                                    aria-hidden
+                                />
+                            ) : null}
+                            <span
+                                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
                                     isActive
-                                        ? 'text-white dark:text-black'
-                                        : 'text-zinc-400 group-hover:text-zinc-900 dark:text-zinc-500 dark:group-hover:text-white'
+                                        ? 'bg-white/15'
+                                        : 'bg-zinc-100/80 text-zinc-500 group-hover:bg-brand-100/70 group-hover:text-brand-700 dark:bg-zinc-800/80 dark:text-zinc-500 dark:group-hover:bg-zinc-800 dark:group-hover:text-brand-400'
                                 }`}
-                            />
-                            <span className="font-medium text-sm">{item.name}</span>
+                            >
+                                <Icon
+                                    className={`h-[18px] w-[18px] ${
+                                        isActive ? 'text-white' : ''
+                                    }`}
+                                />
+                            </span>
+                            <span
+                                className={`min-w-0 flex-1 truncate text-[13px] tracking-[-0.01em] ${
+                                    isActive ? 'font-semibold' : 'font-medium'
+                                }`}
+                            >
+                                {item.name}
+                            </span>
                             {sidebarBadgeCount > 0 ? (
                                 <span
-                                    className={`ml-auto inline-flex min-w-6 items-center justify-center rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${
+                                    className={`ml-auto inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums tracking-tight ${
                                         isActive
-                                            ? 'bg-white/20 text-white dark:bg-black/10 dark:text-black'
-                                            : 'bg-rose-600 text-white'
+                                            ? 'bg-white/20 text-white'
+                                            : 'bg-rose-500 text-white shadow-sm shadow-rose-500/30'
                                     }`}
                                     title={`${sidebarBadgeCount} em aberto`}
                                     aria-label={`${sidebarBadgeCount} em aberto`}
@@ -470,14 +488,18 @@ export default function Sidebar({
                 <button
                     type="button"
                     onClick={onToggle}
-                    className={`mb-2 w-full px-4 flex items-center justify-between text-left ${isFirst ? 'mt-0' : 'mt-8'}`}
+                    className={`mb-1.5 flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-1.5 text-left transition-colors hover:bg-zinc-100/70 dark:hover:bg-white/[0.03] ${
+                        isFirst ? 'mt-0' : 'mt-6'
+                    }`}
                     aria-expanded={open}
                 >
-                    <span className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400 dark:text-zinc-500">
                         {title}
                     </span>
                     <ChevronDownIcon
-                        className={`h-4 w-4 text-zinc-400 dark:text-zinc-500 transition-transform ${open ? 'rotate-180' : ''}`}
+                        className={`h-3.5 w-3.5 text-zinc-400 transition-transform duration-200 dark:text-zinc-500 ${
+                            open ? 'rotate-180' : ''
+                        }`}
                         aria-hidden
                     />
                 </button>
@@ -494,46 +516,60 @@ export default function Sidebar({
     return (
         <>
             {mobileOpen ? (
-                <div className="fixed inset-0 z-40 bg-black/50" onClick={onMobileClose} aria-hidden />
+                <div
+                    className="fixed inset-0 z-40 bg-zinc-950/40 backdrop-blur-[2px] transition-opacity"
+                    onClick={onMobileClose}
+                    aria-hidden
+                />
             ) : null}
             <aside
-                className={`fixed left-0 top-0 z-50 flex h-screen w-72 flex-col border-r border-zinc-200 bg-white transition-transform duration-300 ease-out dark:border-zinc-800 dark:bg-zinc-950 ${
+                className={`fixed left-0 top-0 z-50 flex h-screen w-[17.5rem] flex-col border-r border-zinc-200/80 bg-gradient-to-b from-white via-zinc-50/90 to-brand-50/30 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.12)] transition-transform duration-300 ease-out dark:border-zinc-800/80 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-950 dark:shadow-[4px_0_24px_-12px_rgba(0,0,0,0.45)] ${
                     mobileOpen ? 'translate-x-0' : '-translate-x-full'
                 }`}
             >
                 {/* Logo Area */}
-                <div className="h-24 flex items-center justify-between px-6 md:px-8 border-b border-zinc-100 dark:border-zinc-900 flex-shrink-0">
+                <div className="flex h-[4.75rem] shrink-0 items-center justify-between border-b border-zinc-200/70 px-4 dark:border-zinc-800/80">
                     <Link
                         href={route('mobile.home')}
-                        className="flex items-center gap-3 text-zinc-900 dark:text-white min-w-0 hover:opacity-90 transition-opacity"
+                        className="group flex min-w-0 cursor-pointer items-center gap-3 transition-opacity hover:opacity-90"
                     >
-                        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-zinc-900 dark:bg-white flex items-center justify-center overflow-hidden">
+                        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-brand-600 shadow-md shadow-brand-600/25 ring-1 ring-brand-700/10 dark:bg-brand-500 dark:shadow-brand-500/20">
                             {currentChurch?.logo_url ? (
-                                <img src={currentChurch.logo_url} alt="" className="w-full h-full object-cover" />
+                                <img
+                                    src={currentChurch.logo_url}
+                                    alt=""
+                                    className="h-full w-full object-cover"
+                                />
                             ) : (
-                                <BuildingOfficeIcon className="w-6 h-6 text-white dark:text-black" />
+                                <BuildingOfficeIcon className="h-5 w-5 text-white" />
                             )}
                         </div>
-                        <div className="flex flex-col min-w-0">
-                            <span className="text-lg font-bold tracking-tight leading-none truncate">
+                        <div className="flex min-w-0 flex-col gap-0.5">
+                            <span className="truncate text-[15px] font-bold leading-tight tracking-[-0.02em] text-zinc-900 dark:text-zinc-50">
                                 {currentChurch?.name ?? 'Igreja'}
+                            </span>
+                            <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-brand-700/70 dark:text-brand-400/80">
+                                Painel
                             </span>
                         </div>
                     </Link>
                     <button
                         type="button"
                         onClick={onMobileClose}
-                        className="shrink-0 rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                        className="shrink-0 cursor-pointer rounded-lg p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
                         aria-label="Fechar menu"
                     >
-                        <XMarkIcon className="h-6 w-6" />
+                        <XMarkIcon className="h-5 w-5" />
                     </button>
                 </div>
 
                 {showChurchSwitcher && (
-                    <div className="px-4 py-2 border-b border-zinc-100 dark:border-zinc-900">
-                        <label htmlFor="sidebar-church-switch" className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
-                            Igreja em que está trabalhando
+                    <div className="border-b border-zinc-200/70 px-4 py-3 dark:border-zinc-800/80">
+                        <label
+                            htmlFor="sidebar-church-switch"
+                            className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400 dark:text-zinc-500"
+                        >
+                            Igreja ativa
                         </label>
                         <select
                             id="sidebar-church-switch"
@@ -544,7 +580,7 @@ export default function Sidebar({
                                     router.post(route('working-church.store'), { church_id: id }, { preserveScroll: true });
                                 }
                             }}
-                            className="h-11 w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 pl-3 pr-8 text-sm text-zinc-900 dark:text-zinc-100 shadow-sm focus:border-zinc-900 dark:focus:border-white focus:ring-1 focus:ring-zinc-900/20 dark:focus:ring-white/20"
+                            className="h-10 w-full cursor-pointer rounded-xl border border-zinc-200/90 bg-white/90 pl-3 pr-8 text-[13px] font-medium text-zinc-800 shadow-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-brand-400 dark:focus:ring-brand-400/20"
                         >
                             {churchesForSwitch.map((c) => (
                                 <option key={c.id} value={c.id}>
@@ -552,23 +588,25 @@ export default function Sidebar({
                                 </option>
                             ))}
                         </select>
-                        <p className="mt-1 text-[10px] text-zinc-400 dark:text-zinc-500">
+                        <p className="mt-1.5 text-[10px] leading-relaxed text-zinc-400 dark:text-zinc-500">
                             O menu &quot;Igrejas&quot; continua disponível para cadastrar outras.
                         </p>
                     </div>
                 )}
 
-                <div className="flex-1 overflow-y-auto py-8 px-4">
-                    {dashboardMenuItems.length > 0 ? renderMenuLinks(dashboardMenuItems) : null}
+                <div className="ns-sidebar-scroll flex-1 overflow-y-auto px-3 py-5">
+                    {dashboardMenuItems.length > 0 ? (
+                        <div className="mb-1">{renderMenuLinks(dashboardMenuItems)}</div>
+                    ) : null}
                     {renderCollapsibleSection(
-                        'PASTOR',
+                        'Pastor',
                         isPastorOpen,
                         () => setIsPastorOpen((v) => !v),
                         pastorMenuItems,
                         dashboardMenuItems.length === 0,
                     )}
                     {renderCollapsibleSection(
-                        'OPERAÇÃO',
+                        'Operação',
                         isMainOpen,
                         () => setIsMainOpen((v) => !v),
                         operationMenuItems,
@@ -581,7 +619,7 @@ export default function Sidebar({
                         publicationMenuItems,
                     )}
                     {renderCollapsibleSection('Cadastro', isCadastroOpen, () => setIsCadastroOpen((v) => !v), cadastroMenuItems)}
-                    {renderCollapsibleSection('ADM', isAdmOpen, () => setIsAdmOpen((v) => !v), admMenuItems)}
+                    {renderCollapsibleSection('Adm', isAdmOpen, () => setIsAdmOpen((v) => !v), admMenuItems)}
                 </div>
             </aside>
         </>
