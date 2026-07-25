@@ -7,6 +7,7 @@ use App\Models\AppSupportTicket;
 use App\Models\AppVersion;
 use App\Models\Church;
 use App\Models\ChurchSolicitation;
+use App\Models\Event;
 use App\Models\MissionTripRegistration;
 use App\Models\Pastor;
 use App\Support\ChurchAppFeatures;
@@ -359,6 +360,25 @@ class HandleInertiaRequests extends Middleware
                 5
             ),
             'unreadInboxNotificationsCount' => fn () => NotificationFeed::unreadInboxCount($request),
+            /** Ícone de eventos no topo: urgência quando há evento amanhã (igreja em contexto). */
+            'hasEventTomorrow' => function () use ($request, $currentChurch) {
+                $churchId = is_array($currentChurch) ? ($currentChurch['id'] ?? null) : null;
+                if ($churchId === null || ! Schema::hasTable('events')) {
+                    return false;
+                }
+
+                if (in_array('events', ChurchAppFeatures::disabledKeysForRequest($request), true)) {
+                    return false;
+                }
+
+                $tomorrow = now()->addDay()->toDateString();
+
+                return Event::query()
+                    ->where('church_id', $churchId)
+                    ->visibleToPublic()
+                    ->whereDate('starts_at', $tomorrow)
+                    ->exists();
+            },
             /** Menu lateral: textos em config/admin_sidebar.php (não depende só do bundle JS em cache). */
             'adminSidebarMenu' => fn () => config('admin_sidebar.items', []),
             /** Chaves de funcionalidades desativadas para membros (app mobile / Mais). */

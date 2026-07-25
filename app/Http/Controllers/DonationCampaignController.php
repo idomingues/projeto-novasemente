@@ -89,6 +89,7 @@ class DonationCampaignController extends Controller
                 'ends_at' => $c->ends_at?->format('Y-m-d'),
                 'cover_image_url' => $c->cover_image_url,
                 'allow_over_goal' => $c->allow_over_goal,
+                'show_caixa_fixo_story' => (bool) $c->show_caixa_fixo_story,
                 'donations_count' => $c->donations()->count(),
                 'story_video_url' => $c->story_video_url,
                 'story_photos' => $c->photosPayload(DonationCampaignPhoto::KIND_STORY),
@@ -124,6 +125,7 @@ class DonationCampaignController extends Controller
             'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
             'status' => ['required', 'in:active,closed,archived'],
             'allow_over_goal' => ['boolean'],
+            'show_caixa_fixo_story' => ['boolean'],
             'cover_image' => ['nullable', 'image', 'max:5120'],
         ]);
 
@@ -146,6 +148,7 @@ class DonationCampaignController extends Controller
             'starts_at' => $data['starts_at'],
             'ends_at' => $data['ends_at'] ?? null,
             'allow_over_goal' => $request->boolean('allow_over_goal', true),
+            'show_caixa_fixo_story' => $request->boolean('show_caixa_fixo_story'),
             'cover_image_path' => $coverPath,
             'created_by' => $request->user()?->id,
         ]);
@@ -174,6 +177,7 @@ class DonationCampaignController extends Controller
             'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
             'status' => ['required', 'in:active,closed,archived'],
             'allow_over_goal' => ['boolean'],
+            'show_caixa_fixo_story' => ['boolean'],
             'cover_image' => ['nullable', 'image', 'max:5120'],
         ]);
 
@@ -185,6 +189,7 @@ class DonationCampaignController extends Controller
             'starts_at' => $data['starts_at'],
             'ends_at' => $data['ends_at'] ?? null,
             'allow_over_goal' => $request->boolean('allow_over_goal', true),
+            'show_caixa_fixo_story' => $request->boolean('show_caixa_fixo_story'),
         ];
 
         if ($request->hasFile('cover_image')) {

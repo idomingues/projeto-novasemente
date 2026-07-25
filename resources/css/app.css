@@ -14,6 +14,33 @@
     --color-brand-900: #004a1e;
     --color-brand-950: #002910;
     --font-script: "Great Vibes", "Apple Chancery", "Segoe Script", cursive;
+    --animate-event-urgent: event-urgent 1.7s ease-in-out infinite;
+}
+
+@keyframes event-urgent {
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.55;
+        transform: scale(1.06);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    @keyframes event-urgent {
+        0%,
+        100% {
+            opacity: 1;
+            transform: none;
+        }
+        50% {
+            opacity: 0.75;
+            transform: none;
+        }
+    }
 }
 
 /* Dark mode por classe (html.dark) — necessário no Tailwind v4 */

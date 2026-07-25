@@ -267,20 +267,15 @@ class RevistaAdventistaArchiveSyncService
     private function remoteUrlExists(string $url): bool
     {
         try {
-            $head = Http::timeout(20)
-                ->withHeaders(['User-Agent' => 'NovaSemente/1.0 (revista-adventista archive)'])
-                ->head($url);
+            $head = $this->assetHttpClient(20)->head($url);
 
             if ($head->successful()) {
                 return true;
             }
 
             // Alguns CDNs respondem mal a HEAD; confirma com GET curto.
-            $get = Http::timeout(20)
-                ->withHeaders([
-                    'User-Agent' => 'NovaSemente/1.0 (revista-adventista archive)',
-                    'Range' => 'bytes=0-0',
-                ])
+            $get = $this->assetHttpClient(20)
+                ->withHeaders(['Range' => 'bytes=0-0'])
                 ->get($url);
 
             return $get->successful() || $get->status() === 206;
@@ -292,9 +287,7 @@ class RevistaAdventistaArchiveSyncService
     private function downloadCover(string $url, int $year, int $month): ?string
     {
         try {
-            $response = Http::timeout(60)
-                ->withHeaders(['User-Agent' => 'NovaSemente/1.0 (revista-adventista archive)'])
-                ->get($url);
+            $response = $this->assetHttpClient(60)->get($url);
 
             if (! $response->successful()) {
                 return null;
@@ -328,5 +321,23 @@ class RevistaAdventistaArchiveSyncService
             'image/gif' => 'gif',
             default => 'jpg',
         };
+    }
+
+    private function assetHttpClient(int $timeoutSeconds)
+    {
+        return Http::timeout($timeoutSeconds)
+            ->retry(2, 500, function ($exception, $request) {
+                if ($exception instanceof \Illuminate\Http\Client\RequestException) {
+                    $status = $exception->response?->status();
+
+                    return in_array($status, [408, 425, 429, 500, 502, 503, 504], true);
+                }
+
+                return true;
+            }, throw: false)
+            ->withHeaders([
+                'User-Agent' => 'Mozilla/5.0 (compatible; NovaSemente/1.0; +https://novasemente.app; revista-adventista archive)',
+                'Accept' => '*/*',
+            ]);
     }
 }

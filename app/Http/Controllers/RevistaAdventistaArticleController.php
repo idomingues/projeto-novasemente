@@ -100,9 +100,10 @@ class RevistaAdventistaArticleController extends Controller
 
         $years = $request->input('year');
         if (! is_array($years) || $years === []) {
-            $years = [2025, 2026];
+            $years = RevistaAdventistaSyncService::defaultYears();
+        } else {
+            $years = array_values(array_map('intval', $years));
         }
-        $years = array_values(array_map('intval', $years));
 
         $result = $syncService->sync($years);
 

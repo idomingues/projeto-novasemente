@@ -31,6 +31,7 @@ class DonationCampaign extends Model
         'thanks_published_at',
         'thanks_donors_notified_at',
         'allow_over_goal',
+        'show_caixa_fixo_story',
         'created_by',
     ];
 
@@ -40,6 +41,7 @@ class DonationCampaign extends Model
         'starts_at' => 'date',
         'ends_at' => 'date',
         'allow_over_goal' => 'boolean',
+        'show_caixa_fixo_story' => 'boolean',
         'thanks_published_at' => 'datetime',
         'thanks_donors_notified_at' => 'datetime',
     ];
@@ -173,6 +175,7 @@ class DonationCampaign extends Model
             'ends_at' => $this->ends_at?->format('Y-m-d'),
             'cover_image_url' => $this->cover_image_url,
             'accepting_donations' => $this->isAcceptingDonations(),
+            'show_caixa_fixo_story' => (bool) $this->show_caixa_fixo_story,
             'story_video_url' => $this->story_video_url,
             'story_youtube_embed_url' => $this->storyYoutubeEmbedUrl(),
             'story_photos' => $this->photosPayload(DonationCampaignPhoto::KIND_STORY),

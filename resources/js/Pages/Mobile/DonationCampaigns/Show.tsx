@@ -1,4 +1,5 @@
 import MobileLayout from '@/Layouts/MobileLayout';
+import CaixaFixoIgrejaStory from '@/Components/Donations/CaixaFixoIgrejaStory';
 import DonationProgressBar from '@/Components/Donations/DonationProgressBar';
 import DonationTransparencyNotice, {
     type DonationTransparencyInfo,
@@ -38,6 +39,7 @@ interface Campaign {
     ends_at: string | null;
     cover_image_url: string | null;
     accepting_donations: boolean;
+    show_caixa_fixo_story?: boolean;
     story_video_url: string | null;
     story_youtube_embed_url: string | null;
     story_photos: CampaignPhoto[];
@@ -272,12 +274,14 @@ export default function MobileDonationCampaignShow({ campaign, recentDonations, 
                             {campaign.ends_at ? `Prazo: ${formatCampaignDate(campaign.ends_at)}` : ''}
                         </p>
                     )}
-                    {campaign.description && (
+                    {campaign.description && !campaign.show_caixa_fixo_story && (
                         <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
                             {campaign.description}
                         </p>
                     )}
                 </div>
+
+                {campaign.show_caixa_fixo_story ? <CaixaFixoIgrejaStory /> : null}
 
                 {(campaign.story_youtube_embed_url || campaign.story_photos.length > 0) && (
                     <section className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">

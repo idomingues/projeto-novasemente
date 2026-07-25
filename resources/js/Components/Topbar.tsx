@@ -181,9 +181,9 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
                                     align="right"
                                     width="96"
                                     viewport
-                                    contentClasses="py-0 max-h-[min(70vh,400px)] overflow-hidden flex min-w-0 flex-col bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300"
+                                    contentClasses="py-0 max-h-[min(70vh,400px)] overflow-hidden flex min-h-0 min-w-0 flex-col bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300"
                                 >
-                                    <div className="flex min-w-0 items-center gap-2 border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800 sm:gap-3 sm:px-4 sm:py-3">
+                                    <div className="flex shrink-0 min-w-0 items-center gap-2 border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800 sm:gap-3 sm:px-4 sm:py-3">
                                         <div className="min-w-0 flex-1">
                                             <span className="flex min-w-0 items-center gap-2">
                                                 <span className="truncate font-semibold text-zinc-900 dark:text-white">
@@ -198,7 +198,8 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
                                         </div>
                                         <Link
                                             href={route('varios.notifications')}
-                                            className="inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded-lg px-2 py-1.5 text-xs font-medium text-primary-600 hover:bg-zinc-100 dark:text-primary-400 dark:hover:bg-zinc-800 sm:text-sm"
+                                            className="inline-flex shrink-0 cursor-pointer items-center gap-0.5 whitespace-nowrap rounded-lg px-2 py-1.5 text-xs font-medium text-primary-600 hover:bg-zinc-100 dark:text-primary-400 dark:hover:bg-zinc-800 sm:text-sm"
+                                            onClick={(e) => e.stopPropagation()}
                                         >
                                             <span className="hidden sm:inline">Ver todas</span>
                                             <span className="sm:hidden">Todas</span>
@@ -206,7 +207,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
                                         </Link>
                                         <Dropdown.CloseButton />
                                     </div>
-                                    <div className="overflow-y-auto flex-1">
+                                    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                                         {notifications.length === 0 ? (
                                             <div className="px-4 py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
                                                 Nenhuma notificação

@@ -26,8 +26,7 @@ class RevistaAdventistaArchiveCatalogService implements RevistaAdventistaArchive
     public function fetchAvailableYears(): array
     {
         try {
-            $response = Http::timeout(45)
-                ->withHeaders(['User-Agent' => 'NovaSemente/1.0 (revista-adventista archive)'])
+            $response = $this->httpClient(45)
                 ->get(self::API_BASE.'/periodico/'.self::PERIODICO_ID, [
                     'bringAvailableYears' => 'true',
                 ]);
@@ -82,8 +81,7 @@ class RevistaAdventistaArchiveCatalogService implements RevistaAdventistaArchive
     public function fetchRawEditionsForYear(int $year): array
     {
         try {
-            $response = Http::timeout(45)
-                ->withHeaders(['User-Agent' => 'NovaSemente/1.0 (revista-adventista archive)'])
+            $response = $this->httpClient(45)
                 ->get(self::API_BASE.'/edicao', [
                     'id_periodico' => self::PERIODICO_ID,
                     'year' => $year,
@@ -169,5 +167,23 @@ class RevistaAdventistaArchiveCatalogService implements RevistaAdventistaArchive
     public function storageFilename(int $year, int $month, string $extension): string
     {
         return RevistaAdventistaEdition::storageFilename($year, $month, $extension);
+    }
+
+    private function httpClient(int $timeoutSeconds)
+    {
+        return Http::timeout($timeoutSeconds)
+            ->retry(3, 750, function ($exception, $request) {
+                if ($exception instanceof \Illuminate\Http\Client\RequestException) {
+                    $status = $exception->response?->status();
+
+                    return in_array($status, [408, 425, 429, 500, 502, 503, 504], true);
+                }
+
+                return true;
+            }, throw: false)
+            ->withHeaders([
+                'User-Agent' => 'Mozilla/5.0 (compatible; NovaSemente/1.0; +https://novasemente.app; revista-adventista archive)',
+                'Accept' => 'application/json',
+            ]);
     }
 }

@@ -39,6 +39,7 @@ interface Campaign {
     cover_image_url: string | null;
     allow_over_goal: boolean;
     donations_count: number;
+    show_caixa_fixo_story: boolean;
     story_video_url: string | null;
     story_photos: CampaignPhoto[];
     thanks_message: string | null;
@@ -105,6 +106,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
         ends_at: '',
         status: 'active',
         allow_over_goal: true,
+        show_caixa_fixo_story: false,
         cover_image: null as File | null,
     });
 
@@ -185,6 +187,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
             ends_at: '',
             status: 'active',
             allow_over_goal: true,
+            show_caixa_fixo_story: false,
             cover_image: null,
         });
         setIsModalOpen(true);
@@ -201,6 +204,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
             ends_at: campaign.ends_at ?? '',
             status: campaign.status,
             allow_over_goal: campaign.allow_over_goal,
+            show_caixa_fixo_story: campaign.show_caixa_fixo_story,
             cover_image: null,
         });
         clearErrors();
@@ -388,6 +392,11 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                                     {campaign.description && (
                                         <p className="text-sm text-zinc-600 dark:text-zinc-400 line-clamp-2">{campaign.description}</p>
                                     )}
+                                    {campaign.show_caixa_fixo_story && (
+                                        <p className="text-xs font-medium text-sky-700 dark:text-sky-300">
+                                            História do Caixa Fixo ativa
+                                        </p>
+                                    )}
                                     <DonationProgressBar
                                         raisedAmount={campaign.raised_amount}
                                         goalAmount={campaign.goal_amount}
@@ -527,13 +536,28 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                         </select>
                         <InputError message={errors.status} className="mt-1" />
                     </div>
-                    <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                    <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
                         <input
                             type="checkbox"
                             checked={data.allow_over_goal}
                             onChange={(e) => setData('allow_over_goal', e.target.checked)}
+                            className="cursor-pointer"
                         />
                         Permitir contribuições acima da meta
+                    </label>
+                    <label className="flex cursor-pointer items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                        <input
+                            type="checkbox"
+                            checked={data.show_caixa_fixo_story}
+                            onChange={(e) => setData('show_caixa_fixo_story', e.target.checked)}
+                            className="mt-0.5 cursor-pointer"
+                        />
+                        <span>
+                            Exibir história do Caixa Fixo da Igreja
+                            <span className="mt-0.5 block text-xs text-zinc-500 dark:text-zinc-400">
+                                Mostra no app a distribuição dos custos mensais e o saldo anual, em vez de um texto simples.
+                            </span>
+                        </span>
                     </label>
                     <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/80 p-4 dark:border-zinc-600 dark:bg-zinc-800/40">
                         <InputLabel htmlFor="cover_image" value="Imagem de capa (opcional)" />

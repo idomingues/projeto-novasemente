@@ -185,6 +185,7 @@ const Content = ({
                 ref={panelRef}
                 className={`rounded-xl shadow-lg ${positionClasses}`}
                 style={portal ? (portalStyle ?? { position: 'fixed', visibility: 'hidden', zIndex: 70 }) : undefined}
+                onClick={(e) => e.stopPropagation()}
             >
                 <div
                     className={
@@ -197,7 +198,9 @@ const Content = ({
         </Transition>
     );
 
-    if (portal && typeof document !== 'undefined') {
+    // Viewport e portal precisam ir ao body: o backdrop do Trigger também é portal
+    // (z-55). Se o painel ficar no header (z-40), cliques/scroll caem no backdrop.
+    if ((portal || viewport) && typeof document !== 'undefined') {
         return createPortal(panel, document.body);
     }
 
@@ -216,7 +219,7 @@ const CloseButton = ({ className = '' }: { className?: string }) => {
                 setOpen(false);
             }}
             className={
-                'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white ' +
+                'flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white ' +
                 className
             }
             aria-label="Fechar"

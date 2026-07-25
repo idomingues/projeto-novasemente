@@ -803,8 +803,47 @@ class DonationCampaignTest extends TestCase
             ->where('donationUrl', 'https://7me.app/71/y8nzix')
             ->where('campaign.story_youtube_embed_url', 'https://www.youtube.com/embed/dQw4w9WgXcQ')
             ->where('campaign.thanks_is_published', true)
+            ->where('campaign.show_caixa_fixo_story', false)
             ->has('campaign.story_photos', 1)
         );
+    }
+
+    public function test_admin_can_enable_caixa_fixo_story_on_campaign(): void
+    {
+        $this->ensureCampaignPermissions();
+        [$user, $church] = $this->adminWithChurch();
+
+        $campaign = DonationCampaign::create([
+            'church_id' => $church->id,
+            'title' => 'Caixa Fixo da Igreja',
+            'goal_amount' => 177948.95,
+            'starts_at' => '2026-01-01',
+            'status' => 'active',
+            'created_by' => $user->id,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->put(route('donation-campaigns.update', $campaign), [
+                'title' => 'Caixa Fixo da Igreja',
+                'description' => 'Sustento mensal da casa.',
+                'goal_amount' => '177.948,95',
+                'starts_at' => '2026-01-01',
+                'status' => 'active',
+                'allow_over_goal' => true,
+                'show_caixa_fixo_story' => true,
+            ]);
+
+        $response->assertRedirect(route('donation-campaigns.index'));
+        $campaign->refresh();
+        $this->assertTrue($campaign->show_caixa_fixo_story);
+
+        $this->get(route('mobile.campaigns.show', $campaign))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Mobile/DonationCampaigns/Show')
+                ->where('campaign.show_caixa_fixo_story', true)
+            );
     }
 
     public function test_donation_notifies_treasurer_and_campaign_creator_in_app(): void

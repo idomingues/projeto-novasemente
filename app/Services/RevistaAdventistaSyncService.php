@@ -28,11 +28,24 @@ class RevistaAdventistaSyncService
     ];
 
     /**
+     * Anos padrão: ano atual e o anterior (acompanha a virada de calendário).
+     *
+     * @return list<int>
+     */
+    public static function defaultYears(?Carbon $now = null): array
+    {
+        $year = ($now ?? now())->year;
+
+        return [$year - 1, $year];
+    }
+
+    /**
      * @param  list<int>  $years
      * @return array{ok: bool, created: int, updated: int, skipped: int, error?: string}
      */
-    public function sync(array $years = [2025, 2026]): array
+    public function sync(?array $years = null): array
     {
+        $years ??= self::defaultYears();
         $years = array_values(array_unique(array_filter($years, fn ($y) => is_int($y) && $y >= 2000 && $y <= 2100)));
         if ($years === []) {
             return ['ok' => false, 'created' => 0, 'updated' => 0, 'skipped' => 0, 'error' => 'Informe ao menos um ano válido.'];
@@ -125,7 +138,20 @@ class RevistaAdventistaSyncService
     {
         try {
             $response = Http::timeout(45)
-                ->withHeaders(['User-Agent' => 'NovaSemente/1.0 (revista-adventista sync)'])
+                ->retry(3, 750, function ($exception, $request) {
+                    if ($exception instanceof \Illuminate\Http\Client\RequestException) {
+                        $status = $exception->response?->status();
+
+                        return in_array($status, [408, 425, 429, 500, 502, 503, 504], true);
+                    }
+
+                    // Falhas de rede / timeout: tentar de novo.
+                    return true;
+                }, throw: false)
+                ->withHeaders([
+                    'User-Agent' => 'Mozilla/5.0 (compatible; NovaSemente/1.0; +https://novasemente.app; revista-adventista sync)',
+                    'Accept' => 'application/json',
+                ])
                 ->get(self::API_BASE.'/posts', [
                     'categories' => $categoryId,
                     'per_page' => self::PER_PAGE,

@@ -7,18 +7,18 @@ use Illuminate\Console\Command;
 
 class SyncRevistaAdventistaCommand extends Command
 {
-    protected $signature = 'revista-adventista:sync {--year=* : Anos a importar (padrão: 2025 e 2026)}';
+    protected $signature = 'revista-adventista:sync {--year=* : Anos a importar (padrão: ano atual e o anterior)}';
 
-    protected $description = 'Importa ou atualiza artigos da Revista Adventista (2025–2026 por padrão)';
+    protected $description = 'Importa ou atualiza artigos da Revista Adventista (ano atual e o anterior por padrão)';
 
     public function handle(RevistaAdventistaSyncService $syncService): int
     {
         $years = $this->option('year');
         if (! is_array($years) || $years === []) {
-            $years = [2025, 2026];
+            $years = RevistaAdventistaSyncService::defaultYears();
+        } else {
+            $years = array_values(array_map('intval', $years));
         }
-
-        $years = array_values(array_map('intval', $years));
 
         $this->info('Sincronizando Revista Adventista (anos: '.implode(', ', $years).')…');
 
