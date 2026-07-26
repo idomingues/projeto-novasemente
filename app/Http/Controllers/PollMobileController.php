@@ -74,6 +74,9 @@ class PollMobileController extends Controller
 
         return Inertia::render('Mobile/Polls/Show', [
             'poll' => PollPresenter::forMobileShow($poll, $user, $canSeeResults, $hasVoted),
+            'otherOpenUnansweredCount' => $hasVoted
+                ? $this->otherOpenUnansweredCount($poll, $user->id)
+                : 0,
         ]);
     }
 
@@ -98,6 +101,26 @@ class PollMobileController extends Controller
         return redirect()
             ->route('mobile.polls.show', $poll)
             ->with('success', $message);
+    }
+
+    /**
+     * Outras enquetes abertas da igreja que o usuário ainda não respondeu.
+     */
+    private function otherOpenUnansweredCount(Poll $current, int $userId): int
+    {
+        $churchId = (int) $current->church_id;
+
+        return Poll::query()
+            ->forChurch($churchId)
+            ->open()
+            ->where('id', '!=', $current->id)
+            ->whereDoesntHave('votes', function ($q) use ($userId) {
+                $q->where(function ($inner) use ($userId) {
+                    $inner->where('user_id', $userId)
+                        ->orWhere('voter_key', 'u:'.$userId);
+                });
+            })
+            ->count();
     }
 
     private function assertSameChurch(Poll $poll): void

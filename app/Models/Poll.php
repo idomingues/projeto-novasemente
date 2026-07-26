@@ -87,6 +87,7 @@ class Poll extends Model
         'display_chart',
         'display_logo',
         'display_enabled',
+        'publish_to_feed',
     ];
 
     protected function casts(): array
@@ -94,6 +95,7 @@ class Poll extends Model
         return [
             'allow_multiple' => 'boolean',
             'display_enabled' => 'boolean',
+            'publish_to_feed' => 'boolean',
         ];
     }
 
@@ -120,6 +122,9 @@ class Poll extends Model
             }
             if ($poll->display_enabled === null) {
                 $poll->display_enabled = true;
+            }
+            if ($poll->publish_to_feed === null) {
+                $poll->publish_to_feed = true;
             }
         });
     }

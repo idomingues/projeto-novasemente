@@ -23,8 +23,10 @@ final class HomeModuleSpotlight
      *         title: string,
      *         subtitle: string,
      *         cta: string,
-     *         icon_key: string
-     *     }>
+     *         icon_key: string,
+     *         home_card_id: string|null
+     *     }>,
+     *     home_card_ids: list<string>
      * }|null
      */
     public static function forChurch(?Church $church, ?Carbon $now = null): ?array
@@ -52,11 +54,19 @@ final class HomeModuleSpotlight
         }
 
         $first = $items[0];
+        $homeCardIds = [];
+        foreach ($items as $item) {
+            $cardId = trim((string) ($item['home_card_id'] ?? ''));
+            if ($cardId !== '' && ! in_array($cardId, $homeCardIds, true)) {
+                $homeCardIds[] = $cardId;
+            }
+        }
 
         // Raiz espelha o 1º item para assets JS antigos em cache após deploy parcial.
         return array_merge($first, [
             'interval_seconds' => $interval,
             'items' => $items,
+            'home_card_ids' => $homeCardIds,
         ]);
     }
 
@@ -71,7 +81,8 @@ final class HomeModuleSpotlight
      *     title: string,
      *     subtitle: string,
      *     cta: string,
-     *     icon_key: string
+     *     icon_key: string,
+     *     home_card_id: string|null
      * }|null
      */
     private static function resolveCampaign(array $campaign, ?Church $church, Carbon $now): ?array
@@ -110,16 +121,19 @@ final class HomeModuleSpotlight
             $iconKey = $featureKey ?: 'sparkles';
         }
 
+        $homeCardId = trim((string) ($campaign['home_card_id'] ?? ''));
+
         return [
             'id' => $id,
             'feature_key' => $featureKey,
             'route' => $routeName,
             'href' => $href,
-            'badge' => trim((string) ($campaign['badge'] ?? 'Em destaque')) ?: 'Em destaque',
+            'badge' => trim((string) ($campaign['badge'] ?? 'New')) ?: 'New',
             'title' => trim((string) ($campaign['title'] ?? '')) ?: 'Novidade',
             'subtitle' => trim((string) ($campaign['subtitle'] ?? '')),
             'cta' => trim((string) ($campaign['cta'] ?? 'Abrir')) ?: 'Abrir',
             'icon_key' => $iconKey,
+            'home_card_id' => $homeCardId !== '' ? $homeCardId : null,
         ];
     }
 

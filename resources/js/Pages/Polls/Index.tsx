@@ -59,6 +59,7 @@ type PollRow = {
     display_logo: string;
     display_logo_url: string | null;
     display_enabled: boolean;
+    publish_to_feed?: boolean;
 };
 
 type DisplayLogoOption = {
@@ -135,6 +136,7 @@ export default function Index({
         display_chart: 'bar',
         display_logo: 'horizontal-color',
         display_enabled: true,
+        publish_to_feed: true,
     });
 
     const { saving, save } = useListModalSubmit({
@@ -188,6 +190,7 @@ export default function Index({
                 display_chart: poll.display_chart || 'bar',
                 display_logo: poll.display_logo || 'horizontal-color',
                 display_enabled: poll.response_type === 'text' ? false : (poll.display_enabled ?? true),
+                publish_to_feed: poll.publish_to_feed ?? true,
             });
         },
         [setData],
@@ -212,6 +215,7 @@ export default function Index({
             display_chart: 'bar',
             display_logo: 'horizontal-color',
             display_enabled: true,
+            publish_to_feed: true,
         });
         clearErrors();
         setIsModalOpen(true);
@@ -328,6 +332,7 @@ export default function Index({
                 display_chart: data.display_chart,
                 display_logo: data.display_logo,
                 display_enabled: data.response_type === 'text' ? false : data.display_enabled,
+                publish_to_feed: data.publish_to_feed,
             };
             const outcome = await save(
                 isEditing,
@@ -363,6 +368,7 @@ export default function Index({
                     display_chart: 'bar',
                     display_logo: 'horizontal-color',
                     display_enabled: true,
+                    publish_to_feed: true,
                 });
             }
         })();
@@ -760,6 +766,35 @@ export default function Index({
                                 )}
                                 <InputError message={errors.status} className="mt-1" />
                             </section>
+
+                            <section className="flex items-center justify-between gap-4 rounded-3xl border border-zinc-200/80 bg-white px-4 py-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 sm:px-5">
+                                <div>
+                                    <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                                        Publicar no feed de Publicações
+                                    </p>
+                                    <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                                        Quando a enquete estiver aberta, aparece no feed do app
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => canManage && setData('publish_to_feed', !data.publish_to_feed)}
+                                    disabled={!canManage}
+                                    className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer items-center rounded-full transition-colors disabled:cursor-not-allowed ${
+                                        data.publish_to_feed ? 'bg-emerald-600' : 'bg-zinc-300 dark:bg-zinc-600'
+                                    }`}
+                                    role="switch"
+                                    aria-checked={data.publish_to_feed}
+                                    aria-label="Publicar no feed de Publicações"
+                                >
+                                    <span
+                                        className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform ${
+                                            data.publish_to_feed ? 'translate-x-7' : 'translate-x-1'
+                                        }`}
+                                    />
+                                </button>
+                            </section>
+                            <InputError message={errors.publish_to_feed} className="mt-1" />
                                 </>
                             )}
 

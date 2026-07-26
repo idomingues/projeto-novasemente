@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Church;
 use App\Models\News;
+use App\Models\Poll;
 use App\Models\User;
 use Database\Seeders\ChurchSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -251,6 +252,70 @@ class PublicationsFeedTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('items.data.0.href', route('mobile.news.show', ['news' => 'noticia-feed-teste'], absolute: false)));
+    }
+
+    public function test_open_poll_appears_in_publications_feed(): void
+    {
+        config(['publications_feed.preview_only' => false]);
+
+        $this->seed(ChurchSeeder::class);
+        $church = Church::query()->firstOrFail();
+
+        $user = User::factory()->create([
+            'church_id' => $church->id,
+            'email' => 'membro@example.com',
+        ]);
+
+        $poll = Poll::query()->create([
+            'church_id' => $church->id,
+            'created_by' => $user->id,
+            'question' => 'Qual sua preferência de culto?',
+            'allow_multiple' => false,
+            'response_type' => Poll::RESPONSE_CHOICE,
+            'status' => Poll::STATUS_OPEN,
+            'display_enabled' => true,
+            'publish_to_feed' => true,
+        ]);
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.publications-feed', ['type' => 'polls']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('items.data.0.id', 'polls-'.$poll->id)
+                ->where('items.data.0.type', 'polls')
+                ->where('items.data.0.title', 'Qual sua preferência de culto?')
+                ->where('items.data.0.href', route('mobile.polls.show', ['poll' => $poll->id], absolute: false)));
+    }
+
+    public function test_open_poll_without_feed_flag_is_hidden_from_publications_feed(): void
+    {
+        config(['publications_feed.preview_only' => false]);
+
+        $this->seed(ChurchSeeder::class);
+        $church = Church::query()->firstOrFail();
+
+        $user = User::factory()->create([
+            'church_id' => $church->id,
+            'email' => 'membro@example.com',
+        ]);
+
+        Poll::query()->create([
+            'church_id' => $church->id,
+            'created_by' => $user->id,
+            'question' => 'Enquete só interna',
+            'allow_multiple' => false,
+            'response_type' => Poll::RESPONSE_CHOICE,
+            'status' => Poll::STATUS_OPEN,
+            'display_enabled' => true,
+            'publish_to_feed' => false,
+        ]);
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.publications-feed', ['type' => 'polls']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->where('items.data', []));
     }
 
     public function test_guest_cannot_access_while_preview_only(): void

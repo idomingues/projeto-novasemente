@@ -12,6 +12,7 @@ use App\Models\LibraryBook;
 use App\Models\Musica;
 use App\Models\News;
 use App\Models\PhotoAlbum;
+use App\Models\Poll;
 use App\Models\RevistaAdventistaArticle;
 use App\Services\DriveFolderCoverService;
 
@@ -76,6 +77,14 @@ final class PublicationFeedCoverResolver
         $cover = $musica->youtube_thumb_url ?? self::youtubeThumb($musica->youtube_url);
 
         return self::finalize($cover, 'musica', $church, $baseUrl);
+    }
+
+    public static function forPoll(Poll $poll, ?Church $church, string $baseUrl): ?string
+    {
+        // Arte fixa premium (Q&A) para todas as publicações de enquete no feed.
+        $fixed = self::absoluteUrl('/images/publications/enquetes-feed-cover.png?v=5', $baseUrl);
+
+        return self::finalize($fixed, 'polls', $church, $baseUrl);
     }
 
     public static function forEvent(Event $event, string $baseUrl, ?Church $church = null): ?string

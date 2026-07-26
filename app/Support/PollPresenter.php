@@ -66,6 +66,7 @@ final class PollPresenter
         $base['display_logo'] = $poll->display_logo ?: 'horizontal-color';
         $base['display_logo_url'] = Poll::displayLogoPath($poll->display_logo ?: 'horizontal-color');
         $base['display_enabled'] = (bool) $poll->display_enabled && $poll->showsResults();
+        $base['publish_to_feed'] = (bool) $poll->publish_to_feed;
 
         return $base;
     }

@@ -8,6 +8,7 @@ use App\Http\Support\ListModalRedirect;
 use App\Models\Church;
 use App\Models\Poll;
 use App\Models\PollOption;
+use App\Services\PublicationBroadcastNotifier;
 use App\Support\PollPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +17,10 @@ use Inertia\Response;
 
 class PollController extends Controller
 {
+    public function __construct(
+        private readonly PublicationBroadcastNotifier $publicationBroadcast,
+    ) {}
+
     private function currentChurchId(): ?int
     {
         return Church::resolveWorkingId(request());
@@ -79,6 +84,9 @@ class PollController extends Controller
                     : (array_key_exists('display_enabled', $data)
                         ? (bool) $data['display_enabled']
                         : true),
+                'publish_to_feed' => array_key_exists('publish_to_feed', $data)
+                    ? (bool) $data['publish_to_feed']
+                    : true,
             ]);
 
             if (($data['response_type'] ?? Poll::RESPONSE_CHOICE) !== Poll::RESPONSE_TEXT) {
@@ -88,6 +96,10 @@ class PollController extends Controller
             return $poll;
         });
 
+        if ($poll->publish_to_feed) {
+            $this->publicationBroadcast->notifyPoll($poll, $request->user()?->id);
+        }
+
         return ListModalRedirect::toIndexEdit('polls.index', $poll, 'Enquete criada com sucesso!');
     }
 
@@ -96,6 +108,8 @@ class PollController extends Controller
         $this->assertSameChurch($poll);
 
         $data = $request->validated();
+        $wasOpen = $poll->status === Poll::STATUS_OPEN;
+        $wasInFeed = (bool) $poll->publish_to_feed;
 
         DB::transaction(function () use ($poll, $data) {
             $poll->ensurePublicToken();
@@ -114,6 +128,9 @@ class PollController extends Controller
                     : (array_key_exists('display_enabled', $data)
                         ? (bool) $data['display_enabled']
                         : (bool) $poll->display_enabled),
+                'publish_to_feed' => array_key_exists('publish_to_feed', $data)
+                    ? (bool) $data['publish_to_feed']
+                    : (bool) $poll->publish_to_feed,
             ]);
 
             if (($data['response_type'] ?? Poll::RESPONSE_CHOICE) === Poll::RESPONSE_TEXT) {
@@ -122,6 +139,11 @@ class PollController extends Controller
                 $this->syncOptions($poll, $data['options'] ?? []);
             }
         });
+
+        $poll->refresh();
+        if ((! $wasOpen || ! $wasInFeed) && $poll->status === Poll::STATUS_OPEN && $poll->publish_to_feed) {
+            $this->publicationBroadcast->notifyPoll($poll, $request->user()?->id);
+        }
 
         return ListModalRedirect::toIndexEdit('polls.index', $poll, 'Enquete atualizada com sucesso!');
     }

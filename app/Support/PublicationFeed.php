@@ -10,6 +10,7 @@ use App\Models\LibraryBook;
 use App\Models\Musica;
 use App\Models\News;
 use App\Models\PhotoAlbum;
+use App\Models\Poll;
 use App\Models\RevistaAdventistaArticle;
 use App\Services\DriveFolderCoverService;
 use Carbon\Carbon;
@@ -76,6 +77,12 @@ class PublicationFeed
             'feature' => 'musica',
             'description' => 'Música de louvor para cantar conosco.',
             'action' => 'Ouvir música',
+        ],
+        'polls' => [
+            'label' => 'Enquetes',
+            'feature' => 'polls',
+            'description' => 'Enquete aberta para a congregação responder.',
+            'action' => 'Clique e responda',
         ],
     ];
 
@@ -223,6 +230,7 @@ class PublicationFeed
                 'events' => self::collectEvents($church, $churchId, $baseUrl),
                 'revista' => self::collectRevistaArticles($church, $baseUrl),
                 'musica' => self::collectMusicas($church, $churchId, $baseUrl),
+                'polls' => self::collectPolls($church, $churchId, $baseUrl),
                 default => collect(),
             });
         }
@@ -562,6 +570,50 @@ class PublicationFeed
                 body: 'Música de louvor para acompanhar e cantar conosco.',
                 requiresOpen: true,
             ));
+    }
+
+    /**
+     * @return Collection<int, array<string, mixed>>
+     */
+    private static function collectPolls(?Church $church, ?int $churchId, string $baseUrl): Collection
+    {
+        if ($churchId === null) {
+            return collect();
+        }
+
+        return Poll::query()
+            ->forChurch($churchId)
+            ->open()
+            ->where('publish_to_feed', true)
+            ->withCount('options')
+            ->orderByDesc('updated_at')
+            ->orderByDesc('created_at')
+            ->limit(100)
+            ->get()
+            ->map(function (Poll $poll) use ($church, $baseUrl) {
+                $meta = ['Enquete aberta'];
+                if ($poll->isTextResponse()) {
+                    $meta[] = 'Resposta em texto';
+                } elseif ((int) ($poll->options_count ?? 0) > 0) {
+                    $meta[] = $poll->options_count.' opções';
+                }
+
+                $excerpt = 'Clique e responda.';
+
+                return self::entry(
+                    type: 'polls',
+                    typeLabel: self::TYPE_DEFINITIONS['polls']['label'],
+                    pk: $poll->id,
+                    title: $poll->question,
+                    excerpt: $excerpt,
+                    imageUrl: PublicationFeedCoverResolver::forPoll($poll, $church, $baseUrl),
+                    publishedAt: $poll->updated_at ?? $poll->created_at,
+                    href: route('mobile.polls.show', ['poll' => $poll->id], absolute: false),
+                    meta: $meta,
+                    body: $excerpt,
+                    requiresOpen: true,
+                );
+            });
     }
 
     /**

@@ -27,10 +27,14 @@ class HomeModuleSpotlightTest extends TestCase
                 ->where('moduleSpotlight.items.0.id', 'ns_whats_2026_07')
                 ->where('moduleSpotlight.items.0.route', 'mobile.ns-whats.index')
                 ->where('moduleSpotlight.items.0.title', 'NS Whats')
+                ->where('moduleSpotlight.items.0.badge', 'New')
+                ->where('moduleSpotlight.items.0.home_card_id', 'ns-whats')
                 ->where('moduleSpotlight.title', 'NS Whats')
+                ->where('moduleSpotlight.home_card_ids', ['ns-whats', 'enquetes'])
                 ->where('moduleSpotlight.items.1.id', 'enquetes_2026_07')
                 ->where('moduleSpotlight.items.1.route', 'mobile.polls.index')
-                ->where('moduleSpotlight.items.1.title', 'Enquetes'));
+                ->where('moduleSpotlight.items.1.title', 'Enquetes')
+                ->where('moduleSpotlight.items.1.home_card_id', 'enquetes'));
     }
 
     public function test_spotlight_respects_campaign_period(): void

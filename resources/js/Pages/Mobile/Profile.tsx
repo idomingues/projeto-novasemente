@@ -223,8 +223,8 @@ export default function MobileProfile({ church, user, profileCounts, volunteerSi
         ...(route().has('mobile.ns-whats.index')
             ? ([
                   {
-                      title: 'Meus NS Whats',
-                      description: 'Suas conversas e mensagens recebidas',
+                      title: 'NS Whats',
+                      description: 'Converse com departamentos, líderes e voluntários.',
                       icon: ChatBubbleLeftRightIcon,
                       href: route('mobile.ns-whats.index'),
                       tone: 'member',

@@ -30,6 +30,7 @@ class StorePollRequest extends FormRequest
             'display_chart' => ['nullable', 'string', Rule::in(array_keys(Poll::DISPLAY_CHARTS))],
             'display_logo' => ['nullable', 'string', Rule::in(array_keys(Poll::DISPLAY_LOGOS))],
             'display_enabled' => ['nullable', 'boolean'],
+            'publish_to_feed' => ['nullable', 'boolean'],
         ];
     }
 
@@ -59,6 +60,14 @@ class StorePollRequest extends FormRequest
             $this->merge([
                 'display_enabled' => filter_var($this->input('display_enabled'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? true,
             ]);
+        }
+
+        if ($this->has('publish_to_feed')) {
+            $this->merge([
+                'publish_to_feed' => filter_var($this->input('publish_to_feed'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? true,
+            ]);
+        } else {
+            $this->merge(['publish_to_feed' => true]);
         }
 
         if ($this->filled('display_bg_color')) {

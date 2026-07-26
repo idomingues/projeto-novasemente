@@ -6,9 +6,16 @@ type Props = {
     bookmarked: boolean;
     disabled?: boolean;
     onToggle: (cardKey: string) => void;
+    className?: string;
 };
 
-export default function HomeCardBookmarkButton({ cardKey, bookmarked, disabled = false, onToggle }: Props) {
+export default function HomeCardBookmarkButton({
+    cardKey,
+    bookmarked,
+    disabled = false,
+    onToggle,
+    className = '',
+}: Props) {
     return (
         <button
             type="button"
@@ -20,7 +27,7 @@ export default function HomeCardBookmarkButton({ cardKey, bookmarked, disabled =
                     onToggle(cardKey);
                 }
             }}
-            className="absolute right-2 top-2 z-10 inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+            className={`absolute right-2 top-2 z-10 inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-200 ${className}`}
             aria-label={bookmarked ? 'Remover dos favoritos' : 'Marcar como favorito'}
             aria-pressed={bookmarked}
             title={bookmarked ? 'Remover dos favoritos' : 'Marcar como favorito'}

@@ -36,5 +36,6 @@ return [
         'revista' => null,
         'acervo' => null,
         'musica' => null,
+        'polls' => '/images/publications/enquetes-feed-cover.png',
     ],
 ];

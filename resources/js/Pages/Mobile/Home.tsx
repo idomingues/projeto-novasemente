@@ -88,12 +88,15 @@ function QuickActionGlyph({ icon: Icon }: { icon: MenuIcon }) {
 const homeCardClass =
     'group relative flex cursor-pointer flex-col rounded-2xl bg-white p-3.5 pr-9 text-left shadow-sm ring-1 ring-zinc-200 transition duration-200 hover:bg-zinc-50 hover:shadow-md dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60';
 
+const homeCardSpotlightClass =
+    'group relative flex cursor-pointer flex-col rounded-2xl bg-gradient-to-br from-teal-50 via-[#f7f3eb] to-amber-50 p-3.5 pr-9 text-left shadow-md ring-1 ring-teal-600/25 transition duration-200 hover:from-teal-100/90 hover:via-[#efe9df] hover:to-amber-100/80 hover:shadow-lg dark:from-teal-950 dark:via-emerald-950 dark:to-zinc-900 dark:ring-teal-500/40 dark:hover:from-teal-900 dark:hover:via-emerald-900 dark:hover:to-zinc-800';
+
 /** Atalhos da Home: itens exclusivos + todos do antigo menu Mais (sem duplicar por rota). */
 const homeQuickActions: QuickAction[] = [
     {
         id: 'ns-whats',
         label: 'NS Whats',
-        subtitle: 'Suas conversas e mensagens recebidas',
+        subtitle: 'Converse com departamentos, líderes e voluntários.',
         route: 'mobile.ns-whats.index',
         featureKey: 'ns_whats',
         icon: ChatBubbleLeftRightIcon,
@@ -427,6 +430,16 @@ export default function MobileHome({
     };
 
     const gridItems = useMemo(() => {
+        const spotlightCardIds = (() => {
+            if (Array.isArray(moduleSpotlight?.home_card_ids) && moduleSpotlight.home_card_ids.length > 0) {
+                return moduleSpotlight.home_card_ids.filter((id): id is string => typeof id === 'string' && id !== '');
+            }
+            return (moduleSpotlight?.items ?? [])
+                .map((item) => item.home_card_id)
+                .filter((id): id is string => typeof id === 'string' && id !== '');
+        })();
+        const spotlightRank = new Map(spotlightCardIds.map((id, index) => [id, index]));
+
         const actions = homeQuickActions
             .map((action) =>
                 action.id === 'caixa-promessas' ? { ...action, onClick: openPromise } : action,
@@ -438,6 +451,15 @@ export default function MobileHome({
         const items = [...actions, { kind: 'sobre' as const, id: 'sobre-o-app', label: 'Sobre o APP' }];
 
         return items.sort((a, b) => {
+            const aSpotlight = spotlightRank.has(a.id);
+            const bSpotlight = spotlightRank.has(b.id);
+            if (aSpotlight !== bSpotlight) {
+                return aSpotlight ? -1 : 1;
+            }
+            if (aSpotlight && bSpotlight) {
+                return (spotlightRank.get(a.id) ?? 0) - (spotlightRank.get(b.id) ?? 0);
+            }
+
             const aBook = bookmarks.includes(a.id) ? 0 : 1;
             const bBook = bookmarks.includes(b.id) ? 0 : 1;
             if (aBook !== bBook) {
@@ -448,7 +470,7 @@ export default function MobileHome({
             }
             return a.label.localeCompare(b.label, 'pt-BR', { sensitivity: 'base' });
         });
-    }, [isEnabled, bookmarks, isMinistryLeader]);
+    }, [isEnabled, bookmarks, isMinistryLeader, moduleSpotlight]);
 
     useEffect(() => {
         if (!showPostRegistrationBanner || typeof window === 'undefined') {
@@ -526,17 +548,35 @@ export default function MobileHome({
                             const { id, label, subtitle, route: routeName, routeParams, onClick, icon } = item.action;
                             const pendingBadge =
                                 id === 'ns-whats' && nsWhatsPendingReply > 0 ? nsWhatsPendingReply : null;
+                            const isSpotlightCard = Boolean(
+                                (Array.isArray(moduleSpotlight?.home_card_ids) &&
+                                    moduleSpotlight.home_card_ids.includes(id)) ||
+                                    moduleSpotlight?.items?.some((s) => s.home_card_id === id),
+                            );
+                            const cardClass = isSpotlightCard ? homeCardSpotlightClass : homeCardClass;
                             const content = (
                                 <>
+                                    {isSpotlightCard ? (
+                                        <span className="absolute right-2.5 top-2.5 z-[1] inline-flex items-center rounded-full bg-teal-700 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow-sm dark:bg-teal-400 dark:text-teal-950">
+                                            New
+                                        </span>
+                                    ) : null}
                                     {canBookmark ? (
                                         <HomeCardBookmarkButton
                                             cardKey={id}
                                             bookmarked={bookmarks.includes(id)}
                                             disabled={bookmarkBusy}
                                             onToggle={(key) => void toggleBookmark(key)}
+                                            className={isSpotlightCard ? '!right-12' : ''}
                                         />
                                     ) : null}
-                                    <div className="relative inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200/70 dark:bg-emerald-950/45 dark:text-emerald-200 dark:ring-emerald-800/60">
+                                    <div
+                                        className={`relative inline-flex h-9 w-9 items-center justify-center rounded-xl ring-1 ring-inset ${
+                                            isSpotlightCard
+                                                ? 'bg-teal-700/12 text-teal-800 ring-teal-700/25 dark:bg-teal-400/15 dark:text-teal-200 dark:ring-teal-400/30'
+                                                : 'bg-emerald-50 text-emerald-700 ring-emerald-200/70 dark:bg-emerald-950/45 dark:text-emerald-200 dark:ring-emerald-800/60'
+                                        }`}
+                                    >
                                         <QuickActionGlyph icon={icon} />
                                         {pendingBadge !== null ? (
                                             <span
@@ -549,8 +589,22 @@ export default function MobileHome({
                                         ) : null}
                                     </div>
                                     <div className="mt-3 min-w-0">
-                                        <p className="text-[15px] font-semibold leading-tight text-zinc-900 dark:text-white">{label}</p>
-                                        <p className="mt-1 text-[11px] font-medium leading-snug text-zinc-600 dark:text-zinc-300">
+                                        <p
+                                            className={`text-[15px] font-semibold leading-tight ${
+                                                isSpotlightCard
+                                                    ? 'text-teal-950 dark:text-teal-50'
+                                                    : 'text-zinc-900 dark:text-white'
+                                            }`}
+                                        >
+                                            {label}
+                                        </p>
+                                        <p
+                                            className={`mt-1 text-[11px] font-medium leading-snug ${
+                                                isSpotlightCard
+                                                    ? 'text-teal-900/75 dark:text-teal-100/80'
+                                                    : 'text-zinc-600 dark:text-zinc-300'
+                                            }`}
+                                        >
                                             {subtitle}
                                         </p>
                                     </div>
@@ -559,7 +613,7 @@ export default function MobileHome({
 
                             if (onClick) {
                                 return (
-                                    <button key={id} type="button" onClick={onClick} className={homeCardClass}>
+                                    <button key={id} type="button" onClick={onClick} className={cardClass}>
                                         {content}
                                     </button>
                                 );
@@ -575,7 +629,7 @@ export default function MobileHome({
                                             ? route(routeName, routeParams)
                                             : route(routeName)
                                     }
-                                    className={homeCardClass}
+                                    className={cardClass}
                                 >
                                     {content}
                                 </Link>

@@ -59,9 +59,11 @@ export default function AppVersionsIndex({ versions, latestVersion, schemaReady 
 
     const applyVersionToForm = useCallback(
         (v: VersionRow) => {
+            // Backend envia "Y-m-d H:i:s" (espaço) ou ISO com "T"; input[type=date] exige Y-m-d.
+            const releasedDate = v.releasedAt ? v.releasedAt.slice(0, 10) : '';
             setData({
                 version: v.version,
-                released_at: v.releasedAt ? v.releasedAt.split('T')[0] : '',
+                released_at: /^\d{4}-\d{2}-\d{2}$/.test(releasedDate) ? releasedDate : '',
                 notes: v.notes ?? '',
             });
         },

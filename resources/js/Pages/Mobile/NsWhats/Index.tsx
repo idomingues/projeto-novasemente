@@ -2,6 +2,7 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import {
     ArrowLeftIcon,
+    BookmarkIcon,
     CheckCircleIcon,
     EllipsisVerticalIcon,
     MagnifyingGlassIcon,
@@ -57,6 +58,8 @@ type Conversation = {
     headerTitle: string;
     headerSubtitle: string;
     headerPhotoUrl?: string | null;
+    /** Conversas fixas com líderes dos departamentos em que o usuário serve. */
+    pinnedLeader?: boolean;
 };
 
 interface Props {
@@ -426,8 +429,12 @@ export default function NsWhatsIndex({
                                     </div>
                                 ) : (
                                     <ul className="space-y-1 px-2 py-1.5">
-                                        {roster.map((c) => {
+                                        {roster.map((c, index) => {
                                             const isActive = selectedId === c.id;
+                                            const isPinned = Boolean(c.pinnedLeader);
+                                            const prevPinned = index > 0 ? Boolean(roster[index - 1]?.pinnedLeader) : false;
+                                            const nextPinned = index < roster.length - 1 ? Boolean(roster[index + 1]?.pinnedLeader) : false;
+                                            const showPinnedDivider = isPinned && !nextPinned && roster.some((row) => !row.pinnedLeader);
                                             const preview = c.viewerRole === 'staff'
                                                 ? `${c.ministryName ? `${c.ministryName} · ` : ''}${c.lastPreview}`
                                                 : c.ministryName
@@ -435,6 +442,11 @@ export default function NsWhatsIndex({
                                                   : c.lastPreview;
                                             return (
                                                 <li key={c.id}>
+                                                    {isPinned && !prevPinned ? (
+                                                        <p className="px-2.5 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400 dark:text-zinc-500">
+                                                            Seus líderes
+                                                        </p>
+                                                    ) : null}
                                                     <button
                                                         type="button"
                                                         onClick={() => openConversation(c.id)}
@@ -442,7 +454,9 @@ export default function NsWhatsIndex({
                                                         className={`flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left transition disabled:cursor-wait disabled:opacity-60 ${
                                                             isActive
                                                                 ? 'border border-emerald-500 bg-emerald-50 dark:border-emerald-600 dark:bg-emerald-950/40'
-                                                                : 'border border-transparent hover:bg-zinc-50 dark:hover:bg-zinc-900/80'
+                                                                : isPinned
+                                                                  ? 'border border-transparent bg-zinc-50/80 hover:bg-zinc-100/90 dark:bg-zinc-900/50 dark:hover:bg-zinc-900/80'
+                                                                  : 'border border-transparent hover:bg-zinc-50 dark:hover:bg-zinc-900/80'
                                                         }`}
                                                     >
                                                         <UserListAvatar
@@ -453,13 +467,22 @@ export default function NsWhatsIndex({
                                                         />
                                                         <div className="min-w-0 flex-1">
                                                             <div className="flex items-center justify-between gap-2">
-                                                                <span className="truncate text-[14px] font-semibold text-zinc-900 dark:text-white">
-                                                                    {c.headerTitle}
-                                                                    {c.viewerRole === 'staff' ? (
-                                                                        <span className="ml-1.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
-                                                                            · Recebida
-                                                                        </span>
+                                                                <span className="flex min-w-0 items-center gap-1 truncate text-[14px] font-semibold text-zinc-900 dark:text-white">
+                                                                    {isPinned ? (
+                                                                        <BookmarkIcon
+                                                                            className="h-3.5 w-3.5 shrink-0 text-emerald-600/80 dark:text-emerald-400/80"
+                                                                            aria-hidden
+                                                                            strokeWidth={2}
+                                                                        />
                                                                     ) : null}
+                                                                    <span className="truncate">
+                                                                        {c.headerTitle}
+                                                                        {c.viewerRole === 'staff' ? (
+                                                                            <span className="ml-1.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+                                                                                · Recebida
+                                                                            </span>
+                                                                        ) : null}
+                                                                    </span>
                                                                 </span>
                                                                 <span
                                                                     className={`shrink-0 text-[11px] ${
@@ -483,6 +506,13 @@ export default function NsWhatsIndex({
                                                             </div>
                                                         </div>
                                                     </button>
+                                                    {showPinnedDivider ? (
+                                                        <div
+                                                            className="mx-2.5 my-2.5 border-t border-zinc-200/90 dark:border-zinc-800"
+                                                            role="separator"
+                                                            aria-label="Outras conversas"
+                                                        />
+                                                    ) : null}
                                                 </li>
                                             );
                                         })}

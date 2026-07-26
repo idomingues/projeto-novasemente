@@ -180,6 +180,30 @@ class PublicationBroadcastNotifier
         );
     }
 
+    public function notifyPoll(\App\Models\Poll $poll, ?int $createdByUserId = null): ?AppNotification
+    {
+        $poll->refresh();
+
+        if ($poll->status !== \App\Models\Poll::STATUS_OPEN) {
+            return null;
+        }
+
+        if (! $poll->publish_to_feed) {
+            return null;
+        }
+
+        return $this->create(
+            churchId: $poll->church_id,
+            prefix: 'Nova enquete: ',
+            title: $poll->question,
+            body: $poll->isTextResponse()
+                ? 'Escreva sua resposta na app.'
+                : 'Vote e veja o resultado da congregação.',
+            actionUrl: route('mobile.polls.show', ['poll' => $poll->id], absolute: true),
+            createdByUserId: $createdByUserId,
+        );
+    }
+
     private function create(
         ?int $churchId,
         string $prefix,

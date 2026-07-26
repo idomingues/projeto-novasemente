@@ -3,6 +3,7 @@ import {
     BanknotesIcon,
     BookOpenIcon,
     CalendarDaysIcon,
+    ChartBarIcon,
     ChatBubbleOvalLeftIcon,
     ChevronDownIcon,
     ChevronUpIcon,
@@ -59,6 +60,7 @@ const TYPE_ICONS: Record<string, MenuIcon> = {
     revista: NewspaperIcon,
     acervo: PlayCircleIcon,
     musica: MusicalNoteIcon,
+    polls: ChartBarIcon,
 };
 
 const TYPE_TAG_STYLES: Record<string, string> = {
@@ -78,6 +80,8 @@ const TYPE_TAG_STYLES: Record<string, string> = {
         'bg-indigo-50 text-indigo-800 ring-indigo-200/80 dark:bg-indigo-950/50 dark:text-indigo-200 dark:ring-indigo-800/60',
     musica:
         'bg-purple-50 text-purple-800 ring-purple-200/80 dark:bg-purple-950/50 dark:text-purple-200 dark:ring-purple-800/60',
+    polls:
+        'bg-cyan-50 text-cyan-900 ring-cyan-200/80 dark:bg-cyan-950/50 dark:text-cyan-200 dark:ring-cyan-800/60',
 };
 
 const DEFAULT_TAG_STYLE =
@@ -227,11 +231,14 @@ export default function PublicationFeedCard({
     const photographerLabel = item.photographer_name?.trim() || '';
     const photoDateTitle = formatPhotoDateTitle(item.published_at);
 
-    const coverAspectClass = isNews ? '' : isPhotos ? 'aspect-[4/5]' : 'aspect-square';
-    const placeholderAspectClass = isPhotos ? 'aspect-[4/5]' : 'aspect-square';
+    const isPolls = item.type === 'polls';
+    const coverAspectClass = isNews ? '' : isPhotos ? 'aspect-[4/5]' : isPolls ? 'aspect-[16/9]' : 'aspect-square';
+    const placeholderAspectClass = isPhotos ? 'aspect-[4/5]' : isPolls ? 'aspect-[16/9]' : 'aspect-square';
     const coverImageClass = isNews
         ? 'block h-auto w-full object-contain'
-        : 'h-full w-full object-cover object-center';
+        : isPolls
+          ? 'h-full w-full object-cover object-center'
+          : 'h-full w-full object-cover object-center';
 
     const goLogin = () => {
         window.location.href = route('login');
@@ -348,7 +355,7 @@ export default function PublicationFeedCard({
     );
 
     return (
-        <li className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_rgba(15,23,42,0.04)] dark:border-zinc-800 dark:bg-zinc-900">
+        <li className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_rgba(15,23,42,0.04)] dark:border-zinc-800 dark:bg-zinc-900">
             <article>
                 <div className="w-full">{media}</div>
 
@@ -450,6 +457,21 @@ export default function PublicationFeedCard({
                                 <InstagramViewLink href={instagramUrl} variant="icon" className="-ml-1.5" />
                             ) : null}
                         </div>
+                    ) : isPolls ? (
+                        <div className="space-y-3">
+                            <h2 className="text-[15px] font-semibold leading-snug tracking-tight text-zinc-900 dark:text-white">
+                                {item.title}
+                            </h2>
+                            {item.href ? (
+                                <Link
+                                    href={item.href}
+                                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-800 dark:bg-teal-500 dark:text-teal-950 dark:hover:bg-teal-400"
+                                >
+                                    {actionLabel}
+                                    <ChevronDownIcon className="h-4 w-4 -rotate-90" aria-hidden />
+                                </Link>
+                            ) : null}
+                        </div>
                     ) : (
                         <div className="space-y-1.5">
                             <h2 className="text-[15px] font-semibold leading-snug tracking-tight text-zinc-900 dark:text-white">
@@ -513,7 +535,11 @@ export default function PublicationFeedCard({
                                             {showOpenCta ? (
                                                 <Link
                                                     href={item.href}
-                                                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-sm font-semibold text-zinc-800 transition hover:border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:border-zinc-600 dark:hover:bg-zinc-700"
+                                                    className={
+                                                        item.type === 'polls'
+                                                            ? 'inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-800 dark:bg-teal-500 dark:text-teal-950 dark:hover:bg-teal-400'
+                                                            : 'inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-sm font-semibold text-zinc-800 transition hover:border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:border-zinc-600 dark:hover:bg-zinc-700'
+                                                    }
                                                 >
                                                     {actionLabel}
                                                     <ChevronDownIcon className="h-4 w-4 -rotate-90" aria-hidden />

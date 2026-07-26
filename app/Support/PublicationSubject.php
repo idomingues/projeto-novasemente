@@ -10,6 +10,7 @@ use App\Models\LibraryBook;
 use App\Models\Musica;
 use App\Models\News;
 use App\Models\PhotoAlbum;
+use App\Models\Poll;
 use App\Models\RevistaAdventistaArticle;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -27,6 +28,7 @@ final class PublicationSubject
         'events',
         'musica',
         'donation_campaign',
+        'polls',
     ];
 
     /**
@@ -99,7 +101,7 @@ final class PublicationSubject
             return null;
         }
 
-        foreach (['title', 'name'] as $attr) {
+        foreach (['title', 'name', 'question'] as $attr) {
             $value = $model->getAttribute($attr);
             if (is_string($value) && trim($value) !== '') {
                 return trim($value);
@@ -124,6 +126,7 @@ final class PublicationSubject
             'revista' => RevistaAdventistaArticle::class,
             'musica' => Musica::class,
             'donation_campaign' => DonationCampaign::class,
+            'polls' => Poll::class,
             default => null,
         };
 

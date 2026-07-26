@@ -101,12 +101,19 @@ class MobileNsWhatsController extends Controller
                 return sprintf('%d-%020d', $pin, PHP_INT_MAX - $activity);
             })
             ->values()
-            ->map(function (ChurchConversation $c) use ($user) {
+            ->map(function (ChurchConversation $c) use ($user, $servedLeaderIds) {
                 $asMember = (int) $c->member_user_id === (int) $user->id;
+                $pinnedLeader = $asMember
+                    && $c->assignee_user_id
+                    && isset($servedLeaderIds[(int) $c->assignee_user_id]);
 
-                return $asMember
+                $payload = $asMember
                     ? array_merge(ConversationPresenter::forMember($c, $user), ['viewerRole' => 'member'])
                     : array_merge(ConversationPresenter::forLeader($c, $user), ['viewerRole' => 'staff']);
+
+                $payload['pinnedLeader'] = $pinnedLeader;
+
+                return $payload;
             })
             ->all();
 

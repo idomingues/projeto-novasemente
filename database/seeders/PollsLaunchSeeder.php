@@ -108,6 +108,8 @@ class PollsLaunchSeeder extends Seeder
                     'display_enabled' => ($item['response_type'] ?? Poll::RESPONSE_CHOICE) === Poll::RESPONSE_TEXT
                         ? false
                         : true,
+                    // No feed unificado, só a primeira enquete de lançamento (milagre).
+                    'publish_to_feed' => $item['question'] === 'Qual milagre de Jesus você gostaria de ter presenciado?',
                 ]);
                 $poll->save();
                 $poll->ensurePublicToken();

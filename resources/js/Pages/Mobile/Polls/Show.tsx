@@ -33,9 +33,10 @@ type PollShow = {
 
 type Props = {
     poll: PollShow;
+    otherOpenUnansweredCount?: number;
 };
 
-export default function MobilePollsShow({ poll }: Props) {
+export default function MobilePollsShow({ poll, otherOpenUnansweredCount = 0 }: Props) {
     const isText = poll.response_type === 'text';
     const [selected, setSelected] = useState<number[]>([]);
     const [answerText, setAnswerText] = useState('');
@@ -238,6 +239,22 @@ export default function MobilePollsShow({ poll }: Props) {
                         </p>
                     </form>
                 )}
+
+                {poll.has_voted && otherOpenUnansweredCount > 0 ? (
+                    <p className="text-center text-sm text-zinc-500 dark:text-zinc-400">
+                        Ainda há{' '}
+                        {otherOpenUnansweredCount === 1
+                            ? 'outra enquete'
+                            : `${otherOpenUnansweredCount} enquetes`}{' '}
+                        para responder.{' '}
+                        <Link
+                            href={route('mobile.polls.index')}
+                            className="cursor-pointer font-medium text-teal-700 underline-offset-2 hover:underline dark:text-teal-300"
+                        >
+                            Ver lista
+                        </Link>
+                    </p>
+                ) : null}
             </div>
         </MobileLayout>
     );
