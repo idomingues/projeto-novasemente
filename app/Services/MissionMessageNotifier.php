@@ -32,6 +32,7 @@ class MissionMessageNotifier
                 $authorName.' enviou um depoimento que precisa de revisão antes de ir ao mural: «'.$preview.'»',
                 'mission.content.messages',
                 ['filter' => 'pending'],
+                UserInboxNotification::INTENT_ACTION,
             );
         }
     }
@@ -67,13 +68,14 @@ class MissionMessageNotifier
             $body,
             'mobile.mission.messages',
             [],
+            UserInboxNotification::INTENT_INFO,
         );
     }
 
     /**
      * @param  array<string, mixed>  $routeParams
      */
-    private function pushInbox(User $user, string $title, string $body, string $routeName, array $routeParams): void
+    private function pushInbox(User $user, string $title, string $body, string $routeName, array $routeParams, string $intent = UserInboxNotification::INTENT_INFO): void
     {
         if (! UserMessagingPreferences::acceptsInbox($user)) {
             return;
@@ -83,6 +85,7 @@ class MissionMessageNotifier
             'user_id' => $user->id,
             'title' => $title,
             'body' => $body,
+            'intent' => $intent,
             'action_url' => null,
         ]);
 

@@ -14,7 +14,12 @@ import { useListModalSubmit } from '@/hooks/useListModalSubmit';
 import { submitListModalPost } from '@/utils/listModalFetchSave';
 import { textIncludesSearch } from '@/utils/searchText';
 import { appRoleLabel } from '@/lib/appRoleLabels';
-import { TrashIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+import { TrashIcon, ChevronDownIcon, BellAlertIcon, InboxStackIcon } from '@heroicons/react/24/outline';
+import {
+    permissionIsAttendance,
+    permissionProductFlags,
+    permissionReceivesNotification,
+} from '@/utils/permissionProductFlags';
 
 interface RoleRow {
     id: number;
@@ -91,6 +96,30 @@ function permissionLineLabel(perm: string): string {
     return perm;
 }
 
+function PermissionImpactBadges({ perm }: { perm: string }) {
+    const flags = permissionProductFlags(perm);
+    if (flags.length === 0) {
+        return null;
+    }
+
+    return (
+        <span className="mt-1 flex flex-wrap gap-1.5">
+            {flags.includes('notification') ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-900 ring-1 ring-amber-200/90 dark:bg-amber-500/15 dark:text-amber-100 dark:ring-amber-500/25">
+                    <BellAlertIcon className="h-3 w-3 shrink-0" aria-hidden />
+                    Notificação
+                </span>
+            ) : null}
+            {flags.includes('attendance') ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-teal-100 px-2 py-0.5 text-[10px] font-semibold text-teal-900 ring-1 ring-teal-200/90 dark:bg-teal-500/15 dark:text-teal-100 dark:ring-teal-500/25">
+                    <InboxStackIcon className="h-3 w-3 shrink-0" aria-hidden />
+                    Atendimento
+                </span>
+            ) : null}
+        </span>
+    );
+}
+
 function PermissionGroupAccordion({
     groupKey,
     title,
@@ -109,6 +138,8 @@ function PermissionGroupAccordion({
     saving?: boolean;
 }) {
     const activeCount = perms.filter((p) => rolePermissions.includes(p)).length;
+    const notifyCount = perms.filter((p) => permissionReceivesNotification(p)).length;
+    const attendanceCount = perms.filter((p) => permissionIsAttendance(p)).length;
     const [open, setOpen] = useState(() => activeCount > 0);
     const isOpen = forceOpen || open;
 
@@ -126,31 +157,71 @@ function PermissionGroupAccordion({
                 aria-expanded={isOpen}
                 aria-controls={`perm-group-panel-${groupKey}`}
             >
-                <span>{title}</span>
-                <span className="text-[10px] font-medium uppercase tracking-wide text-zinc-400">
-                    {activeCount}/{perms.length}
+                <span className="min-w-0">
+                    <span className="block">{title}</span>
+                    {notifyCount > 0 || attendanceCount > 0 ? (
+                        <span className="mt-0.5 flex flex-wrap gap-1.5 font-normal">
+                            {notifyCount > 0 ? (
+                                <span className="text-[10px] font-medium text-amber-700 dark:text-amber-300">
+                                    {notifyCount} notif.
+                                </span>
+                            ) : null}
+                            {attendanceCount > 0 ? (
+                                <span className="text-[10px] font-medium text-teal-700 dark:text-teal-300">
+                                    {attendanceCount} atend.
+                                </span>
+                            ) : null}
+                        </span>
+                    ) : null}
+                </span>
+                <span className="flex shrink-0 items-center gap-2">
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-zinc-400">
+                        {activeCount}/{perms.length}
+                    </span>
+                    <ChevronDownIcon
+                        className={`h-4 w-4 text-zinc-400 transition ${isOpen ? 'rotate-180' : ''}`}
+                        aria-hidden
+                    />
                 </span>
             </button>
             {isOpen ? (
                 <div
                     id={`perm-group-panel-${groupKey}`}
-                    className="space-y-2 border-t border-zinc-100 bg-white px-3 py-3 dark:border-zinc-800 dark:bg-zinc-900/40"
+                    className="divide-y divide-zinc-200 border-t border-zinc-200 bg-white dark:divide-zinc-700 dark:border-zinc-700 dark:bg-zinc-900/40"
                 >
                     {perms.map((perm) => {
                         const checked = rolePermissions.includes(perm);
+                        const impact = permissionProductFlags(perm);
+                        const isNotify = impact.includes('notification');
+                        const isAttendance = impact.includes('attendance');
+
                         return (
                             <label
                                 key={perm}
-                                className="flex cursor-pointer items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300"
+                                className={`flex cursor-pointer items-start gap-3 px-3 py-3 text-sm transition hover:bg-zinc-50 dark:hover:bg-zinc-800/40 ${
+                                    isAttendance
+                                        ? 'bg-teal-50/40 dark:bg-teal-950/20'
+                                        : isNotify
+                                          ? 'bg-amber-50/40 dark:bg-amber-950/15'
+                                          : 'text-zinc-700 dark:text-zinc-300'
+                                }`}
                             >
                                 <input
                                     type="checkbox"
                                     checked={checked}
                                     disabled={saving}
                                     onChange={() => onTogglePermission(perm)}
-                                    className="mt-0.5 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-600"
+                                    className="mt-0.5 rounded border-zinc-300 text-teal-700 focus:ring-teal-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-600 dark:text-teal-400"
                                 />
-                                <span>{permissionLineLabel(perm)}</span>
+                                <span className="min-w-0 flex-1">
+                                    <span className="block font-medium text-zinc-800 dark:text-zinc-100">
+                                        {permissionLineLabel(perm)}
+                                    </span>
+                                    <span className="mt-0.5 block font-mono text-[11px] text-zinc-400 dark:text-zinc-500">
+                                        {perm}
+                                    </span>
+                                    <PermissionImpactBadges perm={perm} />
+                                </span>
                             </label>
                         );
                     })}
@@ -472,6 +543,24 @@ export default function RolesIndex({ roles, permissions }: Props) {
                         className="block w-full"
                     />
                 </div>
+            </div>
+
+            <div className="mb-6 rounded-2xl border border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900/50">
+                <p className="text-sm font-medium text-zinc-800 dark:text-zinc-100">Legenda na matriz</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-900 ring-1 ring-amber-200/90 dark:bg-amber-500/15 dark:text-amber-100 dark:ring-amber-500/25">
+                        <BellAlertIcon className="h-3.5 w-3.5" aria-hidden />
+                        Notificação — quem tem esta permissão recebe alerta no sino
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-100 px-2.5 py-1 text-[11px] font-semibold text-teal-900 ring-1 ring-teal-200/90 dark:bg-teal-500/15 dark:text-teal-100 dark:ring-teal-500/25">
+                        <InboxStackIcon className="h-3.5 w-3.5" aria-hidden />
+                        Atendimento — abre fila em que alguém precisa agir
+                    </span>
+                </div>
+                <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                    Ao montar um perfil de área, prefira só as permissões daquela fila — assim a pessoa não recebe
+                    notificações de outros atendimentos.
+                </p>
             </div>
 
             <Modal show={createOpen} onClose={() => !creating && setCreateOpen(false)} maxWidth="md">

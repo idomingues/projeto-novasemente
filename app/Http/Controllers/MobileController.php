@@ -1225,7 +1225,33 @@ class MobileController extends Controller
             ->where('user_id', $request->user()->id)
             ->firstOrFail();
 
-        $n->update(['read_at' => now()]);
+        // Um check limpa todas as do mesmo tipo (ex.: vários «Novo voluntário…»).
+        UserInboxNotification::query()
+            ->where('user_id', $request->user()->id)
+            ->where('title', $n->title)
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
+
+        if ($request->expectsJson() || $request->wantsJson()) {
+            return response()->json(['ok' => true]);
+        }
+
+        return back();
+    }
+
+    public function markAllInboxNotificationsRead(Request $request)
+    {
+        $user = $request->user();
+        abort_unless($user, 401);
+
+        UserInboxNotification::query()
+            ->where('user_id', $user->id)
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
+
+        if ($request->expectsJson() || $request->wantsJson()) {
+            return response()->json(['ok' => true]);
+        }
 
         return back();
     }
@@ -1253,6 +1279,10 @@ class MobileController extends Controller
                 'user_id' => $user->id,
                 'app_notification_id' => $valid['id'],
             ]);
+        }
+
+        if ($request->expectsJson() || $request->wantsJson()) {
+            return response()->json(['ok' => true]);
         }
 
         return back();

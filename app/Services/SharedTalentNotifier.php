@@ -35,6 +35,7 @@ class SharedTalentNotifier
                 $authorName.' compartilhou «'.$listing->title.'» no Doar Talentos.',
                 'shared-talents.admin.listings',
                 ['status' => SharedTalentListing::STATUS_PENDING],
+                UserInboxNotification::INTENT_ACTION,
             );
         }
     }
@@ -111,6 +112,7 @@ class SharedTalentNotifier
             $detail,
             $detail,
             'Ver participantes',
+            UserInboxNotification::INTENT_ACTION,
         );
     }
 
@@ -133,6 +135,7 @@ class SharedTalentNotifier
             'O responsável atualizou sua participação.',
             'Publicação: '.$enrollment->listing->title."\nStatus: ".$statusLabel,
             'Ver minhas inscrições',
+            UserInboxNotification::INTENT_ACTION,
         );
     }
 
@@ -185,6 +188,7 @@ class SharedTalentNotifier
             Str::limit(trim($messageBody), 500),
             Str::limit(trim($messageBody), 500),
             'Responder na app',
+            UserInboxNotification::INTENT_ACTION,
         );
     }
 
@@ -229,6 +233,7 @@ class SharedTalentNotifier
                 $body,
                 'shared-talents.admin.reports',
                 [],
+                UserInboxNotification::INTENT_ACTION,
             );
         }
     }
@@ -267,8 +272,9 @@ class SharedTalentNotifier
         string $emailIntro,
         string $emailDetail,
         string $buttonLabel,
+        string $intent = UserInboxNotification::INTENT_INFO,
     ): void {
-        $this->pushInbox($user, $inboxTitle, $inboxBody, $routeName, $routeParams);
+        $this->pushInbox($user, $inboxTitle, $inboxBody, $routeName, $routeParams, $intent);
 
         if (! UserMessagingPreferences::acceptsAccountEmail($user)) {
             return;
@@ -299,7 +305,7 @@ class SharedTalentNotifier
     /**
      * @param  array<string, mixed>  $routeParams
      */
-    private function pushInbox(User $user, string $title, string $body, string $routeName, array $routeParams): void
+    private function pushInbox(User $user, string $title, string $body, string $routeName, array $routeParams, string $intent = UserInboxNotification::INTENT_INFO): void
     {
         if (! UserMessagingPreferences::acceptsInbox($user)) {
             return;
@@ -309,6 +315,7 @@ class SharedTalentNotifier
             'user_id' => $user->id,
             'title' => $title,
             'body' => $body,
+            'intent' => $intent,
             'action_url' => null,
         ]);
 

@@ -33,6 +33,9 @@ class UserInboxNotificationObserver
                 'title' => (string) $notification->title,
                 'body' => (string) $notification->body,
                 'href' => $href,
+                'intent' => UserInboxNotification::normalizeIntent(
+                    is_string($notification->intent) ? $notification->intent : null,
+                ),
             ],
         );
     }

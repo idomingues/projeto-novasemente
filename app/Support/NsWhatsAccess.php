@@ -156,11 +156,16 @@ final class NsWhatsAccess
 
     /**
      * Departamentos com pelo menos um líder ou membro com conta (excluindo o próprio usuário).
+     * Departamentos em que o usuário serve (`i_serve`) vêm primeiro.
      *
-     * @return list<array{id: int, name: string, description: string|null, icon: string|null, leaders_count: int, members_count: int}>
+     * @return list<array{id: int, name: string, description: string|null, icon: string|null, leaders_count: int, members_count: int, i_serve: bool}>
      */
     public static function ministriesWithContacts(int $churchId, ?User $exclude = null): array
     {
+        $servedIds = $exclude !== null
+            ? array_fill_keys(self::ministryIdsWhereUserServes($exclude, $churchId), true)
+            : [];
+
         $ministries = Ministry::query()
             ->where('church_id', $churchId)
             ->withCount([
@@ -184,15 +189,25 @@ final class NsWhatsAccess
             if ($leadersCount < 1 && $membersCount < 1) {
                 continue;
             }
+            $id = (int) $m->id;
             $out[] = [
-                'id' => (int) $m->id,
+                'id' => $id,
                 'name' => (string) $m->name,
                 'description' => $m->description,
                 'icon' => $m->icon,
                 'leaders_count' => $leadersCount,
                 'members_count' => $membersCount,
+                'i_serve' => isset($servedIds[$id]),
             ];
         }
+
+        usort($out, static function (array $a, array $b): int {
+            if ($a['i_serve'] !== $b['i_serve']) {
+                return $a['i_serve'] ? -1 : 1;
+            }
+
+            return strcasecmp($a['name'], $b['name']);
+        });
 
         return $out;
     }
@@ -286,7 +301,8 @@ final class NsWhatsAccess
     }
 
     /**
-     * Busca líderes e voluntários por nome em todos os departamentos com contato.
+     * Busca líderes e voluntários por nome (uma entrada por pessoa).
+     * Se a pessoa atua em vários departamentos, `ministry_name` lista todos separados por vírgula.
      *
      * @return list<array{id: int, name: string, photo_url: string|null, role: string, ministry_id: int, ministry_name: string}>
      */
@@ -298,7 +314,35 @@ final class NsWhatsAccess
         }
 
         $like = '%'.$term.'%';
-        $results = [];
+
+        /** @var array<int, array{id: int, name: string, photo_url: string|null, is_leader: bool, ministries: array<int, string>}> $byUser */
+        $byUser = [];
+
+        $addMinistry = static function (
+            array &$byUser,
+            int $userId,
+            string $name,
+            ?string $photoUrl,
+            int $ministryId,
+            string $ministryName,
+            bool $asLeader,
+        ): void {
+            if (! isset($byUser[$userId])) {
+                $byUser[$userId] = [
+                    'id' => $userId,
+                    'name' => $name,
+                    'photo_url' => $photoUrl,
+                    'is_leader' => false,
+                    'ministries' => [],
+                ];
+            }
+            if ($asLeader) {
+                $byUser[$userId]['is_leader'] = true;
+            }
+            if (! isset($byUser[$userId]['ministries'][$ministryId])) {
+                $byUser[$userId]['ministries'][$ministryId] = $ministryName;
+            }
+        };
 
         $leaders = User::query()
             ->where('church_id', $churchId)
@@ -316,14 +360,15 @@ final class NsWhatsAccess
 
         foreach ($leaders as $leader) {
             foreach ($leader->ministries as $ministry) {
-                $results[] = [
-                    'id' => (int) $leader->id,
-                    'name' => (string) $leader->name,
-                    'photo_url' => $leader->photo_url,
-                    'role' => 'leader',
-                    'ministry_id' => (int) $ministry->id,
-                    'ministry_name' => (string) $ministry->name,
-                ];
+                $addMinistry(
+                    $byUser,
+                    (int) $leader->id,
+                    (string) $leader->name,
+                    $leader->photo_url,
+                    (int) $ministry->id,
+                    (string) $ministry->name,
+                    true,
+                );
             }
         }
 
@@ -343,28 +388,39 @@ final class NsWhatsAccess
             ->limit($limit)
             ->get();
 
-        $leaderKeys = collect($results)
-            ->map(fn (array $row) => $row['id'].':'.$row['ministry_id'])
-            ->all();
-
         foreach ($volunteers as $volunteer) {
             $userId = (int) $volunteer->user_id;
             foreach ($volunteer->ministries as $ministry) {
-                $ministryId = (int) $ministry->id;
-                $key = $userId.':'.$ministryId;
-                if (in_array($key, $leaderKeys, true)) {
-                    continue;
-                }
-                $results[] = [
-                    'id' => $userId,
-                    'name' => (string) ($volunteer->user?->name ?: $volunteer->display_name),
-                    'photo_url' => $volunteer->user?->photo_url,
-                    'role' => 'member',
-                    'ministry_id' => $ministryId,
-                    'ministry_name' => (string) $ministry->name,
-                ];
-                $leaderKeys[] = $key;
+                $addMinistry(
+                    $byUser,
+                    $userId,
+                    (string) ($volunteer->user?->name ?: $volunteer->display_name),
+                    $volunteer->user?->photo_url,
+                    (int) $ministry->id,
+                    (string) $ministry->name,
+                    false,
+                );
             }
+        }
+
+        $results = [];
+        foreach ($byUser as $row) {
+            $ministries = $row['ministries'];
+            asort($ministries, SORT_NATURAL | SORT_FLAG_CASE);
+            $ministryIds = array_keys($ministries);
+            $ministryNames = array_values($ministries);
+            if ($ministryIds === []) {
+                continue;
+            }
+
+            $results[] = [
+                'id' => $row['id'],
+                'name' => $row['name'],
+                'photo_url' => $row['photo_url'],
+                'role' => $row['is_leader'] ? 'leader' : 'member',
+                'ministry_id' => (int) $ministryIds[0],
+                'ministry_name' => implode(', ', $ministryNames),
+            ];
         }
 
         usort($results, static function (array $a, array $b): int {

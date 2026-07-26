@@ -1,6 +1,6 @@
-import { router } from '@inertiajs/react';
 import { CheckCircleIcon, TrashIcon } from '@heroicons/react/24/outline';
-import type { MouseEvent } from 'react';
+import { useState, type MouseEvent } from 'react';
+import { removeNotificationRequest } from '@/utils/notificationFeedActions';
 
 type Props = {
     kind: 'inbox' | 'app';
@@ -18,19 +18,21 @@ export default function DismissNotificationButton({
     compact = true,
     appearance = 'seen',
 }: Props) {
+    const [busy, setBusy] = useState(false);
     const isDelete = appearance === 'delete';
     const label = isDelete ? 'Excluir notificação' : 'Marcar notificação como vista';
     const Icon = isDelete ? TrashIcon : CheckCircleIcon;
 
-    const handleClick = (e: MouseEvent) => {
+    const handleClick = async (e: MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-
-        router.post(
-            route('notifications.remove'),
-            { kind, id: recordId },
-            { preserveScroll: true, preserveState: true },
-        );
+        if (busy) return;
+        setBusy(true);
+        try {
+            await removeNotificationRequest(kind, recordId);
+        } finally {
+            setBusy(false);
+        }
     };
 
     return (
@@ -38,15 +40,16 @@ export default function DismissNotificationButton({
             type="button"
             title={isDelete ? 'Excluir' : 'Já vi'}
             aria-label={label}
+            disabled={busy}
             onClick={handleClick}
             className={
                 compact
-                    ? `flex shrink-0 cursor-pointer items-center justify-center self-stretch border-l border-zinc-100 px-2.5 transition dark:border-zinc-800 ${
+                    ? `flex shrink-0 cursor-pointer items-center justify-center self-stretch border-l border-zinc-100 px-2.5 transition disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 ${
                           isDelete
                               ? 'text-zinc-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400'
                               : 'text-zinc-400 hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-400'
                       }`
-                    : `inline-flex cursor-pointer items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
+                    : `inline-flex cursor-pointer items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${
                           isDelete
                               ? 'border-zinc-200 text-zinc-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700 dark:border-zinc-700 dark:text-zinc-300 dark:hover:border-red-900 dark:hover:bg-red-950/40 dark:hover:text-red-300'
                               : 'border-zinc-200 text-zinc-600 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 dark:border-zinc-700 dark:text-zinc-300 dark:hover:border-emerald-900 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-300'

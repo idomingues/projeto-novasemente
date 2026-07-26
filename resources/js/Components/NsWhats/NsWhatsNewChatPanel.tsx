@@ -19,6 +19,8 @@ export type ComposeMinistry = {
     icon?: string | null;
     leaders_count: number;
     members_count?: number;
+    /** Usuário atual serve como voluntário neste departamento. */
+    i_serve?: boolean;
 };
 
 export type ComposePerson = { id: number; name: string; photo_url?: string | null; role?: string };
@@ -138,13 +140,26 @@ export default function NsWhatsNewChatPanel({
 
     const filtered = useMemo(() => {
         const term = q.trim().toLowerCase();
-        if (!term) return ministries;
-        return ministries.filter(
-            (m) =>
-                m.name.toLowerCase().includes(term) ||
-                (m.description ?? '').toLowerCase().includes(term),
-        );
+        const list = !term
+            ? ministries
+            : ministries.filter(
+                  (m) =>
+                      m.name.toLowerCase().includes(term) ||
+                      (m.description ?? '').toLowerCase().includes(term),
+              );
+
+        return [...list].sort((a, b) => {
+            const aServe = Boolean(a.i_serve);
+            const bServe = Boolean(b.i_serve);
+            if (aServe !== bServe) {
+                return aServe ? -1 : 1;
+            }
+            return a.name.localeCompare(b.name, 'pt-BR');
+        });
     }, [ministries, q]);
+
+    const myMinistries = useMemo(() => filtered.filter((m) => Boolean(m.i_serve)), [filtered]);
+    const otherMinistries = useMemo(() => filtered.filter((m) => !m.i_serve), [filtered]);
 
     const filteredLeaders = useMemo(() => {
         const term = personQ.trim().toLowerCase();
@@ -397,7 +412,7 @@ export default function NsWhatsNewChatPanel({
                         ) : null}
                         {peopleMatches.map((person) => (
                             <button
-                                key={`p-${person.id}-${person.ministry_id}-${person.role ?? 'member'}`}
+                                key={`p-${person.id}`}
                                 type="button"
                                 onClick={() =>
                                     openDraftOrSelect({
@@ -432,27 +447,70 @@ export default function NsWhatsNewChatPanel({
                         {hasPeopleQuery ? (
                             <p className="mb-2 px-1 text-[11px] font-medium text-zinc-500">Departamentos</p>
                         ) : null}
-                        <div className="grid grid-cols-2 gap-2">
-                            {filtered.map((m) => {
-                                const Icon = getMinistryIconByKey(m.icon ?? null);
-                                return (
-                                    <button
-                                        key={m.id}
-                                        type="button"
-                                        onClick={() => pickMinistry(m.id)}
-                                        className="flex cursor-pointer flex-col items-start rounded-xl border border-zinc-200 bg-white p-2.5 text-left transition hover:border-emerald-400 dark:border-zinc-800 dark:bg-zinc-900"
-                                    >
-                                        <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
-                                            <Icon className="h-4 w-4" />
-                                        </div>
-                                        <div className="text-[12px] font-semibold leading-tight text-zinc-900 dark:text-white">{m.name}</div>
-                                        <p className="mt-1 text-[10px] text-zinc-400">
-                                            {personCountLabel(m.leaders_count, m.members_count ?? 0)}
-                                        </p>
-                                    </button>
-                                );
-                            })}
-                        </div>
+
+                        {myMinistries.length > 0 ? (
+                            <div className="mb-3 space-y-2">
+                                <p className="px-1 text-[10px] font-bold uppercase tracking-[0.12em] text-teal-800 dark:text-teal-300">
+                                    Onde eu sirvo
+                                </p>
+                                {myMinistries.map((m) => {
+                                    const Icon = getMinistryIconByKey(m.icon ?? null);
+                                    return (
+                                        <button
+                                            key={`serve-${m.id}`}
+                                            type="button"
+                                            onClick={() => pickMinistry(m.id)}
+                                            className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl border border-teal-300/80 bg-gradient-to-r from-teal-50 to-[#f5f1e9] px-2.5 py-2.5 text-left shadow-sm dark:border-teal-700 dark:from-teal-950/60 dark:to-zinc-900"
+                                        >
+                                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-700/15 text-teal-800 dark:bg-teal-400/20 dark:text-teal-200">
+                                                <Icon className="h-5 w-5" aria-hidden strokeWidth={1.75} />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <div className="truncate text-[13px] font-semibold text-teal-950 dark:text-teal-50">
+                                                    {m.name}
+                                                </div>
+                                                <p className="mt-0.5 truncate text-[11px] text-teal-900/70 dark:text-teal-100/70">
+                                                    {personCountLabel(m.leaders_count, m.members_count ?? 0)}
+                                                </p>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        ) : null}
+
+                        {otherMinistries.length > 0 ? (
+                            <>
+                                {myMinistries.length > 0 ? (
+                                    <p className="mb-2 px-1 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">
+                                        Outros departamentos
+                                    </p>
+                                ) : null}
+                                <div className="grid grid-cols-2 gap-2">
+                                    {otherMinistries.map((m) => {
+                                        const Icon = getMinistryIconByKey(m.icon ?? null);
+                                        return (
+                                            <button
+                                                key={m.id}
+                                                type="button"
+                                                onClick={() => pickMinistry(m.id)}
+                                                className="flex cursor-pointer flex-col items-start rounded-xl border border-zinc-200 bg-white p-2.5 text-left transition hover:border-emerald-400 dark:border-zinc-800 dark:bg-zinc-900"
+                                            >
+                                                <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+                                                    <Icon className="h-4 w-4" />
+                                                </div>
+                                                <div className="text-[12px] font-semibold leading-tight text-zinc-900 dark:text-white">
+                                                    {m.name}
+                                                </div>
+                                                <p className="mt-1 text-[10px] text-zinc-400">
+                                                    {personCountLabel(m.leaders_count, m.members_count ?? 0)}
+                                                </p>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </>
+                        ) : null}
                     </>
                 ) : null}
 

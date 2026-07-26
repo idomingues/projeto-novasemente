@@ -31,7 +31,7 @@ class NotificationFeed
     }
 
     /**
-     * @return array<int, array{id: string, title: string, body: string, created_at: string, author: mixed, href: string, kind: string, inbox_notification_id?: int, inbox_unread?: bool, app_notification_id?: int, can_remove?: bool}>
+     * @return array<int, array{id: string, title: string, body: string, created_at: string, author: mixed, href: string, kind: string, intent: string, inbox_notification_id?: int, inbox_unread?: bool, app_notification_id?: int, can_remove?: bool}>
      */
     public static function mergedForUser(Request $request, ?int $churchId, int $limit = 50): array
     {
@@ -51,6 +51,7 @@ class NotificationFeed
                     ? self::inertiaHrefFromStoredUrl($request, (string) $n['action_url'])
                     : route('varios.notifications'),
                 'kind' => 'app',
+                'intent' => UserInboxNotification::INTENT_INFO,
                 'app_notification_id' => (int) $n['id'],
                 'can_remove' => $user !== null,
             ]);
@@ -71,6 +72,9 @@ class NotificationFeed
                     'author' => null,
                     'href' => $href,
                     'kind' => 'inbox',
+                    'intent' => UserInboxNotification::normalizeIntent(
+                        is_string($n->intent) ? $n->intent : null,
+                    ),
                     'inbox_notification_id' => $n->id,
                     'inbox_unread' => $n->read_at === null,
                     'can_remove' => true,
@@ -135,16 +139,87 @@ class NotificationFeed
         return $appCount + $inboxCount;
     }
 
+    /**
+     * Badge do sino / pasta «Não lidas»: tipos de aviso pessoal ainda sem leitura
+     * (agrupa várias linhas com o mesmo título — ex.: vários «Novo voluntário…»).
+     */
     public static function unreadInboxCount(Request $request): int
     {
         if (! $request->user()) {
             return 0;
         }
 
-        return UserInboxNotification::query()
+        if (! Schema::hasTable('user_inbox_notifications')) {
+            return 0;
+        }
+
+        return (int) UserInboxNotification::query()
             ->where('user_id', $request->user()->id)
             ->whereNull('read_at')
-            ->count();
+            ->distinct()
+            ->count('title');
+    }
+
+    /**
+     * Não lidas para o sino: a mais recente de cada título (ordem cronológica).
+     *
+     * @return array<int, array{id: string, title: string, body: string, created_at: string, author: mixed, href: string, kind: string, intent: string, inbox_notification_id?: int, inbox_unread?: bool, can_remove?: bool, inbox_group_count?: int}>
+     */
+    public static function unreadInboxGroupedForUser(Request $request, int $limit = 24): array
+    {
+        $user = $request->user();
+        if ($user === null || ! Schema::hasTable('user_inbox_notifications')) {
+            return [];
+        }
+
+        $rows = UserInboxNotification::query()
+            ->where('user_id', $user->id)
+            ->whereNull('read_at')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->get();
+
+        $grouped = [];
+        foreach ($rows as $n) {
+            $title = (string) $n->title;
+            if (isset($grouped[$title])) {
+                $grouped[$title]['inbox_group_count'] = (int) $grouped[$title]['inbox_group_count'] + 1;
+
+                continue;
+            }
+
+            $raw = $n->action_url;
+            $href = is_string($raw) && $raw !== ''
+                ? self::inertiaHrefFromStoredUrl($request, $raw)
+                : route('mobile.notifications');
+
+            $grouped[$title] = [
+                'id' => 'inbox-'.$n->id,
+                'title' => $n->title,
+                'body' => $n->body,
+                'created_at' => $n->created_at->toIso8601String(),
+                'author' => null,
+                'href' => $href,
+                'kind' => 'inbox',
+                'intent' => UserInboxNotification::normalizeIntent(
+                    is_string($n->intent) ? $n->intent : null,
+                ),
+                'inbox_notification_id' => $n->id,
+                'inbox_unread' => true,
+                'can_remove' => true,
+                'inbox_group_count' => 1,
+            ];
+        }
+
+        $items = array_values($grouped);
+        usort($items, function (array $a, array $b): int {
+            $aTs = strtotime((string) $a['created_at']) ?: 0;
+            $bTs = strtotime((string) $b['created_at']) ?: 0;
+
+            return $bTs <=> $aTs;
+        });
+
+        return array_slice($items, 0, $limit);
     }
 
     /**

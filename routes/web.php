@@ -1074,6 +1074,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/mobile/settings', [MobileController::class, 'settings'])->name('mobile.settings');
     Route::post('/notifications/inbox/read', [MobileController::class, 'markInboxNotificationRead'])
         ->name('notifications.inbox.read');
+    Route::post('/notifications/inbox/read-all', [MobileController::class, 'markAllInboxNotificationsRead'])
+        ->name('notifications.inbox.read-all');
     Route::post('/notifications/remove', [MobileController::class, 'removeNotification'])
         ->name('notifications.remove');
 

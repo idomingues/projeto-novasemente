@@ -166,7 +166,7 @@ const Content = ({
     const widthClasses = width === '96' ? 'w-96' : width === '80' ? 'w-80' : 'w-48';
 
     const positionClasses = viewport
-        ? 'fixed z-[70] left-3 right-3 top-[4.25rem] w-auto max-w-none md:left-auto md:right-6 md:top-[6.75rem] md:w-[min(24rem,calc(100vw-3rem))]'
+        ? 'fixed z-[70] left-3 right-3 top-[4.25rem] w-auto max-w-none md:left-auto md:right-6 md:top-[6.75rem] md:w-[min(26rem,calc(100vw-3rem))]'
         : portal
           ? 'z-[70]'
           : `absolute z-[70] mt-2 ${alignmentClasses} ${widthClasses}`;
@@ -189,7 +189,7 @@ const Content = ({
             >
                 <div
                     className={
-                        `rounded-xl ring-1 ring-black ring-opacity-5 overflow-hidden ` + contentClasses
+                        `rounded-xl ring-1 ring-zinc-900/5 dark:ring-white/10 overflow-hidden ` + contentClasses
                     }
                 >
                     {children}

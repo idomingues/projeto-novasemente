@@ -183,6 +183,7 @@ class SupportTicketChatNotifier
             'user_id' => $userId,
             'title' => $title,
             'body' => $body,
+            'intent' => UserInboxNotification::INTENT_ACTION,
             'action_url' => null,
         ]);
 
@@ -213,6 +214,7 @@ class SupportTicketChatNotifier
             'user_id' => $owner->id,
             'title' => $title,
             'body' => $body,
+            'intent' => UserInboxNotification::INTENT_ACTION,
             'action_url' => null,
         ]);
 

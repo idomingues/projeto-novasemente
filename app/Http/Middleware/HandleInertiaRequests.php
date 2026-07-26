@@ -354,11 +354,7 @@ class HandleInertiaRequests extends Middleware
                 'trip_signup_success' => fn () => (bool) $request->session()->get('trip_signup_success'),
                 'trip_signup_name' => fn () => $request->session()->get('trip_signup_name'),
             ],
-            'recentNotifications' => fn () => NotificationFeed::mergedForUser(
-                $request,
-                $currentChurch ? ($currentChurch['id'] ?? null) : null,
-                5
-            ),
+            'recentNotifications' => fn () => NotificationFeed::unreadInboxGroupedForUser($request, 24),
             'unreadInboxNotificationsCount' => fn () => NotificationFeed::unreadInboxCount($request),
             /** Ícone de eventos no topo: urgência quando há evento amanhã (igreja em contexto). */
             'hasEventTomorrow' => function () use ($request, $currentChurch) {

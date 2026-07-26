@@ -1,13 +1,22 @@
 import { Link, usePage } from '@inertiajs/react';
 import { notificationLinkHref } from '@/utils/notificationLinkHref';
 import { formatNotificationWhen } from '@/utils/formatNotificationWhen';
-import { BellIcon, SunIcon, MoonIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { isActionNotificationIntent } from '@/utils/notificationIntent';
+import {
+    BellAlertIcon,
+    BellIcon,
+    ChevronRightIcon,
+    ExclamationTriangleIcon,
+    MoonIcon,
+    SunIcon,
+} from '@heroicons/react/24/outline';
 import Dropdown from '@/Components/Dropdown';
 import MarkInboxNotificationReadButton from '@/Components/MarkInboxNotificationReadButton';
-import DismissNotificationButton from '@/Components/DismissNotificationButton';
+import NotificationIntentBadge from '@/Components/NotificationIntentBadge';
 import TopbarEventsLink from '@/Components/TopbarEventsLink';
 import { useTheme } from '@/Contexts/ThemeContext';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { markAllInboxNotificationsReadRequest } from '@/utils/notificationFeedActions';
 
 interface NotificationItem {
     id: string;
@@ -17,10 +26,12 @@ interface NotificationItem {
     author: { name: string } | null;
     href?: string;
     kind?: string;
+    intent?: string;
     inbox_notification_id?: number;
     inbox_unread?: boolean;
     app_notification_id?: number;
     can_remove?: boolean;
+    inbox_group_count?: number;
 }
 
 interface TopbarProps {
@@ -54,13 +65,26 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
         typeof unreadInboxNotificationsCount === 'number' ? unreadInboxNotificationsCount : 0,
     );
     const user = auth?.user ?? null;
-    const permissions = auth?.permissions ?? [];
-    const adminSidebarUnrestricted = auth?.adminSidebarUnrestricted === true;
-    const notifications = liveNotifications;
+    const [markingAll, setMarkingAll] = useState(false);
+    /** Sino: só tipos de aviso pessoal ainda não lidos (ordem cronológica). */
+    const notifications = useMemo(() => {
+        const items = liveNotifications.filter(
+            (n) => n.kind === 'inbox' && Boolean(n.inbox_unread),
+        );
+        return [...items].sort((a, b) => {
+            const ta = new Date(a.created_at).getTime();
+            const tb = new Date(b.created_at).getTime();
+            return tb - ta;
+        });
+    }, [liveNotifications]);
+    const actionCount = useMemo(
+        () => notifications.filter((n) => isActionNotificationIntent(n.intent)).length,
+        [notifications],
+    );
     const unread = liveUnread;
-    /** Número no sino: notificações de caixa por ler (servidor). */
+    /** Número no sino: tipos de caixa pessoal não lida (não o total de linhas). */
     const badgeCount = unread > 0 ? Math.min(99, unread) : 0;
-    const showRecentDot = badgeCount === 0 && notifications.length > 0;
+    const showRecentDot = false;
     const roleLabel = auth?.roleLabel ?? 'Membro';
     const isMinistryLeader = auth?.isMinistryLeaderAccount === true || user?.is_ministry_leader === true;
     /** Evita duplicar com o pill cinza quando o papel principal já é «Líder de ministério». */
@@ -95,11 +119,44 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
             }
         };
 
+        const handleMarkedRead = (event: Event) => {
+            const recordId = (event as CustomEvent<{ recordId?: number }>).detail?.recordId;
+            if (typeof recordId !== 'number') return;
+            setLiveNotifications((prev) => {
+                const hit = prev.find((n) => n.inbox_notification_id === recordId);
+                if (!hit) {
+                    return prev.filter((n) => n.inbox_notification_id !== recordId);
+                }
+                // Mesmo título = mesmo grupo (o POST já marcou todas).
+                return prev.filter((n) => n.title !== hit.title);
+            });
+            setLiveUnread((count) => Math.max(0, count - 1));
+        };
+
+        const handleMarkedAll = () => {
+            setLiveNotifications([]);
+            setLiveUnread(0);
+        };
+
         window.addEventListener('ns:notifications-feed', handleFeedUpdate as EventListener);
+        window.addEventListener('ns:notification-marked-read', handleMarkedRead as EventListener);
+        window.addEventListener('ns:notifications-marked-all-read', handleMarkedAll);
         return () => {
             window.removeEventListener('ns:notifications-feed', handleFeedUpdate as EventListener);
+            window.removeEventListener('ns:notification-marked-read', handleMarkedRead as EventListener);
+            window.removeEventListener('ns:notifications-marked-all-read', handleMarkedAll);
         };
     }, []);
+
+    const markAllRead = async () => {
+        if (markingAll || unread <= 0) return;
+        setMarkingAll(true);
+        try {
+            await markAllInboxNotificationsReadRequest();
+        } finally {
+            setMarkingAll(false);
+        }
+    };
 
     return (
         <header
@@ -171,91 +228,74 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
                                     align="right"
                                     width="96"
                                     viewport
-                                    contentClasses="py-0 max-h-[min(70vh,400px)] overflow-hidden flex min-h-0 min-w-0 flex-col bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300"
+                                    contentClasses="!ring-0 border-0 py-0 max-h-[min(78vh,520px)] overflow-hidden flex min-h-0 min-w-0 flex-col rounded-2xl bg-white shadow-2xl shadow-zinc-900/10 ring-1 ring-zinc-200/80 dark:bg-zinc-900 dark:shadow-black/40 dark:ring-zinc-700/80 text-zinc-700 dark:text-zinc-300"
                                 >
-                                    <div className="flex shrink-0 min-w-0 items-center gap-2 border-b border-zinc-200 px-3 py-2.5 dark:border-zinc-800 sm:gap-3 sm:px-4 sm:py-3">
-                                        <div className="min-w-0 flex-1">
-                                            <span className="flex min-w-0 items-center gap-2">
-                                                <span className="truncate font-semibold text-zinc-900 dark:text-white">
+                                    <div className="shrink-0 border-b border-zinc-100 bg-gradient-to-b from-zinc-50/90 to-white px-4 py-3 dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900">
+                                        <div className="flex min-w-0 items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <h2 className="text-base font-semibold tracking-tight text-zinc-900 dark:text-white">
                                                     Notificações
-                                                </span>
+                                                </h2>
+                                                <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                                                    {unread > 0
+                                                        ? `${unread} para revisar`
+                                                        : 'Tudo em dia'}
+                                                    {actionCount > 0 ? ` · ${actionCount} para atender` : ''}
+                                                </p>
+                                            </div>
+                                            <div className="flex shrink-0 items-center gap-1">
                                                 {unread > 0 ? (
-                                                    <span className="shrink-0 rounded-md bg-rose-600 px-2 py-0.5 text-xs font-bold tabular-nums text-white dark:bg-rose-500">
+                                                    <span className="mr-1 inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-rose-600 px-1.5 text-[11px] font-bold tabular-nums text-white shadow-sm shadow-rose-600/25">
                                                         {unread > 99 ? '99+' : unread}
                                                     </span>
                                                 ) : null}
-                                            </span>
+                                                <Dropdown.CloseButton />
+                                            </div>
                                         </div>
-                                        <Link
-                                            href={route('varios.notifications')}
-                                            className="inline-flex shrink-0 cursor-pointer items-center gap-0.5 whitespace-nowrap rounded-lg px-2 py-1.5 text-xs font-medium text-primary-600 hover:bg-zinc-100 dark:text-primary-400 dark:hover:bg-zinc-800 sm:text-sm"
-                                            onClick={(e) => e.stopPropagation()}
-                                        >
-                                            <span className="hidden sm:inline">Ver todas</span>
-                                            <span className="sm:hidden">Todas</span>
-                                            <ChevronRightIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                                        </Link>
-                                        <Dropdown.CloseButton />
+                                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                                            {unread > 0 ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        void markAllRead();
+                                                    }}
+                                                    disabled={markingAll}
+                                                    className="inline-flex cursor-pointer items-center rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:border-zinc-600 dark:hover:bg-zinc-700"
+                                                >
+                                                    {markingAll ? 'Marcando…' : 'Marcar todas'}
+                                                </button>
+                                            ) : null}
+                                            <Link
+                                                href={route('varios.notifications')}
+                                                className="inline-flex cursor-pointer items-center gap-0.5 rounded-full px-2.5 py-1.5 text-xs font-semibold text-teal-700 transition hover:bg-teal-50 dark:text-teal-300 dark:hover:bg-teal-950/40"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                Ver todas
+                                                <ChevronRightIcon className="h-3.5 w-3.5" />
+                                            </Link>
+                                        </div>
                                     </div>
                                     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                                         {notifications.length === 0 ? (
-                                            <div className="px-4 py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
-                                                Nenhuma notificação
+                                            <div className="flex flex-col items-center px-6 py-12 text-center">
+                                                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-400 dark:bg-zinc-800">
+                                                    <BellIcon className="h-6 w-6" />
+                                                </div>
+                                                <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                                                    Nenhuma notificação
+                                                </p>
+                                                <p className="mt-1 max-w-[16rem] text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+                                                    Quando algo precisar da sua atenção, aparece aqui.
+                                                </p>
                                             </div>
                                         ) : (
-                                            notifications.map((n) => {
-                                                const rawHref = n.href ?? route('varios.notifications');
-                                                const href = notificationLinkHref(rawHref);
-                                                const Row = (
-                                                    <>
-                                                        <p className="font-medium text-zinc-900 dark:text-white text-sm line-clamp-1">
-                                                            {n.title}
-                                                        </p>
-                                                        <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2">
-                                                            {n.body}
-                                                        </p>
-                                                        <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
-                                                            {formatNotificationWhen(n.created_at)}
-                                                        </p>
-                                                    </>
-                                                );
-                                                const inboxId = n.inbox_notification_id;
-                                                const showMark =
-                                                    n.kind === 'inbox' &&
-                                                    n.inbox_unread &&
-                                                    typeof inboxId === 'number';
-                                                const removeTarget =
-                                                    n.can_remove && n.kind === 'inbox' && typeof inboxId === 'number'
-                                                        ? ({ kind: 'inbox' as const, id: inboxId })
-                                                        : n.can_remove &&
-                                                            n.kind === 'app' &&
-                                                            typeof n.app_notification_id === 'number'
-                                                          ? ({ kind: 'app' as const, id: n.app_notification_id })
-                                                          : null;
-
-                                                return (
-                                                    <div
-                                                        key={n.id}
-                                                        className="flex border-b border-zinc-100 dark:border-zinc-800/50"
-                                                    >
-                                                        <Link
-                                                            href={href}
-                                                            className="min-w-0 flex-1 px-4 py-3 text-left transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
-                                                        >
-                                                            {Row}
-                                                        </Link>
-                                                        {showMark ? (
-                                                            <MarkInboxNotificationReadButton notificationId={inboxId} />
-                                                        ) : null}
-                                                        {removeTarget ? (
-                                                            <DismissNotificationButton
-                                                                kind={removeTarget.kind}
-                                                                recordId={removeTarget.id}
-                                                            />
-                                                        ) : null}
-                                                    </div>
-                                                );
-                                            })
+                                            <ul className="divide-y divide-zinc-200 dark:divide-zinc-700">
+                                                {notifications.map((n) => (
+                                                    <TopbarNotificationRow key={n.id} n={n} />
+                                                ))}
+                                            </ul>
                                         )}
                                     </div>
                                 </Dropdown.Content>
@@ -304,5 +344,76 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
                 </div>
             </div>
         </header>
+    );
+}
+
+function TopbarNotificationRow({ n }: { n: NotificationItem }) {
+    const action = isActionNotificationIntent(n.intent);
+    const rawHref = n.href ?? route('varios.notifications');
+    const href = notificationLinkHref(rawHref);
+    const groupCount =
+        typeof n.inbox_group_count === 'number' && n.inbox_group_count > 1 ? n.inbox_group_count : 0;
+    const inboxId = n.inbox_notification_id;
+    const showMark = n.kind === 'inbox' && n.inbox_unread && typeof inboxId === 'number';
+
+    return (
+        <li
+            className={`group flex transition-colors ${
+                action
+                    ? 'bg-gradient-to-r from-amber-50/70 via-white to-white hover:from-amber-50 dark:from-amber-950/25 dark:via-zinc-900 dark:to-zinc-900 dark:hover:from-amber-950/40'
+                    : 'bg-white hover:bg-zinc-50/90 dark:bg-zinc-900 dark:hover:bg-zinc-800/50'
+            }`}
+        >
+            <Link
+                href={href}
+                className="relative flex min-w-0 flex-1 cursor-pointer gap-3 px-4 py-3.5 text-left"
+            >
+                {action ? (
+                    <span
+                        className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-amber-500/90 dark:bg-amber-400/80"
+                        aria-hidden
+                    />
+                ) : null}
+                <div
+                    className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+                        action
+                            ? 'bg-amber-100 text-amber-700 ring-1 ring-amber-200/70 dark:bg-amber-900/45 dark:text-amber-200 dark:ring-amber-800/40'
+                            : 'bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200/70 dark:bg-zinc-800 dark:text-zinc-300 dark:ring-zinc-700/50'
+                    }`}
+                >
+                    {action ? (
+                        <ExclamationTriangleIcon className="h-4.5 w-4.5 h-[18px] w-[18px]" />
+                    ) : (
+                        <BellAlertIcon className="h-[18px] w-[18px]" />
+                    )}
+                </div>
+                <div className="min-w-0 flex-1">
+                    <div className="mb-1">
+                        <NotificationIntentBadge intent={n.intent} size="compact" />
+                    </div>
+                    <p
+                        className={`line-clamp-1 text-[13px] leading-snug ${
+                            action
+                                ? 'font-semibold text-zinc-900 dark:text-amber-50'
+                                : 'font-medium text-zinc-900 dark:text-zinc-100'
+                        }`}
+                    >
+                        {n.title}
+                        {groupCount > 0 ? (
+                            <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-zinc-100 px-1.5 text-[10px] font-bold tabular-nums text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                                {groupCount}
+                            </span>
+                        ) : null}
+                    </p>
+                    <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+                        {n.body}
+                    </p>
+                    <p className="mt-1.5 text-[11px] tabular-nums text-zinc-400 dark:text-zinc-500">
+                        {formatNotificationWhen(n.created_at)}
+                    </p>
+                </div>
+            </Link>
+            {showMark ? <MarkInboxNotificationReadButton notificationId={inboxId} /> : null}
+        </li>
     );
 }

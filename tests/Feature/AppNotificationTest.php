@@ -205,4 +205,67 @@ class AppNotificationTest extends TestCase
 
         $this->assertDatabaseMissing('user_inbox_notifications', ['id' => $inbox->id]);
     }
+
+    public function test_unread_badge_counts_distinct_titles_not_raw_rows(): void
+    {
+        $user = User::factory()->create();
+
+        UserInboxNotification::query()->create([
+            'user_id' => $user->id,
+            'title' => 'Novo voluntário no ministério',
+            'body' => 'A entrou',
+        ]);
+        UserInboxNotification::query()->create([
+            'user_id' => $user->id,
+            'title' => 'Novo voluntário no ministério',
+            'body' => 'B entrou',
+        ]);
+        UserInboxNotification::query()->create([
+            'user_id' => $user->id,
+            'title' => 'Novo pedido de suporte',
+            'body' => 'C abriu',
+        ]);
+
+        $request = Request::create('/');
+        $request->setUserResolver(fn () => $user);
+
+        $this->assertSame(2, NotificationFeed::unreadInboxCount($request));
+        $this->assertCount(2, NotificationFeed::unreadInboxGroupedForUser($request, 10));
+    }
+
+    public function test_marking_inbox_read_clears_all_with_same_title(): void
+    {
+        $user = User::factory()->create();
+
+        $first = UserInboxNotification::query()->create([
+            'user_id' => $user->id,
+            'title' => 'Novo voluntário no ministério',
+            'body' => 'A entrou',
+        ]);
+        UserInboxNotification::query()->create([
+            'user_id' => $user->id,
+            'title' => 'Novo voluntário no ministério',
+            'body' => 'B entrou',
+        ]);
+        $other = UserInboxNotification::query()->create([
+            'user_id' => $user->id,
+            'title' => 'Outro aviso',
+            'body' => 'C',
+        ]);
+
+        $this->actingAs($user)
+            ->postJson(route('notifications.inbox.read'), ['id' => $first->id])
+            ->assertOk();
+
+        $this->assertNotNull($first->fresh()->read_at);
+        $this->assertSame(
+            0,
+            UserInboxNotification::query()
+                ->where('user_id', $user->id)
+                ->where('title', 'Novo voluntário no ministério')
+                ->whereNull('read_at')
+                ->count()
+        );
+        $this->assertNull($other->fresh()->read_at);
+    }
 }

@@ -278,6 +278,7 @@ class ConversationNotifier
             'user_id' => $user->id,
             'title' => $title,
             'body' => $body,
+            'intent' => UserInboxNotification::INTENT_ACTION,
             'action_url' => null,
             'read_at' => null,
         ]);

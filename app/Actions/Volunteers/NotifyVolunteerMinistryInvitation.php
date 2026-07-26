@@ -55,6 +55,7 @@ final class NotifyVolunteerMinistryInvitation
                     'user_id' => $user->id,
                     'title' => 'Convite — '.$ministryLabel,
                     'body' => $inboxBody,
+                    'intent' => UserInboxNotification::INTENT_ACTION,
                     'action_url' => $inboxActionUrl,
                 ]);
                 $row->update(['action_url' => $inboxActionUrl]);

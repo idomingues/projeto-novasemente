@@ -184,6 +184,7 @@ class TalentConnectionNotifier
             $interested->name.' demonstrou interesse na Central de Serviços.',
             $detail,
             'Ver interessados',
+            UserInboxNotification::INTENT_ACTION,
         );
     }
 
@@ -217,6 +218,7 @@ class TalentConnectionNotifier
             $actorName.' atualizou o status da conexão.',
             'Publicação: '.$listing->title."\nNovo status: ".$statusLabel,
             'Ver conexão',
+            UserInboxNotification::INTENT_ACTION,
         );
     }
 
@@ -250,6 +252,7 @@ class TalentConnectionNotifier
             $senderName.' escreveu na conversa da publicação «'.$listing->title.'».',
             $preview,
             'Responder na app',
+            UserInboxNotification::INTENT_ACTION,
         );
     }
 
@@ -350,7 +353,7 @@ class TalentConnectionNotifier
 
         $moderators = $this->moderatorsForChurch((int) $church->id, (int) $report->reporter_user_id);
         foreach ($moderators as $moderator) {
-            $this->pushInbox($moderator, 'Nova denúncia', $body, 'talents.admin.reports', []);
+            $this->pushInbox($moderator, 'Nova denúncia', $body, 'talents.admin.reports', [], UserInboxNotification::INTENT_ACTION);
             if (UserMessagingPreferences::acceptsAccountEmail($moderator)) {
                 $email = $this->resolveUserEmail($moderator);
                 if ($email !== null && strcasecmp($email, $configuredEmail) !== 0) {
@@ -416,8 +419,9 @@ class TalentConnectionNotifier
         string $emailIntro,
         string $emailDetail,
         string $buttonLabel,
+        string $intent = UserInboxNotification::INTENT_INFO,
     ): void {
-        $this->pushInbox($user, $inboxTitle, $inboxBody, $routeName, $routeParams);
+        $this->pushInbox($user, $inboxTitle, $inboxBody, $routeName, $routeParams, $intent);
 
         if (! UserMessagingPreferences::acceptsAccountEmail($user)) {
             return;
@@ -470,13 +474,14 @@ class TalentConnectionNotifier
                 'status' => TalentListing::STATUS_PENDING,
                 'listing_id' => $listingId,
             ],
+            UserInboxNotification::INTENT_ACTION,
         );
     }
 
     /**
      * @param  array<string, mixed>  $routeParams
      */
-    private function pushInbox(User $user, string $title, string $body, string $routeName, array $routeParams): void
+    private function pushInbox(User $user, string $title, string $body, string $routeName, array $routeParams, string $intent = UserInboxNotification::INTENT_INFO): void
     {
         if (! UserMessagingPreferences::acceptsInbox($user)) {
             return;
@@ -486,6 +491,7 @@ class TalentConnectionNotifier
             'user_id' => $user->id,
             'title' => $title,
             'body' => $body,
+            'intent' => $intent,
             'action_url' => null,
         ]);
 

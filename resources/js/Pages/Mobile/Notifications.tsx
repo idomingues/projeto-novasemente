@@ -4,8 +4,12 @@ import { notificationLinkHref } from '@/utils/notificationLinkHref';
 import { formatNotificationWhen } from '@/utils/formatNotificationWhen';
 import MarkInboxNotificationReadButton from '@/Components/MarkInboxNotificationReadButton';
 import DismissNotificationButton from '@/Components/DismissNotificationButton';
-import { BellAlertIcon } from '@heroicons/react/24/outline';
-import { useMemo, useState } from 'react';
+import NotificationIntentBadge, {
+    notificationIntentIconWrapClass,
+    notificationIntentSurfaceClass,
+} from '@/Components/NotificationIntentBadge';
+import { BellAlertIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { useEffect, useMemo, useState } from 'react';
 
 interface NotificationEntry {
     id: string;
@@ -15,10 +19,12 @@ interface NotificationEntry {
     author: { name: string } | null;
     href: string;
     kind: string;
+    intent?: string;
     inbox_notification_id?: number;
     inbox_unread?: boolean;
     app_notification_id?: number;
     can_remove?: boolean;
+    inbox_group_count?: number;
 }
 
 interface Props {
@@ -32,12 +38,28 @@ const viewFilters: { key: ViewFilter; label: string }[] = [
     { key: 'all', label: 'Todas' },
 ];
 
+/** Só caixa pessoal com read_at nulo — avisos da igreja não entram neste contador. */
 function isUnread(n: NotificationEntry): boolean {
-    if (n.kind === 'inbox') {
-        return Boolean(n.inbox_unread);
+    return n.kind === 'inbox' && Boolean(n.inbox_unread);
+}
+
+/** Uma linha por título (a mais recente), com contagem do grupo. */
+function groupUnreadByTitle(items: NotificationEntry[]): NotificationEntry[] {
+    const sorted = [...items].filter(isUnread).sort((a, b) => {
+        const ta = new Date(a.created_at).getTime();
+        const tb = new Date(b.created_at).getTime();
+        return tb - ta;
+    });
+    const map = new Map<string, NotificationEntry>();
+    for (const n of sorted) {
+        const existing = map.get(n.title);
+        if (existing) {
+            existing.inbox_group_count = (existing.inbox_group_count ?? 1) + 1;
+            continue;
+        }
+        map.set(n.title, { ...n, inbox_group_count: 1 });
     }
-    // Avisos da igreja não têm "lida": enquanto não forem marcados como vistos, contam como não lidos.
-    return n.kind === 'app';
+    return Array.from(map.values());
 }
 
 function appDismissTarget(n: NotificationEntry): number | null {
@@ -65,13 +87,66 @@ function NotificationActions({ n }: { n: NotificationEntry }) {
 
 export default function MobileNotifications({ notifications }: Props) {
     const [view, setView] = useState<ViewFilter>('unread');
+    const [liveNotifications, setLiveNotifications] = useState(notifications);
+
+    useEffect(() => {
+        setLiveNotifications(notifications);
+    }, [notifications]);
+
+    useEffect(() => {
+        const handleItemGone = (event: Event) => {
+            const custom = event as CustomEvent<{ kind?: string; recordId?: number }>;
+            const kind = custom.detail?.kind;
+            const recordId = custom.detail?.recordId;
+            if ((kind !== 'inbox' && kind !== 'app') || typeof recordId !== 'number') {
+                return;
+            }
+            setLiveNotifications((prev) =>
+                prev.filter((n) => {
+                    if (kind === 'inbox') {
+                        return n.inbox_notification_id !== recordId;
+                    }
+                    return n.app_notification_id !== recordId;
+                }),
+            );
+        };
+        window.addEventListener('ns:notification-item-gone', handleItemGone as EventListener);
+        const handleMarkedRead = (event: Event) => {
+            const recordId = (event as CustomEvent<{ recordId?: number }>).detail?.recordId;
+            if (typeof recordId !== 'number') return;
+            setLiveNotifications((prev) => {
+                const hit = prev.find((n) => n.inbox_notification_id === recordId);
+                if (!hit) {
+                    return prev.map((n) =>
+                        n.inbox_notification_id === recordId ? { ...n, inbox_unread: false } : n,
+                    );
+                }
+                return prev.map((n) =>
+                    n.kind === 'inbox' && n.title === hit.title ? { ...n, inbox_unread: false } : n,
+                );
+            });
+        };
+        window.addEventListener('ns:notification-marked-read', handleMarkedRead as EventListener);
+        const handleMarkedAll = () => {
+            setLiveNotifications((prev) =>
+                prev.map((n) => (n.kind === 'inbox' ? { ...n, inbox_unread: false } : n)),
+            );
+        };
+        window.addEventListener('ns:notifications-marked-all-read', handleMarkedAll);
+        return () => {
+            window.removeEventListener('ns:notification-item-gone', handleItemGone as EventListener);
+            window.removeEventListener('ns:notification-marked-read', handleMarkedRead as EventListener);
+            window.removeEventListener('ns:notifications-marked-all-read', handleMarkedAll);
+        };
+    }, []);
+
+    const unreadGrouped = useMemo(() => groupUnreadByTitle(liveNotifications), [liveNotifications]);
+    const unreadCount = unreadGrouped.length;
 
     const visible = useMemo(() => {
-        if (view === 'all') return notifications;
-        return notifications.filter(isUnread);
-    }, [notifications, view]);
-
-    const unreadCount = useMemo(() => notifications.filter(isUnread).length, [notifications]);
+        if (view === 'all') return liveNotifications;
+        return unreadGrouped;
+    }, [liveNotifications, unreadGrouped, view]);
 
     return (
         <MobileLayout>
@@ -79,7 +154,11 @@ export default function MobileNotifications({ notifications }: Props) {
             <div className="space-y-4">
                 <div>
                     <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Notificações</h1>
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">Avisos da igreja e da sua conta</p>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">
+                        Itens <span className="font-medium text-amber-800 dark:text-amber-200">Para atender</span> pedem
+                        ação; os <span className="font-medium text-zinc-700 dark:text-zinc-300">Informativos</span> são
+                        avisos.
+                    </p>
                 </div>
 
                 <div className="flex flex-wrap gap-1.5">
@@ -95,9 +174,9 @@ export default function MobileNotifications({ notifications }: Props) {
                             }`}
                         >
                             {f.label}
-                            {f.key === 'unread' && unreadCount > 0 ? (
-                                <span className="ml-1.5 tabular-nums opacity-80">{unreadCount}</span>
-                            ) : null}
+                            <span className="ml-1.5 tabular-nums opacity-80">
+                                {f.key === 'unread' ? unreadCount : liveNotifications.length}
+                            </span>
                         </button>
                     ))}
                 </div>
@@ -108,27 +187,67 @@ export default function MobileNotifications({ notifications }: Props) {
                             <BellAlertIcon className="w-8 h-8 text-primary-600 dark:text-primary-400" />
                         </div>
                         <h2 className="font-semibold text-zinc-900 dark:text-white mb-2">
-                            {view === 'unread' && notifications.length > 0
-                                ? 'Nenhuma não lida'
+                            {view === 'unread'
+                                ? liveNotifications.length > 0
+                                    ? 'Nenhuma não lida'
+                                    : 'Nenhuma notificação'
                                 : 'Nenhuma notificação'}
                         </h2>
                         <p className="text-sm text-zinc-600 dark:text-zinc-400 max-w-xs mx-auto">
-                            {view === 'unread' && notifications.length > 0
-                                ? 'Você já viu todos os avisos. Use a tag Todas para revisá-los.'
+                            {view === 'unread'
+                                ? liveNotifications.length > 0
+                                    ? 'Você já leu os avisos pessoais. Abra Todas para ver o histórico e os avisos da igreja.'
+                                    : 'Quando houver avisos ou novidades, eles aparecerão aqui.'
                                 : 'Quando houver avisos ou novidades, eles aparecerão aqui.'}
                         </p>
                     </div>
                 ) : (
                     <ul className="space-y-3">
                         {visible.map((n) => {
+                            const groupCount =
+                                view === 'unread' &&
+                                typeof n.inbox_group_count === 'number' &&
+                                n.inbox_group_count > 1
+                                    ? n.inbox_group_count
+                                    : 0;
                             const inner = (
                                 <div className="flex gap-3">
-                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-100 dark:bg-primary-900/30">
-                                        <BellAlertIcon className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+                                    <div
+                                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${notificationIntentIconWrapClass(n.intent)}`}
+                                    >
+                                        {n.intent === 'action' ? (
+                                            <ExclamationTriangleIcon className="h-6 w-6" />
+                                        ) : (
+                                            <BellAlertIcon className="h-6 w-6" />
+                                        )}
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <p className="font-semibold text-zinc-900 dark:text-white">{n.title}</p>
-                                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">{n.body}</p>
+                                        <div className="mb-1.5">
+                                            <NotificationIntentBadge intent={n.intent} />
+                                        </div>
+                                        <p
+                                            className={`font-semibold ${
+                                                n.intent === 'action'
+                                                    ? 'text-base text-amber-950 dark:text-amber-50'
+                                                    : 'text-zinc-900 dark:text-white'
+                                            }`}
+                                        >
+                                            {n.title}
+                                            {groupCount > 0 ? (
+                                                <span className="ml-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                                                    · {groupCount}
+                                                </span>
+                                            ) : null}
+                                        </p>
+                                        <p
+                                            className={`mt-1 leading-relaxed ${
+                                                n.intent === 'action'
+                                                    ? 'text-sm text-amber-950/90 dark:text-amber-100/90'
+                                                    : 'text-sm text-zinc-600 dark:text-zinc-400'
+                                            }`}
+                                        >
+                                            {n.body}
+                                        </p>
                                         <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
                                             {formatNotificationWhen(n.created_at)}
                                             {n.author?.name && ` · ${n.author.name}`}
@@ -140,17 +259,20 @@ export default function MobileNotifications({ notifications }: Props) {
                             );
 
                             const hasActions =
-                                (n.kind === 'inbox' && n.inbox_unread) || appDismissTarget(n) !== null;
-                            const cardClass =
-                                n.kind === 'inbox' && n.inbox_unread
-                                    ? 'border-primary-200 dark:border-primary-900'
-                                    : 'border-zinc-200 dark:border-zinc-800';
+                                (n.kind === 'inbox' && n.inbox_unread) ||
+                                (view === 'all' && appDismissTarget(n) !== null);
+                            const cardClass = notificationIntentSurfaceClass(
+                                n.intent,
+                                Boolean(n.kind === 'inbox' && n.inbox_unread),
+                            );
 
                             if (n.href) {
                                 return (
                                     <li key={n.id}>
                                         <div
-                                            className={`flex overflow-hidden rounded-2xl border bg-white shadow-sm dark:bg-zinc-900 ${cardClass}`}
+                                            className={`flex overflow-hidden rounded-2xl border shadow-sm ${cardClass} ${
+                                                n.intent === 'action' ? 'ring-1 ring-amber-300/60 dark:ring-amber-700/50' : ''
+                                            }`}
                                         >
                                             <Link
                                                 href={notificationLinkHref(n.href)}
@@ -167,7 +289,9 @@ export default function MobileNotifications({ notifications }: Props) {
                             return (
                                 <li key={n.id}>
                                     <div
-                                        className={`flex overflow-hidden rounded-2xl border bg-white shadow-sm dark:bg-zinc-900 ${cardClass}`}
+                                        className={`flex overflow-hidden rounded-2xl border shadow-sm dark:bg-zinc-900 ${cardClass} ${
+                                            n.intent === 'action' ? 'ring-1 ring-amber-300/60 dark:ring-amber-700/50' : ''
+                                        }`}
                                     >
                                         <div className="min-w-0 flex-1 p-4">{inner}</div>
                                         {hasActions ? <NotificationActions n={n} /> : null}

@@ -43,6 +43,7 @@ class VolunteerMinistryRosterNotifier
                     'user_id' => $leaderUserId,
                     'title' => 'Novo voluntário no ministério',
                     'body' => $name.' entrou em «'.$ministry->name.'». Revise critérios e liberação.',
+                    'intent' => UserInboxNotification::INTENT_ACTION,
                     'action_url' => null,
                 ]);
 

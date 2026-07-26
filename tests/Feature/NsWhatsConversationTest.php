@@ -261,6 +261,34 @@ class NsWhatsConversationTest extends TestCase
             ->assertRedirect(route('mobile.ns-whats.index'));
     }
 
+    public function test_volunteer_ministries_marked_i_serve_and_sorted_first_on_compose(): void
+    {
+        [$churchId, $member, $ministry] = $this->seedNsWhats();
+
+        $other = Ministry::query()->create([
+            'church_id' => $churchId,
+            'name' => 'Ação Social',
+        ]);
+        $this->makeLeader($churchId, 'Líder Ação Social', [$other->id]);
+
+        $member->ensureVolunteerProfile();
+        $volunteer = $member->volunteerProfile()->firstOrFail();
+        $volunteer->forceFill(['active' => true])->save();
+        $volunteer->ministries()->syncWithoutDetaching([$ministry->id]);
+
+        $this->actingAs($member)
+            ->get(route('mobile.ns-whats.index', ['nova' => 1]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Mobile/NsWhats/Index')
+                ->where('composing', true)
+                ->where('ministries.0.id', $ministry->id)
+                ->where('ministries.0.i_serve', true)
+                ->where('ministries.0.name', 'Louvor')
+                ->where('ministries.1.id', $other->id)
+                ->where('ministries.1.i_serve', false));
+    }
+
     public function test_volunteer_sees_department_leader_thread_before_speaking(): void
     {
         [$churchId, $member, $ministry, $leader] = $this->seedNsWhats();
@@ -376,6 +404,36 @@ class NsWhatsConversationTest extends TestCase
                 ->where('peopleMatches.0.id', $deptMemberUser->id)
                 ->where('peopleMatches.0.role', 'member')
                 ->where('peopleMatches.0.ministry_name', 'Louvor'));
+    }
+
+    public function test_compose_search_dedupes_person_across_ministries(): void
+    {
+        [$churchId, $member] = array_slice($this->seedNsWhats(), 0, 2);
+
+        $cozinha = Ministry::query()->create(['church_id' => $churchId, 'name' => 'Cozinha']);
+        $diaconisas = Ministry::query()->create(['church_id' => $churchId, 'name' => 'Diaconisas']);
+        $this->makeLeader($churchId, 'Líder Cozinha', [$cozinha->id]);
+        $this->makeLeader($churchId, 'Líder Diaconisas', [$diaconisas->id]);
+
+        $maria = User::factory()->create([
+            'church_id' => $churchId,
+            'name' => 'Maria Alice Teste',
+        ]);
+        $maria->assignRole('membro');
+        $maria->ensureVolunteerProfile();
+        $volunteer = $maria->volunteerProfile()->firstOrFail();
+        $volunteer->forceFill(['active' => true])->save();
+        $volunteer->ministries()->sync([$cozinha->id, $diaconisas->id]);
+
+        $this->actingAs($member)
+            ->get(route('mobile.ns-whats.index', ['nova' => 1, 'pessoa' => 'Maria Alice']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Mobile/NsWhats/Index')
+                ->has('peopleMatches', 1)
+                ->where('peopleMatches.0.id', $maria->id)
+                ->where('peopleMatches.0.role', 'member')
+                ->where('peopleMatches.0.ministry_name', 'Cozinha, Diaconisas'));
     }
 
     public function test_compose_lists_department_members(): void
