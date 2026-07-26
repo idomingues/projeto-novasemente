@@ -353,7 +353,7 @@ class MinistryLeadVolunteerController extends Controller
             'cleared_by_user_id' => null,
         ]);
 
-        $this->rosterNotifier->notifyLeadersOfNewAttachments($volunteer, [$ministry->id]);
+        $this->rosterNotifier->notifyLeadersOfNewAttachments($volunteer, [$ministry->id], $request->user());
 
         return redirect()->route('ministry-lead.volunteers.board', $ministry)
             ->with('success', 'Voluntário associado ao ministério.');

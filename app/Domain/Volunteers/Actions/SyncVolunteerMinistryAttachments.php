@@ -34,7 +34,11 @@ class SyncVolunteerMinistryAttachments
 
         $added = array_values(array_diff($newIds, $previousIds));
         if ($added !== []) {
-            app(VolunteerMinistryRosterNotifier::class)->notifyLeadersOfNewAttachments($volunteer->fresh(), $added);
+            app(VolunteerMinistryRosterNotifier::class)->notifyLeadersOfNewAttachments(
+                $volunteer->fresh(),
+                $added,
+                auth()->user(),
+            );
         }
     }
 }

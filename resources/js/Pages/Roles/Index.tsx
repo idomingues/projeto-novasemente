@@ -40,118 +40,101 @@ interface Props {
 }
 
 /**
- * Rótulos alinhados ao menu lateral (seção — tela).
+ * Agrupamento e rótulos iguais ao menu lateral.
  * Seções: Pastor | Operação | Publicação | Cadastro | ADM
  */
-const GROUP_LABELS: Record<string, string> = {
-    members: 'Operação — Membros',
-    volunteers: 'Operação — Voluntários',
-    departments: 'Cadastro — Departamentos',
-    inventory: 'Operação — Inventários',
-    users: 'Operação — Usuários',
-    churches: 'ADM — Igrejas',
-    news: 'Publicação — News / Saúde',
-    events: 'Publicação — Eventos',
-    escalas: 'Operação — Escalas',
-    roles: 'ADM — Perfis',
-    music: 'Publicação — Séries / Música',
-    photos: 'Publicação — Fotos',
-    library: 'Publicação — Biblioteca',
-    culto: 'Publicação — Culto',
-    notifications: 'Publicação — Notificações',
-    pastors: 'Cadastro — Pastores',
-    pastoral_appointments: 'Pastor — Agenda',
-    solicitations: 'Pastor — Atendimento',
-    mission: 'Operação — Missão',
-    programacao: 'Cadastro — Programação',
-    rooms: 'Cadastro — Salas',
-    communities: 'Publicação — Comunidades',
-    prayer: 'Operação — Oração',
-    polls: 'Publicação — Enquetes',
-    campaigns: 'Publicação — Oferta Nova Semente',
-    donations: 'Publicação — Doação',
-    talents: 'Operação — Serviços',
-    shared_talents: 'Operação — Talentos',
+type MenuSection = 'pastor' | 'operacao' | 'publicacao' | 'cadastro' | 'adm';
+
+const MENU_SECTION_ORDER: MenuSection[] = ['pastor', 'operacao', 'publicacao', 'cadastro', 'adm'];
+
+const MENU_SECTION_LABELS: Record<MenuSection, string> = {
+    pastor: 'Pastor',
+    operacao: 'Operação',
+    publicacao: 'Publicação',
+    cadastro: 'Cadastro',
+    adm: 'ADM',
 };
 
-/** Seção — tela — ação (rótulo principal na matriz). */
-const PERMISSION_SCREEN_LABELS: Record<string, string> = {
-    'members.view': 'Operação — Membros — Visualizar',
-    'members.manage': 'Operação — Membros — Gerenciar',
-    'volunteers.view': 'Operação — Voluntários — Visualizar',
-    'volunteers.manage': 'Operação — Voluntários — Gerenciar',
-    'volunteers.ministry_operate': 'Operação — Voluntários — Operar pipeline / departamentos',
-    'departments.view': 'Cadastro — Departamentos — Visualizar',
-    'departments.manage': 'Cadastro — Departamentos — Gerenciar',
-    'rooms.view': 'Cadastro — Salas — Visualizar cadastro',
-    'rooms.manage': 'Cadastro — Salas — Gerenciar cadastro',
-    'rooms.schedule': 'Operação — Salas — Agendar reservas',
-    'programacao.view': 'Cadastro — Programação — Visualizar',
-    'programacao.manage': 'Cadastro — Programação — Gerenciar',
-    'escalas.view': 'Operação — Escalas — Visualizar',
-    'escalas.manage': 'Operação — Escalas — Gerenciar',
-    'inventory.view': 'Operação — Inventários — Visualizar',
-    'inventory.manage': 'Operação — Inventários — Gerenciar',
-    'users.view': 'Operação — Usuários — Visualizar',
-    'users.manage': 'Operação — Usuários — Gerenciar',
-    'churches.manage': 'ADM — Igrejas — Gerenciar',
-    'news.view': 'Publicação — News / Saúde — Visualizar',
-    'news.manage': 'Publicação — News / Saúde — Gerenciar',
-    'events.view': 'Publicação — Eventos — Visualizar',
-    'events.manage': 'Publicação — Eventos — Gerenciar',
-    'culto.manage': 'Publicação — Culto — Gerenciar',
-    'music.manage': 'Publicação — Séries / Música — Gerenciar',
-    'photos.manage': 'Publicação — Fotos — Gerenciar álbuns',
-    'library.manage': 'Publicação — Biblioteca — Gerenciar',
-    'communities.view': 'Publicação — Comunidades — Visualizar',
-    'communities.manage': 'Publicação — Comunidades — Gerenciar',
-    'prayer.manage': 'Operação — Oração — Gerenciar',
-    'notifications.manage': 'Publicação — Notificações — Enviar avisos',
-    'solicitations.view': 'Pastor — Atendimento — Visualizar',
-    'solicitations.manage': 'Pastor — Atendimento — Gerenciar',
-    'polls.view': 'Publicação — Enquetes — Visualizar',
-    'polls.manage': 'Publicação — Enquetes — Gerenciar',
-    'pastors.view': 'Cadastro — Pastores — Visualizar',
-    'pastors.manage': 'Cadastro — Pastores — Gerenciar',
-    'pastoral_appointments.manage': 'Pastor — Agenda — Gerenciar',
-    'roles.manage': 'ADM — Perfis — Gerenciar',
-    'mission.view': 'Operação — Missão — Visualizar',
-    'mission.manage': 'Operação — Missão — Gerenciar',
-    'campaigns.view': 'Publicação — Oferta Nova Semente — Visualizar',
-    'campaigns.manage': 'Publicação — Oferta Nova Semente — Gerenciar',
-    'donations.view': 'Publicação — Doação — Visualizar',
-    'donations.manage': 'Publicação — Doação — Gerenciar',
-    'talents.moderate': 'Operação — Serviços — Moderar anúncios e denúncias',
-    'talents.treasurer': 'Operação — Serviços — Tesoureiro',
-    'shared_talents.moderate': 'Operação — Talentos — Moderar anúncios e denúncias',
-    'shared_talents.manage': 'Operação — Talentos — Gerenciar',
+/** Permissão → seção do menu + nome da tela (sem repetir a seção no rótulo da linha). */
+const PERMISSION_MENU: Record<string, { section: MenuSection; screen: string; action: string }> = {
+    'solicitations.view': { section: 'pastor', screen: 'Atendimento', action: 'Visualizar' },
+    'solicitations.manage': { section: 'pastor', screen: 'Atendimento', action: 'Gerenciar' },
+    'pastoral_appointments.manage': { section: 'pastor', screen: 'Agenda', action: 'Gerenciar' },
+
+    'members.view': { section: 'operacao', screen: 'Membros', action: 'Visualizar' },
+    'members.manage': { section: 'operacao', screen: 'Membros', action: 'Gerenciar' },
+    'volunteers.view': { section: 'operacao', screen: 'Voluntários', action: 'Visualizar' },
+    'volunteers.manage': { section: 'operacao', screen: 'Voluntários', action: 'Gerenciar' },
+    'volunteers.ministry_operate': {
+        section: 'operacao',
+        screen: 'Voluntários',
+        action: 'Operar pipeline / departamentos',
+    },
+    'escalas.view': { section: 'operacao', screen: 'Escalas', action: 'Visualizar' },
+    'escalas.manage': { section: 'operacao', screen: 'Escalas', action: 'Gerenciar' },
+    'inventory.view': { section: 'operacao', screen: 'Inventários', action: 'Visualizar' },
+    'inventory.manage': { section: 'operacao', screen: 'Inventários', action: 'Gerenciar' },
+    'users.view': { section: 'operacao', screen: 'Usuários', action: 'Visualizar' },
+    'users.manage': { section: 'operacao', screen: 'Usuários', action: 'Gerenciar' },
+    'mission.view': { section: 'operacao', screen: 'Missão', action: 'Visualizar' },
+    'mission.manage': { section: 'operacao', screen: 'Missão', action: 'Gerenciar' },
+    'prayer.manage': { section: 'operacao', screen: 'Oração', action: 'Gerenciar' },
+    'rooms.schedule': { section: 'operacao', screen: 'Salas', action: 'Agendar reservas' },
+    'talents.moderate': { section: 'operacao', screen: 'Serviços', action: 'Moderar anúncios e denúncias' },
+    'talents.treasurer': { section: 'operacao', screen: 'Serviços', action: 'Tesoureiro' },
+    'shared_talents.moderate': { section: 'operacao', screen: 'Talentos', action: 'Moderar anúncios e denúncias' },
+    'shared_talents.manage': { section: 'operacao', screen: 'Talentos', action: 'Gerenciar' },
+
+    'news.view': { section: 'publicacao', screen: 'News / Saúde', action: 'Visualizar' },
+    'news.manage': { section: 'publicacao', screen: 'News / Saúde', action: 'Gerenciar' },
+    'events.view': { section: 'publicacao', screen: 'Eventos', action: 'Visualizar' },
+    'events.manage': { section: 'publicacao', screen: 'Eventos', action: 'Gerenciar' },
+    'culto.manage': { section: 'publicacao', screen: 'Culto', action: 'Gerenciar' },
+    'music.manage': { section: 'publicacao', screen: 'Séries / Música', action: 'Gerenciar' },
+    'photos.manage': { section: 'publicacao', screen: 'Fotos', action: 'Gerenciar álbuns' },
+    'library.manage': { section: 'publicacao', screen: 'Biblioteca', action: 'Gerenciar' },
+    'communities.view': { section: 'publicacao', screen: 'Comunidades', action: 'Visualizar' },
+    'communities.manage': { section: 'publicacao', screen: 'Comunidades', action: 'Gerenciar' },
+    'polls.view': { section: 'publicacao', screen: 'Enquetes', action: 'Visualizar' },
+    'polls.manage': { section: 'publicacao', screen: 'Enquetes', action: 'Gerenciar' },
+    'campaigns.view': { section: 'publicacao', screen: 'Oferta Nova Semente', action: 'Visualizar' },
+    'campaigns.manage': { section: 'publicacao', screen: 'Oferta Nova Semente', action: 'Gerenciar' },
+    'donations.view': { section: 'publicacao', screen: 'Doação', action: 'Visualizar' },
+    'donations.manage': { section: 'publicacao', screen: 'Doação', action: 'Gerenciar' },
+    'notifications.manage': { section: 'publicacao', screen: 'Notificações', action: 'Enviar avisos' },
+
+    'departments.view': { section: 'cadastro', screen: 'Departamentos', action: 'Visualizar' },
+    'departments.manage': { section: 'cadastro', screen: 'Departamentos', action: 'Gerenciar' },
+    'rooms.view': { section: 'cadastro', screen: 'Salas', action: 'Visualizar cadastro' },
+    'rooms.manage': { section: 'cadastro', screen: 'Salas', action: 'Gerenciar cadastro' },
+    'pastors.view': { section: 'cadastro', screen: 'Pastores', action: 'Visualizar' },
+    'pastors.manage': { section: 'cadastro', screen: 'Pastores', action: 'Gerenciar' },
+    'programacao.view': { section: 'cadastro', screen: 'Programação', action: 'Visualizar' },
+    'programacao.manage': { section: 'cadastro', screen: 'Programação', action: 'Gerenciar' },
+
+    'churches.manage': { section: 'adm', screen: 'Igrejas', action: 'Gerenciar' },
+    'roles.manage': { section: 'adm', screen: 'Perfis', action: 'Gerenciar' },
 };
 
-function groupTitle(group: string): string {
-    return GROUP_LABELS[group] ?? group;
+function permissionMenuMeta(perm: string): { section: MenuSection; screen: string; action: string } {
+    if (PERMISSION_MENU[perm]) {
+        return PERMISSION_MENU[perm];
+    }
+    const [prefix, actionRaw] = perm.split('.');
+    const action =
+        actionRaw === 'view'
+            ? 'Visualizar'
+            : actionRaw === 'manage'
+              ? 'Gerenciar'
+              : actionRaw === 'moderate'
+                ? 'Moderar'
+                : actionRaw || perm;
+    return { section: 'operacao', screen: prefix || 'Outros', action };
 }
 
 function permissionLineLabel(perm: string): string {
-    if (PERMISSION_SCREEN_LABELS[perm]) {
-        return PERMISSION_SCREEN_LABELS[perm];
-    }
-
-    const [group, action] = perm.split('.');
-    const screen = GROUP_LABELS[group] ?? group;
-    if (action === 'view') {
-        return `${screen} — Visualizar`;
-    }
-    if (action === 'manage') {
-        return `${screen} — Gerenciar`;
-    }
-    if (action === 'moderate') {
-        return `${screen} — Moderar`;
-    }
-    if (action) {
-        return `${screen} — ${action}`;
-    }
-
-    return perm;
+    const meta = permissionMenuMeta(perm);
+    return `${meta.screen} — ${meta.action}`;
 }
 
 function PermissionImpactBadges({ perm }: { perm: string }) {
@@ -332,50 +315,32 @@ export default function RolesIndex({ roles, permissions }: Props) {
         return m;
     }, [roles]);
 
-    const groupedPermissions = useMemo(() => {
-        const groups: Record<string, string[]> = {};
-        permissions.forEach((p) => {
-            const [prefix] = p.name.split('.');
-            const group = prefix || 'outros';
-            if (!groups[group]) {
-                groups[group] = [];
-            }
-            groups[group].push(p.name);
-        });
-        Object.keys(groups).forEach((g) => {
-            if (g === 'rooms') {
-                const order = ['rooms.view', 'rooms.manage', 'rooms.schedule'];
-                groups[g] = order.filter((name) => groups[g].includes(name));
-            } else {
-                groups[g].sort();
-            }
-        });
-        return groups;
-    }, [permissions]);
-
     const displayPermissionGroups = useMemo(() => {
-        const rows: Array<{ key: string; title: string; perms: string[] }> = [];
-        for (const [group, perms] of Object.entries(groupedPermissions)) {
-            if (group === 'rooms') {
-                const registration = perms.filter((p) => p === 'rooms.view' || p === 'rooms.manage');
-                const schedule = perms.filter((p) => p === 'rooms.schedule');
-                if (registration.length > 0) {
-                    rows.push({ key: 'rooms-registration', title: 'Salas', perms: registration });
-                }
-                if (schedule.length > 0) {
-                    rows.push({
-                        key: 'rooms-schedule',
-                        title: 'Agendamento de salas',
-                        perms: schedule,
-                    });
-                }
-            } else {
-                rows.push({ key: group, title: groupTitle(group), perms });
-            }
+        const bySection: Record<MenuSection, string[]> = {
+            pastor: [],
+            operacao: [],
+            publicacao: [],
+            cadastro: [],
+            adm: [],
+        };
+
+        for (const p of permissions) {
+            const meta = permissionMenuMeta(p.name);
+            bySection[meta.section].push(p.name);
         }
-        rows.sort((a, b) => a.title.localeCompare(b.title, 'pt'));
-        return rows;
-    }, [groupedPermissions]);
+
+        for (const section of MENU_SECTION_ORDER) {
+            bySection[section].sort((a, b) =>
+                permissionLineLabel(a).localeCompare(permissionLineLabel(b), 'pt'),
+            );
+        }
+
+        return MENU_SECTION_ORDER.filter((section) => bySection[section].length > 0).map((section) => ({
+            key: section,
+            title: MENU_SECTION_LABELS[section],
+            perms: bySection[section],
+        }));
+    }, [permissions]);
 
     const q = permSearch.trim();
     const roleQuery = roleSearch.trim();

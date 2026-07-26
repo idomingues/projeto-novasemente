@@ -13,7 +13,6 @@ const NOTIFICATION_PERMS = new Set<string>([
     'mission.manage',
     'talents.moderate',
     'shared_talents.moderate',
-    'escalas.manage',
     'pastoral_appointments.manage',
     'volunteers.ministry_operate',
 ]);

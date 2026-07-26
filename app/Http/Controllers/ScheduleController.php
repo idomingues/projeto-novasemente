@@ -455,20 +455,7 @@ class ScheduleController extends Controller
 
         $title = $checkedIn ? 'Check-in realizado' : 'Check-in desfeito';
 
-        // Notifica o usuário escalado (quando a ação foi feita por outra pessoa).
-        if ($targetUser && $actor && (int) $targetUser->id !== (int) $actor->id && UserMessagingPreferences::acceptsInbox($targetUser)) {
-            $body = $checkedIn
-                ? $actorName.' marcou o seu check-in em '.$label.'.'
-                : $actorName.' desfez o seu check-in em '.$label.'.';
-            UserInboxNotification::create([
-                'user_id' => $targetUser->id,
-                'title' => $title,
-                'body' => $body,
-                'action_url' => $actionUrl,
-            ]);
-        }
-
-        // Notifica líderes do departamento e admins quando o voluntário marcar/desmarcar (ou quando um líder marcar para alguém).
+        // Só líderes do departamento da pessoa escalada (ninguém mais: admin, escalas.manage, etc.).
         $leaderIds = User::query()
             ->where(function ($q) {
                 $q->where('is_ministry_leader', true)
@@ -478,15 +465,12 @@ class ScheduleController extends Controller
             ->pluck('id')
             ->map(fn ($id) => (int) $id)
             ->all();
-        $adminIds = User::role(['admin', 'super_admin'])->pluck('id')->map(fn ($id) => (int) $id)->all();
-        $manageIds = User::permission('escalas.manage')->pluck('id')->map(fn ($id) => (int) $id)->all();
 
-        $notifyIds = array_values(array_unique(array_merge($leaderIds, $adminIds, $manageIds)));
-        if ($notifyIds === []) {
+        if ($leaderIds === []) {
             return;
         }
 
-        foreach (User::query()->whereIn('id', $notifyIds)->get(['id', 'name', 'notify_via_app']) as $u) {
+        foreach (User::query()->whereIn('id', $leaderIds)->get(['id', 'name', 'notify_via_app']) as $u) {
             if ($actor && (int) $u->id === (int) $actor->id) {
                 continue;
             }
@@ -500,6 +484,7 @@ class ScheduleController extends Controller
                 'user_id' => $u->id,
                 'title' => $title,
                 'body' => $body,
+                'intent' => UserInboxNotification::INTENT_INFO,
                 'action_url' => $actionUrl,
             ]);
         }
