@@ -27,7 +27,7 @@ class CommunicationRequestTest extends TestCase
             'church_id' => $church->id,
             'is_ministry_leader' => true,
         ]);
-        $user->assignRole(Role::firstOrCreate(['name' => 'lider_ministerio', 'guard_name' => $guard]));
+        $user->forceFill(['is_ministry_leader' => true])->save();
 
         return $user;
     }

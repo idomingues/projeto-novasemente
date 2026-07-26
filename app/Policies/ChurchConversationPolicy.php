@@ -12,8 +12,7 @@ class ChurchConversationPolicy
     public function viewAny(User $user): bool
     {
         return NsWhatsAccess::isModuleAdmin($user)
-            || $user->hasRole('lider_ministerio')
-            || (bool) ($user->is_ministry_leader ?? false);
+            || $user->isMinistryLeaderAccount();
     }
 
     public function view(User $user, ChurchConversation $conversation): bool

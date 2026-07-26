@@ -2,12 +2,18 @@ import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import SearchableSelect, { type SearchableOption } from '@/Components/SearchableSelect';
+import SelectInput from '@/Components/SelectInput';
 import UserListAvatar from '@/Components/UserListAvatar';
 import { appRoleLabel } from '@/lib/appRoleLabels';
 import { confirmAction } from '@/utils/confirmDialog';
+import {
+    reloadListModalProps,
+    submitListModalDelete,
+    submitListModalPatch,
+    submitListModalPost,
+} from '@/utils/listModalFetchSave';
 import { textIncludesSearch } from '@/utils/searchText';
 import { ArrowsRightLeftIcon, TrashIcon, UserPlusIcon } from '@heroicons/react/24/outline';
-import { router } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 
 export interface RoleUserRow {
@@ -34,7 +40,10 @@ interface Props {
     users: RoleUserRow[];
     candidateUsers: CandidateUserRow[];
     moveTargets: MoveTarget[];
+    csrf: string;
 }
+
+const RELOAD_ONLY = ['roles', 'candidateUsers', 'moveTargets'];
 
 export default function RoleUsersModal({
     show,
@@ -44,6 +53,7 @@ export default function RoleUsersModal({
     users,
     candidateUsers,
     moveTargets,
+    csrf,
 }: Props) {
     const roleLabel = appRoleLabel(roleName);
     const [listFilter, setListFilter] = useState('');
@@ -105,10 +115,19 @@ export default function RoleUsersModal({
         [candidateUsers, userIdToAdd],
     );
 
-    const reloadUsers = {
-        preserveScroll: true,
-        only: ['roles', 'candidateUsers', 'moveTargets'] as string[],
-        onFinish: () => setBusy(false),
+    const runAction = async (action: () => Promise<{ ok: boolean; message?: string }>, onOk?: () => void) => {
+        setBusy(true);
+        try {
+            const result = await action();
+            if (!result.ok) {
+                window.alert(result.message ?? 'Não foi possível concluir a ação. Tente novamente.');
+                return;
+            }
+            await reloadListModalProps(RELOAD_ONLY);
+            onOk?.();
+        } finally {
+            setBusy(false);
+        }
     };
 
     const handleAttach = async () => {
@@ -138,14 +157,14 @@ export default function RoleUsersModal({
             return;
         }
 
-        setBusy(true);
-        router.post(
-            route('roles.users.attach', roleId),
-            { user_id: Number(userIdToAdd) },
-            {
-                ...reloadUsers,
-                onSuccess: () => setUserIdToAdd(''),
-            },
+        await runAction(
+            () =>
+                submitListModalPost(
+                    route('roles.users.attach', roleId),
+                    { user_id: Number(userIdToAdd) },
+                    csrf,
+                ),
+            () => setUserIdToAdd(''),
         );
     };
 
@@ -165,8 +184,9 @@ export default function RoleUsersModal({
             return;
         }
 
-        setBusy(true);
-        router.delete(route('roles.users.detach', { role: roleId, user: user.id }), reloadUsers);
+        await runAction(() =>
+            submitListModalDelete(route('roles.users.detach', { role: roleId, user: user.id }), csrf),
+        );
     };
 
     const startEdit = (user: RoleUserRow) => {
@@ -175,12 +195,14 @@ export default function RoleUsersModal({
     };
 
     const handleMove = async (user: RoleUserRow) => {
-        if (busy || !nextRoleName || nextRoleName === roleName) {
+        if (busy || nextRoleName === roleName) {
             return;
         }
 
         const nextLabel =
-            otherTargets.find((t) => t.name === nextRoleName)?.label ?? appRoleLabel(nextRoleName);
+            nextRoleName === ''
+                ? 'Sem perfil'
+                : otherTargets.find((t) => t.name === nextRoleName)?.label ?? appRoleLabel(nextRoleName);
 
         const ok = await confirmAction({
             title: 'Alterar perfil?',
@@ -192,16 +214,16 @@ export default function RoleUsersModal({
             return;
         }
 
-        setBusy(true);
-        router.patch(
-            route('roles.users.update', { role: roleId, user: user.id }),
-            { role_name: nextRoleName },
-            {
-                ...reloadUsers,
-                onSuccess: () => {
-                    setEditingUserId(null);
-                    setNextRoleName('');
-                },
+        await runAction(
+            () =>
+                submitListModalPatch(
+                    route('roles.users.update', { role: roleId, user: user.id }),
+                    { role_name: nextRoleName },
+                    csrf,
+                ),
+            () => {
+                setEditingUserId(null);
+                setNextRoleName('');
             },
         );
     };
@@ -337,18 +359,21 @@ export default function RoleUsersModal({
                                                 >
                                                     Novo perfil
                                                 </label>
-                                                <select
+                                                <SelectInput
                                                     id={`role-move-${user.id}`}
                                                     value={nextRoleName}
                                                     onChange={(e) => setNextRoleName(e.target.value)}
-                                                    className="block w-full cursor-pointer rounded-xl border-zinc-200 bg-white text-sm shadow-sm focus:border-teal-500 focus:ring-teal-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                                                    className="mt-1 cursor-pointer border-zinc-200 focus:border-teal-500 focus:ring-teal-500/30 dark:border-zinc-700"
                                                 >
                                                     {otherTargets.map((t) => (
-                                                        <option key={t.name} value={t.name}>
+                                                        <option
+                                                            key={t.name === '' ? '__sem_perfil__' : t.name}
+                                                            value={t.name}
+                                                        >
                                                             {t.label}
                                                         </option>
                                                     ))}
-                                                </select>
+                                                </SelectInput>
                                                 <div className="flex flex-wrap justify-end gap-2">
                                                     <SecondaryButton
                                                         type="button"
@@ -362,7 +387,7 @@ export default function RoleUsersModal({
                                                     </SecondaryButton>
                                                     <PrimaryButton
                                                         type="button"
-                                                        disabled={busy || !nextRoleName}
+                                                        disabled={busy}
                                                         onClick={() => void handleMove(user)}
                                                     >
                                                         Confirmar alteração

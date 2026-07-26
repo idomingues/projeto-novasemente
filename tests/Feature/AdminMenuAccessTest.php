@@ -49,14 +49,15 @@ class AdminMenuAccessTest extends TestCase
         $this->assertFalse($user->canAccessAdminMenu());
     }
 
-    public function test_lider_ministerio_cannot_access_admin_menu(): void
+    public function test_ministry_leader_property_cannot_access_admin_menu_without_permissions(): void
     {
         $this->seed();
 
-        $user = User::factory()->create();
-        $user->assignRole('lider_ministerio');
+        $user = User::factory()->create(['is_ministry_leader' => true]);
+        $user->syncRoles([]);
         $user->syncRoleIdFromSpatieAssignments();
 
+        $this->assertTrue($user->isMinistryLeaderAccount());
         $this->assertFalse($user->canAccessAdminMenu());
     }
 

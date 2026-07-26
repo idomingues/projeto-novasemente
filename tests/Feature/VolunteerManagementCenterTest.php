@@ -408,7 +408,7 @@ class VolunteerManagementCenterTest extends TestCase
             'church_id' => $church->id,
             'is_ministry_leader' => true,
         ]);
-        $leader->assignRole(Role::firstOrCreate(['name' => 'lider_ministerio']));
+        $leader->forceFill(['is_ministry_leader' => true])->save();
         $leader->ministries()->sync([(int) $ministry->id]);
 
         $this->actingAs($leader)

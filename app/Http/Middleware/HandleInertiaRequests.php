@@ -287,12 +287,9 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
                 /**
-                 * Papel `lider_ministerio` ou marca no perfil (atalhos de líder no Perfil, etc.).
-                 * Quem só tem o papel Spatie sem `is_ministry_leader` na BD continua a ser líder para a app.
+                 * Propriedade Líder de ministério (`is_ministry_leader`).
                  */
-                'isMinistryLeaderAccount' => $request->user()
-                    ? ($request->user()->hasRole('lider_ministerio') || (bool) ($request->user()->is_ministry_leader ?? false))
-                    : false,
+                'isMinistryLeaderAccount' => $request->user()?->isMinistryLeaderAccount() ?? false,
                 'permissions' => $permissionNames,
                 /** Bloco ADM do menu (Perfis, Suporte APP, Versão, Config. da igreja): só super admin. */
                 'isSuperAdmin' => $request->user()?->hasRole('super_admin') ?? false,

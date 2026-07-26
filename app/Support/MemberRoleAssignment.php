@@ -11,6 +11,9 @@ final class MemberRoleAssignment
     /** Papéis que só quem gere perfis globalmente ou é super admin pode atribuir. */
     private const ADMIN_LEVEL_ROLES = ['admin', 'super_admin'];
 
+    /** Perfil legado removido: liderança é `users.is_ministry_leader` + `ministry_user`. */
+    public const RETIRED_LEADER_ROLE = 'lider_ministerio';
+
     public static function label(string $name): string
     {
         return match ($name) {
@@ -19,7 +22,7 @@ final class MemberRoleAssignment
             'secretaria' => 'Secretaria',
             'pastor' => 'Pastor',
             'membro' => 'Usuário (app)',
-            'lider_ministerio' => 'Líder de ministério',
+            self::RETIRED_LEADER_ROLE => 'Líder de ministério',
             'financeiro' => 'Financeiro',
             default => str_replace('_', ' ', $name),
         };
@@ -43,11 +46,11 @@ final class MemberRoleAssignment
             ->values()
             ->all();
 
-        // Perfil financeiro foi removido do produto.
-        $all = array_values(array_filter($all, fn (string $n) => $n !== 'financeiro'));
-
-        // Líder de ministério deixou de ser perfil (role): agora é definido por vínculo `ministry_user`.
-        $all = array_values(array_filter($all, fn (string $n) => $n !== 'lider_ministerio'));
+        // Perfis fora do produto / legado.
+        $all = array_values(array_filter(
+            $all,
+            fn (string $n) => ! in_array($n, ['financeiro', self::RETIRED_LEADER_ROLE], true)
+        ));
 
         // Usar `checkPermissionTo` (Spatie), não `can()` / Gate: `AppServiceProvider::Gate::before` devolve true
         // para admin/super_admin e invalidaria `can('roles.manage')` como critério de permissão real.
@@ -70,6 +73,14 @@ final class MemberRoleAssignment
     {
         $roleName = trim($roleName);
         if ($roleName === '') {
+            if ($target->hasRole('super_admin') && ! $actor->hasRole('super_admin')) {
+                abort(403, 'Não autorizado a alterar o perfil deste usuário.');
+            }
+
+            $target->syncRoles([]);
+            app(PermissionRegistrar::class)->forgetCachedPermissions();
+            $target->syncRoleIdFromSpatieAssignments();
+
             return;
         }
 
@@ -79,6 +90,10 @@ final class MemberRoleAssignment
 
         if ($roleName === 'super_admin' && ! $actor->hasRole('super_admin')) {
             abort(403, 'Apenas super administrador pode atribuir esse perfil.');
+        }
+
+        if ($roleName === self::RETIRED_LEADER_ROLE) {
+            abort(422, 'Líder de ministério não é mais um perfil. Use a propriedade Líder no cadastro do usuário.');
         }
 
         $allowed = self::assignableRoleNames($actor);
@@ -106,8 +121,14 @@ final class MemberRoleAssignment
         }
 
         $roleName = trim($roleName);
-        if ($roleName === '' || $roleName === 'super_admin') {
+        if ($roleName === 'super_admin' || $roleName === self::RETIRED_LEADER_ROLE) {
             abort(403, 'Perfil inválido.');
+        }
+
+        if ($roleName === '') {
+            self::clearToMemberFromProfilesPage($actor, $target);
+
+            return;
         }
 
         if ($target->hasRole('super_admin')) {
@@ -125,7 +146,7 @@ final class MemberRoleAssignment
     }
 
     /**
-     * Remove o perfil de painel e deixa o usuário como membro (app), quando existir.
+     * Remove o perfil de painel — conta fica sem perfil Spatie (só app / propriedade Líder).
      */
     public static function clearToMemberFromProfilesPage(User $actor, User $target): void
     {
@@ -137,63 +158,48 @@ final class MemberRoleAssignment
             abort(403, 'Não é permitido alterar o perfil de um super administrador.');
         }
 
-        $guard = (string) config('auth.defaults.guard');
-        $fallback = Role::query()->where('name', 'membro')->where('guard_name', $guard)->exists()
-            ? ['membro']
-            : [];
-
-        $target->syncRoles($fallback);
+        $target->syncRoles([]);
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         $target->syncRoleIdFromSpatieAssignments();
     }
 
     /**
-     * Líder de ministério usa o papel Spatie `lider_ministerio` (não aparece no select de membros).
+     * Marca a propriedade Líder — sem atribuir perfil Spatie.
      */
     public static function applyMinistryLeaderRole(User $user): void
     {
-        if ($user->isPrivilegedTeamAccount()) {
-            $user->forceFill(['is_ministry_leader' => true])->save();
-
-            return;
-        }
-
-        $guard = (string) config('auth.defaults.guard');
-        if (! Role::query()->where('name', 'lider_ministerio')->where('guard_name', $guard)->exists()) {
-            $user->forceFill(['is_ministry_leader' => true])->save();
-
-            return;
-        }
-
-        $user->syncRoles(['lider_ministerio']);
-        app(PermissionRegistrar::class)->forgetCachedPermissions();
-        $user->syncRoleIdFromSpatieAssignments();
+        self::stripRetiredLeaderRole($user);
         $user->forceFill(['is_ministry_leader' => true])->save();
         $user->syncVolunteerRecord();
     }
 
     /**
-     * Remove papel de líder quando o cadastro deixa de ser líder (contas de equipe não são alteradas).
+     * Remove a propriedade Líder. Contas de equipe do painel mantêm o perfil Spatie.
      */
     public static function clearMinistryLeaderRole(User $user): void
     {
-        if ($user->isPrivilegedTeamAccount()) {
-            $user->forceFill(['is_ministry_leader' => false])->save();
+        self::stripRetiredLeaderRole($user);
+        $user->forceFill(['is_ministry_leader' => false])->save();
+        $user->syncVolunteerRecord();
+    }
 
+    /**
+     * Remove papel Spatie legado `lider_ministerio` se ainda existir na conta.
+     */
+    public static function stripRetiredLeaderRole(User $user): void
+    {
+        if (! $user->hasRole(self::RETIRED_LEADER_ROLE)) {
             return;
         }
 
-        if ($user->hasRole('lider_ministerio')) {
-            $guard = (string) config('auth.defaults.guard');
-            $fallback = Role::query()->where('name', 'membro')->where('guard_name', $guard)->exists()
-                ? ['membro']
-                : [];
-            $user->syncRoles($fallback);
-            app(PermissionRegistrar::class)->forgetCachedPermissions();
-            $user->syncRoleIdFromSpatieAssignments();
-        }
+        $remaining = $user->getRoleNames()
+            ->map(fn ($n) => (string) $n)
+            ->reject(fn (string $n) => $n === self::RETIRED_LEADER_ROLE)
+            ->values()
+            ->all();
 
-        $user->forceFill(['is_ministry_leader' => false])->save();
-        $user->syncVolunteerRecord();
+        $user->syncRoles($remaining);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $user->syncRoleIdFromSpatieAssignments();
     }
 }

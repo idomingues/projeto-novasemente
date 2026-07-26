@@ -21,7 +21,7 @@ final class NsWhatsAccess
 
     public static function leadsMinistry(User $user, int $ministryId): bool
     {
-        if (! ($user->hasRole('lider_ministerio') || (bool) ($user->is_ministry_leader ?? false))) {
+        if (! $user->isMinistryLeaderAccount()) {
             return false;
         }
 
@@ -102,7 +102,7 @@ final class NsWhatsAccess
 
     public static function isMinistryLeaderAccount(User $user): bool
     {
-        return $user->hasRole('lider_ministerio') || (bool) ($user->is_ministry_leader ?? false);
+        return $user->isMinistryLeaderAccount();
     }
 
     /**
@@ -171,8 +171,7 @@ final class NsWhatsAccess
             ->withCount([
                 'users as leaders_count' => function ($q) use ($exclude) {
                     $q->where(function ($roleQ) {
-                        $roleQ->where('is_ministry_leader', true)
-                            ->orWhereHas('roles', fn ($r) => $r->where('name', 'lider_ministerio'));
+                        $roleQ->where('is_ministry_leader', true);
                     });
                     if ($exclude) {
                         $q->where('users.id', '!=', $exclude->id);
@@ -240,8 +239,7 @@ final class NsWhatsAccess
         return User::query()
             ->where('church_id', $churchId)
             ->where(function ($roleQ) {
-                $roleQ->where('is_ministry_leader', true)
-                    ->orWhereHas('roles', fn ($r) => $r->where('name', 'lider_ministerio'));
+                $roleQ->where('is_ministry_leader', true);
             })
             ->whereHas('ministries', fn ($mq) => $mq->where('ministries.id', $ministryId))
             ->when($exclude, fn ($q) => $q->where('users.id', '!=', $exclude->id))
@@ -347,8 +345,7 @@ final class NsWhatsAccess
         $leaders = User::query()
             ->where('church_id', $churchId)
             ->where(function ($roleQ) {
-                $roleQ->where('is_ministry_leader', true)
-                    ->orWhereHas('roles', fn ($r) => $r->where('name', 'lider_ministerio'));
+                $roleQ->where('is_ministry_leader', true);
             })
             ->where('name', 'like', $like)
             ->when($exclude, fn ($q) => $q->where('users.id', '!=', $exclude->id))

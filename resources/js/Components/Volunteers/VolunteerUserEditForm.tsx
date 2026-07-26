@@ -64,9 +64,9 @@ export default function VolunteerUserEditForm({
 
     const editingUserIsSuperAdmin = volunteerUserIsSuperAdmin(volunteer);
     const editingUserIsPanelTeam = volunteerUserIsPanelTeam(volunteer);
-    const isMinistryLeader = data.app_role === 'lider_ministerio';
+    const isMinistryLeader = data.is_ministry_leader || data.app_ministry_ids.length > 0;
     const hasAppAccount = Boolean(volunteer.has_app_account);
-    const appRolesForSelect = appRoles.filter((r) => r.name !== 'lider_ministerio');
+    const appRolesForSelect = appRoles.filter((r) => r.name !== 'lider_ministerio' && r.name !== 'financeiro');
 
     useEffect(() => {
         const next = volunteerEditFormDataFromDetail(volunteer);
@@ -258,13 +258,13 @@ export default function VolunteerUserEditForm({
                         </p>
                     ) : isMinistryLeader ? (
                         <p className={appRoleReadonlyValueClass}>
-                            {appRoleLabel('lider_ministerio')} — departamentos que lidera na aba
-                            Departamentos.
+                            Líder de ministério — departamentos que lidera na aba Departamentos. O perfil de
+                            acesso (se houver) é independente.
                         </p>
                     ) : (
                         <SelectInput
                             id={`${idPrefix}_app_role`}
-                            value={data.app_role === 'lider_ministerio' ? '' : data.app_role}
+                            value={data.app_role}
                             onChange={(e) => setField('app_role', e.target.value)}
                             className="mt-2 block w-full border-emerald-300/70 bg-white focus:border-emerald-500 focus:ring-emerald-500/25 dark:border-emerald-800/60 dark:bg-zinc-900 dark:focus:border-emerald-500"
                         >

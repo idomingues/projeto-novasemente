@@ -18,7 +18,7 @@ class ScheduleBoardViewData
 {
     private static function isMinistryLeaderAccount(User $user): bool
     {
-        return $user->hasRole('lider_ministerio') || (bool) ($user->is_ministry_leader ?? false);
+        return $user->isMinistryLeaderAccount();
     }
 
     public static function userPhotoPublicUrl(?User $user): ?string

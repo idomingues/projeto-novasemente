@@ -1,6 +1,8 @@
 import { router } from '@inertiajs/react';
 import {
     applyVolunteerModalFormErrors,
+    submitVolunteerModalDelete,
+    submitVolunteerModalPatch,
     submitVolunteerModalPost,
     submitVolunteerModalPut,
     type VolunteerModalSaveResult,
@@ -11,6 +13,8 @@ export type ListModalSaveResult = VolunteerModalSaveResult;
 export const applyListModalFormErrors = applyVolunteerModalFormErrors;
 export const submitListModalPost = submitVolunteerModalPost;
 export const submitListModalPut = submitVolunteerModalPut;
+export const submitListModalPatch = submitVolunteerModalPatch;
+export const submitListModalDelete = submitVolunteerModalDelete;
 
 /** Atualiza só os props da lista sem visita de formulário — mantém o modal aberto. */
 export function reloadListModalProps(only: string[], timeoutMs = 12000): Promise<void> {

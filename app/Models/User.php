@@ -97,8 +97,8 @@ class User extends Authenticatable
 
     /**
      * Painel web com menu lateral.
-     * Perfis de equipe fixos, perfis personalizados (ex.: Missão) com permissões Spatie,
-     * e exclusão de `membro` (só app) e `lider_ministerio` (barra inferior no mobile).
+     * Perfis de equipe fixos, perfis personalizados (ex.: Missão) com permissões Spatie.
+     * Conta só de app (sem perfil / membro) não entra no menu.
      */
     public function canAccessAdminMenu(): bool
     {
@@ -106,11 +106,15 @@ class User extends Authenticatable
             return true;
         }
 
-        if ($this->hasRole('lider_ministerio')) {
-            return false;
-        }
-
         return $this->getAllPermissions()->isNotEmpty();
+    }
+
+    /**
+     * Líder de ministério = propriedade da conta (`is_ministry_leader`), não perfil Spatie.
+     */
+    public function isMinistryLeaderAccount(): bool
+    {
+        return (bool) ($this->is_ministry_leader ?? false);
     }
 
     /**
@@ -118,7 +122,7 @@ class User extends Authenticatable
      */
     public function isPrivilegedTeamAccount(): bool
     {
-        return $this->canAccessAdminMenu() || $this->hasRole('lider_ministerio');
+        return $this->canAccessAdminMenu() || $this->isMinistryLeaderAccount();
     }
 
     public function volunteerProfile(): HasOne
@@ -128,7 +132,7 @@ class User extends Authenticatable
 
     /**
      * Voluntário formal, líder ou conta de equipe do painel — mantém (ou cria) registro em `volunteers`.
-     * Membro só com app (`membro`, sem servir em ministérios) não entra aqui.
+     * Membro só com app (sem servir em ministérios) não entra aqui.
      */
     public function shouldMaintainVolunteerRecord(): bool
     {
@@ -136,11 +140,7 @@ class User extends Authenticatable
             return true;
         }
 
-        if ((bool) ($this->is_ministry_leader ?? false)) {
-            return true;
-        }
-
-        if ($this->hasRole('lider_ministerio')) {
+        if ($this->isMinistryLeaderAccount()) {
             return true;
         }
 
@@ -315,7 +315,7 @@ class User extends Authenticatable
      */
     private function shouldMirrorLedMinistriesToVolunteerProfile(): bool
     {
-        return $this->hasRole('lider_ministerio')
+        return $this->isMinistryLeaderAccount()
             && ! $this->hasRole('super_admin')
             && ! $this->canAccessAdminMenu();
     }
@@ -329,7 +329,11 @@ class User extends Authenticatable
             return false;
         }
 
-        if ($this->hasAnyRole(['admin', 'super_admin', 'pastor', 'secretaria', 'lider_ministerio'])) {
+        if ($this->isMinistryLeaderAccount()) {
+            return false;
+        }
+
+        if ($this->hasAnyRole(['admin', 'super_admin', 'pastor', 'secretaria'])) {
             return false;
         }
 

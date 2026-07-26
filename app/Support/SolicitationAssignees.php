@@ -80,8 +80,7 @@ class SolicitationAssignees
             ->when($member !== null, fn ($q) => $q->where('user_id', '!=', $member->id))
             ->whereHas('user', function ($uq) use ($churchId) {
                 $uq->where(function ($roleQ) {
-                    $roleQ->where('is_ministry_leader', true)
-                        ->orWhereHas('roles', fn ($r) => $r->where('name', 'lider_ministerio'));
+                    $roleQ->where('is_ministry_leader', true);
                 })->whereHas('ministries', fn ($mq) => $mq->where('church_id', $churchId));
             })
             ->with([
@@ -122,8 +121,7 @@ class SolicitationAssignees
             ->where('user_id', '!=', $member->id)
             ->whereHas('user', function ($uq) use ($churchId) {
                 $uq->where(function ($roleQ) {
-                    $roleQ->where('is_ministry_leader', true)
-                        ->orWhereHas('roles', fn ($r) => $r->where('name', 'lider_ministerio'));
+                    $roleQ->where('is_ministry_leader', true);
                 })->whereHas('ministries', fn ($mq) => $mq->where('church_id', $churchId));
             })
             ->exists();
@@ -144,8 +142,7 @@ class SolicitationAssignees
             ->where('church_id', $churchId)
             ->whereHas('users', function ($uq) {
                 $uq->where(function ($roleQ) {
-                    $roleQ->where('is_ministry_leader', true)
-                        ->orWhereHas('roles', fn ($r) => $r->where('name', 'lider_ministerio'));
+                    $roleQ->where('is_ministry_leader', true);
                 });
             })
             ->orderBy('name')

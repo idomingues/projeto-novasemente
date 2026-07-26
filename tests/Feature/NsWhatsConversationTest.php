@@ -630,7 +630,6 @@ class NsWhatsConversationTest extends TestCase
     private function seedNsWhats(): array
     {
         $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
-        Role::firstOrCreate(['name' => 'lider_ministerio', 'guard_name' => 'web']);
         Role::firstOrCreate(['name' => 'membro', 'guard_name' => 'web']);
 
         $churchId = (int) Church::query()->orderBy('id')->value('id');
@@ -652,7 +651,7 @@ class NsWhatsConversationTest extends TestCase
             'name' => $name,
             'is_ministry_leader' => true,
         ]);
-        $user->assignRole('lider_ministerio');
+        $user->forceFill(['is_ministry_leader' => true])->save();
         $user->ministries()->sync($ministryIds);
         $user->ensureVolunteerProfile();
 

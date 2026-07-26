@@ -683,24 +683,7 @@ class VolunteerPipelineLeadController extends Controller
 
     private function clearMinistryLeadershipForManagedUser(User $user): void
     {
-        if ($user->hasRole('lider_ministerio')) {
-            $remaining = array_values(array_diff(
-                $user->getRoleNames()->map(fn ($n) => (string) $n)->all(),
-                ['lider_ministerio'],
-            ));
-            if ($remaining === []) {
-                $guard = (string) config('auth.defaults.guard');
-                $remaining = Role::query()->where('name', 'membro')->where('guard_name', $guard)->exists()
-                    ? ['membro']
-                    : [];
-            }
-            $user->syncRoles($remaining);
-            app(PermissionRegistrar::class)->forgetCachedPermissions();
-            $user->syncRoleIdFromSpatieAssignments();
-        }
-
-        $user->forceFill(['is_ministry_leader' => false])->save();
-        $user->syncVolunteerRecord();
+        MemberRoleAssignment::clearMinistryLeaderRole($user->fresh());
     }
 
     public function updateStage(Request $request, Volunteer $volunteer): RedirectResponse

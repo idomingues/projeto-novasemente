@@ -8,6 +8,7 @@ export type VolunteerEditFormData = {
     active: boolean;
     app_role: string;
     app_ministry_ids: number[];
+    is_ministry_leader: boolean;
     app_password: string;
     app_password_confirmation: string;
     user_status: 'active' | 'inactive';
@@ -19,9 +20,9 @@ export type VolunteerEditFormData = {
 };
 
 export function volunteerEditFormDataFromDetail(v: VolunteerDetailData): VolunteerEditFormData {
-    const roles = v.user?.roles ?? [];
+    const roles = (v.user?.roles ?? []).filter((r) => r !== 'lider_ministerio');
     const isSuper = roles.includes('super_admin');
-    const isLeader = roles.includes('lider_ministerio') || Boolean(v.user?.is_ministry_leader);
+    const isLeader = Boolean(v.user?.is_ministry_leader) || (v.user?.led_ministries?.length ?? 0) > 0;
 
     return {
         name: v.user?.name ?? v.name ?? '',
@@ -29,8 +30,9 @@ export function volunteerEditFormDataFromDetail(v: VolunteerDetailData): Volunte
         phone: (v.display_phone ?? v.phone ?? v.user?.phone ?? '').trim(),
         ministry_ids: (v.ministries ?? []).map((m) => m.id),
         active: v.active !== false,
-        app_role: isSuper ? '' : isLeader ? 'lider_ministerio' : roles[0] ?? '',
+        app_role: isSuper ? '' : roles[0] ?? '',
         app_ministry_ids: (v.user?.led_ministries ?? []).map((m) => m.id),
+        is_ministry_leader: isLeader,
         app_password: '',
         app_password_confirmation: '',
         user_status: v.user?.status === 'inactive' ? 'inactive' : 'active',
@@ -46,13 +48,14 @@ export function normalizeVolunteerEditRolePayload(data: VolunteerEditFormData): 
     const ledIds = Array.isArray(data.app_ministry_ids)
         ? data.app_ministry_ids.filter((id) => Number(id) > 0)
         : [];
-    const appRole =
-        ledIds.length > 0 || data.app_role === 'lider_ministerio' ? 'lider_ministerio' : data.app_role;
+    const isLeader = ledIds.length > 0 || data.is_ministry_leader;
+    const appRole = data.app_role === 'lider_ministerio' ? '' : data.app_role;
 
     return {
         ...data,
         app_role: appRole,
-        app_ministry_ids: appRole === 'lider_ministerio' ? ledIds : [],
+        is_ministry_leader: isLeader,
+        app_ministry_ids: isLeader ? ledIds : [],
     };
 }
 
@@ -88,6 +91,7 @@ export function buildVolunteerEditFormData(
     appendFormValue(formData, 'phone', normalized.phone);
     appendFormValue(formData, 'active', normalized.active);
     appendFormValue(formData, 'app_role', normalized.app_role);
+    appendFormValue(formData, 'is_ministry_leader', normalized.is_ministry_leader);
     appendFormValue(formData, 'app_ministry_ids', normalized.app_ministry_ids);
     if (includeServeMinistries) {
         appendFormValue(formData, 'ministry_ids', normalized.ministry_ids);

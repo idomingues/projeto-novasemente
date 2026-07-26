@@ -33,7 +33,7 @@ class LeaderVolunteerBirthdaysTest extends TestCase
             'church_id' => $church->id,
             'is_ministry_leader' => true,
         ]);
-        $leader->assignRole(Role::firstOrCreate(['name' => 'lider_ministerio', 'guard_name' => 'web']));
+        $leader->forceFill(['is_ministry_leader' => true])->save();
         $leader->ministries()->sync([$ministryA->id]);
 
         $today = now();
@@ -186,7 +186,7 @@ class LeaderVolunteerBirthdaysTest extends TestCase
             'church_id' => $church->id,
             'is_ministry_leader' => true,
         ]);
-        $leader->assignRole(Role::firstOrCreate(['name' => 'lider_ministerio', 'guard_name' => 'web']));
+        $leader->forceFill(['is_ministry_leader' => true])->save();
         $leader->ministries()->sync([$ministry->id]);
 
         $today = now();

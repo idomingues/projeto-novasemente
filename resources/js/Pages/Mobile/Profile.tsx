@@ -143,7 +143,7 @@ export default function MobileProfile({ church, user, profileCounts, volunteerSi
             adminSidebarUnrestricted?: boolean;
             linkedPastor?: { id: number } | null;
             user?: { is_volunteer?: boolean; is_ministry_leader?: boolean };
-            /** Spatie `lider_ministerio` ou `is_ministry_leader` na conta. */
+            /** Propriedade `is_ministry_leader` na conta. */
             isMinistryLeaderAccount?: boolean;
         };
     }).auth;

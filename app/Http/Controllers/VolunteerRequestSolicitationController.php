@@ -47,7 +47,7 @@ class VolunteerRequestSolicitationController extends Controller
         if ($u->hasRole(['admin', 'super_admin'])) {
             return;
         }
-        abort_unless((bool) ($u->is_ministry_leader ?? false) || $u->hasRole('lider_ministerio'), 403);
+        abort_unless($u->isMinistryLeaderAccount(), 403);
     }
 
     private function canManageSolicitations(Request $request): void

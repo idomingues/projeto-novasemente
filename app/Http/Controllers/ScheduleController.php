@@ -23,8 +23,7 @@ class ScheduleController extends Controller
 {
     private function isMinistryLeaderAccount(?User $user): bool
     {
-        return $user !== null
-            && ($user->hasRole('lider_ministerio') || (bool) ($user->is_ministry_leader ?? false));
+        return $user !== null && $user->isMinistryLeaderAccount();
     }
 
     private function canManageMinistrySchedule(?User $user, int $ministryId): bool
@@ -458,8 +457,7 @@ class ScheduleController extends Controller
         // Só líderes do departamento da pessoa escalada (ninguém mais: admin, escalas.manage, etc.).
         $leaderIds = User::query()
             ->where(function ($q) {
-                $q->where('is_ministry_leader', true)
-                    ->orWhereHas('roles', fn ($r) => $r->where('name', 'lider_ministerio'));
+                $q->where('is_ministry_leader', true);
             })
             ->whereHas('ministries', fn ($q) => $q->where('ministries.id', (int) $assignment->ministry_id))
             ->pluck('id')

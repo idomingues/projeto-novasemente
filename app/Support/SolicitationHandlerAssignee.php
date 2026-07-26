@@ -7,7 +7,7 @@ use App\Models\Volunteer;
 class SolicitationHandlerAssignee
 {
     /**
-     * Voluntários com conta, papel de líder de ministério e serviço nesta igreja.
+     * Voluntários com conta, propriedade de líder de ministério e serviço nesta igreja.
      *
      * @return list<array{value: int, label: string}>
      */
@@ -16,7 +16,7 @@ class SolicitationHandlerAssignee
         return Volunteer::query()
             ->where('active', true)
             ->whereNotNull('user_id')
-            ->whereHas('user.roles', fn ($q) => $q->where('name', 'lider_ministerio'))
+            ->whereHas('user', fn ($q) => $q->where('is_ministry_leader', true))
             ->whereHas('ministries', fn ($q) => $q->where('church_id', $churchId))
             ->with(['user:id,name', 'ministries:id,name,church_id'])
             ->orderBy('id')
@@ -38,7 +38,7 @@ class SolicitationHandlerAssignee
             ->whereKey($volunteerId)
             ->where('active', true)
             ->whereNotNull('user_id')
-            ->whereHas('user.roles', fn ($q) => $q->where('name', 'lider_ministerio'))
+            ->whereHas('user', fn ($q) => $q->where('is_ministry_leader', true))
             ->whereHas('ministries', fn ($q) => $q->where('church_id', $churchId))
             ->exists();
     }

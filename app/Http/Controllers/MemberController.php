@@ -57,15 +57,13 @@ class MemberController extends Controller
 
         if ($leadersOnly) {
             $query->where(function ($q) {
-                $q->where('is_ministry_leader', true)
-                    ->orWhereHas('roles', fn ($r) => $r->where('name', 'lider_ministerio'));
+                $q->where('is_ministry_leader', true);
             });
         }
 
         if ($appMembersOnly) {
             $query->where('is_volunteer', false)
-                ->where('is_ministry_leader', false)
-                ->whereDoesntHave('roles', fn ($r) => $r->where('name', 'lider_ministerio'));
+                ->where('is_ministry_leader', false);
         }
 
         if ($ministryId !== null && $ministryId > 0 && $churchId !== null) {

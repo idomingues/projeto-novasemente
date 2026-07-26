@@ -163,6 +163,7 @@ export default function Index({
         active: true,
         app_role: '',
         app_ministry_ids: [] as number[],
+        is_ministry_leader: false,
         app_password: '',
         app_password_confirmation: '',
         user_status: 'active' as 'active' | 'inactive',
@@ -173,7 +174,7 @@ export default function Index({
         photo: null as File | null,
     });
 
-    const isMinistryLeader = data.app_role === 'lider_ministerio';
+    const isMinistryLeader = data.is_ministry_leader || data.app_ministry_ids.length > 0;
 
     const handleVolunteerPhoto = async (raw: File | null) => {
         setPhotoClientError(null);
@@ -240,11 +241,9 @@ export default function Index({
     );
 
     const populateEditForm = (v: Volunteer, detail?: VolunteerDetailData | null) => {
-        const roles = detail?.user?.roles ?? v.user?.roles ?? [];
+        const roles = (detail?.user?.roles ?? v.user?.roles ?? []).filter((r) => r !== 'lider_ministerio');
         const isSuper = roles.includes('super_admin');
-        const isLeader =
-            roles.includes('lider_ministerio') ||
-            Boolean(detail?.user?.is_ministry_leader ?? v.user?.is_ministry_leader);
+        const isLeader = Boolean(detail?.user?.is_ministry_leader ?? v.user?.is_ministry_leader);
         const savedPhoto = detail?.photo_url ?? detail?.user?.photo_url ?? v.user?.photo_url ?? null;
         lastSavedPhotoRef.current = savedPhoto?.trim() ? savedPhoto : null;
         setAvatarPreviewSrc(lastSavedPhotoRef.current);
@@ -254,8 +253,9 @@ export default function Index({
             phone: detail?.display_phone ?? detail?.user?.phone ?? v.phone ?? v.user?.phone ?? '',
             ministry_ids: (detail?.ministries ?? v.ministries)?.map((m) => m.id) ?? [],
             active: detail?.active ?? v.active,
-            app_role: isSuper ? '' : isLeader ? 'lider_ministerio' : roles[0] ?? '',
+            app_role: isSuper ? '' : roles[0] ?? '',
             app_ministry_ids: detail?.user?.led_ministries?.map((m) => m.id) ?? v.user?.ministry_ids ?? [],
+            is_ministry_leader: isLeader,
             app_password: '',
             app_password_confirmation: '',
             user_status:
@@ -917,14 +917,14 @@ export default function Index({
                                                 setData((prev) => ({
                                                     ...prev,
                                                     app_role: role,
-                                                    app_ministry_ids:
-                                                        role === 'lider_ministerio' ? prev.app_ministry_ids : [],
                                                 }));
                                             }}
                                             className="mt-1 block w-full"
                                         >
                                             <option value="">Sem perfil (só conta até definir permissões)</option>
-                                            {appRoles.map((r) => (
+                                            {appRoles
+                                                .filter((r) => r.name !== 'lider_ministerio' && r.name !== 'financeiro')
+                                                .map((r) => (
                                                 <option key={r.id} value={r.name}>
                                                     {appRoleLabel(r.name)}
                                                 </option>
@@ -1071,15 +1071,11 @@ export default function Index({
                                         disabled={editingUserIsSuperAdmin || editingUserIsPanelTeam}
                                         onChange={(e) => {
                                             const checked = e.target.checked;
-                                            if (checked) {
-                                                setData('app_role', 'lider_ministerio');
-                                            } else {
-                                                setData((prev) => ({
-                                                    ...prev,
-                                                    app_role: prev.app_role === 'lider_ministerio' ? '' : prev.app_role,
-                                                    app_ministry_ids: [],
-                                                }));
-                                            }
+                                            setData((prev) => ({
+                                                ...prev,
+                                                is_ministry_leader: checked,
+                                                app_ministry_ids: checked ? prev.app_ministry_ids : [],
+                                            }));
                                         }}
                                         className="rounded border-zinc-300 dark:border-zinc-600 text-zinc-900 focus:ring-zinc-500 disabled:opacity-50"
                                     />

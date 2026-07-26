@@ -74,24 +74,29 @@ class VolunteerController extends Controller
         }
 
         $appRole = trim((string) $request->input('app_role', ''));
+        if ($appRole === MemberRoleAssignment::RETIRED_LEADER_ROLE) {
+            $appRole = '';
+        }
 
         if ($appRole !== '') {
             $user->syncRoles([$appRole]);
         } else {
-            $guard = (string) config('auth.defaults.guard');
-            $defaultMembro = $request->filled('app_password')
-                && Role::query()->where('name', 'membro')->where('guard_name', $guard)->exists();
-            $user->syncRoles($defaultMembro ? ['membro'] : []);
+            $user->syncRoles([]);
         }
         $user->syncRoleIdFromSpatieAssignments();
 
-        if ($appRole === 'lider_ministerio') {
-            $user->ministries()->sync($request->input('app_ministry_ids', []));
-            $user->forceFill(['is_ministry_leader' => true])->save();
+        $ledIds = array_values(array_filter(
+            array_map('intval', (array) $request->input('app_ministry_ids', [])),
+            fn (int $id) => $id > 0,
+        ));
+        $isLeader = $request->boolean('is_ministry_leader') || $ledIds !== [];
+
+        if ($isLeader) {
+            $user->ministries()->sync($ledIds);
             MemberRoleAssignment::applyMinistryLeaderRole($user->fresh());
         } else {
             $user->ministries()->detach();
-            $user->forceFill(['is_ministry_leader' => false])->save();
+            MemberRoleAssignment::clearMinistryLeaderRole($user->fresh());
         }
     }
 

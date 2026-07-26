@@ -59,7 +59,7 @@ class VolunteersTest extends TestCase
         ]);
 
         $appUser = User::query()->findOrFail($volunteer->user_id);
-        $this->assertTrue($appUser->hasRole('membro'));
+        $this->assertSame([], $appUser->getRoleNames()->all());
         $this->assertFalse($appUser->canAccessAdminMenu());
     }
 
@@ -108,7 +108,7 @@ class VolunteersTest extends TestCase
         $user = $this->actingAsAdmin();
 
         User::factory()->create(['email' => 'lider.existente@example.com'])
-            ->assignRole(Role::firstOrCreate(['name' => 'lider_ministerio']));
+            ->forceFill(['is_ministry_leader' => true])->save();
 
         $payload = [
             'name' => 'Tentativa',

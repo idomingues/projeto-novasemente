@@ -6,6 +6,7 @@ use App\Models\Church;
 use App\Models\LeaderSelfSignupToken;
 use App\Models\Ministry;
 use App\Models\User;
+use App\Support\MemberRoleAssignment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -109,11 +110,6 @@ class LeaderPublicSignupController extends Controller
         }
 
         $guard = (string) config('auth.defaults.guard');
-        if (! Role::query()->where('name', 'lider_ministerio')->where('guard_name', $guard)->exists()) {
-            throw ValidationException::withMessages([
-                'name' => ['O papel de líder de ministério não está configurado. Entre em contato o administrador.'],
-            ]);
-        }
 
         DB::transaction(function () use ($validated, $ministryIds, $record) {
             $user = User::create([
@@ -124,9 +120,8 @@ class LeaderPublicSignupController extends Controller
                 'is_ministry_leader' => true,
             ]);
 
-            $user->assignRole('lider_ministerio');
-            $user->syncRoleIdFromSpatieAssignments();
             $user->ministries()->sync($ministryIds);
+            MemberRoleAssignment::applyMinistryLeaderRole($user->fresh());
             $user->ensureVolunteerProfile();
         });
 

@@ -215,29 +215,30 @@ class RoleManagementTest extends TestCase
         ]);
         $member->syncRoles(['membro']);
 
-        $this->post(route('roles.users.attach', $mission), ['user_id' => $member->id])
-            ->assertRedirect(route('roles.index'))
-            ->assertSessionHas('success');
+        $this->postJson(route('roles.users.attach', $mission), ['user_id' => $member->id])
+            ->assertOk()
+            ->assertJson(['message' => 'Usuário incluído no perfil.']);
 
         $member->refresh();
         $this->assertTrue($member->hasRole('Missão'));
         $this->assertFalse($member->hasRole('membro'));
 
-        $this->patch(route('roles.users.update', [$mission, $member]), ['role_name' => 'secretaria'])
-            ->assertRedirect(route('roles.index'))
-            ->assertSessionHas('success');
+        $this->patchJson(route('roles.users.update', [$mission, $member]), ['role_name' => 'secretaria'])
+            ->assertOk()
+            ->assertJson(['message' => 'Perfil do usuário atualizado.']);
 
         $member->refresh();
         $this->assertTrue($member->hasRole('secretaria'));
         $this->assertFalse($member->hasRole('Missão'));
 
-        $this->delete(route('roles.users.detach', [$secretaria, $member]))
-            ->assertRedirect(route('roles.index'))
-            ->assertSessionHas('success');
+        $this->deleteJson(route('roles.users.detach', [$secretaria, $member]))
+            ->assertOk()
+            ->assertJson(['message' => 'Usuário removido deste perfil.']);
 
         $member->refresh();
-        $this->assertTrue($member->hasRole('membro'));
+        $this->assertFalse($member->hasRole('membro'));
         $this->assertFalse($member->hasRole('secretaria'));
+        $this->assertSame([], $member->getRoleNames()->all());
     }
 
     public function test_roles_index_includes_users_payload(): void

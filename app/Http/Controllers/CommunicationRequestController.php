@@ -35,7 +35,7 @@ class CommunicationRequestController extends Controller
 
     private function isLeaderAccount(User $user): bool
     {
-        return (bool) ($user->is_ministry_leader ?? false) || $user->hasRole('lider_ministerio');
+        return $user->isMinistryLeaderAccount();
     }
 
     private function isStaff(User $user): bool

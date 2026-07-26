@@ -173,7 +173,7 @@ class VolunteerPipelineLeadTest extends TestCase
             ->assertRedirect();
 
         $user->refresh();
-        $this->assertTrue($user->hasRole('lider_ministerio'));
+        $this->assertTrue($user->isMinistryLeaderAccount());
         $this->assertTrue($user->is_ministry_leader);
         $this->assertEqualsCanonicalizing(
             [$ministryA->id],
@@ -1033,7 +1033,7 @@ class VolunteerPipelineLeadTest extends TestCase
             'church_id' => $church->id,
             'is_ministry_leader' => true,
         ]);
-        $receptionLeader->assignRole(Role::firstOrCreate(['name' => 'lider_ministerio']));
+        $receptionLeader->forceFill(['is_ministry_leader' => true])->save();
         $receptionLeader->ministries()->sync([(int) $reception->id]);
 
         $volunteer = Volunteer::query()->create([

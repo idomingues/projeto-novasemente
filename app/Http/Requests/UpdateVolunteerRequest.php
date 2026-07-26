@@ -29,7 +29,8 @@ class UpdateVolunteerRequest extends FormRequest
             'ministry_ids.*' => ['exists:ministries,id'],
             'role' => ['nullable', 'string', 'max:100'],
             'active' => ['boolean'],
-            'app_role' => ['nullable', 'string', Rule::notIn(['super_admin']), 'exists:roles,name'],
+            'app_role' => ['nullable', 'string', Rule::notIn(['super_admin', 'lider_ministerio', 'financeiro']), 'exists:roles,name'],
+            'is_ministry_leader' => ['sometimes', 'boolean'],
             'app_ministry_ids' => ['nullable', 'array'],
             'app_ministry_ids.*' => ['exists:ministries,id'],
             'app_password' => ['nullable', 'string', 'max:255', 'confirmed'],
@@ -52,6 +53,8 @@ class UpdateVolunteerRequest extends FormRequest
             'notify_via_app' => $this->boolean('notify_via_app'),
             'notify_via_email' => $this->boolean('notify_via_email'),
             'notify_via_whatsapp' => $this->boolean('notify_via_whatsapp'),
+            'is_ministry_leader' => $this->boolean('is_ministry_leader'),
+            'app_role' => trim((string) $this->input('app_role', '')) ?: null,
         ]);
 
         VolunteerAppAccessRules::prepareForValidation($this);

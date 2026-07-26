@@ -68,6 +68,21 @@ class AppServiceProvider extends ServiceProvider
                 return true;
             }
 
+            // Líder de ministério (propriedade) — permissões operacionais que antes vinham do perfil Spatie.
+            if ($user instanceof User && $user->isMinistryLeaderAccount()) {
+                if (in_array($ability, [
+                    'volunteers.view',
+                    'volunteers.ministry_operate',
+                    'escalas.view',
+                    'escalas.manage',
+                    'departments.view',
+                    'rooms.view',
+                    'rooms.schedule',
+                ], true)) {
+                    return true;
+                }
+            }
+
             return null;
         });
 

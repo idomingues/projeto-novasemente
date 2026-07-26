@@ -26,7 +26,7 @@ class MyMinistryVolunteersTest extends TestCase
             'church_id' => $church->id,
             'is_ministry_leader' => false,
         ]);
-        $leader->assignRole(Role::firstOrCreate(['name' => 'lider_ministerio']));
+        $leader->forceFill(['is_ministry_leader' => true])->save();
         $leader->ministries()->sync([$ministry->id]);
 
         $volunteer = Volunteer::query()->create([
@@ -70,7 +70,7 @@ class MyMinistryVolunteersTest extends TestCase
             'church_id' => $church->id,
             'is_ministry_leader' => false,
         ]);
-        $leader->assignRole(Role::firstOrCreate(['name' => 'lider_ministerio']));
+        $leader->forceFill(['is_ministry_leader' => true])->save();
         $leader->ministries()->sync([$ministry->id]);
 
         $volunteer = Volunteer::query()->create([
@@ -117,7 +117,7 @@ class MyMinistryVolunteersTest extends TestCase
             'church_id' => $church->id,
             'is_ministry_leader' => false,
         ]);
-        $leader->assignRole(Role::firstOrCreate(['name' => 'lider_ministerio']));
+        $leader->forceFill(['is_ministry_leader' => true])->save();
         $leader->ministries()->sync([$ministry->id]);
 
         $volunteer = Volunteer::query()->create([
@@ -169,7 +169,7 @@ class MyMinistryVolunteersTest extends TestCase
             'church_id' => $church->id,
             'is_ministry_leader' => true,
         ]);
-        $leader->assignRole(Role::firstOrCreate(['name' => 'lider_ministerio']));
+        $leader->forceFill(['is_ministry_leader' => true])->save();
         $leader->ministries()->sync([$ministry->id]);
 
         $volunteer = Volunteer::query()->create([
@@ -213,7 +213,7 @@ class MyMinistryVolunteersTest extends TestCase
             'church_id' => $church->id,
             'is_ministry_leader' => true,
         ]);
-        $leader->assignRole(Role::firstOrCreate(['name' => 'lider_ministerio']));
+        $leader->forceFill(['is_ministry_leader' => true])->save();
         $leader->ministries()->sync([$ministry->id]);
 
         $volunteer = Volunteer::query()->create([
@@ -247,7 +247,7 @@ class MyMinistryVolunteersTest extends TestCase
             'church_id' => $church->id,
             'is_ministry_leader' => true,
         ]);
-        $leader->assignRole(Role::firstOrCreate(['name' => 'lider_ministerio']));
+        $leader->forceFill(['is_ministry_leader' => true])->save();
         $leader->ministries()->sync([$ministry->id]);
 
         for ($i = 1; $i <= 26; $i++) {

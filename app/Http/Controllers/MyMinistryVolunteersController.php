@@ -312,7 +312,7 @@ class MyMinistryVolunteersController extends Controller
         }
         // Alinhado ao app e a VolunteerRequestSolicitationController: papel Spatie ou checkbox no cadastro.
         abort_unless(
-            (bool) ($u->is_ministry_leader ?? false) || $u->hasRole('lider_ministerio'),
+            $u->isMinistryLeaderAccount(),
             403,
         );
     }

@@ -20,7 +20,7 @@ import RoleUsersModal, {
     type RoleUserRow,
 } from '@/Components/Roles/RoleUsersModal';
 import UserListAvatar from '@/Components/UserListAvatar';
-import { TrashIcon, ChevronDownIcon, BellAlertIcon, InboxStackIcon, UsersIcon } from '@heroicons/react/24/outline';
+import { TrashIcon, ChevronDownIcon, BellAlertIcon, InboxStackIcon } from '@heroicons/react/24/outline';
 import {
     permissionIsAttendance,
     permissionProductFlags,
@@ -650,6 +650,7 @@ export default function RolesIndex({
                 users={usersModalRole?.users ?? []}
                 candidateUsers={candidateUsers}
                 moveTargets={moveTargets}
+                csrf={csrf}
             />
 
             <div className="space-y-6">
@@ -764,19 +765,8 @@ export default function RolesIndex({
                                             </button>
                                         ) : null}
                                     </div>
-                                    <div className="flex shrink-0 flex-col items-stretch gap-2">
-                                        {meta ? (
-                                            <button
-                                                type="button"
-                                                onClick={() => setUsersModalRoleId(meta.id)}
-                                                className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-teal-200 bg-teal-50 px-2.5 py-1.5 text-xs font-semibold text-teal-900 transition hover:bg-teal-100 dark:border-teal-800 dark:bg-teal-950/40 dark:text-teal-100 dark:hover:bg-teal-950/70"
-                                                title="Gerenciar usuários deste perfil"
-                                            >
-                                                <UsersIcon className="h-3.5 w-3.5" aria-hidden />
-                                                Usuários
-                                            </button>
-                                        ) : null}
-                                        {canDelete && meta ? (
+                                    {canDelete && meta ? (
+                                        <div className="flex shrink-0 flex-col items-stretch gap-2">
                                             <button
                                                 type="button"
                                                 onClick={() => void handleDeleteRole(meta)}
@@ -785,27 +775,16 @@ export default function RolesIndex({
                                                 <TrashIcon className="h-3.5 w-3.5" aria-hidden />
                                                 Excluir
                                             </button>
-                                        ) : null}
-                                    </div>
+                                        </div>
+                                    ) : null}
                                 </div>
 
                                 {roleExpanded ? (
                                 <div className="space-y-2 border-t border-zinc-100 px-6 pb-6 pt-4 dark:border-zinc-800 sm:px-8 sm:pb-8">
-                                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-zinc-200 bg-zinc-50/80 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-900/50">
-                                        <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                                            Permissões abaixo. Usuários do perfil ficam no botão Usuários.
-                                        </p>
-                                        {meta ? (
-                                            <button
-                                                type="button"
-                                                onClick={() => setUsersModalRoleId(meta.id)}
-                                                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-teal-200 bg-white px-2.5 py-1 text-xs font-semibold text-teal-900 hover:bg-teal-50 dark:border-teal-800 dark:bg-zinc-950 dark:text-teal-100 dark:hover:bg-teal-950/40"
-                                            >
-                                                <UsersIcon className="h-3.5 w-3.5" aria-hidden />
-                                                Gerenciar usuários
-                                            </button>
-                                        ) : null}
-                                    </div>
+                                    <p className="mb-3 text-xs text-zinc-600 dark:text-zinc-400">
+                                        Marque as permissões deste perfil. Para incluir ou remover pessoas, use Ver usuários
+                                        acima.
+                                    </p>
                                     {filteredPermissionGroups.length === 0 ? (
                                         <p className="py-4 text-center text-sm text-zinc-500 dark:text-zinc-400">
                                             Nenhuma permissão corresponde à pesquisa.

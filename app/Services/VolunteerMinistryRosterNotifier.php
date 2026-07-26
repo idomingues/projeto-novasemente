@@ -37,8 +37,7 @@ class VolunteerMinistryRosterNotifier
 
             $leaders = User::query()
                 ->where(function ($q) {
-                    $q->where('is_ministry_leader', true)
-                        ->orWhereHas('roles', fn ($r) => $r->where('name', 'lider_ministerio'));
+                    $q->where('is_ministry_leader', true);
                 })
                 ->whereHas('ministries', fn ($q) => $q->where('ministries.id', $ministryId))
                 ->when($actorId, fn ($q) => $q->where('users.id', '!=', (int) $actorId))

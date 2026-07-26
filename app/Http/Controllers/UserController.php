@@ -7,6 +7,7 @@ use App\Models\Invitation;
 use App\Models\LeaderSelfSignupToken;
 use App\Models\Ministry;
 use App\Models\User;
+use App\Support\MemberRoleAssignment;
 use App\Support\SearchTerm;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -126,13 +127,18 @@ class UserController extends Controller
             'church_id' => $churchId,
         ]);
 
+        if (! empty($valid['role']) && $valid['role'] === MemberRoleAssignment::RETIRED_LEADER_ROLE) {
+            unset($valid['role']);
+        }
+
         if (! empty($valid['role'])) {
             $user->assignRole($valid['role']);
         }
         $user->syncRoleIdFromSpatieAssignments();
 
-        if (($valid['role'] ?? '') === 'lider_ministerio' && ! empty($valid['ministry_ids'])) {
+        if (! empty($valid['ministry_ids'])) {
             $user->ministries()->sync($valid['ministry_ids']);
+            MemberRoleAssignment::applyMinistryLeaderRole($user->fresh());
         }
 
         $user->ensureVolunteerProfile();
@@ -161,13 +167,19 @@ class UserController extends Controller
         }
         $user->save();
 
-        $user->syncRoles($valid['role'] ? [$valid['role']] : []);
+        $user->syncRoles(! empty($valid['role']) && $valid['role'] !== MemberRoleAssignment::RETIRED_LEADER_ROLE
+            ? [$valid['role']]
+            : []);
         $user->syncRoleIdFromSpatieAssignments();
 
-        if (($valid['role'] ?? '') === 'lider_ministerio') {
+        if (! empty($valid['ministry_ids'])) {
             $user->ministries()->sync($valid['ministry_ids'] ?? []);
+            MemberRoleAssignment::applyMinistryLeaderRole($user->fresh());
         } else {
             $user->ministries()->detach();
+            if (! $user->isMinistryLeaderAccount()) {
+                MemberRoleAssignment::clearMinistryLeaderRole($user->fresh());
+            }
         }
 
         $user->ensureVolunteerProfile();

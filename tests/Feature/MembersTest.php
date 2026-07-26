@@ -488,7 +488,7 @@ class MembersTest extends TestCase
             'email' => 'lider-filtro@example.com',
             'is_ministry_leader' => true,
         ]);
-        $leader->assignRole(Role::firstOrCreate(['name' => 'lider_ministerio', 'guard_name' => $guard]));
+        $leader->forceFill(['is_ministry_leader' => true])->save();
         $leader->ministries()->sync([(int) $ministryA->id]);
 
         User::factory()->create([

@@ -232,7 +232,7 @@ class VolunteerContactDuplicateChecker
             return 'Este e-mail já pertence a uma conta da equipe (administração, secretaria ou pastoral). Use outro e-mail ou peça ajuda ao administrador.';
         }
 
-        if ($user->hasRole('lider_ministerio')) {
+        if ($user->isMinistryLeaderAccount()) {
             return 'Este e-mail já pertence a uma conta de líder de ministério. Use outro e-mail para o cadastro de voluntário.';
         }
 
