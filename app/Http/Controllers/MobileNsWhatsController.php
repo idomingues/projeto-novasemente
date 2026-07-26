@@ -6,6 +6,7 @@ use App\Actions\Conversations\ClaimConversation;
 use App\Actions\Conversations\CloseConversation;
 use App\Actions\Conversations\CreateConversation;
 use App\Actions\Conversations\EditConversationMessage;
+use App\Actions\Conversations\EnsureMemberServedLeaderThreads;
 use App\Actions\Conversations\ForwardConversation;
 use App\Actions\Conversations\MarkConversationRead;
 use App\Actions\Conversations\ReopenConversation;
@@ -42,9 +43,19 @@ class MobileNsWhatsController extends Controller
         $churchId = Church::resolveWorkingId($request);
         abort_unless($churchId, 404);
 
+        app(EnsureMemberServedLeaderThreads::class)->handle($user, (int) $churchId);
+
         $tab = (string) $request->query('tab', 'open');
         if (! in_array($tab, ['open', 'closed'], true)) {
             $tab = 'open';
+        }
+
+        $servedMinistryIds = NsWhatsAccess::ministryIdsWhereUserServes($user, (int) $churchId);
+        $servedLeaderIds = [];
+        foreach ($servedMinistryIds as $ministryId) {
+            foreach (NsWhatsAccess::leadersForMinistry((int) $churchId, $ministryId, $user) as $leaderRow) {
+                $servedLeaderIds[(int) $leaderRow['id']] = true;
+            }
         }
 
         $query = ChurchConversation::query()
@@ -77,6 +88,19 @@ class MobileNsWhatsController extends Controller
         }
 
         $conversations = $query->limit(80)->get()
+            ->sortBy(function (ChurchConversation $c) use ($user, $servedLeaderIds) {
+                $asMember = (int) $c->member_user_id === (int) $user->id;
+                $isServedLeaderThread = $asMember
+                    && $c->assignee_user_id
+                    && isset($servedLeaderIds[(int) $c->assignee_user_id]);
+
+                // Líderes dos departamentos em que serve ficam no topo.
+                $pin = $isServedLeaderThread ? 0 : 1;
+                $activity = $c->last_activity_at?->getTimestamp() ?? 0;
+
+                return sprintf('%d-%020d', $pin, PHP_INT_MAX - $activity);
+            })
+            ->values()
             ->map(function (ChurchConversation $c) use ($user) {
                 $asMember = (int) $c->member_user_id === (int) $user->id;
 
@@ -84,7 +108,6 @@ class MobileNsWhatsController extends Controller
                     ? array_merge(ConversationPresenter::forMember($c, $user), ['viewerRole' => 'member'])
                     : array_merge(ConversationPresenter::forLeader($c, $user), ['viewerRole' => 'staff']);
             })
-            ->values()
             ->all();
 
         $openId = $request->query('conversa');

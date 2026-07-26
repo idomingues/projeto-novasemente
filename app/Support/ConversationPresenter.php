@@ -101,7 +101,7 @@ final class ConversationPresenter
     private static function lastPreview(array $messages): string
     {
         if ($messages === []) {
-            return 'Nova conversa';
+            return 'Toque para conversar';
         }
         $last = $messages[count($messages) - 1];
 

@@ -38,6 +38,30 @@ final class NsWhatsAccess
             ->exists();
     }
 
+    /**
+     * Departamentos em que o usuário serve como voluntário ativo.
+     *
+     * @return list<int>
+     */
+    public static function ministryIdsWhereUserServes(User $user, int $churchId): array
+    {
+        if ($churchId < 1) {
+            return [];
+        }
+
+        return Volunteer::query()
+            ->where('user_id', $user->id)
+            ->where('active', true)
+            ->whereHas('ministries', fn ($q) => $q->where('ministries.church_id', $churchId))
+            ->with(['ministries:id'])
+            ->get()
+            ->flatMap(fn (Volunteer $v) => $v->ministries->pluck('id'))
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
     public static function canViewAsStaff(User $user, ChurchConversation $conversation): bool
     {
         if (self::isModuleAdmin($user)) {

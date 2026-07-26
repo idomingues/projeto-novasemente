@@ -212,6 +212,49 @@ class NsWhatsConversationTest extends TestCase
             ->assertRedirect(route('mobile.ns-whats.index'));
     }
 
+    public function test_volunteer_sees_department_leader_thread_before_speaking(): void
+    {
+        [$churchId, $member, $ministry, $leader] = $this->seedNsWhats();
+
+        $member->ensureVolunteerProfile();
+        $volunteer = $member->volunteerProfile()->firstOrFail();
+        $volunteer->forceFill(['active' => true])->save();
+        $volunteer->ministries()->syncWithoutDetaching([$ministry->id]);
+
+        $admin = User::factory()->create(['church_id' => $churchId, 'name' => 'Admin Voluntário']);
+        $admin->assignRole('admin');
+        $admin->ensureVolunteerProfile();
+        $adminVolunteer = $admin->volunteerProfile()->firstOrFail();
+        $adminVolunteer->forceFill(['active' => true])->save();
+        $adminVolunteer->ministries()->syncWithoutDetaching([$ministry->id]);
+
+        $this->actingAs($admin)
+            ->get(route('mobile.ns-whats.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Mobile/NsWhats/Index')
+                ->has('conversations', 1)
+                ->where('conversations.0.viewerRole', 'member')
+                ->where('conversations.0.assigneeName', $leader->name)
+                ->where('conversations.0.lastPreview', 'Toque para conversar'));
+
+        $this->assertDatabaseHas('church_conversations', [
+            'member_user_id' => $admin->id,
+            'assignee_user_id' => $leader->id,
+            'preferred_leader_user_id' => $leader->id,
+            'current_ministry_id' => $ministry->id,
+            'status' => ChurchConversation::STATUS_IN_SERVICE,
+        ]);
+
+        // Idempotente: não duplica ao reabrir.
+        $this->actingAs($admin)
+            ->get(route('mobile.ns-whats.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->has('conversations', 1));
+
+        $this->assertSame(1, ChurchConversation::query()->where('member_user_id', $admin->id)->count());
+    }
+
     public function test_member_can_direct_conversation_to_department_member(): void
     {
         [$churchId, $member, $ministry, $leader] = $this->seedNsWhats();

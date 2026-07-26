@@ -7,20 +7,24 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Route;
 
 /**
- * Campanha de módulo em destaque na Home (período + feature da igreja).
+ * Campanhas de módulos em destaque na Home (período + feature da igreja).
  */
 final class HomeModuleSpotlight
 {
     /**
      * @return array{
-     *     id: string,
-     *     feature_key: string|null,
-     *     route: string,
-     *     href: string,
-     *     badge: string,
-     *     title: string,
-     *     subtitle: string,
-     *     cta: string
+     *     interval_seconds: int,
+     *     items: list<array{
+     *         id: string,
+     *         feature_key: string|null,
+     *         route: string,
+     *         href: string,
+     *         badge: string,
+     *         title: string,
+     *         subtitle: string,
+     *         cta: string,
+     *         icon_key: string
+     *     }>
      * }|null
      */
     public static function forChurch(?Church $church, ?Carbon $now = null): ?array
@@ -30,14 +34,27 @@ final class HomeModuleSpotlight
         /** @var list<array<string, mixed>> $campaigns */
         $campaigns = config('home_module_spotlight.campaigns', []);
 
+        $items = [];
         foreach ($campaigns as $campaign) {
             $resolved = self::resolveCampaign($campaign, $church, $now);
             if ($resolved !== null) {
-                return $resolved;
+                $items[] = $resolved;
             }
         }
 
-        return null;
+        if ($items === []) {
+            return null;
+        }
+
+        $interval = (int) config('home_module_spotlight.interval_seconds', 6);
+        if ($interval < 3) {
+            $interval = 3;
+        }
+
+        return [
+            'interval_seconds' => $interval,
+            'items' => $items,
+        ];
     }
 
     /**
@@ -50,7 +67,8 @@ final class HomeModuleSpotlight
      *     badge: string,
      *     title: string,
      *     subtitle: string,
-     *     cta: string
+     *     cta: string,
+     *     icon_key: string
      * }|null
      */
     private static function resolveCampaign(array $campaign, ?Church $church, Carbon $now): ?array
@@ -84,6 +102,11 @@ final class HomeModuleSpotlight
             return null;
         }
 
+        $iconKey = trim((string) ($campaign['icon_key'] ?? ''));
+        if ($iconKey === '') {
+            $iconKey = $featureKey ?: 'sparkles';
+        }
+
         return [
             'id' => $id,
             'feature_key' => $featureKey,
@@ -93,6 +116,7 @@ final class HomeModuleSpotlight
             'title' => trim((string) ($campaign['title'] ?? '')) ?: 'Novidade',
             'subtitle' => trim((string) ($campaign['subtitle'] ?? '')),
             'cta' => trim((string) ($campaign['cta'] ?? 'Abrir')) ?: 'Abrir',
+            'icon_key' => $iconKey,
         ];
     }
 

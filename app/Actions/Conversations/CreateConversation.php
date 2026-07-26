@@ -51,20 +51,47 @@ class CreateConversation
         $subject = Str::limit(preg_replace('/\s+/u', ' ', $message) ?? $message, 80, '…');
 
         $conversation = DB::transaction(function () use ($member, $churchId, $ministry, $recipientUserId, $message, $subject) {
-            $conversation = ChurchConversation::create([
-                'church_id' => $churchId,
-                'member_user_id' => $member->id,
-                'subject' => $subject,
-                'initial_ministry_id' => $ministry->id,
-                'current_ministry_id' => $ministry->id,
-                'preferred_leader_user_id' => $recipientUserId,
-                'assignee_user_id' => $recipientUserId,
-                'status' => $recipientUserId
-                    ? ChurchConversation::STATUS_AWAITING_DEPARTMENT
-                    : ChurchConversation::STATUS_NEW,
-                'last_activity_at' => now(),
-                'involves_minor' => NsWhatsAccess::involvesMinor($member),
-            ]);
+            $existing = null;
+            if ($recipientUserId !== null) {
+                $existing = ChurchConversation::query()
+                    ->where('church_id', $churchId)
+                    ->where('member_user_id', $member->id)
+                    ->where('current_ministry_id', $ministry->id)
+                    ->where('status', '!=', ChurchConversation::STATUS_CLOSED)
+                    ->where(function ($q) use ($recipientUserId) {
+                        $q->where('assignee_user_id', $recipientUserId)
+                            ->orWhere('preferred_leader_user_id', $recipientUserId);
+                    })
+                    ->lockForUpdate()
+                    ->first();
+            }
+
+            if ($existing) {
+                $conversation = $existing;
+                $conversation->update([
+                    'subject' => $subject,
+                    'preferred_leader_user_id' => $recipientUserId,
+                    'assignee_user_id' => $recipientUserId,
+                    'status' => ChurchConversation::STATUS_AWAITING_DEPARTMENT,
+                    'last_activity_at' => now(),
+                    'member_archived_at' => null,
+                ]);
+            } else {
+                $conversation = ChurchConversation::create([
+                    'church_id' => $churchId,
+                    'member_user_id' => $member->id,
+                    'subject' => $subject,
+                    'initial_ministry_id' => $ministry->id,
+                    'current_ministry_id' => $ministry->id,
+                    'preferred_leader_user_id' => $recipientUserId,
+                    'assignee_user_id' => $recipientUserId,
+                    'status' => $recipientUserId
+                        ? ChurchConversation::STATUS_AWAITING_DEPARTMENT
+                        : ChurchConversation::STATUS_NEW,
+                    'last_activity_at' => now(),
+                    'involves_minor' => NsWhatsAccess::involvesMinor($member),
+                ]);
+            }
 
             ChurchConversationMessage::create([
                 'conversation_id' => $conversation->id,
@@ -76,7 +103,7 @@ class CreateConversation
 
             ChurchConversationEvent::create([
                 'conversation_id' => $conversation->id,
-                'type' => 'created',
+                'type' => $existing ? 'message_on_seeded_thread' : 'created',
                 'actor_user_id' => $member->id,
                 'before' => null,
                 'after' => [
