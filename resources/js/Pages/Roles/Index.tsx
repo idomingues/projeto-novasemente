@@ -39,27 +39,92 @@ interface Props {
     permissions: PermissionRow[];
 }
 
+/**
+ * Rótulos alinhados ao menu lateral (seção — tela).
+ * Seções: Pastor | Operação | Publicação | Cadastro | ADM
+ */
 const GROUP_LABELS: Record<string, string> = {
-    members: 'Usuários (cadastro)',
-    volunteers: 'Voluntários',
-    departments: 'Departamentos',
-    inventory: 'Inventário',
-    users: 'Usuários',
-    churches: 'Igrejas',
-    news: 'News',
-    events: 'Eventos',
-    escalas: 'Escalas',
-    roles: 'Perfis',
-    music: 'Séries e músicas',
-    photos: 'Fotos',
-    library: 'Biblioteca',
-    culto: 'Culto',
-    notifications: 'Notificações',
-    pastors: 'Pastores',
-    pastoral_appointments: 'Agenda pastoral',
-    solicitations: 'Solicitações',
-    mission: 'Missão',
-    programacao: 'Programação',
+    members: 'Operação — Membros',
+    volunteers: 'Operação — Voluntários',
+    departments: 'Cadastro — Departamentos',
+    inventory: 'Operação — Inventários',
+    users: 'Operação — Usuários',
+    churches: 'ADM — Igrejas',
+    news: 'Publicação — News / Saúde',
+    events: 'Publicação — Eventos',
+    escalas: 'Operação — Escalas',
+    roles: 'ADM — Perfis',
+    music: 'Publicação — Séries / Música',
+    photos: 'Publicação — Fotos',
+    library: 'Publicação — Biblioteca',
+    culto: 'Publicação — Culto',
+    notifications: 'Publicação — Notificações',
+    pastors: 'Cadastro — Pastores',
+    pastoral_appointments: 'Pastor — Agenda',
+    solicitations: 'Pastor — Atendimento',
+    mission: 'Operação — Missão',
+    programacao: 'Cadastro — Programação',
+    rooms: 'Cadastro — Salas',
+    communities: 'Publicação — Comunidades',
+    prayer: 'Operação — Oração',
+    polls: 'Publicação — Enquetes',
+    campaigns: 'Publicação — Oferta Nova Semente',
+    donations: 'Publicação — Doação',
+    talents: 'Operação — Serviços',
+    shared_talents: 'Operação — Talentos',
+};
+
+/** Seção — tela — ação (rótulo principal na matriz). */
+const PERMISSION_SCREEN_LABELS: Record<string, string> = {
+    'members.view': 'Operação — Membros — Visualizar',
+    'members.manage': 'Operação — Membros — Gerenciar',
+    'volunteers.view': 'Operação — Voluntários — Visualizar',
+    'volunteers.manage': 'Operação — Voluntários — Gerenciar',
+    'volunteers.ministry_operate': 'Operação — Voluntários — Operar pipeline / departamentos',
+    'departments.view': 'Cadastro — Departamentos — Visualizar',
+    'departments.manage': 'Cadastro — Departamentos — Gerenciar',
+    'rooms.view': 'Cadastro — Salas — Visualizar cadastro',
+    'rooms.manage': 'Cadastro — Salas — Gerenciar cadastro',
+    'rooms.schedule': 'Operação — Salas — Agendar reservas',
+    'programacao.view': 'Cadastro — Programação — Visualizar',
+    'programacao.manage': 'Cadastro — Programação — Gerenciar',
+    'escalas.view': 'Operação — Escalas — Visualizar',
+    'escalas.manage': 'Operação — Escalas — Gerenciar',
+    'inventory.view': 'Operação — Inventários — Visualizar',
+    'inventory.manage': 'Operação — Inventários — Gerenciar',
+    'users.view': 'Operação — Usuários — Visualizar',
+    'users.manage': 'Operação — Usuários — Gerenciar',
+    'churches.manage': 'ADM — Igrejas — Gerenciar',
+    'news.view': 'Publicação — News / Saúde — Visualizar',
+    'news.manage': 'Publicação — News / Saúde — Gerenciar',
+    'events.view': 'Publicação — Eventos — Visualizar',
+    'events.manage': 'Publicação — Eventos — Gerenciar',
+    'culto.manage': 'Publicação — Culto — Gerenciar',
+    'music.manage': 'Publicação — Séries / Música — Gerenciar',
+    'photos.manage': 'Publicação — Fotos — Gerenciar álbuns',
+    'library.manage': 'Publicação — Biblioteca — Gerenciar',
+    'communities.view': 'Publicação — Comunidades — Visualizar',
+    'communities.manage': 'Publicação — Comunidades — Gerenciar',
+    'prayer.manage': 'Operação — Oração — Gerenciar',
+    'notifications.manage': 'Publicação — Notificações — Enviar avisos',
+    'solicitations.view': 'Pastor — Atendimento — Visualizar',
+    'solicitations.manage': 'Pastor — Atendimento — Gerenciar',
+    'polls.view': 'Publicação — Enquetes — Visualizar',
+    'polls.manage': 'Publicação — Enquetes — Gerenciar',
+    'pastors.view': 'Cadastro — Pastores — Visualizar',
+    'pastors.manage': 'Cadastro — Pastores — Gerenciar',
+    'pastoral_appointments.manage': 'Pastor — Agenda — Gerenciar',
+    'roles.manage': 'ADM — Perfis — Gerenciar',
+    'mission.view': 'Operação — Missão — Visualizar',
+    'mission.manage': 'Operação — Missão — Gerenciar',
+    'campaigns.view': 'Publicação — Oferta Nova Semente — Visualizar',
+    'campaigns.manage': 'Publicação — Oferta Nova Semente — Gerenciar',
+    'donations.view': 'Publicação — Doação — Visualizar',
+    'donations.manage': 'Publicação — Doação — Gerenciar',
+    'talents.moderate': 'Operação — Serviços — Moderar anúncios e denúncias',
+    'talents.treasurer': 'Operação — Serviços — Tesoureiro',
+    'shared_talents.moderate': 'Operação — Talentos — Moderar anúncios e denúncias',
+    'shared_talents.manage': 'Operação — Talentos — Gerenciar',
 };
 
 function groupTitle(group: string): string {
@@ -67,32 +132,25 @@ function groupTitle(group: string): string {
 }
 
 function permissionLineLabel(perm: string): string {
-    const custom: Record<string, string> = {
-        'music.manage': 'Gerenciar (séries, músicas e playlists)',
-        'photos.manage': 'Gerenciar (álbuns de fotos)',
-        'library.manage': 'Gerenciar biblioteca (PDFs e capas no app)',
-        'rooms.view': 'Ver salas (lista e cadastro no menu Salas)',
-        'rooms.manage': 'Gerir salas (criar, editar e remover salas)',
-        'rooms.schedule':
-            'Agendar salas (calendário de reservas, criar e editar os próprios agendamentos; quem gere salas pode editar todos)',
-        'programacao.view': 'Ver programação semanal (cultos, classes e pôr do sol)',
-        'programacao.manage': 'Gerir programação semanal (criar, editar e excluir itens)',
-        'solicitations.view': 'Ver solicitações formais (batismo, visita, etc.)',
-        'solicitations.manage': 'Gerir solicitações formais',
-        'roles.manage': 'Gerir perfis e permissões (esta página)',
-        'mission.view': 'Visualizar painel Missão (quadro e cadastros)',
-        'mission.manage':
-            'Gerir Missão (fases, movimentar voluntários, conteúdo, comunicação e líderes de fase)',
-    };
-    if (custom[perm]) {
-        return custom[perm];
+    if (PERMISSION_SCREEN_LABELS[perm]) {
+        return PERMISSION_SCREEN_LABELS[perm];
     }
-    if (perm.endsWith('.view')) {
-        return 'Visualizar';
+
+    const [group, action] = perm.split('.');
+    const screen = GROUP_LABELS[group] ?? group;
+    if (action === 'view') {
+        return `${screen} — Visualizar`;
     }
-    if (perm.endsWith('.manage')) {
-        return 'Gerenciar';
+    if (action === 'manage') {
+        return `${screen} — Gerenciar`;
     }
+    if (action === 'moderate') {
+        return `${screen} — Moderar`;
+    }
+    if (action) {
+        return `${screen} — ${action}`;
+    }
+
     return perm;
 }
 
@@ -216,9 +274,6 @@ function PermissionGroupAccordion({
                                 <span className="min-w-0 flex-1">
                                     <span className="block font-medium text-zinc-800 dark:text-zinc-100">
                                         {permissionLineLabel(perm)}
-                                    </span>
-                                    <span className="mt-0.5 block font-mono text-[11px] text-zinc-400 dark:text-zinc-500">
-                                        {perm}
                                     </span>
                                     <PermissionImpactBadges perm={perm} />
                                 </span>

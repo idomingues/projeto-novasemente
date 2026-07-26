@@ -22,7 +22,10 @@ class RoleController extends Controller
      */
     public static function permissionExcludedFromProfileMatrix(string $name): bool
     {
-        return str_starts_with($name, 'finance.') || str_starts_with($name, 'support.');
+        // finance/support: fora do produto na grade; conversations: NS Conecta acessa por líder/dept, não por perfil.
+        return str_starts_with($name, 'finance.')
+            || str_starts_with($name, 'support.')
+            || str_starts_with($name, 'conversations.');
     }
 
     public function index(Request $request): Response
@@ -126,7 +129,13 @@ class RoleController extends Controller
                     $incoming,
                     fn ($name) => is_string($name) && ! self::permissionExcludedFromProfileMatrix($name)
                 ));
-                $role->syncPermissions($assignable);
+                // Mantém permissões fora da grade (ex.: conversations / finance / support) já ligadas ao perfil.
+                $preserved = $role->permissions
+                    ->pluck('name')
+                    ->filter(fn (string $name) => self::permissionExcludedFromProfileMatrix($name))
+                    ->values()
+                    ->all();
+                $role->syncPermissions(array_values(array_unique([...$assignable, ...$preserved])));
             }
         }
 
