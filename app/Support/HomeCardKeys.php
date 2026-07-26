@@ -11,6 +11,7 @@ final class HomeCardKeys
     public const ALLOWED = [
         'ns-whats',
         'ns-whats-departamento',
+        'enquetes',
         'ano-biblico',
         'voluntario',
         'batismo',

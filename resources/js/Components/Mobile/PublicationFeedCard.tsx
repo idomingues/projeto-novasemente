@@ -12,6 +12,7 @@ import {
     NewspaperIcon,
     PhotoIcon,
     PlayCircleIcon,
+    ShareIcon,
     SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid';
@@ -19,9 +20,9 @@ import CoverWithVideoLink from '@/Components/News/CoverWithVideoLink';
 import InstagramViewLink from '@/Components/News/InstagramViewLink';
 import VideoPlayOverlay from '@/Components/News/VideoPlayOverlay';
 import PublicationCommentsSheet from '@/Components/Mobile/PublicationCommentsSheet';
+import { absoluteShareUrl, shareContent } from '@/utils/shareContent';
 import type { ComponentType, SVGProps } from 'react';
 import { useEffect, useState } from 'react';
-
 export type PublicationFeedItem = {
     id: string;
     type: string;
@@ -189,6 +190,7 @@ export default function PublicationFeedCard({
     const [likeBusy, setLikeBusy] = useState(false);
     const [commentsOpen, setCommentsOpen] = useState(false);
     const [localExpanded, setLocalExpanded] = useState(false);
+    const [shareHint, setShareHint] = useState<string | null>(null);
 
     useEffect(() => {
         setLiked(Boolean(item.liked_by_me));
@@ -233,6 +235,24 @@ export default function PublicationFeedCard({
 
     const goLogin = () => {
         window.location.href = route('login');
+    };
+
+    const sharePublication = async () => {
+        const url = absoluteShareUrl(item.href || window.location.href, appUrl);
+        const title = isPhotos
+            ? photoDateTitle || item.title || 'Álbum de fotos'
+            : item.title || item.type_label || 'Publicação';
+        const text = isPhotos
+            ? photographerLabel
+                ? `${title} — Fotógrafa: ${photographerLabel}`
+                : title
+            : title;
+
+        const result = await shareContent({ title, text, url });
+        if (result === 'copied') {
+            setShareHint('Link copiado');
+            window.setTimeout(() => setShareHint(null), 2000);
+        }
     };
 
     const toggleLike = async () => {
@@ -388,6 +408,26 @@ export default function PublicationFeedCard({
                             {commentsCount > 0 ? (
                                 <span className="-ml-1 pr-1.5 text-[11px] font-semibold leading-none tabular-nums tracking-tight text-zinc-600 dark:text-zinc-300">
                                     {formatCount(commentsCount)}
+                                </span>
+                            ) : null}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => void sharePublication()}
+                            className="group inline-flex h-9 cursor-pointer items-center text-zinc-900 transition hover:bg-zinc-100/80 dark:text-white dark:hover:bg-zinc-800/80"
+                            aria-label="Compartilhar"
+                            title={shareHint ?? 'Compartilhar'}
+                        >
+                            <span className="inline-flex h-9 w-9 items-center justify-center">
+                                <ShareIcon
+                                    className="h-6 w-6 transition group-hover:scale-105"
+                                    aria-hidden
+                                    strokeWidth={1.7}
+                                />
+                            </span>
+                            {shareHint ? (
+                                <span className="-ml-1 pr-1.5 text-[11px] font-semibold leading-none tracking-tight text-emerald-700 dark:text-emerald-300">
+                                    {shareHint}
                                 </span>
                             ) : null}
                         </button>

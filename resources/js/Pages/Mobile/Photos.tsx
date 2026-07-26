@@ -1,7 +1,15 @@
 import MissionHubBackLink from '@/Components/Mission/MissionHubBackLink';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head } from '@inertiajs/react';
-import { ArrowDownTrayIcon, ChevronLeftIcon, ChevronRightIcon, XMarkIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
+import {
+    ArrowDownTrayIcon,
+    ChevronLeftIcon,
+    ChevronRightIcon,
+    ShareIcon,
+    XMarkIcon,
+    ArrowTopRightOnSquareIcon,
+} from '@heroicons/react/24/outline';
+import { shareContent } from '@/utils/shareContent';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 interface Props {
@@ -82,7 +90,9 @@ export default function MobilePhotos({
     const [open, setOpen] = useState(false);
     const [idx, setIdx] = useState(0);
     const [zoomed, setZoomed] = useState(false);
+    const [shareHint, setShareHint] = useState<string | null>(null);
     const touchStartX = useRef<number | null>(null);
+    const openedFromQuery = useRef(false);
 
     const canUseGallery = images.length > 0;
     const current = canUseGallery ? images[Math.min(idx, images.length - 1)] : null;
@@ -96,6 +106,24 @@ export default function MobilePhotos({
     useEffect(() => {
         setViewerSrcIndex(0);
     }, [idx, open]);
+
+    useEffect(() => {
+        if (openedFromQuery.current || images.length === 0) {
+            return;
+        }
+        const fotoId = new URLSearchParams(window.location.search).get('foto');
+        if (!fotoId) {
+            return;
+        }
+        const found = images.findIndex((img) => img.id === fotoId);
+        if (found < 0) {
+            return;
+        }
+        openedFromQuery.current = true;
+        setIdx(found);
+        setZoomed(false);
+        setOpen(true);
+    }, [images]);
 
     const openAt = (i: number) => {
         setIdx(i);
@@ -111,6 +139,41 @@ export default function MobilePhotos({
     const next = () => {
         setIdx((v) => (v + 1) % images.length);
         setZoomed(false);
+    };
+
+    const flashShareHint = (result: 'shared' | 'copied' | 'failed') => {
+        if (result !== 'copied') {
+            return;
+        }
+        setShareHint('Link copiado');
+        window.setTimeout(() => setShareHint(null), 2000);
+    };
+
+    const shareAlbum = async () => {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('foto');
+        const result = await shareContent({
+            title,
+            text: photographerName?.trim()
+                ? `${title} — Fotógrafo(a): ${photographerName.trim()}`
+                : title,
+            url: url.toString(),
+        });
+        flashShareHint(result);
+    };
+
+    const shareCurrentPhoto = async () => {
+        if (!current) {
+            return;
+        }
+        const url = new URL(window.location.href);
+        url.searchParams.set('foto', current.id);
+        const result = await shareContent({
+            title,
+            text: `Foto do álbum «${title}»`,
+            url: url.toString(),
+        });
+        flashShareHint(result);
     };
 
     return (
@@ -134,18 +197,32 @@ export default function MobilePhotos({
                         {photographerName?.trim() ? (
                             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Fotógrafo(a): {photographerName.trim()}</p>
                         ) : null}
+                        {shareHint ? (
+                            <p className="mt-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">{shareHint}</p>
+                        ) : null}
                     </div>
 
-                    <a
-                        href={folderUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-zinc-100 text-zinc-700 hover:bg-zinc-200 hover:text-zinc-900 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
-                        title="Abrir no Drive"
-                        aria-label="Abrir no Drive"
-                    >
-                        <ArrowTopRightOnSquareIcon className="w-5 h-5" aria-hidden />
-                    </a>
+                    <div className="flex shrink-0 items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => void shareAlbum()}
+                            className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-zinc-100 text-zinc-700 transition hover:bg-zinc-200 hover:text-zinc-900 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                            title="Compartilhar álbum"
+                            aria-label="Compartilhar álbum"
+                        >
+                            <ShareIcon className="h-5 w-5" aria-hidden />
+                        </button>
+                        <a
+                            href={folderUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-zinc-100 text-zinc-700 hover:bg-zinc-200 hover:text-zinc-900 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                            title="Abrir no Drive"
+                            aria-label="Abrir no Drive"
+                        >
+                            <ArrowTopRightOnSquareIcon className="h-5 w-5" aria-hidden />
+                        </a>
+                    </div>
                 </div>
 
                 {canUseGallery ? (
@@ -156,7 +233,7 @@ export default function MobilePhotos({
                                     key={img.id}
                                     type="button"
                                     onClick={() => openAt(i)}
-                                    className="relative aspect-[4/5] sm:aspect-[16/10] w-full overflow-hidden rounded-3xl bg-zinc-200 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 shadow-sm active:scale-[0.99] transition"
+                                    className="relative aspect-[4/5] sm:aspect-[16/10] w-full cursor-pointer overflow-hidden rounded-3xl bg-zinc-200 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 shadow-sm active:scale-[0.99] transition"
                                     aria-label={`Abrir foto ${i + 1} de ${images.length}`}
                                 >
                                     <GalleryThumb
@@ -181,16 +258,28 @@ export default function MobilePhotos({
                                         <XMarkIcon className="w-6 h-6" />
                                     </button>
 
-                                    <a
-                                        href={current.download_url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="pointer-events-auto inline-flex cursor-pointer items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-sm font-semibold text-white hover:bg-white/15"
-                                        title="Download"
-                                    >
-                                        <ArrowDownTrayIcon className="w-5 h-5" />
-                                        Download
-                                    </a>
+                                    <div className="pointer-events-auto flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => void shareCurrentPhoto()}
+                                            className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-sm font-semibold text-white hover:bg-white/15"
+                                            title="Compartilhar foto"
+                                            aria-label="Compartilhar foto"
+                                        >
+                                            <ShareIcon className="h-5 w-5" />
+                                            Compartilhar
+                                        </button>
+                                        <a
+                                            href={current.download_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-sm font-semibold text-white hover:bg-white/15"
+                                            title="Download"
+                                        >
+                                            <ArrowDownTrayIcon className="w-5 h-5" />
+                                            Download
+                                        </a>
+                                    </div>
                                 </div>
 
                                 <div
