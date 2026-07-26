@@ -14,7 +14,13 @@ import { useListModalSubmit } from '@/hooks/useListModalSubmit';
 import { submitListModalPost } from '@/utils/listModalFetchSave';
 import { textIncludesSearch } from '@/utils/searchText';
 import { appRoleLabel } from '@/lib/appRoleLabels';
-import { TrashIcon, ChevronDownIcon, BellAlertIcon, InboxStackIcon } from '@heroicons/react/24/outline';
+import RoleUsersModal, {
+    type CandidateUserRow,
+    type MoveTarget,
+    type RoleUserRow,
+} from '@/Components/Roles/RoleUsersModal';
+import UserListAvatar from '@/Components/UserListAvatar';
+import { TrashIcon, ChevronDownIcon, BellAlertIcon, InboxStackIcon, UsersIcon } from '@heroicons/react/24/outline';
 import {
     permissionIsAttendance,
     permissionProductFlags,
@@ -27,6 +33,7 @@ interface RoleRow {
     permissions: string[];
     users_count: number;
     system_role: boolean;
+    users: RoleUserRow[];
 }
 
 interface PermissionRow {
@@ -37,6 +44,8 @@ interface PermissionRow {
 interface Props {
     roles: RoleRow[];
     permissions: PermissionRow[];
+    candidateUsers: CandidateUserRow[];
+    moveTargets: MoveTarget[];
 }
 
 /**
@@ -269,7 +278,12 @@ function PermissionGroupAccordion({
     );
 }
 
-export default function RolesIndex({ roles, permissions }: Props) {
+export default function RolesIndex({
+    roles,
+    permissions,
+    candidateUsers = [],
+    moveTargets = [],
+}: Props) {
     const csrf = (usePage().props as { csrf_token?: string }).csrf_token ?? '';
     const [createOpen, setCreateOpen] = useState(false);
     const [createSaveMessage, setCreateSaveMessage] = useState<string | null>(null);
@@ -278,6 +292,7 @@ export default function RolesIndex({ roles, permissions }: Props) {
     const [expandedRoles, setExpandedRoles] = useState<Record<string, boolean>>({});
     const [savingRoles, setSavingRoles] = useState<Record<string, boolean>>({});
     const [savedRoles, setSavedRoles] = useState<Record<string, boolean>>({});
+    const [usersModalRoleId, setUsersModalRoleId] = useState<number | null>(null);
     const saveSeqRef = useRef<Record<string, number>>({});
 
     const { data, setData } = useForm({
@@ -292,10 +307,15 @@ export default function RolesIndex({ roles, permissions }: Props) {
     });
 
     const { saving: creating, save: saveCreate } = useListModalSubmit({
-        reloadOnly: ['roles'],
+        reloadOnly: ['roles', 'candidateUsers', 'moveTargets'],
         setError: createForm.setError,
         clearErrors: createForm.clearErrors,
     });
+
+    const usersModalRole = useMemo(
+        () => (usersModalRoleId == null ? null : roles.find((r) => r.id === usersModalRoleId) ?? null),
+        [roles, usersModalRoleId],
+    );
 
     useEffect(() => {
         setData(
@@ -518,14 +538,13 @@ export default function RolesIndex({ roles, permissions }: Props) {
                 title="Perfis de acesso"
                 subtitle={
                     <>
-                        Usuários podem ficar <strong className="font-medium text-zinc-700 dark:text-zinc-300">sem perfil</strong>{' '}
-                        no app até um administrador definir o acesso em{' '}
+                        Crie perfis, marque as funcionalidades e gerencie quem usa cada um (incluir, alterar ou remover). Usuários
+                        também podem receber perfil em{' '}
                         <Link href={route('volunteers.index')} className="font-medium text-primary-600 underline dark:text-primary-400">
                             Voluntários
                         </Link>
-                        . Aqui cria <strong className="font-medium text-zinc-700 dark:text-zinc-300">novos perfis</strong> e marca as{' '}
-                        <strong className="font-medium text-zinc-700 dark:text-zinc-300">funcionalidades</strong> de cada um. O perfil{' '}
-                        <strong className="font-medium text-zinc-700 dark:text-zinc-300">super administrador</strong> não é listado: tem acesso total ao sistema.
+                        . O perfil <strong className="font-medium text-zinc-700 dark:text-zinc-300">super administrador</strong> não é
+                        listado: tem acesso total ao sistema.
                     </>
                 }
                 actions={
@@ -623,6 +642,16 @@ export default function RolesIndex({ roles, permissions }: Props) {
                 </form>
             </Modal>
 
+            <RoleUsersModal
+                show={usersModalRole != null}
+                onClose={() => setUsersModalRoleId(null)}
+                roleId={usersModalRole?.id ?? 0}
+                roleName={usersModalRole?.name ?? ''}
+                users={usersModalRole?.users ?? []}
+                candidateUsers={candidateUsers}
+                moveTargets={moveTargets}
+            />
+
             <div className="space-y-6">
                 <div className="grid gap-4 md:grid-cols-2">
                     {displayedRoles.length === 0 ? (
@@ -633,6 +662,7 @@ export default function RolesIndex({ roles, permissions }: Props) {
                         displayedRoles.map(({ role, index }) => {
                         const meta = roleMetaByName.get(role.name);
                         const usersCount = meta?.users_count ?? 0;
+                        const roleUsers = meta?.users ?? [];
                         const systemRole = meta?.system_role ?? false;
                         const canDelete = meta && !systemRole && usersCount === 0;
                         const highlighted = meta?.id === highlightRoleId;
@@ -640,6 +670,7 @@ export default function RolesIndex({ roles, permissions }: Props) {
                         const activePermCount = role.permissions.length;
                         const roleSaving = savingRoles[role.name] ?? false;
                         const roleSaved = savedRoles[role.name] ?? false;
+                        const previewUsers = roleUsers.slice(0, 3);
 
                         return (
                             <div
@@ -650,61 +681,131 @@ export default function RolesIndex({ roles, permissions }: Props) {
                                 }`}
                             >
                                 <div className="flex items-start justify-between gap-3 p-6 sm:p-8">
-                                    <button
-                                        type="button"
-                                        onClick={() => toggleRoleExpanded(role.name)}
-                                        className="flex min-w-0 flex-1 cursor-pointer items-start justify-between gap-3 text-left"
-                                        aria-expanded={roleExpanded}
-                                    >
-                                        <div className="min-w-0 flex-1">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <h2 className="font-semibold text-zinc-900 dark:text-white">{appRoleLabel(role.name)}</h2>
-                                                {systemRole ? (
-                                                    <span className="rounded-full bg-zinc-900 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white dark:bg-white dark:text-black">
-                                                        Sistema
-                                                    </span>
-                                                ) : null}
-                                            </div>
-                                            <p className="mt-0.5 font-mono text-xs text-zinc-500 dark:text-zinc-400">{role.name}</p>
-                                            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                                {usersCount === 0
-                                                    ? 'Nenhum usuário com este perfil.'
-                                                    : `${usersCount} usuário(es) com este perfil.`}
-                                                {roleSaving ? (
-                                                    <span className="text-teal-600 dark:text-teal-400"> · Salvando…</span>
-                                                ) : roleSaved ? (
-                                                    <span className="text-emerald-600 dark:text-emerald-400"> · Salvo</span>
-                                                ) : null}
-                                                {!roleExpanded ? (
-                                                    <span className="text-zinc-400">
-                                                        {' '}
-                                                        ·{' '}
-                                                        {activePermCount === 1
-                                                            ? '1 permissão ativa'
-                                                            : `${activePermCount} permissões ativas`}
-                                                    </span>
-                                                ) : null}
-                                            </p>
-                                        </div>
-                                        <ChevronDownIcon
-                                            className={`mt-0.5 h-5 w-5 shrink-0 text-zinc-400 transition-transform ${roleExpanded ? 'rotate-180' : ''}`}
-                                            aria-hidden
-                                        />
-                                    </button>
-                                    {canDelete && meta ? (
+                                    <div className="min-w-0 flex-1">
                                         <button
                                             type="button"
-                                            onClick={() => void handleDeleteRole(meta)}
-                                            className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-xs font-semibold text-red-800 hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200 dark:hover:bg-red-950/70"
+                                            onClick={() => toggleRoleExpanded(role.name)}
+                                            className="flex w-full min-w-0 cursor-pointer items-start justify-between gap-3 text-left"
+                                            aria-expanded={roleExpanded}
                                         >
-                                            <TrashIcon className="h-3.5 w-3.5" aria-hidden />
-                                            Excluir
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <h2 className="font-semibold text-zinc-900 dark:text-white">{appRoleLabel(role.name)}</h2>
+                                                    {systemRole ? (
+                                                        <span className="rounded-full bg-zinc-900 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white dark:bg-white dark:text-black">
+                                                            Sistema
+                                                        </span>
+                                                    ) : null}
+                                                </div>
+                                                <p className="mt-0.5 font-mono text-xs text-zinc-500 dark:text-zinc-400">{role.name}</p>
+                                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                                    {usersCount === 0
+                                                        ? 'Nenhum usuário com este perfil.'
+                                                        : `${usersCount} usuário(es) com este perfil.`}
+                                                    {roleSaving ? (
+                                                        <span className="text-teal-600 dark:text-teal-400"> · Salvando…</span>
+                                                    ) : roleSaved ? (
+                                                        <span className="text-emerald-600 dark:text-emerald-400"> · Salvo</span>
+                                                    ) : null}
+                                                    {!roleExpanded ? (
+                                                        <span className="text-zinc-400">
+                                                            {' '}
+                                                            ·{' '}
+                                                            {activePermCount === 1
+                                                                ? '1 permissão ativa'
+                                                                : `${activePermCount} permissões ativas`}
+                                                        </span>
+                                                    ) : null}
+                                                </p>
+                                            </div>
+                                            <ChevronDownIcon
+                                                className={`mt-0.5 h-5 w-5 shrink-0 text-zinc-400 transition-transform ${roleExpanded ? 'rotate-180' : ''}`}
+                                                aria-hidden
+                                            />
                                         </button>
-                                    ) : null}
+                                        {meta && (previewUsers.length > 0 || usersCount === 0) ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => setUsersModalRoleId(meta.id)}
+                                                className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-xl border border-transparent px-1 py-1 text-left transition hover:border-zinc-200 hover:bg-zinc-50 dark:hover:border-zinc-700 dark:hover:bg-zinc-800/60"
+                                                title="Gerenciar usuários deste perfil"
+                                            >
+                                                {previewUsers.length > 0 ? (
+                                                    <>
+                                                        <span className="flex -space-x-2">
+                                                            {previewUsers.map((u) => (
+                                                                <span
+                                                                    key={u.id}
+                                                                    className="inline-flex rounded-full ring-2 ring-white dark:ring-zinc-900"
+                                                                >
+                                                                    <UserListAvatar
+                                                                        name={u.name}
+                                                                        photoUrl={u.photo_url}
+                                                                        size="sm"
+                                                                        previewOnClick={false}
+                                                                    />
+                                                                </span>
+                                                            ))}
+                                                        </span>
+                                                        {usersCount > previewUsers.length ? (
+                                                            <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                                                                +{usersCount - previewUsers.length}
+                                                            </span>
+                                                        ) : null}
+                                                        <span className="text-[11px] font-semibold text-teal-800 dark:text-teal-200">
+                                                            Ver usuários
+                                                        </span>
+                                                    </>
+                                                ) : (
+                                                    <span className="text-[11px] font-semibold text-teal-800 dark:text-teal-200">
+                                                        Incluir primeiro usuário
+                                                    </span>
+                                                )}
+                                            </button>
+                                        ) : null}
+                                    </div>
+                                    <div className="flex shrink-0 flex-col items-stretch gap-2">
+                                        {meta ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => setUsersModalRoleId(meta.id)}
+                                                className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-teal-200 bg-teal-50 px-2.5 py-1.5 text-xs font-semibold text-teal-900 transition hover:bg-teal-100 dark:border-teal-800 dark:bg-teal-950/40 dark:text-teal-100 dark:hover:bg-teal-950/70"
+                                                title="Gerenciar usuários deste perfil"
+                                            >
+                                                <UsersIcon className="h-3.5 w-3.5" aria-hidden />
+                                                Usuários
+                                            </button>
+                                        ) : null}
+                                        {canDelete && meta ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => void handleDeleteRole(meta)}
+                                                className="inline-flex cursor-pointer items-center justify-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-xs font-semibold text-red-800 hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200 dark:hover:bg-red-950/70"
+                                            >
+                                                <TrashIcon className="h-3.5 w-3.5" aria-hidden />
+                                                Excluir
+                                            </button>
+                                        ) : null}
+                                    </div>
                                 </div>
 
                                 {roleExpanded ? (
                                 <div className="space-y-2 border-t border-zinc-100 px-6 pb-6 pt-4 dark:border-zinc-800 sm:px-8 sm:pb-8">
+                                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-zinc-200 bg-zinc-50/80 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-900/50">
+                                        <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                                            Permissões abaixo. Usuários do perfil ficam no botão Usuários.
+                                        </p>
+                                        {meta ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => setUsersModalRoleId(meta.id)}
+                                                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-teal-200 bg-white px-2.5 py-1 text-xs font-semibold text-teal-900 hover:bg-teal-50 dark:border-teal-800 dark:bg-zinc-950 dark:text-teal-100 dark:hover:bg-teal-950/40"
+                                            >
+                                                <UsersIcon className="h-3.5 w-3.5" aria-hidden />
+                                                Gerenciar usuários
+                                            </button>
+                                        ) : null}
+                                    </div>
                                     {filteredPermissionGroups.length === 0 ? (
                                         <p className="py-4 text-center text-sm text-zinc-500 dark:text-zinc-400">
                                             Nenhuma permissão corresponde à pesquisa.

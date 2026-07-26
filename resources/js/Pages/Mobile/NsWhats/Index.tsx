@@ -19,7 +19,6 @@ import NsWhatsNewChatPanel, {
     type ComposePerson,
     type DraftTarget,
 } from '@/Components/NsWhats/NsWhatsNewChatPanel';
-import NsWhatsIntroOverlay from '@/Components/NsWhats/NsWhatsIntroOverlay';
 import { FormEventHandler, useEffect, useRef, useState } from 'react';
 import {
     loadNsWhatsConversation,
@@ -449,8 +448,7 @@ export default function NsWhatsIndex({
     return (
         <MobileLayout flush>
             <Head title="NS Conecta" />
-            <div className="relative flex h-full min-h-0 overflow-hidden border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 md:rounded-none md:border-0">
-                <NsWhatsIntroOverlay />
+            <div className="flex h-full min-h-0 overflow-hidden border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 md:rounded-none md:border-0">
                 <aside
                     className={`flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 md:w-[20rem] md:shrink-0 md:border-r lg:w-[22rem] ${bottomNavClearance} ${
                         mobileShowList ? 'flex' : 'hidden md:flex'

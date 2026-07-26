@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Support\ListModalRedirect;
+use App\Models\User;
+use App\Support\MemberRoleAssignment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -31,7 +33,7 @@ class RoleController extends Controller
     public function index(Request $request): Response
     {
         $roles = Role::query()
-            ->with('permissions')
+            ->with(['permissions', 'users' => fn ($q) => $q->orderBy('name')->select(['users.id', 'users.name', 'users.email', 'users.photo_url'])])
             ->withCount('users')
             ->where('name', '!=', 'super_admin')
             ->orderByRaw("CASE WHEN name = 'admin' THEN 0 ELSE 1 END")
@@ -43,6 +45,12 @@ class RoleController extends Controller
                 'permissions' => $role->permissions->pluck('name')->values()->all(),
                 'users_count' => (int) $role->users_count,
                 'system_role' => in_array($role->name, self::SYSTEM_ROLE_NAMES, true),
+                'users' => $role->users->map(fn (User $user) => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'photo_url' => $user->photo_url,
+                ])->values()->all(),
             ]);
 
         $permissions = Permission::query()
@@ -55,9 +63,36 @@ class RoleController extends Controller
             ])
             ->values();
 
+        $candidateUsers = User::query()
+            ->with('roles:id,name')
+            ->whereDoesntHave('roles', fn ($q) => $q->where('name', 'super_admin'))
+            ->orderBy('name')
+            ->get(['id', 'name', 'email', 'photo_url'])
+            ->map(fn (User $user) => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'photo_url' => $user->photo_url,
+                'role_name' => (string) ($user->roles->pluck('name')->first() ?? ''),
+            ])
+            ->values();
+
+        $moveTargets = Role::query()
+            ->where('name', '!=', 'super_admin')
+            ->orderByRaw("CASE WHEN name = 'membro' THEN 0 WHEN name = 'admin' THEN 1 ELSE 2 END")
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (Role $role) => [
+                'name' => $role->name,
+                'label' => MemberRoleAssignment::label($role->name),
+            ])
+            ->values();
+
         return Inertia::render('Roles/Index', [
             'roles' => $roles,
             'permissions' => $permissions,
+            'candidateUsers' => $candidateUsers,
+            'moveTargets' => $moveTargets,
         ]);
     }
 
@@ -155,7 +190,7 @@ class RoleController extends Controller
         }
 
         if ($role->users()->exists()) {
-            return back()->with('error', 'Este perfil está atribuído a usuários. Altere o perfil em Voluntários antes de excluir.');
+            return back()->with('error', 'Este perfil está atribuído a usuários. Remova ou altere os usuários neste card antes de excluir.');
         }
 
         $role->delete();
@@ -163,5 +198,60 @@ class RoleController extends Controller
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         return redirect()->route('roles.index')->with('success', 'Perfil removido.');
+    }
+
+    public function attachUser(Request $request, Role $role): RedirectResponse
+    {
+        if ($role->name === 'super_admin') {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'user_id' => ['required', 'integer', 'exists:users,id'],
+        ]);
+
+        $target = User::query()->findOrFail((int) $validated['user_id']);
+        MemberRoleAssignment::syncUserRoleFromProfilesPage($request->user(), $target, $role->name);
+
+        return redirect()->route('roles.index')->with('success', 'Usuário incluído no perfil.');
+    }
+
+    public function updateUser(Request $request, Role $role, User $user): RedirectResponse
+    {
+        if ($role->name === 'super_admin') {
+            abort(404);
+        }
+
+        if (! $user->hasRole($role->name)) {
+            return redirect()->route('roles.index')->with('error', 'Este usuário não está neste perfil.');
+        }
+
+        $validated = $request->validate([
+            'role_name' => ['required', 'string', 'exists:roles,name'],
+        ]);
+
+        $next = (string) $validated['role_name'];
+        if ($next === $role->name) {
+            return redirect()->route('roles.index');
+        }
+
+        MemberRoleAssignment::syncUserRoleFromProfilesPage($request->user(), $user, $next);
+
+        return redirect()->route('roles.index')->with('success', 'Perfil do usuário atualizado.');
+    }
+
+    public function detachUser(Request $request, Role $role, User $user): RedirectResponse
+    {
+        if ($role->name === 'super_admin') {
+            abort(404);
+        }
+
+        if (! $user->hasRole($role->name)) {
+            return redirect()->route('roles.index')->with('error', 'Este usuário não está neste perfil.');
+        }
+
+        MemberRoleAssignment::clearToMemberFromProfilesPage($request->user(), $user);
+
+        return redirect()->route('roles.index')->with('success', 'Usuário removido deste perfil.');
     }
 }

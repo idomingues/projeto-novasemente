@@ -194,4 +194,64 @@ class RoleManagementTest extends TestCase
         $role->refresh();
         $this->assertTrue($role->hasPermissionTo('mission.view'));
     }
+
+    public function test_super_admin_can_attach_move_and_detach_role_users(): void
+    {
+        $this->seed();
+
+        $admin = User::query()->where('email', 'ivan@iresult.com.br')->first();
+        $this->assertNotNull($admin);
+        $this->actingAs($admin);
+
+        $mission = Role::query()->firstOrCreate(
+            ['name' => 'Missão', 'guard_name' => (string) config('auth.defaults.guard')],
+        );
+        $secretaria = Role::findByName('secretaria');
+        $this->assertNotNull($secretaria);
+
+        $member = User::factory()->create([
+            'email' => 'perfil.teste@example.com',
+            'name' => 'Perfil Teste',
+        ]);
+        $member->syncRoles(['membro']);
+
+        $this->post(route('roles.users.attach', $mission), ['user_id' => $member->id])
+            ->assertRedirect(route('roles.index'))
+            ->assertSessionHas('success');
+
+        $member->refresh();
+        $this->assertTrue($member->hasRole('Missão'));
+        $this->assertFalse($member->hasRole('membro'));
+
+        $this->patch(route('roles.users.update', [$mission, $member]), ['role_name' => 'secretaria'])
+            ->assertRedirect(route('roles.index'))
+            ->assertSessionHas('success');
+
+        $member->refresh();
+        $this->assertTrue($member->hasRole('secretaria'));
+        $this->assertFalse($member->hasRole('Missão'));
+
+        $this->delete(route('roles.users.detach', [$secretaria, $member]))
+            ->assertRedirect(route('roles.index'))
+            ->assertSessionHas('success');
+
+        $member->refresh();
+        $this->assertTrue($member->hasRole('membro'));
+        $this->assertFalse($member->hasRole('secretaria'));
+    }
+
+    public function test_roles_index_includes_users_payload(): void
+    {
+        $this->seed();
+
+        $admin = User::query()->where('email', 'ivan@iresult.com.br')->first();
+        $response = $this->actingAs($admin)->get(route('roles.index'));
+        $response->assertOk();
+        $roles = $response->inertiaProps('roles');
+        $this->assertIsArray($roles);
+        $this->assertNotEmpty($roles);
+        $this->assertArrayHasKey('users', $roles[0]);
+        $this->assertIsArray($response->inertiaProps('candidateUsers'));
+        $this->assertIsArray($response->inertiaProps('moveTargets'));
+    }
 }

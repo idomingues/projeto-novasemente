@@ -674,6 +674,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/roles/novo', [RoleController::class, 'store'])->name('roles.store')->middleware('role:super_admin');
     Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy')->middleware('role:super_admin');
     Route::post('/roles', [RoleController::class, 'update'])->name('roles.update')->middleware('role:super_admin');
+    Route::post('/roles/{role}/users', [RoleController::class, 'attachUser'])->name('roles.users.attach')->middleware('role:super_admin');
+    Route::patch('/roles/{role}/users/{user}', [RoleController::class, 'updateUser'])->name('roles.users.update')->middleware('role:super_admin');
+    Route::delete('/roles/{role}/users/{user}', [RoleController::class, 'detachUser'])->name('roles.users.detach')->middleware('role:super_admin');
 
     // Notícias
     Route::get('/news', [NewsController::class, 'index'])->name('news.index');

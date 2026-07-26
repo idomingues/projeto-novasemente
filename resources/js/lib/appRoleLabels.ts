@@ -6,7 +6,8 @@ export function appRoleLabel(roleName: string): string {
         pastor: 'Pastor',
         secretaria: 'Secretaria',
         lider_ministerio: 'Líder de ministério',
-        membro: 'Usuário',
+        financeiro: 'Financeiro',
+        membro: 'Usuário (app)',
     };
     return map[roleName] ?? roleName.replace(/_/g, ' ');
 }

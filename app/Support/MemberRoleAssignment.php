@@ -18,8 +18,10 @@ final class MemberRoleAssignment
             'super_admin' => 'Super administrador',
             'secretaria' => 'Secretaria',
             'pastor' => 'Pastor',
-            'membro' => 'Membro (app)',
-            default => $name,
+            'membro' => 'Usuário (app)',
+            'lider_ministerio' => 'Líder de ministério',
+            'financeiro' => 'Financeiro',
+            default => str_replace('_', ' ', $name),
         };
     }
 
@@ -90,6 +92,57 @@ final class MemberRoleAssignment
         }
 
         $target->syncRoles([$roleName]);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $target->syncRoleIdFromSpatieAssignments();
+    }
+
+    /**
+     * Atribuição na tela Perfis (só super administrador): aceita perfis customizados e legado.
+     */
+    public static function syncUserRoleFromProfilesPage(User $actor, User $target, string $roleName): void
+    {
+        if (! $actor->hasRole('super_admin')) {
+            abort(403, 'Apenas super administrador pode gerir usuários nesta tela.');
+        }
+
+        $roleName = trim($roleName);
+        if ($roleName === '' || $roleName === 'super_admin') {
+            abort(403, 'Perfil inválido.');
+        }
+
+        if ($target->hasRole('super_admin')) {
+            abort(403, 'Não é permitido alterar o perfil de um super administrador.');
+        }
+
+        $guard = (string) config('auth.defaults.guard');
+        if (! Role::query()->where('name', $roleName)->where('guard_name', $guard)->exists()) {
+            abort(422, 'Perfil inexistente.');
+        }
+
+        $target->syncRoles([$roleName]);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $target->syncRoleIdFromSpatieAssignments();
+    }
+
+    /**
+     * Remove o perfil de painel e deixa o usuário como membro (app), quando existir.
+     */
+    public static function clearToMemberFromProfilesPage(User $actor, User $target): void
+    {
+        if (! $actor->hasRole('super_admin')) {
+            abort(403, 'Apenas super administrador pode gerir usuários nesta tela.');
+        }
+
+        if ($target->hasRole('super_admin')) {
+            abort(403, 'Não é permitido alterar o perfil de um super administrador.');
+        }
+
+        $guard = (string) config('auth.defaults.guard');
+        $fallback = Role::query()->where('name', 'membro')->where('guard_name', $guard)->exists()
+            ? ['membro']
+            : [];
+
+        $target->syncRoles($fallback);
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         $target->syncRoleIdFromSpatieAssignments();
     }
