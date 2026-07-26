@@ -51,10 +51,13 @@ final class HomeModuleSpotlight
             $interval = 3;
         }
 
-        return [
+        $first = $items[0];
+
+        // Raiz espelha o 1º item para assets JS antigos em cache após deploy parcial.
+        return array_merge($first, [
             'interval_seconds' => $interval,
             'items' => $items,
-        ];
+        ]);
     }
 
     /**

@@ -27,6 +27,7 @@ class HomeModuleSpotlightTest extends TestCase
                 ->where('moduleSpotlight.items.0.id', 'ns_whats_2026_07')
                 ->where('moduleSpotlight.items.0.route', 'mobile.ns-whats.index')
                 ->where('moduleSpotlight.items.0.title', 'NS Whats')
+                ->where('moduleSpotlight.title', 'NS Whats')
                 ->where('moduleSpotlight.items.1.id', 'enquetes_2026_07')
                 ->where('moduleSpotlight.items.1.route', 'mobile.polls.index')
                 ->where('moduleSpotlight.items.1.title', 'Enquetes'));

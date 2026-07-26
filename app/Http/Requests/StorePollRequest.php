@@ -15,12 +15,15 @@ class StorePollRequest extends FormRequest
 
     public function rules(): array
     {
+        $isText = ($this->input('response_type') ?: Poll::RESPONSE_CHOICE) === Poll::RESPONSE_TEXT;
+
         return [
             'question' => ['required', 'string', 'max:500'],
             'allow_multiple' => ['nullable', 'boolean'],
+            'response_type' => ['required', 'string', Rule::in(array_keys(Poll::RESPONSE_TYPES))],
             'status' => ['required', 'string', Rule::in(array_keys(Poll::STATUSES))],
-            'options' => ['required', 'array', 'min:2', 'max:20'],
-            'options.*.label' => ['required', 'string', 'max:255'],
+            'options' => [$isText ? 'nullable' : 'required', 'array', $isText ? 'max:20' : 'min:2', 'max:20'],
+            'options.*.label' => [$isText ? 'nullable' : 'required', 'string', 'max:255'],
             'options.*.id' => ['nullable', 'integer'],
             'display_bg_color' => ['nullable', 'string', 'regex:/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/'],
             'display_font' => ['nullable', 'string', Rule::in(array_keys(Poll::DISPLAY_FONTS))],
@@ -42,6 +45,10 @@ class StorePollRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        if (! $this->filled('response_type')) {
+            $this->merge(['response_type' => Poll::RESPONSE_CHOICE]);
+        }
+
         if ($this->has('allow_multiple')) {
             $this->merge([
                 'allow_multiple' => filter_var($this->input('allow_multiple'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false,
@@ -58,6 +65,15 @@ class StorePollRequest extends FormRequest
             $this->merge([
                 'display_bg_color' => strtolower(trim((string) $this->input('display_bg_color'))),
             ]);
+        }
+
+        if (($this->input('response_type') ?: Poll::RESPONSE_CHOICE) === Poll::RESPONSE_TEXT) {
+            $this->merge([
+                'options' => [],
+                'display_enabled' => false,
+            ]);
+
+            return;
         }
 
         if (is_array($this->input('options'))) {

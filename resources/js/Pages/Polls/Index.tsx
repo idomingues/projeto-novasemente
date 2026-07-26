@@ -7,6 +7,7 @@ import Textarea from '@/Components/Textarea';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
+import SelectInput from '@/Components/SelectInput';
 import PageHeader from '@/Components/PageHeader';
 import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
 import ListCardIconActionButton from '@/Components/ListCard/ListCardIconActionButton';
@@ -38,12 +39,16 @@ type PollRow = {
     id: number;
     question: string;
     allow_multiple: boolean;
+    response_type?: 'choice' | 'text';
+    response_type_label?: string;
+    shows_results?: boolean;
     status: string;
     status_label: string;
     options_count: number;
     votes_count: number;
     options: PollOptionForm[];
-    results: PollResults;
+    results: PollResults | null;
+    text_answers?: { id: number; answer_text: string; user_name: string | null; created_at: string | null }[];
     created_at: string | null;
     public_token: string | null;
     public_url: string | null;
@@ -65,6 +70,7 @@ type DisplayLogoOption = {
 type Props = {
     polls: PollRow[];
     statuses: Record<string, string>;
+    responseTypes?: Record<string, string>;
     displayFonts: Record<string, string>;
     displayCharts: Record<string, string>;
     displayLogos: DisplayLogoOption[];
@@ -104,6 +110,7 @@ const sectionLabelClass =
 export default function Index({
     polls,
     statuses,
+    responseTypes = { choice: 'Múltipla escolha', text: 'Texto livre' },
     displayFonts,
     displayCharts,
     displayLogos,
@@ -120,6 +127,7 @@ export default function Index({
     const { data, setData, errors, reset, clearErrors, setError } = useForm({
         question: '',
         allow_multiple: false,
+        response_type: 'choice' as 'choice' | 'text',
         status: 'open',
         options: emptyOptions() as PollOptionForm[],
         display_bg_color: DEFAULT_BG,
@@ -167,16 +175,19 @@ export default function Index({
             setData({
                 question: poll.question,
                 allow_multiple: poll.allow_multiple,
+                response_type: poll.response_type === 'text' ? 'text' : 'choice',
                 status: poll.status,
                 options:
-                    poll.options.length >= 2
-                        ? poll.options.map((o) => ({ id: o.id ?? null, label: o.label }))
-                        : emptyOptions(),
+                    poll.response_type === 'text'
+                        ? []
+                        : poll.options.length >= 2
+                          ? poll.options.map((o) => ({ id: o.id ?? null, label: o.label }))
+                          : emptyOptions(),
                 display_bg_color: poll.display_bg_color || DEFAULT_BG,
                 display_font: poll.display_font || 'sans',
                 display_chart: poll.display_chart || 'bar',
                 display_logo: poll.display_logo || 'horizontal-color',
-                display_enabled: poll.display_enabled ?? true,
+                display_enabled: poll.response_type === 'text' ? false : (poll.display_enabled ?? true),
             });
         },
         [setData],
@@ -193,6 +204,7 @@ export default function Index({
         setData({
             question: '',
             allow_multiple: false,
+            response_type: 'choice',
             status: 'open',
             options: emptyOptions(),
             display_bg_color: DEFAULT_BG,
@@ -302,16 +314,20 @@ export default function Index({
             const payload = {
                 question: data.question,
                 allow_multiple: false,
+                response_type: data.response_type,
                 status: data.status,
-                options: data.options.map((o) => ({
-                    id: o.id ?? null,
-                    label: o.label,
-                })),
+                options:
+                    data.response_type === 'text'
+                        ? []
+                        : data.options.map((o) => ({
+                              id: o.id ?? null,
+                              label: o.label,
+                          })),
                 display_bg_color: data.display_bg_color,
                 display_font: data.display_font,
                 display_chart: data.display_chart,
                 display_logo: data.display_logo,
-                display_enabled: data.display_enabled,
+                display_enabled: data.response_type === 'text' ? false : data.display_enabled,
             };
             const outcome = await save(
                 isEditing,
@@ -339,6 +355,7 @@ export default function Index({
                 setData({
                     question: '',
                     allow_multiple: false,
+                    response_type: 'choice',
                     status: 'open',
                     options: emptyOptions(),
                     display_bg_color: DEFAULT_BG,
@@ -584,8 +601,51 @@ export default function Index({
                                     disabled={!canManage}
                                 />
                                 <InputError message={errors.question} className="mt-1" />
+
+                                <InputLabel
+                                    htmlFor="poll_response_type"
+                                    value="Tipo de resposta"
+                                    className={`${sectionLabelClass} mt-4`}
+                                />
+                                <SelectInput
+                                    id="poll_response_type"
+                                    className="mt-2 w-full"
+                                    value={data.response_type}
+                                    disabled={!canManage}
+                                    onChange={(e) => {
+                                        const next = e.target.value === 'text' ? 'text' : 'choice';
+                                        setData({
+                                            ...data,
+                                            response_type: next,
+                                            options:
+                                                next === 'text'
+                                                    ? []
+                                                    : data.options.length >= 2
+                                                      ? data.options
+                                                      : emptyOptions(),
+                                            display_enabled: next === 'text' ? false : data.display_enabled,
+                                        });
+                                    }}
+                                >
+                                    {Object.entries(responseTypes).map(([value, label]) => (
+                                        <option key={value} value={value}>
+                                            {label}
+                                        </option>
+                                    ))}
+                                </SelectInput>
+                                {data.response_type === 'text' ? (
+                                    <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                                        Texto livre (até 2 linhas). Não há resultado público — as respostas ficam só no
+                                        painel.
+                                    </p>
+                                ) : null}
                             </section>
 
+                            {data.response_type === 'text' ? (
+                                <section className="rounded-3xl border border-dashed border-zinc-200 bg-zinc-50/60 p-4 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-300 sm:p-5">
+                                    Sem opções de múltipla escolha. O membro escreve a sugestão no app.
+                                </section>
+                            ) : (
                             <section className="rounded-3xl border border-zinc-200/80 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 sm:p-5">
                                 <InputLabel value="Opções" className={sectionLabelClass} />
                                 <div className="mt-3 space-y-2.5">
@@ -651,10 +711,12 @@ export default function Index({
                                     className="mt-2"
                                 />
                             </section>
+                            )}
 
                             <section className="rounded-3xl border border-zinc-200/80 bg-white px-4 py-4 text-sm text-zinc-600 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 sm:px-5">
-                                Cada pessoa pode votar só uma vez. Visitantes sem login ficam
-                                limitados pelo IP.
+                                {data.response_type === 'text'
+                                    ? 'Cada pessoa envia uma sugestão (até duas linhas). Não há gráfico de resultado.'
+                                    : 'Cada pessoa pode votar só uma vez. Visitantes sem login ficam limitados pelo IP.'}
                             </section>
                             <InputError message={errors.allow_multiple} className="mt-1" />
 
@@ -1208,7 +1270,29 @@ export default function Index({
 
                     {isEditing && modalTab === 'resultado' && (
                         <div className="space-y-3">
-                            {editingPoll?.results ? (
+                            {editingPoll?.response_type === 'text' ? (
+                                (editingPoll.text_answers?.length ?? 0) > 0 ? (
+                                    <ul className="space-y-2">
+                                        {editingPoll.text_answers?.map((row) => (
+                                            <li
+                                                key={row.id}
+                                                className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900"
+                                            >
+                                                <p className="whitespace-pre-wrap text-sm text-zinc-800 dark:text-zinc-100">
+                                                    {row.answer_text}
+                                                </p>
+                                                <p className="mt-1 text-[11px] text-zinc-500">
+                                                    {row.user_name ?? 'Anônimo'}
+                                                </p>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <p className="rounded-3xl border border-dashed border-zinc-300 bg-white px-4 py-10 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
+                                        Ainda não há sugestões nesta enquete. Não há gráfico de resultado.
+                                    </p>
+                                )
+                            ) : editingPoll?.results ? (
                                 <PollResultsCard
                                     question={editingPoll.question}
                                     allowMultiple={false}

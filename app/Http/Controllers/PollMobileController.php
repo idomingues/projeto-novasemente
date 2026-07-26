@@ -69,7 +69,8 @@ class PollMobileController extends Controller
 
         $ip = PollVoting::clientIp($request);
         $hasVoted = PollVoting::hasVoted($poll, $user, $ip);
-        $canSeeResults = $hasVoted || ($user->can('polls.manage') && (int) $poll->church_id === (int) $this->currentChurchId());
+        $canSeeResults = $poll->showsResults()
+            && ($hasVoted || ($user->can('polls.manage') && (int) $poll->church_id === (int) $this->currentChurchId()));
 
         return Inertia::render('Mobile/Polls/Show', [
             'poll' => PollPresenter::forMobileShow($poll, $user, $canSeeResults, $hasVoted),
@@ -83,14 +84,20 @@ class PollMobileController extends Controller
         $this->assertSameChurch($poll);
 
         try {
-            PollVoting::cast($poll, $request, $request->validated('option_ids'));
+            if ($poll->isTextResponse()) {
+                PollVoting::castText($poll, $request, (string) $request->validated('answer_text'));
+                $message = 'Sugestão enviada! Obrigado pela contribuição.';
+            } else {
+                PollVoting::cast($poll, $request, $request->validated('option_ids'));
+                $message = 'Resposta enviada! Confira o resultado.';
+            }
         } catch (ValidationException $e) {
             throw $e;
         }
 
         return redirect()
             ->route('mobile.polls.show', $poll)
-            ->with('success', 'Resposta enviada! Confira o resultado.');
+            ->with('success', $message);
     }
 
     private function assertSameChurch(Poll $poll): void

@@ -8,6 +8,8 @@ type PollListItem = {
     id: number;
     question: string;
     allow_multiple: boolean;
+    response_type?: 'choice' | 'text';
+    shows_results?: boolean;
     status: string;
     status_label: string;
     has_voted: boolean;
@@ -29,7 +31,7 @@ export default function MobilePollsIndex({ polls }: Props) {
                         Enquetes
                     </h1>
                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                        Ao responder, você vê o resultado final.
+                        Responda às perguntas da congregação. Enquetes de texto livre não mostram resultado.
                     </p>
                 </div>
 
@@ -40,7 +42,10 @@ export default function MobilePollsIndex({ polls }: Props) {
                     </div>
                 ) : (
                     <ul className="space-y-3">
-                        {polls.map((poll) => (
+                        {polls.map((poll) => {
+                            const isText = poll.response_type === 'text';
+
+                            return (
                             <li key={poll.id}>
                                 <Link
                                     href={route('mobile.polls.show', poll.id)}
@@ -61,16 +66,20 @@ export default function MobilePollsIndex({ polls }: Props) {
                                         </span>
                                     </div>
                                     <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                                        {poll.options_count} opções ·{' '}
-                                        {poll.has_voted ? 'Você já respondeu' : '1 voto por pessoa'}
+                                        {isText
+                                            ? 'Texto livre · sem resultado público'
+                                            : `${poll.options_count} opções · ${
+                                                  poll.has_voted ? 'Você já respondeu' : '1 voto por pessoa'
+                                              }`}
                                         {poll.status !== 'open' ? ` · ${poll.status_label}` : ''}
                                     </p>
-                                    {poll.has_voted && poll.results && (
+                                    {!isText && poll.has_voted && poll.results && (
                                         <PollCardResults results={poll.results} />
                                     )}
                                 </Link>
                             </li>
-                        ))}
+                            );
+                        })}
                     </ul>
                 )}
             </div>

@@ -47,6 +47,11 @@ class PollsLaunchSeeder extends Seeder
                 'Direção',
             ],
         ],
+        [
+            'question' => 'O que você gostaria de encontrar em nosso App?',
+            'response_type' => Poll::RESPONSE_TEXT,
+            'options' => [],
+        ],
     ];
 
     public function run(): void
@@ -94,12 +99,15 @@ class PollsLaunchSeeder extends Seeder
                 $poll->fill([
                     'created_by' => $poll->created_by ?: $creatorId,
                     'allow_multiple' => false,
+                    'response_type' => $item['response_type'] ?? Poll::RESPONSE_CHOICE,
                     'status' => Poll::STATUS_OPEN,
                     'display_bg_color' => $poll->display_bg_color ?: '#0f172a',
                     'display_font' => $poll->display_font ?: 'sans',
                     'display_chart' => $poll->display_chart ?: 'bar',
                     'display_logo' => $poll->display_logo ?: 'horizontal-color',
-                    'display_enabled' => true,
+                    'display_enabled' => ($item['response_type'] ?? Poll::RESPONSE_CHOICE) === Poll::RESPONSE_TEXT
+                        ? false
+                        : true,
                 ]);
                 $poll->save();
                 $poll->ensurePublicToken();

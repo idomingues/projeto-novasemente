@@ -6,7 +6,7 @@ import {
     SparklesIcon,
 } from '@heroicons/react/24/outline';
 import type { ComponentType, SVGProps } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 type MenuIcon = ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
 
@@ -23,8 +23,18 @@ export type HomeModuleSpotlightItem = {
 };
 
 export type HomeModuleSpotlightPayload = {
-    interval_seconds: number;
-    items: HomeModuleSpotlightItem[];
+    interval_seconds?: number;
+    items?: HomeModuleSpotlightItem[];
+    /** Formato antigo (1 campanha no raiz) — ainda aceito para não quebrar deploy parcial. */
+    id?: string;
+    feature_key?: string | null;
+    route?: string;
+    href?: string;
+    badge?: string;
+    title?: string;
+    subtitle?: string;
+    cta?: string;
+    icon_key?: string;
 };
 
 const ICONS: Record<string, MenuIcon> = {
@@ -35,11 +45,61 @@ const ICONS: Record<string, MenuIcon> = {
 
 type Props = {
     spotlight: HomeModuleSpotlightPayload;
+    isFeatureEnabled?: (featureKey: string) => boolean;
 };
 
-export default function HomeModuleSpotlightBanner({ spotlight }: Props) {
-    const items = spotlight.items ?? [];
-    const intervalMs = Math.max(3, spotlight.interval_seconds || 6) * 1000;
+function normalizeSpotlight(spotlight: HomeModuleSpotlightPayload): {
+    interval_seconds: number;
+    items: HomeModuleSpotlightItem[];
+} {
+    const interval = Math.max(3, Number(spotlight.interval_seconds ?? 6) || 6);
+
+    if (Array.isArray(spotlight.items) && spotlight.items.length > 0) {
+        return {
+            interval_seconds: interval,
+            items: spotlight.items.filter((item) => Boolean(item?.href) && Boolean(item?.title)),
+        };
+    }
+
+    // Payload legado: um único destaque no objeto raiz.
+    if (spotlight.href && spotlight.title) {
+        return {
+            interval_seconds: interval,
+            items: [
+                {
+                    id: String(spotlight.id ?? 'legacy-spotlight'),
+                    feature_key: spotlight.feature_key ?? null,
+                    route: String(spotlight.route ?? ''),
+                    href: String(spotlight.href),
+                    badge: String(spotlight.badge ?? 'Em destaque'),
+                    title: String(spotlight.title),
+                    subtitle: String(spotlight.subtitle ?? ''),
+                    cta: String(spotlight.cta ?? 'Abrir'),
+                    icon_key: spotlight.icon_key,
+                },
+            ],
+        };
+    }
+
+    return { interval_seconds: interval, items: [] };
+}
+
+export default function HomeModuleSpotlightBanner({ spotlight, isFeatureEnabled }: Props) {
+    const normalized = useMemo(() => {
+        const base = normalizeSpotlight(spotlight);
+        const items = base.items.filter((item) => {
+            if (!item.feature_key || !isFeatureEnabled) {
+                return true;
+            }
+
+            return isFeatureEnabled(item.feature_key);
+        });
+
+        return { interval_seconds: base.interval_seconds, items };
+    }, [spotlight, isFeatureEnabled]);
+
+    const items = normalized.items;
+    const intervalMs = normalized.interval_seconds * 1000;
     const [index, setIndex] = useState(0);
     const [paused, setPaused] = useState(false);
 
@@ -81,7 +141,7 @@ export default function HomeModuleSpotlightBanner({ spotlight }: Props) {
         >
             <Link
                 href={active.href}
-                className="group relative flex cursor-pointer items-center gap-4 overflow-hidden rounded-2xl bg-[#f5f1e9] px-4 py-4 text-left shadow-sm ring-1 ring-emerald-900/10 transition hover:bg-[#efe9df] active:scale-[0.995] dark:bg-emerald-950 dark:ring-emerald-800/60 dark:hover:bg-emerald-900 sm:px-5"
+                className="group relative flex cursor-pointer items-center gap-3 overflow-hidden rounded-2xl bg-[#f5f1e9] px-4 py-4 text-left shadow-sm ring-1 ring-emerald-900/10 transition hover:bg-[#efe9df] active:scale-[0.995] dark:bg-emerald-950 dark:ring-emerald-800/60 dark:hover:bg-emerald-900 sm:gap-4 sm:px-5"
             >
                 <span
                     className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-emerald-600 dark:bg-emerald-400"
@@ -90,7 +150,7 @@ export default function HomeModuleSpotlightBanner({ spotlight }: Props) {
 
                 <div
                     key={active.id}
-                    className="flex min-w-0 flex-1 items-center gap-4 transition-opacity duration-500 ease-out"
+                    className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4"
                 >
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-700/10 text-emerald-800 dark:bg-emerald-400/15 dark:text-emerald-200">
                         <Icon className="h-5 w-5" aria-hidden strokeWidth={1.75} />
@@ -98,20 +158,20 @@ export default function HomeModuleSpotlightBanner({ spotlight }: Props) {
 
                     <div className="min-w-0 flex-1">
                         <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">
-                            {active.badge}
+                            {active.badge || 'Em destaque'}
                         </p>
-                        <h2 className="mt-0.5 text-[17px] font-semibold leading-tight tracking-tight text-emerald-950 dark:text-emerald-50">
+                        <h2 className="mt-0.5 truncate text-[17px] font-semibold leading-tight tracking-tight text-emerald-950 dark:text-emerald-50">
                             {active.title}
                         </h2>
                         {active.subtitle ? (
-                            <p className="mt-0.5 text-[13px] leading-snug text-emerald-900/65 dark:text-emerald-100/70">
+                            <p className="mt-0.5 line-clamp-2 text-[13px] leading-snug text-emerald-900/70 dark:text-emerald-100/75">
                                 {active.subtitle}
                             </p>
                         ) : null}
                     </div>
 
                     <span className="inline-flex shrink-0 items-center gap-0.5 self-center text-[13px] font-medium text-emerald-800 transition group-hover:text-emerald-950 dark:text-emerald-200 dark:group-hover:text-emerald-50">
-                        <span className="hidden sm:inline">{active.cta}</span>
+                        <span className="hidden sm:inline">{active.cta || 'Abrir'}</span>
                         <ChevronRightIcon
                             className="h-4 w-4 transition group-hover:translate-x-0.5"
                             aria-hidden

@@ -21,6 +21,9 @@ final class PollPresenter
             'id' => $poll->id,
             'question' => $poll->question,
             'allow_multiple' => false,
+            'response_type' => $poll->isTextResponse() ? Poll::RESPONSE_TEXT : Poll::RESPONSE_CHOICE,
+            'response_type_label' => Poll::RESPONSE_TYPES[$poll->isTextResponse() ? Poll::RESPONSE_TEXT : Poll::RESPONSE_CHOICE],
+            'shows_results' => $poll->showsResults(),
             'status' => $poll->status,
             'status_label' => Poll::STATUSES[$poll->status] ?? $poll->status,
             'options_count' => (int) $optionCount,
@@ -41,14 +44,17 @@ final class PollPresenter
         ]);
 
         $base = self::forAdminList($poll);
-        $base['options'] = $poll->options->map(fn ($option) => [
-            'id' => $option->id,
-            'label' => $option->label,
-            'sort_order' => (int) $option->sort_order,
-        ])->values()->all();
-        $base['results'] = self::resultsPayload($poll, null, true);
+        $base['options'] = $poll->isTextResponse()
+            ? []
+            : $poll->options->map(fn ($option) => [
+                'id' => $option->id,
+                'label' => $option->label,
+                'sort_order' => (int) $option->sort_order,
+            ])->values()->all();
+        $base['results'] = $poll->showsResults() ? self::resultsPayload($poll, null, true) : null;
+        $base['text_answers'] = $poll->isTextResponse() ? self::textAnswersPayload($poll) : [];
         $base['public_token'] = $poll->public_token;
-        $base['public_url'] = $poll->public_token
+        $base['public_url'] = $poll->public_token && $poll->showsResults()
             ? route('polls.display', ['token' => $poll->public_token])
             : null;
         $base['vote_url'] = $poll->public_token
@@ -59,7 +65,7 @@ final class PollPresenter
         $base['display_chart'] = $poll->display_chart ?: 'bar';
         $base['display_logo'] = $poll->display_logo ?: 'horizontal-color';
         $base['display_logo_url'] = Poll::displayLogoPath($poll->display_logo ?: 'horizontal-color');
-        $base['display_enabled'] = (bool) $poll->display_enabled;
+        $base['display_enabled'] = (bool) $poll->display_enabled && $poll->showsResults();
 
         return $base;
     }
@@ -98,14 +104,17 @@ final class PollPresenter
             'id' => $poll->id,
             'question' => $poll->question,
             'allow_multiple' => false,
+            'response_type' => $poll->isTextResponse() ? Poll::RESPONSE_TEXT : Poll::RESPONSE_CHOICE,
+            'shows_results' => $poll->showsResults(),
             'status' => $poll->status,
             'status_label' => Poll::STATUSES[$poll->status] ?? $poll->status,
             'has_voted' => $hasVoted,
             'options_count' => (int) ($poll->options_count ?? $poll->options()->count()),
             'results' => null,
+            'my_answer_text' => null,
         ];
 
-        if ($hasVoted) {
+        if ($hasVoted && $poll->showsResults()) {
             $payload['results'] = self::resultsPayload($poll, null, false);
         }
 
@@ -121,6 +130,8 @@ final class PollPresenter
             'options' => fn ($q) => $q->orderBy('sort_order')->orderBy('id'),
         ]);
 
+        $includeResults = $includeResults && $poll->showsResults();
+
         if ($includeResults) {
             $poll->loadMissing([
                 'options.votes' => fn ($q) => $q->orderBy('created_at')->with('user:id,name,photo_url'),
@@ -129,34 +140,46 @@ final class PollPresenter
 
         $viewerId = $viewer?->id;
         $selectedOptionIds = [];
-        if ($includeResults) {
+        $myAnswerText = null;
+        $voted = $hasVoted ?? false;
+
+        if ($viewerId !== null || $voted) {
             $voteQuery = $poll->votes();
             if ($viewerId) {
                 $voteQuery->where(function ($q) use ($viewerId) {
                     $q->where('user_id', $viewerId)->orWhere('voter_key', 'u:'.$viewerId);
                 });
             }
-            $selectedOptionIds = $voteQuery
-                ->pluck('poll_option_id')
-                ->map(fn ($id) => (int) $id)
-                ->all();
+            $myVote = $voteQuery->latest('id')->first();
+            if ($myVote) {
+                $voted = true;
+                if ($poll->isTextResponse()) {
+                    $myAnswerText = $myVote->answer_text;
+                } else {
+                    $selectedOptionIds = [(int) $myVote->poll_option_id];
+                }
+            }
         }
-
-        $voted = $hasVoted ?? $includeResults;
 
         return [
             'id' => $poll->id,
             'question' => $poll->question,
             'allow_multiple' => false,
+            'response_type' => $poll->isTextResponse() ? Poll::RESPONSE_TEXT : Poll::RESPONSE_CHOICE,
+            'shows_results' => $poll->showsResults(),
+            'text_answer_max' => Poll::TEXT_ANSWER_MAX,
             'status' => $poll->status,
             'status_label' => Poll::STATUSES[$poll->status] ?? $poll->status,
             'is_open' => $poll->isOpen(),
             'has_voted' => $voted,
-            'options' => $poll->options->map(fn ($option) => [
-                'id' => $option->id,
-                'label' => $option->label,
-            ])->values()->all(),
+            'options' => $poll->isTextResponse()
+                ? []
+                : $poll->options->map(fn ($option) => [
+                    'id' => $option->id,
+                    'label' => $option->label,
+                ])->values()->all(),
             'selected_option_ids' => $selectedOptionIds,
+            'my_answer_text' => $myAnswerText,
             'results' => $includeResults ? self::resultsPayload($poll, $viewerId, true) : null,
         ];
     }
@@ -166,48 +189,30 @@ final class PollPresenter
      */
     public static function forPublicVote(Poll $poll, ?User $viewer, bool $hasVoted, string $ip): array
     {
-        $poll->loadMissing([
-            'options' => fn ($q) => $q->orderBy('sort_order')->orderBy('id'),
-        ]);
+        $mobile = self::forMobileShow($poll, $viewer, $hasVoted && $poll->showsResults(), $hasVoted);
 
-        if ($hasVoted) {
-            $poll->loadMissing([
-                'options.votes' => fn ($q) => $q->orderBy('created_at')->with('user:id,name,photo_url'),
-            ]);
-        }
+        return $mobile;
+    }
 
-        $viewerId = $viewer?->id;
-        $selectedOptionIds = [];
-        if ($hasVoted) {
-            $selectedOptionIds = $poll->votes()
-                ->where(function ($q) use ($viewerId, $ip) {
-                    if ($viewerId) {
-                        $q->where('user_id', $viewerId)->orWhere('voter_key', 'u:'.$viewerId);
-                    } else {
-                        $q->where('voter_ip', $ip)
-                            ->orWhere('voter_key', 'ip:'.hash('sha256', $ip));
-                    }
-                })
-                ->pluck('poll_option_id')
-                ->map(fn ($id) => (int) $id)
-                ->all();
-        }
-
-        return [
-            'id' => $poll->id,
-            'question' => $poll->question,
-            'allow_multiple' => false,
-            'status' => $poll->status,
-            'status_label' => Poll::STATUSES[$poll->status] ?? $poll->status,
-            'is_open' => $poll->isOpen(),
-            'has_voted' => $hasVoted,
-            'options' => $poll->options->map(fn ($option) => [
-                'id' => $option->id,
-                'label' => $option->label,
-            ])->values()->all(),
-            'selected_option_ids' => $selectedOptionIds,
-            'results' => $hasVoted ? self::resultsPayload($poll, $viewerId, true) : null,
-        ];
+    /**
+     * @return list<array{id: int, answer_text: string, user_name: string|null, created_at: string|null}>
+     */
+    public static function textAnswersPayload(Poll $poll): array
+    {
+        return $poll->votes()
+            ->with('user:id,name')
+            ->whereNotNull('answer_text')
+            ->orderByDesc('id')
+            ->limit(200)
+            ->get()
+            ->map(fn ($vote) => [
+                'id' => (int) $vote->id,
+                'answer_text' => (string) $vote->answer_text,
+                'user_name' => $vote->user?->name,
+                'created_at' => $vote->created_at?->toIso8601String(),
+            ])
+            ->values()
+            ->all();
     }
 
     /**

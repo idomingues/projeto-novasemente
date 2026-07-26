@@ -41,6 +41,7 @@ class PollController extends Controller
         return Inertia::render('Polls/Index', [
             'polls' => $polls,
             'statuses' => Poll::STATUSES,
+            'responseTypes' => Poll::RESPONSE_TYPES,
             'displayFonts' => Poll::DISPLAY_FONTS,
             'displayCharts' => Poll::DISPLAY_CHARTS,
             'displayLogos' => collect(Poll::DISPLAY_LOGOS)->map(fn (string $label, string $key) => [
@@ -67,17 +68,22 @@ class PollController extends Controller
                 'created_by' => $request->user()?->id,
                 'question' => $data['question'],
                 'allow_multiple' => false,
+                'response_type' => $data['response_type'] ?? Poll::RESPONSE_CHOICE,
                 'status' => $data['status'],
                 'display_bg_color' => $data['display_bg_color'] ?? '#0f172a',
                 'display_font' => $data['display_font'] ?? 'sans',
                 'display_chart' => $data['display_chart'] ?? 'bar',
                 'display_logo' => $data['display_logo'] ?? 'horizontal-color',
-                'display_enabled' => array_key_exists('display_enabled', $data)
-                    ? (bool) $data['display_enabled']
-                    : true,
+                'display_enabled' => ($data['response_type'] ?? Poll::RESPONSE_CHOICE) === Poll::RESPONSE_TEXT
+                    ? false
+                    : (array_key_exists('display_enabled', $data)
+                        ? (bool) $data['display_enabled']
+                        : true),
             ]);
 
-            $this->syncOptions($poll, $data['options']);
+            if (($data['response_type'] ?? Poll::RESPONSE_CHOICE) !== Poll::RESPONSE_TEXT) {
+                $this->syncOptions($poll, $data['options'] ?? []);
+            }
 
             return $poll;
         });
@@ -97,17 +103,24 @@ class PollController extends Controller
             $poll->update([
                 'question' => $data['question'],
                 'allow_multiple' => false,
+                'response_type' => $data['response_type'] ?? Poll::RESPONSE_CHOICE,
                 'status' => $data['status'],
                 'display_bg_color' => $data['display_bg_color'] ?? $poll->display_bg_color ?? '#0f172a',
                 'display_font' => $data['display_font'] ?? $poll->display_font ?? 'sans',
                 'display_chart' => $data['display_chart'] ?? $poll->display_chart ?? 'bar',
                 'display_logo' => $data['display_logo'] ?? $poll->display_logo ?? 'horizontal-color',
-                'display_enabled' => array_key_exists('display_enabled', $data)
-                    ? (bool) $data['display_enabled']
-                    : (bool) $poll->display_enabled,
+                'display_enabled' => ($data['response_type'] ?? Poll::RESPONSE_CHOICE) === Poll::RESPONSE_TEXT
+                    ? false
+                    : (array_key_exists('display_enabled', $data)
+                        ? (bool) $data['display_enabled']
+                        : (bool) $poll->display_enabled),
             ]);
 
-            $this->syncOptions($poll, $data['options']);
+            if (($data['response_type'] ?? Poll::RESPONSE_CHOICE) === Poll::RESPONSE_TEXT) {
+                $poll->options()->delete();
+            } else {
+                $this->syncOptions($poll, $data['options'] ?? []);
+            }
         });
 
         return ListModalRedirect::toIndexEdit('polls.index', $poll, 'Enquete atualizada com sucesso!');

@@ -34,14 +34,20 @@ class PollPublicVoteController extends Controller
         $poll = $this->resolveOpenPoll($token);
 
         try {
-            PollVoting::cast($poll, $request, $request->validated('option_ids'));
+            if ($poll->isTextResponse()) {
+                PollVoting::castText($poll, $request, (string) $request->validated('answer_text'));
+                $message = 'Sugestão enviada! Obrigado pela contribuição.';
+            } else {
+                PollVoting::cast($poll, $request, $request->validated('option_ids'));
+                $message = 'Resposta enviada! Confira o resultado.';
+            }
         } catch (ValidationException $e) {
             throw $e;
         }
 
         return redirect()
             ->route('polls.vote', ['token' => $poll->public_token])
-            ->with('success', 'Resposta enviada! Confira o resultado.');
+            ->with('success', $message);
     }
 
     private function resolveOpenPoll(string $token): Poll

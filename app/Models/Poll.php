@@ -49,6 +49,18 @@ class Poll extends Model
         'wordmark-white' => 'Só texto',
     ];
 
+    public const RESPONSE_CHOICE = 'choice';
+
+    public const RESPONSE_TEXT = 'text';
+
+    public const RESPONSE_TYPES = [
+        self::RESPONSE_CHOICE => 'Múltipla escolha',
+        self::RESPONSE_TEXT => 'Texto livre',
+    ];
+
+    /** ~2 linhas curtas no celular. */
+    public const TEXT_ANSWER_MAX = 160;
+
     public static function displayLogoPath(?string $key): ?string
     {
         if ($key === null || $key === '' || $key === 'none') {
@@ -67,6 +79,7 @@ class Poll extends Model
         'created_by',
         'question',
         'allow_multiple',
+        'response_type',
         'status',
         'public_token',
         'display_bg_color',
@@ -89,6 +102,9 @@ class Poll extends Model
         static::creating(function (Poll $poll) {
             if (blank($poll->public_token)) {
                 $poll->public_token = self::generatePublicToken();
+            }
+            if (blank($poll->response_type)) {
+                $poll->response_type = self::RESPONSE_CHOICE;
             }
             if (blank($poll->display_bg_color)) {
                 $poll->display_bg_color = '#0f172a';
@@ -150,6 +166,16 @@ class Poll extends Model
     public function isOpen(): bool
     {
         return $this->status === self::STATUS_OPEN;
+    }
+
+    public function isTextResponse(): bool
+    {
+        return ($this->response_type ?: self::RESPONSE_CHOICE) === self::RESPONSE_TEXT;
+    }
+
+    public function showsResults(): bool
+    {
+        return ! $this->isTextResponse();
     }
 
     public function userHasVoted(?int $userId): bool

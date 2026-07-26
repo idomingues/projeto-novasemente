@@ -496,15 +496,8 @@ export default function MobileHome({
                     <SabbathHomeBanner banner={sabbathBanner} appUrl={appUrl} />
                 ) : null}
 
-                {moduleSpotlight && moduleSpotlight.items.length > 0 ? (
-                    <HomeModuleSpotlightBanner
-                        spotlight={{
-                            ...moduleSpotlight,
-                            items: moduleSpotlight.items.filter(
-                                (item) => !item.feature_key || isEnabled(item.feature_key),
-                            ),
-                        }}
-                    />
+                {moduleSpotlight ? (
+                    <HomeModuleSpotlightBanner spotlight={moduleSpotlight} isFeatureEnabled={isEnabled} />
                 ) : null}
 
                 <HomeFeaturedWeek items={featuredItems} />
