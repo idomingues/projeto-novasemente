@@ -65,7 +65,7 @@ class TalentConnectionController extends Controller
 
     private function mapListing(TalentListing $listing, ?User $viewer = null, bool $detail = false): array
     {
-        $listing->loadMissing(['author:id,name', 'category:id,name', 'church:id,name']);
+        $listing->loadMissing(['author:id,name,photo_url', 'category:id,name', 'church:id,name']);
 
         $isOwner = $viewer !== null && $listing->user_id === $viewer->id;
         $data = [
@@ -81,6 +81,7 @@ class TalentConnectionController extends Controller
             'allows_negotiation' => $listing->allows_negotiation,
             'photo_url' => $listing->photo_url,
             'author_name' => $listing->author?->name,
+            'author_photo_url' => $listing->author?->photo_url,
             'church_name' => $listing->church?->name,
             'created_at' => $listing->created_at?->toIso8601String(),
             'is_owner' => $isOwner,
@@ -115,7 +116,7 @@ class TalentConnectionController extends Controller
         $churchId = $this->talents->resolveChurchId($request);
 
         $query = TalentListing::query()
-            ->with(['author:id,name', 'category:id,name'])
+            ->with(['author:id,name,photo_url', 'category:id,name'])
             ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
             ->where('status', TalentListing::STATUS_APPROVED);
@@ -228,7 +229,7 @@ class TalentConnectionController extends Controller
         $churchId = $this->talents->resolveChurchId($request);
 
         $asInterested = TalentInterest::query()
-            ->with(['listing.category', 'listing.author:id,name'])
+            ->with(['listing.category', 'listing.author:id,name,photo_url'])
             ->where('user_id', $user->id)
             ->whereHas('listing', fn ($q) => $churchId !== null ? $q->where('church_id', $churchId) : $q->whereRaw('1 = 0'))
             ->orderByDesc('created_at')

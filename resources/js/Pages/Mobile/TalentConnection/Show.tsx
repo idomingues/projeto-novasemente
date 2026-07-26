@@ -11,6 +11,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import TalentListingContactPanel, {
     type TalentContactChannel,
 } from '@/Components/Talents/TalentListingContactPanel';
+import UserListAvatar from '@/Components/UserListAvatar';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { FormEventHandler, useState } from 'react';
 
@@ -27,6 +28,7 @@ interface Listing {
     allows_negotiation: boolean;
     photo_url: string | null;
     author_name: string | null;
+    author_photo_url: string | null;
     author_locality: string | null;
     church_name: string | null;
     can_express_interest: boolean;
@@ -101,14 +103,21 @@ export default function TalentConnectionShow({ listing, reportReasons }: Props) 
                     <TalentListingContactPanel channels={listing.contact_channels} isExample={listing.is_example} />
                 ) : null}
 
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-                    <p className="text-sm font-medium text-zinc-500">Membro</p>
-                    <p className="text-lg font-semibold text-zinc-900 dark:text-white">{listing.author_name}</p>
-                    {(listing.author_locality || listing.church_name) && (
-                        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                            {[listing.church_name, listing.author_locality].filter(Boolean).join(' · ')}
-                        </p>
-                    )}
+                <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                    <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-zinc-500">Membro</p>
+                        <p className="text-lg font-semibold text-zinc-900 dark:text-white">{listing.author_name}</p>
+                        {(listing.author_locality || listing.church_name) && (
+                            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                                {[listing.church_name, listing.author_locality].filter(Boolean).join(' · ')}
+                            </p>
+                        )}
+                    </div>
+                    <UserListAvatar
+                        name={listing.author_name}
+                        photoUrl={listing.author_photo_url}
+                        size="lg"
+                    />
                 </div>
 
                 <div className="prose prose-sm max-w-none dark:prose-invert">

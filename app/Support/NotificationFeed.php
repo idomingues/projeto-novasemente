@@ -78,7 +78,28 @@ class NotificationFeed
             });
         }
 
-        return $app->concat($inbox)->sortByDesc('created_at')->take($limit)->values()->all();
+        return $app->concat($inbox)
+            ->sortByDesc('created_at')
+            ->values()
+            ->reduce(function ($carry, array $n) {
+                $isDuplicate = $carry->contains(function (array $existing) use ($n) {
+                    if ($existing['kind'] !== $n['kind']
+                        || $existing['title'] !== $n['title']
+                        || $existing['body'] !== $n['body']) {
+                        return false;
+                    }
+
+                    $existingTs = strtotime((string) $existing['created_at']) ?: 0;
+                    $nextTs = strtotime((string) $n['created_at']) ?: 0;
+
+                    return abs($existingTs - $nextTs) <= 300;
+                });
+
+                return $isDuplicate ? $carry : $carry->push($n);
+            }, collect())
+            ->take($limit)
+            ->values()
+            ->all();
     }
 
     /**

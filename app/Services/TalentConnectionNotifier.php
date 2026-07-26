@@ -59,14 +59,11 @@ class TalentConnectionNotifier
             }
         }
 
+        $title = 'Publicação aguardando aprovação';
+        $body = $authorName.' enviou «'.$listing->title.'» na Central de Serviços.';
+
         foreach ($moderators as $moderator) {
-            $this->pushInbox(
-                $moderator,
-                'Publicação aguardando aprovação',
-                $authorName.' enviou «'.$listing->title.'» na Central de Serviços.',
-                'talents.admin.listings',
-                ['status' => TalentListing::STATUS_PENDING],
-            );
+            $this->pushPendingListingInbox($moderator, $listing, $title, $body);
         }
     }
 
@@ -433,6 +430,47 @@ class TalentConnectionNotifier
 
         $actionUrl = route($routeName, $routeParams, absolute: true);
         $this->sendMemberEmail($email, $emailSubject, $inboxTitle, $emailIntro, $emailDetail, $actionUrl, $buttonLabel);
+    }
+
+    /**
+     * Evita duplicar aviso de aprovação (ex.: double-submit) enquanto a publicação
+     * segue pendente e o moderador ainda não leu a notificação anterior.
+     */
+    private function pushPendingListingInbox(User $user, TalentListing $listing, string $title, string $body): void
+    {
+        if (! UserMessagingPreferences::acceptsInbox($user)) {
+            return;
+        }
+
+        $listingId = (int) $listing->id;
+        $alreadyPending = UserInboxNotification::query()
+            ->where('user_id', $user->id)
+            ->where('title', $title)
+            ->whereNull('read_at')
+            ->where(function ($q) use ($listingId, $body) {
+                $q->where('action_url', 'like', '%listing_id='.$listingId.'%')
+                    ->orWhere('action_url', 'like', '%listing_id%3D'.$listingId.'%')
+                    ->orWhere(function ($q2) use ($body) {
+                        $q2->where('body', $body)
+                            ->where('created_at', '>=', now()->subMinutes(5));
+                    });
+            })
+            ->exists();
+
+        if ($alreadyPending) {
+            return;
+        }
+
+        $this->pushInbox(
+            $user,
+            $title,
+            $body,
+            'talents.admin.listings',
+            [
+                'status' => TalentListing::STATUS_PENDING,
+                'listing_id' => $listingId,
+            ],
+        );
     }
 
     /**

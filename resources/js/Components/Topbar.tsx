@@ -1,5 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import { notificationLinkHref } from '@/utils/notificationLinkHref';
+import { formatNotificationWhen } from '@/utils/formatNotificationWhen';
 import { BellIcon, SunIcon, MoonIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import Dropdown from '@/Components/Dropdown';
 import MarkInboxNotificationReadButton from '@/Components/MarkInboxNotificationReadButton';
@@ -20,17 +21,6 @@ interface NotificationItem {
     inbox_unread?: boolean;
     app_notification_id?: number;
     can_remove?: boolean;
-}
-
-function formatTimeAgo(iso: string): string {
-    const date = new Date(iso);
-    const now = new Date();
-    const sec = Math.floor((now.getTime() - date.getTime()) / 1000);
-    if (sec < 60) return 'Agora';
-    if (sec < 3600) return `${Math.floor(sec / 60)} min`;
-    if (sec < 86400) return `${Math.floor(sec / 3600)} h`;
-    if (sec < 2592000) return `${Math.floor(sec / 86400)} dias`;
-    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
 }
 
 interface TopbarProps {
@@ -225,7 +215,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
                                                             {n.body}
                                                         </p>
                                                         <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
-                                                            {formatTimeAgo(n.created_at)}
+                                                            {formatNotificationWhen(n.created_at)}
                                                         </p>
                                                     </>
                                                 );

@@ -92,7 +92,7 @@ const homeCardClass =
 const homeQuickActions: QuickAction[] = [
     {
         id: 'ns-whats',
-        label: 'Meus NS Whats',
+        label: 'NS Whats',
         subtitle: 'Suas conversas e mensagens recebidas',
         route: 'mobile.ns-whats.index',
         featureKey: 'ns_whats',

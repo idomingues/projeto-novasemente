@@ -16,6 +16,7 @@ import { confirmAction } from '@/utils/confirmDialog';
 import SearchableSelect, { type SearchableOption } from '@/Components/SearchableSelect';
 import { FormEventHandler, useMemo, useState } from 'react';
 import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
+import { formatNotificationWhen } from '@/utils/formatNotificationWhen';
 
 type NotificationAudience = 'all' | 'user';
 
@@ -38,17 +39,6 @@ interface Props {
     canManage: boolean;
     mode?: 'view' | 'manage';
     recipientOptions?: SearchableOption[];
-}
-
-function formatTimeAgo(iso: string): string {
-    const date = new Date(iso);
-    const now = new Date();
-    const sec = Math.floor((now.getTime() - date.getTime()) / 1000);
-    if (sec < 60) return 'Agora';
-    if (sec < 3600) return `${Math.floor(sec / 60)} min`;
-    if (sec < 86400) return `${Math.floor(sec / 3600)} h`;
-    if (sec < 2592000) return `${Math.floor(sec / 86400)} dias`;
-    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 function dismissTarget(n: NotificationItem): { kind: 'inbox' | 'app'; id: number } | null {
@@ -198,7 +188,7 @@ export default function VariosNotifications({
                                                 {n.body}
                                             </p>
                                             <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
-                                                {formatTimeAgo(n.created_at)}
+                                                {formatNotificationWhen(n.created_at)}
                                                 {n.author?.name && ` · ${n.author.name}`}
                                                 {n.kind === 'inbox' && ' · Pessoal'}
                                             </p>
