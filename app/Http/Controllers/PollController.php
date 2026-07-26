@@ -37,6 +37,8 @@ class PollController extends Controller
                 'options' => fn ($q) => $q->orderBy('sort_order')->orderBy('id'),
                 'options.votes' => fn ($q) => $q->orderBy('created_at')->with('user:id,name,photo_url'),
             ])
+            // Enquete de sugestão (texto livre) sempre por último.
+            ->orderByRaw("CASE WHEN response_type = ? THEN 1 ELSE 0 END", [Poll::RESPONSE_TEXT])
             ->latest()
             ->get()
             ->map(fn (Poll $poll) => PollPresenter::forAdminDetail($poll))

@@ -46,6 +46,8 @@ class PollMobileController extends Controller
                             });
                     });
             })
+            // Enquete de sugestão (texto livre) sempre por último.
+            ->orderByRaw("CASE WHEN response_type = ? THEN 1 ELSE 0 END", [Poll::RESPONSE_TEXT])
             ->latest()
             ->get();
 

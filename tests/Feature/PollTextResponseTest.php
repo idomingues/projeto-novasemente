@@ -60,6 +60,48 @@ class PollTextResponseTest extends TestCase
                 ->where('poll.my_answer_text', "Calendário de eventos\nNotificações melhores"));
     }
 
+    public function test_text_suggestion_poll_appears_last_in_mobile_list(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
+        Role::firstOrCreate(['name' => 'membro', 'guard_name' => 'web']);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+        $member = User::factory()->create(['church_id' => $churchId]);
+        $member->assignRole('membro');
+
+        $textPoll = Poll::query()->create([
+            'church_id' => $churchId,
+            'created_by' => $member->id,
+            'question' => 'O que você gostaria de encontrar em nosso App?',
+            'allow_multiple' => false,
+            'response_type' => Poll::RESPONSE_TEXT,
+            'status' => Poll::STATUS_OPEN,
+            'display_enabled' => false,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $choicePoll = Poll::query()->create([
+            'church_id' => $churchId,
+            'created_by' => $member->id,
+            'question' => 'Qual milagre de Jesus você gostaria de ter presenciado?',
+            'allow_multiple' => false,
+            'response_type' => Poll::RESPONSE_CHOICE,
+            'status' => Poll::STATUS_OPEN,
+            'display_enabled' => true,
+            'created_at' => now()->subMinute(),
+            'updated_at' => now()->subMinute(),
+        ]);
+
+        $this->actingAs($member)
+            ->get(route('mobile.polls.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Mobile/Polls/Index')
+                ->where('polls.0.id', $choicePoll->id)
+                ->where('polls.1.id', $textPoll->id));
+    }
+
     public function test_admin_can_create_text_poll_without_options(): void
     {
         $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
