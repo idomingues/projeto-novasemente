@@ -86,6 +86,32 @@ final class NsWhatsAccess
         return $user->hasRole('lider_ministerio') || (bool) ($user->is_ministry_leader ?? false);
     }
 
+    /**
+     * Conversas em «Minhas Mensagens» aguardando resposta do usuário (membro ou destinatário).
+     */
+    public static function pendingReplyCount(User $user, int $churchId): int
+    {
+        if ($churchId < 1) {
+            return 0;
+        }
+
+        return (int) ChurchConversation::query()
+            ->where('church_id', $churchId)
+            ->where('status', '!=', ChurchConversation::STATUS_CLOSED)
+            ->where(function ($q) use ($user) {
+                $q->where(function ($member) use ($user) {
+                    $member->where('member_user_id', $user->id)
+                        ->where('status', ChurchConversation::STATUS_AWAITING_MEMBER);
+                })->orWhere(function ($staff) use ($user) {
+                    $staff->where(function ($role) use ($user) {
+                        $role->where('assignee_user_id', $user->id)
+                            ->orWhere('preferred_leader_user_id', $user->id);
+                    })->where('status', ChurchConversation::STATUS_AWAITING_DEPARTMENT);
+                });
+            })
+            ->count();
+    }
+
     public static function hasStaffInboxAccess(User $user, int $churchId): bool
     {
         if (self::isModuleAdmin($user) || self::isMinistryLeaderAccount($user)) {

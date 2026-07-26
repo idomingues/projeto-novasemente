@@ -29,6 +29,8 @@ interface Props {
         pastoral_agenda: number | null;
         /** Total no feed de notificações (igreja + caixa pessoal). */
         notifications: number;
+        /** Conversas NS Whats aguardando sua resposta. */
+        ns_whats_pending?: number;
     };
 }
 
@@ -205,27 +207,31 @@ export default function MobileProfile({ church, user, profileCounts, volunteerSi
                       href: route('ministry-lead.my-volunteers.index'),
                       tone: 'member',
                   },
-                  ...(route().has('mobile.leader.birthdays')
-                      ? ([
-                            {
-                                title: 'Aniversariantes do mês',
-                                description: 'Foto, nome e data dos seus voluntários — com destaque no dia',
-                                icon: CakeIcon,
-                                href: route('mobile.leader.birthdays'),
-                                tone: 'member',
-                            },
-                        ] as Row[])
-                      : []),
+              ] as Row[])
+            : []),
+        ...((isMinistryLeader || isVolunteer) && route().has('mobile.leader.birthdays')
+            ? ([
+                  {
+                      title: 'Aniversariantes do mês',
+                      description: 'Da sua área — com destaque no dia e parabéns pelo NS Whats',
+                      icon: CakeIcon,
+                      href: route('mobile.leader.birthdays'),
+                      tone: 'member',
+                  },
               ] as Row[])
             : []),
         ...(route().has('mobile.ns-whats.index')
             ? ([
                   {
-                      title: 'Meus NS Whats',
+                      title: 'Minhas Mensagens - NS Whats',
                       description: 'Suas conversas e mensagens recebidas',
                       icon: ChatBubbleLeftRightIcon,
                       href: route('mobile.ns-whats.index'),
                       tone: 'member',
+                      badgeCount:
+                          typeof profileCounts.ns_whats_pending === 'number' && profileCounts.ns_whats_pending > 0
+                              ? profileCounts.ns_whats_pending
+                              : null,
                   },
               ] as Row[])
             : []),

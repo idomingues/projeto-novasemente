@@ -52,6 +52,7 @@ interface Props {
     featuredWeek?: HomeFeaturedWeekPayload | null;
     moduleSpotlight?: HomeModuleSpotlightPayload | null;
     bookmarkedHomeCards?: string[];
+    nsWhatsPendingReply?: number;
 }
 
 type PageProps = {
@@ -92,7 +93,7 @@ const homeCardClass =
 const homeQuickActions: QuickAction[] = [
     {
         id: 'ns-whats',
-        label: 'Meus NS Whats',
+        label: 'Minhas Mensagens - NS Whats',
         subtitle: 'Suas conversas e mensagens recebidas',
         route: 'mobile.ns-whats.index',
         featureKey: 'ns_whats',
@@ -366,6 +367,7 @@ export default function MobileHome({
     featuredWeek = null,
     moduleSpotlight = null,
     bookmarkedHomeCards = [],
+    nsWhatsPendingReply = 0,
 }: Props) {
     const page = usePage();
     const { appUrl = '', auth, csrf_token: csrfProp } = page.props as unknown as PageProps;
@@ -534,6 +536,8 @@ export default function MobileHome({
                             }
 
                             const { id, label, subtitle, route: routeName, routeParams, onClick, icon } = item.action;
+                            const pendingBadge =
+                                id === 'ns-whats' && nsWhatsPendingReply > 0 ? nsWhatsPendingReply : null;
                             const content = (
                                 <>
                                     {canBookmark ? (
@@ -544,8 +548,17 @@ export default function MobileHome({
                                             onToggle={(key) => void toggleBookmark(key)}
                                         />
                                     ) : null}
-                                    <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200/70 dark:bg-emerald-950/45 dark:text-emerald-200 dark:ring-emerald-800/60">
+                                    <div className="relative inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200/70 dark:bg-emerald-950/45 dark:text-emerald-200 dark:ring-emerald-800/60">
                                         <QuickActionGlyph icon={icon} />
+                                        {pendingBadge !== null ? (
+                                            <span
+                                                className="absolute -right-1.5 -top-1.5 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold tabular-nums text-white shadow-sm ring-2 ring-white dark:bg-rose-500 dark:ring-zinc-900"
+                                                title={`${pendingBadge} ${pendingBadge === 1 ? 'mensagem pendente' : 'mensagens pendentes'}`}
+                                                aria-label={`${pendingBadge} ${pendingBadge === 1 ? 'mensagem pendente de responder' : 'mensagens pendentes de responder'}`}
+                                            >
+                                                {pendingBadge > 99 ? '99+' : pendingBadge}
+                                            </span>
+                                        ) : null}
                                     </div>
                                     <div className="mt-3 min-w-0">
                                         <p className="text-[15px] font-semibold leading-tight text-zinc-900 dark:text-white">{label}</p>

@@ -1,7 +1,13 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import UserListAvatar from '@/Components/UserListAvatar';
 import { Head, Link, router } from '@inertiajs/react';
-import { CakeIcon, ChevronLeftIcon, ChevronRightIcon, GiftIcon } from '@heroicons/react/24/outline';
+import {
+    CakeIcon,
+    ChatBubbleLeftRightIcon,
+    ChevronLeftIcon,
+    ChevronRightIcon,
+    GiftIcon,
+} from '@heroicons/react/24/outline';
 import { CakeIcon as CakeSolidIcon } from '@heroicons/react/24/solid';
 
 type BirthdayRow = {
@@ -12,6 +18,10 @@ type BirthdayRow = {
     day: number;
     isToday: boolean;
     ministryNames: string[];
+    userId?: number | null;
+    ministryId?: number | null;
+    canCongratulate?: boolean;
+    congratulateUrl?: string | null;
 };
 
 interface Props {
@@ -22,6 +32,7 @@ interface Props {
     birthdays: BirthdayRow[];
     todayCount: number;
     isCurrentMonth: boolean;
+    nsWhatsEnabled?: boolean;
 }
 
 function capitalizeMonthLabel(label: string): string {
@@ -33,8 +44,7 @@ function capitalizeMonthLabel(label: string): string {
 
 function formatDayMonth(birthDate: string): string {
     const d = new Date(`${birthDate}T12:00:00`);
-    const formatted = d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
-    return formatted;
+    return d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
 }
 
 export default function LeaderBirthdays({
@@ -45,6 +55,7 @@ export default function LeaderBirthdays({
     birthdays,
     todayCount,
     isCurrentMonth,
+    nsWhatsEnabled = true,
 }: Props) {
     const goMonth = (delta: number) => {
         let m = month + delta;
@@ -96,7 +107,7 @@ export default function LeaderBirthdays({
                                 {capitalizeMonthLabel(monthLabel)}
                             </h1>
                             <p className="mt-1.5 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
-                                Voluntários dos seus departamentos em {churchName}.
+                                Pessoas da sua área em {churchName}. Envie parabéns pelo NS Whats.
                             </p>
                         </div>
                         <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/80 shadow-sm ring-1 ring-rose-100 dark:bg-zinc-900/70 dark:ring-rose-900/50">
@@ -144,7 +155,7 @@ export default function LeaderBirthdays({
                             Nenhum aniversariante neste mês
                         </p>
                         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                            Só aparecem voluntários ativos dos seus departamentos com data de nascimento cadastrada.
+                            Só aparecem voluntários ativos da sua área com data de nascimento cadastrada.
                         </p>
                     </div>
                 ) : (
@@ -160,7 +171,7 @@ export default function LeaderBirthdays({
                                 <ul className="space-y-2.5">
                                     {todayRows.map((row) => (
                                         <li key={`today-${row.id}`}>
-                                            <BirthdayCard row={row} highlight />
+                                            <BirthdayCard row={row} highlight nsWhatsEnabled={nsWhatsEnabled} />
                                         </li>
                                     ))}
                                 </ul>
@@ -177,7 +188,7 @@ export default function LeaderBirthdays({
                                 <ul className="space-y-2">
                                     {upcomingRows.map((row) => (
                                         <li key={row.id}>
-                                            <BirthdayCard row={row} />
+                                            <BirthdayCard row={row} nsWhatsEnabled={nsWhatsEnabled} />
                                         </li>
                                     ))}
                                 </ul>
@@ -190,8 +201,31 @@ export default function LeaderBirthdays({
     );
 }
 
-function BirthdayCard({ row, highlight = false }: { row: BirthdayRow; highlight?: boolean }) {
+function BirthdayCard({
+    row,
+    highlight = false,
+    nsWhatsEnabled = true,
+}: {
+    row: BirthdayRow;
+    highlight?: boolean;
+    nsWhatsEnabled?: boolean;
+}) {
     const ministries = row.ministryNames.filter(Boolean).join(' · ');
+    const showCongratulate = nsWhatsEnabled && row.canCongratulate && row.congratulateUrl;
+
+    const congratulateBtn = showCongratulate ? (
+        <Link
+            href={row.congratulateUrl!}
+            className={`inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[12px] font-semibold transition active:scale-[0.99] ${
+                highlight
+                    ? 'bg-rose-100 text-rose-800 ring-1 ring-inset ring-rose-200 hover:bg-rose-200 dark:bg-rose-950/50 dark:text-rose-100 dark:ring-rose-800 dark:hover:bg-rose-900/60'
+                    : 'bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200/80 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-100 dark:ring-emerald-800/70 dark:hover:bg-emerald-900/50'
+            }`}
+        >
+            <ChatBubbleLeftRightIcon className="h-4 w-4" aria-hidden />
+            Dar parabéns
+        </Link>
+    ) : null;
 
     if (highlight) {
         return (
@@ -230,6 +264,7 @@ function BirthdayCard({ row, highlight = false }: { row: BirthdayRow; highlight?
                         </span>
                     </div>
                 </div>
+                {congratulateBtn ? <div className="mt-3 pl-1.5">{congratulateBtn}</div> : null}
             </article>
         );
     }
@@ -252,6 +287,7 @@ function BirthdayCard({ row, highlight = false }: { row: BirthdayRow; highlight?
                     </span>
                 </div>
             </div>
+            {congratulateBtn ? <div className="mt-3">{congratulateBtn}</div> : null}
         </article>
     );
 }

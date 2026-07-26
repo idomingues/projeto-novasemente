@@ -65,6 +65,7 @@ interface Props {
     conversations: Conversation[];
     selected: Conversation | null;
     composing: boolean;
+    composeDraft?: (DraftTarget & { prefillMessage?: string }) | null;
     ministries: ComposeMinistry[];
     selectedMinistry: ComposeMinistry | null;
     leaders: ComposePerson[];
@@ -121,6 +122,7 @@ export default function NsWhatsIndex({
     conversations: initialConversations,
     selected: initialSelected,
     composing: initialComposing,
+    composeDraft: initialComposeDraft = null,
     ministries,
     selectedMinistry,
     leaders,
@@ -131,7 +133,13 @@ export default function NsWhatsIndex({
 }: Props) {
     const [search, setSearch] = useState(initialSearch);
     const [menuOpen, setMenuOpen] = useState(false);
-    const [composeDraft, setComposeDraft] = useState<DraftTarget | null>(null);
+    const [composeDraft, setComposeDraft] = useState<DraftTarget | null>(() => {
+        if (!initialComposeDraft) {
+            return null;
+        }
+        const { prefillMessage: _prefill, ...draft } = initialComposeDraft;
+        return draft;
+    });
     const [composerText, setComposerText] = useState('');
     const [composerError, setComposerError] = useState<string | undefined>();
     const [sending, setSending] = useState(false);
@@ -142,10 +150,10 @@ export default function NsWhatsIndex({
     const [liveMessages, setLiveMessages] = useState<NsWhatsMessagePayload[]>(initialSelected?.messages ?? []);
     const threadEnd = useRef<HTMLDivElement | null>(null);
     const draftForm = useForm({
-        ministry_id: '' as number | '',
-        recipient_user_id: '' as number | '',
-        message: '',
-        use_fallback: false as boolean,
+        ministry_id: (initialComposeDraft?.ministryId ?? '') as number | '',
+        recipient_user_id: (initialComposeDraft?.recipientUserId ?? '') as number | '',
+        message: (initialComposeDraft?.prefillMessage ?? '') as string,
+        use_fallback: Boolean(initialComposeDraft?.useFallback),
     });
 
     const selectedId = active?.id ?? null;
@@ -173,12 +181,9 @@ export default function NsWhatsIndex({
 
     useEffect(() => {
         if (composeDraft) {
-            draftForm.setData({
-                ministry_id: composeDraft.useFallback ? '' : composeDraft.ministryId,
-                recipient_user_id: composeDraft.recipientUserId,
-                message: '',
-                use_fallback: Boolean(composeDraft.useFallback),
-            });
+            draftForm.setData('ministry_id', composeDraft.useFallback ? '' : composeDraft.ministryId);
+            draftForm.setData('recipient_user_id', composeDraft.recipientUserId);
+            draftForm.setData('use_fallback', Boolean(composeDraft.useFallback));
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [
@@ -342,7 +347,7 @@ export default function NsWhatsIndex({
 
     return (
         <MobileLayout flush>
-            <Head title="Meus NS Whats" />
+            <Head title="Minhas Mensagens - NS Whats" />
             <div className="flex h-full min-h-0 overflow-hidden border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 md:rounded-none md:border-0">
                 <aside
                     className={`flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 md:w-[20rem] md:shrink-0 md:border-r lg:w-[22rem] ${bottomNavClearance} ${
@@ -353,7 +358,7 @@ export default function NsWhatsIndex({
                         <>
                             <div className="flex shrink-0 items-center justify-between gap-2 px-3 pb-0.5 pt-2.5">
                                 <h1 className="text-[20px] font-bold leading-none tracking-tight text-zinc-900 dark:text-white">
-                                    Meus NS Whats
+                                    Minhas Mensagens
                                 </h1>
                                 <div className="flex items-center gap-1.5">
                                     {departmentQueueUrl ? (
@@ -494,7 +499,10 @@ export default function NsWhatsIndex({
                             fallbackMinistryConfigured={fallbackMinistryConfigured}
                             tab={tab}
                             search={search}
-                            onSelectTarget={setComposeDraft}
+                            onSelectTarget={(draft) => {
+                                setComposeDraft(draft);
+                                draftForm.setData('message', '');
+                            }}
                             onClearTarget={() => setComposeDraft(null)}
                             onClose={closeCompose}
                             selectedRecipientId={composeDraft?.useFallback ? null : (composeDraft?.recipientUserId ?? null)}

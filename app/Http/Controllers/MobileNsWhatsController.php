@@ -111,15 +111,38 @@ class MobileNsWhatsController extends Controller
 
         $composing = $request->boolean('nova') || $request->query('ministry');
         $ministryId = $request->query('ministry') ? (int) $request->query('ministry') : null;
+        $recipientId = $request->query('recipient') ? (int) $request->query('recipient') : null;
+        $prefillMessage = trim((string) $request->query('mensagem', ''));
+        if (mb_strlen($prefillMessage) > 500) {
+            $prefillMessage = mb_substr($prefillMessage, 0, 500);
+        }
         $ministries = NsWhatsAccess::ministriesWithContacts($churchId, $user);
         $leaders = [];
         $members = [];
         $selectedMinistry = null;
+        $composeDraft = null;
         if ($ministryId) {
             $selectedMinistry = collect($ministries)->firstWhere('id', $ministryId);
             if ($selectedMinistry) {
                 $leaders = NsWhatsAccess::leadersForMinistry($churchId, $ministryId, $user);
                 $members = NsWhatsAccess::membersForMinistry($churchId, $ministryId, $user);
+            }
+        }
+
+        if ($composing && $selectedMinistry && $recipientId) {
+            $person = collect(array_merge($leaders, $members))->firstWhere('id', $recipientId);
+            if ($person) {
+                $role = ($person['role'] ?? '') === 'leader' ? 'Líder' : 'Voluntário';
+                $composeDraft = [
+                    'ministryId' => (int) $selectedMinistry['id'],
+                    'ministryName' => (string) $selectedMinistry['name'],
+                    'recipientUserId' => $recipientId,
+                    'title' => (string) $person['name'],
+                    'subtitle' => $role.' · '.$selectedMinistry['name'],
+                    'photoUrl' => $person['photo_url'] ?? null,
+                    'useFallback' => false,
+                    'prefillMessage' => $prefillMessage,
+                ];
             }
         }
 
@@ -129,6 +152,7 @@ class MobileNsWhatsController extends Controller
             'conversations' => $conversations,
             'selected' => $selected,
             'composing' => (bool) $composing,
+            'composeDraft' => $composeDraft,
             'ministries' => $ministries,
             'selectedMinistry' => $selectedMinistry,
             'leaders' => $leaders,
@@ -149,6 +173,13 @@ class MobileNsWhatsController extends Controller
         $query = ['nova' => 1];
         if ($request->query('ministry')) {
             $query['ministry'] = (int) $request->query('ministry');
+        }
+        if ($request->query('recipient')) {
+            $query['recipient'] = (int) $request->query('recipient');
+        }
+        $mensagem = trim((string) $request->query('mensagem', ''));
+        if ($mensagem !== '') {
+            $query['mensagem'] = mb_substr($mensagem, 0, 500);
         }
 
         return redirect()->route('mobile.ns-whats.index', $query);

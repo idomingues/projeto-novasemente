@@ -40,6 +40,7 @@ use App\Support\HomeCardKeys;
 use App\Support\HomeFeaturedWeek;
 use App\Support\HomeModuleSpotlight;
 use App\Support\NotificationFeed;
+use App\Support\NsWhatsAccess;
 use App\Support\PublicationEngagement;
 use App\Support\PublicationFeed;
 use App\Support\PublicationsFeedAccess;
@@ -262,6 +263,11 @@ class MobileController extends Controller
                 ->all();
         }
 
+        $nsWhatsPendingReply = 0;
+        if ($user !== null && $church) {
+            $nsWhatsPendingReply = NsWhatsAccess::pendingReplyCount($user, (int) $church->id);
+        }
+
         return Inertia::render('Mobile/Home', [
             'latestNews' => $latestNews,
             'upcomingEvents' => $upcomingEvents,
@@ -272,6 +278,7 @@ class MobileController extends Controller
             'featuredWeek' => $featuredWeek,
             'moduleSpotlight' => $moduleSpotlight,
             'bookmarkedHomeCards' => $bookmarkedHomeCards,
+            'nsWhatsPendingReply' => $nsWhatsPendingReply,
         ]);
     }
 
@@ -2040,6 +2047,9 @@ class MobileController extends Controller
                 'atendimento_open' => $atendimentoOpen,
                 'pastoral_agenda' => $pastoralAgendaItems,
                 'notifications' => $notificationsTotal,
+                'ns_whats_pending' => $churchId !== null
+                    ? NsWhatsAccess::pendingReplyCount($user, (int) $churchId)
+                    : 0,
             ],
             'volunteerSignupCompletion' => $volunteerSignupCompletion,
         ]);

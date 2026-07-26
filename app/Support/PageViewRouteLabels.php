@@ -129,7 +129,7 @@ final class PageViewRouteLabels
         'mobile.schedule.checkin' => 'Check-in de escala',
         'escalas.index' => 'Escalas (painel)',
         'varios.contact' => 'Contato (web)',
-        'mobile.ns-whats.index' => 'NS Whats',
+        'mobile.ns-whats.index' => 'Minhas Mensagens - NS Whats',
         'mobile.ns-whats.compose' => 'NS Whats — Nova conversa',
         'mobile.ns-whats.leader.index' => 'NS Whats — Atendimento',
         'conversations.index' => 'NS Whats',
@@ -156,7 +156,7 @@ final class PageViewRouteLabels
         'ministry-lead.my-volunteers.update' => 'Meus voluntários — atualizar',
         'ministry-lead.my-volunteers.history' => 'Meus voluntários — histórico',
         'ministry-lead.my-volunteers.volunteer.history' => 'Meus voluntários — histórico',
-        'mobile.leader.birthdays' => 'Aniversariantes do mês (líder)',
+        'mobile.leader.birthdays' => 'Aniversariantes do mês (área)',
 
         // —— Pastores / rotas auxiliares ——
         'pastors.weekly-schedule.update' => 'Escala semanal do pastor (atualizar)',

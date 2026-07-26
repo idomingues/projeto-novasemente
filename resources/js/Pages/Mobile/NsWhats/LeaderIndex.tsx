@@ -48,7 +48,7 @@ export default function LeaderIndex({ filter, search: initialSearch, conversatio
                         href={route('mobile.ns-whats.index')}
                         className="mt-2 inline-flex cursor-pointer text-sm font-medium text-emerald-700 hover:underline dark:text-emerald-300"
                     >
-                        Ir para Meus NS Whats
+                        Ir para Minhas Mensagens
                     </Link>
                 </div>
 
