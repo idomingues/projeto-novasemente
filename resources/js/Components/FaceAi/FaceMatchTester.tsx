@@ -515,18 +515,18 @@ export default function FaceMatchTester({
 
                 {queue.length > 0 ? (
                     <div className="space-y-2">
-                        <div className="flex items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                             <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
                                 {queue.length} foto{queue.length === 1 ? '' : 's'} na fila
                             </p>
-                            <button
+                            <SecondaryButton
                                 type="button"
-                                className="cursor-pointer text-xs font-medium text-zinc-500 underline-offset-2 hover:text-zinc-800 hover:underline dark:hover:text-zinc-200"
+                                className="cursor-pointer"
                                 disabled={running || driveLoading}
                                 onClick={clearQueue}
                             >
-                                Limpar fila
-                            </button>
+                                Limpar fotos
+                            </SecondaryButton>
                         </div>
                         <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                             {queue.map((item) => (
@@ -595,11 +595,20 @@ export default function FaceMatchTester({
                                 : 'Identificando…'
                             : 'Identificar'}
                     </PrimaryButton>
-                    {queue.length === 0 ? (
+                    {queue.length > 0 ? (
+                        <SecondaryButton
+                            type="button"
+                            className="cursor-pointer"
+                            disabled={running || driveLoading}
+                            onClick={clearQueue}
+                        >
+                            Limpar fotos
+                        </SecondaryButton>
+                    ) : (
                         <p className="text-xs text-zinc-500 dark:text-zinc-400">
                             Adicione fotos no upload para habilitar.
                         </p>
-                    ) : null}
+                    )}
                 </div>
 
                 {error ? (
@@ -691,14 +700,24 @@ export default function FaceMatchTester({
                             })}
                         </ul>
 
-                        <SecondaryButton
-                            type="button"
-                            className="cursor-pointer"
-                            disabled={running}
-                            onClick={() => setResults(null)}
-                        >
-                            Limpar resultados
-                        </SecondaryButton>
+                        <div className="flex flex-wrap gap-2">
+                            <SecondaryButton
+                                type="button"
+                                className="cursor-pointer"
+                                disabled={running}
+                                onClick={() => setResults(null)}
+                            >
+                                Limpar resultados
+                            </SecondaryButton>
+                            <SecondaryButton
+                                type="button"
+                                className="cursor-pointer"
+                                disabled={running || driveLoading}
+                                onClick={clearQueue}
+                            >
+                                Limpar fotos
+                            </SecondaryButton>
+                        </div>
                     </div>
                 ) : null}
             </section>

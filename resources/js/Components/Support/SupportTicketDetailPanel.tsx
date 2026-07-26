@@ -113,6 +113,7 @@ export default function SupportTicketDetailPanel({
     const isModal = variant === 'modal';
     const showDetails = sectionProp === 'full' || sectionProp === 'details';
     const showChat = sectionProp === 'full' || sectionProp === 'chat';
+    const isDevItem = ticket.type === 'development';
 
     const { data, setData, post, patch, processing, errors, reset } = useForm({
         content: '',
@@ -121,6 +122,7 @@ export default function SupportTicketDetailPanel({
 
     const [showCloseModal, setShowCloseModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
+    const [savingDetails, setSavingDetails] = useState(false);
     const [editMessage, setEditMessage] = useState(ticket.message);
     const [statusValue, setStatusValue] = useState(ticket.status);
     const [statusSolution, setStatusSolution] = useState(ticket.solutionText ?? '');
@@ -128,29 +130,26 @@ export default function SupportTicketDetailPanel({
     const [demandCategoryValue, setDemandCategoryValue] = useState(ticket.demandCategory ?? '');
     const [priorityValue, setPriorityValue] = useState(ticket.priority ?? 'medium');
 
-    useEffect(() => {
+    const resetDetailsForm = () => {
         setEditMessage(ticket.message);
-    }, [ticket.message]);
-
-    useEffect(() => {
         setStatusValue(ticket.status);
-    }, [ticket.status]);
-
-    useEffect(() => {
         setStatusSolution(ticket.solutionText ?? '');
-    }, [ticket.solutionText]);
-
-    useEffect(() => {
         setForecastValue(ticket.forecastAt ?? '');
-    }, [ticket.forecastAt]);
-
-    useEffect(() => {
         setDemandCategoryValue(ticket.demandCategory ?? '');
-    }, [ticket.demandCategory]);
+        setPriorityValue(ticket.priority ?? 'medium');
+    };
 
     useEffect(() => {
-        setPriorityValue(ticket.priority ?? 'medium');
-    }, [ticket.priority]);
+        resetDetailsForm();
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- sincroniza com o ticket do servidor
+    }, [
+        ticket.message,
+        ticket.status,
+        ticket.solutionText,
+        ticket.forecastAt,
+        ticket.demandCategory,
+        ticket.priority,
+    ]);
 
     useEffect(() => {
         if (!showCloseModal) {
@@ -194,45 +193,61 @@ export default function SupportTicketDetailPanel({
         });
     };
 
-    const saveStatus = () => {
-        if (!statusValue || statusValue === ticket.status) return;
-        router.patch(
-            supportUpdateUrl,
-            { status: statusValue, solution_text: statusSolution },
-            inertiaScrollOpts,
-        );
+    const showDemandCategoryField = isOpen && isDevItem && demandCategoryOptions.length > 0;
+    const showPriorityField = isOpen && priorityOptions.length > 0;
+    const showForecastField = isOpen;
+    const showStatusField = statusOptions.length > 0;
+    const showSolutionField = isOpen;
+    const showManagementForm =
+        canManageTickets &&
+        (showDemandCategoryField || showPriorityField || showForecastField || showStatusField || showSolutionField);
+
+    const demandCategoryDirty =
+        showDemandCategoryField && demandCategoryValue !== '' && demandCategoryValue !== (ticket.demandCategory ?? '');
+    const priorityDirty = showPriorityField && priorityValue !== (ticket.priority ?? 'medium');
+    const forecastDirty = showForecastField && forecastValue.trim() !== (ticket.forecastAt ?? '');
+    const statusDirty = showStatusField && statusValue !== ticket.status;
+    const solutionDirty =
+        showSolutionField && statusSolution.trim() !== (ticket.solutionText ?? '').trim();
+    const detailsDirty =
+        demandCategoryDirty || priorityDirty || forecastDirty || statusDirty || solutionDirty;
+
+    const cancelDetails = () => {
+        resetDetailsForm();
     };
 
-    const saveForecast = () => {
-        const normalized = forecastValue.trim();
-        const current = ticket.forecastAt ?? '';
-        if (normalized === current) return;
-        router.patch(
-            supportUpdateUrl,
-            { forecast_at: normalized !== '' ? normalized : null },
-            inertiaScrollOpts,
-        );
-    };
+    const saveDetails = () => {
+        if (!detailsDirty || savingDetails) return;
 
-    const saveDemandCategory = () => {
-        if (!demandCategoryValue || demandCategoryValue === (ticket.demandCategory ?? '')) return;
-        router.patch(supportUpdateUrl, { demand_category: demandCategoryValue }, inertiaScrollOpts);
-    };
+        const payload: Record<string, string | boolean | null> = {};
 
-    const savePriority = () => {
-        if (!priorityValue || priorityValue === (ticket.priority ?? 'medium')) return;
-        router.patch(supportUpdateUrl, { priority: priorityValue }, inertiaScrollOpts);
-    };
+        if (demandCategoryDirty) {
+            payload.demand_category = demandCategoryValue;
+        }
+        if (priorityDirty) {
+            payload.priority = priorityValue;
+        }
+        if (forecastDirty) {
+            const normalized = forecastValue.trim();
+            payload.forecast_at = normalized !== '' ? normalized : null;
+        }
+        if (statusDirty) {
+            payload.status = statusValue;
+            // Alinha ao Kanban: permitir finalizar/cancelar sem texto de solução.
+            payload.skip_solution_required = true;
+        }
+        if (solutionDirty || (statusDirty && statusSolution.trim() !== '')) {
+            payload.solution_text = statusSolution.trim();
+        }
 
-    const saveSolutionDraft = () => {
-        const trimmed = statusSolution.trim();
-        const current = (ticket.solutionText ?? '').trim();
-        if (trimmed === current) return;
-        router.patch(supportUpdateUrl, { solution_text: trimmed }, inertiaScrollOpts);
-    };
+        if (Object.keys(payload).length === 0) return;
 
-    const statusWillFinalize = ['resolved', 'closed'].includes(statusValue);
-    const forecastDirty = forecastValue.trim() !== (ticket.forecastAt ?? '');
+        setSavingDetails(true);
+        router.patch(supportUpdateUrl, payload, {
+            ...inertiaScrollOpts,
+            onFinish: () => setSavingDetails(false),
+        });
+    };
 
     const deleteTicket = async () => {
         const ok = await confirmAction({
@@ -245,8 +260,6 @@ export default function SupportTicketDetailPanel({
         if (!ok) return;
         router.delete(supportDestroyUrl);
     };
-
-    const isDevItem = ticket.type === 'development';
 
     const overlayZ = isModal ? 'z-[200]' : 'z-[100]';
 
@@ -382,147 +395,118 @@ export default function SupportTicketDetailPanel({
                 </div>
             )}
 
-            {showDetails && canManageTickets && isOpen && isDevItem && demandCategoryOptions.length > 0 && (
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                        <div className="min-w-0 flex-1">
-                            <InputLabel value="Categoria da demanda" />
-                            <SelectInput
-                                value={demandCategoryValue}
-                                className="mt-1 block w-full"
-                                onChange={(e) => setDemandCategoryValue(e.target.value)}
-                            >
-                                <option value="">Selecione…</option>
-                                {demandCategoryOptions.map((opt) => (
-                                    <option key={opt.value} value={opt.value}>
-                                        {opt.label}
-                                    </option>
-                                ))}
-                            </SelectInput>
-                        </div>
+            {showDetails && showManagementForm ? (
+                <div className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+                    <div>
+                        <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Gestão do chamado</h3>
+                        <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                            Ajuste os campos e salve tudo de uma vez. A solução é opcional.
+                        </p>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        {showDemandCategoryField ? (
+                            <div className="min-w-0">
+                                <InputLabel value="Categoria da demanda" />
+                                <SelectInput
+                                    value={demandCategoryValue}
+                                    className="mt-1 block w-full"
+                                    onChange={(e) => setDemandCategoryValue(e.target.value)}
+                                >
+                                    <option value="">Selecione…</option>
+                                    {demandCategoryOptions.map((opt) => (
+                                        <option key={opt.value} value={opt.value}>
+                                            {opt.label}
+                                        </option>
+                                    ))}
+                                </SelectInput>
+                            </div>
+                        ) : null}
+
+                        {showPriorityField ? (
+                            <div className="min-w-0">
+                                <InputLabel value="Prioridade" />
+                                <SelectInput
+                                    value={priorityValue}
+                                    className="mt-1 block w-full"
+                                    onChange={(e) => setPriorityValue(e.target.value)}
+                                >
+                                    {priorityOptions.map((opt) => (
+                                        <option key={opt.value} value={opt.value}>
+                                            {opt.label}
+                                        </option>
+                                    ))}
+                                </SelectInput>
+                            </div>
+                        ) : null}
+
+                        {showForecastField ? (
+                            <div className="min-w-0 sm:col-span-2">
+                                <InputLabel value="Previsão de atendimento (opcional)" />
+                                <input
+                                    type="date"
+                                    value={forecastValue}
+                                    onChange={(e) => setForecastValue(e.target.value)}
+                                    className="mt-1 block h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+                                />
+                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                    Ao salvar uma data, o usuário recebe aviso na caixa de entrada.
+                                </p>
+                            </div>
+                        ) : null}
+
+                        {showStatusField ? (
+                            <div className="min-w-0 sm:col-span-2">
+                                <InputLabel value="Status" />
+                                <select
+                                    value={statusValue}
+                                    onChange={(e) => setStatusValue(e.target.value)}
+                                    className="mt-1 block h-11 w-full cursor-pointer rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+                                >
+                                    {statusOptions.map((opt) => (
+                                        <option key={opt.value} value={opt.value}>
+                                            {opt.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        ) : null}
+
+                        {showSolutionField ? (
+                            <div className="min-w-0 sm:col-span-2">
+                                <InputLabel value="Solução (opcional)" />
+                                <Textarea
+                                    value={statusSolution}
+                                    onChange={(e) => setStatusSolution(e.target.value)}
+                                    rows={4}
+                                    className="mt-1 w-full"
+                                    placeholder="Descreva a solução aplicada, se quiser registrar…"
+                                />
+                                <InputError message={errors.solution_text} className="mt-1" />
+                            </div>
+                        ) : null}
+                    </div>
+
+                    <div className="flex flex-col-reverse gap-2 border-t border-zinc-100 pt-4 dark:border-zinc-800 sm:flex-row sm:justify-end">
+                        <SecondaryButton
+                            type="button"
+                            className="cursor-pointer"
+                            onClick={cancelDetails}
+                            disabled={!detailsDirty || savingDetails}
+                        >
+                            Cancelar
+                        </SecondaryButton>
                         <PrimaryButton
                             type="button"
-                            onClick={saveDemandCategory}
-                            disabled={!demandCategoryValue || demandCategoryValue === (ticket.demandCategory ?? '')}
+                            className="cursor-pointer"
+                            onClick={saveDetails}
+                            disabled={!detailsDirty || savingDetails}
                         >
-                            Salvar categoria
+                            {savingDetails ? 'Salvando…' : 'Salvar'}
                         </PrimaryButton>
                     </div>
                 </div>
-            )}
-
-            {showDetails && canManageTickets && isOpen && priorityOptions.length > 0 && (
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                        <div className="min-w-0 flex-1">
-                            <InputLabel value="Prioridade" />
-                            <SelectInput
-                                value={priorityValue}
-                                className="mt-1 block w-full"
-                                onChange={(e) => setPriorityValue(e.target.value)}
-                            >
-                                {priorityOptions.map((opt) => (
-                                    <option key={opt.value} value={opt.value}>
-                                        {opt.label}
-                                    </option>
-                                ))}
-                            </SelectInput>
-                        </div>
-                        <PrimaryButton
-                            type="button"
-                            onClick={savePriority}
-                            disabled={!priorityValue || priorityValue === (ticket.priority ?? 'medium')}
-                        >
-                            Salvar prioridade
-                        </PrimaryButton>
-                    </div>
-                </div>
-            )}
-
-            {showDetails && canManageTickets && isOpen && (
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                        <div className="min-w-0 flex-1">
-                            <InputLabel value="Previsão de atendimento (opcional)" />
-                            <input
-                                type="date"
-                                value={forecastValue}
-                                onChange={(e) => setForecastValue(e.target.value)}
-                                className="mt-1 block h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
-                            />
-                            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                Ao salvar uma data, o usuário recebe aviso na caixa de entrada.
-                            </p>
-                        </div>
-                        <PrimaryButton type="button" onClick={saveForecast} disabled={!forecastDirty}>
-                            Salvar previsão
-                        </PrimaryButton>
-                    </div>
-                </div>
-            )}
-
-            {showDetails && canManageTickets && statusOptions.length > 0 && (
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                        <div className="min-w-0 flex-1">
-                            <InputLabel value="Alterar status" />
-                            <select
-                                value={statusValue}
-                                onChange={(e) => setStatusValue(e.target.value)}
-                                className="mt-1 block h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
-                            >
-                                {statusOptions.map((opt) => (
-                                    <option key={opt.value} value={opt.value}>
-                                        {opt.label}
-                                    </option>
-                                ))}
-                            </select>
-                            {statusWillFinalize ? (
-                                <div className="mt-3">
-                                    <InputLabel value="Solução da demanda *" />
-                                    <Textarea
-                                        value={statusSolution}
-                                        onChange={(e) => setStatusSolution(e.target.value)}
-                                        rows={4}
-                                        className="mt-1 w-full"
-                                        placeholder="Descreva a solução aplicada para o usuário..."
-                                    />
-                                    <InputError message={errors.solution_text} className="mt-1" />
-                                </div>
-                            ) : null}
-                        </div>
-                        <PrimaryButton
-                            type="button"
-                            onClick={saveStatus}
-                            disabled={statusValue === ticket.status || (statusWillFinalize && statusSolution.trim() === '')}
-                        >
-                            Salvar status
-                        </PrimaryButton>
-                    </div>
-                </div>
-            )}
-
-            {showDetails && canManageTickets && isOpen && (
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
-                    <InputLabel value="Solução" />
-                    <Textarea
-                        value={statusSolution}
-                        onChange={(e) => setStatusSolution(e.target.value)}
-                        rows={4}
-                        className="mt-1 w-full"
-                        placeholder="Descreva a solução (obrigatória ao finalizar o chamado)..."
-                    />
-                    <div className="mt-3 flex justify-end">
-                        <PrimaryButton
-                            type="button"
-                            onClick={saveSolutionDraft}
-                            disabled={statusSolution.trim() === (ticket.solutionText ?? '').trim()}
-                        >
-                            Salvar solução
-                        </PrimaryButton>
-                    </div>
-                </div>
-            )}
+            ) : null}
 
             {showChat && messages.length > 0 && (guestNoAppUser || !isOpen) && (
                 <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
@@ -658,7 +642,7 @@ export default function SupportTicketDetailPanel({
                 <div className="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4">
                     <div className="text-sm font-semibold text-amber-900 dark:text-amber-200">Chamado sem usuário logado</div>
                     <div className="mt-1 text-sm text-amber-900/90 dark:text-amber-200/90">
-                        O chat fica indisponível. Descreva a solução e encerre o chamado.
+                        O chat fica indisponível. Você pode encerrar o chamado sem informar solução.
                     </div>
                     {canManageTickets && (
                         <div className="mt-4 flex justify-end">
@@ -674,7 +658,7 @@ export default function SupportTicketDetailPanel({
                 <div className="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4">
                     <div className="text-sm font-semibold text-amber-900 dark:text-amber-200">Chat indisponível</div>
                     <div className="mt-1 text-sm text-amber-900/90 dark:text-amber-200/90">
-                        Este chamado não tem usuário com sessão na app. Use a aba Detalhes para encerrar com a solução.
+                        Este chamado não tem usuário com sessão na app. Use a aba Detalhes para encerrar (solução opcional).
                     </div>
                 </div>
             )}
@@ -703,26 +687,26 @@ export default function SupportTicketDetailPanel({
                         <div className="text-lg font-semibold text-zinc-900 dark:text-white mb-2">Encerrar chamado</div>
                         <div className="text-sm text-zinc-600 dark:text-zinc-400 mb-3">
                             {isDevItem
-                                ? 'Descreva o que foi feito ou como ficou resolvido. Isso encerra o registro.'
-                                : 'Informe a solução para o usuário. Isso encerra o chat.'}
+                                ? 'Pode encerrar sem descrever a solução. Se quiser, registre o que foi feito.'
+                                : 'Pode encerrar sem informar solução. Se quiser, descreva o que foi feito para o usuário.'}
                         </div>
 
                         <div>
-                            <InputLabel value="Solução" />
+                            <InputLabel value="Solução (opcional)" />
                             <Textarea
                                 value={data.solution_text}
                                 onChange={(e) => setData('solution_text', e.target.value)}
                                 rows={6}
-                                placeholder="Descreva como resolver..."
+                                placeholder="Opcional: descreva como ficou resolvido…"
                             />
                             <InputError message={errors.solution_text} className="mt-1" />
                         </div>
 
                         <div className="mt-4 flex gap-2">
-                            <SecondaryButton type="button" className="flex-1" onClick={() => setShowCloseModal(false)}>
+                            <SecondaryButton type="button" className="flex-1 cursor-pointer" onClick={() => setShowCloseModal(false)}>
                                 Cancelar
                             </SecondaryButton>
-                            <PrimaryButton type="button" className="flex-1" onClick={closeTicket} disabled={processing}>
+                            <PrimaryButton type="button" className="flex-1 cursor-pointer" onClick={closeTicket} disabled={processing}>
                                 Encerrar
                             </PrimaryButton>
                         </div>

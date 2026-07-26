@@ -337,6 +337,19 @@ Route::get('/musica', [MusicaController::class, 'index'])->name('musica.index');
 
 Route::get('/cadastro-voluntario', [VolunteerPublicSignupController::class, 'createPublicPage'])->name('volunteers.public-signup.page');
 Route::get('/voluntario/cadastro', [VolunteerPublicSignupController::class, 'create'])->name('volunteers.self-signup');
+Route::post('/voluntario/cadastro/identificar', [VolunteerPublicSignupController::class, 'identify'])
+    ->middleware('throttle:30,1')
+    ->name('volunteers.self-signup.identify');
+Route::get('/voluntario/cadastro/formulario', [VolunteerPublicSignupController::class, 'showForm'])
+    ->name('volunteers.self-signup.form');
+Route::get('/voluntario/cadastro/ja-cadastrado', [VolunteerPublicSignupController::class, 'existingOptions'])
+    ->name('volunteers.self-signup.existing');
+Route::get('/voluntario/cadastro/pedir-departamento', [VolunteerPublicSignupController::class, 'requestDepartmentForm'])
+    ->middleware('auth')
+    ->name('volunteers.self-signup.request-department');
+Route::post('/voluntario/cadastro/pedir-departamento', [VolunteerPublicSignupController::class, 'storeRequestDepartment'])
+    ->middleware(['auth', 'throttle:10,1'])
+    ->name('volunteers.self-signup.request-department.store');
 Route::post('/voluntario/cadastro', [VolunteerPublicSignupController::class, 'store'])
     ->middleware('throttle:10,1')
     ->name('volunteers.self-signup.store');

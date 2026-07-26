@@ -111,7 +111,11 @@ final class PersistVolunteerSignupQuestionnaire
             $user->refresh();
             $user->load('volunteerProfile');
             $completion = VolunteerSignupCompletion::forUser($user);
-            $user->forceFill(['is_volunteer' => $completion['is_complete']])->save();
+            // Mantém o vínculo de voluntário se já existir; só promove para true ao completar.
+            // Nunca zera is_volunteer só porque o questionário ainda está incompleto (apagava o banner).
+            $user->forceFill([
+                'is_volunteer' => $completion['is_complete'] || (bool) $user->is_volunteer,
+            ])->save();
 
             $user->syncVolunteerRecord();
 

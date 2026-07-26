@@ -146,6 +146,7 @@ class VolunteerPipelineBootstrap
      */
     public static function setInteressadoStageForVolunteer(Volunteer $volunteer, int $churchId): void
     {
+        self::defaultStageIdForNewVolunteer($churchId);
         self::moveVolunteerToStageByNormalizedName($volunteer, $churchId, 'interessado');
     }
 

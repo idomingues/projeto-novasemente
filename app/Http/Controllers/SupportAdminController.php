@@ -306,20 +306,22 @@ class SupportAdminController extends Controller
         abort_unless(AppSupportTicket::isActiveStatus((string) $ticket->status), 400);
 
         $valid = $request->validate([
-            'solution_text' => ['required', 'string', 'max:5000'],
+            'solution_text' => ['nullable', 'string', 'max:5000'],
         ]);
+
+        $solution = trim((string) ($valid['solution_text'] ?? ''));
 
         $ticket->update([
             'status' => AppSupportTicket::STATUS_CLOSED,
             'closed_at' => now(),
-            'solution_text' => $valid['solution_text'],
+            'solution_text' => $solution !== '' ? $solution : $ticket->solution_text,
         ]);
 
         app(SupportTicketChatNotifier::class)->notifyOwnerOfTicketUpdate(
             $ticket->fresh(),
             $user,
             true,
-            trim((string) $valid['solution_text']) !== '',
+            $solution !== '',
         );
 
         return redirect()->back(fallback: route('support.show', ['token' => $token]));

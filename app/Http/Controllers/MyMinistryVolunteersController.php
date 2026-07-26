@@ -13,6 +13,7 @@ use App\Models\Volunteer;
 use App\Models\VolunteerClearanceCheck;
 use App\Models\VolunteerMinistryInvitation;
 use App\Models\VolunteerMinistryInvitationStatusHistory;
+use App\Models\VolunteerSelfSignupToken;
 use App\Support\VolunteerInvitationStatusLabels;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -477,7 +478,8 @@ class MyMinistryVolunteersController extends Controller
             ->values()
             ->all();
 
-        $churchIntro = Church::query()->whereKey((int) $churchId)->value('ministry_invitation_intro');
+        $church = Church::query()->whereKey((int) $churchId)->first(['id', 'name', 'ministry_invitation_intro']);
+        $churchIntro = $church?->ministry_invitation_intro;
 
         return Inertia::render('MinistryLeadVolunteers/MyVolunteers', [
             'invitations' => $inviteRows->all(),
@@ -486,6 +488,8 @@ class MyMinistryVolunteersController extends Controller
             'requestMinistries' => $leaderMinistries,
             'requestStoreUrl' => route('ministry-lead.volunteer-requests.store'),
             'churchMinistryInvitationIntro' => $churchIntro ? (string) $churchIntro : null,
+            'churchName' => $church?->name ? (string) $church->name : 'Igreja',
+            'publicVolunteerSignupUrl' => VolunteerSelfSignupToken::ensurePublicSignupUrl((int) $churchId),
         ]);
     }
 

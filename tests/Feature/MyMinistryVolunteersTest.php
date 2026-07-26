@@ -138,7 +138,12 @@ class MyMinistryVolunteersTest extends TestCase
         $this->actingAs($leader)
             ->withSession(['working_church_id' => $church->id])
             ->get(route('ministry-lead.my-volunteers.index'))
-            ->assertOk();
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('MinistryLeadVolunteers/MyVolunteers')
+                ->where('churchName', $church->name)
+                ->whereType('publicVolunteerSignupUrl', 'string')
+            );
     }
 
     public function test_non_leader_cannot_access_my_volunteers_index(): void

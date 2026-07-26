@@ -48,7 +48,7 @@ class VolunteerSelfSignupAutosaveTest extends TestCase
         $this->assertSame('@maria.ns', $volunteer->social_network_profiles);
 
         $user->refresh();
-        $this->assertFalse($user->is_volunteer);
+        $this->assertTrue($user->is_volunteer, 'Autosave incompleto deve manter is_volunteer já existente.');
     }
 
     public function test_autosave_does_not_mark_user_as_volunteer_until_signup_is_complete(): void
@@ -302,6 +302,36 @@ class VolunteerSelfSignupAutosaveTest extends TestCase
             ->assertJsonPath('message', 'Cadastro de voluntário concluído.');
 
         $this->assertTrue($volunteer->fresh()->lgpd_data_consent);
+        $this->assertTrue((bool) $user->fresh()->is_volunteer);
+    }
+
+    public function test_incomplete_autosave_does_not_clear_existing_is_volunteer_flag(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+
+        $user = User::factory()->create([
+            'church_id' => $churchId,
+            'is_volunteer' => true,
+            'name' => 'Marina Flag',
+            'email' => 'marina.flag@example.com',
+            'photo_url' => 'https://example.com/photos/marina.jpg',
+        ]);
+
+        $user->ensureVolunteerProfile();
+
+        $this->actingAs($user)
+            ->postJson(route('volunteers.self-signup.autosave'), [
+                'autosave_fields' => ['volunteer_phase'],
+                'first_name' => 'Marina',
+                'last_name' => 'Flag',
+                'volunteer_phase' => 'interested',
+            ])
+            ->assertOk()
+            ->assertJsonPath('completion.is_complete', false);
+
+        $this->assertTrue((bool) $user->fresh()->is_volunteer);
     }
 
     public function test_autosave_rejects_lgpd_consent_false(): void

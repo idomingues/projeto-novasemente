@@ -213,4 +213,55 @@ class SupportTicketForecastTest extends TestCase
             'title' => 'Prazo definido no seu chamado',
         ]);
     }
+
+    public function test_can_close_ticket_without_solution_text(): void
+    {
+        $admin = $this->superAdmin();
+        $owner = User::factory()->create();
+        $token = (string) Str::uuid();
+
+        AppSupportTicket::create([
+            'public_token' => $token,
+            'user_id' => $owner->id,
+            'type' => 'problem',
+            'message' => 'Erro ao entrar',
+            'status' => AppSupportTicket::STATUS_OPEN,
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('support.close', ['token' => $token]), [
+                'solution_text' => '',
+            ])
+            ->assertRedirect();
+
+        $ticket = AppSupportTicket::query()->where('public_token', $token)->first();
+        $this->assertNotNull($ticket);
+        $this->assertSame(AppSupportTicket::STATUS_CLOSED, $ticket->status);
+        $this->assertNull($ticket->solution_text);
+    }
+
+    public function test_can_resolve_without_solution_when_skip_flag_is_set(): void
+    {
+        $admin = $this->superAdmin();
+        $token = (string) Str::uuid();
+
+        AppSupportTicket::create([
+            'public_token' => $token,
+            'user_id' => $admin->id,
+            'type' => 'development',
+            'message' => 'Melhorar UX do suporte',
+            'status' => AppSupportTicket::STATUS_OPEN,
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('support.update', ['token' => $token]), [
+                'status' => AppSupportTicket::STATUS_RESOLVED,
+                'skip_solution_required' => true,
+            ])
+            ->assertRedirect();
+
+        $ticket = AppSupportTicket::query()->where('public_token', $token)->first();
+        $this->assertNotNull($ticket);
+        $this->assertSame(AppSupportTicket::STATUS_RESOLVED, $ticket->status);
+    }
 }

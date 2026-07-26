@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Volunteers\ApplyVolunteerSignupMinistryIntent;
+use App\Actions\Volunteers\RequestVolunteerNewDepartment;
 use App\Models\Church;
 use App\Models\Ministry;
 use App\Models\User;
@@ -13,6 +14,7 @@ use App\Support\UserProfilePhotoResolver;
 use App\Support\VolunteerAppLogin;
 use App\Support\VolunteerContactDuplicateChecker;
 use App\Support\VolunteerPipelineBootstrap;
+use App\Support\VolunteerSignupIdentity;
 use App\Support\VolunteerSignupName;
 use App\Support\VolunteerSignupServiceEaseAreas;
 use App\Support\VolunteerSignupServiceActivityTypes;
@@ -101,19 +103,11 @@ class VolunteerPublicSignupController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        if ($redirect = $this->redirectLoggedInVolunteerToEdit($request)) {
-            return $redirect;
-        }
-
-        return Inertia::render('Volunteers/PublicSignup', [
-            'token' => $record->token,
-            'churchName' => $church->name,
-            'ministries' => $ministries,
-        ]);
+        return $this->renderSignupEntry($request, (string) $record->token, $church, $ministries);
     }
 
     /**
-     * Verifica na saída do sobrenome se já existe nome completo semelhante cadastrado nesta igreja.
+     * Verifica na saída do sobrenome / e-mail se já existe cadastro de voluntário.
      */
     public function checkDuplicate(Request $request): JsonResponse
     {
@@ -134,25 +128,38 @@ class VolunteerPublicSignupController extends Controller
             return response()->json(['duplicate' => false, 'email_taken' => false, 'phone_taken' => false, 'invalid_token' => true]);
         }
 
-        // Recadastro permitido: não bloquear por nome já existente.
-        $nameDup = false;
+        $emailNorm = VolunteerContactDuplicateChecker::normalizeEmail($validated['email'] ?? null);
+        $identity = $emailNorm
+            ? VolunteerSignupIdentity::resolve($emailNorm, $request->user()?->id)
+            : ['status' => 'new', 'has_app_account' => false, 'message' => null];
 
-        // O recadastro deve ser permitido com o mesmo e-mail.
-        $emailTaken = false;
-        $emailMessage = null;
-
-        // Recadastro permitido: não bloquear por telefone já existente.
-        $phoneTaken = false;
-        $phoneMessage = null;
+        $existing = ($identity['status'] ?? '') === 'existing';
+        $privileged = ($identity['status'] ?? '') === 'privileged';
+        $hasApp = (bool) ($identity['has_app_account'] ?? false);
 
         return response()->json([
-            'duplicate' => $nameDup,
-            'email_taken' => $emailTaken,
-            'phone_taken' => $phoneTaken,
-            'message' => null,
-            'email_message' => $emailMessage,
-            'phone_message' => $phoneMessage,
+            'duplicate' => false,
+            // Só bloqueia o formulário público quando já tem conta no app (deve ir às opções).
+            'email_taken' => $privileged || ($existing && $hasApp),
+            'phone_taken' => false,
+            'already_volunteer' => $existing,
+            'has_app_account' => $hasApp,
+            'privileged' => $privileged,
+            'message' => $privileged
+                ? ($identity['message'] ?? 'Este e-mail não pode ser usado neste cadastro.')
+                : ($existing && $hasApp
+                    ? 'Você já possui cadastro de voluntário. Escolha atualizar ou pedir um novo departamento.'
+                    : null),
+            'email_message' => $privileged
+                ? ($identity['message'] ?? null)
+                : ($existing && $hasApp
+                    ? 'Você já possui cadastro de voluntário com este e-mail.'
+                    : null),
+            'phone_message' => null,
             'invalid_token' => false,
+            'existing_options_url' => ($existing && $hasApp)
+                ? route('volunteers.self-signup.existing', ['token' => $validated['token']], absolute: false)
+                : null,
         ]);
     }
 
@@ -182,15 +189,235 @@ class VolunteerPublicSignupController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        if ($redirect = $this->redirectLoggedInVolunteerToEdit($request)) {
-            return $redirect;
+        return $this->renderSignupEntry($request, $token, $church, $ministries);
+    }
+
+    /**
+     * Confirma e-mail no início: novo segue o formulário; já voluntário vai às opções.
+     */
+    public function identify(Request $request): RedirectResponse
+    {
+        if (! Schema::hasTable('volunteer_self_signup_tokens')) {
+            return redirect()->route('mobile.home')->with('error', 'Cadastro público indisponível.');
+        }
+
+        $validated = $request->validate([
+            'token' => ['required', 'string'],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255'],
+        ]);
+
+        $record = VolunteerSelfSignupToken::query()->where('token', $validated['token'])->first();
+        if (! $record) {
+            return back()->withErrors(['token' => 'Link de cadastro inválido ou desatualizado.']);
+        }
+
+        $emailNorm = VolunteerContactDuplicateChecker::normalizeEmail($validated['email']);
+        if ($emailNorm === null) {
+            return back()->withErrors(['email' => 'Informe um e-mail válido.']);
+        }
+
+        $identity = VolunteerSignupIdentity::resolve($emailNorm, $request->user()?->id);
+
+        $request->session()->put('volunteer_signup_token', $validated['token']);
+        $request->session()->put('volunteer_signup_email', $emailNorm);
+        $request->session()->put('volunteer_signup_identity', $identity['status']);
+        $request->session()->put('volunteer_signup_has_app', (bool) $identity['has_app_account']);
+
+        // Sempre mostra a situação + o que fazer, antes do formulário ou das ações.
+        return redirect()->route('volunteers.self-signup.existing', ['token' => $validated['token']]);
+    }
+
+    /**
+     * Formulário completo — só após identificação como novo (ou pré-cadastro sem conta no app).
+     */
+    public function showForm(Request $request): RedirectResponse|Response
+    {
+        [$token, $church, $ministries] = $this->resolveSignupTokenContext($request);
+
+        $sessionEmail = VolunteerContactDuplicateChecker::normalizeEmail(
+            (string) $request->session()->get('volunteer_signup_email', '')
+        );
+        $sessionIdentity = (string) $request->session()->get('volunteer_signup_identity', '');
+        $hasApp = (bool) $request->session()->get('volunteer_signup_has_app', false);
+
+        if ($sessionEmail === null || $sessionEmail === '') {
+            return redirect()->route('volunteers.self-signup', ['token' => $token])
+                ->with('info', 'Informe seu e-mail para continuar.');
+        }
+
+        if ($sessionIdentity === 'existing' && $hasApp) {
+            return redirect()->route('volunteers.self-signup.existing', ['token' => $token]);
+        }
+
+        if ($sessionIdentity === 'privileged') {
+            return redirect()->route('volunteers.self-signup.existing', ['token' => $token]);
+        }
+
+        // Pré-cadastro sem app: permite concluir o acesso (liga ao registro existente).
+        if ($sessionIdentity === 'existing' && ! $hasApp) {
+            // continua no formulário
+        } elseif ($sessionIdentity !== 'new') {
+            return redirect()->route('volunteers.self-signup', ['token' => $token]);
         }
 
         return Inertia::render('Volunteers/PublicSignup', [
             'token' => $token,
             'churchName' => $church->name,
             'ministries' => $ministries,
+            'prefillEmail' => $sessionEmail,
+            'completingPreRegistration' => $sessionIdentity === 'existing' && ! $hasApp,
         ]);
+    }
+
+    /**
+     * Após o e-mail: explica a situação e sugere o próximo passo.
+     */
+    public function existingOptions(Request $request): RedirectResponse|Response
+    {
+        [$token, $church] = $this->resolveSignupTokenContext($request, includeMinistries: false);
+
+        $authUser = $request->user();
+        if ($authUser !== null) {
+            $email = VolunteerContactDuplicateChecker::normalizeEmail($authUser->email) ?? '';
+            // Situação da própria sessão: não usar actingUserId (bloqueio de «própria conta de equipe»).
+            $identity = VolunteerSignupIdentity::resolve($email, null);
+
+            $request->session()->put('volunteer_signup_token', $token);
+            $request->session()->put('volunteer_signup_email', $email);
+            $request->session()->put('volunteer_signup_identity', $identity['status']);
+            $request->session()->put('volunteer_signup_has_app', (bool) $identity['has_app_account']);
+
+            return Inertia::render(
+                'Volunteers/SignupExistingOptions',
+                $this->situationPageProps(
+                    $token,
+                    $church->name,
+                    $email,
+                    $identity,
+                    isAuthenticated: true,
+                )
+            );
+        }
+
+        $sessionEmail = VolunteerContactDuplicateChecker::normalizeEmail(
+            (string) $request->session()->get('volunteer_signup_email', '')
+        );
+        $sessionIdentity = (string) $request->session()->get('volunteer_signup_identity', '');
+        $hasApp = (bool) $request->session()->get('volunteer_signup_has_app', false);
+
+        if ($sessionEmail === null || $sessionEmail === '') {
+            return redirect()->route('volunteers.self-signup', ['token' => $token])
+                ->with('info', 'Informe seu e-mail para identificar sua situação.');
+        }
+
+        $identity = [
+            'status' => in_array($sessionIdentity, ['new', 'existing', 'privileged'], true)
+                ? $sessionIdentity
+                : 'new',
+            'has_app_account' => $hasApp,
+            'message' => $sessionIdentity === 'privileged'
+                ? 'Este e-mail não pode ser usado neste cadastro de voluntário. Use outro e-mail.'
+                : null,
+            'user' => null,
+            'volunteer' => null,
+        ];
+
+        // Revalida a situação pelo e-mail (fonte da verdade).
+        $fresh = VolunteerSignupIdentity::resolve($sessionEmail, null);
+        $identity = $fresh;
+        $request->session()->put('volunteer_signup_identity', $fresh['status']);
+        $request->session()->put('volunteer_signup_has_app', (bool) $fresh['has_app_account']);
+
+        return Inertia::render(
+            'Volunteers/SignupExistingOptions',
+            $this->situationPageProps(
+                $token,
+                $church->name,
+                $sessionEmail,
+                $identity,
+                isAuthenticated: false,
+            )
+        );
+    }
+
+    public function requestDepartmentForm(Request $request): RedirectResponse|Response
+    {
+        $user = $request->user();
+        if ($user === null) {
+            $token = (string) $request->query('token', $request->session()->get('volunteer_signup_token', ''));
+
+            return redirect()->route('login', [
+                'redirect' => route('volunteers.self-signup.request-department', ['token' => $token], false),
+            ]);
+        }
+
+        [$token, $church, $ministries] = $this->resolveSignupTokenContext($request);
+
+        $user->ensureVolunteerProfile();
+        $user->load('volunteerProfile');
+        $volunteer = $user->volunteerProfile;
+        if ($volunteer === null) {
+            return redirect()->route('volunteers.self-signup', ['token' => $token])
+                ->with('error', 'Cadastro de voluntário não encontrado.');
+        }
+
+        $churchId = (int) $church->id;
+        $attachedIds = $volunteer->ministries()
+            ->where('church_id', $churchId)
+            ->pluck('ministries.id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $available = $ministries
+            ->filter(fn ($m) => ! in_array((int) $m->id, $attachedIds, true))
+            ->values()
+            ->all();
+
+        return Inertia::render('Volunteers/SignupRequestDepartment', [
+            'token' => $token,
+            'churchName' => $church->name,
+            'ministries' => $available,
+            'attachedMinistryNames' => $ministries
+                ->filter(fn ($m) => in_array((int) $m->id, $attachedIds, true))
+                ->pluck('name')
+                ->values()
+                ->all(),
+            'storeUrl' => route('volunteers.self-signup.request-department.store'),
+            'backUrl' => route('volunteers.self-signup.existing', ['token' => $token], absolute: false),
+        ]);
+    }
+
+    public function storeRequestDepartment(Request $request, RequestVolunteerNewDepartment $action): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user !== null, 403);
+
+        $validated = $request->validate([
+            'token' => ['required', 'string'],
+            'ministry_ids' => ['required', 'array', 'min:1'],
+            'ministry_ids.*' => ['integer'],
+            'reason' => ['required', 'string', 'min:5', 'max:2000'],
+        ]);
+
+        $record = VolunteerSelfSignupToken::query()->where('token', $validated['token'])->firstOrFail();
+        $churchId = (int) $record->church_id;
+
+        $user->ensureVolunteerProfile();
+        $user->load('volunteerProfile');
+        $volunteer = $user->volunteerProfile;
+        abort_unless($volunteer !== null, 404);
+
+        $ministryIds = $this->validateMinistryIdsForChurch(
+            $validated['ministry_ids'],
+            $churchId,
+            'ministry_ids',
+        );
+
+        $action($volunteer, $churchId, $ministryIds, (string) $validated['reason'], $user);
+
+        return redirect()
+            ->route('mobile.home')
+            ->with('success', 'Pedido de novo departamento enviado. A equipe vai analisar e entrar em contato.');
     }
 
     public function store(Request $request): RedirectResponse|BaseResponse
@@ -199,7 +426,7 @@ class VolunteerPublicSignupController extends Controller
             return redirect()->route('mobile.home')->with('error', 'Cadastro público indisponível.');
         }
 
-        if ($redirect = $this->redirectLoggedInVolunteerToEdit($request)) {
+        if ($redirect = $this->redirectLoggedInVolunteerAwayFromPublicStore($request)) {
             return $redirect;
         }
 
@@ -235,15 +462,34 @@ class VolunteerPublicSignupController extends Controller
 
         $name = trim($validated['first_name'].' '.$validated['last_name']);
 
-        $existingUser = $emailNorm
-            ? User::query()->whereRaw('LOWER(TRIM(COALESCE(email, ""))) = ?', [$emailNorm])->first()
-            : null;
+        $identity = $emailNorm
+            ? VolunteerSignupIdentity::resolve($emailNorm, $request->user()?->id)
+            : ['status' => 'new', 'has_app_account' => false, 'message' => null, 'user' => null, 'volunteer' => null];
 
-        if ($msg = VolunteerContactDuplicateChecker::privilegedAccountVolunteerLinkMessage($existingUser, $request->user()?->id)) {
+        if (($identity['status'] ?? '') === 'privileged') {
             throw ValidationException::withMessages([
-                'email' => [$msg],
+                'email' => [$identity['message'] ?? 'Este e-mail não pode ser usado neste cadastro.'],
             ]);
         }
+
+        // Já voluntário com conta no app: não cria outro cadastro nem sobrescreve a senha.
+        if (($identity['status'] ?? '') === 'existing' && ($identity['has_app_account'] ?? false)) {
+            $request->session()->put('volunteer_signup_token', $validated['token']);
+            $request->session()->put('volunteer_signup_email', $emailNorm);
+            $request->session()->put('volunteer_signup_identity', 'existing');
+            $request->session()->put('volunteer_signup_has_app', true);
+
+            return redirect()
+                ->route('volunteers.self-signup.existing', ['token' => $validated['token']])
+                ->with(
+                    'info',
+                    'Você já possui cadastro de voluntário. Atualize seus dados ou peça um novo departamento — sem preencher tudo de novo.'
+                );
+        }
+
+        $existingUser = $identity['user'] ?? ($emailNorm
+            ? User::query()->whereRaw('LOWER(TRIM(COALESCE(email, ""))) = ?', [$emailNorm])->first()
+            : null);
 
         $user = DB::transaction(function () use (
             $validated,
@@ -391,9 +637,9 @@ class VolunteerPublicSignupController extends Controller
     }
 
     /**
-     * Usuário logado com cadastro de voluntário: abre edição em vez de novo cadastro público.
+     * Usuário logado com cadastro de voluntário não deve reenviar o formulário público.
      */
-    private function redirectLoggedInVolunteerToEdit(Request $request): ?RedirectResponse
+    private function redirectLoggedInVolunteerAwayFromPublicStore(Request $request): ?RedirectResponse
     {
         $user = $request->user();
         if ($user === null) {
@@ -403,16 +649,218 @@ class VolunteerPublicSignupController extends Controller
         $user->ensureVolunteerProfile();
         $user->load('volunteerProfile');
 
-        if ($user->volunteerProfile === null) {
+        if ($user->volunteerProfile === null && ! $user->is_volunteer) {
             return null;
         }
 
+        $token = (string) $request->input('token', $request->session()->get('volunteer_signup_token', ''));
+        if ($token === '') {
+            return redirect()
+                ->route('volunteers.self-signup.edit')
+                ->with('info', 'Você já possui cadastro de voluntário. Atualize suas informações abaixo.');
+        }
+
         return redirect()
-            ->route('volunteers.self-signup.edit')
+            ->route('volunteers.self-signup.existing', ['token' => $token])
             ->with(
                 'info',
-                'Você já possui cadastro de voluntário. Revise e atualize suas informações abaixo quando precisar.'
+                'Você já possui cadastro de voluntário. Escolha atualizar o cadastro ou pedir um novo departamento.'
             );
+    }
+
+    /**
+     * Props da tela «situação identificada» com a ação sugerida.
+     *
+     * @param  array{status: string, has_app_account: bool, message: ?string}  $identity
+     * @return array<string, mixed>
+     */
+    private function situationPageProps(
+        string $token,
+        string $churchName,
+        string $email,
+        array $identity,
+        bool $isAuthenticated,
+    ): array {
+        $status = (string) ($identity['status'] ?? 'new');
+        $hasApp = (bool) ($identity['has_app_account'] ?? false);
+        $changeEmailUrl = route('volunteers.self-signup', ['token' => $token], absolute: false);
+        $loginUrl = route('login', [
+            'redirect' => route('volunteers.self-signup.existing', ['token' => $token], false),
+        ], absolute: false);
+
+        if ($status === 'privileged') {
+            return [
+                'token' => $token,
+                'churchName' => $churchName,
+                'email' => $email,
+                'status' => 'privileged',
+                'hasAppAccount' => false,
+                'isAuthenticated' => $isAuthenticated,
+                'situationTitle' => 'E-mail não disponível',
+                'situationSummary' => $identity['message'] ?? 'Este e-mail não pode ser usado neste cadastro de voluntário.',
+                'suggestedAction' => 'Troque o e-mail e tente de novo. Contas da equipe ou de líder não entram por este link.',
+                'primaryActionLabel' => 'Usar outro e-mail',
+                'primaryActionUrl' => $changeEmailUrl,
+                'secondaryActionLabel' => null,
+                'secondaryActionUrl' => null,
+                'loginUrl' => $loginUrl,
+                'changeEmailUrl' => $changeEmailUrl,
+            ];
+        }
+
+        if ($status === 'new') {
+            $formUrl = route('volunteers.self-signup.form', ['token' => $token], absolute: false);
+
+            return [
+                'token' => $token,
+                'churchName' => $churchName,
+                'email' => $email,
+                'status' => 'new',
+                'hasAppAccount' => false,
+                'isAuthenticated' => $isAuthenticated,
+                'situationTitle' => 'Nenhum cadastro encontrado',
+                'situationSummary' => 'Não encontramos voluntário com este e-mail.',
+                'suggestedAction' => 'Próximo passo sugerido: começar o cadastro de voluntário e criar o acesso ao aplicativo.',
+                'primaryActionLabel' => 'Começar cadastro novo',
+                'primaryActionUrl' => $formUrl,
+                'secondaryActionLabel' => null,
+                'secondaryActionUrl' => null,
+                'loginUrl' => $loginUrl,
+                'changeEmailUrl' => $changeEmailUrl,
+            ];
+        }
+
+        // existing
+        if (! $hasApp) {
+            $formUrl = route('volunteers.self-signup.form', ['token' => $token], absolute: false);
+
+            return [
+                'token' => $token,
+                'churchName' => $churchName,
+                'email' => $email,
+                'status' => 'existing',
+                'hasAppAccount' => false,
+                'isAuthenticated' => $isAuthenticated,
+                'situationTitle' => 'Pré-cadastro encontrado',
+                'situationSummary' => 'Você já aparece como voluntário, mas ainda falta a conta de acesso ao app.',
+                'suggestedAction' => 'Próximo passo sugerido: concluir o acesso e atualizar os dados no mesmo cadastro — sem criar outro.',
+                'primaryActionLabel' => 'Concluir acesso e atualizar',
+                'primaryActionUrl' => $formUrl,
+                'secondaryActionLabel' => 'Pedir novo departamento (depois do acesso)',
+                'secondaryActionUrl' => $formUrl,
+                'loginUrl' => $loginUrl,
+                'changeEmailUrl' => $changeEmailUrl,
+            ];
+        }
+
+        $updateUrl = $isAuthenticated
+            ? route('volunteers.self-signup.edit', absolute: false)
+            : route('login', ['redirect' => route('volunteers.self-signup.edit', absolute: false)], absolute: false);
+        $requestDeptUrl = $isAuthenticated
+            ? route('volunteers.self-signup.request-department', ['token' => $token], absolute: false)
+            : route('login', [
+                'redirect' => route('volunteers.self-signup.request-department', ['token' => $token], false),
+            ], absolute: false);
+
+        return [
+            'token' => $token,
+            'churchName' => $churchName,
+            'email' => $email,
+            'status' => 'existing',
+            'hasAppAccount' => true,
+            'isAuthenticated' => $isAuthenticated,
+            'situationTitle' => 'Você já é voluntário',
+            'situationSummary' => 'Encontramos seu cadastro com este e-mail. Não é preciso preencher tudo de novo.',
+            'suggestedAction' => $isAuthenticated
+                ? 'Escolha: atualizar seus dados ou pedir um novo departamento.'
+                : 'Faça login no app e depois atualize o cadastro ou peça um novo departamento.',
+            'primaryActionLabel' => 'Atualizar cadastro',
+            'primaryActionUrl' => $updateUrl,
+            'secondaryActionLabel' => 'Pedir novo departamento',
+            'secondaryActionUrl' => $requestDeptUrl,
+            'loginUrl' => $loginUrl,
+            'changeEmailUrl' => $changeEmailUrl,
+        ];
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, Ministry>|null  $ministries
+     */
+    private function renderSignupEntry(
+        Request $request,
+        string $token,
+        Church $church,
+        $ministries = null,
+    ): RedirectResponse|Response {
+        $request->session()->put('volunteer_signup_token', $token);
+
+        $user = $request->user();
+        if ($user !== null) {
+            $email = VolunteerContactDuplicateChecker::normalizeEmail($user->email) ?? '';
+            if ($email !== '') {
+                // Situação da própria sessão: não usar actingUserId.
+                $identity = VolunteerSignupIdentity::resolve($email, null);
+                $request->session()->put('volunteer_signup_email', $email);
+                $request->session()->put('volunteer_signup_identity', $identity['status']);
+                $request->session()->put('volunteer_signup_has_app', (bool) $identity['has_app_account']);
+
+                return redirect()->route('volunteers.self-signup.existing', ['token' => $token]);
+            }
+        }
+
+        $request->session()->forget([
+            'volunteer_signup_email',
+            'volunteer_signup_identity',
+            'volunteer_signup_has_app',
+        ]);
+
+        return Inertia::render('Volunteers/SignupIdentify', [
+            'token' => $token,
+            'churchName' => $church->name,
+            'identifyUrl' => route('volunteers.self-signup.identify'),
+        ]);
+    }
+
+    /**
+     * @return array{0: string, 1: Church, 2: \Illuminate\Support\Collection<int, Ministry>}
+     */
+    private function resolveSignupTokenContext(Request $request, bool $includeMinistries = true): array
+    {
+        $token = (string) $request->query(
+            'token',
+            (string) $request->input('token', $request->session()->get('volunteer_signup_token', ''))
+        );
+
+        if ($token === '') {
+            throw new \Illuminate\Http\Exceptions\HttpResponseException(
+                redirect()->route('mobile.home')->with('error', 'Link de cadastro inválido.')
+            );
+        }
+
+        $record = VolunteerSelfSignupToken::query()->where('token', $token)->first();
+        if (! $record) {
+            throw new \Illuminate\Http\Exceptions\HttpResponseException(
+                redirect()->route('mobile.home')->with('error', 'Link de cadastro inválido ou desatualizado.')
+            );
+        }
+
+        $church = Church::query()->find($record->church_id);
+        if (! $church) {
+            throw new \Illuminate\Http\Exceptions\HttpResponseException(
+                redirect()->route('mobile.home')->with('error', 'Igreja não encontrada.')
+            );
+        }
+
+        $request->session()->put('volunteer_signup_token', $token);
+
+        $ministries = $includeMinistries
+            ? Ministry::query()
+                ->where('church_id', $record->church_id)
+                ->orderBy('name')
+                ->get(['id', 'name'])
+            : collect();
+
+        return [$token, $church, $ministries];
     }
 
     /**

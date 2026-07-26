@@ -6,7 +6,7 @@ import { router } from '@inertiajs/react';
 import { useState } from 'react';
 
 export function buildPublicVolunteerSignupWhatsAppText(link: string, churchName: string): string {
-    return `Queres voluntariar-te em ${churchName}? Abre o link, escolhe o departamento e conclui o teu cadastro. O link é público para quem o receber:\n\n${link}`;
+    return `Quer se voluntariar na ${churchName}? Abra o link, escolha o departamento e conclua o seu cadastro. O link é público para quem o receber:\n\n${link}`;
 }
 
 interface Props {
@@ -14,9 +14,17 @@ interface Props {
     link: string;
     churchName: string;
     onClose: () => void;
+    /** Quando false, oculta «Gerar novo link» (ex.: líder sem permissão de gestão). */
+    allowRotate?: boolean;
 }
 
-export default function PublicVolunteerSignupShareModal({ show, link, churchName, onClose }: Props) {
+export default function PublicVolunteerSignupShareModal({
+    show,
+    link,
+    churchName,
+    onClose,
+    allowRotate = true,
+}: Props) {
     const [copied, setCopied] = useState<'link' | 'message' | null>(null);
     const [rotating, setRotating] = useState(false);
 
@@ -63,8 +71,8 @@ export default function PublicVolunteerSignupShareModal({ show, link, churchName
                     </h2>
                     <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{churchName}</p>
                     <p className="mt-4 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
-                        Qualquer pessoa com este link pode inscrever-se como voluntário, escolhendo o departamento em que
-                        pretende servir. Partilhe por WhatsApp ou copie o texto.
+                        Qualquer pessoa com este link pode se cadastrar como voluntário, escolhendo o departamento em que
+                        quer servir. Compartilhe por WhatsApp ou copie o texto.
                     </p>
                 </div>
 
@@ -102,21 +110,27 @@ export default function PublicVolunteerSignupShareModal({ show, link, churchName
                         <button
                             type="button"
                             onClick={openWhatsApp}
-                            className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-[#25D366] px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#20bd5a] active:scale-[0.99] sm:min-h-0 sm:w-auto sm:py-3"
+                            className="inline-flex min-h-[48px] w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-[#25D366] px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#20bd5a] active:scale-[0.99] sm:min-h-0 sm:w-auto sm:py-3"
                         >
                             Abrir WhatsApp
                         </button>
                     </div>
-                    <div className="flex flex-col gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-800 sm:flex-row sm:items-center sm:justify-between">
-                        <button
-                            type="button"
-                            onClick={rotateLink}
-                            disabled={rotating}
-                            className="inline-flex items-center justify-center gap-2 rounded-full border border-amber-600/60 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-900 dark:border-amber-500/50 dark:bg-amber-950/20 dark:text-amber-200"
-                        >
-                            <ArrowPathIcon className={`h-4 w-4 ${rotating ? 'animate-spin' : ''}`} />
-                            Gerar novo link (invalida o anterior)
-                        </button>
+                    <div
+                        className={`flex flex-col gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-800 sm:flex-row sm:items-center ${
+                            allowRotate ? 'sm:justify-between' : 'sm:justify-end'
+                        }`}
+                    >
+                        {allowRotate ? (
+                            <button
+                                type="button"
+                                onClick={rotateLink}
+                                disabled={rotating}
+                                className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-amber-600/60 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-900 dark:border-amber-500/50 dark:bg-amber-950/20 dark:text-amber-200 disabled:cursor-not-allowed"
+                            >
+                                <ArrowPathIcon className={`h-4 w-4 ${rotating ? 'animate-spin' : ''}`} />
+                                Gerar novo link (invalida o anterior)
+                            </button>
+                        ) : null}
                         <PrimaryButton type="button" onClick={onClose} className="w-full rounded-full sm:w-auto">
                             Fechar
                         </PrimaryButton>

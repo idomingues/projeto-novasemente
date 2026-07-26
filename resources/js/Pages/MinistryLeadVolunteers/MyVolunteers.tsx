@@ -1,5 +1,4 @@
 import AdminLayout from '@/Layouts/AdminLayout';
-import AddButton from '@/Components/AddButton';
 import Card from '@/Components/Card';
 import FlashMessages from '@/Components/FlashMessages';
 import Modal from '@/Components/Modal';
@@ -15,6 +14,7 @@ import SelectInput from '@/Components/SelectInput';
 import Textarea from '@/Components/Textarea';
 import TextInput from '@/Components/TextInput';
 import UserListAvatar from '@/Components/UserListAvatar';
+import PublicVolunteerSignupShareModal from '@/Components/Volunteers/PublicVolunteerSignupShareModal';
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 import {
     ChatBubbleLeftEllipsisIcon,
@@ -23,6 +23,7 @@ import {
     EllipsisVerticalIcon,
     LinkIcon,
     MagnifyingGlassIcon,
+    PlusIcon,
     TrashIcon,
 } from '@heroicons/react/24/outline';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
@@ -244,14 +245,24 @@ type HistoryRow = {
 type ScreenTabId = 'active' | 'training' | 'reviewing' | 'new' | 'requests';
 
 export default function MyVolunteers() {
-    const { invitations, activeVolunteers, requestRows, requestMinistries, requestStoreUrl, churchMinistryInvitationIntro } = usePage()
-        .props as unknown as {
+    const {
+        invitations,
+        activeVolunteers,
+        requestRows,
+        requestMinistries,
+        requestStoreUrl,
+        churchMinistryInvitationIntro,
+        churchName,
+        publicVolunteerSignupUrl,
+    } = usePage().props as unknown as {
         invitations: VolunteerRow[];
         activeVolunteers: VolunteerRow[];
         requestRows: RequestRow[];
         requestMinistries: RequestMinistry[];
         requestStoreUrl: string;
         churchMinistryInvitationIntro?: string | null;
+        churchName?: string;
+        publicVolunteerSignupUrl?: string | null;
     };
 
     const [editingRow, setEditingRow] = useState<VolunteerRow | null>(null);
@@ -262,6 +273,7 @@ export default function MyVolunteers() {
     const [history, setHistory] = useState<HistoryRow[] | null>(null);
     const [historyLoading, setHistoryLoading] = useState(false);
     const [requestModalOpen, setRequestModalOpen] = useState(false);
+    const [publicInviteOpen, setPublicInviteOpen] = useState(false);
     const [inviteHelpRow, setInviteHelpRow] = useState<VolunteerRow | null>(null);
     const [inviteModalCopyFeedback, setInviteModalCopyFeedback] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -902,9 +914,31 @@ export default function MyVolunteers() {
                 title="Meus voluntários"
                 subtitle="Fluxo único do líder: acompanhe novos voluntários, voluntários em atividade e solicitações à secretaria."
                 actions={
-                    <AddButton variant="icon" onClick={openRequestModal} disabled={requestMinistries.length === 0}>
-                        Solicitar voluntário
-                    </AddButton>
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                        {publicVolunteerSignupUrl ? (
+                            <button
+                                type="button"
+                                onClick={() => setPublicInviteOpen(true)}
+                                className="inline-flex h-11 cursor-pointer items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-800 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800 sm:px-4"
+                                title="Link de cadastro para compartilhar com voluntários"
+                            >
+                                <LinkIcon className="h-5 w-5 shrink-0" aria-hidden />
+                                <span className="hidden sm:inline">Link de cadastro</span>
+                                <span className="sm:hidden">Link</span>
+                            </button>
+                        ) : null}
+                        <PrimaryButton
+                            type="button"
+                            onClick={openRequestModal}
+                            disabled={requestMinistries.length === 0}
+                            className="!h-11 gap-2 !px-4 sm:!px-6"
+                            title="Solicitar voluntário à secretaria"
+                        >
+                            <PlusIcon className="h-5 w-5 shrink-0" aria-hidden />
+                            <span className="hidden sm:inline">Solicitar Voluntário</span>
+                            <span className="sm:hidden">Solicitar</span>
+                        </PrimaryButton>
+                    </div>
                 }
             />
 
@@ -1554,6 +1588,16 @@ export default function MyVolunteers() {
                     </div>
                 </form>
             </Modal>
+
+            {publicVolunteerSignupUrl ? (
+                <PublicVolunteerSignupShareModal
+                    show={publicInviteOpen}
+                    link={publicVolunteerSignupUrl}
+                    churchName={churchName ?? 'Igreja'}
+                    allowRotate={false}
+                    onClose={() => setPublicInviteOpen(false)}
+                />
+            ) : null}
         </AdminLayout>
     );
 }

@@ -145,7 +145,7 @@ class VolunteerPublicSignupTest extends TestCase
         $this->assertAuthenticated();
     }
 
-    public function test_public_signup_recadastro_redirects_to_login_not_signup_form(): void
+    public function test_public_signup_recadastro_with_app_account_goes_to_existing_options(): void
     {
         $this->seed([RolePermissionSeeder::class, ChurchSeeder::class, MinistrySeeder::class]);
 
@@ -158,19 +158,18 @@ class VolunteerPublicSignupTest extends TestCase
         $email = 'recadastro.voluntario@example.com';
         $this->post(route('volunteers.self-signup.store'), $this->signupPayload($token, $email));
 
-        $user = User::query()->where('email', $email)->firstOrFail();
-        $volunteer = Volunteer::query()->where('user_id', $user->id)->firstOrFail();
-        $volunteer->forceFill(['user_id' => null])->save();
+        $userCountBefore = User::query()->where('email', $email)->count();
+        $volunteerCountBefore = Volunteer::query()->where('email', $email)->count();
 
         $payload = $this->signupPayload($token, $email);
         $payload['password'] = 'Password2!yy';
         $payload['password_confirmation'] = 'Password2!yy';
         $response = $this->post(route('volunteers.self-signup.store'), $payload);
 
-        $response->assertRedirect(route('login', absolute: false));
-        $response->assertSessionHas('volunteer_signup_welcome', true);
-        $volunteer->refresh();
-        $this->assertSame($user->id, $volunteer->user_id);
+        $response->assertRedirect(route('volunteers.self-signup.existing', ['token' => $token], absolute: false));
+        $response->assertSessionHas('info');
+        $this->assertSame($userCountBefore, User::query()->where('email', $email)->count());
+        $this->assertSame($volunteerCountBefore, Volunteer::query()->where('email', $email)->count());
     }
 
     public function test_public_signup_links_pre_registered_volunteer_without_user(): void
@@ -241,7 +240,7 @@ class VolunteerPublicSignupTest extends TestCase
         $this->assertTrue($admin->hasRole('admin'));
     }
 
-    public function test_logged_in_volunteer_redirects_public_signup_to_edit(): void
+    public function test_logged_in_volunteer_opens_existing_options_from_public_signup(): void
     {
         $this->seed([RolePermissionSeeder::class, ChurchSeeder::class, MinistrySeeder::class]);
 
@@ -255,11 +254,7 @@ class VolunteerPublicSignupTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('volunteers.public-signup.page'))
-            ->assertRedirect(route('volunteers.self-signup.edit', absolute: false))
-            ->assertSessionHas(
-                'info',
-                'Você já possui cadastro de voluntário. Revise e atualize suas informações abaixo quando precisar.'
-            );
+            ->assertRedirect();
 
         $token = VolunteerSelfSignupToken::query()->firstOrCreate(
             ['church_id' => $churchId],
@@ -267,8 +262,17 @@ class VolunteerPublicSignupTest extends TestCase
         )->token;
 
         $this->actingAs($user)
+            ->get(route('volunteers.self-signup.existing', ['token' => $token]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Volunteers/SignupExistingOptions')
+                ->where('status', 'existing')
+                ->where('hasAppAccount', true)
+                ->where('isAuthenticated', true));
+
+        $this->actingAs($user)
             ->post(route('volunteers.self-signup.store'), $this->signupPayload($token, 'voluntario.existente@example.com'))
-            ->assertRedirect(route('volunteers.self-signup.edit', absolute: false))
+            ->assertRedirect(route('volunteers.self-signup.existing', ['token' => $token], absolute: false))
             ->assertSessionHas('info');
     }
 
@@ -312,5 +316,111 @@ class VolunteerPublicSignupTest extends TestCase
         $this->assertFalse($user->canAccessAdminMenu());
         $this->assertFalse($user->hasRole('admin'));
         $this->assertCount(1, $user->roles);
+    }
+
+    public function test_identify_new_email_goes_to_form_and_existing_goes_to_options(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class, MinistrySeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+        $token = VolunteerSelfSignupToken::query()->create([
+            'church_id' => $churchId,
+            'token' => (string) Str::uuid(),
+        ])->token;
+
+        $this->post(route('volunteers.self-signup.identify'), [
+            'token' => $token,
+            'email' => 'novo.gate@example.com',
+        ])->assertRedirect(route('volunteers.self-signup.existing', ['token' => $token], absolute: false));
+
+        $this->get(route('volunteers.self-signup.existing', ['token' => $token]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Volunteers/SignupExistingOptions')
+                ->where('status', 'new')
+                ->where('email', 'novo.gate@example.com'));
+
+        $this->post(route('volunteers.self-signup.store'), $this->signupPayload($token, 'ja.voluntario.gate@example.com'));
+
+        $this->post(route('volunteers.self-signup.identify'), [
+            'token' => $token,
+            'email' => 'ja.voluntario.gate@example.com',
+        ])->assertRedirect(route('volunteers.self-signup.existing', ['token' => $token], absolute: false));
+
+        $this->get(route('volunteers.self-signup.existing', ['token' => $token]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Volunteers/SignupExistingOptions')
+                ->where('status', 'existing')
+                ->where('hasAppAccount', true));
+    }
+
+    public function test_request_new_department_creates_note_and_sets_interessado(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class, MinistrySeeder::class]);
+
+        $church = Church::query()->orderBy('id')->firstOrFail();
+        $churchId = (int) $church->id;
+        $token = VolunteerSelfSignupToken::query()->create([
+            'church_id' => $churchId,
+            'token' => (string) Str::uuid(),
+        ])->token;
+
+        $ministries = Ministry::query()->where('church_id', $churchId)->orderBy('id')->take(2)->get();
+        $this->assertGreaterThanOrEqual(2, $ministries->count());
+        $currentMinistry = $ministries[0];
+        $requestedMinistry = $ministries[1];
+
+        $user = User::factory()->create([
+            'church_id' => $churchId,
+            'is_volunteer' => true,
+            'email' => 'pedido.dept@example.com',
+        ]);
+        $volunteer = $user->fresh()->volunteerProfile;
+        $this->assertNotNull($volunteer);
+        $volunteer->ministries()->sync([$currentMinistry->id]);
+
+        $atuante = VolunteerPipelineStage::query()->firstOrCreate(
+            ['church_id' => $churchId, 'name' => 'Atuante'],
+            ['sort_order' => 40],
+        );
+        VolunteerChurchPipeline::query()->updateOrCreate(
+            ['volunteer_id' => $volunteer->id, 'church_id' => $churchId],
+            ['stage_id' => $atuante->id, 'admin_workflow_stage_id' => $atuante->id],
+        );
+
+        $this->actingAs($user)->post(route('volunteers.self-signup.request-department.store'), [
+            'token' => $token,
+            'ministry_ids' => [$requestedMinistry->id],
+            'reason' => 'Quero servir na recepção aos sábados.',
+        ])->assertRedirect(route('mobile.home', absolute: false));
+
+        $this->assertDatabaseHas('volunteer_leader_notes', [
+            'volunteer_id' => $volunteer->id,
+            'church_id' => $churchId,
+        ]);
+        $note = \App\Models\VolunteerLeaderNote::query()
+            ->where('volunteer_id', $volunteer->id)
+            ->latest('id')
+            ->first();
+        $this->assertNotNull($note);
+        $this->assertStringContainsString('Pedido de novo departamento', $note->body);
+        $this->assertStringContainsString('Quero servir na recepção', $note->body);
+
+        $interessadoId = VolunteerPipelineStage::query()
+            ->where('church_id', $churchId)
+            ->whereRaw('LOWER(name) = ?', ['interessado'])
+            ->value('id');
+        $this->assertNotNull($interessadoId);
+
+        $pipeline = VolunteerChurchPipeline::query()
+            ->where('volunteer_id', $volunteer->id)
+            ->where('church_id', $churchId)
+            ->first();
+        $this->assertNotNull($pipeline);
+        $this->assertTrue(
+            (int) $pipeline->admin_workflow_stage_id === (int) $interessadoId
+            || (int) $pipeline->stage_id === (int) $interessadoId
+        );
     }
 }

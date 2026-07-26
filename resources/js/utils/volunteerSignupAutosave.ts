@@ -18,8 +18,8 @@ export type VolunteerSignupAutosaveResponse = {
 };
 
 /**
- * Campos com seleção múltipla (checkboxes): não disparam autosave por clique;
- * salvam ao tocar em «Continuar» na etapa.
+ * Campos com seleção múltipla (checkboxes).
+ * Áreas/tipos de serviço autosalvam com debounce ao marcar; departamentos ao avançar a etapa.
  */
 export const VOLUNTEER_SIGNUP_MULTI_SELECT_FIELD_KEYS = [
     'service_ease_areas',
@@ -40,7 +40,7 @@ export function volunteerSignupMultiSelectFieldsOnPage(page: number): string[] {
 }
 
 export const VOLUNTEER_SIGNUP_MULTI_SELECT_CONTINUE_HINT =
-    'Marque todas as opções que se aplicam. As respostas são salvas ao tocar em Avançar.';
+    'Marque todas as opções que se aplicam. As respostas são salvas automaticamente.';
 
 export function collectVolunteerSignupAutosaveFields(
     page: number,
@@ -161,8 +161,13 @@ export function volunteerSignupAutosaveFieldsReady(
 }
 
 export function fieldTriggersImmediateAutosave(fieldKey: string): boolean {
-    if (volunteerSignupFieldIsMultiSelect(fieldKey)) {
+    // desired_ministry_ids continua só no «Avançar» (lista longa / menos crítica para conclusão).
+    if (fieldKey === 'desired_ministry_ids') {
         return false;
+    }
+
+    if (fieldKey === 'service_ease_areas' || fieldKey === 'service_activity_types') {
+        return true;
     }
 
     return [

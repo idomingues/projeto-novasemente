@@ -117,6 +117,10 @@ interface Props {
     resumePage?: number | null;
     /** Aviso fixo: usuário já tem cadastro e está em modo de atualização. */
     existingRegistrationNotice?: boolean;
+    /** E-mail confirmado na etapa de identificação (novo cadastro). */
+    prefillEmail?: string | null;
+    /** Pré-cadastro da equipe sem conta no app — conclui acesso sem criar outro voluntário. */
+    completingPreRegistration?: boolean;
 }
 
 const PAGE_TITLES = ['Dados pessoais', 'Nova Semente', 'Sobre o serviço'];
@@ -428,6 +432,7 @@ function buildFormDefaults(
     initial: VolunteerSignupInitial | undefined,
     redirectAfterSave: string,
     draftFields: ReturnType<typeof readVolunteerSignupDraft> | null,
+    prefillEmail?: string | null,
 ) {
     const draft = !isEdit ? draftFields : null;
     const base = initial ?? {
@@ -454,6 +459,9 @@ function buildFormDefaults(
     };
 
     const merged = draft ? { ...base, ...draft } : base;
+    const draftEmail = typeof merged.email === 'string' ? merged.email.trim() : '';
+    const identifiedEmail = typeof prefillEmail === 'string' ? prefillEmail.trim() : '';
+    const email = draftEmail !== '' ? draftEmail : identifiedEmail;
 
     return {
         token: isEdit ? '' : token,
@@ -464,7 +472,7 @@ function buildFormDefaults(
         last_name: merged.last_name,
         birth_date: merged.birth_date,
         has_whatsapp: merged.has_whatsapp,
-        email: merged.email,
+        email,
         phone: merged.phone,
         has_social_networks: merged.has_social_networks,
         social_network_profiles: merged.social_network_profiles,
@@ -498,6 +506,8 @@ export default function PublicSignup({
     signupCompletion,
     resumePage = null,
     existingRegistrationNotice = false,
+    prefillEmail = null,
+    completingPreRegistration = false,
 }: Props) {
     const isEdit = mode === 'edit';
     const signupToken = token || '';
@@ -506,7 +516,7 @@ export default function PublicSignup({
         [isEdit, signupToken],
     );
     const hasExistingPhoto = initial?.has_existing_photo === true;
-    const backHref = cancelHref ?? (isEdit ? route('mobile.profile.edit') : route('more.index'));
+    const backHref = cancelHref ?? (isEdit ? route('mobile.profile.edit') : route('volunteers.self-signup', { token: signupToken }));
     const savedInitialRef = useRef(initial);
     const [liveMissingFields, setLiveMissingFields] = useState<string[]>(missingFieldsProp ?? []);
     const [pinnedMultiSelectFields, setPinnedMultiSelectFields] = useState<string[]>([]);
@@ -516,6 +526,8 @@ export default function PublicSignup({
     const autosaveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const autosaveInFlightRef = useRef(false);
     const autosaveInFlightPromiseRef = useRef<Promise<boolean> | null>(null);
+    const pendingSubmitAfterAutosaveRef = useRef(false);
+    const submitFormRef = useRef<(() => void | Promise<void>) | null>(null);
     const [pendingNavigateField, setPendingNavigateField] = useState<string | null>(null);
 
     const queueNavigateToField = useCallback((fieldKey: string) => {
@@ -543,7 +555,15 @@ export default function PublicSignup({
     const flashError = (inertiaPage.props as { flash?: { error?: string | null } }).flash?.error;
 
     const formDefaults = useMemo(
-        () => buildFormDefaults(isEdit, signupToken, initial, redirectAfterSave, guestDraftState?.fields ?? null),
+        () =>
+            buildFormDefaults(
+                isEdit,
+                signupToken,
+                initial,
+                redirectAfterSave,
+                guestDraftState?.fields ?? null,
+                prefillEmail,
+            ),
         // eslint-disable-next-line react-hooks/exhaustive-deps -- valores iniciais só na montagem
         [],
     );
@@ -857,7 +877,7 @@ export default function PublicSignup({
                 const localPayload = dataRef.current as unknown as Record<string, unknown>;
                 const serverInitial = response.initial as unknown as Record<string, unknown>;
                 if (volunteerSignupMultiSelectDiffersOnPage(localPayload, serverInitial, activePageRef.current)) {
-                    setAutosaveMessage('Toque em Avançar para salvar todas as opções marcadas.');
+                    setAutosaveMessage('Há opções marcadas ainda sendo salvas. Aguarde um instante…');
                     setAutosaveStatus('saved');
                     return;
                 }
@@ -891,9 +911,6 @@ export default function PublicSignup({
     const performAutosave = useCallback(
         async (fields: string[]): Promise<boolean> => {
             if (!isEdit || fields.length === 0) return true;
-            if (autosaveInFlightPromiseRef.current) {
-                return autosaveInFlightPromiseRef.current;
-            }
 
             const run = async (): Promise<boolean> => {
                 const prepared = buildPreparedPayload(dataRef.current);
@@ -957,9 +974,19 @@ export default function PublicSignup({
                 }
             };
 
-            const promise = run().finally(() => {
+            const previous = autosaveInFlightPromiseRef.current;
+            const promise = (async (): Promise<boolean> => {
+                if (previous) {
+                    await previous.catch(() => false);
+                }
+                return run();
+            })().finally(() => {
                 if (autosaveInFlightPromiseRef.current === promise) {
                     autosaveInFlightPromiseRef.current = null;
+                }
+                if (pendingSubmitAfterAutosaveRef.current) {
+                    pendingSubmitAfterAutosaveRef.current = false;
+                    void submitFormRef.current?.();
                 }
             });
             autosaveInFlightPromiseRef.current = promise;
@@ -997,6 +1024,9 @@ export default function PublicSignup({
                 duplicate: boolean;
                 email_taken?: boolean;
                 phone_taken?: boolean;
+                already_volunteer?: boolean;
+                has_app_account?: boolean;
+                existing_options_url?: string | null;
                 message?: string | null;
                 email_message?: string | null;
                 phone_message?: string | null;
@@ -1007,6 +1037,16 @@ export default function PublicSignup({
                 email: data.email.trim(),
                 phone: data.phone.trim(),
             });
+            if (
+                !isEdit &&
+                !completingPreRegistration &&
+                res.data.already_volunteer &&
+                res.data.has_app_account &&
+                res.data.existing_options_url
+            ) {
+                router.visit(res.data.existing_options_url);
+                return { nameHint: null, emailHint: null, phoneHint: null };
+            }
             const nameHint = fn.length >= 1 && ln.length >= 1 && res.data.duplicate && res.data.message ? res.data.message : null;
             const emailHint = res.data.email_taken && res.data.email_message ? res.data.email_message : null;
             const phoneHint = res.data.phone_taken && res.data.phone_message ? res.data.phone_message : null;
@@ -1020,7 +1060,7 @@ export default function PublicSignup({
             setPhoneDuplicateHint(null);
             return { nameHint: null, emailHint: null, phoneHint: null };
         }
-    }, [data.token, data.full_name, data.first_name, data.last_name, data.email, data.phone]);
+    }, [completingPreRegistration, data.token, data.full_name, data.first_name, data.last_name, data.email, data.phone, isEdit]);
 
     const scheduleDuplicateCheck = () => {
         if (checkDuplicateTimer.current) clearTimeout(checkDuplicateTimer.current);
@@ -1198,7 +1238,8 @@ export default function PublicSignup({
     const scheduleFieldAutosave = useCallback(
         (fieldKey: string, extraFields: string[] = []) => {
             if (!isEdit) return;
-            if (volunteerSignupFieldIsMultiSelect(fieldKey)) return;
+            // Departamentos: só ao avançar a etapa (lista longa).
+            if (fieldKey === 'desired_ministry_ids') return;
             if (autosaveDebounceRef.current) clearTimeout(autosaveDebounceRef.current);
             autosaveDebounceRef.current = setTimeout(() => {
                 const snapshot = dataRef.current;
@@ -1499,11 +1540,15 @@ export default function PublicSignup({
         }
     };
 
+    submitFormRef.current = submitForm;
+
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         // Não concluir enquanto o autosave grava — no celular o rodapé sticky
         // fica sobre as opções e um toque em Sim/Não acabava disparando Continuar/Concluir.
         if (autosaveStatus === 'saving' || autosaveInFlightRef.current || advancing) {
+            pendingSubmitAfterAutosaveRef.current = true;
+            setAutosaveMessage('Aguarde o salvamento para concluir o cadastro…');
             return;
         }
         void submitForm();
@@ -1605,6 +1650,19 @@ export default function PublicSignup({
                         <span className="font-semibold">*</span> Obrigatória
                     </p>
                 </header>
+
+                {completingPreRegistration && !isEdit ? (
+                    <div
+                        className="mb-4 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-950 dark:border-teal-900/50 dark:bg-teal-950/35 dark:text-teal-100"
+                        role="status"
+                    >
+                        <p className="font-semibold">Cadastro já iniciado pela equipe</p>
+                        <p className="mt-1 leading-relaxed">
+                            Vamos concluir seu acesso ao aplicativo e atualizar os dados no mesmo registro — sem criar
+                            outro cadastro de voluntário.
+                        </p>
+                    </div>
+                ) : null}
 
                 {isEdit && existingRegistrationNotice && !focusMissingOnly ? (
                     <div
@@ -2155,6 +2213,7 @@ export default function PublicSignup({
                                         onChange={(next) => {
                                             setData('service_ease_areas', next);
                                             clearClientError('service_ease_areas');
+                                            persistFieldAnswer('service_ease_areas');
                                         }}
                                     />
                                 </Question>
@@ -2196,6 +2255,7 @@ export default function PublicSignup({
                                         onChange={(next) => {
                                             setData('service_activity_types', next);
                                             clearClientError('service_activity_types');
+                                            persistFieldAnswer('service_activity_types');
                                         }}
                                     />
                                 </Question>
